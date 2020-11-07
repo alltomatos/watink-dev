@@ -91,6 +91,9 @@ DB_DIALECT=
 DB_USER=
 DB_PASS=
 DB_NAME=
+
+JWT_SECRET=***REMOVED_JWT_SECRET***
+JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***
 ```
 
 Install backend dependencies, build app, run migrations and seeds:
@@ -205,6 +208,9 @@ DB_DIALECT=
 DB_USER=
 DB_PASS=
 DB_NAME=
+
+JWT_SECRET=***REMOVED_JWT_SECRET***
+JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***
 ```
 
 Install puppeteer dependencies:
