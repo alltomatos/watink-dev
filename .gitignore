@@ -2,4 +2,4 @@
 ssl/
 .env
 .wwebjs_auth
-.idea
+.idea.docker/data_corrupted/
