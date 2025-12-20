@@ -34,6 +34,7 @@ import RecordingTimer from "./RecordingTimer";
 import { ReplyMessageContext } from "../../context/ReplyingMessage/ReplyingMessageContext";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { useThemeContext } from "../../context/DarkMode";
 import toastError from "../../errors/toastError";
 
 let Mp3Recorder = null;
@@ -81,6 +82,18 @@ const useStyles = makeStyles(theme => ({
     borderRadius: 20,
     flex: 1,
     position: "relative",
+  },
+
+  messageInputWrapperSaas: {
+    padding: 6,
+    marginRight: 7,
+    background: "#fff",
+    display: "flex",
+    borderRadius: 20,
+    flex: 1,
+    position: "relative",
+    border: "1px solid #e5e7eb",
+    boxShadow: "none",
   },
 
   messageInput: {
@@ -229,6 +242,7 @@ const MessageInput = ({ ticketStatus }) => {
   const { setReplyingMessage, replyingMessage } =
     useContext(ReplyMessageContext);
   const { user } = useContext(AuthContext);
+  const { appTheme } = useThemeContext();
 
   const [signMessage, setSignMessage] = useLocalStorage("signOption", true);
 
@@ -594,7 +608,7 @@ const MessageInput = ({ ticketStatus }) => {
               </MenuItem>
             </Menu>
           </Hidden>
-          <div className={classes.messageInputWrapper}>
+          <div className={appTheme === "saas" ? classes.messageInputWrapperSaas : classes.messageInputWrapper}>
             <InputBase
               inputRef={input => {
                 input && input.focus();

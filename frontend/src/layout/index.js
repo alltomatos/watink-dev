@@ -124,6 +124,12 @@ const useStyles = makeStyles((theme) => ({
   themeIcon: {
     color: theme.palette.text.primary,
   },
+  appBarSaaS: {
+    boxShadow: "none",
+    borderBottom: "1px solid rgba(0,0,0,0.05)",
+    backgroundColor: theme.palette.type === "dark" ? "rgba(31, 41, 55, 0.8)" : "rgba(255, 255, 255, 0.8)",
+    backdropFilter: "blur(12px)",
+  },
 }));
 
 const LoggedInLayout = ({ children }) => {
@@ -135,13 +141,19 @@ const LoggedInLayout = ({ children }) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerVariant, setDrawerVariant] = useState("permanent");
   const { user } = useContext(AuthContext);
-  const { darkMode, toggleTheme } = useThemeContext();
+  const { darkMode, toggleTheme, appTheme } = useThemeContext();
 
   useEffect(() => {
     if (document.body.offsetWidth > 600) {
       setDrawerOpen(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (appTheme === "saas" && document.body.offsetWidth > 600) {
+      setDrawerOpen(true);
+    }
+  }, [appTheme]);
 
   useEffect(() => {
     if (document.body.offsetWidth < 600) {
@@ -195,9 +207,11 @@ const LoggedInLayout = ({ children }) => {
         open={drawerOpen}
       >
         <div className={classes.toolbarIcon}>
-          <IconButton onClick={() => setDrawerOpen(!drawerOpen)}>
-            <ChevronLeftIcon />
-          </IconButton>
+          {appTheme !== "saas" && (
+            <IconButton onClick={() => setDrawerOpen(!drawerOpen)}>
+              <ChevronLeftIcon />
+            </IconButton>
+          )}
         </div>
         <Divider />
         <List>
@@ -212,7 +226,11 @@ const LoggedInLayout = ({ children }) => {
       />
       <AppBar
         position="absolute"
-        className={clsx(classes.appBar, drawerOpen && classes.appBarShift)}
+        className={clsx(
+          classes.appBar,
+          drawerOpen && classes.appBarShift,
+          appTheme === "saas" && classes.appBarSaaS
+        )}
       >
         <Toolbar variant="dense" className={classes.toolbar}>
           <IconButton
@@ -221,7 +239,8 @@ const LoggedInLayout = ({ children }) => {
             onClick={() => setDrawerOpen(!drawerOpen)}
             className={clsx(
               classes.menuButton,
-              drawerOpen && classes.menuButtonHidden
+              drawerOpen && classes.menuButtonHidden,
+              appTheme === "saas" && classes.menuButtonHidden
             )}
           >
             <MenuIcon />

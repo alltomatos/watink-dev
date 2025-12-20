@@ -30,6 +30,7 @@ import whatsBackground from "../../assets/wa-background.png";
 
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
+import { useThemeContext } from "../../context/DarkMode";
 import Audio from "../Audio";
 
 const useStyles = makeStyles((theme) => ({
@@ -93,6 +94,17 @@ const useStyles = makeStyles((theme) => ({
     boxShadow: "0 1px 1px #b3b3b3",
   },
 
+  messageLeftSaas: {
+    backgroundColor: "#f3f4f6",
+    color: "#303030",
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 0, // Tail on bottom left
+    borderBottomRightRadius: 12,
+    boxShadow: "none",
+    border: "1px solid #e5e7eb",
+  },
+
   quotedContainerLeft: {
     margin: "-3px -80px 6px -6px",
     overflow: "hidden",
@@ -145,6 +157,16 @@ const useStyles = makeStyles((theme) => ({
     paddingTop: 5,
     paddingBottom: 0,
     boxShadow: "0 1px 1px #b3b3b3",
+  },
+
+  messageRightSaas: {
+    backgroundColor: theme.palette.primary.main,
+    color: "#ffffff",
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 0, // Tail on bottom right
+    boxShadow: "none",
   },
 
   quotedContainerRight: {
@@ -309,6 +331,7 @@ const reducer = (state, action) => {
 
 const MessagesList = ({ ticketId, isGroup }) => {
   const classes = useStyles();
+  const { appTheme } = useThemeContext();
 
   const [messagesList, dispatch] = useReducer(reducer, []);
   const [pageNumber, setPageNumber] = useState(1);
@@ -465,7 +488,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
         )
       } else return (<></>)
     }*/
-    else if ( /^.*\.(jpe?g|png|gif)?$/i.exec(message.mediaUrl) && message.mediaType === "image") {
+    else if (/^.*\.(jpe?g|png|gif)?$/i.exec(message.mediaUrl) && message.mediaType === "image") {
       return <ModalImageCors imageUrl={message.mediaUrl} />;
     } else if (message.mediaType === "audio") {
       return <Audio url={message.mediaUrl} />
@@ -598,7 +621,11 @@ const MessagesList = ({ ticketId, isGroup }) => {
             <React.Fragment key={message.id}>
               {renderDailyTimestamps(message, index)}
               {renderMessageDivider(message, index)}
-              <div className={classes.messageLeft}>
+              <div
+                className={clsx(classes.messageLeft, {
+                  [classes.messageLeftSaas]: appTheme === "saas",
+                })}
+              >
                 <IconButton
                   variant="contained"
                   size="small"
@@ -632,7 +659,11 @@ const MessagesList = ({ ticketId, isGroup }) => {
             <React.Fragment key={message.id}>
               {renderDailyTimestamps(message, index)}
               {renderMessageDivider(message, index)}
-              <div className={classes.messageRight}>
+              <div
+                className={clsx(classes.messageRight, {
+                  [classes.messageRightSaas]: appTheme === "saas",
+                })}
+              >
                 <IconButton
                   variant="contained"
                   size="small"

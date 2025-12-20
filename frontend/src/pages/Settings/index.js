@@ -12,6 +12,7 @@ import { toast } from "react-toastify";
 import api from "../../services/api";
 import { i18n } from "../../translate/i18n.js";
 import toastError from "../../errors/toastError";
+import { useThemeContext } from "../../context/DarkMode";
 
 const useStyles = makeStyles(theme => ({
 	root: {
@@ -39,6 +40,7 @@ const useStyles = makeStyles(theme => ({
 
 const Settings = () => {
 	const classes = useStyles();
+	const { appTheme, setAppTheme } = useThemeContext();
 
 	const [settings, setSettings] = useState([]);
 
@@ -122,6 +124,31 @@ const Settings = () => {
 						</option>
 					</Select>
 
+
+
+				</Paper>
+
+				<Paper className={classes.paper}>
+					<Typography variant="body1">
+						Tema
+					</Typography>
+					<Select
+						margin="dense"
+						variant="outlined"
+						native
+						id="theme-setting"
+						name="theme"
+						value={appTheme}
+						className={classes.settingOption}
+						onChange={(e) => setAppTheme(e.target.value)}
+					>
+						<option value="whaticket">
+							Whaticket (Padrão)
+						</option>
+						<option value="saas">
+							SaaS Premium
+						</option>
+					</Select>
 				</Paper>
 
 				<Paper className={classes.paper}>
@@ -137,7 +164,7 @@ const Settings = () => {
 				</Paper>
 
 			</Container>
-		</div>
+		</div >
 	);
 };
 
