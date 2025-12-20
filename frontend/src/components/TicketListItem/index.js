@@ -21,11 +21,23 @@ import ButtonWithSpinner from "../ButtonWithSpinner";
 import MarkdownWrapper from "../MarkdownWrapper";
 import { Tooltip } from "@material-ui/core";
 import { AuthContext } from "../../context/Auth/AuthContext";
+import { useThemeContext } from "../../context/DarkMode";
 import toastError from "../../errors/toastError";
 
 const useStyles = makeStyles(theme => ({
 	ticket: {
 		position: "relative",
+	},
+
+	ticketSaas: {
+		paddingTop: "15px",
+		paddingBottom: "15px",
+		borderBottom: "1px solid #f0f0f0", // Weaker divider
+	},
+
+	contactNameSaas: {
+		fontWeight: 600,
+		fontSize: "1rem", // Slightly larger
 	},
 
 	pendingTicket: {
@@ -105,14 +117,16 @@ const useStyles = makeStyles(theme => ({
 		marginRight: 5,
 		right: 5,
 		bottom: 5,
-		background: "#2576D2",
+		background: "linear-gradient(to right, #6366f1, #4f46e5)",
 		color: "#ffffff",
-		border: "1px solid #CCC",
+		border: "none",
+		boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
 		padding: 1,
 		paddingLeft: 5,
 		paddingRight: 5,
-		borderRadius: 10,
-		fontSize: "0.9em"
+		borderRadius: 12,
+		fontSize: "0.8em",
+		fontWeight: "600"
 	},
 }));
 
@@ -123,6 +137,7 @@ const TicketListItem = ({ ticket }) => {
 	const { ticketId } = useParams();
 	const isMounted = useRef(true);
 	const { user } = useContext(AuthContext);
+	const { appTheme } = useThemeContext();
 
 	useEffect(() => {
 		return () => {
@@ -163,6 +178,7 @@ const TicketListItem = ({ ticket }) => {
 				selected={ticketId && +ticketId === ticket.id}
 				className={clsx(classes.ticket, {
 					[classes.pendingTicket]: ticket.status === "pending",
+					[classes.ticketSaas]: appTheme === "saas",
 				})}
 			>
 				<Tooltip
@@ -187,6 +203,7 @@ const TicketListItem = ({ ticket }) => {
 								component="span"
 								variant="body2"
 								color="textPrimary"
+								className={clsx({ [classes.contactNameSaas]: appTheme === "saas" })}
 							>
 								{ticket.contact.name}
 							</Typography>
@@ -224,6 +241,7 @@ const TicketListItem = ({ ticket }) => {
 								component="span"
 								variant="body2"
 								color="textSecondary"
+								className={clsx({ [classes.contactLastMessage]: true })}
 							>
 								{ticket.lastMessage ? (
 									<MarkdownWrapper>{ticket.lastMessage}</MarkdownWrapper>
@@ -255,7 +273,7 @@ const TicketListItem = ({ ticket }) => {
 					</ButtonWithSpinner>
 				)}
 			</ListItem>
-			<Divider variant="inset" component="li" />
+			{appTheme !== "saas" && <Divider variant="inset" component="li" />}
 		</React.Fragment>
 	);
 };
