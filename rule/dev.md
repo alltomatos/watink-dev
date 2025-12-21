@@ -1,33 +1,125 @@
-### Projeto Whaticket Community
+# 🛠️ Guia de Desenvolvimento - Whaticket Community
 
-Sempre responder e ou criar planos documentos em portugues do brasil
+Este documento serve como referência técnica para desenvolvedores que atuam no projeto **Whaticket Community**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
 
-Repositorio: https://github.com/alltomatos/whaticket-community.git
+> [!IMPORTANT]
+> **Sempre responda e crie documentos em Português do Brasil.**
+> **Ambiente de Execução**: Todo o desenvolvimento e execução do projeto deve ser feito via **Docker Swarm**. Não rode os serviços localmente (fora de containers).
 
-O projeto e um Fork do projeto original Whaticket.
+---
 
-Repositorio Original: https://github.com/canove/whaticket-community.git
+## 🏗️ Arquitetura de Microserviços
 
-### Roadmap de Design Premium (SaaS)
+O projeto evoluiu de um monolito para uma arquitetura distribuída orientada a eventos, rodando exclusivamente em containers orquestrados.
 
-Documento de Referência: [Plano de Tema SaaS Premium](docs/plans/theme_saas_premiun.md)
+### Componentes Principais
 
-Este roadmap visa transformar o visual do Whaticket para um estilo SaaS moderno (Flat/Bordered).
+1.  **Frontend (SPA)**: Interface do usuário construída com React e Vite.
+2.  **Backend (API + Orchestrator)**: Gerencia regras de negócio, banco de dados e orquestra comandos.
+3.  **Engine (WhatsApp Worker)**:
+    *   **Engine Standard/Pro**: Node.js com **Whaileys** (Wrapper otimizado do Baileys).
+    *   **Engine Enterprise**: Go com **WhatsMeow** (Alta performance).
+4.  **Message Broker**: **RabbitMQ** para comunicação assíncrona entre Backend e Engines.
+5.  **Database**: PostgreSQL com extensões **PostGIS** e **pgvector**.
 
-#### Etapas de Implementação:
+---
 
-1.  **Configuração Inicial**:
-    *   [x] Instalar a fonte **Inter** (Google Fonts) em `public/index.html`.
-    *   [x] Criar/Atualizar o tema Material UI em `src/layout/MainLayout.js` com a nova paleta de cores, tipografia e bordas (ver documento de referência).
+## 💻 Tecnologias Frontend
 
-2.  **Estrutura (Layout)**:
-    *   [x] Substituir o Drawer retrátil por uma **Sidebar Fixa** à esquerda.
-    *   [x] Limpar o Header (AppBar) removendo a cor primária sólida (usar branco/transparente).
+Containerizado e servido via Nginx.
 
-3.  **Refatoração de Componentes**:
+*   **Build Tool**: [Vite](https://vitejs.dev/)
+*   **Framework**: React
+*   **UI Library**: Material UI (v4)
+*   **Estado Global**: Context API
+*   **Comunicação**: Axios (HTTP) e Socket.IO Client (WebSocket)
 
-    *   [x] **Lista de Chats**: Aumentar padding, destacar nome do contato em negrito, usar "dot" para status.
-    *   [x] **Janela de Chat**: Modernizar balões de mensagem (cantos arredondados, cores sólidas vs cinza claro), input de texto flutuante.
+### ⚠️ Regras para Frontend:
+*   **NÃO** rode `npm run dev` localmente.
+*   Para aplicar alterações, reconstrua a imagem e atualize o serviço no Swarm.
+*   Configurações de ambiente são injetadas no container (via `docker-stack.yml`).
 
-4.  **Acabamento**:
-    *   [x] Adicionar efeitos de "Glassmorphism" (blur) em elementos flutuantes.
+---
+
+## ⚙️ Tecnologias Backend
+
+O backend orquestra o sistema e roda isolado em container.
+
+*   **Runtime**: Node.js (TypeScript)
+*   **Framework**: Express
+*   **ORM**: Sequelize (TypeScript)
+*   **Documentação**: **Swagger** (`/docs`)
+*   **Mensageria**: RabbitMQ (amqplib)
+
+### ⚠️ Regras para Backend:
+*   **NUNCA** adicione lógica de conexão com WhatsApp (WWebJS/Baileys) diretamente no Backend.
+*   Use o **Service Layer Pattern**: Controllers chamam Services.
+*   Para ações no WhatsApp, publique mensagens no RabbitMQ.
+*   Logs devem ser direcionados para `stdout`/`stderr` para coleta pelo Docker.
+
+---
+
+## 🤖 WhatsApp Engines (Microserviços)
+
+Workers independentes que se conectam ao WhatsApp.
+
+### Engine Standard (`engine-standard`)
+*   **Tecnologia**: Node.js / TypeScript
+*   **Lib Core**: **Whaileys**
+*   **Função**: Processamento padrão, containerizado separadamente.
+
+### Engine Enterprise (Conceito/Futuro)
+*   **Tecnologia**: **Go (Golang)**
+*   **Lib Core**: **WhatsMeow**
+*   **Função**: Performance extrema para alto volume.
+
+---
+
+## 🗄️ Banco de Dados: PostgreSQL + Extensions
+
+Imagem customizada rodando em serviço dedicado no Swarm.
+
+*   **Imagem Docker**: `ronaldodavi/pgvectorgis:latest`
+*   **Extensões**:
+    *   **PostGIS**: Adiciona suporte a objetos geográficos ao banco de dados PostgreSQL. Permite executar consultas de localização (raio, distância), armazenar coordenadas (lat/long) de contatos e interações, possibilitando recursos avançados de geolocalização e mapas.
+    *   **pgvector**: Fornece recursos de busca e armazenamento de vetores. Essencial para implementações de IA e RAG (Retrieval-Augmented Generation), permitindo armazenar "embeddings" de mensagens e documentos para realizar buscas semânticas e de similaridade de forma eficiente diretamente no banco.
+*   **Migrações**: Executadas automaticamente pelo container do backend na inicialização (via `dockerize` check).
+
+---
+
+## 🚀 Fluxo de Desenvolvimento (Swarm Only)
+
+Todo o ciclo de vida da aplicação é gerenciado via Docker Swarm.
+
+### 1. Inicialização
+Para subir a stack completa:
+```bash
+docker stack deploy -c docker-stack.yml whaticket
+```
+
+### 2. Aplicando Alterações
+Como não rodamos localmente, o fluxo para refletir mudanças de código é:
+
+1.  **Backend/Engine**:
+    ```bash
+    # Rebuild da imagem (ex: backend)
+    docker compose build backend
+    
+    # Tagging (se necessário, para bater com o stack file)
+    docker tag whaticket-community-backend:latest whaticket/backend:latest
+    
+    # Atualização forçada do serviço
+    docker service update --image whaticket/backend:latest whaticket_backend --force
+    ```
+
+2.  **Frontend**:
+    ```bash
+    docker compose build frontend
+    docker tag whaticket-community-frontend:latest whaticket/frontend:latest
+    docker service update --image whaticket/frontend:latest whaticket_frontend --force
+    ```
+
+### 3. Debug & Logs
+*   **Logs**: `docker service logs -f whaticket_backend` (ou frontend, engine, etc).
+*   **Swagger**: Acesse `http://localhost:3000/docs` para testar/documentar a API.
+*   **RabbitMQ**: `http://localhost:15672` para monitorar filas.

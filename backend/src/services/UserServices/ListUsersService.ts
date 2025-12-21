@@ -27,7 +27,7 @@ const ListUsersService = async ({
           `%${searchParam.toLowerCase()}%`
         )
       },
-      { email: { [Op.like]: `%${searchParam.toLowerCase()}%` } }
+      { email: { [Op.iLike]: `%${searchParam.toLowerCase()}%` } }
     ]
   };
   const limit = 20;

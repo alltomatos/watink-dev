@@ -1,9 +1,9 @@
-import { initWbot } from "../../libs/wbot";
+import { v4 as uuidv4 } from "uuid";
 import Whatsapp from "../../models/Whatsapp";
-import { wbotMessageListener } from "./wbotMessageListener";
 import { getIO } from "../../libs/socket";
-import wbotMonitor from "./wbotMonitor";
 import { logger } from "../../utils/logger";
+import RabbitMQService from "../RabbitMQService";
+import { Envelope } from "../../microservice/contracts";
 
 export const StartWhatsAppSession = async (
   whatsapp: Whatsapp
@@ -17,9 +17,18 @@ export const StartWhatsAppSession = async (
   });
 
   try {
-    const wbot = await initWbot(whatsapp);
-    wbotMessageListener(wbot);
-    wbotMonitor(wbot, whatsapp);
+    const command: Envelope = {
+      id: uuidv4(),
+      timestamp: Date.now(),
+      tenantId: 1, // Default tenant for now, or fetch from whatsapp if available
+      type: "session.start",
+      payload: {
+        sessionId: whatsapp.id
+      }
+    };
+
+    await RabbitMQService.publishCommand(`wbot.1.${whatsapp.id}.session.start`, command);
+    logger.info(`Session start command published for session ${whatsapp.id}`);
   } catch (err) {
     logger.error(err);
   }
