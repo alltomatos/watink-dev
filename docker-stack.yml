@@ -14,9 +14,8 @@ services:
       - JWT_SECRET=3123123213123
       - JWT_REFRESH_SECRET=75756756756
       - FRONTEND_URL=http://localhost
-    command: ["sh", "-c", "dockerize -wait tcp://postgres:5432 -timeout 60s && npx sequelize db:migrate && node dist/server.js"]
     ports:
-      - "3000:3000"
+      - "8080:8080"
     networks:
       - whaticket_public
       - whaticket_private
@@ -34,8 +33,8 @@ services:
   frontend:
     image: whaticket/frontend:latest
     environment:
-      - URL_BACKEND=backend:3000
-      - VITE_BACKEND_URL=http://localhost:3000/
+      - URL_BACKEND=backend:8080
+      - VITE_BACKEND_URL=http://localhost:8080/
       - FRONTEND_SERVER_NAME=localhost
     ports:
       - "80:80"
