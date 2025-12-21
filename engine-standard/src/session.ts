@@ -1,13 +1,20 @@
 import {
   Envelope, StartSessionPayload, SendTextPayload, SendMediaPayload,
   SendButtonsPayload, SendListPayload, SendPollPayload,
-  SendTemplatePayload, SendInteractivePayload,
+  SendTemplatePayload, SendInteractivePayload, SendCarouselPayload,
   CommandType
 } from "./contracts";
 import { logger } from "./logger";
 import { RabbitMQ } from "./rabbitmq";
 import { v4 as uuidv4 } from "uuid";
-import makeWASocket, { DisconnectReason, useMultiFileAuthState, AnyMessageContent } from "whaileys";
+import makeWASocket, {
+  DisconnectReason,
+  useMultiFileAuthState,
+  AnyMessageContent,
+  prepareWAMessageMedia,
+  generateWAMessageFromContent,
+  downloadMediaMessage
+} from "whaileys";
 import { Boom } from "@hapi/boom";
 import path from "path";
 import fs from "fs";
@@ -60,6 +67,9 @@ class SessionManager {
         break;
       case "message.send.interactive":
         await this.sendInteractive(envelope.payload as SendInteractivePayload);
+        break;
+      case "message.send.carousel":
+        await this.sendCarousel(envelope.payload as SendCarouselPayload);
         break;
       default:
         logger.warn(`Unknown command type: ${envelope.type}`);
@@ -198,6 +208,23 @@ class SessionManager {
           let selectedRowId = undefined;
           let pollVotes = undefined;
           let msgType = hasMedia ? "media" : "chat";
+          let mediaData = undefined;
+          let mimetype = undefined;
+
+          // --- Media Handling ---
+          if (hasMedia) {
+            try {
+              const buffer = await downloadMediaMessage(msg, "buffer", {});
+              mediaData = buffer.toString("base64");
+              mimetype = msg.message.imageMessage?.mimetype ||
+                msg.message.videoMessage?.mimetype ||
+                msg.message.audioMessage?.mimetype ||
+                msg.message.documentMessage?.mimetype ||
+                msg.message.stickerMessage?.mimetype;
+            } catch (err) {
+              logger.error("Error downloading media: ", err);
+            }
+          }
 
           // --- Interactive Responses ---
 
@@ -255,6 +282,8 @@ class SessionManager {
                 type: msgType,
                 timestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : 0,
                 hasMedia: hasMedia,
+                mediaData,
+                mimetype,
                 selectedButtonId,
                 selectedRowId,
                 pollVotes
@@ -292,7 +321,20 @@ class SessionManager {
     if (session) {
       session.socket.end(undefined);
       this.sessions.delete(sessionId);
-      logger.info(`Session ${sessionId} stopped`);
+      await this.cleanupSession(sessionId);
+      logger.info(`Session ${sessionId} stopped and cleaned up`);
+    }
+  }
+
+  private async cleanupSession(sessionId: number) {
+    const sessionPath = path.join(this.sessionsDir, `session-${sessionId}`);
+    if (fs.existsSync(sessionPath)) {
+      try {
+        fs.rmSync(sessionPath, { recursive: true, force: true });
+        logger.info(`Cleaned up session files for ${sessionId}`);
+      } catch (err) {
+        logger.error(`Error cleaning up session ${sessionId}:`, err);
+      }
     }
   }
 
@@ -498,6 +540,85 @@ class SessionManager {
 
     // Relay message is often safer for complex interactive messages
     await session.socket.sendMessage(payload.to, interactiveMessage);
+  }
+
+  private async sendCarousel(payload: SendCarouselPayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending carousel`);
+      return;
+    }
+
+    const cards = await Promise.all(payload.cards.map(async (card) => {
+      const buttons = card.buttons.map(btn => {
+        if (btn.type === 'url') {
+          return {
+            name: "cta_url",
+            buttonParamsJson: JSON.stringify({
+              display_text: btn.text,
+              url: btn.url,
+              merchant_url: btn.url
+            })
+          };
+        } else {
+          return {
+            name: "quick_reply",
+            buttonParamsJson: JSON.stringify({
+              display_text: btn.text,
+              id: btn.buttonId
+            })
+          };
+        }
+      });
+
+      const cardObj: any = {
+        body: { text: card.body },
+        footer: { text: card.footer || "" },
+        nativeFlowMessage: {
+          buttons: buttons
+        }
+      };
+
+      if (card.headerUrl) {
+        // Prepare media for card header
+        const media = await prepareWAMessageMedia(
+          { image: { url: card.headerUrl } },
+          { upload: session.socket.waUploadToServer }
+        );
+        cardObj.header = {
+          hasMediaAttachment: true,
+          ...media
+        };
+      } else {
+        cardObj.header = { hasMediaAttachment: false };
+      }
+
+      return cardObj;
+    }));
+
+    const messageContent = {
+      viewOnceMessage: {
+        message: {
+          interactiveMessage: {
+            body: { text: payload.text },
+            footer: { text: payload.footer || "" },
+            header: { hasMediaAttachment: false },
+            carouselMessage: {
+              cards: cards,
+              messageVersion: 1
+            }
+          }
+        }
+      }
+    };
+
+    const msg = generateWAMessageFromContent(payload.to, messageContent as any, {
+      userJid: session.socket.user?.id,
+    });
+
+    await session.socket.relayMessage(payload.to, msg.message!, {
+      messageId: msg.key.id!
+    });
   }
 }
 

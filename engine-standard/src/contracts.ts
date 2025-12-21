@@ -15,7 +15,8 @@ export type CommandType =
   | "message.send.list"      // NOVO: Lista de opções
   | "message.send.poll"      // NOVO: Enquete
   | "message.send.template"  // NOVO: Template (URL/Call)
-  | "message.send.interactive"; // NOVO: Native Flow (Interativo)
+  | "message.send.interactive" // NOVO: Native Flow (Interativo)
+  | "message.send.carousel";   // NOVO: Carrossel Nativo
 
 export interface StartSessionPayload {
   sessionId: number;
@@ -118,15 +119,37 @@ export interface SendInteractivePayload {
   mediaUrl?: string;
 }
 
+// Carrossel Nativo
+export interface SendCarouselPayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  cards: Array<{
+    headerUrl?: string;
+    title: string;
+    body: string;
+    footer?: string;
+    buttons: Array<{
+      type: 'url' | 'reply';
+      text: string;
+      url?: string;
+      buttonId?: string;
+    }>;
+  }>;
+}
+
 export type EventType =
   | "session.qrcode"
   | "session.pairingcode"
   | "session.status"
   | "message.received"
   | "message.ack"
-  | "message.response.button"   // NOVO: Resposta de botão
-  | "message.response.list"     // NOVO: Resposta de lista
-  | "message.response.poll";    // NOVO: Resposta de enquete
+  | "message.response.button"
+  | "message.response.list"
+  | "message.response.poll"
+  | "message.response.interactive";
+
 
 export interface QrCodePayload {
   sessionId: number;
@@ -157,6 +180,8 @@ export interface MessageReceivedPayload {
     timestamp: number;
     hasMedia: boolean;
     mediaUrl?: string;
+    mediaData?: string; // Base64 do conteúdo baixado
+    mimetype?: string;
     participant?: string;
     // Novos campos para respostas interativas
     selectedButtonId?: string;
