@@ -11,6 +11,7 @@ import {
     MenuItem,
     IconButton,
     Menu,
+    Box,
 } from "@material-ui/core";
 import MenuIcon from "@material-ui/icons/Menu";
 import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
@@ -23,6 +24,8 @@ import { AuthContext } from "../context/Auth/AuthContext";
 import BackdropLoading from "../components/BackdropLoading";
 import { i18n } from "../translate/i18n";
 import VersionFooter from "../components/VersionFooter";
+import api from "../services/api";
+import { getBackendUrl } from "../config";
 
 const drawerWidth = 240;
 
@@ -108,6 +111,25 @@ const useStyles = makeStyles((theme) => ({
     iconButton: {
         color: "inherit",
     },
+    logoContainer: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px",
+        minHeight: 80,
+        width: "100%",
+    },
+    systemLogo: {
+        maxWidth: "80%",
+        maxHeight: 80,
+        objectFit: "contain",
+    },
+    systemTitle: {
+        fontWeight: 600,
+        fontSize: "1.1rem",
+        textAlign: "center",
+        padding: "0 8px",
+    },
 }));
 
 const MainLayoutDefault = ({ children }) => {
@@ -119,11 +141,51 @@ const MainLayoutDefault = ({ children }) => {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [drawerVariant, setDrawerVariant] = useState("permanent");
     const { user } = useContext(AuthContext);
+    const [systemLogo, setSystemLogo] = useState("");
+    const [systemTitle, setSystemTitle] = useState("WhaTicket");
+    const [logoEnabled, setLogoEnabled] = useState(true);
 
     useEffect(() => {
         if (document.body.offsetWidth > 600) {
             setDrawerOpen(true);
         }
+    }, []);
+
+    // Fetch system settings for logo and title
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const { data } = await api.get("/settings");
+                const logoSetting = data.find(s => s.key === "systemLogo");
+                const titleSetting = data.find(s => s.key === "systemTitle");
+                const logoEnabledSetting = data.find(s => s.key === "systemLogoEnabled");
+                const faviconSetting = data.find(s => s.key === "systemFavicon");
+
+                if (logoSetting && logoSetting.value) {
+                    setSystemLogo(logoSetting.value);
+                }
+                if (titleSetting && titleSetting.value) {
+                    setSystemTitle(titleSetting.value);
+                    document.title = titleSetting.value;
+                }
+                if (logoEnabledSetting) {
+                    setLogoEnabled(logoEnabledSetting.value === "true");
+                }
+                // Update browser favicon dynamically
+                if (faviconSetting && faviconSetting.value) {
+                    const faviconPath = faviconSetting.value.startsWith('/')
+                        ? faviconSetting.value.slice(1)
+                        : faviconSetting.value;
+                    const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
+                    link.rel = 'icon';
+                    link.href = `${getBackendUrl()}${faviconPath}`;
+                    document.head.appendChild(link);
+                }
+            } catch (err) {
+                console.error("Error fetching settings:", err);
+            }
+        };
+        fetchSettings();
     }, []);
 
     useEffect(() => {
@@ -177,11 +239,20 @@ const MainLayoutDefault = ({ children }) => {
                 }}
                 open={drawerOpen}
             >
-                <div className={classes.toolbarIcon}>
-                    <IconButton onClick={() => setDrawerOpen(!drawerOpen)}>
-                        <ChevronLeftIcon />
-                    </IconButton>
-                </div>
+                {/* Logo and Title Section */}
+                <Box className={classes.logoContainer}>
+                    {drawerOpen && systemLogo && logoEnabled ? (
+                        <img
+                            src={`${getBackendUrl()}${systemLogo.startsWith('/') ? systemLogo.slice(1) : systemLogo}`}
+                            alt="Logo"
+                            className={classes.systemLogo}
+                        />
+                    ) : drawerOpen && systemTitle ? (
+                        <Typography className={classes.systemTitle} noWrap>
+                            {systemTitle}
+                        </Typography>
+                    ) : null}
+                </Box>
                 <Divider />
                 <List style={{ flexGrow: 1 }}>
                     <MainListItems drawerClose={drawerClose} />
@@ -202,14 +273,11 @@ const MainLayoutDefault = ({ children }) => {
                     <IconButton
                         edge="start"
                         color="inherit"
-                        aria-label="open drawer"
+                        aria-label="toggle drawer"
                         onClick={() => setDrawerOpen(!drawerOpen)}
-                        className={clsx(
-                            classes.menuButton,
-                            drawerOpen && classes.menuButtonHidden
-                        )}
+                        className={classes.menuButton}
                     >
-                        <MenuIcon />
+                        {drawerOpen ? <ChevronLeftIcon /> : <MenuIcon />}
                     </IconButton>
                     <Typography
                         component="h1"
@@ -218,7 +286,7 @@ const MainLayoutDefault = ({ children }) => {
                         noWrap
                         className={classes.title}
                     >
-                        WhaTicket
+                        {systemTitle}
                     </Typography>
 
                     {user.id && <NotificationsPopOver />}

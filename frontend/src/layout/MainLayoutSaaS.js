@@ -23,6 +23,8 @@ import { AuthContext } from "../context/Auth/AuthContext";
 import BackdropLoading from "../components/BackdropLoading";
 import { i18n } from "../translate/i18n";
 import VersionFooter from "../components/VersionFooter";
+import api from "../services/api";
+import { getBackendUrl } from "../config";
 
 const drawerWidth = 260; // Slightly wider for SaaS look
 
@@ -70,7 +72,8 @@ const useStyles = makeStyles((theme) => ({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        height: 64,
+        height: 96,
+        padding: "16px",
         borderBottom: "1px solid rgba(0,0,0,0.05)",
     },
     logoText: {
@@ -97,6 +100,46 @@ const MainLayoutSaaS = ({ children }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const { handleLogout, loading, user } = useContext(AuthContext);
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [systemLogo, setSystemLogo] = useState("");
+    const [systemTitle, setSystemTitle] = useState("WhaTicket");
+    const [logoEnabled, setLogoEnabled] = useState(true);
+
+    // Fetch system settings
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const { data } = await api.get("/settings");
+                const logoSetting = data.find(s => s.key === "systemLogo");
+                const titleSetting = data.find(s => s.key === "systemTitle");
+                const logoEnabledSetting = data.find(s => s.key === "systemLogoEnabled");
+                const faviconSetting = data.find(s => s.key === "systemFavicon");
+
+                if (logoSetting && logoSetting.value) {
+                    setSystemLogo(logoSetting.value);
+                }
+                if (titleSetting && titleSetting.value) {
+                    setSystemTitle(titleSetting.value);
+                    document.title = titleSetting.value;
+                }
+                if (logoEnabledSetting) {
+                    setLogoEnabled(logoEnabledSetting.value === "true");
+                }
+                // Update browser favicon dynamically
+                if (faviconSetting && faviconSetting.value) {
+                    const faviconPath = faviconSetting.value.startsWith('/')
+                        ? faviconSetting.value.slice(1)
+                        : faviconSetting.value;
+                    const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
+                    link.rel = 'icon';
+                    link.href = `${getBackendUrl()}${faviconPath}`;
+                    document.head.appendChild(link);
+                }
+            } catch (err) {
+                console.error("Error fetching settings:", err);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
@@ -129,9 +172,17 @@ const MainLayoutSaaS = ({ children }) => {
     const drawerContent = (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <div className={classes.logoContainer}>
-                <Typography variant="h6" noWrap className={classes.logoText}>
-                    WhaTicket SaaS
-                </Typography>
+                {systemLogo && logoEnabled ? (
+                    <img
+                        src={`${getBackendUrl()}${systemLogo.startsWith('/') ? systemLogo.slice(1) : systemLogo}`}
+                        alt="Logo"
+                        style={{ maxHeight: 80, maxWidth: '80%', objectFit: 'contain' }}
+                    />
+                ) : (
+                    <Typography variant="h6" noWrap className={classes.logoText}>
+                        {systemTitle}
+                    </Typography>
+                )}
             </div>
             <List style={{ flexGrow: 1 }}>
                 <MainListItems drawerClose={() => setMobileOpen(false)} />
