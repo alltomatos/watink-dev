@@ -1,4 +1,4 @@
-import { Envelope, StartSessionPayload, SendTextPayload, SendMediaPayload, CommandType } from "./contracts";
+import { Envelope, StartSessionPayload, SendTextPayload, SendMediaPayload, SendButtonsPayload, SendListPayload, SendPollPayload, CommandType } from "./contracts";
 import { logger } from "./logger";
 import { RabbitMQ } from "./rabbitmq";
 import { v4 as uuidv4 } from "uuid";
@@ -40,6 +40,15 @@ class SessionManager {
         break;
       case "message.send.media":
         await this.sendMedia(envelope.payload as SendMediaPayload, envelope.tenantId);
+        break;
+      case "message.send.buttons":
+        await this.sendButtons(envelope.payload as SendButtonsPayload);
+        break;
+      case "message.send.list":
+        await this.sendList(envelope.payload as SendListPayload);
+        break;
+      case "message.send.poll":
+        await this.sendPoll(envelope.payload as SendPollPayload);
         break;
       default:
         logger.warn(`Unknown command type: ${envelope.type}`);
@@ -173,6 +182,41 @@ class SessionManager {
             msg.message.stickerMessage
           );
 
+          let body = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+          let selectedButtonId = undefined;
+          let selectedRowId = undefined;
+          let pollVotes = undefined;
+          let msgType = hasMedia ? "media" : "chat";
+
+          // --- Interactive Responses ---
+
+          // 1. Buttons Response
+          if (msg.message.buttonsResponseMessage) {
+            selectedButtonId = msg.message.buttonsResponseMessage.selectedButtonId;
+            body = msg.message.buttonsResponseMessage.selectedDisplayText || "";
+            msgType = "button_response";
+          }
+          // 2. Template Button Response
+          else if (msg.message.templateButtonReplyMessage) {
+            selectedButtonId = msg.message.templateButtonReplyMessage.selectedId;
+            body = msg.message.templateButtonReplyMessage.selectedDisplayText || "";
+            msgType = "button_response";
+          }
+          // 3. List Response
+          else if (msg.message.listResponseMessage) {
+            selectedRowId = msg.message.listResponseMessage.singleSelectReply?.selectedRowId;
+            body = msg.message.listResponseMessage.title || "";
+            msgType = "list_response";
+          }
+          // 4. Poll Response (requires special handling for encryption in some cases, but Whaileys usually simplifies)
+          else if (msg.message.pollUpdateMessage) {
+            // Note: Polls are usually received as updates, but some versions emit them in upsert too
+            msgType = "poll_response";
+            // Payload usually contains the vote, but decryption might be needed depending on depth
+            // For now, we'll mark as poll_response. 
+            // Actual vote processing usually happens in separate event or deep parsing.
+          }
+
           const msgEvent: Envelope = {
             id: uuidv4(),
             timestamp: Date.now(),
@@ -184,12 +228,15 @@ class SessionManager {
                 id: msg.key.id || "",
                 from: msg.key.remoteJid || "",
                 to: msg.key.remoteJid || "",
-                body: msg.message.conversation || msg.message.extendedTextMessage?.text || "",
+                body: body,
                 fromMe: msg.key.fromMe || false,
                 isGroup: msg.key.remoteJid?.endsWith("@g.us") || false,
-                type: hasMedia ? "media" : "chat",
+                type: msgType,
                 timestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : 0,
-                hasMedia: hasMedia
+                hasMedia: hasMedia,
+                selectedButtonId,
+                selectedRowId,
+                pollVotes
               }
             }
           };
@@ -288,6 +335,68 @@ class SessionManager {
     }
 
     await session.socket.sendMessage(payload.to, content);
+  }
+
+  private async sendButtons(payload: SendButtonsPayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending buttons`);
+      return;
+    }
+
+    const buttons = payload.buttons.map(btn => ({
+      buttonId: btn.buttonId,
+      buttonText: { displayText: btn.buttonText },
+      type: 1
+    }));
+
+    const buttonMessage: any = {
+      text: payload.text,
+      footer: payload.footer,
+      buttons: buttons,
+      headerType: 1
+    };
+
+    if (payload.imageUrl) {
+      buttonMessage.image = { url: payload.imageUrl };
+      buttonMessage.headerType = 4;
+    }
+
+    await session.socket.sendMessage(payload.to, buttonMessage);
+  }
+
+  private async sendList(payload: SendListPayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending list`);
+      return;
+    }
+
+    const listMessage = {
+      text: payload.text,
+      footer: payload.footer,
+      title: payload.text.split('\n')[0], // Use first line as title if not provided
+      buttonText: payload.buttonText,
+      sections: payload.sections
+    };
+
+    await session.socket.sendMessage(payload.to, listMessage);
+  }
+
+  private async sendPoll(payload: SendPollPayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending poll`);
+      return;
+    }
+
+    await session.socket.sendMessage(payload.to, {
+      poll: {
+        name: payload.name,
+        values: payload.options,
+        selectableCount: payload.selectableCount || 1
+      }
+    });
   }
 }
 

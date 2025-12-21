@@ -10,13 +10,16 @@ export type CommandType =
   | "session.start"
   | "session.stop"
   | "message.send.text"
-  | "message.send.media";
+  | "message.send.media"
+  | "message.send.buttons"   // NOVO: Botões simples
+  | "message.send.list"      // NOVO: Lista de opções
+  | "message.send.poll";     // NOVO: Enquete
 
 export interface StartSessionPayload {
   sessionId: number;
   sessionToken?: string;
-  usePairingCode?: boolean;  // true = usar código, false = usar QR
-  phoneNumber?: string;       // Formato E.164 sem +: 5511999999999
+  usePairingCode?: boolean;
+  phoneNumber?: string;
 }
 
 export interface StopSessionPayload {
@@ -39,16 +42,58 @@ export interface SendMediaPayload {
   media: {
     mimetype: string;
     filename: string;
-    data: string; // Base64
+    data: string;
   };
+}
+
+// Botões simples (até 3 botões)
+export interface SendButtonsPayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttons: Array<{
+    buttonId: string;
+    buttonText: string;
+  }>;
+  imageUrl?: string;  // Opcional: adiciona imagem ao header
+}
+
+// Lista de opções com seções
+export interface SendListPayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttonText: string;  // Texto do botão "Ver opções"
+  sections: Array<{
+    title: string;
+    rows: Array<{
+      rowId: string;
+      title: string;
+      description?: string;
+    }>;
+  }>;
+}
+
+// Enquete/Poll
+export interface SendPollPayload {
+  sessionId: number;
+  to: string;
+  name: string;           // Pergunta
+  options: string[];      // Opções (2-12)
+  selectableCount?: number; // Quantas podem ser selecionadas (padrão: 1)
 }
 
 export type EventType =
   | "session.qrcode"
-  | "session.pairingcode"  // NOVO: código de pareamento
+  | "session.pairingcode"
   | "session.status"
   | "message.received"
-  | "message.ack";
+  | "message.ack"
+  | "message.response.button"   // NOVO: Resposta de botão
+  | "message.response.list"     // NOVO: Resposta de lista
+  | "message.response.poll";    // NOVO: Resposta de enquete
 
 export interface QrCodePayload {
   sessionId: number;
@@ -58,7 +103,7 @@ export interface QrCodePayload {
 
 export interface PairingCodePayload {
   sessionId: number;
-  pairingCode: string;  // Formato: "XXXX-XXXX"
+  pairingCode: string;
 }
 
 export interface SessionStatusPayload {
@@ -80,6 +125,10 @@ export interface MessageReceivedPayload {
     hasMedia: boolean;
     mediaUrl?: string;
     participant?: string;
+    // Novos campos para respostas interativas
+    selectedButtonId?: string;
+    selectedRowId?: string;
+    pollVotes?: string[];
   };
 }
 
@@ -88,3 +137,4 @@ export interface MessageAckPayload {
   messageId: string;
   ack: number;
 }
+
