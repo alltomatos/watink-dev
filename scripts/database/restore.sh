@@ -23,9 +23,9 @@ echo "Restoring from $BACKUP_FILE..."
 
 # Try using docker-compose first
 if command -v docker-compose &> /dev/null; then
-    cat "$BACKUP_FILE" | docker-compose exec -T mysql psql -U $DB_USER $DB_NAME
+    cat "$BACKUP_FILE" | docker-compose exec -T postgres psql -U $DB_USER $DB_NAME
 else
-    CONTAINER_ID=$(docker ps -qf "name=mysql")
+    CONTAINER_ID=$(docker ps -qf "name=postgres")
     if [ -z "$CONTAINER_ID" ]; then
         echo "Error: Database container not found."
         exit 1

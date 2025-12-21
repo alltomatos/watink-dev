@@ -10,19 +10,19 @@ Nenhuma. Adição padrão de dependências de desenvolvimento.
 
 ### Componente Backend (`backend/`)
 
-#### [MODIFICAR] [package.json](file:///c:/dev/whaticket-community/backend/package.json)
+#### [MODIFICAR] [package.json](file:///c:/dev/whaticket-premium/backend/package.json)
 - Adicionar `swagger-ui-express` e `swagger-jsdoc` em `dependencies`.
 - Adicionar `@types/swagger-ui-express` e `@types/swagger-jsdoc` em `devDependencies`.
 
-#### [NOVO] [src/config/swagger.ts](file:///c:/dev/whaticket-community/backend/src/config/swagger.ts)
+#### [NOVO] [src/config/swagger.ts](file:///c:/dev/whaticket-premium/backend/src/config/swagger.ts)
 - Definir a definição do Swagger (OpenAPI 3.0.0).
 - Configurar opções para o `swagger-jsdoc` escanear `src/routes/*.ts`.
 
-#### [MODIFICAR] [src/app.ts](file:///c:/dev/whaticket-community/backend/src/app.ts)
+#### [MODIFICAR] [src/app.ts](file:///c:/dev/whaticket-premium/backend/src/app.ts)
 - Importar `swaggerUi` e `swaggerDocs`.
 - Registrar middleware: `app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));`.
 
-#### [MODIFICAR] [src/routes/authRoutes.ts](file:///c:/dev/whaticket-community/backend/src/routes/authRoutes.ts)
+#### [MODIFICAR] [src/routes/authRoutes.ts](file:///c:/dev/whaticket-premium/backend/src/routes/authRoutes.ts)
 - Adicionar comentários JSDoc (@swagger) para os endpoints `/login` e `/refresh_token` servirem como exemplo inicial.
 
 ## Plano de Verificação

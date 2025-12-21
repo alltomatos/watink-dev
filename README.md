@@ -11,7 +11,7 @@
 
 A _very simple_ Ticket System based on WhatsApp messages. Now upgraded to **Premium Edition**.
 
-Backend uses [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) to receive and send WhatsApp messages, create tickets from them and store all in a MySQL database.
+Backend uses [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) to receive and send WhatsApp messages, create tickets from them and store all in a PostgreSQL database.
 
 Frontend is a full-featured multi-user _chat app_ bootstrapped with react-create-app and Material UI, that comunicates with backend using REST API and Websockets. It allows you to interact with contacts, tickets, send and receive WhatsApp messages.
 
@@ -95,7 +95,7 @@ sudo apt-get install -y libxshmfence-dev libgbm-dev wget unzip fontconfig locale
 Clone this repo
 
 ```bash
-git clone https://github.com/canove/whaticket/ whaticket
+git clone https://github.com/canove/whaticket/ whaticket-premium
 ```
 
 Go to backend folder and create .env file:
@@ -205,15 +205,15 @@ sudo usermod -aG docker ${USER}
 su - ${USER}
 ```
 
-Create Mysql Database using docker:
-_Note_: change MYSQL_DATABASE, MYSQL_PASSWORD, MYSQL_USER and MYSQL_ROOT_PASSWORD.
+Create PostgreSQL Database using docker:
+_Note_: change POSTGRES_DB, POSTGRES_PASSWORD and POSTGRES_USER.
 
 ```bash
-docker run --name whaticketdb -e MYSQL_ROOT_PASSWORD=strongpassword -e MYSQL_DATABASE=whaticket -e MYSQL_USER=whaticket -e MYSQL_PASSWORD=whaticket --restart always -p 3306:3306 -d mariadb:latest --character-set-server=utf8mb4 --collation-server=utf8mb4_bin
+docker run --name whaticketdb -e POSTGRES_PASSWORD=strongpassword -e POSTGRES_DB=whaticket -e POSTGRES_USER=postgres --restart always -p 5432:5432 -d postgres:latest
 
 # Or run using `docker-compose` as below
 # Before copy .env.example to .env first and set the variables in the file.
-docker-compose up -d mysql
+docker-compose up -d postgres
 
 # To administer this mysql database easily using phpmyadmin. 
 # It will run by default on port 9000, but can be changed in .env using `PMA_PORT`
@@ -224,14 +224,14 @@ Clone this repository:
 
 ```bash
 cd ~
-git clone https://github.com/canove/whaticket whaticket
+git clone https://github.com/canove/whaticket whaticket-premium
 ```
 
 Create backend .env file and fill with details:
 
 ```bash
-cp whaticket/backend/.env.example whaticket/backend/.env
-nano whaticket/backend/.env
+cp whaticket-premium/backend/.env.example whaticket-premium/backend/.env
+nano whaticket-premium/backend/.env
 ```
 
 ```bash
@@ -260,7 +260,7 @@ sudo apt-get install -y libxshmfence-dev libgbm-dev wget unzip fontconfig locale
 Install backend dependencies, build app, run migrations and seeds:
 
 ```bash
-cd whaticket/backend
+cd whaticket-premium/backend
 npm install
 npm run build
 npx sequelize db:migrate
@@ -519,7 +519,7 @@ nano updateWhaticket
 echo "Updating Whaticket, please wait."
 
 cd ~
-cd whaticket
+cd whaticket-premium
 git pull
 cd backend
 npm install
