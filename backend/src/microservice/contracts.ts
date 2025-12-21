@@ -12,7 +12,10 @@ export type CommandType =
   | "session.start"
   | "session.stop"
   | "message.send.text"
-  | "message.send.media";
+  | "message.send.media"
+  | "message.send.buttons"
+  | "message.send.list"
+  | "message.send.poll";
 
 export interface StartSessionPayload {
   sessionId: number;
@@ -45,14 +48,53 @@ export interface SendMediaPayload {
   };
 }
 
+export interface SendButtonsPayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttons: Array<{
+    buttonId: string;
+    buttonText: string;
+  }>;
+  imageUrl?: string;
+}
+
+export interface SendListPayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttonText: string;
+  sections: Array<{
+    title: string;
+    rows: Array<{
+      rowId: string;
+      title: string;
+      description?: string;
+    }>;
+  }>;
+}
+
+export interface SendPollPayload {
+  sessionId: number;
+  to: string;
+  name: string;
+  options: string[];
+  selectableCount?: number;
+}
+
 // --- EVENTS (Engine -> Backend) ---
 
 export type EventType =
   | "session.qrcode"
-  | "session.pairingcode"  // Código de pareamento
+  | "session.pairingcode"
   | "session.status"
   | "message.received"
-  | "message.ack";
+  | "message.ack"
+  | "message.response.button"
+  | "message.response.list"
+  | "message.response.poll";
 
 export interface QrCodePayload {
   sessionId: number;
@@ -62,7 +104,7 @@ export interface QrCodePayload {
 
 export interface PairingCodePayload {
   sessionId: number;
-  pairingCode: string;  // Formato: "XXXX-XXXX"
+  pairingCode: string;
 }
 
 export interface SessionStatusPayload {
@@ -82,13 +124,18 @@ export interface MessageReceivedPayload {
     type: string;
     timestamp: number;
     hasMedia: boolean;
-    mediaUrl?: string; // If processed/uploaded by engine
+    mediaUrl?: string;
     participant?: string;
+    // Interactive fields
+    selectedButtonId?: string;
+    selectedRowId?: string;
+    pollVotes?: string[];
   };
 }
 
 export interface MessageAckPayload {
   sessionId: number;
   messageId: string;
-  ack: number; // 0: Clock, 1: Sent, 2: Received, 3: Read, 4: Played
+  ack: number;
 }
+
