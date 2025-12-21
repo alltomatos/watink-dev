@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import path from "path";
+import fs from "fs";
 
 import { getIO } from "../libs/socket";
 import AppError from "../errors/AppError";
@@ -38,4 +40,91 @@ export const update = async (
   });
 
   return res.status(200).json(setting);
+};
+
+export const uploadLogo = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  if (req.user.profile !== "admin") {
+    throw new AppError("ERR_NO_PERMISSION", 403);
+  }
+
+  if (!req.file) {
+    throw new AppError("ERR_NO_FILE_UPLOADED", 400);
+  }
+
+  const file = req.file;
+  const publicDir = path.resolve(__dirname, "..", "..", "public");
+
+  // Create public directory if it doesn't exist
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
+
+  // Generate unique filename
+  const ext = path.extname(file.originalname);
+  const filename = `logo-${Date.now()}${ext}`;
+  const filepath = path.join(publicDir, filename);
+
+  // Move file to public directory
+  fs.writeFileSync(filepath, file.buffer);
+
+  // Build logo URL (without leading slash to avoid double slash when combined with backend URL)
+  const logoUrl = `public/${filename}`;
+
+  // Update setting
+  const setting = await UpdateSettingService({
+    key: "systemLogo",
+    value: logoUrl
+  });
+
+  const io = getIO();
+  io.emit("settings", {
+    action: "update",
+    setting
+  });
+
+  return res.status(200).json({ logoUrl });
+};
+
+export const uploadFavicon = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  if (req.user.profile !== "admin") {
+    throw new AppError("ERR_NO_PERMISSION", 403);
+  }
+
+  if (!req.file) {
+    throw new AppError("ERR_NO_FILE_UPLOADED", 400);
+  }
+
+  const file = req.file;
+  const publicDir = path.resolve(__dirname, "..", "..", "public");
+
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
+
+  const ext = path.extname(file.originalname);
+  const filename = `favicon-${Date.now()}${ext}`;
+  const filepath = path.join(publicDir, filename);
+
+  fs.writeFileSync(filepath, file.buffer);
+
+  const faviconUrl = `public/${filename}`;
+
+  const setting = await UpdateSettingService({
+    key: "systemFavicon",
+    value: faviconUrl
+  });
+
+  const io = getIO();
+  io.emit("settings", {
+    action: "update",
+    setting
+  });
+
+  return res.status(200).json({ faviconUrl });
 };
