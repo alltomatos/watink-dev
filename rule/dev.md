@@ -1,6 +1,6 @@
-# 🛠️ Guia de Desenvolvimento - Whaticket Community
+# 🛠️ Guia de Desenvolvimento - Whaticket Premium
 
-Este documento serve como referência técnica para desenvolvedores que atuam no projeto **Whaticket Community**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
+Este documento serve como referência técnica para desenvolvedores que atuam no projeto **Whaticket Premium**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
 
 > [!IMPORTANT]
 > **Sempre responda e crie documentos em Português do Brasil.**
@@ -63,7 +63,7 @@ O backend orquestra o sistema e roda isolado em container.
 
 Workers independentes que se conectam ao WhatsApp.
 
-### Engine Standard (`engine-standard`)
+### Engine Standard (`whaileys-engine`)
 *   **Tecnologia**: Node.js / TypeScript
 *   **Lib Core**: **Whaileys**
 *   **Função**: Processamento padrão, containerizado separadamente.
@@ -94,7 +94,7 @@ Todo o ciclo de vida da aplicação é gerenciado via Docker Swarm.
 ### 1. Inicialização
 Para subir a stack completa:
 ```bash
-docker stack deploy -c docker-stack.yml whaticket-community
+docker stack deploy -c docker-stack.yml whaticket-premium
 ```
 
 ### 2. Aplicando Alterações
@@ -106,21 +106,33 @@ Como não rodamos localmente, o fluxo para refletir mudanças de código é:
     docker compose build backend
     
     # Tagging (se necessário, para bater com o stack file)
-    docker tag whaticket-community-backend:latest whaticket/backend:latest
+    docker tag whaticket-premium-backend:latest whaticket/backend:latest
     
     # Atualização forçada do serviço
-    docker service update --image whaticket/backend:latest whaticket-community_backend --force
+    docker service update --image whaticket/backend:latest whaticket-premium_backend --force
+    ```
+
+1.  **Engine (Whaileys)**:
+    ```bash
+    # Rebuild da imagem
+    docker compose build whaileys-engine
+    
+    # Tagging
+    docker tag whaticket-premium-whaileys-engine:latest whaticket/engine:latest
+    
+    # Atualização forçada do serviço
+    docker service update --image whaticket/engine:latest whaticket-premium_whaileys-engine --force
     ```
 
 2.  **Frontend**:
     ```bash
     docker compose build frontend
-    docker tag whaticket-community-frontend:latest whaticket/frontend:latest
-    docker service update --image whaticket/frontend:latest whaticket-community_frontend --force
+    docker tag whaticket-premium-frontend:latest whaticket/frontend:latest
+    docker service update --image whaticket/frontend:latest whaticket-premium_frontend --force
     ```
 
 ### 3. Debug & Logs
-*   **Logs**: `docker service logs -f whaticket-community_backend` (ou frontend, engine, etc).
+*   **Logs**: `docker service logs -f whaticket-premium_backend` (ou frontend, whaileys-engine, etc).
 *   **Swagger**: Acesse `http://localhost:8080/docs` para testar/documentar a API.
 *   **RabbitMQ**: `http://localhost:15672` para monitorar filas.
 
@@ -141,7 +153,7 @@ Sempre que for realizado um build para produção ou homologação, o código de
 2.  **Atualize o `package.json`**:
     Use o comando npm para atualizar a versão e criar a tag git automaticamente.
     ```bash
-    cd backend # ou frontend/engine
+    cd backend # ou frontend/whaileys-engine
     npm version patch # ou minor/major
     ```
 
@@ -157,5 +169,5 @@ Sempre que for realizado um build para produção ou homologação, o código de
 4.  **Atualize o Serviço**:
     No ambiente de produção, fixe a versão específica para evitar atualizações acidentais, ou use `latest` em desenvolvimento.
     ```bash
-    docker service update --image whaticket/backend:1.0.1 whaticket-community_backend
+    docker service update --image whaticket/backend:1.0.1 whaticket-premium_backend
     ```

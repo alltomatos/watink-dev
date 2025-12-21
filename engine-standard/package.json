@@ -1,5 +1,5 @@
 {
-  "name": "whaticket-engine-standard",
+  "name": "whaileys-engine",
   "version": "1.0.0",
   "description": "WhatsApp Engine for Whaticket (Node.js/Whaileys)",
   "main": "dist/index.js",

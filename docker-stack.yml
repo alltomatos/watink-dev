@@ -44,7 +44,7 @@ services:
       mode: replicated
       replicas: 1
 
-  engine:
+  whaileys-engine:
     image: whaticket/engine:latest
     environment:
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672

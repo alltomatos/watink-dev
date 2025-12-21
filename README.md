@@ -5,11 +5,11 @@
 [![Discord Chat](https://img.shields.io/discord/784109818247774249.svg?logo=discord)](https://discord.gg/Dp2tTZRYHg)
 [![Forum](https://img.shields.io/badge/forum-online-blue.svg?logo=discourse)](https://whaticket.online/)
 
-# WhaTicket!
+# Whaticket Premium
 
 **NOTE**: The new version of whatsapp-web.js required Node 14. Upgrade your installations to keep using it.
 
-A _very simple_ Ticket System based on WhatsApp messages.
+A _very simple_ Ticket System based on WhatsApp messages. Now upgraded to **Premium Edition**.
 
 Backend uses [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) to receive and send WhatsApp messages, create tickets from them and store all in a MySQL database.
 

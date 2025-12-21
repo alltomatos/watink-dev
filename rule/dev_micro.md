@@ -1,8 +1,8 @@
-### Projeto Whaticket Community
+### Projeto Whaticket Premium
 
 Sempre responder e ou criar planos documentos em portugues do brasil
 
-Repositorio: https://github.com/alltomatos/whaticket-community.git
+Repositorio: https://github.com/alltomatos/whaticket-premium.git
 
 O projeto e um Fork do projeto original Whaticket.
 
@@ -25,7 +25,7 @@ A cada finalização de etapa marcar como concluido.
 ### Fase 2: Extração do WhatsApp Engine
 - [x] **[ENG-001] Configuração do Message Broker (RabbitMQ)** (Concluído: Adicionado ao `docker-compose.yaml` e documentado em `docs/tasks_microservice/artifacts/ENG-001_message_broker_setup.md`)
 - [x] **[ENG-002] Definição do Contrato de Interface (Protocolo)** (Concluído: Documentado em `docs/tasks_microservice/artifacts/ENG-002_protocol_definition.md` e Tipos TS em `backend/src/microservice/contracts.ts`)
-- [x] **[ENG-003] Criação do Engine "Standard" (Node.js - Baileys/Whaileys)** (Concluído: Código em `engine-standard/`, serviço adicionado ao `docker-compose.yaml`)
+- [x] **[ENG-003] Criação do Engine "Standard" (Node.js - Baileys/Whaileys)** (Concluído: Código em `engine-standard/`, serviço renomeado para `whaileys-engine`)
 - [x] **[ENG-004] Implementação do Engine "High Performance" (Go - Whatsmeow)** (Concluído: Código em `engine-go/`, serviço preparado (comentado) no `docker-compose.yaml`)
 - [x] **[ENG-005] Adaptação do Core (Monolito) para Consumidor Agnostico** (Concluído: Backend desacoplado do wwebjs, envia comandos via RabbitMQ e consome eventos via EventListener)
 
@@ -37,17 +37,17 @@ O projeto agora opera em arquitetura de microserviços orientada a eventos, subs
 *   **Protocolo**: AMQP (RabbitMQ)
 *   **Serviços**:
     *   `Backend` (Producer de Comandos / Consumer de Eventos)
-    *   `Engine-Standard` (Consumer de Comandos / Producer de Eventos) - Baseado em **Whaileys** (Baileys Wrapper)
+    *   `whaileys-engine` (Consumer de Comandos / Producer de Eventos) - Baseado em **Whaileys** (Baileys Wrapper)
 
 #### 2. Fluxos de Dados
-*   **Start Session**: `Backend` -> `wbot.commands` (session.start) -> `Engine` -> `wbot.events` (session.qrcode / session.status) -> `Backend`
-*   **Send Message**: `Backend` -> `wbot.commands` (message.send.text) -> `Engine` -> WhatsApp API
-*   **Receive Message**: WhatsApp API -> `Engine` -> `wbot.events` (message.received) -> `Backend`
+*   **Start Session**: `Backend` -> `wbot.commands` (session.start) -> `whaileys-engine` -> `wbot.events` (session.qrcode / session.status) -> `Backend`
+*   **Send Message**: `Backend` -> `wbot.commands` (message.send.text) -> `whaileys-engine` -> WhatsApp API
+*   **Receive Message**: WhatsApp API -> `whaileys-engine` -> `wbot.events` (message.received) -> `Backend`
 
 #### 3. Compatibilidade e Banco de Dados
 *   **Banco de Dados**: PostgreSQL com suporte a RLS (Row Level Security) para multi-tenancy.
 *   **Migrations**: Scripts de migração (`20251220...`) garantem a estrutura `tenantId` em todas as tabelas críticas.
-*   **Whaileys**: O serviço `engine-standard` implementa a interface compatível com o protocolo definido, utilizando `@hapi/boom` para tratamento de erros de desconexão.
+*   **Whaileys**: O serviço `whaileys-engine` implementa a interface compatível com o protocolo definido, utilizando `@hapi/boom` para tratamento de erros de desconexão.
 
 #### 4. Variáveis de Ambiente Críticas
 ```bash
