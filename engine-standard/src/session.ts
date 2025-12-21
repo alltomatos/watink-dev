@@ -10,7 +10,6 @@ import { v4 as uuidv4 } from "uuid";
 import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
-  AnyMessageContent,
   prepareWAMessageMedia,
   generateWAMessageFromContent,
   downloadMediaMessage
@@ -101,7 +100,7 @@ class SessionManager {
     // Se usePairingCode e phoneNumber foram fornecidos, solicitar código de pareamento
     if (payload.usePairingCode && payload.phoneNumber) {
       // Aguardar conexão estar pronta para solicitar código
-      sock.ev.on("connection.update", async (update) => {
+      sock.ev.on("connection.update", async (update: any) => {
         if (update.connection === "open") return;
 
         // Só solicitar pairing code se ainda não conectou
@@ -128,7 +127,7 @@ class SessionManager {
       });
     }
 
-    sock.ev.on("connection.update", async (update) => {
+    sock.ev.on("connection.update", async (update: any) => {
       const { connection, lastDisconnect, qr } = update;
 
       if (qr) {
@@ -189,7 +188,7 @@ class SessionManager {
       }
     });
 
-    sock.ev.on("messages.upsert", async ({ messages, type }) => {
+    sock.ev.on("messages.upsert", async ({ messages, type }: any) => {
       if (type === "notify") {
         for (const msg of messages) {
           if (!msg.message) continue;
@@ -425,7 +424,7 @@ class SessionManager {
       buttonMessage.headerType = 4;
     }
 
-    await session.socket.sendMessage(payload.to, buttonMessage);
+    await session.socket.sendMessage(payload.to, buttonMessage as any);
   }
 
   private async sendList(payload: SendListPayload) {
@@ -443,7 +442,7 @@ class SessionManager {
       sections: payload.sections
     };
 
-    await session.socket.sendMessage(payload.to, listMessage);
+    await session.socket.sendMessage(payload.to, listMessage as any);
   }
 
   private async sendPoll(payload: SendPollPayload) {
@@ -459,7 +458,7 @@ class SessionManager {
         values: payload.options,
         selectableCount: payload.selectableCount || 1
       }
-    });
+    } as any);
   }
 
   private async sendTemplate(payload: SendTemplatePayload) {
@@ -469,7 +468,7 @@ class SessionManager {
       return;
     }
 
-    const templateButtons = payload.buttons.map((btn, index) => {
+    const templateButtons = payload.buttons.map((btn: any, index: number) => {
       const base = { index: index + 1 };
       if (btn.type === 'url') {
         return { ...base, urlButton: { displayText: btn.text, url: btn.url } };
@@ -491,7 +490,7 @@ class SessionManager {
       message.image = { url: payload.mediaUrl }; // Simplification, could check extension
     }
 
-    await session.socket.sendMessage(payload.to, message);
+    await session.socket.sendMessage(payload.to, message as any);
   }
 
   private async sendInteractive(payload: SendInteractivePayload) {
@@ -501,7 +500,7 @@ class SessionManager {
       return;
     }
 
-    const buttons = payload.buttons.map(btn => {
+    const buttons = payload.buttons.map((btn: any) => {
       if (btn.type === 'url') {
         return {
           name: "cta_url",
@@ -539,7 +538,7 @@ class SessionManager {
     };
 
     // Relay message is often safer for complex interactive messages
-    await session.socket.sendMessage(payload.to, interactiveMessage);
+    await session.socket.sendMessage(payload.to, interactiveMessage as any);
   }
 
   private async sendCarousel(payload: SendCarouselPayload) {
@@ -613,7 +612,7 @@ class SessionManager {
     };
 
     const msg = generateWAMessageFromContent(payload.to, messageContent as any, {
-      userJid: session.socket.user?.id,
+      userJid: session.socket.user?.id || "",
     });
 
     await session.socket.relayMessage(payload.to, msg.message!, {

@@ -11,6 +11,7 @@ import whatsappSessionRoutes from "./whatsappSessionRoutes";
 import queueRoutes from "./queueRoutes";
 import quickAnswerRoutes from "./quickAnswerRoutes";
 import apiRoutes from "./apiRoutes";
+import microserviceRoutes from "./microserviceRoutes";
 
 import versionRoutes from "./versionRoutes";
 
@@ -27,6 +28,7 @@ routes.use(messageRoutes);
 routes.use(whatsappSessionRoutes);
 routes.use(queueRoutes);
 routes.use(quickAnswerRoutes);
+routes.use(microserviceRoutes);
 routes.use("/api/messages", apiRoutes);
 
 export default routes;
