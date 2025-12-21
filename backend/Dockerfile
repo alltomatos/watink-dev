@@ -32,7 +32,7 @@ COPY . .
 RUN npm run build
 
 # Entrypoint script
-COPY ../docker/backend-entrypoint.sh /usr/local/bin/
+COPY ./docker/backend-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/backend-entrypoint.sh \
   && sed -i 's/\r$//' /usr/local/bin/backend-entrypoint.sh
 

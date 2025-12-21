@@ -4,7 +4,7 @@ Sempre responder e ou criar planos documentos em portugues do brasil
 
 Repositorio: https://github.com/alltomatos/whaticket-premium.git
 
-O projeto e um Fork do projeto original Whaticket.
+O projeto deve sempre focar na stack Docker contida em `whaticket-premium`.
 
 Repositorio Original: https://github.com/canove/whaticket-community.git
 

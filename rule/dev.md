@@ -106,10 +106,10 @@ Como não rodamos localmente, o fluxo para refletir mudanças de código é:
     docker compose build backend
     
     # Tagging (se necessário, para bater com o stack file)
-    docker tag whaticket-premium-backend:latest whaticket/backend:latest
+    docker tag whaticket-premium-backend:latest whaticket-premium/backend:latest
     
     # Atualização forçada do serviço
-    docker service update --image whaticket/backend:latest whaticket-premium_backend --force
+    docker service update --image whaticket-premium/backend:latest whaticket-premium_backend --force
     ```
 
 1.  **Engine (Whaileys)**:
@@ -118,17 +118,17 @@ Como não rodamos localmente, o fluxo para refletir mudanças de código é:
     docker compose build whaileys-engine
     
     # Tagging
-    docker tag whaticket-premium-whaileys-engine:latest whaticket/engine:latest
+    docker tag whaticket-premium-whaileys-engine:latest whaticket-premium/engine:latest
     
     # Atualização forçada do serviço
-    docker service update --image whaticket/engine:latest whaticket-premium_whaileys-engine --force
+    docker service update --image whaticket-premium/engine:latest whaticket-premium_whaileys-engine --force
     ```
 
 2.  **Frontend**:
     ```bash
     docker compose build frontend
-    docker tag whaticket-premium-frontend:latest whaticket/frontend:latest
-    docker service update --image whaticket/frontend:latest whaticket-premium_frontend --force
+    docker tag whaticket-premium-frontend:latest whaticket-premium/frontend:latest
+    docker service update --image whaticket-premium/frontend:latest whaticket-premium_frontend --force
     ```
 
 ### 3. Debug & Logs
@@ -161,13 +161,13 @@ Sempre que for realizado um build para produção ou homologação, o código de
     Ao construir a imagem, use a nova versão como tag, além da `latest`.
     ```bash
     # Exemplo para Backend v1.0.1
-    docker build -t whaticket/backend:1.0.1 -t whaticket/backend:latest .
-    docker push whaticket/backend:1.0.1
-    docker push whaticket/backend:latest
+    docker build -t whaticket-premium/backend:1.2.0 -t whaticket-premium/backend:latest .
+    docker push whaticket-premium/backend:1.2.0
+    docker push whaticket-premium/backend:latest
     ```
 
 4.  **Atualize o Serviço**:
     No ambiente de produção, fixe a versão específica para evitar atualizações acidentais, ou use `latest` em desenvolvimento.
     ```bash
-    docker service update --image whaticket/backend:1.0.1 whaticket-premium_backend
+    docker service update --image whaticket-premium/backend:1.2.0 whaticket-premium_backend
     ```
