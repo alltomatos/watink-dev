@@ -68,6 +68,36 @@ class SessionManager {
 
     sock.ev.on("creds.update", saveCreds);
 
+    // Se usePairingCode e phoneNumber foram fornecidos, solicitar código de pareamento
+    if (payload.usePairingCode && payload.phoneNumber) {
+      // Aguardar conexão estar pronta para solicitar código
+      sock.ev.on("connection.update", async (update) => {
+        if (update.connection === "open") return;
+
+        // Só solicitar pairing code se ainda não conectou
+        if (!sock.authState.creds.registered) {
+          try {
+            logger.info(`Requesting pairing code for session ${payload.sessionId} - Phone: ${payload.phoneNumber}`);
+            const code = await sock.requestPairingCode(payload.phoneNumber!);
+
+            const pairingEvent: Envelope = {
+              id: uuidv4(),
+              timestamp: Date.now(),
+              tenantId,
+              type: "session.pairingcode",
+              payload: {
+                sessionId: payload.sessionId,
+                pairingCode: code
+              }
+            };
+            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.pairingcode`, pairingEvent);
+          } catch (error) {
+            logger.error(`Error requesting pairing code for session ${payload.sessionId}`, error);
+          }
+        }
+      });
+    }
+
     sock.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect, qr } = update;
 
