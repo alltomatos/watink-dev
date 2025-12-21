@@ -25,7 +25,7 @@ const ListContactsService = async ({
           `%${searchParam.toLowerCase().trim()}%`
         )
       },
-      { number: { [Op.like]: `%${searchParam.toLowerCase().trim()}%` } }
+      { number: { [Op.iLike]: `%${searchParam.toLowerCase().trim()}%` } }
     ]
   };
   const limit = 20;

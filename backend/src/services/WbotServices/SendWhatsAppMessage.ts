@@ -1,44 +1,48 @@
-import { Message as WbotMessage } from "whatsapp-web.js";
+import { v4 as uuidv4 } from "uuid";
 import AppError from "../../errors/AppError";
-import GetTicketWbot from "../../helpers/GetTicketWbot";
-import GetWbotMessage from "../../helpers/GetWbotMessage";
-import SerializeWbotMsgId from "../../helpers/SerializeWbotMsgId";
-import Message from "../../models/Message";
 import Ticket from "../../models/Ticket";
-
 import formatBody from "../../helpers/Mustache";
+import RabbitMQService from "../RabbitMQService";
+import { Envelope } from "../../microservice/contracts";
 
 interface Request {
   body: string;
   ticket: Ticket;
-  quotedMsg?: Message;
+  quotedMsg?: any;
 }
 
 const SendWhatsAppMessage = async ({
   body,
   ticket,
   quotedMsg
-}: Request): Promise<WbotMessage> => {
-  let quotedMsgSerializedId: string | undefined;
-  if (quotedMsg) {
-    await GetWbotMessage(ticket, quotedMsg.id);
-    quotedMsgSerializedId = SerializeWbotMsgId(ticket, quotedMsg);
-  }
-
-  const wbot = await GetTicketWbot(ticket);
-
+}: Request): Promise<any> => {
   try {
-    const sentMessage = await wbot.sendMessage(
-      `${ticket.contact.number}@${ticket.isGroup ? "g" : "c"}.us`,
-      formatBody(body, ticket.contact),
-      {
-        quotedMessageId: quotedMsgSerializedId,
-        linkPreview: false
+    const formattedBody = formatBody(body, ticket.contact);
+    
+    const command: Envelope = {
+      id: uuidv4(),
+      timestamp: Date.now(),
+      tenantId: 1,
+      type: "message.send.text",
+      payload: {
+        sessionId: ticket.whatsappId,
+        to: `${ticket.contact.number}@${ticket.isGroup ? "g" : "c"}.us`,
+        body: formattedBody,
+        options: {
+          quotedMsgId: quotedMsg?.id
+        }
       }
+    };
+
+    await RabbitMQService.publishCommand(
+      `wbot.1.${ticket.whatsappId}.message.send.text`, 
+      command
     );
 
     await ticket.update({ lastMessage: body });
-    return sentMessage;
+    
+    // Return a mock or empty object as we are async now
+    return { id: "pending", body: formattedBody };
   } catch (err) {
     throw new AppError("ERR_SENDING_WAPP_MSG");
   }

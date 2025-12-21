@@ -5,6 +5,8 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import * as Sentry from "@sentry/node";
+import swaggerUi from "swagger-ui-express";
+import swaggerDocs from "./config/swagger";
 
 import "./database";
 import uploadConfig from "./config/upload";
@@ -19,12 +21,15 @@ const app = express();
 app.use(
   cors({
     credentials: true,
-    origin: process.env.FRONTEND_URL
+    origin: (origin, callback) => {
+      callback(null, true);
+    }
   })
 );
 app.use(cookieParser());
 app.use(express.json());
 app.use(Sentry.Handlers.requestHandler());
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.use("/public", express.static(uploadConfig.directory));
 app.use(routes);
 
