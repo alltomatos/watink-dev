@@ -1,0 +1,30 @@
+{
+  "name": "whaticket-engine-standard",
+  "version": "1.0.0",
+  "description": "WhatsApp Engine for Whaticket (Node.js/Whaileys)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "amqplib": "^0.10.3",
+    "dotenv": "^16.3.1",
+    "pino": "^8.16.1",
+    "pino-pretty": "^10.2.3",
+    "qrcode-terminal": "^0.12.0",
+    "uuid": "^9.0.1",
+    "whaileys": "latest"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.4",
+    "@types/node": "^20.8.10",
+    "@types/uuid": "^9.0.7",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.2.2"
+  }
+}

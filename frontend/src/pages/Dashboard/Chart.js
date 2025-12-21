@@ -10,6 +10,7 @@ import {
 	ResponsiveContainer,
 } from "recharts";
 import { startOfHour, parseISO, format } from "date-fns";
+import Grid from "@material-ui/core/Grid";
 
 import { i18n } from "../../translate/i18n";
 

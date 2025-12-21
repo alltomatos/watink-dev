@@ -3,7 +3,6 @@ version: '3'
 networks:
   whaticket:
 
-
 services:
 
   backend:
@@ -11,21 +10,30 @@ services:
       context: ./backend
       dockerfile: ./Dockerfile
     environment:
-      - DB_HOST=mysql
-      - DB_USER=root
+      - DB_DIALECT=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
       - DB_PASS=${MYSQL_ROOT_PASSWORD:-strongpassword}
       - DB_NAME=${MYSQL_DATABASE:-whaticket}
+      - DB_READ_HOST=${DB_READ_HOST:-postgres}
       - JWT_SECRET=${JWT_SECRET:-3123123213123}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-75756756756}
       - BACKEND_URL=${BACKEND_URL:-http://localhost}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - PROXY_PORT=${PROXY_PORT:-8080}
       - CHROME_ARGS=--no-sandbox --disable-setuid-sandbox
+      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}
+      - PORT=3000
+    command: dockerize -wait tcp://postgres:5432 -timeout 60s && npx sequelize db:migrate && node dist/server.js
     ports:
       - ${BACKEND_PORT:-8080}:3000
     volumes:
       - ./backend/public/:/usr/src/app/public/
       - ./backend/.wwebjs_auth/:/usr/src/app/.wwebjs_auth/
+    depends_on:
+      - postgres
+      - rabbitmq
     networks:
       - whaticket
 
@@ -48,17 +56,43 @@ services:
     networks:
       - whaticket
 
-  mysql:
-    image: ${MYSQL_ENGINE:-mariadb}:${MYSQL_VERSION:-10.6}
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_bin
+  postgres:
+    image: ronaldodavi/pgvectorgis:latest
     volumes:
-      - ./.docker/data/:/var/lib/mysql
+      - ./.docker/db_data/:/var/lib/postgresql/data
     environment:
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-whaticket}
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-strongpassword}
-      - TZ=${TZ:-America/Fortaleza}
+      - POSTGRES_DB=${MYSQL_DATABASE:-whaticket}
+      - POSTGRES_PASSWORD=${MYSQL_ROOT_PASSWORD:-strongpassword}
+      - TZ=${TZ:-America/Sao_Paulo}
     ports:
-      - ${MYSQL_PORT:-3306}:3306
+      - ${MYSQL_PORT:-5432}:5432
     restart: always
+    networks:
+      - whaticket
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: whaticket_rabbitmq
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-guest}
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - ./.docker/rabbitmq/data:/var/lib/rabbitmq/mnesia/
+      - ./.docker/rabbitmq/log:/var/log/rabbitmq
+    networks:
+      - whaticket
+
+  engine:
+    build:
+      context: ./engine-standard
+      dockerfile: ./Dockerfile
+    environment:
+      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}
+    depends_on:
+      - rabbitmq
     networks:
       - whaticket
