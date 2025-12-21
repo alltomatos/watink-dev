@@ -158,6 +158,8 @@ export interface MessageReceivedPayload {
     timestamp: number;
     hasMedia: boolean;
     mediaUrl?: string;
+    mediaData?: string; // Base64
+    mimetype?: string;
     participant?: string;
     // Interactive fields
     selectedButtonId?: string;
