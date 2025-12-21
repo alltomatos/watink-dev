@@ -15,7 +15,10 @@ export type CommandType =
   | "message.send.media"
   | "message.send.buttons"
   | "message.send.list"
-  | "message.send.poll";
+  | "message.send.poll"
+  | "message.send.template"
+  | "message.send.interactive"
+  | "message.send.carousel";
 
 export interface StartSessionPayload {
   sessionId: number;
@@ -114,6 +117,27 @@ export interface SendInteractivePayload {
   }>;
   mediaUrl?: string;
 }
+
+// Carrossel Nativo
+export interface SendCarouselPayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  cards: Array<{
+    headerUrl?: string;
+    title: string;
+    body: string;
+    footer?: string;
+    buttons: Array<{
+      type: 'url' | 'reply';
+      text: string;
+      url?: string;
+      buttonId?: string;
+    }>;
+  }>;
+}
+
 
 // --- EVENTS (Engine -> Backend) ---
 
