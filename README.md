@@ -39,22 +39,52 @@ If a contact sent a new message in less than 2 hours interval, and there is no t
 - Send media (images/audio/documents) ✅
 - Receive media (images/audio/video/documents) ✅
 
-## Installation and Usage (Linux Ubuntu - Development)
+## Installation and Usage (Docker - Recommended)
 
-Create Mysql Database using docker:
-_Note_: change MYSQL_DATABASE, MYSQL_PASSWORD, MYSQL_USER and MYSQL_ROOT_PASSWORD.
+### Database Configuration (PostgreSQL)
+
+The project now uses PostgreSQL instead of MySQL/MariaDB for better performance and vector support.
+
+Configure your `.env` file (copy from `.env.example`):
 
 ```bash
-docker run --name whaticketdb -e MYSQL_ROOT_PASSWORD=strongpassword -e MYSQL_DATABASE=whaticket -e MYSQL_USER=whaticket -e MYSQL_PASSWORD=whaticket --restart always -p 3306:3306 -d mariadb:latest --character-set-server=utf8mb4 --collation-server=utf8mb4_bin
+# DATABASE
+POSTGRES_DB=whaticket
+POSTGRES_PASSWORD=strongpassword
+POSTGRES_USER=postgres
+POSTGRES_PORT=5432
+TZ=America/Sao_Paulo
 
-# Or run using `docker-compose` as below
-# Before copy .env.example to .env first and set the variables in the file.
-docker-compose up -d mysql
-
-# To administer this mysql database easily using phpmyadmin. 
-# It will run by default on port 9000, but can be changed in .env using `PMA_PORT`
-docker-compose -f docker-compose.phpmyadmin.yaml up -d
+# BACKEND
+BACKEND_URL=http://localhost:8080
+...
 ```
+
+Run using `docker-compose`:
+
+```bash
+docker-compose up -d --build
+```
+
+Run migrations and seeds (first run):
+
+```bash
+docker-compose exec backend npx sequelize db:migrate
+docker-compose exec backend npx sequelize db:seed:all
+```
+
+### SaaS Premium Theme
+
+The frontend has been updated with a new "SaaS Premium" theme, featuring:
+- Modern typography (Inter font).
+- Flat/Bordered design.
+- Fixed Sidebar.
+- Improved Chat Interface.
+
+### Legacy MySQL Support
+
+If you need to migrate from an old MariaDB installation, you will need to dump your data and convert it to PostgreSQL format, or continue using the old docker-compose setup (not recommended).
+
 
 Install puppeteer dependencies:
 
