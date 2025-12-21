@@ -12,9 +12,12 @@ import queueRoutes from "./queueRoutes";
 import quickAnswerRoutes from "./quickAnswerRoutes";
 import apiRoutes from "./apiRoutes";
 
+import versionRoutes from "./versionRoutes";
+
 const routes = Router();
 
-routes.use(userRoutes);
+routes.use("/version", versionRoutes);
+routes.use("/users", userRoutes);
 routes.use("/auth", authRoutes);
 routes.use(settingRoutes);
 routes.use(contactRoutes);

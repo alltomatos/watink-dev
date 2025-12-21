@@ -94,7 +94,7 @@ Todo o ciclo de vida da aplicação é gerenciado via Docker Swarm.
 ### 1. Inicialização
 Para subir a stack completa:
 ```bash
-docker stack deploy -c docker-stack.yml whaticket
+docker stack deploy -c docker-stack.yml whaticket-community
 ```
 
 ### 2. Aplicando Alterações
@@ -109,17 +109,53 @@ Como não rodamos localmente, o fluxo para refletir mudanças de código é:
     docker tag whaticket-community-backend:latest whaticket/backend:latest
     
     # Atualização forçada do serviço
-    docker service update --image whaticket/backend:latest whaticket_backend --force
+    docker service update --image whaticket/backend:latest whaticket-community_backend --force
     ```
 
 2.  **Frontend**:
     ```bash
     docker compose build frontend
     docker tag whaticket-community-frontend:latest whaticket/frontend:latest
-    docker service update --image whaticket/frontend:latest whaticket_frontend --force
+    docker service update --image whaticket/frontend:latest whaticket-community_frontend --force
     ```
 
 ### 3. Debug & Logs
-*   **Logs**: `docker service logs -f whaticket_backend` (ou frontend, engine, etc).
-*   **Swagger**: Acesse `http://localhost:3000/docs` para testar/documentar a API.
+*   **Logs**: `docker service logs -f whaticket-community_backend` (ou frontend, engine, etc).
+*   **Swagger**: Acesse `http://localhost:8080/docs` para testar/documentar a API.
 *   **RabbitMQ**: `http://localhost:15672` para monitorar filas.
+
+---
+
+## 🏷️ Versionamento e Release
+
+Seguimos estritamente o **Semantic Versioning (SemVer)** (ex: `1.0.0`).
+
+### Política de Atualização
+Sempre que for realizado um build para produção ou homologação, o código deve ser analisado para determinar o incremento de versão:
+
+1.  **Analise as Mudanças**:
+    *   **Major (X.0.0)**: Mudanças incompatíveis na API ou quebra de compatibilidade.
+    *   **Minor (0.X.0)**: Novas funcionalidades retrocompatíveis.
+    *   **Patch (0.0.X)**: Correções de bugs retrocompatíveis.
+
+2.  **Atualize o `package.json`**:
+    Use o comando npm para atualizar a versão e criar a tag git automaticamente.
+    ```bash
+    cd backend # ou frontend/engine
+    npm version patch # ou minor/major
+    ```
+
+3.  **Build e Tag Docker**:
+    Ao construir a imagem, use a nova versão como tag, além da `latest`.
+    ```bash
+    # Exemplo para Backend v1.0.1
+    docker build -t whaticket/backend:1.0.1 -t whaticket/backend:latest .
+    docker push whaticket/backend:1.0.1
+    docker push whaticket/backend:latest
+    ```
+
+4.  **Atualize o Serviço**:
+    No ambiente de produção, fixe a versão específica para evitar atualizações acidentais, ou use `latest` em desenvolvimento.
+    ```bash
+    docker service update --image whaticket/backend:1.0.1 whaticket-community_backend
+    ```
