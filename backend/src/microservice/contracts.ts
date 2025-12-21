@@ -8,7 +8,7 @@ export interface Envelope<T = any> {
 
 // --- COMMANDS (Backend -> Engine) ---
 
-export type CommandType = 
+export type CommandType =
   | "session.start"
   | "session.stop"
   | "message.send.text"
@@ -17,6 +17,8 @@ export type CommandType =
 export interface StartSessionPayload {
   sessionId: number;
   sessionToken?: string;
+  usePairingCode?: boolean;  // true = usar código, false = usar QR
+  phoneNumber?: string;       // Formato E.164 sem +: 5511999999999
 }
 
 export interface StopSessionPayload {
@@ -47,6 +49,7 @@ export interface SendMediaPayload {
 
 export type EventType =
   | "session.qrcode"
+  | "session.pairingcode"  // Código de pareamento
   | "session.status"
   | "message.received"
   | "message.ack";
@@ -55,6 +58,11 @@ export interface QrCodePayload {
   sessionId: number;
   qrcode: string;
   attempt: number;
+}
+
+export interface PairingCodePayload {
+  sessionId: number;
+  pairingCode: string;  // Formato: "XXXX-XXXX"
 }
 
 export interface SessionStatusPayload {
