@@ -1,4 +1,9 @@
-import { Envelope, StartSessionPayload, SendTextPayload, SendMediaPayload, SendButtonsPayload, SendListPayload, SendPollPayload, CommandType } from "./contracts";
+import {
+  Envelope, StartSessionPayload, SendTextPayload, SendMediaPayload,
+  SendButtonsPayload, SendListPayload, SendPollPayload,
+  SendTemplatePayload, SendInteractivePayload,
+  CommandType
+} from "./contracts";
 import { logger } from "./logger";
 import { RabbitMQ } from "./rabbitmq";
 import { v4 as uuidv4 } from "uuid";
@@ -49,6 +54,12 @@ class SessionManager {
         break;
       case "message.send.poll":
         await this.sendPoll(envelope.payload as SendPollPayload);
+        break;
+      case "message.send.template":
+        await this.sendTemplate(envelope.payload as SendTemplatePayload);
+        break;
+      case "message.send.interactive":
+        await this.sendInteractive(envelope.payload as SendInteractivePayload);
         break;
       default:
         logger.warn(`Unknown command type: ${envelope.type}`);
@@ -207,6 +218,16 @@ class SessionManager {
             selectedRowId = msg.message.listResponseMessage.singleSelectReply?.selectedRowId;
             body = msg.message.listResponseMessage.title || "";
             msgType = "list_response";
+          }
+          // 3.1 Interactive Response (Native Flow / Carousel)
+          else if (msg.message.interactiveResponseMessage) {
+            const interactiveResp = msg.message.interactiveResponseMessage;
+            if (interactiveResp.nativeFlowResponseMessage) {
+              const params = JSON.parse(interactiveResp.nativeFlowResponseMessage.paramsJson || "{}");
+              selectedButtonId = params.id;
+            }
+            body = interactiveResp.body?.text || "";
+            msgType = "interactive_response";
           }
           // 4. Poll Response (requires special handling for encryption in some cases, but Whaileys usually simplifies)
           else if (msg.message.pollUpdateMessage) {
@@ -397,6 +418,86 @@ class SessionManager {
         selectableCount: payload.selectableCount || 1
       }
     });
+  }
+
+  private async sendTemplate(payload: SendTemplatePayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending template`);
+      return;
+    }
+
+    const templateButtons = payload.buttons.map((btn, index) => {
+      const base = { index: index + 1 };
+      if (btn.type === 'url') {
+        return { ...base, urlButton: { displayText: btn.text, url: btn.url } };
+      } else if (btn.type === 'call') {
+        return { ...base, callButton: { displayText: btn.text, phoneNumber: btn.phoneNumber } };
+      } else {
+        return { ...base, quickReplyButton: { displayText: btn.text, id: btn.buttonId } };
+      }
+    });
+
+    const message: any = {
+      text: payload.text,
+      footer: payload.footer,
+      templateButtons: templateButtons
+    };
+
+    if (payload.mediaUrl) {
+      // Logic for image/video in template header
+      message.image = { url: payload.mediaUrl }; // Simplification, could check extension
+    }
+
+    await session.socket.sendMessage(payload.to, message);
+  }
+
+  private async sendInteractive(payload: SendInteractivePayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending interactive message`);
+      return;
+    }
+
+    const buttons = payload.buttons.map(btn => {
+      if (btn.type === 'url') {
+        return {
+          name: "cta_url",
+          buttonParamsJson: JSON.stringify({
+            display_text: btn.text,
+            url: btn.url,
+            merchant_url: btn.url
+          })
+        };
+      } else {
+        return {
+          name: "quick_reply",
+          buttonParamsJson: JSON.stringify({
+            display_text: btn.text,
+            id: btn.buttonId
+          })
+        };
+      }
+    });
+
+    const interactiveMessage = {
+      interactiveMessage: {
+        body: { text: payload.text },
+        footer: { text: payload.footer },
+        header: payload.mediaUrl ? {
+          title: "",
+          subtitle: "",
+          hasMediaAttachment: true,
+          imageMessage: { url: payload.mediaUrl } // Simplified
+        } : { hasMediaAttachment: false },
+        nativeFlowMessage: {
+          buttons: buttons
+        }
+      }
+    };
+
+    // Relay message is often safer for complex interactive messages
+    await session.socket.sendMessage(payload.to, interactiveMessage);
   }
 }
 

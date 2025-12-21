@@ -84,6 +84,37 @@ export interface SendPollPayload {
   selectableCount?: number;
 }
 
+// Mensagem Template (URL, Call, Reply)
+export interface SendTemplatePayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttons: Array<{
+    type: 'url' | 'call' | 'reply';
+    text: string;
+    url?: string;
+    phoneNumber?: string;
+    buttonId?: string;
+  }>;
+  mediaUrl?: string; // Imagem ou vídeo opcional no header
+}
+
+// Mensagem Interativa (Native Flow)
+export interface SendInteractivePayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttons: Array<{
+    type: 'url' | 'reply';
+    text: string;
+    url?: string;
+    buttonId?: string;
+  }>;
+  mediaUrl?: string;
+}
+
 // --- EVENTS (Engine -> Backend) ---
 
 export type EventType =
@@ -94,7 +125,9 @@ export type EventType =
   | "message.ack"
   | "message.response.button"
   | "message.response.list"
-  | "message.response.poll";
+  | "message.response.poll"
+  | "message.response.interactive";
+
 
 export interface QrCodePayload {
   sessionId: number;

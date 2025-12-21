@@ -13,7 +13,9 @@ export type CommandType =
   | "message.send.media"
   | "message.send.buttons"   // NOVO: Botões simples
   | "message.send.list"      // NOVO: Lista de opções
-  | "message.send.poll";     // NOVO: Enquete
+  | "message.send.poll"      // NOVO: Enquete
+  | "message.send.template"  // NOVO: Template (URL/Call)
+  | "message.send.interactive"; // NOVO: Native Flow (Interativo)
 
 export interface StartSessionPayload {
   sessionId: number;
@@ -83,6 +85,37 @@ export interface SendPollPayload {
   name: string;           // Pergunta
   options: string[];      // Opções (2-12)
   selectableCount?: number; // Quantas podem ser selecionadas (padrão: 1)
+}
+
+// Mensagem Template (URL, Call, Reply)
+export interface SendTemplatePayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttons: Array<{
+    type: 'url' | 'call' | 'reply';
+    text: string;
+    url?: string;
+    phoneNumber?: string;
+    buttonId?: string;
+  }>;
+  mediaUrl?: string; // Imagem ou vídeo opcional no header
+}
+
+// Mensagem Interativa (Native Flow)
+export interface SendInteractivePayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttons: Array<{
+    type: 'url' | 'reply';
+    text: string;
+    url?: string;
+    buttonId?: string;
+  }>;
+  mediaUrl?: string;
 }
 
 export type EventType =
