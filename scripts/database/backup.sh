@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-CONTAINER_NAME="whaticket-community_mysql_1" # Adjust if needed or use docker-compose
+CONTAINER_NAME="whaticket-premium_postgres_1" # Adjust if needed or use docker-compose
 DB_USER="postgres"
 DB_NAME="whaticket"
 BACKUP_DIR="./backups"

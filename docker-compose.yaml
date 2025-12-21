@@ -3,6 +3,7 @@ version: '3'
 networks:
   whaticket:
 
+
 services:
 
   backend:
@@ -86,7 +87,8 @@ services:
     networks:
       - whaticket
 
-  engine:
+  whaileys-engine:
+    container_name: whaileys-engine
     build:
       context: ./engine-standard
       dockerfile: ./Dockerfile

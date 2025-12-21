@@ -32,6 +32,6 @@ Nenhuma. Adição padrão de dependências de desenvolvimento.
 - Verificação do processo de build (`npm run build`) para garantir que os tipos estão corretos.
 
 ### Verificação Manual
-1.  **Redeploy da Stack:** `docker stack deploy -c docker-stack.yml whaticket` (forçando a reconstrução do backend).
+1.  **Redeploy da Stack:** `docker stack deploy -c docker-stack.yml whaticket-premium` (forçando a reconstrução do backend).
 2.  **Acessar UI:** Abrir `http://localhost:3000/docs` no navegador.
 3.  **Testar Endpoint:** Executar o endpoint `/auth/login` via Swagger UI com as credenciais `admin@admin.com` / `devadmin`.
