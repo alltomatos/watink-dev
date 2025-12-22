@@ -3,6 +3,7 @@
 Este documento serve como referência técnica para desenvolvedores que atuam no projeto **Whaticket Premium**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
 
 > [!IMPORTANT]
+> **Leitura Complementar Obrigatória**: Consulte também [dev_micro.md](./dev_micro.md) para detalhes específicos da arquitetura de microserviços.
 > **Sempre responda e crie documentos em Português do Brasil.**
 > **Ambiente de Execução**: Todo o desenvolvimento e execução do projeto deve ser feito via **Docker Swarm**. Não rode os serviços localmente (fora de containers).
 
@@ -75,6 +76,8 @@ Workers independentes que se conectam ao WhatsApp.
 
 ---
 
+
+
 ## 🗄️ Banco de Dados: PostgreSQL + Extensions
 
 Imagem customizada rodando em serviço dedicado no Swarm.
@@ -143,7 +146,7 @@ Como não rodamos localmente, o fluxo para refletir mudanças de código é:
 Seguimos estritamente o **Semantic Versioning (SemVer)** (ex: `1.0.0`).
 
 ### Política de Atualização
-Sempre que for realizado um build para produção ou homologação, o código deve ser analisado para determinar o incremento de versão:
+⚠️ **REGRA OBRIGATÓRIA**: Sempre que for realizar um build de qualquer container (seja desenvolvimento ou produção), o versionamento **DEVE** ser atualizado antes. Não gere builds sem incrementar a versão (`patch`, `minor` ou `major`).
 
 1.  **Analise as Mudanças**:
     *   **Major (X.0.0)**: Mudanças incompatíveis na API ou quebra de compatibilidade.

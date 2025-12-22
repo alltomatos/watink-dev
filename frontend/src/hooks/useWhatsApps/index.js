@@ -75,6 +75,9 @@ const useWhatsApps = () => {
 	useEffect(() => {
 		const socket = openSocket();
 
+		console.log("useWhatsApps init. Socket exists?", !!socket, "Token:", localStorage.getItem("token"));
+		if (!socket) return;
+
 		socket.on("whatsapp", data => {
 			if (data.action === "update") {
 				dispatch({ type: "UPDATE_WHATSAPPS", payload: data.whatsapp });

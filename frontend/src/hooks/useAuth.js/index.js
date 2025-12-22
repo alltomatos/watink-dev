@@ -73,6 +73,8 @@ const useAuth = () => {
 	useEffect(() => {
 		const socket = openSocket();
 
+		if (!socket) return;
+
 		socket.on("user", data => {
 			if (data.action === "update" && data.user.id === user.id) {
 				setUser(data.user);

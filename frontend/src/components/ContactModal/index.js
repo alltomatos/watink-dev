@@ -69,6 +69,7 @@ const ContactModal = ({ open, onClose, contactId, initialValues, onSave }) => {
 		name: "",
 		number: "",
 		email: "",
+		lid: "",
 	};
 
 	const [contact, setContact] = useState(initialState);
@@ -171,6 +172,17 @@ const ContactModal = ({ open, onClose, contactId, initialValues, onSave }) => {
 									variant="outlined"
 									margin="dense"
 								/>
+								{contact.lid && (
+									<Field
+										as={TextField}
+										label="LID"
+										name="lid"
+										variant="outlined"
+										margin="dense"
+										disabled
+										fullWidth
+									/>
+								)}
 								<div>
 									<Field
 										as={TextField}

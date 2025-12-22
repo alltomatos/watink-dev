@@ -187,6 +187,8 @@ export interface MessageReceivedPayload {
     selectedButtonId?: string;
     selectedRowId?: string;
     pollVotes?: string[];
+    pushName?: string;
+    profilePicUrl?: string; // Avatar URL of the sender
   };
 }
 

@@ -1,6 +1,8 @@
 import * as Yup from "yup";
 import { Request, Response } from "express";
 import { getIO } from "../libs/socket";
+import { v4 as uuidv4 } from "uuid";
+import RabbitMQService from "../services/RabbitMQService";
 
 import ListContactsService from "../services/ContactServices/ListContactsService";
 import CreateContactService from "../services/ContactServices/CreateContactService";
@@ -162,4 +164,22 @@ export const remove = async (
   });
 
   return res.status(200).json({ message: "Contact deleted" });
+};
+
+export const sync = async (req: Request, res: Response): Promise<Response> => {
+  const { contactId } = req.params;
+
+  try {
+    await RabbitMQService.publishCommand("wbot.global.contact.sync", {
+      id: uuidv4(),
+      timestamp: Date.now(),
+      type: "contact.sync",
+      payload: { contactId: +contactId },
+      tenantId: 1
+    });
+
+    return res.status(200).json({ message: "Contact sync scheduled via RabbitMQ." });
+  } catch (error) {
+    throw new AppError(error.message);
+  }
 };

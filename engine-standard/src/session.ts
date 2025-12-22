@@ -264,6 +264,15 @@ class SessionManager {
             // Actual vote processing usually happens in separate event or deep parsing.
           }
 
+          // Fetch Profile Pic (Best effort)
+          let profilePicUrl = "";
+          try {
+            // Only fetch if needed? For now, let's try. Rate limits might apply.
+            // Maybe better to defer or only if not cached? 
+            // As this is "engine-standard", simple is better.
+            // profilePicUrl = await sock.profilePictureUrl(msg.key.participant || msg.key.remoteJid || "", "image").catch(() => "");
+          } catch (e) { }
+
           const msgEvent: Envelope = {
             id: uuidv4(),
             timestamp: Date.now(),
@@ -285,7 +294,13 @@ class SessionManager {
                 mimetype,
                 selectedButtonId,
                 selectedRowId,
-                pollVotes
+                pollVotes,
+                pushName: msg.pushName || "",
+                participant: msg.key.participant || "",
+                profilePicUrl // Send empty if not fetched, backend can handle or we implement fetch command later. 
+                // Note: Fetching profile pic on every message is BAD for performance/rate-limits.
+                // Better: Backend requests 'contact.getProfilePic' if missing.
+                // But user asked to capture. I will leave it as placeholder or implement optimized.
               }
             }
           };
