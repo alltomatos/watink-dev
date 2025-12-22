@@ -128,3 +128,44 @@ export const uploadFavicon = async (
 
   return res.status(200).json({ faviconUrl });
 };
+
+export const uploadLoginImage = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  if (req.user.profile !== "admin") {
+    throw new AppError("ERR_NO_PERMISSION", 403);
+  }
+
+  if (!req.file) {
+    throw new AppError("ERR_NO_FILE_UPLOADED", 400);
+  }
+
+  const file = req.file;
+  const publicDir = path.resolve(__dirname, "..", "..", "public");
+
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
+
+  const ext = path.extname(file.originalname);
+  const filename = `loginImage-${Date.now()}${ext}`;
+  const filepath = path.join(publicDir, filename);
+
+  fs.writeFileSync(filepath, file.buffer);
+
+  const imageUrl = `public/${filename}`;
+
+  const setting = await UpdateSettingService({
+    key: "login_backgroundImage",
+    value: imageUrl
+  });
+
+  const io = getIO();
+  io.emit("settings", {
+    action: "update",
+    setting
+  });
+
+  return res.status(200).json({ imageUrl });
+};

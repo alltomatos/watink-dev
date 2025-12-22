@@ -36,7 +36,10 @@ const VersionFooter = () => {
     return (
         <div className={classes.footer}>
             <Typography variant="caption" display="block">
-                Front: v{frontendVersion} | Back: v{backendVersion} | Engine: v{engineVersion}
+                Front: v{frontendVersion} | Back: v{backendVersion}
+            </Typography>
+            <Typography variant="caption" display="block">
+                Engine: v{engineVersion}
             </Typography>
         </div>
     );

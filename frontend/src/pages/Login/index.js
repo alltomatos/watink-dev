@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
 import {
@@ -22,6 +22,8 @@ import { makeStyles } from "@material-ui/core/styles";
 import { i18n } from "../../translate/i18n";
 
 import { AuthContext } from "../../context/Auth/AuthContext";
+import api from "../../services/api";
+import { getBackendUrl } from "../../config";
 
 // const Copyright = () => {
 // 	return (
@@ -61,8 +63,34 @@ const Login = () => {
 
   const [user, setUser] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [settings, setSettings] = useState({
+    loginLayout: "split_left", // split_left, split_right, centered
+    loginBackground: "", // url
+    systemLogo: "",
+  });
 
   const { handleLogin } = useContext(AuthContext);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const { data } = await api.get("/settings");
+
+        const layoutSetting = data.find(s => s.key === "login_layout");
+        const bgSetting = data.find(s => s.key === "login_backgroundImage");
+        const logoSetting = data.find(s => s.key === "systemLogo");
+
+        setSettings({
+          loginLayout: layoutSetting?.value || "split_left",
+          loginBackground: bgSetting?.value ? `${getBackendUrl()}${bgSetting.value.startsWith('/') ? bgSetting.value.slice(1) : bgSetting.value}` : "/login-background.png",
+          systemLogo: logoSetting?.value ? `${getBackendUrl()}${logoSetting.value.startsWith('/') ? logoSetting.value.slice(1) : logoSetting.value}` : "/logo.png",
+        });
+      } catch (err) {
+        console.error("Error fetching settings for login", err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const handleChangeInput = (e) => {
     setUser({ ...user, [e.target.name]: e.target.value });
@@ -73,80 +101,172 @@ const Login = () => {
     handleLogin(user);
   };
 
-  return (
-    <Container component="main" maxWidth="xs">
-      <CssBaseline />
-      <div className={classes.paper}>
+  const renderLoginForm = () => (
+    <div className={classes.paper}>
+      {settings.systemLogo && (
+        <img src={settings.systemLogo} alt="Logo" style={{ maxWidth: 200, marginBottom: 20 }} />
+      )}
+      {!settings.systemLogo && (
         <Avatar className={classes.avatar}>
           <LockOutlined />
         </Avatar>
+      )}
+      {!settings.systemLogo && (
         <Typography component="h1" variant="h5">
           {i18n.t("login.title")}
         </Typography>
-        <form className={classes.form} noValidate onSubmit={handlSubmit}>
-          <TextField
-            variant="outlined"
-            margin="normal"
-            required
-            fullWidth
-            id="email"
-            label={i18n.t("login.form.email")}
-            name="email"
-            value={user.email}
-            onChange={handleChangeInput}
-            autoComplete="email"
-            autoFocus
-          />
-          <TextField
-            variant="outlined"
-            margin="normal"
-            required
-            fullWidth
-            name="password"
-            label={i18n.t("login.form.password")}
-            id="password"
-            value={user.password}
-            onChange={handleChangeInput}
-            autoComplete="current-password"
-            type={showPassword ? 'text' : 'password'}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    aria-label="toggle password visibility"
-                    onClick={() => setShowPassword((e) => !e)}
-                  >
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              )
-            }}
-          />
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            color="primary"
-            className={classes.submit}
-          >
-            {i18n.t("login.buttons.submit")}
-          </Button>
-          <Grid container>
-            <Grid item>
-              <Link
-                href="#"
-                variant="body2"
-                component={RouterLink}
-                to="/signup"
-              >
-                {i18n.t("login.buttons.register")}
-              </Link>
-            </Grid>
+      )}
+
+      <form className={classes.form} noValidate onSubmit={handlSubmit}>
+        <TextField
+          variant="outlined"
+          margin="normal"
+          required
+          fullWidth
+          id="email"
+          label={i18n.t("login.form.email")}
+          name="email"
+          value={user.email}
+          onChange={handleChangeInput}
+          autoComplete="email"
+          autoFocus
+        />
+        <TextField
+          variant="outlined"
+          margin="normal"
+          required
+          fullWidth
+          name="password"
+          label={i18n.t("login.form.password")}
+          id="password"
+          value={user.password}
+          onChange={handleChangeInput}
+          autoComplete="current-password"
+          type={showPassword ? 'text' : 'password'}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  aria-label="toggle password visibility"
+                  onClick={() => setShowPassword((e) => !e)}
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </InputAdornment>
+            )
+          }}
+        />
+        <Button
+          type="submit"
+          fullWidth
+          variant="contained"
+          color="primary"
+          className={classes.submit}
+        >
+          {i18n.t("login.buttons.submit")}
+        </Button>
+        <Grid container>
+          <Grid item>
+            <Link
+              href="#"
+              variant="body2"
+              component={RouterLink}
+              to="/signup"
+            >
+              {i18n.t("login.buttons.register")}
+            </Link>
           </Grid>
-        </form>
-      </div>
-      <Box mt={8}>{/* <Copyright /> */}</Box>
-    </Container>
+        </Grid>
+      </form>
+    </div>
+  );
+
+  // Layout Render Logic
+  if (settings.loginLayout === "centered") {
+    return (
+      <Box
+        style={{
+          minHeight: "100vh",
+          backgroundImage: settings.loginBackground ? `url(${settings.loginBackground})` : "none",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: settings.loginBackground ? "transparent" : "#f0f2f5",
+        }}
+      >
+        <CssBaseline />
+        <Container component="main" maxWidth="xs">
+          <Box
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              padding: 40,
+              borderRadius: 16,
+              boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.37)"
+            }}
+          >
+            {renderLoginForm()}
+          </Box>
+        </Container>
+      </Box>
+    );
+  }
+
+  // Split Screen Logic
+  const isRightForm = settings.loginLayout === "split_right";
+
+  return (
+    <Box style={{ minHeight: "100vh", display: "flex" }}>
+      <CssBaseline />
+      {/* Left Side (Image if Right Form, Form if Left Form) */}
+      {!isRightForm ? (
+        <Box style={{ flex: "0 0 450px", display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 40px", backgroundColor: "#fff", zIndex: 2, boxShadow: "4px 0 24px rgba(0,0,0,0.1)" }}>
+          {renderLoginForm()}
+        </Box>
+      ) : (
+        <Box style={{ flex: 1, position: "relative" }}>
+          {settings.loginBackground && (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                backgroundImage: `url(${settings.loginBackground})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            />
+          )}
+        </Box>
+      )}
+
+      {/* Right Side */}
+      {!isRightForm ? (
+        <Box style={{ flex: 1, position: "relative" }}>
+          {settings.loginBackground && (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                backgroundImage: `url(${settings.loginBackground})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            />
+          )}
+        </Box>
+      ) : (
+        <Box style={{ flex: "0 0 450px", display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 40px", backgroundColor: "#fff", zIndex: 2, boxShadow: "-4px 0 24px rgba(0,0,0,0.1)" }}>
+          {renderLoginForm()}
+        </Box>
+      )}
+    </Box>
   );
 };
 
