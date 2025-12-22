@@ -12,6 +12,7 @@ interface ContactData {
   number?: string;
   name?: string;
   extraInfo?: ExtraInfo[];
+  lid?: string;
 }
 
 interface Request {
@@ -53,10 +54,15 @@ const UpdateContactService = async ({
     );
   }
 
+  const { email: newEmail, name: newName, number: newNumber, extraInfo: newExtraInfo, lid } = contactData;
+
+  // ... (omitted lines)
+
   await contact.update({
-    name,
-    number,
-    email
+    name: newName,
+    number: newNumber,
+    email: newEmail,
+    lid
   });
 
   await contact.reload({

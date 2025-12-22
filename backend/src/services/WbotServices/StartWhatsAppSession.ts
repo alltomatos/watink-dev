@@ -6,9 +6,12 @@ import RabbitMQService from "../RabbitMQService";
 import { Envelope } from "../../microservice/contracts";
 
 export const StartWhatsAppSession = async (
-  whatsapp: Whatsapp
+  whatsapp: Whatsapp,
+  usePairingCode?: boolean,
+  phoneNumber?: string
 ): Promise<void> => {
   await whatsapp.update({ status: "OPENING" });
+  logger.info(`StartWhatsAppSession called for session ${whatsapp.id}`);
 
   const io = getIO();
   io.emit("whatsappSession", {
@@ -23,7 +26,9 @@ export const StartWhatsAppSession = async (
       tenantId: 1, // Default tenant for now, or fetch from whatsapp if available
       type: "session.start",
       payload: {
-        sessionId: whatsapp.id
+        sessionId: whatsapp.id,
+        usePairingCode,
+        phoneNumber
       }
     };
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-CONTAINER_NAME="whaticket-community_mysql_1" # Adjust if needed or use docker-compose
+CONTAINER_NAME="whaticket-premium_postgres_1" # Adjust if needed or use docker-compose
 DB_USER="postgres"
 DB_NAME="whaticket"
 BACKUP_DIR="./backups"
@@ -17,11 +17,11 @@ echo "Starting backup of $DB_NAME from container..."
 
 # Try using docker-compose first if available in path
 if command -v docker-compose &> /dev/null; then
-    docker-compose exec -T mysql pg_dump -U $DB_USER $DB_NAME > $FILENAME
+    docker-compose exec -T postgres pg_dump -U $DB_USER $DB_NAME > $FILENAME
 else
     # Fallback to docker exec
     # We need to find the actual container name if it differs
-    CONTAINER_ID=$(docker ps -qf "name=mysql")
+    CONTAINER_ID=$(docker ps -qf "name=postgres")
     if [ -z "$CONTAINER_ID" ]; then
         echo "Error: Database container not found."
         exit 1

@@ -1,4 +1,4 @@
-import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload } from "../../microservice/contracts";
+import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload, PairingCodePayload } from "../../microservice/contracts";
 import RabbitMQService from "../RabbitMQService";
 import { logger } from "../../utils/logger";
 import Whatsapp from "../../models/Whatsapp";
@@ -11,6 +11,7 @@ import CreateOrUpdateContactService from "../ContactServices/CreateOrUpdateConta
 export const EventListener = async () => {
   const routingKeys = [
     "wbot.*.*.session.qrcode",
+    "wbot.*.*.session.pairingcode",
     "wbot.*.*.session.status",
     "wbot.*.*.message.received"
   ];
@@ -21,6 +22,9 @@ export const EventListener = async () => {
     switch (msg.type) {
       case "session.qrcode":
         await handleQrCode(msg.payload as QrCodePayload);
+        break;
+      case "session.pairingcode":
+        await handlePairingCode(msg.payload as PairingCodePayload);
         break;
       case "session.status":
         await handleSessionStatus(msg.payload as SessionStatusPayload);
@@ -47,6 +51,15 @@ const handleQrCode = async (payload: QrCodePayload) => {
   });
 };
 
+const handlePairingCode = async (payload: PairingCodePayload) => {
+  const io = getIO();
+
+  io.emit(`whatsappSession`, {
+    action: "update",
+    session: { id: payload.sessionId, pairingCode: payload.pairingCode, status: "QRCODE" }
+  });
+};
+
 const handleSessionStatus = async (payload: SessionStatusPayload) => {
   const io = getIO();
   await Whatsapp.update(
@@ -66,17 +79,60 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   const whatsapp = await Whatsapp.findByPk(sessionId);
   if (!whatsapp) return;
 
-  const contactData = {
-    name: message.from, // Ideally get name from payload if available
-    number: message.from.replace(/\D/g, ""),
-    isGroup: message.isGroup,
-    tenantId: tenantId
-  };
+  let groupContact: Contact | undefined;
+  let msgContact: Contact | undefined;
 
-  const contact = await CreateOrUpdateContactService(contactData);
+  if (message.isGroup) {
+    // 1. Group Contact (Ticket Owner)
+    const groupData = {
+      name: message.from, // TODO: Fetch real group subject if possible
+      number: message.from.replace(/\D/g, ""),
+      isGroup: true,
+      tenantId
+    };
+
+    // We don't want to overwrite the group name with JID if it already exists and has a name
+    // CreateOrUpdateContactService overwrites name. Ideally we should check this.
+    // For now, passing message.from as name is standard behavior if name not known.
+    groupContact = await CreateOrUpdateContactService(groupData);
+
+    // 2. Participant Contact (Sender)
+    const participant = message.participant || "";
+    const participantNumber = participant.replace(/\D/g, "");
+    const isLid = participant.includes("@lid");
+
+    const participantData = {
+      name: message.pushName || participantNumber,
+      number: isLid ? "" : participantNumber, // Use empty string or null? Service expects string usually or null logic
+      // Validation: CreateOrUpdateContactService uses `number` for lookup if LID not present. 
+      // If LID, `number` is set to null in create. 
+      // Here we pass string, service handles it. logic: number = isGroup ? raw : replace.
+      lid: isLid ? participant : undefined,
+      isGroup: false,
+      tenantId,
+      profilePicUrl: message.profilePicUrl
+    };
+    msgContact = await CreateOrUpdateContactService(participantData as any);
+  } else {
+    // Individual Contact
+    const isLid = message.from.includes("@lid");
+    const number = message.from.replace(/\D/g, "");
+
+    const contactData = {
+      name: message.pushName || message.from,
+      number: isLid ? "" : number,
+      lid: isLid ? message.from : undefined,
+      isGroup: false,
+      tenantId,
+      profilePicUrl: message.profilePicUrl
+    };
+
+    msgContact = await CreateOrUpdateContactService(contactData as any);
+    groupContact = msgContact;
+  }
 
   const ticket = await FindOrCreateTicketService(
-    contact,
+    groupContact,
     whatsapp.id,
     1 // Unread messages
   );
@@ -84,14 +140,15 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   const msgData = {
     id: message.id,
     ticketId: ticket.id,
-    contactId: contact.id,
+    contactId: msgContact.id, // Message attributed to sender
     body: message.body,
     fromMe: message.fromMe,
     read: false,
     mediaType: message.type,
     mediaUrl: message.mediaUrl,
-    timestamp: message.timestamp * 1000 // Convert to ms
+    timestamp: message.timestamp * 1000, // Convert to ms
+    participant: message.participant
   };
 
-  await CreateMessageService({ messageData: msgData });
+  await CreateMessageService({ messageData: msgData as any });
 };
