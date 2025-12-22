@@ -152,9 +152,9 @@ const reducer = (state, action) => {
 	}
 };
 
-	const TicketsList = (props) => {
-		const { status, searchParam, showAll, selectedQueueIds, updateCount, style } =
-			props;
+const TicketsList = (props) => {
+	const { status, searchParam, showAll, selectedQueueIds, updateCount, style, isGroup } =
+		props;
 	const classes = useStyles();
 	const [pageNumber, setPageNumber] = useState(1);
 	const [ticketsList, dispatch] = useReducer(reducer, []);
@@ -163,7 +163,7 @@ const reducer = (state, action) => {
 	useEffect(() => {
 		dispatch({ type: "RESET" });
 		setPageNumber(1);
-	}, [status, searchParam, dispatch, showAll, selectedQueueIds]);
+	}, [status, searchParam, dispatch, showAll, selectedQueueIds, isGroup]);
 
 	const { tickets, hasMore, loading } = useTickets({
 		pageNumber,
@@ -171,6 +171,7 @@ const reducer = (state, action) => {
 		status,
 		showAll,
 		queueIds: JSON.stringify(selectedQueueIds),
+		isGroup
 	});
 
 	useEffect(() => {
@@ -184,9 +185,17 @@ const reducer = (state, action) => {
 	useEffect(() => {
 		const socket = openSocket();
 
-		const shouldUpdateTicket = ticket => !searchParam &&
-			(!ticket.userId || ticket.userId === user?.id || showAll) &&
-			(!ticket.queueId || selectedQueueIds.indexOf(ticket.queueId) > -1);
+		const shouldUpdateTicket = ticket => {
+			// Check if ticket is group based on contact or root prop
+			const ticketIsGroup = ticket.contact?.isGroup || ticket.contact?.number?.includes("g.us") || ticket.isGroup;
+			// Filter based on isGroup prop
+			const groupMatch = isGroup === "true" ? ticketIsGroup : !ticketIsGroup;
+
+			return !searchParam &&
+				(!ticket.userId || ticket.userId === user?.id || showAll) &&
+				(!ticket.queueId || selectedQueueIds.indexOf(ticket.queueId) > -1) &&
+				groupMatch;
+		}
 
 		const notBelongsToUserQueues = ticket =>
 			ticket.queueId && selectedQueueIds.indexOf(ticket.queueId) === -1;
@@ -244,14 +253,32 @@ const reducer = (state, action) => {
 		return () => {
 			socket.disconnect();
 		};
-	}, [status, searchParam, showAll, user, selectedQueueIds]);
+	}, [status, searchParam, showAll, user, selectedQueueIds, isGroup]);
+
+	// Apply filter consistently for Render AND Count
+	const filteredTickets = ticketsList.filter(ticket => {
+		const contactNumber = ticket.contact?.number?.toLowerCase() || "";
+		const contactName = ticket.contact?.name?.toLowerCase() || "";
+
+		const isGroupTicket =
+			ticket.isGroup ||
+			ticket.contact?.isGroup ||
+			contactNumber.includes("g.us") ||
+			contactName.includes("g.us");
+
+		if (isGroup === "true") {
+			return isGroupTicket;
+		} else {
+			return !isGroupTicket; // true if NOT group
+		}
+	});
 
 	useEffect(() => {
-    if (typeof updateCount === "function") {
-      updateCount(ticketsList.length);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticketsList]);
+		if (typeof updateCount === "function") {
+			updateCount(filteredTickets.length);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [filteredTickets.length]);
 
 	const loadMore = () => {
 		setPageNumber(prevState => prevState + 1);
@@ -269,7 +296,7 @@ const reducer = (state, action) => {
 	};
 
 	return (
-    <Paper className={classes.ticketsListWrapper} style={style}>
+		<Paper className={classes.ticketsListWrapper} style={style}>
 			<Paper
 				square
 				name="closed"
@@ -278,7 +305,7 @@ const reducer = (state, action) => {
 				onScroll={handleScroll}
 			>
 				<List style={{ paddingTop: 0 }}>
-					{ticketsList.length === 0 && !loading ? (
+					{filteredTickets.length === 0 && !loading ? (
 						<div className={classes.noTicketsDiv}>
 							<span className={classes.noTicketsTitle}>
 								{i18n.t("ticketsList.noTicketsTitle")}
@@ -289,7 +316,7 @@ const reducer = (state, action) => {
 						</div>
 					) : (
 						<>
-							{ticketsList.map(ticket => (
+							{filteredTickets.map(ticket => (
 								<TicketListItem ticket={ticket} key={ticket.id} />
 							))}
 						</>
@@ -297,7 +324,7 @@ const reducer = (state, action) => {
 					{loading && <TicketsListSkeleton />}
 				</List>
 			</Paper>
-    </Paper>
+		</Paper>
 	);
 };
 

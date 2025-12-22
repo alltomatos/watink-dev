@@ -1,21 +1,22 @@
 import React, { useState, useCallback, useContext } from "react";
 import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
+import { useHistory } from "react-router-dom";
 
 import { makeStyles } from "@material-ui/core/styles";
 import { green } from "@material-ui/core/colors";
 import {
 	Button,
-	TableBody,
-	TableRow,
-	TableCell,
 	IconButton,
-	Table,
-	TableHead,
 	Paper,
-	Tooltip,
 	Typography,
 	CircularProgress,
+	Grid,
+	Card,
+	CardContent,
+	CardActions,
+	CardActionArea,
+	Box
 } from "@material-ui/core";
 import {
 	Edit,
@@ -31,12 +32,10 @@ import MainContainer from "../../components/MainContainer";
 import MainHeader from "../../components/MainHeader";
 import MainHeaderButtonsWrapper from "../../components/MainHeaderButtonsWrapper";
 import Title from "../../components/Title";
-import TableRowSkeleton from "../../components/TableRowSkeleton";
 
 import api from "../../services/api";
 import WhatsAppModal from "../../components/WhatsAppModal";
 import ConfirmationModal from "../../components/ConfirmationModal";
-import QrcodeModal from "../../components/QrcodeModal";
 import { i18n } from "../../translate/i18n";
 import { WhatsAppsContext } from "../../context/WhatsApp/WhatsAppsContext";
 import toastError from "../../errors/toastError";
@@ -48,56 +47,31 @@ const useStyles = makeStyles(theme => ({
 		overflowY: "scroll",
 		...theme.scrollbarStyles,
 	},
-	customTableCell: {
-		display: "flex",
-		alignItems: "center",
-		justifyContent: "center",
+	card: {
+		height: '100%',
+		display: 'flex',
+		flexDirection: 'column',
+		position: 'relative'
 	},
-	tooltip: {
-		backgroundColor: "#f5f5f9",
-		color: "rgba(0, 0, 0, 0.87)",
-		fontSize: theme.typography.pxToRem(14),
-		border: "1px solid #dadde9",
-		maxWidth: 450,
+	cardContent: {
+		flexGrow: 1,
 	},
-	tooltipPopper: {
-		textAlign: "center",
+	statusIcon: {
+		position: 'absolute',
+		top: theme.spacing(1),
+		right: theme.spacing(1),
 	},
-	buttonProgress: {
-		color: green[500],
-	},
+	cardActions: {
+		justifyContent: 'flex-end',
+	}
 }));
-
-const CustomToolTip = ({ title, content, children }) => {
-	const classes = useStyles();
-
-	return (
-		<Tooltip
-			arrow
-			classes={{
-				tooltip: classes.tooltip,
-				popper: classes.tooltipPopper,
-			}}
-			title={
-				<React.Fragment>
-					<Typography gutterBottom color="inherit">
-						{title}
-					</Typography>
-					{content && <Typography>{content}</Typography>}
-				</React.Fragment>
-			}
-		>
-			{children}
-		</Tooltip>
-	);
-};
 
 const Connections = () => {
 	const classes = useStyles();
+	const history = useHistory();
 
 	const { whatsApps, loading } = useContext(WhatsAppsContext);
 	const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
-	const [qrModalOpen, setQrModalOpen] = useState(false);
 	const [selectedWhatsApp, setSelectedWhatsApp] = useState(null);
 	const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 	const confirmationModalInitialState = {
@@ -111,22 +85,6 @@ const Connections = () => {
 		confirmationModalInitialState
 	);
 
-	const handleStartWhatsAppSession = async whatsAppId => {
-		try {
-			await api.post(`/whatsappsession/${whatsAppId}`);
-		} catch (err) {
-			toastError(err);
-		}
-	};
-
-	const handleRequestNewQrCode = async whatsAppId => {
-		try {
-			await api.put(`/whatsappsession/${whatsAppId}`);
-		} catch (err) {
-			toastError(err);
-		}
-	};
-
 	const handleOpenWhatsAppModal = () => {
 		setSelectedWhatsApp(null);
 		setWhatsAppModalOpen(true);
@@ -137,22 +95,14 @@ const Connections = () => {
 		setSelectedWhatsApp(null);
 	}, [setSelectedWhatsApp, setWhatsAppModalOpen]);
 
-	const handleOpenQrModal = whatsApp => {
-		setSelectedWhatsApp(whatsApp);
-		setQrModalOpen(true);
-	};
-
-	const handleCloseQrModal = useCallback(() => {
-		setSelectedWhatsApp(null);
-		setQrModalOpen(false);
-	}, [setQrModalOpen, setSelectedWhatsApp]);
-
-	const handleEditWhatsApp = whatsApp => {
+	const handleEditWhatsApp = (e, whatsApp) => {
+		e.stopPropagation();
 		setSelectedWhatsApp(whatsApp);
 		setWhatsAppModalOpen(true);
 	};
 
-	const handleOpenConfirmationModal = (action, whatsAppId) => {
+	const handleOpenConfirmationModal = (e, action, whatsAppId) => {
+		e.stopPropagation();
 		if (action === "disconnect") {
 			setConfirmModalInfo({
 				action: action,
@@ -194,99 +144,26 @@ const Connections = () => {
 		setConfirmModalInfo(confirmationModalInitialState);
 	};
 
-	const renderActionButtons = whatsApp => {
-		return (
-			<>
-				{whatsApp.status === "qrcode" && (
-					<Button
-						size="small"
-						variant="contained"
-						color="primary"
-						onClick={() => handleOpenQrModal(whatsApp)}
-					>
-						{i18n.t("connections.buttons.qrcode")}
-					</Button>
-				)}
-				{whatsApp.status === "DISCONNECTED" && (
-					<>
-						<Button
-							size="small"
-							variant="outlined"
-							color="primary"
-							onClick={() => handleStartWhatsAppSession(whatsApp.id)}
-						>
-							{i18n.t("connections.buttons.tryAgain")}
-						</Button>{" "}
-						<Button
-							size="small"
-							variant="outlined"
-							color="secondary"
-							onClick={() => handleRequestNewQrCode(whatsApp.id)}
-						>
-							{i18n.t("connections.buttons.newQr")}
-						</Button>
-					</>
-				)}
-				{(whatsApp.status === "CONNECTED" ||
-					whatsApp.status === "PAIRING" ||
-					whatsApp.status === "TIMEOUT") && (
-					<Button
-						size="small"
-						variant="outlined"
-						color="secondary"
-						onClick={() => {
-							handleOpenConfirmationModal("disconnect", whatsApp.id);
-						}}
-					>
-						{i18n.t("connections.buttons.disconnect")}
-					</Button>
-				)}
-				{whatsApp.status === "OPENING" && (
-					<Button size="small" variant="outlined" disabled color="default">
-						{i18n.t("connections.buttons.connecting")}
-					</Button>
-				)}
-			</>
-		);
+	const renderStatusIcon = status => {
+		switch (status) {
+			case "DISCONNECTED":
+				return <SignalCellularConnectedNoInternet0Bar color="secondary" />;
+			case "OPENING":
+				return <CircularProgress size={24} />;
+			case "qrcode":
+				return <CropFree />;
+			case "CONNECTED":
+				return <SignalCellular4Bar style={{ color: green[500] }} />;
+			case "TIMEOUT":
+			case "PAIRING":
+				return <SignalCellularConnectedNoInternet2Bar color="secondary" />;
+			default:
+				return null;
+		}
 	};
 
-	const renderStatusToolTips = whatsApp => {
-		return (
-			<div className={classes.customTableCell}>
-				{whatsApp.status === "DISCONNECTED" && (
-					<CustomToolTip
-						title={i18n.t("connections.toolTips.disconnected.title")}
-						content={i18n.t("connections.toolTips.disconnected.content")}
-					>
-						<SignalCellularConnectedNoInternet0Bar color="secondary" />
-					</CustomToolTip>
-				)}
-				{whatsApp.status === "OPENING" && (
-					<CircularProgress size={24} className={classes.buttonProgress} />
-				)}
-				{whatsApp.status === "qrcode" && (
-					<CustomToolTip
-						title={i18n.t("connections.toolTips.qrcode.title")}
-						content={i18n.t("connections.toolTips.qrcode.content")}
-					>
-						<CropFree />
-					</CustomToolTip>
-				)}
-				{whatsApp.status === "CONNECTED" && (
-					<CustomToolTip title={i18n.t("connections.toolTips.connected.title")}>
-						<SignalCellular4Bar style={{ color: green[500] }} />
-					</CustomToolTip>
-				)}
-				{(whatsApp.status === "TIMEOUT" || whatsApp.status === "PAIRING") && (
-					<CustomToolTip
-						title={i18n.t("connections.toolTips.timeout.title")}
-						content={i18n.t("connections.toolTips.timeout.content")}
-					>
-						<SignalCellularConnectedNoInternet2Bar color="secondary" />
-					</CustomToolTip>
-				)}
-			</div>
-		);
+	const handleCardClick = (whatsappId) => {
+		history.push(`/connections/${whatsappId}`);
 	};
 
 	return (
@@ -299,16 +176,13 @@ const Connections = () => {
 			>
 				{confirmModalInfo.message}
 			</ConfirmationModal>
-			<QrcodeModal
-				open={qrModalOpen}
-				onClose={handleCloseQrModal}
-				whatsAppId={!whatsAppModalOpen && selectedWhatsApp?.id}
-			/>
+
 			<WhatsAppModal
 				open={whatsAppModalOpen}
 				onClose={handleCloseWhatsAppModal}
-				whatsAppId={!qrModalOpen && selectedWhatsApp?.id}
+				whatsAppId={selectedWhatsApp?.id}
 			/>
+
 			<MainHeader>
 				<Title>{i18n.t("connections.title")}</Title>
 				<MainHeaderButtonsWrapper>
@@ -321,79 +195,60 @@ const Connections = () => {
 					</Button>
 				</MainHeaderButtonsWrapper>
 			</MainHeader>
-			<Paper className={classes.mainPaper} variant="outlined">
-				<Table size="small">
-					<TableHead>
-						<TableRow>
-							<TableCell align="center">
-								{i18n.t("connections.table.name")}
-							</TableCell>
-							<TableCell align="center">
-								{i18n.t("connections.table.status")}
-							</TableCell>
-							<TableCell align="center">
-								{i18n.t("connections.table.session")}
-							</TableCell>
-							<TableCell align="center">
-								{i18n.t("connections.table.lastUpdate")}
-							</TableCell>
-							<TableCell align="center">
-								{i18n.t("connections.table.default")}
-							</TableCell>
-							<TableCell align="center">
-								{i18n.t("connections.table.actions")}
-							</TableCell>
-						</TableRow>
-					</TableHead>
-					<TableBody>
-						{loading ? (
-							<TableRowSkeleton />
-						) : (
-							<>
-								{whatsApps?.length > 0 &&
-									whatsApps.map(whatsApp => (
-										<TableRow key={whatsApp.id}>
-											<TableCell align="center">{whatsApp.name}</TableCell>
-											<TableCell align="center">
-												{renderStatusToolTips(whatsApp)}
-											</TableCell>
-											<TableCell align="center">
-												{renderActionButtons(whatsApp)}
-											</TableCell>
-											<TableCell align="center">
-												{format(parseISO(whatsApp.updatedAt), "dd/MM/yy HH:mm")}
-											</TableCell>
-											<TableCell align="center">
-												{whatsApp.isDefault && (
-													<div className={classes.customTableCell}>
-														<CheckCircle style={{ color: green[500] }} />
-													</div>
-												)}
-											</TableCell>
-											<TableCell align="center">
-												<IconButton
-													size="small"
-													onClick={() => handleEditWhatsApp(whatsApp)}
-												>
-													<Edit />
-												</IconButton>
 
-												<IconButton
-													size="small"
-													onClick={e => {
-														handleOpenConfirmationModal("delete", whatsApp.id);
-													}}
-												>
-													<DeleteOutline />
-												</IconButton>
-											</TableCell>
-										</TableRow>
-									))}
-							</>
-						)}
-					</TableBody>
-				</Table>
-			</Paper>
+			<Box className={classes.mainPaper}>
+				{loading ? (
+					<Box display="flex" justifyContent="center" mt={4}>
+						<CircularProgress />
+					</Box>
+				) : (
+					<Grid container spacing={3}>
+						{whatsApps?.length > 0 &&
+							whatsApps.map(whatsApp => (
+								<Grid item xs={12} sm={6} md={4} key={whatsApp.id}>
+									<Card className={classes.card} variant="outlined">
+										<CardActionArea onClick={() => handleCardClick(whatsApp.id)}>
+											<Box className={classes.statusIcon}>
+												{renderStatusIcon(whatsApp.status)}
+											</Box>
+											<CardContent className={classes.cardContent}>
+												<Typography variant="h6" component="h2" gutterBottom>
+													{whatsApp.name}
+												</Typography>
+												<Typography variant="body2" color="textSecondary">
+													Status: {whatsApp.status}
+												</Typography>
+												<Typography variant="body2" color="textSecondary">
+													{i18n.t("connections.table.lastUpdate")}: {whatsApp.updatedAt ? format(parseISO(whatsApp.updatedAt), "dd/MM/yy HH:mm") : "N/A"}
+												</Typography>
+												{whatsApp.isDefault && (
+													<Box display="flex" alignItems="center" mt={1}>
+														<CheckCircle style={{ color: green[500], fontSize: 16, marginRight: 4 }} />
+														<Typography variant="caption">{i18n.t("connections.table.default")}</Typography>
+													</Box>
+												)}
+											</CardContent>
+										</CardActionArea>
+										<CardActions className={classes.cardActions}>
+											<IconButton
+												size="small"
+												onClick={(e) => handleEditWhatsApp(e, whatsApp)}
+											>
+												<Edit />
+											</IconButton>
+											<IconButton
+												size="small"
+												onClick={(e) => handleOpenConfirmationModal(e, "delete", whatsApp.id)}
+											>
+												<DeleteOutline />
+											</IconButton>
+										</CardActions>
+									</Card>
+								</Grid>
+							))}
+					</Grid>
+				)}
+			</Box>
 		</MainContainer>
 	);
 };

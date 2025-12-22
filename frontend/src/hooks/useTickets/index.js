@@ -12,6 +12,7 @@ const useTickets = ({
     showAll,
     queueIds,
     withUnreadMessages,
+    isGroup,
 }) => {
     const [loading, setLoading] = useState(true);
     const [hasMore, setHasMore] = useState(false);
@@ -21,7 +22,7 @@ const useTickets = ({
     useEffect(() => {
         setLoading(true);
         const delayDebounceFn = setTimeout(() => {
-            const fetchTickets = async() => {
+            const fetchTickets = async () => {
                 try {
                     const { data } = await api.get("/tickets", {
                         params: {
@@ -32,11 +33,12 @@ const useTickets = ({
                             showAll,
                             queueIds,
                             withUnreadMessages,
+                            isGroup,
                         },
                     })
                     setTickets(data.tickets)
 
-                    let horasFecharAutomaticamente = getHoursCloseTicketsAuto(); 
+                    let horasFecharAutomaticamente = getHoursCloseTicketsAuto();
 
                     if (status === "open" && horasFecharAutomaticamente && horasFecharAutomaticamente !== "" &&
                         horasFecharAutomaticamente !== "0" && Number(horasFecharAutomaticamente) > 0) {
@@ -62,7 +64,7 @@ const useTickets = ({
                 }
             }
 
-            const closeTicket = async(ticket) => {
+            const closeTicket = async (ticket) => {
                 await api.put(`/tickets/${ticket.id}`, {
                     status: "closed",
                     userId: ticket.userId || null,
@@ -80,6 +82,7 @@ const useTickets = ({
         showAll,
         queueIds,
         withUnreadMessages,
+        isGroup,
     ])
 
     return { tickets, loading, hasMore, count };

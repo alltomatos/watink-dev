@@ -6,22 +6,24 @@ import UpdateWhatsAppService from "../services/WhatsappService/UpdateWhatsAppSer
 
 const store = async (req: Request, res: Response): Promise<Response> => {
   const { whatsappId } = req.params;
+  const { usePairingCode, phoneNumber } = req.body;
   const whatsapp = await ShowWhatsAppService(whatsappId);
 
-  StartWhatsAppSession(whatsapp);
+  StartWhatsAppSession(whatsapp, usePairingCode, phoneNumber);
 
   return res.status(200).json({ message: "Starting session." });
 };
 
 const update = async (req: Request, res: Response): Promise<Response> => {
   const { whatsappId } = req.params;
+  const { usePairingCode, phoneNumber } = req.body;
 
   const { whatsapp } = await UpdateWhatsAppService({
     whatsappId,
     whatsappData: { session: "" }
   });
 
-  StartWhatsAppSession(whatsapp);
+  StartWhatsAppSession(whatsapp, usePairingCode, phoneNumber);
 
   return res.status(200).json({ message: "Starting session." });
 };

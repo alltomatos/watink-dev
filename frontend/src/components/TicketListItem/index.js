@@ -241,7 +241,6 @@ const TicketListItem = ({ ticket }) => {
 								component="span"
 								variant="body2"
 								color="textSecondary"
-								className={clsx({ [classes.contactLastMessage]: true })}
 							>
 								{ticket.lastMessage ? (
 									<MarkdownWrapper>{ticket.lastMessage}</MarkdownWrapper>
