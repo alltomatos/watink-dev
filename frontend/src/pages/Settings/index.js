@@ -122,35 +122,34 @@ const Settings = () => {
 	const [logoEnabled, setLogoEnabled] = useState(true);
 	const [faviconPreview, setFaviconPreview] = useState(null);
 
+	const [loginImagePreview, setLoginImagePreview] = useState(null);
+	const [loginLayout, setLoginLayout] = useState("split_left");
+
 	useEffect(() => {
 		const fetchSession = async () => {
 			try {
 				const { data } = await api.get("/settings");
 				setSettings(data);
 
-				// Get system title if exists
 				const titleSetting = data.find(s => s.key === "systemTitle");
-				if (titleSetting) {
-					setSystemTitle(titleSetting.value);
-				}
+				if (titleSetting) setSystemTitle(titleSetting.value);
 
-				// Get system logo if exists
 				const logoSetting = data.find(s => s.key === "systemLogo");
-				if (logoSetting && logoSetting.value) {
-					setLogoPreview(logoSetting.value);
-				}
+				if (logoSetting && logoSetting.value) setLogoPreview(logoSetting.value);
 
-				// Get logo enabled setting
 				const logoEnabledSetting = data.find(s => s.key === "systemLogoEnabled");
-				if (logoEnabledSetting) {
-					setLogoEnabled(logoEnabledSetting.value === "true");
-				}
+				if (logoEnabledSetting) setLogoEnabled(logoEnabledSetting.value === "true");
 
-				// Get system favicon if exists
 				const faviconSetting = data.find(s => s.key === "systemFavicon");
-				if (faviconSetting && faviconSetting.value) {
-					setFaviconPreview(faviconSetting.value);
-				}
+				if (faviconSetting && faviconSetting.value) setFaviconPreview(faviconSetting.value);
+
+				// Login Settings
+				const loginImageSetting = data.find(s => s.key === "login_backgroundImage");
+				if (loginImageSetting && loginImageSetting.value) setLoginImagePreview(loginImageSetting.value);
+
+				const loginLayoutSetting = data.find(s => s.key === "login_layout");
+				if (loginLayoutSetting) setLoginLayout(loginLayoutSetting.value || "split_left");
+
 			} catch (err) {
 				toastError(err);
 			}
@@ -195,9 +194,7 @@ const Settings = () => {
 
 	const handleSaveTitle = async () => {
 		try {
-			await api.put("/settings/systemTitle", {
-				value: systemTitle,
-			});
+			await api.put("/settings/systemTitle", { value: systemTitle });
 			toast.success("Título atualizado com sucesso!");
 		} catch (err) {
 			toastError(err);
@@ -226,9 +223,7 @@ const Settings = () => {
 		const newValue = !logoEnabled;
 		setLogoEnabled(newValue);
 		try {
-			await api.put("/settings/systemLogoEnabled", {
-				value: newValue ? "true" : "false",
-			});
+			await api.put("/settings/systemLogoEnabled", { value: newValue ? "true" : "false" });
 			toast.success(newValue ? "Logo ativada!" : "Logo desativada!");
 		} catch (err) {
 			toastError(err);
@@ -237,9 +232,7 @@ const Settings = () => {
 
 	const handleRemoveLogo = async () => {
 		try {
-			await api.put("/settings/systemLogo", {
-				value: "",
-			});
+			await api.put("/settings/systemLogo", { value: "" });
 			setLogoPreview(null);
 			toast.success("Logo removida com sucesso!");
 		} catch (err) {
@@ -260,7 +253,6 @@ const Settings = () => {
 			});
 			setFaviconPreview(data.faviconUrl);
 			toast.success("Favicon atualizado com sucesso!");
-			// Update browser favicon dynamically
 			const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
 			link.rel = 'icon';
 			link.href = `${getBackendUrl()}${data.faviconUrl}`;
@@ -272,11 +264,49 @@ const Settings = () => {
 
 	const handleRemoveFavicon = async () => {
 		try {
-			await api.put("/settings/systemFavicon", {
-				value: "",
-			});
+			await api.put("/settings/systemFavicon", { value: "" });
 			setFaviconPreview(null);
 			toast.success("Favicon removido com sucesso!");
+		} catch (err) {
+			toastError(err);
+		}
+	};
+
+	// New Handlers for Login Settings
+	const handleLoginImageUpload = async (e) => {
+		const file = e.target.files[0];
+		if (!file) return;
+
+		const formData = new FormData();
+		formData.append("loginImage", file);
+
+		try {
+			const { data } = await api.post("/settings/loginImage", formData, {
+				headers: { "Content-Type": "multipart/form-data" },
+			});
+			setLoginImagePreview(data.imageUrl);
+			toast.success("Imagem de fundo atualizada com sucesso!");
+		} catch (err) {
+			toastError(err);
+		}
+	};
+
+	const handleRemoveLoginImage = async () => {
+		try {
+			await api.put("/settings/login_backgroundImage", { value: "" });
+			setLoginImagePreview(null);
+			toast.success("Imagem de fundo removida!");
+		} catch (err) {
+			toastError(err);
+		}
+	};
+
+	const handleLoginLayoutChange = async (e) => {
+		const layout = e.target.value;
+		setLoginLayout(layout);
+		try {
+			await api.put("/settings/login_layout", { value: layout });
+			toast.success("Layout de login atualizado!");
 		} catch (err) {
 			toastError(err);
 		}
@@ -354,6 +384,7 @@ const Settings = () => {
 				Personalização
 			</Typography>
 
+			{/* System Title */}
 			<Paper className={classes.paper} style={{ flexDirection: "column", alignItems: "stretch" }}>
 				<Typography variant="body1" gutterBottom>
 					Título do Sistema
@@ -379,7 +410,7 @@ const Settings = () => {
 				</Box>
 			</Paper>
 
-			{/* Logo and Favicon Cards Side by Side */}
+			{/* Logo and Favicon */}
 			<Box display="flex" gap={2} flexWrap="wrap">
 				<Paper className={classes.paper} style={{ flexDirection: "column", alignItems: "stretch", flex: 1, minWidth: 280 }}>
 					<Box display="flex" justifyContent="space-between" alignItems="center">
@@ -388,7 +419,7 @@ const Settings = () => {
 								Logo do Sistema
 							</Typography>
 							<Typography variant="body2" color="textSecondary">
-								A logo será exibida no topo do menu lateral
+								Exibida no topo do menu lateral
 							</Typography>
 						</Box>
 						<FormControlLabel
@@ -422,18 +453,13 @@ const Settings = () => {
 								<CloudUploadIcon style={{ fontSize: 48, color: "#9ca3af" }} />
 							)}
 							<Typography variant="body2" color="textSecondary">
-								{logoPreview ? "Clique para alterar a logo" : "Clique para fazer upload da logo"}
+								{logoPreview ? "Clique para alterar" : "Clique para upload"}
 							</Typography>
 						</Box>
 					</label>
 					{logoPreview && (
 						<Box mt={2} display="flex" justifyContent="center">
-							<Button
-								variant="outlined"
-								color="secondary"
-								startIcon={<DeleteIcon />}
-								onClick={handleRemoveLogo}
-							>
+							<Button variant="outlined" color="secondary" startIcon={<DeleteIcon />} onClick={handleRemoveLogo}>
 								Remover Logo
 							</Button>
 						</Box>
@@ -445,7 +471,7 @@ const Settings = () => {
 						Favicon do Sistema
 					</Typography>
 					<Typography variant="body2" color="textSecondary">
-						O favicon é o ícone exibido na aba do navegador
+						Ícone da aba do navegador
 					</Typography>
 					<input
 						accept="image/*"
@@ -466,24 +492,93 @@ const Settings = () => {
 								<CloudUploadIcon style={{ fontSize: 48, color: "#9ca3af" }} />
 							)}
 							<Typography variant="body2" color="textSecondary">
-								{faviconPreview ? "Clique para alterar o favicon" : "Clique para fazer upload do favicon"}
+								{faviconPreview ? "Clique para alterar" : "Clique para upload"}
 							</Typography>
 						</Box>
 					</label>
 					{faviconPreview && (
 						<Box mt={2} display="flex" justifyContent="center">
-							<Button
-								variant="outlined"
-								color="secondary"
-								startIcon={<DeleteIcon />}
-								onClick={handleRemoveFavicon}
-							>
+							<Button variant="outlined" color="secondary" startIcon={<DeleteIcon />} onClick={handleRemoveFavicon}>
 								Remover Favicon
 							</Button>
 						</Box>
 					)}
 				</Paper>
 			</Box>
+
+			{/* Login Customization Card */}
+			<Typography variant="h5" className={classes.sectionTitle} style={{ marginTop: 24 }}>
+				Tela de Login
+			</Typography>
+			<Paper className={classes.paper} style={{ flexDirection: "column", alignItems: "stretch" }}>
+				<Box display="flex" flexDirection="column" gap={2}>
+
+					{/* Layout Selector */}
+					<Box mb={2}>
+						<Typography variant="body1" gutterBottom style={{ fontWeight: 600 }}>
+							Posição do Formulário
+						</Typography>
+						<Select
+							margin="dense"
+							variant="outlined"
+							native
+							id="login-layout-setting"
+							value={loginLayout}
+							onChange={handleLoginLayoutChange}
+							fullWidth
+						>
+							<option value="split_left">Formulário à Esquerda / Imagem à Direita</option>
+							<option value="split_right">Formulário à Direita / Imagem à Esquerda</option>
+							<option value="centered">Formulário Centralizado / Fundo Completo</option>
+						</Select>
+					</Box>
+
+					<Divider />
+
+					{/* Image Upload */}
+					<Box mt={2}>
+						<Typography variant="body1" gutterBottom style={{ fontWeight: 600 }}>
+							Imagem de Destaque / Fundo
+						</Typography>
+						<Typography variant="body2" color="textSecondary">
+							Escolha uma imagem para ser o destaque da tela de login.
+							<br />
+							<strong>Recomendado:</strong> 1920x1080px (Full HD), máximo 2MB.
+						</Typography>
+
+						<input
+							accept="image/*"
+							className={classes.hiddenInput}
+							id="login-image-upload"
+							type="file"
+							onChange={handleLoginImageUpload}
+						/>
+						<label htmlFor="login-image-upload">
+							<Box className={classes.uploadBox}>
+								{loginImagePreview ? (
+									<img
+										src={`${getBackendUrl()}${loginImagePreview.startsWith('/') ? loginImagePreview.slice(1) : loginImagePreview}`}
+										alt="Login Background"
+										style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain' }}
+									/>
+								) : (
+									<CloudUploadIcon style={{ fontSize: 48, color: "#9ca3af" }} />
+								)}
+								<Typography variant="body2" color="textSecondary" style={{ marginTop: 8 }}>
+									{loginImagePreview ? "Clique para trocar a imagem" : "Clique para fazer upload da imagem de fundo"}
+								</Typography>
+							</Box>
+						</label>
+						{loginImagePreview && (
+							<Box mt={2} display="flex" justifyContent="center">
+								<Button variant="outlined" color="secondary" startIcon={<DeleteIcon />} onClick={handleRemoveLoginImage}>
+									Remover Imagem
+								</Button>
+							</Box>
+						)}
+					</Box>
+				</Box>
+			</Paper>
 		</>
 	);
 

@@ -22,4 +22,7 @@ settingRoutes.post("/settings/logo", isAuth, upload.single("logo"), SettingContr
 // Favicon upload route
 settingRoutes.post("/settings/favicon", isAuth, upload.single("favicon"), SettingController.uploadFavicon);
 
+// Login Image upload route
+settingRoutes.post("/settings/loginImage", isAuth, upload.single("loginImage"), SettingController.uploadLoginImage);
+
 export default settingRoutes;
