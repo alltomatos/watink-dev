@@ -17,6 +17,7 @@ const useStyles = makeStyles((theme) => ({
 const VersionFooter = () => {
     const classes = useStyles();
     const [backendVersion, setBackendVersion] = useState("-");
+    const [engineVersion, setEngineVersion] = useState("-");
     const frontendVersion = process.env.npm_package_version || "0.1.0";
 
     useEffect(() => {
@@ -24,6 +25,7 @@ const VersionFooter = () => {
             try {
                 const { data } = await api.get("/version");
                 setBackendVersion(data.version);
+                setEngineVersion(data.engineVersion);
             } catch (err) {
                 console.error("Failed to fetch backend version", err);
             }
@@ -34,7 +36,7 @@ const VersionFooter = () => {
     return (
         <div className={classes.footer}>
             <Typography variant="caption" display="block">
-                Front: v{frontendVersion} | Back: v{backendVersion}
+                Front: v{frontendVersion} | Back: v{backendVersion} | Engine: v{engineVersion}
             </Typography>
         </div>
     );

@@ -25,6 +25,7 @@ services:
       - PROXY_PORT=${PROXY_PORT:-8080}
       - CHROME_ARGS=--no-sandbox --disable-setuid-sandbox
       - AMQP_URL=${AMQP_URL:-amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672}
+      - ENGINE_VERSION=1.0.1
       - PORT=8080
     ports:
       - ${BACKEND_PORT:-8080}:8080
