@@ -69,7 +69,7 @@ const useStyles = makeStyles((theme) => ({
     flex: 1,
     border: "none",
     borderRadius: 30,
-    color: theme.palette.text.primary, 
+    color: theme.palette.text.primary,
     backgroundColor: theme.palette.background.default,
   },
   badge: {
@@ -94,6 +94,7 @@ const TicketsManager = () => {
   const { user } = useContext(AuthContext);
   const [openCount, setOpenCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
+  const [groupsCount, setGroupsCount] = useState(0);
   const userQueueIds = user.queues.map((q) => q.id);
   const [selectedQueueIds, setSelectedQueueIds] = useState(userQueueIds || []);
 
@@ -176,6 +177,7 @@ const TicketsManager = () => {
             label={i18n.t("tickets.tabs.search.title")}
             classes={{ root: classes.tab }}
           />
+
         </Tabs>
       </Paper>
       <Paper square elevation={0} className={classes.ticketOptionsBox}>
@@ -261,6 +263,18 @@ const TicketsManager = () => {
             }
             value={"pending"}
           />
+          <Tab
+            label={
+              <Badge
+                className={classes.badge}
+                badgeContent={groupsCount}
+                color="secondary"
+              >
+                {i18n.t("tickets.tabs.group.title") || "Grupos"}
+              </Badge>
+            }
+            value={"groups"}
+          />
         </Tabs>
         <Paper className={classes.ticketsWrapper}>
           <TicketsList
@@ -269,12 +283,22 @@ const TicketsManager = () => {
             selectedQueueIds={selectedQueueIds}
             updateCount={(val) => setOpenCount(val)}
             style={applyPanelStyle("open")}
+            isGroup="false"
           />
           <TicketsList
             status="pending"
             selectedQueueIds={selectedQueueIds}
             updateCount={(val) => setPendingCount(val)}
             style={applyPanelStyle("pending")}
+            isGroup="false"
+          />
+          <TicketsList
+            status="open"
+            showAll={showAllTickets}
+            selectedQueueIds={selectedQueueIds}
+            updateCount={(val) => setGroupsCount(val)}
+            isGroup="true"
+            style={applyPanelStyle("groups")}
           />
         </Paper>
       </TabPanel>
@@ -292,6 +316,7 @@ const TicketsManager = () => {
           selectedQueueIds={selectedQueueIds}
         />
       </TabPanel>
+
     </Paper>
   );
 };

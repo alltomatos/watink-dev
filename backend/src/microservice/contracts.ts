@@ -8,15 +8,23 @@ export interface Envelope<T = any> {
 
 // --- COMMANDS (Backend -> Engine) ---
 
-export type CommandType = 
+export type CommandType =
   | "session.start"
   | "session.stop"
   | "message.send.text"
-  | "message.send.media";
+  | "message.send.media"
+  | "message.send.buttons"
+  | "message.send.list"
+  | "message.send.poll"
+  | "message.send.template"
+  | "message.send.interactive"
+  | "message.send.carousel";
 
 export interface StartSessionPayload {
   sessionId: number;
   sessionToken?: string;
+  usePairingCode?: boolean;  // true = usar código, false = usar QR
+  phoneNumber?: string;       // Formato E.164 sem +: 5511999999999
 }
 
 export interface StopSessionPayload {
@@ -43,18 +51,117 @@ export interface SendMediaPayload {
   };
 }
 
+export interface SendButtonsPayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttons: Array<{
+    buttonId: string;
+    buttonText: string;
+  }>;
+  imageUrl?: string;
+}
+
+export interface SendListPayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttonText: string;
+  sections: Array<{
+    title: string;
+    rows: Array<{
+      rowId: string;
+      title: string;
+      description?: string;
+    }>;
+  }>;
+}
+
+export interface SendPollPayload {
+  sessionId: number;
+  to: string;
+  name: string;
+  options: string[];
+  selectableCount?: number;
+}
+
+// Mensagem Template (URL, Call, Reply)
+export interface SendTemplatePayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttons: Array<{
+    type: 'url' | 'call' | 'reply';
+    text: string;
+    url?: string;
+    phoneNumber?: string;
+    buttonId?: string;
+  }>;
+  mediaUrl?: string; // Imagem ou vídeo opcional no header
+}
+
+// Mensagem Interativa (Native Flow)
+export interface SendInteractivePayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttons: Array<{
+    type: 'url' | 'reply';
+    text: string;
+    url?: string;
+    buttonId?: string;
+  }>;
+  mediaUrl?: string;
+}
+
+// Carrossel Nativo
+export interface SendCarouselPayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  cards: Array<{
+    headerUrl?: string;
+    title: string;
+    body: string;
+    footer?: string;
+    buttons: Array<{
+      type: 'url' | 'reply';
+      text: string;
+      url?: string;
+      buttonId?: string;
+    }>;
+  }>;
+}
+
+
 // --- EVENTS (Engine -> Backend) ---
 
 export type EventType =
   | "session.qrcode"
+  | "session.pairingcode"
   | "session.status"
   | "message.received"
-  | "message.ack";
+  | "message.ack"
+  | "message.response.button"
+  | "message.response.list"
+  | "message.response.poll"
+  | "message.response.interactive";
+
 
 export interface QrCodePayload {
   sessionId: number;
   qrcode: string;
   attempt: number;
+}
+
+export interface PairingCodePayload {
+  sessionId: number;
+  pairingCode: string;
 }
 
 export interface SessionStatusPayload {
@@ -74,13 +181,22 @@ export interface MessageReceivedPayload {
     type: string;
     timestamp: number;
     hasMedia: boolean;
-    mediaUrl?: string; // If processed/uploaded by engine
+    mediaUrl?: string;
+    mediaData?: string; // Base64
+    mimetype?: string;
     participant?: string;
+    // Interactive fields
+    selectedButtonId?: string;
+    selectedRowId?: string;
+    pollVotes?: string[];
+    pushName?: string;
+    profilePicUrl?: string;
   };
 }
 
 export interface MessageAckPayload {
   sessionId: number;
   messageId: string;
-  ack: number; // 0: Clock, 1: Sent, 2: Received, 3: Read, 4: Played
+  ack: number;
 }
+

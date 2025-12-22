@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: whaticket/backend:latest
+    image: whaticket-premium/backend:latest
     environment:
       - DB_DIALECT=postgres
       - DB_HOST=postgres
@@ -14,12 +14,13 @@ services:
       - JWT_SECRET=***REMOVED_JWT_SECRET***
       - JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***
       - FRONTEND_URL=http://localhost
-    command: ["sh", "-c", "dockerize -wait tcp://postgres:5432 -timeout 60s && npx sequelize db:migrate && node dist/server.js"]
+      - ENGINE_VERSION=1.0.1
+      - PORT=8080
     ports:
-      - "3000:3000"
+      - "8080:8080"
     networks:
-      - whaticket_public
-      - whaticket_private
+      - whaticket-premium_public
+      - whaticket-premium_private
     deploy:
       mode: replicated
       replicas: 1
@@ -32,25 +33,25 @@ services:
           memory: 512M
 
   frontend:
-    image: whaticket/frontend:latest
+    image: whaticket-premium/frontend:latest
     environment:
-      - URL_BACKEND=backend:3000
-      - VITE_BACKEND_URL=http://localhost:3000/
+      - URL_BACKEND=backend:8080
+      - VITE_BACKEND_URL=http://localhost:8080/
       - FRONTEND_SERVER_NAME=localhost
     ports:
       - "80:80"
     networks:
-      - whaticket_public
+      - whaticket-premium_public
     deploy:
       mode: replicated
       replicas: 1
 
-  engine:
-    image: whaticket/engine:latest
+  whaileys-engine:
+    image: whaticket-premium/engine:latest
     environment:
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
     networks:
-      - whaticket_private
+      - whaticket-premium_private
     deploy:
       mode: replicated
       replicas: 1
@@ -62,7 +63,7 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     networks:
-      - whaticket_private
+      - whaticket-premium_private
     deploy:
       mode: replicated
       replicas: 1
@@ -78,7 +79,7 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     networks:
-      - whaticket_private
+      - whaticket-premium_private
     deploy:
       mode: replicated
       replicas: 1
@@ -87,9 +88,9 @@ services:
           - node.role == manager
 
 networks:
-  whaticket_public:
+  whaticket-premium_public:
     driver: overlay
-  whaticket_private:
+  whaticket-premium_private:
     driver: overlay
 
 volumes:

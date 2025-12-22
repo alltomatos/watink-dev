@@ -70,6 +70,14 @@ const messages = {
           qrcode: "QR CODE",
           newQr: "Novo QR CODE",
           connecting: "Conectando",
+          pairingCode: "Código de Pareamento",
+        },
+        pairingCodeModal: {
+          title: "Código de Pareamento",
+          instruction: "Insira o número do telefone com DDI e DDD para gerar o código.",
+          phoneNumber: "Número do Telefone (Ex: 5511999999999)",
+          generate: "Gerar Código",
+          codeInstruction: "Digite este código no seu celular quando solicitado pelo WhatsApp.",
         },
         toolTips: {
           disconnected: {
@@ -237,6 +245,7 @@ const messages = {
         },
         tabs: {
           open: { title: "Inbox" },
+          group: { title: "Grupos" },
           closed: { title: "Resolvidos" },
           search: { title: "Busca" },
         },

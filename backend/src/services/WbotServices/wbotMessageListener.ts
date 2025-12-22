@@ -33,11 +33,20 @@ interface Session extends Client {
 const writeFileAsync = promisify(writeFile);
 
 const verifyContact = async (msgContact: WbotContact): Promise<Contact> => {
-  const profilePicUrl = await msgContact.getProfilePicUrl();
+  let profilePicUrl;
+  try {
+    profilePicUrl = await msgContact.getProfilePicUrl();
+  } catch (e) {
+    profilePicUrl = undefined;
+  }
+
+  const isLid = msgContact.id.server === "lid";
+  const contactName = msgContact.name || msgContact.pushname || msgContact.id.user;
 
   const contactData = {
-    name: msgContact.name || msgContact.pushname || msgContact.id.user,
-    number: msgContact.id.user,
+    name: contactName,
+    number: isLid ? "" : msgContact.id.user,
+    lid: isLid ? msgContact.id.user : undefined,
     profilePicUrl,
     isGroup: msgContact.isGroup
   };
@@ -308,6 +317,24 @@ const handleMessage = async (
       }
 
       groupContact = await verifyContact(msgGroupContact);
+
+      // Force update group name if it looks like an ID (@g.us) OR if chat.name is available and different
+      if (groupContact) {
+        const nameIsId = groupContact.name.includes("g.us");
+        if ((nameIsId || groupContact.name !== chat.name) && chat.name) {
+          await groupContact.update({ name: chat.name });
+        }
+
+        // Retry profile pic if missing
+        if (!groupContact.profilePicUrl) {
+          try {
+            const pic = await wbot.getProfilePicUrl(groupContact.number + "@g.us");
+            if (pic) {
+              await groupContact.update({ profilePicUrl: pic });
+            }
+          } catch (e) { /* ignore */ }
+        }
+      }
     }
     const whatsapp = await ShowWhatsAppService(wbot.id!);
 

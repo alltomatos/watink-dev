@@ -34,6 +34,9 @@ export default defineConfig({
   },
   define: {
     global: "globalThis",
+    "process.env.npm_package_version": JSON.stringify(
+      process.env.npm_package_version
+    ),
   },
   optimizeDeps: {
     include: [

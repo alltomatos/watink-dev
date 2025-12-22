@@ -1,8 +1,9 @@
-# 🛠️ Guia de Desenvolvimento - Whaticket Community
+# 🛠️ Guia de Desenvolvimento - Whaticket Premium
 
-Este documento serve como referência técnica para desenvolvedores que atuam no projeto **Whaticket Community**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
+Este documento serve como referência técnica para desenvolvedores que atuam no projeto **Whaticket Premium**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
 
 > [!IMPORTANT]
+> **Leitura Complementar Obrigatória**: Consulte também [dev_micro.md](./dev_micro.md) para detalhes específicos da arquitetura de microserviços.
 > **Sempre responda e crie documentos em Português do Brasil.**
 > **Ambiente de Execução**: Todo o desenvolvimento e execução do projeto deve ser feito via **Docker Swarm**. Não rode os serviços localmente (fora de containers).
 
@@ -63,7 +64,7 @@ O backend orquestra o sistema e roda isolado em container.
 
 Workers independentes que se conectam ao WhatsApp.
 
-### Engine Standard (`engine-standard`)
+### Engine Standard (`whaileys-engine`)
 *   **Tecnologia**: Node.js / TypeScript
 *   **Lib Core**: **Whaileys**
 *   **Função**: Processamento padrão, containerizado separadamente.
@@ -74,6 +75,8 @@ Workers independentes que se conectam ao WhatsApp.
 *   **Função**: Performance extrema para alto volume.
 
 ---
+
+
 
 ## 🗄️ Banco de Dados: PostgreSQL + Extensions
 
@@ -94,7 +97,7 @@ Todo o ciclo de vida da aplicação é gerenciado via Docker Swarm.
 ### 1. Inicialização
 Para subir a stack completa:
 ```bash
-docker stack deploy -c docker-stack.yml whaticket
+docker stack deploy -c docker-stack.yml whaticket-premium
 ```
 
 ### 2. Aplicando Alterações
@@ -106,20 +109,68 @@ Como não rodamos localmente, o fluxo para refletir mudanças de código é:
     docker compose build backend
     
     # Tagging (se necessário, para bater com o stack file)
-    docker tag whaticket-community-backend:latest whaticket/backend:latest
+    docker tag whaticket-premium-backend:latest whaticket-premium/backend:latest
     
     # Atualização forçada do serviço
-    docker service update --image whaticket/backend:latest whaticket_backend --force
+    docker service update --image whaticket-premium/backend:latest whaticket-premium_backend --force
+    ```
+
+1.  **Engine (Whaileys)**:
+    ```bash
+    # Rebuild da imagem
+    docker compose build whaileys-engine
+    
+    # Tagging
+    docker tag whaticket-premium-whaileys-engine:latest whaticket-premium/engine:latest
+    
+    # Atualização forçada do serviço
+    docker service update --image whaticket-premium/engine:latest whaticket-premium_whaileys-engine --force
     ```
 
 2.  **Frontend**:
     ```bash
     docker compose build frontend
-    docker tag whaticket-community-frontend:latest whaticket/frontend:latest
-    docker service update --image whaticket/frontend:latest whaticket_frontend --force
+    docker tag whaticket-premium-frontend:latest whaticket-premium/frontend:latest
+    docker service update --image whaticket-premium/frontend:latest whaticket-premium_frontend --force
     ```
 
 ### 3. Debug & Logs
-*   **Logs**: `docker service logs -f whaticket_backend` (ou frontend, engine, etc).
-*   **Swagger**: Acesse `http://localhost:3000/docs` para testar/documentar a API.
+*   **Logs**: `docker service logs -f whaticket-premium_backend` (ou frontend, whaileys-engine, etc).
+*   **Swagger**: Acesse `http://localhost:8080/docs` para testar/documentar a API.
 *   **RabbitMQ**: `http://localhost:15672` para monitorar filas.
+
+---
+
+## 🏷️ Versionamento e Release
+
+Seguimos estritamente o **Semantic Versioning (SemVer)** (ex: `1.0.0`).
+
+### Política de Atualização
+⚠️ **REGRA OBRIGATÓRIA**: Sempre que for realizar um build de qualquer container (seja desenvolvimento ou produção), o versionamento **DEVE** ser atualizado antes. Não gere builds sem incrementar a versão (`patch`, `minor` ou `major`).
+
+1.  **Analise as Mudanças**:
+    *   **Major (X.0.0)**: Mudanças incompatíveis na API ou quebra de compatibilidade.
+    *   **Minor (0.X.0)**: Novas funcionalidades retrocompatíveis.
+    *   **Patch (0.0.X)**: Correções de bugs retrocompatíveis.
+
+2.  **Atualize o `package.json`**:
+    Use o comando npm para atualizar a versão e criar a tag git automaticamente.
+    ```bash
+    cd backend # ou frontend/whaileys-engine
+    npm version patch # ou minor/major
+    ```
+
+3.  **Build e Tag Docker**:
+    Ao construir a imagem, use a nova versão como tag, além da `latest`.
+    ```bash
+    # Exemplo para Backend v1.0.1
+    docker build -t whaticket-premium/backend:1.2.0 -t whaticket-premium/backend:latest .
+    docker push whaticket-premium/backend:1.2.0
+    docker push whaticket-premium/backend:latest
+    ```
+
+4.  **Atualize o Serviço**:
+    No ambiente de produção, fixe a versão específica para evitar atualizações acidentais, ou use `latest` em desenvolvimento.
+    ```bash
+    docker service update --image whaticket-premium/backend:1.2.0 whaticket-premium_backend
+    ```

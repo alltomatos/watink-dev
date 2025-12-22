@@ -10,15 +10,15 @@ const UpdateSettingService = async ({
   key,
   value
 }: Request): Promise<Setting | undefined> => {
-  const setting = await Setting.findOne({
+  let setting = await Setting.findOne({
     where: { key }
   });
 
   if (!setting) {
-    throw new AppError("ERR_NO_SETTING_FOUND", 404);
+    setting = await Setting.create({ key, value });
+  } else {
+    await setting.update({ value });
   }
-
-  await setting.update({ value });
 
   return setting;
 };

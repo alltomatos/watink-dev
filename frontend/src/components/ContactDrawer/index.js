@@ -12,6 +12,7 @@ import Button from "@material-ui/core/Button";
 import Paper from "@material-ui/core/Paper";
 
 import { i18n } from "../../translate/i18n";
+import api from "../../services/api";
 
 import ContactModal from "../ContactModal";
 import ContactDrawerSkeleton from "../ContactDrawerSkeleton";
@@ -123,7 +124,11 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, loading }) => {
 
 						<Typography>{contact.name}</Typography>
 						<Typography>
-							<Link href={`tel:${contact.number}`}>{contact.number}</Link>
+							{contact.number ? (
+								<Link href={`tel:${contact.number}`}>{contact.number}</Link>
+							) : (
+								<Typography variant="body2" color="textSecondary">{contact.lid}</Typography>
+							)}
 						</Typography>
 						<Button
 							variant="outlined"
@@ -131,6 +136,18 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, loading }) => {
 							onClick={() => setModalOpen(true)}
 						>
 							{i18n.t("contactDrawer.buttons.edit")}
+						</Button>
+						<Button
+							variant="outlined"
+							color="primary"
+							onClick={async () => {
+								try {
+									await api.post(`/contacts/${contact.id}/sync`);
+								} catch (e) { console.error(e); }
+							}}
+							style={{ marginLeft: 8 }}
+						>
+							Atualizar
 						</Button>
 					</Paper>
 					<Paper square variant="outlined" className={classes.contactDetails}>

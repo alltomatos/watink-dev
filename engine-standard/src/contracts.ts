@@ -1,82 +1,200 @@
 export interface Envelope<T = any> {
+  id: string;
+  timestamp: number;
+  tenantId: string | number;
+  type: string;
+  payload: T;
+}
+
+export type CommandType =
+  | "session.start"
+  | "session.stop"
+  | "message.send.text"
+  | "message.send.media"
+  | "message.send.buttons"   // NOVO: Botões simples
+  | "message.send.list"      // NOVO: Lista de opções
+  | "message.send.poll"      // NOVO: Enquete
+  | "message.send.template"  // NOVO: Template (URL/Call)
+  | "message.send.interactive" // NOVO: Native Flow (Interativo)
+  | "message.send.carousel";   // NOVO: Carrossel Nativo
+
+export interface StartSessionPayload {
+  sessionId: number;
+  sessionToken?: string;
+  usePairingCode?: boolean;
+  phoneNumber?: string;
+}
+
+export interface StopSessionPayload {
+  sessionId: number;
+}
+
+export interface SendTextPayload {
+  sessionId: number;
+  to: string;
+  body: string;
+  options?: {
+    quotedMsgId?: string;
+  };
+}
+
+export interface SendMediaPayload {
+  sessionId: number;
+  to: string;
+  caption?: string;
+  media: {
+    mimetype: string;
+    filename: string;
+    data: string;
+  };
+}
+
+// Botões simples (até 3 botões)
+export interface SendButtonsPayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttons: Array<{
+    buttonId: string;
+    buttonText: string;
+  }>;
+  imageUrl?: string;  // Opcional: adiciona imagem ao header
+}
+
+// Lista de opções com seções
+export interface SendListPayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttonText: string;  // Texto do botão "Ver opções"
+  sections: Array<{
+    title: string;
+    rows: Array<{
+      rowId: string;
+      title: string;
+      description?: string;
+    }>;
+  }>;
+}
+
+// Enquete/Poll
+export interface SendPollPayload {
+  sessionId: number;
+  to: string;
+  name: string;           // Pergunta
+  options: string[];      // Opções (2-12)
+  selectableCount?: number; // Quantas podem ser selecionadas (padrão: 1)
+}
+
+// Mensagem Template (URL, Call, Reply)
+export interface SendTemplatePayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttons: Array<{
+    type: 'url' | 'call' | 'reply';
+    text: string;
+    url?: string;
+    phoneNumber?: string;
+    buttonId?: string;
+  }>;
+  mediaUrl?: string; // Imagem ou vídeo opcional no header
+}
+
+// Mensagem Interativa (Native Flow)
+export interface SendInteractivePayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  buttons: Array<{
+    type: 'url' | 'reply';
+    text: string;
+    url?: string;
+    buttonId?: string;
+  }>;
+  mediaUrl?: string;
+}
+
+// Carrossel Nativo
+export interface SendCarouselPayload {
+  sessionId: number;
+  to: string;
+  text: string;
+  footer?: string;
+  cards: Array<{
+    headerUrl?: string;
+    title: string;
+    body: string;
+    footer?: string;
+    buttons: Array<{
+      type: 'url' | 'reply';
+      text: string;
+      url?: string;
+      buttonId?: string;
+    }>;
+  }>;
+}
+
+export type EventType =
+  | "session.qrcode"
+  | "session.pairingcode"
+  | "session.status"
+  | "message.received"
+  | "message.ack"
+  | "message.response.button"
+  | "message.response.list"
+  | "message.response.poll"
+  | "message.response.interactive";
+
+
+export interface QrCodePayload {
+  sessionId: number;
+  qrcode: string;
+  attempt: number;
+}
+
+export interface PairingCodePayload {
+  sessionId: number;
+  pairingCode: string;
+}
+
+export interface SessionStatusPayload {
+  sessionId: number;
+  status: "CONNECTED" | "DISCONNECTED" | "QRCODE" | "OPENING";
+}
+
+export interface MessageReceivedPayload {
+  sessionId: number;
+  message: {
     id: string;
-    timestamp: number;
-    tenantId: string | number;
-    type: string;
-    payload: T;
-  }
-  
-  export type CommandType = 
-    | "session.start"
-    | "session.stop"
-    | "message.send.text"
-    | "message.send.media";
-  
-  export interface StartSessionPayload {
-    sessionId: number;
-    sessionToken?: string;
-  }
-  
-  export interface StopSessionPayload {
-    sessionId: number;
-  }
-  
-  export interface SendTextPayload {
-    sessionId: number;
+    from: string;
     to: string;
     body: string;
-    options?: {
-      quotedMsgId?: string;
-    };
-  }
-  
-  export interface SendMediaPayload {
-    sessionId: number;
-    to: string;
-    caption?: string;
-    media: {
-      mimetype: string;
-      filename: string;
-      data: string; // Base64
-    };
-  }
-  
-  export type EventType =
-    | "session.qrcode"
-    | "session.status"
-    | "message.received"
-    | "message.ack";
-  
-  export interface QrCodePayload {
-    sessionId: number;
-    qrcode: string;
-    attempt: number;
-  }
-  
-  export interface SessionStatusPayload {
-    sessionId: number;
-    status: "CONNECTED" | "DISCONNECTED" | "QRCODE" | "OPENING";
-  }
-  
-  export interface MessageReceivedPayload {
-    sessionId: number;
-    message: {
-      id: string;
-      from: string;
-      to: string;
-      body: string;
-      fromMe: boolean;
-      isGroup: boolean;
-      type: string;
-      timestamp: number;
-      hasMedia: boolean;
-      mediaUrl?: string;
-      participant?: string;
-    };
-  }
-  
-  export interface MessageAckPayload {
-    sessionId: number;
-    messageId: string;
-    ack: number;
-  }
+    fromMe: boolean;
+    isGroup: boolean;
+    type: string;
+    timestamp: number;
+    hasMedia: boolean;
+    mediaUrl?: string;
+    mediaData?: string; // Base64 do conteúdo baixado
+    mimetype?: string;
+    participant?: string;
+    // Novos campos para respostas interativas
+    selectedButtonId?: string;
+    selectedRowId?: string;
+    pollVotes?: string[];
+    pushName?: string;
+    profilePicUrl?: string; // Avatar URL of the sender
+  };
+}
+
+export interface MessageAckPayload {
+  sessionId: number;
+  messageId: string;
+  ack: number;
+}
+

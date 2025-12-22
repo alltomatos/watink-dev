@@ -11,10 +11,14 @@ import whatsappSessionRoutes from "./whatsappSessionRoutes";
 import queueRoutes from "./queueRoutes";
 import quickAnswerRoutes from "./quickAnswerRoutes";
 import apiRoutes from "./apiRoutes";
+import microserviceRoutes from "./microserviceRoutes";
+
+import versionRoutes from "./versionRoutes";
 
 const routes = Router();
 
-routes.use(userRoutes);
+routes.use("/version", versionRoutes);
+routes.use("/users", userRoutes);
 routes.use("/auth", authRoutes);
 routes.use(settingRoutes);
 routes.use(contactRoutes);
@@ -24,6 +28,7 @@ routes.use(messageRoutes);
 routes.use(whatsappSessionRoutes);
 routes.use(queueRoutes);
 routes.use(quickAnswerRoutes);
+routes.use(microserviceRoutes);
 routes.use("/api/messages", apiRoutes);
 
 export default routes;

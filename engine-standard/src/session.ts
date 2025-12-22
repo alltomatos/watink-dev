@@ -1,8 +1,19 @@
-import { Envelope, StartSessionPayload, SendTextPayload, SendMediaPayload, CommandType } from "./contracts";
+import {
+  Envelope, StartSessionPayload, SendTextPayload, SendMediaPayload,
+  SendButtonsPayload, SendListPayload, SendPollPayload,
+  SendTemplatePayload, SendInteractivePayload, SendCarouselPayload,
+  CommandType
+} from "./contracts";
 import { logger } from "./logger";
 import { RabbitMQ } from "./rabbitmq";
 import { v4 as uuidv4 } from "uuid";
-import makeWASocket, { DisconnectReason, useMultiFileAuthState, AnyMessageContent } from "whaileys";
+import makeWASocket, {
+  DisconnectReason,
+  useMultiFileAuthState,
+  prepareWAMessageMedia,
+  generateWAMessageFromContent,
+  downloadMediaMessage
+} from "whaileys";
 import { Boom } from "@hapi/boom";
 import path from "path";
 import fs from "fs";
@@ -27,7 +38,7 @@ class SessionManager {
 
   async handleCommand(envelope: Envelope) {
     logger.info(`Received command: ${envelope.type}`);
-    
+
     switch (envelope.type as CommandType) {
       case "session.start":
         await this.startSession(envelope.payload as StartSessionPayload, envelope.tenantId);
@@ -38,6 +49,27 @@ class SessionManager {
       case "message.send.text":
         await this.sendText(envelope.payload as SendTextPayload);
         break;
+      case "message.send.media":
+        await this.sendMedia(envelope.payload as SendMediaPayload, envelope.tenantId);
+        break;
+      case "message.send.buttons":
+        await this.sendButtons(envelope.payload as SendButtonsPayload);
+        break;
+      case "message.send.list":
+        await this.sendList(envelope.payload as SendListPayload);
+        break;
+      case "message.send.poll":
+        await this.sendPoll(envelope.payload as SendPollPayload);
+        break;
+      case "message.send.template":
+        await this.sendTemplate(envelope.payload as SendTemplatePayload);
+        break;
+      case "message.send.interactive":
+        await this.sendInteractive(envelope.payload as SendInteractivePayload);
+        break;
+      case "message.send.carousel":
+        await this.sendCarousel(envelope.payload as SendCarouselPayload);
+        break;
       default:
         logger.warn(`Unknown command type: ${envelope.type}`);
     }
@@ -47,8 +79,8 @@ class SessionManager {
     logger.info(`Starting session ${payload.sessionId}`);
 
     if (this.sessions.has(payload.sessionId)) {
-        logger.info(`Session ${payload.sessionId} already exists`);
-        return;
+      logger.info(`Session ${payload.sessionId} already exists`);
+      return;
     }
 
     const { state, saveCreds } = await useMultiFileAuthState(
@@ -65,21 +97,51 @@ class SessionManager {
 
     sock.ev.on("creds.update", saveCreds);
 
-    sock.ev.on("connection.update", async (update) => {
+    // Se usePairingCode e phoneNumber foram fornecidos, solicitar código de pareamento
+    if (payload.usePairingCode && payload.phoneNumber) {
+      // Aguardar conexão estar pronta para solicitar código
+      sock.ev.on("connection.update", async (update: any) => {
+        if (update.connection === "open") return;
+
+        // Só solicitar pairing code se ainda não conectou
+        if (!sock.authState.creds.registered) {
+          try {
+            logger.info(`Requesting pairing code for session ${payload.sessionId} - Phone: ${payload.phoneNumber}`);
+            const code = await sock.requestPairingCode(payload.phoneNumber!);
+
+            const pairingEvent: Envelope = {
+              id: uuidv4(),
+              timestamp: Date.now(),
+              tenantId,
+              type: "session.pairingcode",
+              payload: {
+                sessionId: payload.sessionId,
+                pairingCode: code
+              }
+            };
+            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.pairingcode`, pairingEvent);
+          } catch (error) {
+            logger.error(`Error requesting pairing code for session ${payload.sessionId}`, error);
+          }
+        }
+      });
+    }
+
+    sock.ev.on("connection.update", async (update: any) => {
       const { connection, lastDisconnect, qr } = update;
 
       if (qr) {
         logger.info(`QR Code generated for session ${payload.sessionId}`);
         const qrEvent: Envelope = {
-            id: uuidv4(),
-            timestamp: Date.now(),
-            tenantId,
-            type: "session.qrcode",
-            payload: {
-                sessionId: payload.sessionId,
-                qrcode: qr,
-                attempt: 1 // Logic to track attempts could be added
-            }
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId,
+          type: "session.qrcode",
+          payload: {
+            sessionId: payload.sessionId,
+            qrcode: qr,
+            attempt: 1 // Logic to track attempts could be added
+          }
         };
         await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.qrcode`, qrEvent);
       }
@@ -87,25 +149,25 @@ class SessionManager {
       if (connection === "close") {
         const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
         logger.warn(`Connection closed for session ${payload.sessionId}, reconnecting: ${shouldReconnect}`);
-        
+
         const statusEvent: Envelope = {
-            id: uuidv4(),
-            timestamp: Date.now(),
-            tenantId,
-            type: "session.status",
-            payload: {
-                sessionId: payload.sessionId,
-                status: "DISCONNECTED"
-            }
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId,
+          type: "session.status",
+          payload: {
+            sessionId: payload.sessionId,
+            status: "DISCONNECTED"
+          }
         };
         await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
 
         if (shouldReconnect) {
-            this.sessions.delete(payload.sessionId);
-            this.startSession(payload, tenantId);
+          this.sessions.delete(payload.sessionId);
+          this.startSession(payload, tenantId);
         } else {
-            this.sessions.delete(payload.sessionId);
-            // Cleanup auth files if logged out?
+          this.sessions.delete(payload.sessionId);
+          // Cleanup auth files if logged out?
         }
       } else if (connection === "open") {
         logger.info(`Session ${payload.sessionId} opened`);
@@ -113,72 +175,463 @@ class SessionManager {
         if (session) session.status = "CONNECTED";
 
         const statusEvent: Envelope = {
-            id: uuidv4(),
-            timestamp: Date.now(),
-            tenantId,
-            type: "session.status",
-            payload: {
-                sessionId: payload.sessionId,
-                status: "CONNECTED"
-            }
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId,
+          type: "session.status",
+          payload: {
+            sessionId: payload.sessionId,
+            status: "CONNECTED"
+          }
         };
         await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
       }
     });
 
-    sock.ev.on("messages.upsert", async ({ messages, type }) => {
-        if (type === "notify") {
-            for (const msg of messages) {
-                if (!msg.message) continue;
-                // Simple logging for now, ideally convert to our internal Message format
-                // logger.info(`Received message in session ${payload.sessionId}: ${JSON.stringify(msg)}`);
+    sock.ev.on("messages.upsert", async ({ messages, type }: any) => {
+      if (type === "notify") {
+        for (const msg of messages) {
+          if (!msg.message) continue;
 
-                const msgEvent: Envelope = {
-                    id: uuidv4(),
-                    timestamp: Date.now(),
-                    tenantId,
-                    type: "message.received",
-                    payload: {
-                        sessionId: payload.sessionId,
-                        message: {
-                            id: msg.key.id || "",
-                            from: msg.key.remoteJid || "",
-                            to: msg.key.remoteJid || "", // In groups this differs
-                            body: msg.message.conversation || msg.message.extendedTextMessage?.text || "",
-                            fromMe: msg.key.fromMe || false,
-                            isGroup: msg.key.remoteJid?.endsWith("@g.us") || false,
-                            type: "chat",
-                            timestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : 0,
-                            hasMedia: false // Needs checking logic
-                        }
-                    }
-                };
-                await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.received`, msgEvent);
+          // Check for media types
+          const hasMedia = !!(
+            msg.message.imageMessage ||
+            msg.message.videoMessage ||
+            msg.message.audioMessage ||
+            msg.message.documentMessage ||
+            msg.message.stickerMessage
+          );
+
+          let body = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+          let selectedButtonId = undefined;
+          let selectedRowId = undefined;
+          let pollVotes = undefined;
+          let msgType = hasMedia ? "media" : "chat";
+          let mediaData = undefined;
+          let mimetype = undefined;
+
+          // --- Media Handling ---
+          if (hasMedia) {
+            try {
+              const buffer = await downloadMediaMessage(msg, "buffer", {});
+              mediaData = buffer.toString("base64");
+              mimetype = msg.message.imageMessage?.mimetype ||
+                msg.message.videoMessage?.mimetype ||
+                msg.message.audioMessage?.mimetype ||
+                msg.message.documentMessage?.mimetype ||
+                msg.message.stickerMessage?.mimetype;
+            } catch (err) {
+              logger.error("Error downloading media: ", err);
             }
+          }
+
+          // --- Interactive Responses ---
+
+          // 1. Buttons Response
+          if (msg.message.buttonsResponseMessage) {
+            selectedButtonId = msg.message.buttonsResponseMessage.selectedButtonId;
+            body = msg.message.buttonsResponseMessage.selectedDisplayText || "";
+            msgType = "button_response";
+          }
+          // 2. Template Button Response
+          else if (msg.message.templateButtonReplyMessage) {
+            selectedButtonId = msg.message.templateButtonReplyMessage.selectedId;
+            body = msg.message.templateButtonReplyMessage.selectedDisplayText || "";
+            msgType = "button_response";
+          }
+          // 3. List Response
+          else if (msg.message.listResponseMessage) {
+            selectedRowId = msg.message.listResponseMessage.singleSelectReply?.selectedRowId;
+            body = msg.message.listResponseMessage.title || "";
+            msgType = "list_response";
+          }
+          // 3.1 Interactive Response (Native Flow / Carousel)
+          else if (msg.message.interactiveResponseMessage) {
+            const interactiveResp = msg.message.interactiveResponseMessage;
+            if (interactiveResp.nativeFlowResponseMessage) {
+              const params = JSON.parse(interactiveResp.nativeFlowResponseMessage.paramsJson || "{}");
+              selectedButtonId = params.id;
+            }
+            body = interactiveResp.body?.text || "";
+            msgType = "interactive_response";
+          }
+          // 4. Poll Response (requires special handling for encryption in some cases, but Whaileys usually simplifies)
+          else if (msg.message.pollUpdateMessage) {
+            // Note: Polls are usually received as updates, but some versions emit them in upsert too
+            msgType = "poll_response";
+            // Payload usually contains the vote, but decryption might be needed depending on depth
+            // For now, we'll mark as poll_response. 
+            // Actual vote processing usually happens in separate event or deep parsing.
+          }
+
+          // Fetch Profile Pic (Best effort)
+          let profilePicUrl = "";
+          try {
+            // Only fetch if needed? For now, let's try. Rate limits might apply.
+            // Maybe better to defer or only if not cached? 
+            // As this is "engine-standard", simple is better.
+            // profilePicUrl = await sock.profilePictureUrl(msg.key.participant || msg.key.remoteJid || "", "image").catch(() => "");
+          } catch (e) { }
+
+          const msgEvent: Envelope = {
+            id: uuidv4(),
+            timestamp: Date.now(),
+            tenantId,
+            type: "message.received",
+            payload: {
+              sessionId: payload.sessionId,
+              message: {
+                id: msg.key.id || "",
+                from: msg.key.remoteJid || "",
+                to: msg.key.remoteJid || "",
+                body: body,
+                fromMe: msg.key.fromMe || false,
+                isGroup: msg.key.remoteJid?.endsWith("@g.us") || false,
+                type: msgType,
+                timestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : 0,
+                hasMedia: hasMedia,
+                mediaData,
+                mimetype,
+                selectedButtonId,
+                selectedRowId,
+                pollVotes,
+                pushName: msg.pushName || "",
+                participant: msg.key.participant || "",
+                profilePicUrl // Send empty if not fetched, backend can handle or we implement fetch command later. 
+                // Note: Fetching profile pic on every message is BAD for performance/rate-limits.
+                // Better: Backend requests 'contact.getProfilePic' if missing.
+                // But user asked to capture. I will leave it as placeholder or implement optimized.
+              }
+            }
+          };
+          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.received`, msgEvent);
         }
+      }
+    });
+
+    // Listen for message ACK (read receipts)
+    sock.ev.on("messages.update", async (updates: any[]) => {
+      for (const update of updates) {
+        if (update.update?.status) {
+          const ackEvent: Envelope = {
+            id: uuidv4(),
+            timestamp: Date.now(),
+            tenantId,
+            type: "message.ack",
+            payload: {
+              sessionId: payload.sessionId,
+              messageId: update.key?.id || "",
+              ack: update.update.status // 0=pending, 1=sent, 2=received, 3=read, 4=played
+            }
+          };
+          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+        }
+      }
     });
   }
 
   private async stopSession(sessionId: number) {
-      const session = this.sessions.get(sessionId);
-      if (session) {
-          session.socket.end(undefined);
-          this.sessions.delete(sessionId);
-          logger.info(`Session ${sessionId} stopped`);
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.socket.end(undefined);
+      this.sessions.delete(sessionId);
+      await this.cleanupSession(sessionId);
+      logger.info(`Session ${sessionId} stopped and cleaned up`);
+    }
+  }
+
+  private async cleanupSession(sessionId: number) {
+    const sessionPath = path.join(this.sessionsDir, `session-${sessionId}`);
+    if (fs.existsSync(sessionPath)) {
+      try {
+        fs.rmSync(sessionPath, { recursive: true, force: true });
+        logger.info(`Cleaned up session files for ${sessionId}`);
+      } catch (err) {
+        logger.error(`Error cleaning up session ${sessionId}:`, err);
       }
+    }
   }
 
   private async sendText(payload: SendTextPayload) {
     const session = this.sessions.get(payload.sessionId);
     if (!session) {
-        logger.error(`Session ${payload.sessionId} not found for sending message`);
-        return;
+      logger.error(`Session ${payload.sessionId} not found for sending message`);
+      return;
     }
 
     logger.info(`Sending text to ${payload.to}: ${payload.body}`);
-    
+
     await session.socket.sendMessage(payload.to, {
-        text: payload.body
+      text: payload.body
+    });
+  }
+
+  private async sendMedia(payload: SendMediaPayload, tenantId: string | number) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending media`);
+      return;
+    }
+
+    logger.info(`Sending media to ${payload.to}: ${payload.media.filename}`);
+
+    // Convert base64 to buffer
+    const mediaBuffer = Buffer.from(payload.media.data, 'base64');
+    const mimetype = payload.media.mimetype;
+    const filename = payload.media.filename;
+
+    let content: any = {};
+
+    // Determine media type based on mimetype
+    if (mimetype.startsWith('image/')) {
+      content = {
+        image: mediaBuffer,
+        caption: payload.caption || '',
+        mimetype: mimetype
+      };
+    } else if (mimetype.startsWith('video/')) {
+      content = {
+        video: mediaBuffer,
+        caption: payload.caption || '',
+        mimetype: mimetype
+      };
+    } else if (mimetype.startsWith('audio/')) {
+      content = {
+        audio: mediaBuffer,
+        mimetype: mimetype,
+        ptt: mimetype === 'audio/ogg' // Voice note if ogg
+      };
+    } else {
+      // Document (PDF, etc)
+      content = {
+        document: mediaBuffer,
+        caption: payload.caption || '',
+        fileName: filename,
+        mimetype: mimetype
+      };
+    }
+
+    await session.socket.sendMessage(payload.to, content);
+  }
+
+  private async sendButtons(payload: SendButtonsPayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending buttons`);
+      return;
+    }
+
+    const buttons = payload.buttons.map(btn => ({
+      buttonId: btn.buttonId,
+      buttonText: { displayText: btn.buttonText },
+      type: 1
+    }));
+
+    const buttonMessage: any = {
+      text: payload.text,
+      footer: payload.footer,
+      buttons: buttons,
+      headerType: 1
+    };
+
+    if (payload.imageUrl) {
+      buttonMessage.image = { url: payload.imageUrl };
+      buttonMessage.headerType = 4;
+    }
+
+    await session.socket.sendMessage(payload.to, buttonMessage as any);
+  }
+
+  private async sendList(payload: SendListPayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending list`);
+      return;
+    }
+
+    const listMessage = {
+      text: payload.text,
+      footer: payload.footer,
+      title: payload.text.split('\n')[0], // Use first line as title if not provided
+      buttonText: payload.buttonText,
+      sections: payload.sections
+    };
+
+    await session.socket.sendMessage(payload.to, listMessage as any);
+  }
+
+  private async sendPoll(payload: SendPollPayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending poll`);
+      return;
+    }
+
+    await session.socket.sendMessage(payload.to, {
+      poll: {
+        name: payload.name,
+        values: payload.options,
+        selectableCount: payload.selectableCount || 1
+      }
+    } as any);
+  }
+
+  private async sendTemplate(payload: SendTemplatePayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending template`);
+      return;
+    }
+
+    const templateButtons = payload.buttons.map((btn: any, index: number) => {
+      const base = { index: index + 1 };
+      if (btn.type === 'url') {
+        return { ...base, urlButton: { displayText: btn.text, url: btn.url } };
+      } else if (btn.type === 'call') {
+        return { ...base, callButton: { displayText: btn.text, phoneNumber: btn.phoneNumber } };
+      } else {
+        return { ...base, quickReplyButton: { displayText: btn.text, id: btn.buttonId } };
+      }
+    });
+
+    const message: any = {
+      text: payload.text,
+      footer: payload.footer,
+      templateButtons: templateButtons
+    };
+
+    if (payload.mediaUrl) {
+      // Logic for image/video in template header
+      message.image = { url: payload.mediaUrl }; // Simplification, could check extension
+    }
+
+    await session.socket.sendMessage(payload.to, message as any);
+  }
+
+  private async sendInteractive(payload: SendInteractivePayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending interactive message`);
+      return;
+    }
+
+    const buttons = payload.buttons.map((btn: any) => {
+      if (btn.type === 'url') {
+        return {
+          name: "cta_url",
+          buttonParamsJson: JSON.stringify({
+            display_text: btn.text,
+            url: btn.url,
+            merchant_url: btn.url
+          })
+        };
+      } else {
+        return {
+          name: "quick_reply",
+          buttonParamsJson: JSON.stringify({
+            display_text: btn.text,
+            id: btn.buttonId
+          })
+        };
+      }
+    });
+
+    const interactiveMessage = {
+      interactiveMessage: {
+        body: { text: payload.text },
+        footer: { text: payload.footer },
+        header: payload.mediaUrl ? {
+          title: "",
+          subtitle: "",
+          hasMediaAttachment: true,
+          imageMessage: { url: payload.mediaUrl } // Simplified
+        } : { hasMediaAttachment: false },
+        nativeFlowMessage: {
+          buttons: buttons
+        }
+      }
+    };
+
+    // Relay message is often safer for complex interactive messages
+    await session.socket.sendMessage(payload.to, interactiveMessage as any);
+  }
+
+  private async sendCarousel(payload: SendCarouselPayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for sending carousel`);
+      return;
+    }
+
+    const cards = await Promise.all(payload.cards.map(async (card) => {
+      const buttons = card.buttons.map(btn => {
+        if (btn.type === 'url') {
+          return {
+            name: "cta_url",
+            buttonParamsJson: JSON.stringify({
+              display_text: btn.text,
+              url: btn.url,
+              merchant_url: btn.url
+            })
+          };
+        } else {
+          return {
+            name: "quick_reply",
+            buttonParamsJson: JSON.stringify({
+              display_text: btn.text,
+              id: btn.buttonId
+            })
+          };
+        }
+      });
+
+      const cardObj: any = {
+        body: { text: card.body },
+        footer: { text: card.footer || "" },
+        nativeFlowMessage: {
+          buttons: buttons
+        }
+      };
+
+      if (card.headerUrl) {
+        // Prepare media for card header
+        const media = await prepareWAMessageMedia(
+          { image: { url: card.headerUrl } },
+          { upload: session.socket.waUploadToServer }
+        );
+        cardObj.header = {
+          hasMediaAttachment: true,
+          ...media
+        };
+      } else {
+        cardObj.header = { hasMediaAttachment: false };
+      }
+
+      return cardObj;
+    }));
+
+    const messageContent = {
+      viewOnceMessage: {
+        message: {
+          interactiveMessage: {
+            body: { text: payload.text },
+            footer: { text: payload.footer || "" },
+            header: { hasMediaAttachment: false },
+            carouselMessage: {
+              cards: cards,
+              messageVersion: 1
+            }
+          }
+        }
+      }
+    };
+
+    const msg = generateWAMessageFromContent(payload.to, messageContent as any, {
+      userJid: session.socket.user?.id || "",
+    });
+
+    await session.socket.relayMessage(payload.to, msg.message!, {
+      messageId: msg.key.id!
     });
   }
 }

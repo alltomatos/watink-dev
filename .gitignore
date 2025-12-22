@@ -1,5 +1,7 @@
-.docker/data/
+.docker/
 ssl/
 .env
 .wwebjs_auth
-.idea.docker/data_corrupted/
+node_modules
+dist
+build

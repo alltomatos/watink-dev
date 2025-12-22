@@ -4,11 +4,14 @@ const options = {
     definition: {
         openapi: "3.0.0",
         info: {
-            title: "Whaticket API",
-            version: "1.0.0",
-            description: "Documentation for Whaticket API",
+            title: "Whaticket Premium API",
+            version: "1.2.0",
+            description: "Documentação da API do Whaticket Premium",
         },
         servers: [
+            {
+                url: "http://localhost:8080",
+            },
             {
                 url: "http://localhost:3000",
             },
