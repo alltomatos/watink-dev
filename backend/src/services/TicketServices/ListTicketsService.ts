@@ -17,6 +17,7 @@ interface Request {
   userId: string;
   withUnreadMessages?: string;
   queueIds: number[];
+  isGroup?: string;
 }
 
 interface Response {
@@ -33,12 +34,14 @@ const ListTicketsService = async ({
   date,
   showAll,
   userId,
-  withUnreadMessages
+  withUnreadMessages,
+  isGroup
 }: Request): Promise<Response> => {
   let whereCondition: Filterable["where"] = {
     [Op.or]: [{ userId }, { status: "pending" }],
     queueId: { [Op.or]: [queueIds, null] }
   };
+
   let includeCondition: Includeable[];
 
   includeCondition = [
@@ -115,6 +118,7 @@ const ListTicketsService = async ({
 
   if (date) {
     whereCondition = {
+      ...whereCondition,
       createdAt: {
         [Op.between]: [+startOfDay(parseISO(date)), +endOfDay(parseISO(date))]
       }
@@ -130,6 +134,26 @@ const ListTicketsService = async ({
       queueId: { [Op.or]: [userQueueIds, null] },
       unreadMessages: { [Op.gt]: 0 }
     };
+  }
+
+  if (isGroup) {
+    if (isGroup === "false") {
+      whereCondition = {
+        ...whereCondition,
+        [Op.and]: [
+          { "$contact.isGroup$": false },
+          { "$contact.number$": { [Op.notILike]: "%g.us" } }
+        ]
+      };
+    } else {
+      whereCondition = {
+        ...whereCondition,
+        [Op.or]: [
+          { "$contact.isGroup$": true },
+          { "$contact.number$": { [Op.like]: "%g.us" } }
+        ]
+      };
+    }
   }
 
   const limit = 40;

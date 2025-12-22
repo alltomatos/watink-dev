@@ -24,4 +24,8 @@ contactRoutes.put("/contacts/:contactId", isAuth, ContactController.update);
 
 contactRoutes.delete("/contacts/:contactId", isAuth, ContactController.remove);
 
+contactRoutes.post("/contacts/:contactId/sync", isAuth, ContactController.sync);
+
+contactRoutes.post("/contacts/:contactId/sync", isAuth, ContactController.sync);
+
 export default contactRoutes;

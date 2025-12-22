@@ -28,7 +28,7 @@ class RabbitMQService {
   private async setupExchanges(): Promise<void> {
     if (!this.channel) return;
 
-    await this.channel.assertExchange("wbot.commands", "direct", { durable: true });
+    await this.channel.assertExchange("wbot.commands", "topic", { durable: true });
     await this.channel.assertExchange("wbot.events", "topic", { durable: true });
   }
 
@@ -62,6 +62,29 @@ class RabbitMQService {
           this.channel?.ack(msg);
         } catch (error) {
           logger.error("Error processing event", error);
+          this.channel?.nack(msg, false, false);
+        }
+      }
+    });
+  }
+
+  async consumeCommands(queueName: string, routingKeys: string[], handler: (msg: Envelope) => Promise<void>): Promise<void> {
+    if (!this.channel) return;
+
+    const q = await this.channel.assertQueue(queueName, { durable: true });
+
+    for (const key of routingKeys) {
+      await this.channel.bindQueue(q.queue, "wbot.commands", key);
+    }
+
+    this.channel.consume(q.queue, async (msg: ConsumeMessage | null) => {
+      if (msg) {
+        try {
+          const content: Envelope = JSON.parse(msg.content.toString());
+          await handler(content);
+          this.channel?.ack(msg);
+        } catch (error) {
+          logger.error("Error processing command", error);
           this.channel?.nack(msg, false, false);
         }
       }
