@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../../services/api";
 import { i18n } from "../../translate/i18n";
-import { makeStyles, Typography } from "@material-ui/core";
+import { makeStyles, Typography, Collapse } from "@material-ui/core";
 
 const useStyles = makeStyles((theme) => ({
     footer: {
@@ -11,10 +11,12 @@ const useStyles = makeStyles((theme) => ({
         borderTop: "1px solid rgba(0, 0, 0, 0.12)",
         marginTop: "auto",
         fontSize: "0.75rem",
+        overflow: "hidden",
+        whiteSpace: "nowrap",
     },
 }));
 
-const VersionFooter = () => {
+const VersionFooter = ({ collapsed = false }) => {
     const classes = useStyles();
     const [backendVersion, setBackendVersion] = useState("-");
     const [engineVersion, setEngineVersion] = useState("-");
@@ -33,6 +35,11 @@ const VersionFooter = () => {
         fetchVersion();
     }, []);
 
+    // Esconder footer quando drawer está colapsado
+    if (collapsed) {
+        return null;
+    }
+
     return (
         <div className={classes.footer}>
             <Typography variant="caption" display="block">
@@ -46,3 +53,4 @@ const VersionFooter = () => {
 };
 
 export default VersionFooter;
+
