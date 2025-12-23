@@ -101,7 +101,7 @@ const MainLayoutSaaS = ({ children }) => {
     const { handleLogout, loading, user } = useContext(AuthContext);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [systemLogo, setSystemLogo] = useState("");
-    const [systemTitle, setSystemTitle] = useState("WhaTicket");
+    const [systemTitle, setSystemTitle] = useState("Watic Premium");
     const [logoEnabled, setLogoEnabled] = useState(true);
 
     // Fetch system settings

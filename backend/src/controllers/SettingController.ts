@@ -18,6 +18,13 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
   return res.status(200).json(settings);
 };
 
+export const getPublicSettings = async (req: Request, res: Response): Promise<Response> => {
+  const settings = await ListSettingsService();
+  const publicKeys = ["systemLogo", "login_backgroundImage", "login_layout", "systemFavicon"];
+  const publicSettings = settings?.filter(s => publicKeys.includes(s.key));
+  return res.status(200).json(publicSettings);
+};
+
 export const update = async (
   req: Request,
   res: Response

@@ -74,7 +74,7 @@ const Login = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const { data } = await api.get("/settings");
+        const { data } = await api.get("/public-settings");
 
         const layoutSetting = data.find(s => s.key === "login_layout");
         const bgSetting = data.find(s => s.key === "login_backgroundImage");

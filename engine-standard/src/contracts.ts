@@ -16,13 +16,18 @@ export type CommandType =
   | "message.send.poll"      // NOVO: Enquete
   | "message.send.template"  // NOVO: Template (URL/Call)
   | "message.send.interactive" // NOVO: Native Flow (Interativo)
-  | "message.send.carousel";   // NOVO: Carrossel Nativo
+  | "message.send.interactive" // NOVO: Native Flow (Interativo)
+  | "message.send.carousel"    // NOVO: Carrossel Nativo
+  | "contact.sync";            // NOVO: Sincronização de Contato
 
 export interface StartSessionPayload {
   sessionId: number;
   sessionToken?: string;
   usePairingCode?: boolean;
   phoneNumber?: string;
+  name?: string;
+  syncHistory?: boolean;
+  syncPeriod?: string;
 }
 
 export interface StopSessionPayload {
@@ -139,6 +144,12 @@ export interface SendCarouselPayload {
   }>;
 }
 
+export interface SyncContactPayload {
+  sessionId: number;
+  contactId: number;
+  number: string;
+}
+
 export type EventType =
   | "session.qrcode"
   | "session.pairingcode"
@@ -148,7 +159,9 @@ export type EventType =
   | "message.response.button"
   | "message.response.list"
   | "message.response.poll"
-  | "message.response.interactive";
+  | "message.response.poll"
+  | "message.response.interactive"
+  | "contact.update";
 
 
 export interface QrCodePayload {
@@ -189,6 +202,7 @@ export interface MessageReceivedPayload {
     pollVotes?: string[];
     pushName?: string;
     profilePicUrl?: string; // Avatar URL of the sender
+    senderLid?: string;
   };
 }
 
@@ -196,5 +210,13 @@ export interface MessageAckPayload {
   sessionId: number;
   messageId: string;
   ack: number;
+}
+
+export interface ContactUpdatePayload {
+  sessionId: number;
+  contactId: number;
+  number: string;
+  profilePicUrl?: string;
+  pushName?: string;
 }
 
