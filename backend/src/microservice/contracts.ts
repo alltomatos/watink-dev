@@ -18,13 +18,18 @@ export type CommandType =
   | "message.send.poll"
   | "message.send.template"
   | "message.send.interactive"
-  | "message.send.carousel";
+  | "message.send.interactive"
+  | "message.send.carousel"
+  | "contact.sync";
 
 export interface StartSessionPayload {
   sessionId: number;
   sessionToken?: string;
   usePairingCode?: boolean;  // true = usar código, false = usar QR
   phoneNumber?: string;       // Formato E.164 sem +: 5511999999999
+  name?: string;
+  syncHistory?: boolean;
+  syncPeriod?: string;
 }
 
 export interface StopSessionPayload {
@@ -139,6 +144,14 @@ export interface SendCarouselPayload {
 }
 
 
+
+
+export interface SyncContactPayload {
+  sessionId: number;
+  contactId: number;
+  number: string;
+}
+
 // --- EVENTS (Engine -> Backend) ---
 
 export type EventType =
@@ -150,7 +163,9 @@ export type EventType =
   | "message.response.button"
   | "message.response.list"
   | "message.response.poll"
-  | "message.response.interactive";
+  | "message.response.poll"
+  | "message.response.interactive"
+  | "contact.update";
 
 
 export interface QrCodePayload {
@@ -184,13 +199,14 @@ export interface MessageReceivedPayload {
     mediaUrl?: string;
     mediaData?: string; // Base64
     mimetype?: string;
-    participant?: string;
     // Interactive fields
     selectedButtonId?: string;
     selectedRowId?: string;
     pollVotes?: string[];
+    participant: string;
+    profilePicUrl: string;
     pushName?: string;
-    profilePicUrl?: string;
+    senderLid?: string;
   };
 }
 
@@ -198,5 +214,13 @@ export interface MessageAckPayload {
   sessionId: number;
   messageId: string;
   ack: number;
+}
+
+export interface ContactUpdatePayload {
+  sessionId: number;
+  contactId: number;
+  number: string;
+  profilePicUrl?: string;
+  pushName?: string;
 }
 

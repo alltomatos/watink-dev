@@ -2,14 +2,14 @@ version: '3.8'
 
 services:
   backend:
-    image: whaticket-premium/backend:latest
+    image: watic-premium/backend:latest
     environment:
       - DB_DIALECT=postgres
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASS=postgres
-      - DB_NAME=whaticket
+      - DB_NAME=watic
       - AMQP_URL=amqp://guest:guest@rabbitmq:5672
       - JWT_SECRET=3123123213123
       - JWT_REFRESH_SECRET=75756756756
@@ -19,8 +19,11 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - whaticket-premium_public
-      - whaticket-premium_private
+      - watic-premium_public
+      - watic-premium_private
+    dns:
+      - 192.168.26.253
+      - 8.8.8.8
     deploy:
       mode: replicated
       replicas: 1
@@ -33,25 +36,31 @@ services:
           memory: 512M
 
   frontend:
-    image: whaticket-premium/frontend:latest
+    image: watic-premium/frontend:latest
     environment:
-      - URL_BACKEND=backend:8080
+      - URL_BACKEND=watic-premium_backend:8080
       - VITE_BACKEND_URL=http://localhost:8080/
       - FRONTEND_SERVER_NAME=localhost
     ports:
       - "80:80"
     networks:
-      - whaticket-premium_public
+      - watic-premium_public
+    dns:
+      - 192.168.26.253
+      - 8.8.8.8
     deploy:
       mode: replicated
       replicas: 1
 
   whaileys-engine:
-    image: whaticket-premium/engine:latest
+    image: watic-premium/engine:latest
     environment:
       - AMQP_URL=amqp://guest:guest@rabbitmq:5672
     networks:
-      - whaticket-premium_private
+      - watic-premium_private
+    dns:
+      - 192.168.26.253
+      - 8.8.8.8
     deploy:
       mode: replicated
       replicas: 1
@@ -63,7 +72,10 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     networks:
-      - whaticket-premium_private
+      - watic-premium_private
+    dns:
+      - 192.168.26.253
+      - 8.8.8.8
     deploy:
       mode: replicated
       replicas: 1
@@ -74,12 +86,15 @@ services:
   postgres:
     image: ronaldodavi/pgvectorgis:latest
     environment:
-      - POSTGRES_DB=whaticket
+      - POSTGRES_DB=watic
       - POSTGRES_PASSWORD=postgres
     volumes:
       - db_data:/var/lib/postgresql/data
     networks:
-      - whaticket-premium_private
+      - watic-premium_private
+    dns:
+      - 192.168.26.253
+      - 8.8.8.8
     deploy:
       mode: replicated
       replicas: 1
@@ -88,9 +103,9 @@ services:
           - node.role == manager
 
 networks:
-  whaticket-premium_public:
+  watic-premium_public:
     driver: overlay
-  whaticket-premium_private:
+  watic-premium_private:
     driver: overlay
 
 volumes:

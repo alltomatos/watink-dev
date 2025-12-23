@@ -5,6 +5,8 @@ import AppError from "../../errors/AppError";
 import Whatsapp from "../../models/Whatsapp";
 import ShowWhatsAppService from "./ShowWhatsAppService";
 import AssociateWhatsappQueue from "./AssociateWhatsappQueue";
+import StopWhatsAppSession from "../WbotServices/StopWhatsAppSession";
+import { logger } from "../../utils/logger";
 
 interface WhatsappData {
   name?: string;
@@ -14,6 +16,8 @@ interface WhatsappData {
   greetingMessage?: string;
   farewellMessage?: string;
   queueIds?: number[];
+  syncHistory?: boolean; // [NEW]
+  syncPeriod?: string;   // [NEW]
 }
 
 interface Request {
@@ -43,8 +47,13 @@ const UpdateWhatsAppService = async ({
     session,
     greetingMessage,
     farewellMessage,
-    queueIds = []
+    queueIds = [],
+    syncHistory,
+    syncPeriod
   } = whatsappData;
+
+  logger.info(`UpdateWhatsAppService - ID: ${whatsappId}, Data: ${JSON.stringify(whatsappData)} `); // [DEBUG]
+
 
   try {
     await schema.validate({ name, status, isDefault });
@@ -75,10 +84,24 @@ const UpdateWhatsAppService = async ({
     session,
     greetingMessage,
     farewellMessage,
-    isDefault
+    isDefault,
+    syncHistory,
+    syncPeriod
   });
 
+  // [NEW] If critical settings changed, stop session to force reconnection with new settings
+  if (whatsapp.status === "CONNECTED" && (syncHistory !== undefined || syncPeriod !== undefined)) {
+    // Import dynamically or at top if cycle allows. 
+    // Using dynamic import or moving StopWhatsAppSession import to top.
+    // Let's assume standard import at top.
+  }
+
   await AssociateWhatsappQueue(whatsapp, queueIds);
+
+  // Checks if sync settings were updated and connection is active/opening
+  if (syncHistory !== undefined || syncPeriod !== undefined) {
+    await StopWhatsAppSession(whatsapp.id);
+  }
 
   return { whatsapp, oldDefaultWhatsapp };
 };

@@ -2,7 +2,7 @@ import {
   Envelope, StartSessionPayload, SendTextPayload, SendMediaPayload,
   SendButtonsPayload, SendListPayload, SendPollPayload,
   SendTemplatePayload, SendInteractivePayload, SendCarouselPayload,
-  CommandType
+  CommandType, SyncContactPayload
 } from "./contracts";
 import { logger } from "./logger";
 import { RabbitMQ } from "./rabbitmq";
@@ -12,7 +12,8 @@ import makeWASocket, {
   useMultiFileAuthState,
   prepareWAMessageMedia,
   generateWAMessageFromContent,
-  downloadMediaMessage
+  downloadMediaMessage,
+  fetchLatestBaileysVersion
 } from "whaileys";
 import { Boom } from "@hapi/boom";
 import path from "path";
@@ -70,273 +71,358 @@ class SessionManager {
       case "message.send.carousel":
         await this.sendCarousel(envelope.payload as SendCarouselPayload);
         break;
+      case "contact.sync":
+        await this.syncContact(envelope.payload as SyncContactPayload, envelope.tenantId);
+        break;
       default:
         logger.warn(`Unknown command type: ${envelope.type}`);
     }
   }
 
-  private async startSession(payload: StartSessionPayload, tenantId: string | number) {
-    logger.info(`Starting session ${payload.sessionId}`);
-
-    if (this.sessions.has(payload.sessionId)) {
-      logger.info(`Session ${payload.sessionId} already exists`);
+  private async syncContact(payload: SyncContactPayload, tenantId: string | number) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for syncing contact`);
       return;
     }
 
-    const { state, saveCreds } = await useMultiFileAuthState(
-      path.join(this.sessionsDir, `session-${payload.sessionId}`)
-    );
+    try {
+      logger.info(`Syncing contact ${payload.number} for session ${payload.sessionId}`);
+      const profilePicUrl = await session.socket.profilePictureUrl(`${payload.number}@c.us`, "image").catch(() => "");
 
-    const sock = makeWASocket({
-      auth: state,
-      printQRInTerminal: false, // We will publish QR via RabbitMQ
-      logger: logger as any // Compatible logger interface
-    });
-
-    this.sessions.set(payload.sessionId, { socket: sock, status: "OPENING" });
-
-    sock.ev.on("creds.update", saveCreds);
-
-    // Se usePairingCode e phoneNumber foram fornecidos, solicitar código de pareamento
-    if (payload.usePairingCode && payload.phoneNumber) {
-      // Aguardar conexão estar pronta para solicitar código
-      sock.ev.on("connection.update", async (update: any) => {
-        if (update.connection === "open") return;
-
-        // Só solicitar pairing code se ainda não conectou
-        if (!sock.authState.creds.registered) {
-          try {
-            logger.info(`Requesting pairing code for session ${payload.sessionId} - Phone: ${payload.phoneNumber}`);
-            const code = await sock.requestPairingCode(payload.phoneNumber!);
-
-            const pairingEvent: Envelope = {
-              id: uuidv4(),
-              timestamp: Date.now(),
-              tenantId,
-              type: "session.pairingcode",
-              payload: {
-                sessionId: payload.sessionId,
-                pairingCode: code
-              }
-            };
-            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.pairingcode`, pairingEvent);
-          } catch (error) {
-            logger.error(`Error requesting pairing code for session ${payload.sessionId}`, error);
-          }
+      const updateEvent: Envelope = {
+        id: uuidv4(),
+        timestamp: Date.now(),
+        tenantId,
+        type: "contact.update",
+        payload: {
+          sessionId: payload.sessionId,
+          contactId: payload.contactId,
+          number: payload.number,
+          profilePicUrl: profilePicUrl || null
         }
-      });
+      };
+
+      await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
+    } catch (error) {
+      logger.error(`Error syncing contact ${payload.number}:`, error);
     }
-
-    sock.ev.on("connection.update", async (update: any) => {
-      const { connection, lastDisconnect, qr } = update;
-
-      if (qr) {
-        logger.info(`QR Code generated for session ${payload.sessionId}`);
-        const qrEvent: Envelope = {
-          id: uuidv4(),
-          timestamp: Date.now(),
-          tenantId,
-          type: "session.qrcode",
-          payload: {
-            sessionId: payload.sessionId,
-            qrcode: qr,
-            attempt: 1 // Logic to track attempts could be added
-          }
-        };
-        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.qrcode`, qrEvent);
-      }
-
-      if (connection === "close") {
-        const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-        logger.warn(`Connection closed for session ${payload.sessionId}, reconnecting: ${shouldReconnect}`);
-
-        const statusEvent: Envelope = {
-          id: uuidv4(),
-          timestamp: Date.now(),
-          tenantId,
-          type: "session.status",
-          payload: {
-            sessionId: payload.sessionId,
-            status: "DISCONNECTED"
-          }
-        };
-        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
-
-        if (shouldReconnect) {
-          this.sessions.delete(payload.sessionId);
-          this.startSession(payload, tenantId);
-        } else {
-          this.sessions.delete(payload.sessionId);
-          // Cleanup auth files if logged out?
-        }
-      } else if (connection === "open") {
-        logger.info(`Session ${payload.sessionId} opened`);
-        const session = this.sessions.get(payload.sessionId);
-        if (session) session.status = "CONNECTED";
-
-        const statusEvent: Envelope = {
-          id: uuidv4(),
-          timestamp: Date.now(),
-          tenantId,
-          type: "session.status",
-          payload: {
-            sessionId: payload.sessionId,
-            status: "CONNECTED"
-          }
-        };
-        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
-      }
-    });
-
-    sock.ev.on("messages.upsert", async ({ messages, type }: any) => {
-      if (type === "notify") {
-        for (const msg of messages) {
-          if (!msg.message) continue;
-
-          // Check for media types
-          const hasMedia = !!(
-            msg.message.imageMessage ||
-            msg.message.videoMessage ||
-            msg.message.audioMessage ||
-            msg.message.documentMessage ||
-            msg.message.stickerMessage
-          );
-
-          let body = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
-          let selectedButtonId = undefined;
-          let selectedRowId = undefined;
-          let pollVotes = undefined;
-          let msgType = hasMedia ? "media" : "chat";
-          let mediaData = undefined;
-          let mimetype = undefined;
-
-          // --- Media Handling ---
-          if (hasMedia) {
-            try {
-              const buffer = await downloadMediaMessage(msg, "buffer", {});
-              mediaData = buffer.toString("base64");
-              mimetype = msg.message.imageMessage?.mimetype ||
-                msg.message.videoMessage?.mimetype ||
-                msg.message.audioMessage?.mimetype ||
-                msg.message.documentMessage?.mimetype ||
-                msg.message.stickerMessage?.mimetype;
-            } catch (err) {
-              logger.error("Error downloading media: ", err);
-            }
-          }
-
-          // --- Interactive Responses ---
-
-          // 1. Buttons Response
-          if (msg.message.buttonsResponseMessage) {
-            selectedButtonId = msg.message.buttonsResponseMessage.selectedButtonId;
-            body = msg.message.buttonsResponseMessage.selectedDisplayText || "";
-            msgType = "button_response";
-          }
-          // 2. Template Button Response
-          else if (msg.message.templateButtonReplyMessage) {
-            selectedButtonId = msg.message.templateButtonReplyMessage.selectedId;
-            body = msg.message.templateButtonReplyMessage.selectedDisplayText || "";
-            msgType = "button_response";
-          }
-          // 3. List Response
-          else if (msg.message.listResponseMessage) {
-            selectedRowId = msg.message.listResponseMessage.singleSelectReply?.selectedRowId;
-            body = msg.message.listResponseMessage.title || "";
-            msgType = "list_response";
-          }
-          // 3.1 Interactive Response (Native Flow / Carousel)
-          else if (msg.message.interactiveResponseMessage) {
-            const interactiveResp = msg.message.interactiveResponseMessage;
-            if (interactiveResp.nativeFlowResponseMessage) {
-              const params = JSON.parse(interactiveResp.nativeFlowResponseMessage.paramsJson || "{}");
-              selectedButtonId = params.id;
-            }
-            body = interactiveResp.body?.text || "";
-            msgType = "interactive_response";
-          }
-          // 4. Poll Response (requires special handling for encryption in some cases, but Whaileys usually simplifies)
-          else if (msg.message.pollUpdateMessage) {
-            // Note: Polls are usually received as updates, but some versions emit them in upsert too
-            msgType = "poll_response";
-            // Payload usually contains the vote, but decryption might be needed depending on depth
-            // For now, we'll mark as poll_response. 
-            // Actual vote processing usually happens in separate event or deep parsing.
-          }
-
-          // Fetch Profile Pic (Best effort)
-          let profilePicUrl = "";
-          try {
-            // Only fetch if needed? For now, let's try. Rate limits might apply.
-            // Maybe better to defer or only if not cached? 
-            // As this is "engine-standard", simple is better.
-            // profilePicUrl = await sock.profilePictureUrl(msg.key.participant || msg.key.remoteJid || "", "image").catch(() => "");
-          } catch (e) { }
-
-          const msgEvent: Envelope = {
-            id: uuidv4(),
-            timestamp: Date.now(),
-            tenantId,
-            type: "message.received",
-            payload: {
-              sessionId: payload.sessionId,
-              message: {
-                id: msg.key.id || "",
-                from: msg.key.remoteJid || "",
-                to: msg.key.remoteJid || "",
-                body: body,
-                fromMe: msg.key.fromMe || false,
-                isGroup: msg.key.remoteJid?.endsWith("@g.us") || false,
-                type: msgType,
-                timestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : 0,
-                hasMedia: hasMedia,
-                mediaData,
-                mimetype,
-                selectedButtonId,
-                selectedRowId,
-                pollVotes,
-                pushName: msg.pushName || "",
-                participant: msg.key.participant || "",
-                profilePicUrl // Send empty if not fetched, backend can handle or we implement fetch command later. 
-                // Note: Fetching profile pic on every message is BAD for performance/rate-limits.
-                // Better: Backend requests 'contact.getProfilePic' if missing.
-                // But user asked to capture. I will leave it as placeholder or implement optimized.
-              }
-            }
-          };
-          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.received`, msgEvent);
-        }
-      }
-    });
-
-    // Listen for message ACK (read receipts)
-    sock.ev.on("messages.update", async (updates: any[]) => {
-      for (const update of updates) {
-        if (update.update?.status) {
-          const ackEvent: Envelope = {
-            id: uuidv4(),
-            timestamp: Date.now(),
-            tenantId,
-            type: "message.ack",
-            payload: {
-              sessionId: payload.sessionId,
-              messageId: update.key?.id || "",
-              ack: update.update.status // 0=pending, 1=sent, 2=received, 3=read, 4=played
-            }
-          };
-          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.ack`, ackEvent);
-        }
-      }
-    });
   }
 
   private async stopSession(sessionId: number) {
+    logger.info(`Stopping session ${sessionId}`);
     const session = this.sessions.get(sessionId);
-    if (session) {
-      session.socket.end(undefined);
+    if (!session) return;
+
+    try {
+      await session.socket.end(undefined);
       this.sessions.delete(sessionId);
       await this.cleanupSession(sessionId);
-      logger.info(`Session ${sessionId} stopped and cleaned up`);
+    } catch (err) {
+      logger.error(`Error stopping session ${sessionId}`, err);
+    }
+
+    const statusEvent: Envelope = {
+      id: uuidv4(),
+      timestamp: Date.now(),
+      tenantId: 1, // Default, should be passed
+      type: "session.status",
+      payload: {
+        sessionId,
+        status: "DISCONNECTED"
+      }
+    };
+    await this.rabbitmq.publishEvent(`wbot.1.${sessionId}.session.status`, statusEvent);
+  }
+
+  private async startSession(payload: StartSessionPayload, tenantId: string | number) {
+    logger.info(`Starting session ${payload.sessionId}`);
+
+    try {
+      if (this.sessions.has(payload.sessionId)) {
+        logger.info(`Session ${payload.sessionId} already exists`);
+        return;
+      }
+
+      const { state, saveCreds } = await useMultiFileAuthState(
+        path.join(this.sessionsDir, `session-${payload.sessionId}`)
+      );
+
+      const { version, isLatest } = await fetchLatestBaileysVersion();
+      logger.info(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
+
+      const sock = makeWASocket({
+        version,
+        auth: state,
+        printQRInTerminal: false,
+        logger: logger as any,
+        browser: [payload.name || "Whaticket Premium", "Chrome", "10.0"],
+        syncFullHistory: payload.syncHistory || false,
+        connectTimeoutMs: 60000,
+        keepAliveIntervalMs: 10000,
+        retryRequestDelayMs: 2000
+      });
+
+      this.sessions.set(payload.sessionId, { socket: sock, status: "OPENING" });
+
+      sock.ev.on("creds.update", saveCreds);
+
+      // Se usePairingCode e phoneNumber foram fornecidos, solicitar código de pareamento
+      if (payload.usePairingCode && payload.phoneNumber) {
+        // Aguardar conexão estar pronta para solicitar código
+        sock.ev.on("connection.update", async (update: any) => {
+          if (update.connection === "open") return;
+
+          // Só solicitar pairing code se ainda não conectou
+          if (!sock.authState.creds.registered) {
+            try {
+              logger.info(`Requesting pairing code for session ${payload.sessionId} - Phone: ${payload.phoneNumber}`);
+              const code = await sock.requestPairingCode(payload.phoneNumber!);
+
+              const pairingEvent: Envelope = {
+                id: uuidv4(),
+                timestamp: Date.now(),
+                tenantId,
+                type: "session.pairingcode",
+                payload: {
+                  sessionId: payload.sessionId,
+                  pairingCode: code
+                }
+              };
+              await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.pairingcode`, pairingEvent);
+            } catch (error) {
+              logger.error(`Error requesting pairing code for session ${payload.sessionId}`, error);
+            }
+          }
+        });
+      }
+
+      sock.ev.on("connection.update", async (update: any) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+          logger.info(`QR Code generated for session ${payload.sessionId}`);
+          const qrEvent: Envelope = {
+            id: uuidv4(),
+            timestamp: Date.now(),
+            tenantId,
+            type: "session.qrcode",
+            payload: {
+              sessionId: payload.sessionId,
+              qrcode: qr,
+              attempt: 1 // Logic to track attempts could be added
+            }
+          };
+          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.qrcode`, qrEvent);
+        }
+
+        if (connection === "close") {
+          const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+          logger.warn(`Connection closed for session ${payload.sessionId}, reconnecting: ${shouldReconnect}`);
+
+          const statusEvent: Envelope = {
+            id: uuidv4(),
+            timestamp: Date.now(),
+            tenantId,
+            type: "session.status",
+            payload: {
+              sessionId: payload.sessionId,
+              status: "DISCONNECTED"
+            }
+          };
+          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
+
+          if (shouldReconnect) {
+            this.sessions.delete(payload.sessionId);
+            this.startSession(payload, tenantId);
+          } else {
+            this.sessions.delete(payload.sessionId);
+            // Cleanup auth files if logged out?
+          }
+        } else if (connection === "open") {
+          logger.info(`Session ${payload.sessionId} opened`);
+          const session = this.sessions.get(payload.sessionId);
+          if (session) session.status = "CONNECTED";
+
+          const statusEvent: Envelope = {
+            id: uuidv4(),
+            timestamp: Date.now(),
+            tenantId,
+            type: "session.status",
+            payload: {
+              sessionId: payload.sessionId,
+              status: "CONNECTED"
+            }
+          };
+          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
+        }
+      });
+
+      sock.ev.on("messages.upsert", async ({ messages, type }: any) => {
+        if (type === "notify") {
+          for (const msg of messages) {
+            if (!msg.message) continue;
+
+            // Check for media types
+            const hasMedia = !!(
+              msg.message.imageMessage ||
+              msg.message.videoMessage ||
+              msg.message.audioMessage ||
+              msg.message.documentMessage ||
+              msg.message.stickerMessage
+            );
+
+            let body = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+            let selectedButtonId = undefined;
+            let selectedRowId = undefined;
+            let pollVotes = undefined;
+            let msgType = hasMedia ? "media" : "chat";
+            let mediaData = undefined;
+            let mimetype = undefined;
+
+            // --- Media Handling ---
+            if (hasMedia) {
+              try {
+                const buffer = await downloadMediaMessage(msg, "buffer", {});
+                mediaData = buffer.toString("base64");
+                mimetype = msg.message.imageMessage?.mimetype ||
+                  msg.message.videoMessage?.mimetype ||
+                  msg.message.audioMessage?.mimetype ||
+                  msg.message.documentMessage?.mimetype ||
+                  msg.message.stickerMessage?.mimetype;
+              } catch (err) {
+                logger.error("Error downloading media: ", err);
+              }
+            }
+
+            // --- Interactive Responses ---
+
+            // 1. Buttons Response
+            if (msg.message.buttonsResponseMessage) {
+              selectedButtonId = msg.message.buttonsResponseMessage.selectedButtonId;
+              body = msg.message.buttonsResponseMessage.selectedDisplayText || "";
+              msgType = "button_response";
+            }
+            // 2. Template Button Response
+            else if (msg.message.templateButtonReplyMessage) {
+              selectedButtonId = msg.message.templateButtonReplyMessage.selectedId;
+              body = msg.message.templateButtonReplyMessage.selectedDisplayText || "";
+              msgType = "button_response";
+            }
+            // 3. List Response
+            else if (msg.message.listResponseMessage) {
+              selectedRowId = msg.message.listResponseMessage.singleSelectReply?.selectedRowId;
+              body = msg.message.listResponseMessage.title || "";
+              msgType = "list_response";
+            }
+            // 3.1 Interactive Response (Native Flow / Carousel)
+            else if (msg.message.interactiveResponseMessage) {
+              const interactiveResp = msg.message.interactiveResponseMessage;
+              if (interactiveResp.nativeFlowResponseMessage) {
+                const params = JSON.parse(interactiveResp.nativeFlowResponseMessage.paramsJson || "{}");
+                selectedButtonId = params.id;
+              }
+              body = interactiveResp.body?.text || "";
+              msgType = "interactive_response";
+            }
+            // 4. Poll Response
+            else if (msg.message.pollUpdateMessage) {
+              msgType = "poll_response";
+            }
+
+            // Fetch Profile Pic (Best effort)
+            let profilePicUrl = "";
+            try {
+              // profilePicUrl = await sock.profilePictureUrl(msg.key.participant || msg.key.remoteJid || "", "image").catch(() => "");
+            } catch (e) { }
+
+            // Enhanced Contact Identification (LID/JID)
+            let senderLid = undefined;
+            const senderJid = msg.key.participant || msg.key.remoteJid || "";
+
+            if (senderJid && !senderJid.includes("@lid")) {
+              try {
+                // If it's a standard JID (PN based), try to fetch the LID which is permanent
+                // This answers the requirement: "todo contato tem LID mas podem haver casos de contatos antigos... sistema deve buscar o LID"
+                const [result] = await sock.onWhatsApp(senderJid);
+                if (result && result.lid) {
+                  senderLid = result.lid;
+                }
+              } catch (err) {
+                // Ignore errors during LID fetch to not block message processing
+              }
+            } else if (senderJid && senderJid.includes("@lid")) {
+              senderLid = senderJid;
+            }
+
+            const msgEvent: Envelope = {
+              id: uuidv4(),
+              timestamp: Date.now(),
+              tenantId,
+              type: "message.received",
+              payload: {
+                sessionId: payload.sessionId,
+                message: {
+                  id: msg.key.id || "",
+                  from: msg.key.remoteJid || "",
+                  to: msg.key.remoteJid || "",
+                  body: body,
+                  fromMe: msg.key.fromMe || false,
+                  isGroup: msg.key.remoteJid?.endsWith("@g.us") || false,
+                  type: msgType,
+                  timestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : 0,
+                  hasMedia: hasMedia,
+                  mediaData,
+                  mimetype,
+                  selectedButtonId,
+                  selectedRowId,
+                  pollVotes,
+                  pushName: msg.pushName || "",
+                  participant: msg.key.participant || "",
+                  profilePicUrl,
+                  senderLid
+                }
+              }
+            };
+            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.received`, msgEvent);
+          }
+        }
+      });
+
+      // Listen for message ACK (read receipts)
+      sock.ev.on("messages.update", async (updates: any[]) => {
+        for (const update of updates) {
+          if (update.update?.status) {
+            const ackEvent: Envelope = {
+              id: uuidv4(),
+              timestamp: Date.now(),
+              tenantId,
+              type: "message.ack",
+              payload: {
+                sessionId: payload.sessionId,
+                messageId: update.key?.id || "",
+                ack: update.update.status // 0=pending, 1=sent, 2=received, 3=read, 4=played
+              }
+            };
+            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+          }
+        }
+      });
+
+    } catch (err) {
+      logger.error(`Error starting session ${payload.sessionId}`, err);
+      const statusEvent: Envelope = {
+        id: uuidv4(),
+        timestamp: Date.now(),
+        tenantId,
+        type: "session.status",
+        payload: {
+          sessionId: payload.sessionId,
+          status: "DISCONNECTED"
+        }
+      };
+      await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
+      this.sessions.delete(payload.sessionId);
     }
   }
 

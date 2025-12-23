@@ -58,6 +58,12 @@ class Whatsapp extends Model<Whatsapp> {
   @Column
   isDefault: boolean;
 
+  @Column(DataType.BOOLEAN)
+  syncHistory: boolean;
+
+  @Column(DataType.TEXT)
+  syncPeriod: string;
+
   @CreatedAt
   createdAt: Date;
 

@@ -4,9 +4,9 @@ const options = {
     definition: {
         openapi: "3.0.0",
         info: {
-            title: "Whaticket Premium API",
+            title: "Watic Premium API",
             version: "1.2.0",
-            description: "Documentação da API do Whaticket Premium",
+            description: "Documentação da API do Watic Premium",
         },
         servers: [
             {
