@@ -255,10 +255,10 @@ const MainLayoutDefault = ({ children }) => {
                 </Box>
                 <Divider />
                 <List style={{ flexGrow: 1 }}>
-                    <MainListItems drawerClose={drawerClose} />
+                    <MainListItems drawerClose={drawerClose} collapsed={!drawerOpen} />
                 </List>
                 <Divider />
-                <VersionFooter />
+                <VersionFooter collapsed={!drawerOpen} />
             </Drawer>
             <UserModal
                 open={userModalOpen}
@@ -277,7 +277,7 @@ const MainLayoutDefault = ({ children }) => {
                         onClick={() => setDrawerOpen(!drawerOpen)}
                         className={classes.menuButton}
                     >
-                        {drawerOpen ? <ChevronLeftIcon /> : <MenuIcon />}
+                        <MenuIcon />
                     </IconButton>
                     <Typography
                         component="h1"
