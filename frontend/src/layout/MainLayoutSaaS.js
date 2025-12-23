@@ -11,7 +11,7 @@ import {
     MenuItem,
     Menu,
     IconButton,
-    Hidden,
+    Box,
 } from "@material-ui/core";
 import AccountCircle from "@material-ui/icons/AccountCircle";
 import MenuIcon from "@material-ui/icons/Menu";
@@ -26,53 +26,86 @@ import VersionFooter from "../components/VersionFooter";
 import api from "../services/api";
 import { getBackendUrl } from "../config";
 
-const drawerWidth = 260; // Slightly wider for SaaS look
+const drawerWidth = 260;
+const drawerWidthClosed = 72;
 
 const useStyles = makeStyles((theme) => ({
     root: {
         display: "flex",
         height: "100vh",
-        backgroundColor: theme.palette.background.default,
+        // Fundo claro para área principal (Soft Cloud)
+        backgroundColor: "#F1F5F9",
     },
-    sidebar: {
+    drawerPaper: {
+        position: "relative",
+        whiteSpace: "nowrap",
         width: drawerWidth,
-        flexShrink: 0,
-        borderRight: "1px solid rgba(0,0,0,0.08)",
+        transition: theme.transitions.create("width", {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+        }),
+        borderRight: "1px solid #334155",
+        // Sidebar com tom intermediário (não muito escuro, não muito claro)
+        backgroundColor: "#1E293B",
+        color: "#E2E8F0",
+        boxShadow: "0 0 20px rgba(0,0,0,0.1)",
     },
-    sidebarPaper: {
-        width: drawerWidth,
-        borderRight: "none",
-        backgroundColor: theme.palette.background.paper,
+    drawerPaperClose: {
+        overflowX: "hidden",
+        transition: theme.transitions.create("width", {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+        }),
+        width: drawerWidthClosed,
     },
     appBar: {
-        width: `calc(100% - ${drawerWidth}px)`,
-        marginLeft: drawerWidth,
-        backgroundColor: "rgba(255, 255, 255, 0.8)",
+        zIndex: theme.zIndex.drawer + 1,
+        transition: theme.transitions.create(["width", "margin"], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+        }),
+        // AppBar branco para contrastar
+        backgroundColor: "#FFFFFF",
         backdropFilter: "blur(12px)",
-        boxShadow: "none",
-        borderBottom: "1px solid rgba(0,0,0,0.05)",
-        color: theme.palette.text.primary,
-        [theme.breakpoints.down("sm")]: {
-            width: "100%",
-            marginLeft: 0,
-        }
+        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
+        borderBottom: "1px solid #E2E8F0",
+        color: "#1E293B",
+    },
+    appBarShift: {
+        marginLeft: drawerWidth,
+        width: `calc(100% - ${drawerWidth}px)`,
+        transition: theme.transitions.create(["width", "margin"], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+        }),
+    },
+    appBarCollapsed: {
+        marginLeft: drawerWidthClosed,
+        width: `calc(100% - ${drawerWidthClosed}px)`,
     },
     toolbar: {
         paddingRight: 24,
         display: "flex",
         justifyContent: "space-between",
     },
+    menuButton: {
+        marginRight: 20,
+    },
     content: {
         flexGrow: 1,
         height: "100vh",
         overflow: "auto",
-        paddingTop: 64, // AppBar height
+        // Fundo claro para área de conteúdo
+        backgroundColor: "#F1F5F9",
+    },
+    appBarSpacer: {
+        minHeight: 64,
     },
     logoContainer: {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        height: 96,
+        height: 80,
         padding: "16px",
         borderBottom: "1px solid rgba(0,0,0,0.05)",
     },
@@ -81,11 +114,10 @@ const useStyles = makeStyles((theme) => ({
         fontSize: "1.2rem",
         color: theme.palette.primary.main,
     },
-    menuButton: {
-        marginRight: 20,
-        [theme.breakpoints.up("md")]: {
-            display: "none",
-        },
+    systemLogo: {
+        maxWidth: "80%",
+        maxHeight: 60,
+        objectFit: "contain",
     },
     userActions: {
         display: "flex",
@@ -99,10 +131,27 @@ const MainLayoutSaaS = ({ children }) => {
     const [anchorEl, setAnchorEl] = useState(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const { handleLogout, loading, user } = useContext(AuthContext);
-    const [mobileOpen, setMobileOpen] = useState(false);
+    const [drawerOpen, setDrawerOpen] = useState(true);
+    const [drawerVariant, setDrawerVariant] = useState("permanent");
     const [systemLogo, setSystemLogo] = useState("");
     const [systemTitle, setSystemTitle] = useState("Watic Premium");
     const [logoEnabled, setLogoEnabled] = useState(true);
+
+    useEffect(() => {
+        if (document.body.offsetWidth > 600) {
+            setDrawerOpen(true);
+        } else {
+            setDrawerOpen(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (document.body.offsetWidth < 600) {
+            setDrawerVariant("temporary");
+        } else {
+            setDrawerVariant("permanent");
+        }
+    }, [drawerOpen]);
 
     // Fetch system settings
     useEffect(() => {
@@ -141,10 +190,6 @@ const MainLayoutSaaS = ({ children }) => {
         fetchSettings();
     }, []);
 
-    const handleDrawerToggle = () => {
-        setMobileOpen(!mobileOpen);
-    };
-
     const handleMenu = (event) => {
         setAnchorEl(event.currentTarget);
         setMenuOpen(true);
@@ -165,82 +210,77 @@ const MainLayoutSaaS = ({ children }) => {
         handleLogout();
     };
 
+    const drawerClose = () => {
+        if (document.body.offsetWidth < 600) {
+            setDrawerOpen(false);
+        }
+    };
+
     if (loading) {
         return <BackdropLoading />;
     }
 
-    const drawerContent = (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div className={classes.logoContainer}>
-                {systemLogo && logoEnabled ? (
-                    <img
-                        src={`${getBackendUrl()}${systemLogo.startsWith('/') ? systemLogo.slice(1) : systemLogo}`}
-                        alt="Logo"
-                        style={{ maxHeight: 80, maxWidth: '80%', objectFit: 'contain' }}
-                    />
-                ) : (
-                    <Typography variant="h6" noWrap className={classes.logoText}>
-                        {systemTitle}
-                    </Typography>
-                )}
-            </div>
-            <List style={{ flexGrow: 1 }}>
-                <MainListItems drawerClose={() => setMobileOpen(false)} />
-            </List>
-            <VersionFooter />
-        </div>
-    );
-
     return (
         <div className={classes.root}>
-            {/* Mobile Drawer */}
-            <Hidden smUp implementation="css">
-                <Drawer
-                    variant="temporary"
-                    anchor="left"
-                    open={mobileOpen}
-                    onClose={handleDrawerToggle}
-                    classes={{
-                        paper: classes.sidebarPaper,
-                    }}
-                    ModalProps={{
-                        keepMounted: true, // Better open performance on mobile.
-                    }}
-                >
-                    {drawerContent}
-                </Drawer>
-            </Hidden>
+            <Drawer
+                variant={drawerVariant}
+                className={drawerOpen ? classes.drawerPaper : classes.drawerPaperClose}
+                classes={{
+                    paper: clsx(
+                        classes.drawerPaper,
+                        !drawerOpen && classes.drawerPaperClose
+                    ),
+                }}
+                open={drawerOpen}
+            >
+                {/* Logo and Title Section */}
+                <Box className={classes.logoContainer}>
+                    {drawerOpen && systemLogo && logoEnabled ? (
+                        <img
+                            src={`${getBackendUrl()}${systemLogo.startsWith('/') ? systemLogo.slice(1) : systemLogo}`}
+                            alt="Logo"
+                            className={classes.systemLogo}
+                        />
+                    ) : drawerOpen && systemTitle ? (
+                        <Typography className={classes.logoText} noWrap>
+                            {systemTitle}
+                        </Typography>
+                    ) : null}
+                </Box>
+                <Divider />
+                <List style={{ flexGrow: 1 }}>
+                    <MainListItems drawerClose={drawerClose} collapsed={!drawerOpen} />
+                </List>
+                <Divider />
+                <VersionFooter collapsed={!drawerOpen} />
+            </Drawer>
 
-            {/* Desktop Sidebar (Permanent) */}
-            <Hidden xsDown implementation="css">
-                <Drawer
-                    classes={{
-                        paper: classes.sidebarPaper,
-                    }}
-                    variant="permanent"
-                    open
-                    className={classes.sidebar}
-                >
-                    <div className={classes.sidebarPaper} style={{ height: '100%' }}>
-                        {drawerContent}
-                    </div>
-                </Drawer>
-            </Hidden>
+            <UserModal
+                open={userModalOpen}
+                onClose={() => setUserModalOpen(false)}
+                userId={user?.id}
+            />
 
-            <AppBar position="fixed" className={classes.appBar}>
+            <AppBar
+                position="absolute"
+                className={clsx(
+                    classes.appBar,
+                    drawerOpen ? classes.appBarShift : classes.appBarCollapsed
+                )}
+            >
                 <Toolbar className={classes.toolbar}>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         <IconButton
-                            color="inherit"
-                            aria-label="open drawer"
                             edge="start"
-                            onClick={handleDrawerToggle}
+                            color="inherit"
+                            aria-label="toggle drawer"
+                            onClick={() => setDrawerOpen(!drawerOpen)}
                             className={classes.menuButton}
                         >
                             <MenuIcon />
                         </IconButton>
                         <Typography variant="h6" noWrap>
-                            Dashboard
+                            {systemTitle}
                         </Typography>
                     </div>
 
@@ -282,13 +322,8 @@ const MainLayoutSaaS = ({ children }) => {
                 </Toolbar>
             </AppBar>
 
-            <UserModal
-                open={userModalOpen}
-                onClose={() => setUserModalOpen(false)}
-                userId={user?.id}
-            />
-
             <main className={classes.content}>
+                <div className={classes.appBarSpacer} />
                 {children}
             </main>
         </div>
@@ -296,3 +331,4 @@ const MainLayoutSaaS = ({ children }) => {
 };
 
 export default MainLayoutSaaS;
+
