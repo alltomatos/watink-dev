@@ -226,9 +226,8 @@ const Contacts = () => {
       <ConfirmationModal
         title={
           deletingContact
-            ? `${i18n.t("contacts.confirmationModal.deleteTitle")} ${
-                deletingContact.name
-              }?`
+            ? `${i18n.t("contacts.confirmationModal.deleteTitle")} ${deletingContact.name
+            }?`
             : `${i18n.t("contacts.confirmationModal.importTitlte")}`
         }
         open={confirmOpen}
@@ -289,6 +288,9 @@ const Contacts = () => {
                 {i18n.t("contacts.table.whatsapp")}
               </TableCell>
               <TableCell align="center">
+                LID
+              </TableCell>
+              <TableCell align="center">
                 {i18n.t("contacts.table.email")}
               </TableCell>
               <TableCell align="center">
@@ -305,6 +307,17 @@ const Contacts = () => {
                   </TableCell>
                   <TableCell>{contact.name}</TableCell>
                   <TableCell align="center">{contact.number}</TableCell>
+                  <TableCell align="center">
+                    {contact.lid ? (
+                      <div style={{ color: "green", fontWeight: "bold", fontSize: "0.8rem" }}>
+                        ✓
+                      </div>
+                    ) : (
+                      <div style={{ color: "gray", fontSize: "0.8rem" }}>
+                        -
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell align="center">{contact.email}</TableCell>
                   <TableCell align="center">
                     <IconButton

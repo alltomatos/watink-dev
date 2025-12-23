@@ -22,7 +22,9 @@ import toastError from "../../errors/toastError";
 import { i18n } from "../../translate/i18n";
 import QrcodeModal from "../../components/QrcodeModal";
 import PairingCodeModal from "../../components/PairingCodeModal";
+import WhatsAppModal from "../../components/WhatsAppModal"; // [NEW] Import Modal
 import openSocket from "../../services/socket-io";
+import { Edit } from "@material-ui/icons"; // [NEW] Import Edit icon
 
 const useStyles = makeStyles(theme => ({
     root: {
@@ -56,6 +58,7 @@ const ConnectionConfig = () => {
     const [loading, setLoading] = useState(true);
     const [qrModalOpen, setQrModalOpen] = useState(false);
     const [pairingModalOpen, setPairingModalOpen] = useState(false);
+    const [whatsappModalOpen, setWhatsAppModalOpen] = useState(false); // [NEW] State for Edit Modal
 
     const fetchWhatsapp = useCallback(async () => {
         try {
@@ -94,6 +97,12 @@ const ConnectionConfig = () => {
         }
     };
 
+    // [NEW] Handle closing modal and refreshing data
+    const handleCloseWhatsAppModal = useCallback(() => {
+        setWhatsAppModalOpen(false);
+        fetchWhatsapp();
+    }, [fetchWhatsapp]);
+
     if (loading) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
@@ -110,12 +119,15 @@ const ConnectionConfig = () => {
                         <ArrowBack />
                     </IconButton>
                     <Title>{whatsapp.name}</Title>
+                    <IconButton onClick={() => setWhatsAppModalOpen(true)}>
+                        <Edit />
+                    </IconButton>
                 </Box>
             </MainHeader>
 
             <Paper className={classes.paper} variant="outlined">
                 <Grid container spacing={3}>
-                    <Grid item xs={12} md={6}>
+                    <Grid item xs={12} md={4}>
                         <Typography variant="h6" gutterBottom>
                             Status da Conexão
                         </Typography>
@@ -136,7 +148,25 @@ const ConnectionConfig = () => {
 
                     <Divider orientation="vertical" flexItem />
 
-                    <Grid item xs={12} md={5}>
+                    <Grid item xs={12} md={4}>
+                        <Typography variant="h6" gutterBottom>
+                            Configurações
+                        </Typography>
+                        <Typography variant="body1">
+                            Sincronizar Histórico: <b>{whatsapp.syncHistory ? "Sim" : "Não"}</b>
+                        </Typography>
+                        {whatsapp.syncHistory && (
+                            <Typography variant="body1">
+                                Período: <b>{whatsapp.syncPeriod || "Padrão"}</b>
+                            </Typography>
+                        )}
+                    </Grid>
+
+                    <Divider orientation="vertical" flexItem />
+
+                    <Divider orientation="vertical" flexItem />
+
+                    <Grid item xs={12} md={3}>
                         <Typography variant="h6" gutterBottom>
                             Ações de Sessão
                         </Typography>
@@ -164,7 +194,13 @@ const ConnectionConfig = () => {
                                 <Button
                                     variant="outlined"
                                     color="secondary"
-                                    onClick={() => {/* handleDisconnect */ }}
+                                    onClick={async () => {
+                                        try {
+                                            await api.delete(`/whatsappsession/${whatsappId}`);
+                                        } catch (err) {
+                                            toastError(err);
+                                        }
+                                    }}
                                 >
                                     Desconectar
                                 </Button>
@@ -184,7 +220,12 @@ const ConnectionConfig = () => {
                 onClose={() => setPairingModalOpen(false)}
                 whatsAppId={parseInt(whatsappId)}
             />
-        </MainContainer>
+            <WhatsAppModal
+                open={whatsappModalOpen}
+                onClose={handleCloseWhatsAppModal}
+                whatsAppId={whatsappId}
+            />
+        </MainContainer >
     );
 };
 

@@ -10,6 +10,7 @@ const settingRoutes = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 settingRoutes.get("/settings", isAuth, SettingController.index);
+settingRoutes.get("/public-settings", SettingController.getPublicSettings); // [NEW] Public route
 
 // routes.get("/settings/:settingKey", isAuth, SettingsController.show);
 

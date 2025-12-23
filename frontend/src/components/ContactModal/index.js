@@ -260,6 +260,27 @@ const ContactModal = ({ open, onClose, contactId, initialValues, onSave }) => {
 								>
 									{i18n.t("contactModal.buttons.cancel")}
 								</Button>
+								{contactId && (
+									<Button
+										onClick={() => {
+											const sync = async () => {
+												try {
+													await api.post(`/contacts/${contactId}/sync`);
+													toast.success("Sync scheduled!");
+												} catch (err) {
+													toastError(err);
+												}
+											};
+											sync();
+										}}
+										color="primary"
+										disabled={isSubmitting}
+										variant="outlined"
+										style={{ marginRight: 8, marginLeft: 8 }}
+									>
+										Sync
+									</Button>
+								)}
 								<Button
 									type="submit"
 									color="primary"
