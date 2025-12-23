@@ -116,7 +116,9 @@ const messages = {
         form: {
           name: "Nome",
           default: "Padrão",
-          farewellMessage: "Mensagem de despedida"
+          farewellMessage: "Mensagem de despedida",
+          syncHistory: "Sincronizar Histórico",
+          syncPeriod: "Período (ex: 30 dias)"
         },
         buttons: {
           okAdd: "Adicionar",
@@ -293,7 +295,7 @@ const messages = {
         listItems: {
           dashboard: "Dashboard",
           connections: "Conexões",
-          tickets: "Tickets",
+          tickets: "Chats",
           contacts: "Contatos",
           quickAnswers: "Respostas Rápidas",
           queues: "Filas",

@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { getWbot } from "../libs/wbot";
 import ShowWhatsAppService from "../services/WhatsappService/ShowWhatsAppService";
 import { StartWhatsAppSession } from "../services/WbotServices/StartWhatsAppSession";
 import UpdateWhatsAppService from "../services/WhatsappService/UpdateWhatsAppService";
+import StopWhatsAppSession from "../services/WbotServices/StopWhatsAppSession";
 
 const store = async (req: Request, res: Response): Promise<Response> => {
   const { whatsappId } = req.params;
@@ -32,9 +32,7 @@ const remove = async (req: Request, res: Response): Promise<Response> => {
   const { whatsappId } = req.params;
   const whatsapp = await ShowWhatsAppService(whatsappId);
 
-  const wbot = getWbot(whatsapp.id);
-
-  wbot.logout();
+  await StopWhatsAppSession(whatsapp.id);
 
   return res.status(200).json({ message: "Session disconnected." });
 };

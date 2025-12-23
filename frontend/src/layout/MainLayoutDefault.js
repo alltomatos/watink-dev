@@ -142,7 +142,7 @@ const MainLayoutDefault = ({ children }) => {
     const [drawerVariant, setDrawerVariant] = useState("permanent");
     const { user } = useContext(AuthContext);
     const [systemLogo, setSystemLogo] = useState("");
-    const [systemTitle, setSystemTitle] = useState("WhaTicket");
+    const [systemTitle, setSystemTitle] = useState("Watic Premium");
     const [logoEnabled, setLogoEnabled] = useState(true);
 
     useEffect(() => {

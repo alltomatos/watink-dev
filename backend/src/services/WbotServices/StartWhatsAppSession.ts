@@ -28,7 +28,10 @@ export const StartWhatsAppSession = async (
       payload: {
         sessionId: whatsapp.id,
         usePairingCode,
-        phoneNumber
+        phoneNumber,
+        name: whatsapp.name,
+        syncHistory: whatsapp.syncHistory,
+        syncPeriod: whatsapp.syncPeriod
       }
     };
 

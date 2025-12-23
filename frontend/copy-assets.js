@@ -5,10 +5,10 @@ const assetsDir = path.join(__dirname, 'src', 'assets');
 const publicDir = path.join(__dirname, 'public');
 
 const filesToCopy = [
-    { src: 'whaticket-premiun.png', dest: 'login-background.png' },
-    { src: 'whaticket-premiun-logo.png', dest: 'logo.png' },
-    { src: 'premiun-favicon.png', dest: 'favicon.png' },
-    { src: 'premiun-favicon.png', dest: 'favicon.ico' } // Fallback for ico
+    { src: 'fundo.png', dest: 'login-background.png' },
+    { src: 'watic-premiun-log.png', dest: 'logo.png' },
+    { src: 'watic-logo-favicon.png', dest: 'favicon.png' },
+    { src: 'watic-logo-favicon.png', dest: 'favicon.ico' } // Fallback for ico
 ];
 
 if (!fs.existsSync(publicDir)) {
