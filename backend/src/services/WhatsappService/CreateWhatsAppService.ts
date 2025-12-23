@@ -11,6 +11,8 @@ interface Request {
   farewellMessage?: string;
   status?: string;
   isDefault?: boolean;
+  syncHistory?: boolean; // [NEW]
+  syncPeriod?: string;   // [NEW]
 }
 
 interface Response {
@@ -24,7 +26,9 @@ const CreateWhatsAppService = async ({
   queueIds = [],
   greetingMessage,
   farewellMessage,
-  isDefault = false
+  isDefault = false,
+  syncHistory = false,
+  syncPeriod
 }: Request): Promise<Response> => {
   const schema = Yup.object().shape({
     name: Yup.string()
@@ -75,7 +79,9 @@ const CreateWhatsAppService = async ({
       status,
       greetingMessage,
       farewellMessage,
-      isDefault
+      isDefault,
+      syncHistory,
+      syncPeriod
     },
     { include: ["queues"] }
   );

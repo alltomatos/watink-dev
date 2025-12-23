@@ -64,6 +64,8 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 		greetingMessage: "",
 		farewellMessage: "",
 		isDefault: false,
+		syncHistory: false,
+		syncPeriod: "",
 	};
 	const [whatsApp, setWhatsApp] = useState(initialState);
 	const [selectedQueueIds, setSelectedQueueIds] = useState([]);
@@ -157,6 +159,29 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 										}
 										label={i18n.t("whatsappModal.form.default")}
 									/>
+								</div>
+								<div className={classes.multFieldLine}>
+									<FormControlLabel
+										control={
+											<Field
+												as={Switch}
+												color="primary"
+												name="syncHistory"
+												checked={values.syncHistory}
+											/>
+										}
+										label={i18n.t("whatsappModal.form.syncHistory")}
+									/>
+									{values.syncHistory && (
+										<Field
+											as={TextField}
+											label={i18n.t("whatsappModal.form.syncPeriod")}
+											name="syncPeriod"
+											variant="outlined"
+											margin="dense"
+											className={classes.textField}
+										/>
+									)}
 								</div>
 								<div>
 									<Field

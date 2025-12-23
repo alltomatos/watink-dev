@@ -1,4 +1,4 @@
-import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload, PairingCodePayload } from "../../microservice/contracts";
+import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload, PairingCodePayload, ContactUpdatePayload } from "../../microservice/contracts";
 import RabbitMQService from "../RabbitMQService";
 import { logger } from "../../utils/logger";
 import Whatsapp from "../../models/Whatsapp";
@@ -31,6 +31,9 @@ export const EventListener = async () => {
         break;
       case "message.received":
         await handleMessageReceived(msg.payload as MessageReceivedPayload, msg.tenantId);
+        break;
+      case "contact.update":
+        await handleContactUpdate(msg.payload as ContactUpdatePayload);
         break;
       default:
         logger.warn(`Unknown event type: ${msg.type}`);
@@ -73,6 +76,31 @@ const handleSessionStatus = async (payload: SessionStatusPayload) => {
   });
 };
 
+const handleContactUpdate = async (payload: ContactUpdatePayload) => {
+  const { contactId, number, profilePicUrl, pushName } = payload;
+
+  // Find the contact to verify it exists and we're updating the right one
+  // Logic: if contactId provided, use it. If not, use logic from existing services?
+  // payload has contactId from backend's command, so it should be correct.
+
+  if (contactId) {
+    const contact = await Contact.findByPk(contactId);
+    if (contact) {
+      await contact.update({
+        profilePicUrl: profilePicUrl || contact.profilePicUrl, // Only update if provided
+        // pushName update? usually backend doesn't store pushName in main Contact table unless it matches name logic.
+        // Let's stick to profilePic for now as that's the main goal.
+      });
+
+      const io = getIO();
+      io.emit("contact", {
+        action: "update",
+        contact
+      });
+    }
+  }
+};
+
 const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: string | number) => {
   const { message, sessionId } = payload;
 
@@ -98,16 +126,21 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
 
     // 2. Participant Contact (Sender)
     const participant = message.participant || "";
+
+    // Logging diagnostic for missing participant
+    if (!participant) {
+      logger.error(`Group message ${message.id} from ${message.from} has NO participant! PushName: ${message.pushName}`);
+    }
+
     const participantNumber = participant.replace(/\D/g, "");
+    // Check if we received an explicit LID from the engine via onWhatsApp lookup
+    const providedLid = message.senderLid;
     const isLid = participant.includes("@lid");
 
     const participantData = {
-      name: message.pushName || participantNumber,
-      number: isLid ? "" : participantNumber, // Use empty string or null? Service expects string usually or null logic
-      // Validation: CreateOrUpdateContactService uses `number` for lookup if LID not present. 
-      // If LID, `number` is set to null in create. 
-      // Here we pass string, service handles it. logic: number = isGroup ? raw : replace.
-      lid: isLid ? participant : undefined,
+      name: message.pushName || participantNumber || "Unknown",
+      number: providedLid ? participantNumber : (isLid ? null : (participantNumber || null)),
+      lid: providedLid || (isLid ? participant : undefined),
       isGroup: false,
       tenantId,
       profilePicUrl: message.profilePicUrl
@@ -117,11 +150,12 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     // Individual Contact
     const isLid = message.from.includes("@lid");
     const number = message.from.replace(/\D/g, "");
+    const providedLid = message.senderLid;
 
     const contactData = {
       name: message.pushName || message.from,
-      number: isLid ? "" : number,
-      lid: isLid ? message.from : undefined,
+      number: providedLid ? number : (isLid ? null : (number || null)),
+      lid: providedLid || (isLid ? message.from : undefined),
       isGroup: false,
       tenantId,
       profilePicUrl: message.profilePicUrl
