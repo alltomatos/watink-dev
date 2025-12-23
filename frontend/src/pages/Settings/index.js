@@ -361,6 +361,9 @@ const Settings = () => {
 					<option value="whaticket">Whaticket (Padrão)</option>
 					<option value="saas">SaaS Premium</option>
 					<option value="corporate">Corporate Theme</option>
+					<option value="whatsapp">WhatsApp Theme</option>
+					<option value="google">Google Like Theme</option>
+					<option value="dark">Dark Mode Theme</option>
 				</Select>
 			</Paper>
 
