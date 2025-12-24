@@ -34,7 +34,7 @@ class Tenant extends Model<Tenant> {
   @UpdatedAt
   updatedAt: Date;
 
-  @HasMany(() => User)
+  @HasMany(() => User, "tenantId")
   users: User[];
 }
 

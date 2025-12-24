@@ -23,8 +23,12 @@ export const initIO = (httpServer: Server): SocketIO => {
     try {
       tokenData = verify(token, authConfig.secret);
       logger.debug(JSON.stringify(tokenData), "io-onConnection: tokenData");
-    } catch (error) {
-      logger.error(JSON.stringify(error), "Error decoding token");
+    } catch (err) {
+      if (err.name === "TokenExpiredError") {
+        logger.warn(`Socket authentication failed: Token expired at ${err.expiredAt}`);
+      } else {
+        logger.error(JSON.stringify(err), "Error decoding token");
+      }
       socket.disconnect();
       return io;
     }

@@ -1,6 +1,7 @@
 
 import { Client } from "whatsapp-web.js";
 import Contact from "../../models/Contact";
+import Whatsapp from "../../models/Whatsapp";
 import { getWbot } from "../../libs/wbot";
 import CreateOrUpdateContactService from "./CreateOrUpdateContactService";
 import { logger } from "../../utils/logger";
@@ -15,23 +16,36 @@ const EnrichContactService = async ({ contactId }: Request): Promise<Contact> =>
         throw new Error("Contact not found");
     }
 
-    // Find a connected wbot. Ideally we should know which wbot this contact belongs to.
-    // We'll pick the first connected one or from ticket... 
-    // For now, we assume single tenant/wbot or pick the default. 
-    // In a multi-tenant real scenario, we might need the connectionId.
-    // We'll try to find a session that is connected.
-    // Since we don't store wbotId on contact, we might need to guess or pass it.
-    // Let's rely on getWbot(1) default or improve this if we have tenant info.
-    // Assuming default ID 1 for now or iterating.
-
-    // Actually, we can try to use any connected session to fetch public info.
+    // Find a connected wbot.
     let wbot: Client;
-    try {
-        wbot = getWbot(1); // Default session
-    } catch (err) {
-        // Try to find any active session?
-        // For now, simple fail if default not up.
+    let whatsapp: Whatsapp | null = null;
+
+    if (contact.tenantId) {
+        whatsapp = await Whatsapp.findOne({
+            where: { status: "CONNECTED", tenantId: contact.tenantId }
+        });
+    }
+
+    if (!whatsapp) {
+        whatsapp = await Whatsapp.findOne({
+            where: { status: "CONNECTED", isDefault: true }
+        });
+    }
+
+    if (!whatsapp) {
+        whatsapp = await Whatsapp.findOne({
+            where: { status: "CONNECTED" }
+        });
+    }
+
+    if (!whatsapp) {
         throw new Error("No active WhatsApp session found to sync contact.");
+    }
+
+    try {
+        wbot = getWbot(whatsapp.id);
+    } catch (err) {
+        throw new Error(`Could not get wbot for session ${whatsapp.id}: ${err}`);
     }
 
     // ==========================================================

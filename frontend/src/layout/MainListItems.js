@@ -8,6 +8,7 @@ import ListSubheader from "@material-ui/core/ListSubheader";
 import Divider from "@material-ui/core/Divider";
 import { Badge, Tooltip, makeStyles } from "@material-ui/core";
 import DashboardOutlinedIcon from "@material-ui/icons/DashboardOutlined";
+import ListAltIcon from "@material-ui/icons/ListAlt";
 import WhatsAppIcon from "@material-ui/icons/WhatsApp";
 import SyncAltIcon from "@material-ui/icons/SyncAlt";
 import SettingsOutlinedIcon from "@material-ui/icons/SettingsOutlined";
@@ -109,6 +110,13 @@ const MainListItems = (props) => {
         primary="Estatísticas"
         icon={<DashboardOutlinedIcon />}
         iconColor={googleColors.blue}
+        collapsed={collapsed}
+      />
+      <ListItemLink
+        to="/pipelines"
+        primary="Pipelines"
+        icon={<ListAltIcon />}
+        iconColor={googleColors.purple}
         collapsed={collapsed}
       />
       <ListItemLink

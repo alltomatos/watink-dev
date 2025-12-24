@@ -31,7 +31,7 @@ class SessionManager {
 
   constructor(rabbitmq: RabbitMQ) {
     this.rabbitmq = rabbitmq;
-    this.sessionsDir = path.resolve(__dirname, "..", ".wwebjs_auth");
+    this.sessionsDir = path.resolve(__dirname, "..", ".sessions_auth");
     if (!fs.existsSync(this.sessionsDir)) {
       fs.mkdirSync(this.sessionsDir, { recursive: true });
     }
@@ -155,9 +155,9 @@ class SessionManager {
         version,
         auth: state,
         printQRInTerminal: false,
-        logger: logger as any,
-        browser: [payload.name || "Whaticket Premium", "Chrome", "10.0"],
-        syncFullHistory: payload.syncHistory || false,
+        logger: logger.child({ level: "warn" }) as any,
+        browser: [payload.name || "Watic Premium", "Chrome", "143.0.7499.148"],
+        syncFullHistory: payload.syncHistory === true,
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: 10000,
         retryRequestDelayMs: 2000
@@ -291,7 +291,7 @@ class SessionManager {
                   msg.message.documentMessage?.mimetype ||
                   msg.message.stickerMessage?.mimetype;
               } catch (err) {
-                logger.error("Error downloading media: ", err);
+                logger.warn(`Error downloading media for msg ${msg.key.id}: ${err}`);
               }
             }
 

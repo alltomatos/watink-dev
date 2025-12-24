@@ -7,25 +7,23 @@ import { makeStyles } from "@material-ui/core/styles";
 import { green } from "@material-ui/core/colors";
 import {
 	Button,
-	IconButton,
 	Paper,
 	Typography,
 	CircularProgress,
 	Grid,
 	Card,
 	CardContent,
-	CardActions,
 	CardActionArea,
-	Box
+	Box,
+	Chip
 } from "@material-ui/core";
 import {
-	Edit,
 	CheckCircle,
-	SignalCellularConnectedNoInternet2Bar,
 	SignalCellularConnectedNoInternet0Bar,
 	SignalCellular4Bar,
 	CropFree,
-	DeleteOutline,
+	SignalCellularConnectedNoInternet2Bar,
+	Add
 } from "@material-ui/icons";
 
 import MainContainer from "../../components/MainContainer";
@@ -33,12 +31,9 @@ import MainHeader from "../../components/MainHeader";
 import MainHeaderButtonsWrapper from "../../components/MainHeaderButtonsWrapper";
 import Title from "../../components/Title";
 
-import api from "../../services/api";
 import WhatsAppModal from "../../components/WhatsAppModal";
-import ConfirmationModal from "../../components/ConfirmationModal";
 import { i18n } from "../../translate/i18n";
 import { WhatsAppsContext } from "../../context/WhatsApp/WhatsAppsContext";
-import toastError from "../../errors/toastError";
 
 const useStyles = makeStyles(theme => ({
 	mainPaper: {
@@ -51,19 +46,29 @@ const useStyles = makeStyles(theme => ({
 		height: '100%',
 		display: 'flex',
 		flexDirection: 'column',
-		position: 'relative'
+		position: 'relative',
+		borderRadius: 12, // More rounded for premium feel
+		transition: "all 0.3s cubic-bezier(.25,.8,.25,1)",
+		"&:hover": {
+			boxShadow: "0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22)",
+			transform: "translateY(-5px)"
+		}
 	},
 	cardContent: {
 		flexGrow: 1,
+		display: "flex", // Centered content
+		flexDirection: "column",
+		alignItems: "center",
+		justifyContent: "center",
+		textAlign: "center",
+		padding: theme.spacing(3)
 	},
 	statusIcon: {
-		position: 'absolute',
-		top: theme.spacing(1),
-		right: theme.spacing(1),
+		marginBottom: theme.spacing(2),
+		padding: theme.spacing(2),
+		borderRadius: "50%",
+		backgroundColor: theme.palette.action.hover
 	},
-	cardActions: {
-		justifyContent: 'flex-end',
-	}
 }));
 
 const Connections = () => {
@@ -73,17 +78,6 @@ const Connections = () => {
 	const { whatsApps, loading } = useContext(WhatsAppsContext);
 	const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
 	const [selectedWhatsApp, setSelectedWhatsApp] = useState(null);
-	const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-	const confirmationModalInitialState = {
-		action: "",
-		title: "",
-		message: "",
-		whatsAppId: "",
-		open: false,
-	};
-	const [confirmModalInfo, setConfirmModalInfo] = useState(
-		confirmationModalInitialState
-	);
 
 	const handleOpenWhatsAppModal = () => {
 		setSelectedWhatsApp(null);
@@ -95,72 +89,35 @@ const Connections = () => {
 		setSelectedWhatsApp(null);
 	}, [setSelectedWhatsApp, setWhatsAppModalOpen]);
 
-	const handleEditWhatsApp = (e, whatsApp) => {
-		e.stopPropagation();
-		setSelectedWhatsApp(whatsApp);
-		setWhatsAppModalOpen(true);
-	};
-
-	const handleOpenConfirmationModal = (e, action, whatsAppId) => {
-		e.stopPropagation();
-		if (action === "disconnect") {
-			setConfirmModalInfo({
-				action: action,
-				title: i18n.t("connections.confirmationModal.disconnectTitle"),
-				message: i18n.t("connections.confirmationModal.disconnectMessage"),
-				whatsAppId: whatsAppId,
-			});
-		}
-
-		if (action === "delete") {
-			setConfirmModalInfo({
-				action: action,
-				title: i18n.t("connections.confirmationModal.deleteTitle"),
-				message: i18n.t("connections.confirmationModal.deleteMessage"),
-				whatsAppId: whatsAppId,
-			});
-		}
-		setConfirmModalOpen(true);
-	};
-
-	const handleSubmitConfirmationModal = async () => {
-		if (confirmModalInfo.action === "disconnect") {
-			try {
-				await api.delete(`/whatsappsession/${confirmModalInfo.whatsAppId}`);
-			} catch (err) {
-				toastError(err);
-			}
-		}
-
-		if (confirmModalInfo.action === "delete") {
-			try {
-				await api.delete(`/whatsapp/${confirmModalInfo.whatsAppId}`);
-				toast.success(i18n.t("connections.toasts.deleted"));
-			} catch (err) {
-				toastError(err);
-			}
-		}
-
-		setConfirmModalInfo(confirmationModalInitialState);
-	};
-
 	const renderStatusIcon = status => {
 		switch (status) {
 			case "DISCONNECTED":
-				return <SignalCellularConnectedNoInternet0Bar color="secondary" />;
+				return <SignalCellularConnectedNoInternet0Bar fontSize="large" color="error" />;
 			case "OPENING":
-				return <CircularProgress size={24} />;
+				return <CircularProgress size={36} />;
 			case "qrcode":
-				return <CropFree />;
+				return <CropFree fontSize="large" style={{ color: "#f57c00" }} />;
 			case "CONNECTED":
-				return <SignalCellular4Bar style={{ color: green[500] }} />;
+				return <SignalCellular4Bar fontSize="large" style={{ color: green[500] }} />;
 			case "TIMEOUT":
 			case "PAIRING":
-				return <SignalCellularConnectedNoInternet2Bar color="secondary" />;
+				return <SignalCellularConnectedNoInternet2Bar fontSize="large" style={{ color: "#f57c00" }} />;
 			default:
-				return null;
+				return <SignalCellularConnectedNoInternet0Bar fontSize="large" color="error" />;
 		}
 	};
+
+	const renderStatusLabel = status => {
+		switch (status) {
+			case "DISCONNECTED": return "Desconectado";
+			case "OPENING": return "Iniciando...";
+			case "qrcode": return "Aguardando QR Code";
+			case "CONNECTED": return "Conectado";
+			case "TIMEOUT": return "Tempo Esgotado";
+			case "PAIRING": return "Pareando";
+			default: return "Desconectado";
+		}
+	}
 
 	const handleCardClick = (whatsappId) => {
 		history.push(`/connections/${whatsappId}`);
@@ -168,15 +125,6 @@ const Connections = () => {
 
 	return (
 		<MainContainer>
-			<ConfirmationModal
-				title={confirmModalInfo.title}
-				open={confirmModalOpen}
-				onClose={setConfirmModalOpen}
-				onConfirm={handleSubmitConfirmationModal}
-			>
-				{confirmModalInfo.message}
-			</ConfirmationModal>
-
 			<WhatsAppModal
 				open={whatsAppModalOpen}
 				onClose={handleCloseWhatsAppModal}
@@ -190,6 +138,7 @@ const Connections = () => {
 						variant="contained"
 						color="primary"
 						onClick={handleOpenWhatsAppModal}
+						startIcon={<Add />}
 					>
 						{i18n.t("connections.buttons.add")}
 					</Button>
@@ -202,47 +151,48 @@ const Connections = () => {
 						<CircularProgress />
 					</Box>
 				) : (
-					<Grid container spacing={3}>
+					<Grid container spacing={4}>
 						{whatsApps?.length > 0 &&
 							whatsApps.map(whatsApp => (
-								<Grid item xs={12} sm={6} md={4} key={whatsApp.id}>
+								<Grid item xs={12} sm={6} md={4} lg={3} key={whatsApp.id}>
 									<Card className={classes.card} variant="outlined">
-										<CardActionArea onClick={() => handleCardClick(whatsApp.id)}>
-											<Box className={classes.statusIcon}>
-												{renderStatusIcon(whatsApp.status)}
-											</Box>
+										<CardActionArea
+											onClick={() => handleCardClick(whatsApp.id)}
+											style={{ height: '100%' }}
+										>
 											<CardContent className={classes.cardContent}>
+												<Box className={classes.statusIcon}>
+													{renderStatusIcon(whatsApp.status)}
+												</Box>
+
 												<Typography variant="h6" component="h2" gutterBottom>
 													{whatsApp.name}
 												</Typography>
-												<Typography variant="body2" color="textSecondary">
-													Status: {whatsApp.status}
+
+												<Chip
+													label={renderStatusLabel(whatsApp.status)}
+													size="small"
+													style={{
+														backgroundColor: whatsApp.status === 'CONNECTED' ? green[50] : 'rgba(0,0,0,0.08)',
+														color: whatsApp.status === 'CONNECTED' ? green[800] : 'inherit',
+														marginBottom: 16
+													}}
+												/>
+
+												<Typography variant="caption" color="textSecondary" display="block">
+													{i18n.t("connections.table.lastUpdate")}:
+													<br />
+													{whatsApp.updatedAt ? format(parseISO(whatsApp.updatedAt), "dd/MM/yy HH:mm") : "N/A"}
 												</Typography>
-												<Typography variant="body2" color="textSecondary">
-													{i18n.t("connections.table.lastUpdate")}: {whatsApp.updatedAt ? format(parseISO(whatsApp.updatedAt), "dd/MM/yy HH:mm") : "N/A"}
-												</Typography>
+
 												{whatsApp.isDefault && (
-													<Box display="flex" alignItems="center" mt={1}>
+													<Box display="flex" alignItems="center" mt={2}>
 														<CheckCircle style={{ color: green[500], fontSize: 16, marginRight: 4 }} />
 														<Typography variant="caption">{i18n.t("connections.table.default")}</Typography>
 													</Box>
 												)}
 											</CardContent>
 										</CardActionArea>
-										<CardActions className={classes.cardActions}>
-											<IconButton
-												size="small"
-												onClick={(e) => handleEditWhatsApp(e, whatsApp)}
-											>
-												<Edit />
-											</IconButton>
-											<IconButton
-												size="small"
-												onClick={(e) => handleOpenConfirmationModal(e, "delete", whatsApp.id)}
-											>
-												<DeleteOutline />
-											</IconButton>
-										</CardActions>
 									</Card>
 								</Grid>
 							))}
