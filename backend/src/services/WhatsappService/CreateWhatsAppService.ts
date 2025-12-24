@@ -22,7 +22,7 @@ interface Response {
 
 const CreateWhatsAppService = async ({
   name,
-  status = "OPENING",
+  status = "DISCONNECTED",
   queueIds = [],
   greetingMessage,
   farewellMessage,

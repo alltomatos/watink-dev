@@ -13,7 +13,8 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
     throw new AppError("ERR_NO_PERMISSION", 403);
   }
 
-  const settings = await ListSettingsService();
+  const { tenantId } = req.user;
+  const settings = await ListSettingsService({ tenantId });
 
   return res.status(200).json(settings);
 };
@@ -34,10 +35,12 @@ export const update = async (
   }
   const { settingKey: key } = req.params;
   const { value } = req.body;
+  const { tenantId } = req.user;
 
   const setting = await UpdateSettingService({
     key,
-    value
+    value,
+    tenantId
   });
 
   const io = getIO();
@@ -62,6 +65,7 @@ export const uploadLogo = async (
   }
 
   const file = req.file;
+  const { tenantId } = req.user; // Get tenantId
   const publicDir = path.resolve(__dirname, "..", "..", "public");
 
   // Create public directory if it doesn't exist
@@ -83,7 +87,8 @@ export const uploadLogo = async (
   // Update setting
   const setting = await UpdateSettingService({
     key: "systemLogo",
-    value: logoUrl
+    value: logoUrl,
+    tenantId
   });
 
   const io = getIO();
@@ -108,6 +113,7 @@ export const uploadFavicon = async (
   }
 
   const file = req.file;
+  const { tenantId } = req.user; // Get tenantId
   const publicDir = path.resolve(__dirname, "..", "..", "public");
 
   if (!fs.existsSync(publicDir)) {
@@ -124,7 +130,8 @@ export const uploadFavicon = async (
 
   const setting = await UpdateSettingService({
     key: "systemFavicon",
-    value: faviconUrl
+    value: faviconUrl,
+    tenantId
   });
 
   const io = getIO();
@@ -149,6 +156,7 @@ export const uploadLoginImage = async (
   }
 
   const file = req.file;
+  const { tenantId } = req.user; // Get tenantId
   const publicDir = path.resolve(__dirname, "..", "..", "public");
 
   if (!fs.existsSync(publicDir)) {
@@ -165,7 +173,8 @@ export const uploadLoginImage = async (
 
   const setting = await UpdateSettingService({
     key: "login_backgroundImage",
-    value: imageUrl
+    value: imageUrl,
+    tenantId
   });
 
   const io = getIO();

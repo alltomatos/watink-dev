@@ -23,7 +23,7 @@ export const StartWhatsAppSession = async (
     const command: Envelope = {
       id: uuidv4(),
       timestamp: Date.now(),
-      tenantId: 1, // Default tenant for now, or fetch from whatsapp if available
+      tenantId: whatsapp.tenantId,
       type: "session.start",
       payload: {
         sessionId: whatsapp.id,

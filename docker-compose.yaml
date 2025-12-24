@@ -30,7 +30,7 @@ services:
     ports:
       - ${BACKEND_PORT:-8080}:8080
     volumes:
-      - ./backend/public/:/usr/src/app/public/
+      - ./backend/public/:/app/public/
       - ./backend/.wwebjs_auth/:/usr/src/app/.wwebjs_auth/
     depends_on:
       - postgres
@@ -98,3 +98,5 @@ services:
       - rabbitmq
     networks:
       - watic-premium
+    volumes:
+      - ./engine-standard/.sessions_auth/:/usr/src/app/.sessions_auth/

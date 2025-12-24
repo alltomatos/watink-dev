@@ -13,18 +13,18 @@ fi
 if [ "$SERVICE" == "backend" ]; then
   DIR="backend"
   COMPOSE_SVC="backend"
-  IMAGE_NAME="whaticket-premium/backend"
-  COMPOSE_IMAGE="whaticket-premium-backend"
+  IMAGE_NAME="watic-premium/backend"
+  COMPOSE_IMAGE="watic-premium-backend"
 elif [ "$SERVICE" == "engine" ]; then
   DIR="engine-standard"
   COMPOSE_SVC="whaileys-engine"
-  IMAGE_NAME="whaticket-premium/engine"
-  COMPOSE_IMAGE="whaticket-premium-whaileys-engine"
+  IMAGE_NAME="watic-premium/engine"
+  COMPOSE_IMAGE="watic-premium-whaileys-engine"
 elif [ "$SERVICE" == "frontend" ]; then
   DIR="frontend"
   COMPOSE_SVC="frontend"
-  IMAGE_NAME="whaticket-premium/frontend"
-  COMPOSE_IMAGE="whaticket-premium-frontend"
+  IMAGE_NAME="watic-premium/frontend"
+  COMPOSE_IMAGE="watic-premium-frontend"
 else
   echo "Invalid service. Use: backend, engine, or frontend"
   exit 1
@@ -52,7 +52,7 @@ docker tag $COMPOSE_IMAGE:latest $IMAGE_NAME:latest
 
 # 4. Update Service
 echo "🔄 Updating Swarm Service..."
-SERVICE_STACK_NAME="whaticket-premium_$COMPOSE_SVC"
+SERVICE_STACK_NAME="watic-premium_$COMPOSE_SVC"
 docker service update --image $IMAGE_NAME:latest $SERVICE_STACK_NAME --force
 
 echo "✅ $SERVICE updated to v$VERSION_NUM and deployed!"

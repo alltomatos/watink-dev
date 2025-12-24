@@ -4,6 +4,10 @@ import { ToastContainer } from "react-toastify";
 
 import LoggedInLayout from "../layout";
 import Dashboard from "../pages/Dashboard/";
+import Pipelines from "../pages/Pipelines/";
+import PipelineWizard from "../pages/Pipelines/PipelineWizard";
+import PipelineCreator from "../pages/Pipelines/PipelineCreator";
+import PipelineBoard from "../pages/Pipelines/PipelineBoard";
 import Tickets from "../pages/Tickets/";
 import Signup from "../pages/Signup/";
 import Login from "../pages/Login/";
@@ -26,6 +30,9 @@ const PrivateRoutes = () => {
       <LoggedInLayout>
         <Switch>
           <Route exact path="/" component={Dashboard} isPrivate />
+          <Route exact path="/pipelines" component={Pipelines} isPrivate />
+          <Route exact path="/pipelines/new" component={PipelineCreator} isPrivate />
+          <Route exact path="/pipelines/:pipelineId" component={PipelineBoard} isPrivate />
           <Route exact path="/tickets/:ticketId?" component={Tickets} isPrivate />
           <Route exact path="/connections" component={Connections} isPrivate />
           <Route exact path="/connections/:whatsappId" component={ConnectionConfig} isPrivate />
