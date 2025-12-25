@@ -9,13 +9,14 @@ import DeleteDealService from "../services/DealServices/DeleteDealService";
 
 export const index = async (req: Request, res: Response): Promise<Response> => {
     const { tenantId } = req.user;
-    const { searchParam, pageNumber, pipelineId, stageId } = req.query as any;
+    const { searchParam, pageNumber, pipelineId, stageId, ticketId } = req.query as any;
 
     const { deals, count, hasMore } = await ListDealsService({
         searchParam,
         pageNumber,
         pipelineId,
         stageId,
+        ticketId,
         tenantId
     });
 

@@ -1,10 +1,10 @@
-### Projeto Whaticket Premium
+### Projeto watic Premium
 
 Sempre responder e ou criar planos documentos em portugues do brasil
 
 Repositorio: https://github.com/alltomatos/whaticket-premium.git
 
-O projeto deve sempre focar na stack Docker contida em `whaticket-premium`.
+O projeto deve sempre focar na stack Docker contida em `watic-premium`.
 
 Repositorio Original: https://github.com/canove/whaticket-community.git
 
@@ -55,7 +55,7 @@ O projeto agora opera em arquitetura de microserviços orientada a eventos, subs
 AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
 DB_DIALECT=postgres
 DB_HOST=postgres
-POSTGRES_DB=whaticket
+POSTGRES_DB=watic
 ```
 
 ### Fase 3: Frontend & Dashboard SaaS

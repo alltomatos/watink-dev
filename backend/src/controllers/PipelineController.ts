@@ -56,20 +56,9 @@ export const remove = async (req: Request, res: Response): Promise<Response> => 
 
 export const aiSuggest = async (req: Request, res: Response): Promise<Response> => {
     const { tenantId } = req.user;
-    const { prompt, currentStages } = req.body;
+    const { messages } = req.body;
 
-    const schema = Yup.object().shape({
-        prompt: Yup.string().required().min(2),
-        currentStages: Yup.array().of(Yup.string())
-    });
-
-    try {
-        await schema.validate({ prompt, currentStages });
-    } catch (err: any) {
-        throw new AppError(err.message);
-    }
-
-    const suggestion = await AIService(prompt, tenantId, currentStages);
+    const suggestion = await AIService(messages, tenantId);
     return res.json(suggestion);
 };
 

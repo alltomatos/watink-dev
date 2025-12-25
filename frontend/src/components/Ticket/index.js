@@ -176,6 +176,7 @@ const Ticket = () => {
         open={drawerOpen}
         handleDrawerClose={handleDrawerClose}
         contact={contact}
+        ticketId={ticketId} // Passando o ID do ticket para o drawer
         loading={loading}
       />
     </div>

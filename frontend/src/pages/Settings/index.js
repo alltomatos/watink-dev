@@ -28,6 +28,21 @@ import toastError from "../../errors/toastError";
 import { useThemeContext } from "../../context/DarkMode";
 import { getBackendUrl } from "../../config";
 
+const AI_MODELS = {
+	openai: [
+		{ value: "gpt-4o-mini", name: "GPT-4o Mini", price: "$0.15 / 1M tokens (Recomendado)" },
+		{ value: "gpt-4o", name: "GPT-4o", price: "$2.50 / 1M tokens" },
+		{ value: "gpt-4-turbo", name: "GPT-4 Turbo", price: "$10.00 / 1M tokens" },
+		{ value: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", price: "$0.50 / 1M tokens" },
+		{ value: "o1-mini", name: "o1-mini", price: "$3.00 / 1M tokens" },
+		{ value: "o1-preview", name: "o1-preview", price: "$15.00 / 1M tokens" }
+	],
+	grok: [
+		{ value: "grok-beta", name: "Grok Beta", price: "Gratuito (Beta)" },
+		{ value: "grok-2", name: "Grok 2", price: "Preço a definir" }
+	]
+};
+
 const useStyles = makeStyles((theme) => ({
 	root: {
 		display: "flex",
@@ -666,8 +681,15 @@ const Settings = () => {
 									fullWidth
 									value={aiProvider}
 									onChange={async (e) => {
-										setAiProvider(e.target.value);
-										await api.put("/settings/aiProvider", { value: e.target.value });
+										const newProvider = e.target.value;
+										setAiProvider(newProvider);
+										await api.put("/settings/aiProvider", { value: newProvider });
+
+										// Auto-select first model available for the new provider
+										const defaultModel = AI_MODELS[newProvider]?.[0]?.value || "";
+										setAiModel(defaultModel);
+										await api.put("/settings/aiModel", { value: defaultModel });
+
 										toast.success("Provedor atualizado!");
 									}}
 								>
@@ -691,21 +713,32 @@ const Settings = () => {
 									helperText="Sua chave será armazenada com segurança."
 								/>
 							</Box>
+
+
 							<Box mb={2}>
-								<Typography variant="body1">Modelo de IA (Opcional)</Typography>
-								<TextField
-									fullWidth
-									variant="outlined"
+								<Typography variant="body1">Modelo de IA</Typography>
+								<Select
 									margin="dense"
-									placeholder="Ex: gpt-4-turbo, grok-beta"
+									variant="outlined"
+									native
+									fullWidth
 									value={aiModel}
-									onChange={(e) => setAiModel(e.target.value)}
-									onBlur={async () => {
-										await api.put("/settings/aiModel", { value: aiModel });
+									onChange={async (e) => {
+										setAiModel(e.target.value);
+										await api.put("/settings/aiModel", { value: e.target.value });
 										toast.success("Modelo atualizado!");
 									}}
-									helperText="Defina manualmente se quiser usar um modelo específico (ex: gpt-4, grok-beta). Deixe em branco para usar o padrão."
-								/>
+								>
+									<option value="" disabled>Selecione um modelo</option>
+									{AI_MODELS[aiProvider]?.map((model) => (
+										<option key={model.value} value={model.value}>
+											{model.name} — {model.price}
+										</option>
+									))}
+								</Select>
+								<Typography variant="caption" color="textSecondary">
+									Selecione o modelo desejado. Os preços são estimativas para tokens de entrada.
+								</Typography>
 							</Box>
 							<Box mb={2}>
 								<Typography variant="body1">Prompt Guia (Contexto do Negócio)</Typography>
