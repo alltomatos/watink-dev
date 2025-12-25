@@ -2,6 +2,8 @@ import { Op, Filterable } from "sequelize";
 import Deal from "../../models/Deal";
 import Contact from "../../models/Contact";
 import Ticket from "../../models/Ticket";
+import Pipeline from "../../models/Pipeline";
+import PipelineStage from "../../models/PipelineStage";
 
 interface Request {
     tenantId: number | string;
@@ -9,6 +11,7 @@ interface Request {
     pageNumber?: string;
     pipelineId?: number | string;
     stageId?: number | string;
+    ticketId?: number | string;
 }
 
 interface Response {
@@ -22,11 +25,16 @@ const ListDealsService = async ({
     searchParam = "",
     pageNumber = "1",
     pipelineId,
-    stageId
+    stageId,
+    ticketId
 }: Request): Promise<Response> => {
     const whereCondition: Filterable["where"] = {
         tenantId
     };
+
+    if (ticketId) {
+        whereCondition.ticketId = ticketId;
+    }
 
     if (searchParam) {
         const titleFilter: any = {};
@@ -55,7 +63,9 @@ const ListDealsService = async ({
         offset,
         include: [
             { model: Contact, as: "contact", attributes: ["id", "name", "number", "profilePicUrl"] },
-            { model: Ticket, as: "ticket", attributes: ["id", "status"] }
+            { model: Ticket, as: "ticket", attributes: ["id", "status"] },
+            { model: Pipeline, as: "pipeline", attributes: ["id", "name", "color"] },
+            { model: PipelineStage, as: "stage", attributes: ["id", "name"] }
         ],
         order: [["updatedAt", "DESC"]]
     });

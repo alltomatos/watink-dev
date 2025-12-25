@@ -99,12 +99,32 @@ const useStyles = makeStyles((theme) => ({
         borderBottomLeftRadius: 0,
     },
     stageItem: {
-        backgroundColor: theme.palette.background.default,
         marginBottom: theme.spacing(1),
         borderRadius: theme.spacing(1),
-        border: `1px solid ${theme.palette.divider}`
+        overflow: 'hidden',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: theme.shadows[4],
+        }
     }
 }));
+
+// Paleta de cores modernas para etapas do Kanban
+const stageColors = [
+    { bg: '#e3f2fd', border: '#1976d2', text: '#0d47a1' }, // Azul
+    { bg: '#fff3e0', border: '#f57c00', text: '#e65100' }, // Laranja
+    { bg: '#e8f5e9', border: '#388e3c', text: '#1b5e20' }, // Verde
+    { bg: '#fce4ec', border: '#c2185b', text: '#880e4f' }, // Rosa
+    { bg: '#ede7f6', border: '#7b1fa2', text: '#4a148c' }, // Roxo
+    { bg: '#e0f7fa', border: '#0097a7', text: '#006064' }, // Ciano
+    { bg: '#fff8e1', border: '#ffa000', text: '#ff6f00' }, // Âmbar
+    { bg: '#f3e5f5', border: '#8e24aa', text: '#6a1b9a' }, // Violeta
+    { bg: '#e8eaf6', border: '#3f51b5', text: '#283593' }, // Índigo
+    { bg: '#ffebee', border: '#d32f2f', text: '#b71c1c' }, // Vermelho
+];
+
+const getStageColor = (index) => stageColors[index % stageColors.length];
 
 const PipelineCreator = () => {
     const classes = useStyles();
@@ -176,39 +196,54 @@ const PipelineCreator = () => {
         if (!input.trim()) return;
 
         const userMsg = { role: "user", content: input };
-        setMessages(prev => [...prev, userMsg]);
+        const newHistory = [...messages, userMsg]; // Guarda histórico para enviar
+
+        setMessages(newHistory);
         setInput("");
         setAiLoading(true);
 
         try {
-            // Call AI Endpoint
+            // Call AI Endpoint with full history filtered (only role/content)
+            // Convert "ai" role to "assistant" for OpenAI API compatibility
+            const apiMessages = newHistory.map(m => ({
+                role: m.role === "ai" ? "assistant" : m.role,
+                content: m.content
+            }));
+
             const { data: aiData } = await api.post("/pipelines/ai-suggest", {
-                prompt: userMsg.content,
-                currentStages: data.stages
+                messages: apiMessages
             });
 
-            if (aiData.stages && Array.isArray(aiData.stages)) {
-                // Apply suggestion
-                setData(prev => ({ ...prev, stages: aiData.stages }));
+            // aiData = { message: "...", stages: [...] | null }
 
+            // Adiciona a resposta de texto da IA ao chat
+            if (aiData.message) {
                 const aiMsg = {
                     role: "ai",
-                    content: `Entendido! Gere com base na sua descrição: \n\n${aiData.stages.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nJá apliquei essas etapas no formulário ao lado. Você pode editá-las se quiser!`
+                    content: aiData.message
                 };
                 setMessages(prev => [...prev, aiMsg]);
-                toast.success("Sugestão da IA aplicada!");
-            } else {
-                const aiMsg = {
-                    role: "ai",
-                    content: "Desculpe, não consegui gerar etapas claras para essa descrição. Tente ser mais específico."
-                };
-                setMessages(prev => [...prev, aiMsg]);
+            }
+
+            // Se houver estágios sugeridos, atualiza o formulário
+            if (aiData.stages && Array.isArray(aiData.stages) && aiData.stages.length > 0) {
+                setData(prev => ({ ...prev, stages: aiData.stages }));
+                toast.success("Etapas geradas e aplicadas!");
             }
 
         } catch (err) {
             console.error(err);
             const errorMessage = err.response?.data?.error || err.message || "Erro desconhecido";
-            const errorMsg = { role: "ai", content: `Ocorreu um erro: ${errorMessage}. Verifique se a API Key está configurada.` };
+
+            let helpfulTip = "";
+            if (errorMessage.includes("ERR_NO_AI_API_KEY") || errorMessage.includes("ERR_AI_SERVICE_FAILED") || err.response?.status === 400) {
+                helpfulTip = "\n\nDica: Verifique em Configurações > Inteligência Artificial se a API Key, Modelo e Provedor estão corretos.";
+            }
+
+            const errorMsg = {
+                role: "ai",
+                content: `Ocorreu um erro: ${errorMessage}.${helpfulTip}`
+            };
             setMessages(prev => [...prev, errorMsg]);
         }
         setAiLoading(false);
@@ -274,25 +309,47 @@ const PipelineCreator = () => {
                     </div>
 
                     <List dense>
-                        {data.stages.map((stage, index) => (
-                            <div key={index} className={classes.stageItem}>
-                                <ListItem>
-                                    <div style={{ marginRight: 16, color: '#888' }}>{index + 1}.</div>
-                                    <TextField
-                                        fullWidth
-                                        value={stage}
-                                        onChange={(e) => handleStageChange(index, e.target.value)}
-                                        variant="standard"
-                                        InputProps={{ disableUnderline: true }}
-                                    />
-                                    <ListItemSecondaryAction>
-                                        <IconButton edge="end" onClick={() => handleRemoveStage(index)} size="small">
-                                            <DeleteIcon />
-                                        </IconButton>
-                                    </ListItemSecondaryAction>
-                                </ListItem>
-                            </div>
-                        ))}
+                        {data.stages.map((stage, index) => {
+                            const color = getStageColor(index);
+                            return (
+                                <div
+                                    key={index}
+                                    className={classes.stageItem}
+                                    style={{
+                                        backgroundColor: color.bg,
+                                        borderLeft: `4px solid ${color.border}`,
+                                        border: `1px solid ${color.border}`,
+                                        borderLeftWidth: 4
+                                    }}
+                                >
+                                    <ListItem>
+                                        <div style={{
+                                            marginRight: 16,
+                                            color: color.border,
+                                            fontWeight: 600,
+                                            minWidth: 24
+                                        }}>
+                                            {index + 1}.
+                                        </div>
+                                        <TextField
+                                            fullWidth
+                                            value={stage}
+                                            onChange={(e) => handleStageChange(index, e.target.value)}
+                                            variant="standard"
+                                            InputProps={{
+                                                disableUnderline: true,
+                                                style: { color: color.text, fontWeight: 500 }
+                                            }}
+                                        />
+                                        <ListItemSecondaryAction>
+                                            <IconButton edge="end" onClick={() => handleRemoveStage(index)} size="small">
+                                                <DeleteIcon style={{ color: color.border }} />
+                                            </IconButton>
+                                        </ListItemSecondaryAction>
+                                    </ListItem>
+                                </div>
+                            );
+                        })}
                     </List>
 
                     <Box mt="auto" pt={2} display="flex" justifyContent="flex-end" gap={2}>

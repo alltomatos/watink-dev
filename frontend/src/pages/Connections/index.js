@@ -1,21 +1,20 @@
 import React, { useState, useCallback, useContext } from "react";
-import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 import { useHistory } from "react-router-dom";
 
 import { makeStyles } from "@material-ui/core/styles";
-import { green } from "@material-ui/core/colors";
+import { green, red, orange } from "@material-ui/core/colors";
 import {
 	Button,
-	Paper,
 	Typography,
 	CircularProgress,
 	Grid,
-	Card,
-	CardContent,
-	CardActionArea,
 	Box,
-	Chip
+	Chip,
+	IconButton,
+	Menu,
+	MenuItem,
+	ListItemIcon
 } from "@material-ui/core";
 import {
 	CheckCircle,
@@ -23,13 +22,17 @@ import {
 	SignalCellular4Bar,
 	CropFree,
 	SignalCellularConnectedNoInternet2Bar,
-	Add
+	Add,
+	MoreVert,
+	Edit,
+	FiberManualRecord
 } from "@material-ui/icons";
 
 import MainContainer from "../../components/MainContainer";
 import MainHeader from "../../components/MainHeader";
 import MainHeaderButtonsWrapper from "../../components/MainHeaderButtonsWrapper";
 import Title from "../../components/Title";
+import BaseCard from "../../components/BaseCard";
 
 import WhatsAppModal from "../../components/WhatsAppModal";
 import { i18n } from "../../translate/i18n";
@@ -42,33 +45,53 @@ const useStyles = makeStyles(theme => ({
 		overflowY: "scroll",
 		...theme.scrollbarStyles,
 	},
-	card: {
-		height: '100%',
-		display: 'flex',
-		flexDirection: 'column',
-		position: 'relative',
-		borderRadius: 12, // More rounded for premium feel
-		transition: "all 0.3s cubic-bezier(.25,.8,.25,1)",
-		"&:hover": {
-			boxShadow: "0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22)",
-			transform: "translateY(-5px)"
-		}
+	customCard: {
+		cursor: "pointer",
+		height: "100%",
 	},
-	cardContent: {
-		flexGrow: 1,
-		display: "flex", // Centered content
-		flexDirection: "column",
-		alignItems: "center",
-		justifyContent: "center",
-		textAlign: "center",
-		padding: theme.spacing(3)
-	},
-	statusIcon: {
-		marginBottom: theme.spacing(2),
-		padding: theme.spacing(2),
+	pulsingDot: {
+		width: 10,
+		height: 10,
 		borderRadius: "50%",
-		backgroundColor: theme.palette.action.hover
+		marginRight: 8,
+		position: "relative",
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			top: -1,
+			left: -1,
+			width: "100%",
+			height: "100%",
+			borderRadius: "50%",
+			border: "1px solid currentColor",
+			animation: "$pulse 2s infinite",
+			opacity: 0.5,
+			padding: 1,
+		},
 	},
+	"@keyframes pulse": {
+		"0%": {
+			transform: "scale(1)",
+			opacity: 1,
+		},
+		"100%": {
+			transform: "scale(2.5)",
+			opacity: 0,
+		},
+	},
+	chipRoot: {
+		fontWeight: 600,
+		borderRadius: 8,
+		height: 28,
+		padding: "4px 0",
+		"& .MuiChip-label": {
+			paddingLeft: 8,
+			paddingRight: 8,
+			display: 'flex',
+			alignItems: 'center',
+			width: "100%"
+		}
+	}
 }));
 
 const Connections = () => {
@@ -78,6 +101,8 @@ const Connections = () => {
 	const { whatsApps, loading } = useContext(WhatsAppsContext);
 	const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
 	const [selectedWhatsApp, setSelectedWhatsApp] = useState(null);
+	const [anchorEl, setAnchorEl] = useState(null);
+	const [menuTargetId, setMenuTargetId] = useState(null);
 
 	const handleOpenWhatsAppModal = () => {
 		setSelectedWhatsApp(null);
@@ -89,38 +114,65 @@ const Connections = () => {
 		setSelectedWhatsApp(null);
 	}, [setSelectedWhatsApp, setWhatsAppModalOpen]);
 
-	const renderStatusIcon = status => {
+	const handleMenuOpen = (event, whatsappId) => {
+		event.stopPropagation();
+		setAnchorEl(event.currentTarget);
+		setMenuTargetId(whatsappId);
+	};
+
+	const handleMenuClose = () => {
+		setAnchorEl(null);
+		setMenuTargetId(null);
+	};
+
+	const getStatusColor = (status) => {
 		switch (status) {
-			case "DISCONNECTED":
-				return <SignalCellularConnectedNoInternet0Bar fontSize="large" color="error" />;
-			case "OPENING":
-				return <CircularProgress size={36} />;
-			case "qrcode":
-				return <CropFree fontSize="large" style={{ color: "#f57c00" }} />;
-			case "CONNECTED":
-				return <SignalCellular4Bar fontSize="large" style={{ color: green[500] }} />;
-			case "TIMEOUT":
-			case "PAIRING":
-				return <SignalCellularConnectedNoInternet2Bar fontSize="large" style={{ color: "#f57c00" }} />;
-			default:
-				return <SignalCellularConnectedNoInternet0Bar fontSize="large" color="error" />;
+			case "CONNECTED": return green[600];
+			case "DISCONNECTED": return red[600];
+			case "qrcode": return orange[600];
+			case "PAIRING": return orange[400];
+			default: return "#9ca3af";
 		}
+	};
+
+	const getStatusBackgroundColor = (status) => {
+		switch (status) {
+			case "CONNECTED": return "#E8F5E9";
+			case "DISCONNECTED": return "#FFEBEE";
+			case "qrcode": return "#FFF3E0";
+			default: return "#F3F4F6";
+		}
+	};
+
+	const renderStatusIcon = status => {
+		return <SignalCellular4Bar fontSize="default" />;
 	};
 
 	const renderStatusLabel = status => {
 		switch (status) {
 			case "DISCONNECTED": return "Desconectado";
 			case "OPENING": return "Iniciando...";
-			case "qrcode": return "Aguardando QR Code";
+			case "qrcode": return "Escanear QR Code";
 			case "CONNECTED": return "Conectado";
 			case "TIMEOUT": return "Tempo Esgotado";
 			case "PAIRING": return "Pareando";
-			default: return "Desconectado";
+			default: return "Desconhecido";
 		}
 	}
 
 	const handleCardClick = (whatsappId) => {
-		history.push(`/connections/${whatsappId}`);
+		if (!anchorEl) {
+			history.push(`/connections/${whatsappId}`);
+		}
+	};
+
+	const handleEditWhatsApp = () => {
+		const whatsapp = whatsApps.find(w => w.id === menuTargetId);
+		if (whatsapp) {
+			setSelectedWhatsApp(whatsapp);
+			setWhatsAppModalOpen(true);
+		}
+		handleMenuClose();
 	};
 
 	return (
@@ -151,54 +203,101 @@ const Connections = () => {
 						<CircularProgress />
 					</Box>
 				) : (
-					<Grid container spacing={4}>
+					<Grid container spacing={3}>
 						{whatsApps?.length > 0 &&
-							whatsApps.map(whatsApp => (
-								<Grid item xs={12} sm={6} md={4} lg={3} key={whatsApp.id}>
-									<Card className={classes.card} variant="outlined">
-										<CardActionArea
-											onClick={() => handleCardClick(whatsApp.id)}
-											style={{ height: '100%' }}
-										>
-											<CardContent className={classes.cardContent}>
-												<Box className={classes.statusIcon}>
-													{renderStatusIcon(whatsApp.status)}
-												</Box>
+							whatsApps.map(whatsApp => {
+								const statusColor = getStatusColor(whatsApp.status);
+								const bgColor = getStatusBackgroundColor(whatsApp.status);
 
-												<Typography variant="h6" component="h2" gutterBottom>
-													{whatsApp.name}
-												</Typography>
+								return (
+									<Grid item xs={12} sm={6} md={4} lg={3} key={whatsApp.id}>
+										<BaseCard
+											className={classes.customCard}
+											title={whatsApp.name}
+											subtitle={
+												<span style={{ fontSize: 13, fontWeight: 400, color: '#8e8e8e', display: 'flex', gap: 4 }}>
+													Atualizado em {whatsApp.updatedAt
+														? format(parseISO(whatsApp.updatedAt), "dd/MM")
+														: "N/A"
+													}
+												</span>
+											}
+											iconColor={bgColor}
+											icon={React.cloneElement(renderStatusIcon(whatsApp.status), { style: { color: statusColor, fontSize: 24 } })}
 
-												<Chip
-													label={renderStatusLabel(whatsApp.status)}
+											actions={
+												<IconButton
 													size="small"
+													onClick={(e) => handleMenuOpen(e, whatsApp.id)}
+												>
+													<MoreVert fontSize="small" style={{ color: '#94a3b8' }} />
+												</IconButton>
+											}
+											hoverEffect={true}
+											onClick={() => handleCardClick(whatsApp.id)}
+										>
+
+											<Box mt={2} display="flex" alignItems="center">
+												<Chip
+													classes={{ root: classes.chipRoot }}
 													style={{
-														backgroundColor: whatsApp.status === 'CONNECTED' ? green[50] : 'rgba(0,0,0,0.08)',
-														color: whatsApp.status === 'CONNECTED' ? green[800] : 'inherit',
-														marginBottom: 16
+														backgroundColor: bgColor,
+														color: statusColor,
+														width: "100%",
 													}}
+													label={
+														<Box display="flex" alignItems="center" width="100%">
+															<Box
+																className={classes.pulsingDot}
+																style={{
+																	backgroundColor: statusColor,
+																	color: statusColor
+																}}
+															/>
+															<Typography variant="body2" style={{ fontWeight: 600, fontSize: '0.8125rem' }}>
+																{renderStatusLabel(whatsApp.status)}
+															</Typography>
+
+															{whatsApp.isDefault && (
+																<Box ml="auto">
+																	<CheckCircle style={{ fontSize: 16 }} />
+																</Box>
+															)}
+														</Box>
+													}
 												/>
-
-												<Typography variant="caption" color="textSecondary" display="block">
-													{i18n.t("connections.table.lastUpdate")}:
-													<br />
-													{whatsApp.updatedAt ? format(parseISO(whatsApp.updatedAt), "dd/MM/yy HH:mm") : "N/A"}
-												</Typography>
-
-												{whatsApp.isDefault && (
-													<Box display="flex" alignItems="center" mt={2}>
-														<CheckCircle style={{ color: green[500], fontSize: 16, marginRight: 4 }} />
-														<Typography variant="caption">{i18n.t("connections.table.default")}</Typography>
-													</Box>
-												)}
-											</CardContent>
-										</CardActionArea>
-									</Card>
-								</Grid>
-							))}
+											</Box>
+										</BaseCard>
+									</Grid>
+								)
+							})}
 					</Grid>
 				)}
 			</Box>
+
+			<Menu
+				anchorEl={anchorEl}
+				keepMounted
+				open={Boolean(anchorEl)}
+				onClose={handleMenuClose}
+				elevation={2}
+				getContentAnchorEl={null}
+				anchorOrigin={{
+					vertical: 'bottom',
+					horizontal: 'right',
+				}}
+				transformOrigin={{
+					vertical: 'top',
+					horizontal: 'right',
+				}}
+			>
+				<MenuItem onClick={handleEditWhatsApp}>
+					<ListItemIcon style={{ minWidth: 32 }}>
+						<Edit fontSize="small" />
+					</ListItemIcon>
+					<Typography variant="body2">Editar</Typography>
+				</MenuItem>
+			</Menu>
 		</MainContainer>
 	);
 };
