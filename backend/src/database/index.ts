@@ -14,6 +14,9 @@ import Tenant from "../models/Tenant";
 import Pipeline from "../models/Pipeline";
 import PipelineStage from "../models/PipelineStage";
 import Deal from "../models/Deal";
+import Flow from "../models/Flow";
+import FlowSession from "../models/FlowSession";
+import FlowTrigger from "../models/FlowTrigger";
 
 // eslint-disable-next-line
 const dbConfig = require("../config/database");
@@ -35,7 +38,10 @@ const models = [
   Tenant,
   Pipeline,
   PipelineStage,
-  Deal
+  Deal,
+  Flow,
+  FlowSession,
+  FlowTrigger
 ];
 
 sequelize.addModels(models);

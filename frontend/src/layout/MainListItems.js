@@ -17,6 +17,7 @@ import ContactPhoneOutlinedIcon from "@material-ui/icons/ContactPhoneOutlined";
 import AccountTreeOutlinedIcon from "@material-ui/icons/AccountTreeOutlined";
 import QuestionAnswerOutlinedIcon from "@material-ui/icons/QuestionAnswerOutlined";
 import MenuBookIcon from "@material-ui/icons/MenuBook";
+import DeviceHubIcon from "@material-ui/icons/DeviceHub";
 
 import { i18n } from "../translate/i18n";
 import { WhatsAppsContext } from "../context/WhatsApp/WhatsAppsContext";
@@ -139,6 +140,13 @@ const MainListItems = (props) => {
         primary={i18n.t("mainDrawer.listItems.quickAnswers")}
         icon={<QuestionAnswerOutlinedIcon />}
         iconColor={googleColors.purple}
+        collapsed={collapsed}
+      />
+      <ListItemLink
+        to="/flowbuilder"
+        primary="Flow Builder"
+        icon={<DeviceHubIcon />}
+        iconColor={googleColors.blue}
         collapsed={collapsed}
       />
       <Can

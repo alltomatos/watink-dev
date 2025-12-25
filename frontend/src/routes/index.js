@@ -9,6 +9,8 @@ import PipelineWizard from "../pages/Pipelines/PipelineWizard";
 import PipelineCreator from "../pages/Pipelines/PipelineCreator";
 import PipelineBoard from "../pages/Pipelines/PipelineBoard";
 import Tickets from "../pages/Tickets/";
+import FlowBuilder from "../pages/FlowBuilder/";
+import FlowManager from "../pages/FlowManager/";
 import Signup from "../pages/Signup/";
 import Login from "../pages/Login/";
 import Connections from "../pages/Connections/";
@@ -34,6 +36,8 @@ const PrivateRoutes = () => {
           <Route exact path="/pipelines/new" component={PipelineCreator} isPrivate />
           <Route exact path="/pipelines/:pipelineId" component={PipelineBoard} isPrivate />
           <Route exact path="/tickets/:ticketId?" component={Tickets} isPrivate />
+          <Route exact path="/flowbuilder" component={FlowManager} isPrivate />
+          <Route exact path="/flowbuilder/:flowId" component={FlowBuilder} isPrivate />
           <Route exact path="/connections" component={Connections} isPrivate />
           <Route exact path="/connections/:whatsappId" component={ConnectionConfig} isPrivate />
           <Route exact path="/contacts" component={Contacts} isPrivate />

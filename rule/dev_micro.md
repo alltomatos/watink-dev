@@ -69,3 +69,8 @@ POSTGRES_DB=watic
 - [x] **[OPS-002] Configuração do API Gateway (Traefik/Nginx)** (Concluído: Traefik configurado no stack com roteamento dinâmico. Documentação em `docs/tasks_microservice/artifacts/OPS-002_api_gateway_config.md`.)
 - [ ] **[OPS-003] Pipelines de CI/CD**
 - [ ] **[OPS-004] Procedimentos de Rollback e Monitoramento**
+
+### Fase 5: Flow Engine Scalability (Novo)
+- [ ] **[FLOW-001] Event-Driven Architecture**: Refatorar `wbotMessageListener` para publicar eventos de fluxo no RabbitMQ ao invés de executar síncrono.
+- [ ] **[FLOW-002] Flow Worker Service**: Criar microserviço dedicado (`flow-engine-worker`) para processar a fila de fluxos.
+- [ ] **[FLOW-003] Redis State Cache**: Implementar cache de sessões ativas no Redis para reduzir load no Postgres.

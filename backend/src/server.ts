@@ -6,6 +6,7 @@ import { EventListener } from "./services/WbotServices/EventListener";
 import RabbitMQService from "./services/RabbitMQService";
 import { StartAllWhatsAppsSessions } from "./services/WbotServices/StartAllWhatsAppsSessions";
 import { CommandListener } from "./services/WbotServices/CommandListener";
+import FlowWorkerService from "./services/FlowServices/FlowWorkerService";
 
 const startServer = async () => {
   await RabbitMQService.connect();
@@ -17,6 +18,10 @@ const startServer = async () => {
   initIO(server);
   await EventListener();
   await CommandListener();
+  
+  // Initialize Flow Engine Worker (Consumer)
+  await FlowWorkerService.start();
+
   StartAllWhatsAppsSessions();
   gracefulShutdown(server);
 };
