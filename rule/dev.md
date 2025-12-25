@@ -76,7 +76,21 @@ Workers independentes que se conectam ao WhatsApp.
 
 ---
 
+## 🌊 Flow Engine (Automação)
 
+Sistema de automação híbrido e agnóstico à plataforma, capaz de orquestrar fluxos complexos iniciados por diversos eventos (WhatsApp, Kanban, Tickets, etc.).
+
+*   **Arquitetura**: Baseada em Grafos (Nós e Arestas), Gatilhos (Triggers) e Sessões (Sessions).
+*   **Componentes Chave**:
+    *   `FlowExecutorService`: Motor de execução que processa a lógica dos nós.
+    *   `FlowTriggerService`: Identifica eventos do sistema e inicia fluxos correspondentes.
+    *   `FlowSessions`: Mantém o estado persistente de cada execução.
+*   **Extensibilidade**: Projetado para receber novos tipos de gatilhos e nós de ação facilmente.
+
+> [!TIP]
+> **Documentação Completa**: Para detalhes de implementação, como criar novos gatilhos e nós, consulte [FLOW_ENGINE.md](../docs/engine_whaileys/FLOW_ENGINE.md).
+
+---
 
 ## 🗄️ Banco de Dados: PostgreSQL + Extensions
 

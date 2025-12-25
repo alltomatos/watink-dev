@@ -75,6 +75,30 @@ services:
           cpus: '0.50'
           memory: 512M
 
+  flow-engine-worker:
+    image: watic-premium/backend:latest
+    command: ["node", "dist/src/flow-worker.js"]
+    environment:
+      - DB_DIALECT=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - DB_NAME=watic
+      - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+    networks:
+      - watic-premium_private
+    dns:
+      - 192.168.26.253
+      - 8.8.8.8
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+
   rabbitmq:
     image: rabbitmq:3-management-alpine
     networks:
