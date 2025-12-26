@@ -5,3 +5,4 @@ ssl/
 node_modules
 dist
 sssbuild
+engine-go

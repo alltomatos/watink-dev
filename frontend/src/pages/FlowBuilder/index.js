@@ -43,6 +43,8 @@ import MenuNode from './CustomNodes/MenuNode';
 import DatabaseNode from './CustomNodes/DatabaseNode';
 import FilterNode from './CustomNodes/FilterNode';
 import TicketNode from './CustomNodes/TicketNode';
+import WebhookNode from './CustomNodes/WebhookNode';
+import APINode from './CustomNodes/APINode';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -166,11 +168,13 @@ const FlowBuilder = () => {
         trigger: TriggerNode,
         pipeline: PipelineNode,
         ticket: TicketNode,
+        webhook: WebhookNode,
         knowledge: KnowledgeNode,
         message: MessageNode,
         menu: MenuNode,
         database: DatabaseNode,
-        filter: FilterNode
+        filter: FilterNode,
+        api: APINode
     }), []);
 
     useEffect(() => {

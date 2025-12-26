@@ -9,10 +9,13 @@ import {
     CallSplit as SwitchIcon,
     Stop as StopIcon,
     Timeline as PipelineIcon,
-    EmojiObjects as KnowledgeIcon,
     Storage as DatabaseIcon,
     FilterList as FilterIcon,
-    ConfirmationNumber as TicketIcon
+    ConfirmationNumber as TicketIcon,
+    Explicit as EndIcon,
+    Http as HttpIcon,
+    LibraryBooks as KnowledgeIcon,
+    Language as ApiIcon
 } from '@material-ui/icons';
 
 const useStyles = makeStyles((theme) => ({
@@ -84,6 +87,12 @@ const useStyles = makeStyles((theme) => ({
     colorDatabase: { background: 'linear-gradient(135deg, #795548 0%, #4e342e 100%)' },
     colorFilter: { background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)' },
     colorPipeline: { background: 'linear-gradient(135deg, #00bcd4 0%, #0097a7 100%)' },
+    colorWebhook: {
+        background: 'linear-gradient(135deg, #ff5722 0%, #e64a19 100%)' // Deep Orange
+    },
+    colorApi: {
+        background: 'linear-gradient(135deg, #3f51b5 0%, #283593 100%)' // Indigo
+    },
     colorKnowledge: { background: 'linear-gradient(135deg, #e91e63 0%, #ad1457 100%)' },
     colorEnd: { background: 'linear-gradient(135deg, #f44336 0%, #c62828 100%)' },
     colorDefault: { background: 'linear-gradient(135deg, #607d8b 0%, #455a64 100%)' },
@@ -141,10 +150,12 @@ const NodesSidebar = () => {
             <div className={classes.categoryTitle}>Utilitários</div>
             <div className={classes.gridContainer}>
                 <DraggableNode type="pipeline" label="Pipeline" icon={PipelineIcon} colorClass="colorPipeline" />
-                <DraggableNode type="knowledge" label="IA" icon={KnowledgeIcon} colorClass="colorKnowledge" />
+                <DraggableNode type="knowledge" label="Conhecimento" icon={KnowledgeIcon} colorClass="colorKnowledge" />
                 <DraggableNode type="database" label="Database" icon={DatabaseIcon} colorClass="colorDatabase" />
                 <DraggableNode type="filter" label="Filtro" icon={FilterIcon} colorClass="colorFilter" />
                 <DraggableNode type="ticket" label="Ticket" icon={TicketIcon} colorClass="colorTicket" />
+                <DraggableNode type="webhook" label="Webhook" icon={HttpIcon} colorClass="colorWebhook" />
+                <DraggableNode type="api" label="API" icon={ApiIcon} colorClass="colorApi" />
             </div>
 
             <div style={{ marginTop: 'auto', fontSize: '11px', color: '#999', textAlign: 'center', padding: '10px' }}>
