@@ -69,28 +69,28 @@ const GenericNode = ({ data, isConnectable, title, icon: Icon, children, style =
             {showTargetHandle && (
                 <Handle
                     type="target"
-                    position={Position.Top}
+                    position={Position.Left}
                     isConnectable={isConnectable}
-                    style={{ background: '#555', width: 8, height: 8 }}
+                    style={{ background: '#555', width: 10, height: 10 }}
                 />
             )}
-            
+
             <div className={classes.header}>
                 <div className={classes.title}>
                     {Icon && <Icon style={{ fontSize: 16 }} />}
                     {title}
                 </div>
                 {showDelete && (
-                    <IconButton 
-                        size="small" 
-                        className={classes.deleteButton} 
+                    <IconButton
+                        size="small"
+                        className={classes.deleteButton}
                         onClick={handleDelete}
                     >
                         <DeleteIcon style={{ fontSize: 14, color: '#999' }} />
                     </IconButton>
                 )}
             </div>
-            
+
             <div className={classes.content}>
                 {children}
             </div>
@@ -98,9 +98,9 @@ const GenericNode = ({ data, isConnectable, title, icon: Icon, children, style =
             {showSourceHandle && (
                 <Handle
                     type="source"
-                    position={Position.Bottom}
+                    position={Position.Right}
                     isConnectable={isConnectable}
-                    style={{ background: '#555', width: 8, height: 8 }}
+                    style={{ background: '#555', width: 10, height: 10 }}
                 />
             )}
         </Paper>

@@ -9,5 +9,8 @@ flowRoutes.post("/flows", isAuth, FlowController.store);
 flowRoutes.get("/flows", isAuth, FlowController.index);
 flowRoutes.get("/flows/:flowId", isAuth, FlowController.show);
 flowRoutes.put("/flows/:flowId", isAuth, FlowController.update);
+flowRoutes.post("/flows/:flowId/toggle", isAuth, FlowController.toggle);
+flowRoutes.post("/flows/:flowId/simulate", isAuth, FlowController.simulate);
 
 export default flowRoutes;
+

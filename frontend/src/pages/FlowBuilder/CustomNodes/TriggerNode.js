@@ -1,19 +1,31 @@
-import React, { memo } from 'react';
-import FlashOnIcon from '@material-ui/icons/FlashOn';
-import GenericNode from './GenericNode';
+import React from 'react';
+import { Position } from 'reactflow';
+import { Notifications as TriggerIcon } from '@material-ui/icons';
+import BaseNode from './BaseNode';
 
-export default memo(({ data, isConnectable }) => {
+const TRIGGER_LABELS = {
+    'time': 'Agendado',
+    'message': 'Mensagem',
+    'webhook': 'Webhook',
+    'event': 'Evento'
+};
+
+const TriggerNode = ({ data, isConnectable }) => {
+    const triggerType = data?.triggerType || 'message';
+    const triggerLabel = TRIGGER_LABELS[triggerType] || triggerType;
+
     return (
-        <GenericNode 
-            data={data} 
-            isConnectable={isConnectable} 
-            title="Gatilho (Trigger)" 
-            icon={FlashOnIcon}
-            style={{ borderColor: '#ff9800' }}
-        >
-            {data.triggerType ? `Tipo: ${data.triggerType}` : 'Configurar Gatilho'}
-            <br/>
-            {data.condition && <strong>{data.condition}</strong>}
-        </GenericNode>
+        <BaseNode
+            data={data}
+            icon={TriggerIcon}
+            colorClass="colorTrigger"
+            defaultLabel="Gatilho"
+            sublabel={triggerLabel}
+            isConnectable={isConnectable}
+            targetHandles={[]}
+            sourceHandles={[{ id: null, position: Position.Right }]}
+        />
     );
-});
+};
+
+export default TriggerNode;

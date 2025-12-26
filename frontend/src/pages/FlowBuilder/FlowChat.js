@@ -117,7 +117,6 @@ const FlowChat = ({ onFlowGenerated }) => {
                 <Typography variant="h6" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <ComputerIcon /> Flow Assistant
                 </Typography>
-                <Typography variant="caption">Powered by OpenAI</Typography>
             </div>
 
             <List className={classes.chatArea}>

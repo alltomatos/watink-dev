@@ -1,20 +1,28 @@
-import React, { memo } from 'react';
-import { Typography } from '@material-ui/core';
-import ViewWeekIcon from '@material-ui/icons/ViewWeek';
-import GenericNode from './GenericNode';
+import React from 'react';
+import { Timeline as PipelineIcon } from '@material-ui/icons';
+import BaseNode from './BaseNode';
 
-export default memo(({ data, isConnectable }) => {
+const PipelineNode = ({ data, isConnectable }) => {
+    // Labels para ações do Kanban
+    const getActionLabel = (action) => {
+        switch (action) {
+            case 'createDeal': return 'Criar Oportunidade';
+            case 'moveDeal': return 'Mover Etapa';
+            case 'updateDeal': return 'Atualizar Oportunidade';
+            default: return 'Integração Kanban';
+        }
+    };
+
     return (
-        <GenericNode 
-            data={data} 
-            isConnectable={isConnectable} 
-            title="Pipeline" 
-            icon={ViewWeekIcon}
-            style={{ borderColor: '#2196f3', background: '#e3f2fd' }}
-        >
-            {data.pipelineName ? `Pipeline: ${data.pipelineName}` : 'Selecione Pipeline'}
-            <br/>
-            {data.stageName && <small>Etapa: {data.stageName}</small>}
-        </GenericNode>
+        <BaseNode
+            data={data}
+            icon={PipelineIcon}
+            colorClass="colorPipeline"
+            defaultLabel="Pipeline"
+            sublabel={getActionLabel(data?.kanbanAction)}
+            isConnectable={isConnectable}
+        />
     );
-});
+};
+
+export default PipelineNode;

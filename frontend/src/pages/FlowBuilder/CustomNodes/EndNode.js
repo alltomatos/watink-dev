@@ -1,24 +1,21 @@
-import React, { memo } from 'react';
-import { Typography } from '@material-ui/core';
-import FlagIcon from '@material-ui/icons/Flag';
-import GenericNode from './GenericNode';
+import React from 'react';
+import { Position } from 'reactflow';
+import { Stop as StopIcon } from '@material-ui/icons';
+import BaseNode from './BaseNode';
 
-export default memo(({ data, isConnectable }) => {
-    // Apenas mostrar delete se onDelete existir
-    const handleDelete = data.onDelete ? data.onDelete : undefined;
-
+const EndNode = ({ data, isConnectable }) => {
     return (
-        <GenericNode 
-            data={data} 
-            isConnectable={isConnectable} 
-            title="Fim" 
-            icon={FlagIcon}
-            onDelete={handleDelete}
-            showSourceHandle={false}
-        >
-            <Typography variant="caption" color="textSecondary">
-                Finalizar Fluxo
-            </Typography>
-        </GenericNode>
+        <BaseNode
+            data={data}
+            icon={StopIcon}
+            colorClass="colorEnd"
+            defaultLabel="Fim"
+            sublabel={data?.endAction || ''}
+            isConnectable={isConnectable}
+            targetHandles={[{ id: null, position: Position.Left }]}
+            sourceHandles={[]} // Sem saída
+        />
     );
-});
+};
+
+export default EndNode;

@@ -2,16 +2,26 @@ import Flow from "../../models/Flow";
 import FlowSession from "../../models/FlowSession";
 import AppError from "../../errors/AppError";
 import { logger } from "../../utils/logger";
-import { getIO } from "../../libs/socket";
-import Message from "../../models/Message";
 import SendWhatsAppMessage from "../WbotServices/SendWhatsAppMessage";
-import Ticket from "../../models/Ticket";
+import SendWhatsAppInteractive from "../WbotServices/SendWhatsAppInteractive";
 import ShowTicketService from "../TicketServices/ShowTicketService";
+import UpdateTicketService from "../TicketServices/UpdateTicketService";
+
+// Models para Database Node
+import Contact from "../../models/Contact";
+import Ticket from "../../models/Ticket";
+import Message from "../../models/Message";
+import User from "../../models/User";
+import Queue from "../../models/Queue";
+import Whatsapp from "../../models/Whatsapp";
+import QuickAnswer from "../../models/QuickAnswer";
+import Pipeline from "../../models/Pipeline";
+import { Op } from "sequelize";
 
 interface FlowContext {
   ticketId?: number;
   contactId?: number;
-  messageBody?: string;
+  messageBody?: string; // Last received message body
   [key: string]: any;
 }
 
@@ -24,6 +34,7 @@ interface FlowNode {
 interface FlowEdge {
   source: string;
   target: string;
+  sourceHandle?: string | null;
 }
 
 class FlowExecutorService {
@@ -39,11 +50,11 @@ class FlowExecutorService {
       status: "active",
       context,
       entityId: context.ticketId,
-      entityType: "ticket" // Defaulting to ticket for now, can be generic
+      entityType: "ticket"
     });
 
     // 2. Find Start Node
-    const startNode = nodes.find((n) => n.type === "input");
+    const startNode = nodes.find((n) => n.type === "input" || n.type === "trigger");
     if (!startNode) {
       await session.update({ status: "failed" });
       throw new AppError("Flow has no start node", 400);
@@ -65,40 +76,63 @@ class FlowExecutorService {
     const nodes = flow.nodes as unknown as FlowNode[];
     const edges = flow.edges as unknown as FlowEdge[];
 
-    // Update context with input
-    const newContext = { ...session.context, lastInput: input };
-    await session.update({ context: newContext });
-
-    // Find current node
     const currentNode = nodes.find((n) => n.id === session.currentStepId);
     if (!currentNode) {
-      // Should not happen if state is consistent
       await session.update({ status: "failed" });
       return session;
     }
 
-    // Check if current node was waiting for input
-    // (In this simple engine, we assume if we are calling 'next', we satisfied the wait condition)
-    
+    // Update context with input
+    const newContext = { ...session.context, lastInput: input };
+    await session.update({ context: newContext });
+
+    // Determine Logic Next Step
+    // If it was a menu, we need to match the input to the correct option index or id to find the right handle
+    let selectedHandle: string | null = null;
+
+    if (currentNode.type === "menu") {
+      const options = currentNode.data.options || [];
+      // Try to find exact match on label or id (for list/buttons)
+      // Input can be the text of the button or the ID if we parse correctly upstream. Assuming text for now.
+      const match = options.find((o: any) => o.label.toLowerCase() === input.toLowerCase() || o.id === input);
+
+      if (match) {
+        selectedHandle = match.id;
+      } else {
+        // Fallback: Check if input is a number matching the index (1, 2, 3...)
+        const index = parseInt(input) - 1;
+        if (!isNaN(index) && options[index]) {
+          selectedHandle = options[index].id;
+        }
+      }
+    }
+
     // Find next node via edges
-    const nextEdges = edges.filter((e) => e.source === currentNode.id);
-    
-    // TODO: Implement Conditional Logic here based on input
-    // For now, take the first edge
+    let nextEdges = edges.filter((e) => e.source === currentNode.id);
+
+    if (selectedHandle) {
+      // If we have a specific handle (option chosen), filter edges by sourceHandle
+      const specificEdge = nextEdges.find(e => e.sourceHandle === selectedHandle);
+      if (specificEdge) {
+        nextEdges = [specificEdge];
+      }
+    }
+
     if (nextEdges.length === 0) {
       await session.update({ status: "completed", currentStepId: null });
       return session;
     }
 
     const nextNodeId = nextEdges[0].target;
-    const nextNode = nodes.find((n) => n.id === nextNodeId);
+    // Default to first edge if no specific handle matched or logic not implemented for other types
 
+    const nextNode = nodes.find((n) => n.id === nextNodeId);
     return this.runNode(session, flow, nextNode);
   }
 
   private async runNode(session: FlowSession, flow: Flow, node: any): Promise<FlowSession> {
     logger.info(`FlowExecutor: Running node ${node.id} (${node.type}) for Session ${session.id}`);
-    
+
     // Update Session Pointer
     await session.update({ currentStepId: node.id });
 
@@ -106,28 +140,58 @@ class FlowExecutorService {
     try {
       switch (node.type) {
         case "input":
+        case "trigger":
           // Start node, just proceed
           return this.proceedToNext(session, flow, node);
-        
+
         case "output":
           // End node
           await session.update({ status: "completed", currentStepId: null });
           return session;
 
         case "default": // "Mensagem"
-        case "textUpdater": // "Pergunta" (Custom node name in frontend sidebar is textUpdater?? Check sidebar code)
-          // Actually sidebar said: 'default' -> Mensagem, 'textUpdater' -> Pergunta
-          
+        case "message":
+        case "textUpdater": // "Pergunta"
           await this.sendMessage(session, node.data.label);
 
           if (node.type === "textUpdater" || node.data.waitForInput) {
-            // Stop and wait for user reply
-            // We keep the session active and currentStepId pointing here.
-            return session;
+            return session; // Stop and wait for user reply
           } else {
-            // Auto-advance
             return this.proceedToNext(session, flow, node);
           }
+
+        case "menu":
+          await this.sendMenu(session, node.data);
+          return session; // Stop and wait for user reply
+
+        case "knowledge":
+          // Placeholder for AI/RAG
+          const query = (session.context as any).lastInput || "";
+          await this.sendMessage(session, `[IA] Consultando base de conhecimento sobre: "${query}"... (Simulação)`);
+          // In real implementation: Call OpenAI/Gemini -> Get Answer -> Send Message
+          if (node.data.answer) {
+            await this.sendMessage(session, node.data.answer);
+          }
+          return this.proceedToNext(session, flow, node);
+
+        // Integração Kanban/CRM (Placeholder)
+        case "pipeline":
+          // await this.processKanbanAction(session, node.data);
+          logger.info(`FlowExecutor: Executing Pipeline (Kanban) node ${node.id}`);
+          return this.proceedToNext(session, flow, node);
+
+        case "ticket":
+          await this.updateTicket(session, node.data);
+          return this.proceedToNext(session, flow, node);
+
+        case "switch":
+          return this.evaluateSwitch(session, flow, node);
+
+        case "database":
+          return this.executeDatabase(session, flow, node);
+
+        case "filter":
+          return this.executeFilter(session, flow, node);
 
         default:
           logger.warn(`Unknown node type: ${node.type}`);
@@ -140,39 +204,804 @@ class FlowExecutorService {
     }
   }
 
-  private async proceedToNext(session: FlowSession, flow: Flow, currentNode: any): Promise<FlowSession> {
+  private async proceedToNext(session: FlowSession, flow: Flow, currentNode: any, sourceHandle?: string): Promise<FlowSession> {
     const nodes = flow.nodes as unknown as FlowNode[];
     const edges = flow.edges as unknown as FlowEdge[];
 
-    const nextEdges = edges.filter((e) => e.source === currentNode.id);
+    // Filter edges by source and optionally sourceHandle
+    const nextEdges = edges.filter((e) => {
+      if (e.source !== currentNode.id) return false;
+      if (sourceHandle && e.sourceHandle !== sourceHandle) return false;
+      return true;
+    });
 
     if (nextEdges.length === 0) {
       await session.update({ status: "completed", currentStepId: null });
       return session;
     }
 
-    // Default: Take first edge (No condition support yet)
     const nextNodeId = nextEdges[0].target;
     const nextNode = nodes.find((n) => n.id === nextNodeId);
 
-    // Recursive call (beware of stack depth, but usually flows aren't that deep)
-    // Ideally use a while loop or queue for robust engine
+    // Recursive call
     return this.runNode(session, flow, nextNode);
   }
 
   private async sendMessage(session: FlowSession, text: string) {
     const context = session.context as FlowContext;
     if (context.ticketId) {
-       const ticket = await ShowTicketService(context.ticketId);
-       if (ticket) {
-         await SendWhatsAppMessage({
-           body: text,
-           ticket: ticket,
-           quotedMsg: null
-         });
-       }
+      const ticket = await ShowTicketService(context.ticketId);
+      if (ticket) {
+        await SendWhatsAppMessage({
+          body: text,
+          ticket: ticket,
+          quotedMsg: null
+        });
+      }
+    }
+  }
+
+  private async sendMenu(session: FlowSession, nodeData: any) {
+    const context = session.context as FlowContext;
+    if (!context.ticketId) return;
+    const ticket = await ShowTicketService(context.ticketId);
+    if (!ticket) return;
+
+    const options = nodeData.options || [];
+    const text = nodeData.label || "Escolha uma opção:";
+
+    if (options.length === 0) {
+      await this.sendMessage(session, text);
+      return;
+    }
+
+    // Determine Buttons vs List
+    if (options.length <= 3) {
+      await SendWhatsAppInteractive({
+        body: text,
+        ticket,
+        buttons: options.map((o: any) => ({ label: o.label, id: o.id }))
+      });
+    } else {
+      await SendWhatsAppInteractive({
+        body: text,
+        ticket,
+        list: {
+          title: "Opções",
+          buttonText: "Abrir Menu",
+          sections: [
+            {
+              title: "Escolha uma opção",
+              rows: options.map((o: any) => ({
+                id: o.id,
+                title: o.label,
+                description: ""
+              }))
+            }
+          ]
+        }
+      });
+    }
+  }
+
+  private async updateTicket(session: FlowSession, nodeData: any) {
+    const context = session.context as FlowContext;
+    if (!context.ticketId) return;
+
+    const updateData: any = {};
+
+    // Map nodeData fields to Ticket fields
+    if (nodeData.queueId) updateData.queueId = nodeData.queueId;
+    if (nodeData.status) updateData.status = nodeData.status; // open, pending, closed
+    // if (nodeData.userId) updateData.userId = nodeData.userId; 
+
+    if (Object.keys(updateData).length > 0) {
+      await UpdateTicketService({
+        ticketData: updateData,
+        ticketId: context.ticketId
+      });
+      logger.info(`Flow: Ticket ${context.ticketId} updated via Ticket Node`, updateData);
+    }
+  }
+
+  private async evaluateSwitch(session: FlowSession, flow: Flow, node: any): Promise<FlowSession> {
+    // NOCODE: Processamento seguro de condições estruturadas
+    const context = session.context as FlowContext;
+    const conditionsA = node.data.conditionsA || [];
+
+    let matchedHandle = 'b'; // Default to B (False/Fail)
+
+    if (conditionsA.length === 0) {
+      // Se não há condições, vai para A se houver input
+      const lastInput = context.lastInput || "";
+      if (lastInput && lastInput.length > 0) {
+        matchedHandle = 'a';
+      }
+    } else {
+      // Avalia condições NOCODE
+      const result = this.evaluateNoCodeConditions(conditionsA, context);
+      if (result) {
+        matchedHandle = 'a';
+      }
+    }
+
+    logger.info(`FlowExecutor: Switch evaluated to handle ${matchedHandle}`);
+    return this.proceedToNext(session, flow, node, matchedHandle);
+  }
+
+  // NOCODE: Avaliador seguro de condições
+  private evaluateNoCodeConditions(conditions: any[], context: FlowContext): boolean {
+    if (!conditions || conditions.length === 0) return true;
+
+    let result = true;
+    let currentLogic = 'AND';
+
+    for (const cond of conditions) {
+      const fieldValue = this.getContextValue(cond.field, context);
+      const condValue = this.replaceVariables(cond.value || '', context);
+      const condResult = this.evaluateSingleCondition(fieldValue, cond.operator, condValue);
+
+      if (cond.logic === 'OR') {
+        result = result || condResult;
+      } else {
+        result = result && condResult;
+      }
+      currentLogic = cond.logic || 'AND';
+    }
+
+    return result;
+  }
+
+  // NOCODE: Obtém valor do contexto por nome do campo
+  private getContextValue(fieldName: string, context: FlowContext): string {
+    const valueMap: { [key: string]: any } = {
+      'lastInput': context.lastInput || context.messageBody || '',
+      'contactName': context.contactName || '',
+      'contactNumber': context.contactNumber || '',
+      'ticketStatus': context.ticketStatus || '',
+      'queueName': context.queueName || '',
+      'tagName': context.tagName || '',
+      'dayOfWeek': new Date().getDay().toString(),
+      'currentHour': new Date().getHours().toString()
+    };
+    return String(valueMap[fieldName] || context[fieldName] || '');
+  }
+
+  // NOCODE: Avalia uma única condição com whitelist de operadores
+  private evaluateSingleCondition(fieldValue: string, operator: string, condValue: string): boolean {
+    const normalizedField = (fieldValue || '').toLowerCase().trim();
+    const normalizedCond = (condValue || '').toLowerCase().trim();
+
+    // Whitelist de operadores seguros
+    switch (operator) {
+      case 'equals':
+        return normalizedField === normalizedCond;
+      case 'notEquals':
+        return normalizedField !== normalizedCond;
+      case 'contains':
+        return normalizedField.includes(normalizedCond);
+      case 'notContains':
+        return !normalizedField.includes(normalizedCond);
+      case 'startsWith':
+        return normalizedField.startsWith(normalizedCond);
+      case 'endsWith':
+        return normalizedField.endsWith(normalizedCond);
+      case 'isEmpty':
+        return normalizedField.length === 0;
+      case 'isNotEmpty':
+        return normalizedField.length > 0;
+      case 'greaterThan':
+        return parseFloat(fieldValue) > parseFloat(condValue);
+      case 'lessThan':
+        return parseFloat(fieldValue) < parseFloat(condValue);
+      default:
+        logger.warn(`FlowExecutor: Unknown operator ${operator}, defaulting to false`);
+        return false;
+    }
+  }
+
+  private getModelByName(tableName: string): any {
+    const models: { [key: string]: any } = {
+      'Contacts': Contact,
+      'Contact': Contact,
+      'Tickets': Ticket,
+      'Ticket': Ticket,
+      'Messages': Message,
+      'Message': Message,
+      'Users': User,
+      'User': User,
+      'Queues': Queue,
+      'Queue': Queue,
+      'Whatsapps': Whatsapp,
+      'Whatsapp': Whatsapp,
+      'QuickAnswers': QuickAnswer,
+      'QuickAnswer': QuickAnswer,
+      'Pipelines': Pipeline,
+      'Pipeline': Pipeline
+    };
+    return models[tableName] || null;
+  }
+
+  private replaceVariables(str: string, context: FlowContext): string {
+    if (!str) return str;
+    return str.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+      return context[key] !== undefined ? String(context[key]) : match;
+    });
+  }
+
+  // NOCODE: Parser seguro de filtros estruturados
+  private parseNoCodeFilters(filters: any[], tableName: string, context: FlowContext): any {
+    if (!filters || filters.length === 0) return {};
+
+    // Whitelist de campos por tabela
+    const allowedFields: { [key: string]: string[] } = {
+      'Contacts': ['id', 'name', 'number', 'email', 'isGroup', 'profilePicUrl', 'createdAt'],
+      'Tickets': ['id', 'status', 'queueId', 'userId', 'contactId', 'isGroup', 'createdAt', 'updatedAt'],
+      'Messages': ['id', 'body', 'fromMe', 'mediaType', 'ticketId', 'createdAt'],
+      'Users': ['id', 'name', 'email', 'profile', 'createdAt'],
+      'Queues': ['id', 'name', 'color', 'createdAt'],
+      'Whatsapps': ['id', 'name', 'status', 'isDefault', 'createdAt'],
+      'QuickAnswers': ['id', 'shortcut', 'message', 'createdAt'],
+      'Pipelines': ['id', 'name', 'createdAt']
+    };
+
+    // Whitelist de operadores
+    const allowedOperators = ['=', '!=', '>', '<', '>=', '<=', 'like'];
+
+    const tableFields = allowedFields[tableName] || [];
+    const where: any = {};
+
+    for (const filter of filters) {
+      // Validar campo está na whitelist
+      if (!tableFields.includes(filter.field)) {
+        logger.warn(`FlowExecutor: Field ${filter.field} not allowed for table ${tableName}`);
+        continue;
+      }
+
+      // Validar operador está na whitelist
+      if (!allowedOperators.includes(filter.operator)) {
+        logger.warn(`FlowExecutor: Operator ${filter.operator} not allowed`);
+        continue;
+      }
+
+      // Resolver variáveis no valor
+      let cleanValue = this.replaceVariables(filter.value || '', context);
+
+      // Sanitizar valor - remover caracteres perigosos
+      cleanValue = this.sanitizeValue(cleanValue);
+
+      switch (filter.operator) {
+        case '=':
+          where[filter.field] = cleanValue;
+          break;
+        case '!=':
+          where[filter.field] = { [Op.ne]: cleanValue };
+          break;
+        case '>':
+          where[filter.field] = { [Op.gt]: cleanValue };
+          break;
+        case '<':
+          where[filter.field] = { [Op.lt]: cleanValue };
+          break;
+        case '>=':
+          where[filter.field] = { [Op.gte]: cleanValue };
+          break;
+        case '<=':
+          where[filter.field] = { [Op.lte]: cleanValue };
+          break;
+        case 'like':
+          where[filter.field] = { [Op.like]: `%${cleanValue}%` };
+          break;
+      }
+    }
+
+    return where;
+  }
+
+  // NOCODE: Sanitiza valores para prevenir injection
+  private sanitizeValue(value: string): string {
+    if (!value) return '';
+    // Remove caracteres perigosos para SQL injection
+    return value
+      .replace(/[;'"\\]/g, '')  // Remove aspas, ponto-vírgula, barra
+      .replace(/--/g, '')        // Remove comentários SQL
+      .replace(/\/\*/g, '')      // Remove comentários bloco
+      .replace(/\*\//g, '')
+      .trim()
+      .substring(0, 500);        // Limita tamanho
+  }
+
+  // NOCODE: Construir dados para CREATE/UPDATE a partir de estrutura NOCODE
+  private buildNoCodeData(dataFields: any[], tableName: string, context: FlowContext): any {
+    if (!dataFields || dataFields.length === 0) return null;
+
+    // Whitelist de campos editáveis por tabela
+    const editableFields: { [key: string]: string[] } = {
+      'Contacts': ['name', 'email', 'profilePicUrl'],
+      'Tickets': ['status', 'queueId', 'userId'],
+      'Messages': ['body', 'read'],
+      'Users': ['name', 'email'],
+      'Queues': ['name', 'color'],
+      'Whatsapps': ['name', 'isDefault'],
+      'QuickAnswers': ['shortcut', 'message'],
+      'Pipelines': ['name']
+    };
+
+    const tableEditableFields = editableFields[tableName] || [];
+    const result: any = {};
+
+    for (const df of dataFields) {
+      // Validar campo está na whitelist de editáveis
+      if (!tableEditableFields.includes(df.field)) {
+        logger.warn(`FlowExecutor: Field ${df.field} not editable for table ${tableName}`);
+        continue;
+      }
+
+      let value = df.value;
+
+      // Resolver variáveis
+      if (df.useVariable || (typeof value === 'string' && value.startsWith('{{'))) {
+        value = this.replaceVariables(value, context);
+      }
+
+      // Sanitizar
+      value = this.sanitizeValue(String(value));
+
+      result[df.field] = value;
+    }
+
+    return Object.keys(result).length > 0 ? result : null;
+  }
+
+  // Mantém parseFilter para compatibilidade (deprecated)
+  private parseFilter(filterStr: string, context: FlowContext): any {
+    if (!filterStr || filterStr.trim() === '') return {};
+    const resolvedFilter = this.replaceVariables(filterStr, context);
+    const where: any = {};
+    const conditions = resolvedFilter.split(/\s+and\s+/i);
+    for (const condition of conditions) {
+      const match = condition.match(/(\w+)\s*(=|!=|>|<|>=|<=|like)\s*["']?([^"']+)["']?/i);
+      if (match) {
+        const [, field, operator, value] = match;
+        const cleanValue = this.sanitizeValue(value.trim());
+        switch (operator.toLowerCase()) {
+          case '=':
+            where[field] = cleanValue;
+            break;
+          case '!=':
+            where[field] = { [Op.ne]: cleanValue };
+            break;
+          case '>':
+            where[field] = { [Op.gt]: cleanValue };
+            break;
+          case '<':
+            where[field] = { [Op.lt]: cleanValue };
+            break;
+          case '>=':
+            where[field] = { [Op.gte]: cleanValue };
+            break;
+          case '<=':
+            where[field] = { [Op.lte]: cleanValue };
+            break;
+          case 'like':
+            where[field] = { [Op.like]: `%${cleanValue}%` };
+            break;
+        }
+      }
+    }
+    return where;
+  }
+
+  private async executeDatabase(session: FlowSession, flow: Flow, node: any): Promise<FlowSession> {
+    const nodeData = node.data;
+    const context = session.context as FlowContext;
+    const {
+      operation,
+      tableName,
+      // NOCODE: Novos campos estruturados
+      filters,          // Array de filtros NOCODE
+      dataFields,       // Array de campos para CREATE/UPDATE
+      selectedFields,   // Array de campos para READ
+      limit,
+      orderByField,
+      orderByDir,
+      outputVariable,
+      // Legacy (deprecated)
+      filter,
+      data,
+      fields,
+      orderBy
+    } = nodeData;
+
+    logger.info(`FlowExecutor: Database node - ${operation} on ${tableName}`);
+
+    // Validar tabela está na whitelist
+    const allowedTables = ['Contacts', 'Tickets', 'Messages', 'Users', 'Queues', 'Whatsapps', 'QuickAnswers', 'Pipelines'];
+    if (!allowedTables.includes(tableName)) {
+      logger.error(`FlowExecutor: Table ${tableName} not allowed`);
+      await this.sendMessage(session, `Erro: Tabela "${tableName}" não permitida.`);
+      return this.proceedToNext(session, flow, node);
+    }
+
+    const Model = this.getModelByName(tableName);
+    if (!Model) {
+      logger.error(`FlowExecutor: Unknown table ${tableName}`);
+      await this.sendMessage(session, `Erro: Tabela "${tableName}" não encontrada.`);
+      return this.proceedToNext(session, flow, node);
+    }
+
+    let result: any = null;
+
+    try {
+      switch (operation) {
+        case 'read': {
+          // NOCODE: Usa filtros estruturados se disponíveis, senão legacy
+          const where = Array.isArray(filters) && filters.length > 0
+            ? this.parseNoCodeFilters(filters, tableName, context)
+            : this.parseFilter(filter || '', context);
+
+          const queryOptions: any = { where };
+
+          // NOCODE: Campos selecionados via checkbox
+          if (Array.isArray(selectedFields) && selectedFields.length > 0) {
+            queryOptions.attributes = selectedFields;
+          } else if (fields && fields.trim()) {
+            queryOptions.attributes = fields.split(',').map((f: string) => f.trim());
+          }
+
+          // Limit com validação
+          const parsedLimit = parseInt(limit) || 10;
+          queryOptions.limit = Math.min(parsedLimit, 100); // Máximo 100 registros
+
+          // NOCODE: Ordenação via selects
+          if (orderByField) {
+            queryOptions.order = [[orderByField, (orderByDir || 'DESC').toUpperCase()]];
+          } else if (orderBy && orderBy.trim()) {
+            const [field, direction] = orderBy.trim().split(/\s+/);
+            queryOptions.order = [[field, (direction || 'ASC').toUpperCase()]];
+          }
+
+          result = await Model.findAll(queryOptions);
+          logger.info(`FlowExecutor: Database READ returned ${result.length} records`);
+          break;
+        }
+
+        case 'update': {
+          // NOCODE: Usa filtros estruturados
+          const where = Array.isArray(filters) && filters.length > 0
+            ? this.parseNoCodeFilters(filters, tableName, context)
+            : this.parseFilter(filter || '', context);
+
+          if (Object.keys(where).length === 0) {
+            logger.error(`FlowExecutor: UPDATE without filter is not allowed`);
+            await this.sendMessage(session, `Erro: UPDATE sem filtro não é permitido.`);
+            return this.proceedToNext(session, flow, node);
+          }
+
+          // NOCODE: Usa dataFields estruturados se disponíveis
+          let updateData: any;
+          if (Array.isArray(dataFields) && dataFields.length > 0) {
+            updateData = this.buildNoCodeData(dataFields, tableName, context);
+          } else if (typeof data === 'string') {
+            const resolvedData = this.replaceVariables(data, context);
+            try {
+              updateData = JSON.parse(resolvedData);
+            } catch (e) {
+              logger.error(`FlowExecutor: Invalid JSON for UPDATE: ${data}`);
+              await this.sendMessage(session, `Erro: JSON inválido para atualizar registro.`);
+              return this.proceedToNext(session, flow, node);
+            }
+          } else {
+            updateData = data;
+          }
+
+          if (!updateData || Object.keys(updateData).length === 0) {
+            await this.sendMessage(session, `Erro: Nenhum dado para atualizar.`);
+            return this.proceedToNext(session, flow, node);
+          }
+
+          const [affectedRows] = await Model.update(updateData, { where });
+          result = { affectedRows };
+          logger.info(`FlowExecutor: Database UPDATE - ${affectedRows} records affected`);
+          break;
+        }
+
+        default:
+          logger.warn(`FlowExecutor: Unknown/disabled database operation: ${operation}`);
+          await this.sendMessage(session, `Operação ${operation} não permitida no modo NOCODE.`);
+      }
+
+      // Store result in context variable (sanitizado)
+      const sanitizedOutputVar = (outputVariable || 'dbResult').replace(/[^a-zA-Z0-9_]/g, '').substring(0, 50);
+      if (result !== null) {
+        const newContext = {
+          ...context,
+          [sanitizedOutputVar]: Array.isArray(result)
+            ? result.map(r => r.get ? r.get({ plain: true }) : r)
+            : (result.get ? result.get({ plain: true }) : result)
+        };
+        await session.update({ context: newContext });
+        logger.info(`FlowExecutor: Result stored in context.${sanitizedOutputVar}`);
+      }
+
+    } catch (err: any) {
+      logger.error(`FlowExecutor: Database error - ${err.message}`);
+      await this.sendMessage(session, `Erro na operação de banco de dados: ${err.message}`);
+    }
+
+    return this.proceedToNext(session, flow, node);
+  }
+
+  // NOCODE: Executor do Filter Node - filtra dados de uma variável
+  private async executeFilter(session: FlowSession, flow: Flow, node: any): Promise<FlowSession> {
+    const nodeData = node.data;
+    const context = session.context as FlowContext;
+    const { inputVariable, filterConditions, outputVariable } = nodeData;
+
+    logger.info(`FlowExecutor: Filter node - filtering ${inputVariable}`);
+
+    // Sanitizar nome das variáveis
+    const sanitizedInput = (inputVariable || '').replace(/[^a-zA-Z0-9_]/g, '').substring(0, 50);
+    const sanitizedOutput = (outputVariable || 'filtrado').replace(/[^a-zA-Z0-9_]/g, '').substring(0, 50);
+
+    // Obter dados da variável de entrada
+    const inputData = context[sanitizedInput];
+
+    if (!inputData) {
+      logger.warn(`FlowExecutor: Filter node - input variable '${sanitizedInput}' is empty or not found`);
+      // Armazena array vazio
+      const newContext = { ...context, [sanitizedOutput]: [] };
+      await session.update({ context: newContext });
+      return this.proceedToNext(session, flow, node);
+    }
+
+    // Garantir que temos um array para filtrar
+    let dataToFilter = Array.isArray(inputData) ? inputData : [inputData];
+
+    // Se não há condições, passa os dados sem filtrar
+    if (!filterConditions || filterConditions.length === 0) {
+      const newContext = { ...context, [sanitizedOutput]: dataToFilter };
+      await session.update({ context: newContext });
+      logger.info(`FlowExecutor: Filter node - no conditions, passed ${dataToFilter.length} items`);
+      return this.proceedToNext(session, flow, node);
+    }
+
+    // Aplicar filtros
+    const filteredData = dataToFilter.filter(item => {
+      return this.evaluateFilterConditions(filterConditions, item, context);
+    });
+
+    // Armazenar resultado
+    const newContext = { ...context, [sanitizedOutput]: filteredData };
+    await session.update({ context: newContext });
+    logger.info(`FlowExecutor: Filter node - filtered ${dataToFilter.length} -> ${filteredData.length} items`);
+
+    return this.proceedToNext(session, flow, node);
+  }
+
+  // NOCODE: Avalia condições de filtro em um item
+  private evaluateFilterConditions(conditions: any[], item: any, context: FlowContext): boolean {
+    if (!conditions || conditions.length === 0) return true;
+
+    let result = true;
+
+    for (let i = 0; i < conditions.length; i++) {
+      const cond = conditions[i];
+      const itemValue = String(item[cond.field] || '');
+      const condValue = this.replaceVariables(cond.value || '', context);
+      const condResult = this.evaluateSingleCondition(itemValue, cond.operator, condValue);
+
+      if (i === 0) {
+        result = condResult;
+      } else if (cond.logic === 'OR') {
+        result = result || condResult;
+      } else {
+        result = result && condResult;
+      }
+    }
+
+    return result;
+  }
+
+  // Simulador de fluxo - executa sem enviar mensagens reais
+  public async simulateFlow(flow: Flow, testMessage: string): Promise<any> {
+    const nodes = flow.nodes as unknown as FlowNode[];
+    const edges = flow.edges as unknown as FlowEdge[];
+    const simulationLog: any[] = [];
+    const simulatedContext: FlowContext = {
+      ticketId: 9999,
+      contactId: 1234,
+      contactName: "Contato Simulado",
+      contactNumber: "5511999999999",
+      lastInput: testMessage,
+      messageBody: testMessage
+    };
+
+    logger.info(`FlowExecutor: Starting simulation for flow ${flow.id}`);
+    simulationLog.push({
+      step: 0,
+      type: "start",
+      message: "Iniciando simulação do fluxo",
+      context: { ...simulatedContext }
+    });
+
+    // Encontrar nó inicial
+    const startNode = nodes.find(n => n.type === "input" || n.type === "start" || n.type === "trigger");
+    if (!startNode) {
+      return {
+        success: false,
+        error: "Nenhum nó inicial encontrado no fluxo",
+        log: simulationLog
+      };
+    }
+
+    let currentNodeId = startNode.id;
+    let step = 1;
+    const maxSteps = 50; // Limite para evitar loops infinitos
+    const visitedNodes: string[] = [];
+
+    while (currentNodeId && step <= maxSteps) {
+      const node = nodes.find(n => n.id === currentNodeId);
+      if (!node) {
+        simulationLog.push({
+          step,
+          type: "error",
+          message: `Nó ${currentNodeId} não encontrado`
+        });
+        break;
+      }
+
+      // Checar loop infinito
+      if (visitedNodes.filter(v => v === currentNodeId).length > 3) {
+        simulationLog.push({
+          step,
+          type: "warning",
+          message: `Possível loop detectado no nó ${node.type}`
+        });
+        break;
+      }
+      visitedNodes.push(currentNodeId);
+
+      // Simular execução do nó
+      const nodeResult = this.simulateNode(node, simulatedContext);
+      simulationLog.push({
+        step,
+        type: node.type,
+        nodeId: node.id,
+        label: node.data?.label || node.type,
+        ...nodeResult
+      });
+
+      // Atualizar contexto simulado
+      if (nodeResult.contextUpdate) {
+        Object.assign(simulatedContext, nodeResult.contextUpdate);
+      }
+
+      // Encontrar próximo nó
+      const sourceHandle = nodeResult.sourceHandle || null;
+      const edge = edges.find(e => {
+        if (sourceHandle) {
+          return e.source === currentNodeId && e.sourceHandle === sourceHandle;
+        }
+        return e.source === currentNodeId;
+      });
+
+      if (!edge) {
+        simulationLog.push({
+          step: step + 1,
+          type: "end",
+          message: "Fim do fluxo - nenhuma conexão de saída"
+        });
+        break;
+      }
+
+      currentNodeId = edge.target;
+      step++;
+    }
+
+    if (step > maxSteps) {
+      simulationLog.push({
+        step,
+        type: "error",
+        message: "Limite de passos atingido (possível loop infinito)"
+      });
+    }
+
+    return {
+      success: true,
+      flowId: flow.id,
+      flowName: flow.name,
+      totalSteps: step,
+      testMessage,
+      log: simulationLog,
+      finalContext: simulatedContext
+    };
+  }
+
+  // Simula execução de um nó individual
+  private simulateNode(node: FlowNode, context: FlowContext): any {
+    switch (node.type) {
+      case "start":
+      case "input":
+      case "trigger":
+        return {
+          action: "Gatilho disparado",
+          message: `Tipo: ${node.data?.triggerType || 'message'}`,
+          contextUpdate: {}
+        };
+
+      case "message":
+        const msgContent = this.replaceVariables(node.data?.content || "Mensagem", context);
+        return {
+          action: "Enviar mensagem",
+          message: msgContent,
+          wouldSend: true
+        };
+
+      case "menu":
+        const menuOptions = node.data?.options || [];
+        return {
+          action: "Exibir menu",
+          message: node.data?.menuTitle || "Menu",
+          options: menuOptions.map((o: any) => o.label),
+          wouldSend: true
+        };
+
+      case "switch":
+        const conditionsA = node.data?.conditionsA || [];
+        const result = this.evaluateNoCodeConditions(conditionsA, context);
+        return {
+          action: "Avaliar condição",
+          message: `Condições: ${conditionsA.length}, Resultado: ${result ? 'A (verde)' : 'B (vermelho)'}`,
+          sourceHandle: result ? 'a' : 'b'
+        };
+
+      case "database":
+        return {
+          action: `Database ${node.data?.operation || 'read'}`,
+          message: `Tabela: ${node.data?.tableName || 'N/A'}`,
+          contextUpdate: node.data?.outputVariable ? { [node.data.outputVariable]: "[Dados simulados]" } : {}
+        };
+
+      case "filter":
+        const inputVar = node.data?.inputVariable || 'dados';
+        const outputVar = node.data?.outputVariable || 'filtrado';
+        const filterCount = (node.data?.filterConditions || []).length;
+        return {
+          action: "Filtrar dados",
+          message: `Entrada: ${inputVar}, Saída: ${outputVar}, Filtros: ${filterCount}`,
+          contextUpdate: { [outputVar]: "[Dados filtrados simulados]" }
+        };
+
+      case "pipeline":
+        return {
+          action: `Pipeline: ${node.data?.pipelineAction || 'ação'}`,
+          message: `Status: ${node.data?.newStatus || 'N/A'}`,
+          wouldUpdate: true
+        };
+
+      case "knowledge":
+        return {
+          action: "Consultar conhecimento (IA)",
+          message: `Modo: ${node.data?.responseMode || 'auto'}`,
+          wouldSend: true
+        };
+
+      case "end":
+      case "output":
+        return {
+          action: "Finalizar fluxo",
+          message: `Ação: ${node.data?.endAction || 'none'}`
+        };
+
+      default:
+        return {
+          action: `Nó desconhecido: ${node.type}`,
+          message: "Não simulado"
+        };
     }
   }
 }
 
 export default new FlowExecutorService();
+

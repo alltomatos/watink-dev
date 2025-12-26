@@ -12,22 +12,24 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 
 import { makeStyles } from '@material-ui/core/styles';
-import { Paper, IconButton, Tooltip, Button, CircularProgress } from '@material-ui/core';
-import { 
-    Chat as ChatIcon, 
-    ChevronRight as ChevronRightIcon, 
+import { Paper, IconButton, Tooltip, Button, CircularProgress, Switch, FormControlLabel } from '@material-ui/core';
+import {
+    Chat as ChatIcon,
+    ChevronRight as ChevronRightIcon,
     Save as SaveIcon,
     CloudDownload as ImportIcon,
     CloudUpload as ExportIcon,
-    CheckCircle as CheckIcon
+    CheckCircle as CheckIcon,
+    PlayArrow as PlayIcon,
+    PowerSettingsNew as PowerIcon
 } from '@material-ui/icons';
 import { toast } from 'react-toastify';
 
 import api from '../../services/api';
-import ContentModal from './ContentModal';
-import StartNodeModal from './StartNodeModal';
 import NodesSidebar from './NodesSidebar';
 import FlowChat from './FlowChat';
+import NodeEditorSidebar from './NodeEditorSidebar';
+import FlowSimulatorModal from './FlowSimulatorModal';
 
 // Custom Nodes
 import StartNode from './CustomNodes/StartNode';
@@ -38,6 +40,9 @@ import PipelineNode from './CustomNodes/PipelineNode';
 import KnowledgeNode from './CustomNodes/KnowledgeNode';
 import MessageNode from './CustomNodes/MessageNode';
 import MenuNode from './CustomNodes/MenuNode';
+import DatabaseNode from './CustomNodes/DatabaseNode';
+import FilterNode from './CustomNodes/FilterNode';
+import TicketNode from './CustomNodes/TicketNode';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -79,7 +84,7 @@ const useStyles = makeStyles((theme) => ({
     toolbar: {
         position: 'absolute',
         top: 10,
-        right: 70, // Left of chat toggle
+        right: 70,
         zIndex: 15,
         display: 'flex',
         gap: '8px'
@@ -90,14 +95,14 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const initialNodes = [
-    { 
-        id: '1', 
-        position: { x: 250, y: 50 }, 
-        data: { 
-            label: 'Gatilho: Tempo', 
-            triggerType: 'time' 
-        }, 
-        type: 'start' 
+    {
+        id: '1',
+        position: { x: 250, y: 50 },
+        data: {
+            label: 'Gatilho: Tempo',
+            triggerType: 'time'
+        },
+        type: 'start'
     },
 ];
 const initialEdges = [];
@@ -113,10 +118,15 @@ const FlowBuilder = () => {
     const reactFlowWrapper = useRef(null);
     const [isChatOpen, setIsChatOpen] = useState(true);
     const [loading, setLoading] = useState(false);
-    const [contentModalOpen, setContentModalOpen] = useState(false);
-    const [startModalOpen, setStartModalOpen] = useState(false);
-    const [currentNodeId, setCurrentNodeId] = useState(null);
     const fileInputRef = useRef(null);
+
+    // Estado para nó selecionado e sidebar de edição
+    const [selectedNode, setSelectedNode] = useState(null);
+    const [isEditorOpen, setIsEditorOpen] = useState(false);
+
+    // Estado para informações do fluxo (ativo/inativo)
+    const [flowInfo, setFlowInfo] = useState({ name: '', isActive: true });
+    const [simulatorOpen, setSimulatorOpen] = useState(false);
 
     // AutoSave Timer
     const saveTimeoutRef = useRef(null);
@@ -124,57 +134,28 @@ const FlowBuilder = () => {
     const handleNodeDelete = useCallback((nodeId) => {
         setNodes((nds) => nds.filter((node) => node.id !== nodeId));
         setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+        setSelectedNode(null);
+        setIsEditorOpen(false);
     }, [setNodes, setEdges]);
 
-    const handleContentModalOpen = (nodeId) => {
-        setCurrentNodeId(nodeId);
-        setContentModalOpen(true);
-    };
-
-    const handleStartModalOpen = (nodeId) => {
-        setCurrentNodeId(nodeId);
-        setStartModalOpen(true);
-    };
-
-    const handleStartNodeSave = (data) => {
+    // Callback para salvar configurações do nó
+    const handleNodeConfigSave = useCallback((nodeId, newData) => {
         setNodes((nds) =>
             nds.map((node) => {
-                if (node.id === currentNodeId) {
-                    const label = data.triggerType === 'time' 
-                        ? 'Gatilho: Tempo' 
-                        : `Gatilho: ${data.actionType === 'message' ? 'Msg Conexão' : data.actionType === 'kanban' ? 'Kanban' : 'Funil'}`;
-                    
+                if (node.id === nodeId) {
                     return {
                         ...node,
                         data: {
                             ...node.data,
-                            ...data,
-                            label
+                            ...newData
                         }
                     };
                 }
                 return node;
             })
         );
-    };
-
-    const handleContentAdd = (type) => {
-        setNodes((nds) =>
-            nds.map((node) => {
-                if (node.id === currentNodeId) {
-                    return {
-                        ...node,
-                        data: {
-                            ...node.data,
-                            contentType: type,
-                            content: `Conteúdo: ${type}` // Placeholder, real implementation would ask for content details
-                        },
-                    };
-                }
-                return node;
-            })
-        );
-    };
+        toast.success('Configurações salvas!');
+    }, [setNodes]);
 
     const nodeTypes = useMemo(() => ({
         start: StartNode,
@@ -184,9 +165,12 @@ const FlowBuilder = () => {
         switch: SwitchNode,
         trigger: TriggerNode,
         pipeline: PipelineNode,
+        ticket: TicketNode,
         knowledge: KnowledgeNode,
         message: MessageNode,
-        menu: MenuNode
+        menu: MenuNode,
+        database: DatabaseNode,
+        filter: FilterNode
     }), []);
 
     useEffect(() => {
@@ -200,7 +184,7 @@ const FlowBuilder = () => {
         if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current);
         }
-        
+
         // Skip autosave on initial load or if empty
         if (nodes.length === 0 && edges.length === 0) return;
 
@@ -215,13 +199,15 @@ const FlowBuilder = () => {
         setLoading(true);
         try {
             const { data } = await api.get(`/flows/${id}`);
+            // Salvar info do fluxo
+            setFlowInfo({ name: data.name, isActive: data.isActive !== false });
+
             if (data.nodes) {
                 const hydratedNodes = data.nodes.map(node => ({
                     ...node,
                     data: {
                         ...node.data,
-                        onDelete: () => handleNodeDelete(node.id),
-                        onEdit: () => handleContentModalOpen(node.id)
+                        onDelete: () => handleNodeDelete(node.id)
                     }
                 }));
                 setNodes(hydratedNodes);
@@ -245,8 +231,24 @@ const FlowBuilder = () => {
         }
     };
 
+    // Toggle ativar/desativar fluxo
+    const handleToggle = async () => {
+        try {
+            const { data } = await api.post(`/flows/${flowId}/toggle`);
+            setFlowInfo(prev => ({ ...prev, isActive: data.isActive }));
+            toast.success(data.message);
+        } catch (err) {
+            toast.error(err.response?.data?.error || "Erro ao alternar status do fluxo");
+        }
+    };
+
+    // Simular fluxo
+    const handleSimulate = async (flowId, message) => {
+        const { data } = await api.post(`/flows/${flowId}/simulate`, { message });
+        return data;
+    };
+
     const validateFlow = () => {
-        // Exemplo simples de validação: Verificar nós desconectados
         const connectedEdges = getConnectedEdges(nodes, edges);
         const unconnectedNodes = nodes.filter(
             node => !connectedEdges.find(edge => edge.source === node.id || edge.target === node.id)
@@ -318,27 +320,28 @@ const FlowBuilder = () => {
                     x: event.clientX - position.left - 100,
                     y: event.clientY - position.top,
                 },
-                data: { 
+                data: {
                     label: `${label}`,
-                    onEdit: () => handleContentModalOpen(nodeId),
                     onDelete: () => handleNodeDelete(nodeId)
                 },
             };
 
             setNodes((nds) => nds.concat(newNode));
         },
-        [setNodes]
+        [setNodes, handleNodeDelete]
     );
 
-    const onNodeDoubleClick = useCallback((event, node) => {
-        if (node.type === 'message') {
-            handleContentModalOpen(node.id);
-        } else if (node.type === 'start' || node.id === '1') {
-             handleStartModalOpen(node.id);
-        } else if (node.data && node.data.onEdit) {
-            node.data.onEdit();
-        }
+    // Clique no nó abre sidebar de edição
+    const onNodeClick = useCallback((event, node) => {
+        setSelectedNode(node);
+        setIsEditorOpen(true);
     }, []);
+
+    // Fechar sidebar de edição
+    const handleCloseEditor = () => {
+        setIsEditorOpen(false);
+        setSelectedNode(null);
+    };
 
     const handleAIResponse = (newNodes, newEdges) => {
         if (newNodes && newEdges) {
@@ -362,7 +365,7 @@ const FlowBuilder = () => {
                         onConnect={onConnect}
                         onDragOver={onDragOver}
                         onDrop={onDrop}
-                        onNodeDoubleClick={onNodeDoubleClick}
+                        onNodeClick={onNodeClick}
                         fitView
                     >
                         <Controls />
@@ -377,7 +380,7 @@ const FlowBuilder = () => {
                                 ref={fileInputRef}
                                 onChange={handleImport}
                             />
-                            
+
                             <Tooltip title="Validar Fluxo">
                                 <Button
                                     variant="contained"
@@ -421,6 +424,35 @@ const FlowBuilder = () => {
                             >
                                 Salvar
                             </Button>
+
+                            {/* Botão Simular */}
+                            <Tooltip title="Simular Fluxo">
+                                <Button
+                                    variant="contained"
+                                    size="small"
+                                    onClick={() => setSimulatorOpen(true)}
+                                    style={{ backgroundColor: '#9c27b0', color: '#fff' }}
+                                    startIcon={<PlayIcon />}
+                                >
+                                    Simular
+                                </Button>
+                            </Tooltip>
+
+                            {/* Toggle Ativo/Inativo */}
+                            <Tooltip title={flowInfo.isActive ? "Clique para desativar" : "Clique para ativar"}>
+                                <Button
+                                    variant="contained"
+                                    size="small"
+                                    onClick={handleToggle}
+                                    style={{
+                                        backgroundColor: flowInfo.isActive ? '#4caf50' : '#9e9e9e',
+                                        color: '#fff'
+                                    }}
+                                    startIcon={<PowerIcon />}
+                                >
+                                    {flowInfo.isActive ? 'Ativo' : 'Inativo'}
+                                </Button>
+                            </Tooltip>
                         </div>
 
                         {!isChatOpen && (
@@ -447,20 +479,26 @@ const FlowBuilder = () => {
                 <FlowChat onFlowGenerated={handleAIResponse} />
             </Paper>
 
-            <ContentModal 
-                open={contentModalOpen} 
-                onClose={() => setContentModalOpen(false)} 
-                onAdd={handleContentAdd}
+            {/* Sidebar de edição de nó */}
+            <NodeEditorSidebar
+                open={isEditorOpen}
+                node={selectedNode}
+                onClose={handleCloseEditor}
+                onSave={handleNodeConfigSave}
+                onDelete={handleNodeDelete}
             />
-            
-            <StartNodeModal
-                open={startModalOpen}
-                onClose={() => setStartModalOpen(false)}
-                onSave={handleStartNodeSave}
-                initialData={nodes.find(n => n.id === currentNodeId)?.data}
+
+            {/* Modal de simulação */}
+            <FlowSimulatorModal
+                open={simulatorOpen}
+                onClose={() => setSimulatorOpen(false)}
+                flowId={flowId}
+                flowName={flowInfo.name}
+                onSimulate={handleSimulate}
             />
         </div>
     );
 };
 
 export default FlowBuilder;
+

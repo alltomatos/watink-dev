@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import FlowAIService from "../services/FlowServices/FlowAIService";
-import { CreateFlowService, ListFlowsService, UpdateFlowService, ShowFlowService } from "../services/FlowServices/FlowService";
+import { CreateFlowService, ListFlowsService, UpdateFlowService, ShowFlowService, ToggleFlowService } from "../services/FlowServices/FlowService";
+import FlowExecutorService from "../services/FlowServices/FlowExecutorService";
 import AppError from "../errors/AppError";
 
 export const generateFlowAI = async (req: Request, res: Response): Promise<Response> => {
@@ -17,7 +18,7 @@ export const generateFlowAI = async (req: Request, res: Response): Promise<Respo
 };
 
 export const store = async (req: Request, res: Response): Promise<Response> => {
-    const { name, nodes, edges } = req.body;
+    const { name, nodes, edges, whatsappId } = req.body;
     const { tenantId, id: userId } = req.user;
 
     const flow = await CreateFlowService({
@@ -25,7 +26,8 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
         nodes,
         edges,
         tenantId,
-        userId: Number(userId)
+        userId: Number(userId),
+        whatsappId
     });
 
     return res.status(201).json(flow);
@@ -61,4 +63,43 @@ export const update = async (req: Request, res: Response): Promise<Response> => 
     });
 
     return res.json(flow);
+};
+
+// Toggle ativar/desativar fluxo
+export const toggle = async (req: Request, res: Response): Promise<Response> => {
+    const { flowId } = req.params;
+    const { tenantId } = req.user;
+
+    const flow = await ToggleFlowService({
+        id: Number(flowId),
+        tenantId
+    });
+
+    return res.json({
+        id: flow.id,
+        name: flow.name,
+        isActive: flow.isActive,
+        message: flow.isActive ? "Fluxo ativado com sucesso" : "Fluxo desativado com sucesso"
+    });
+};
+
+// Simular execução do fluxo
+export const simulate = async (req: Request, res: Response): Promise<Response> => {
+    const { flowId } = req.params;
+    const { tenantId } = req.user;
+    const { message } = req.body;
+
+    const flow = await ShowFlowService({
+        id: Number(flowId),
+        tenantId
+    });
+
+    if (!flow) {
+        throw new AppError("Fluxo não encontrado", 404);
+    }
+
+    // Executar simulação
+    const result = await FlowExecutorService.simulateFlow(flow, message || "Olá, teste de simulação");
+
+    return res.json(result);
 };
