@@ -438,6 +438,40 @@ const messages = {
           message: "Esta ação não pode ser revertida.",
         },
       },
+      knowledgeBase: {
+        title: "Base de Conhecimento",
+        menu: "Base Conhecimento",
+        table: {
+          name: "Nome",
+          description: "Descrição",
+          actions: "Ações",
+          noData: "Nenhuma base de conhecimento encontrada",
+        },
+        buttons: {
+          add: "Adicionar Base",
+          save: "Salvar",
+          cancel: "Cancelar",
+          edit: "Editar",
+          delete: "Excluir",
+        },
+        modal: {
+          add: "Nova Base de Conhecimento",
+          edit: "Editar Base de Conhecimento",
+        },
+        form: {
+          name: "Nome",
+          description: "Descrição",
+        },
+        toasts: {
+          created: "Base de conhecimento criada com sucesso!",
+          edited: "Base de conhecimento atualizada com sucesso!",
+          deleted: "Base de conhecimento excluída com sucesso!",
+        },
+        confirmationModal: {
+          deleteTitle: "Excluir Base de Conhecimento",
+          deleteMessage: "Tem certeza? Todos os conteúdos vinculados serão excluídos.",
+        },
+      },
       backendErrors: {
         ERR_NO_OTHER_WHATSAPP: "Deve haver pelo menos um WhatsApp padrão.",
         ERR_NO_DEF_WAPP_FOUND:

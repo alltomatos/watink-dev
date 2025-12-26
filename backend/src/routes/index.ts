@@ -19,6 +19,8 @@ import pipelineRoutes from "./pipelineRoutes";
 import dealRoutes from "./dealRoutes";
 import flowRoutes from "./flowRoutes";
 
+import knowledgeRoutes from "./knowledgeRoutes";
+
 const routes = Router();
 
 // routes.use(userRoutes); // Moved to bottom
@@ -38,6 +40,7 @@ routes.use("/version", versionRoutes);
 routes.use(pipelineRoutes);
 routes.use(dealRoutes);
 routes.use(flowRoutes);
+routes.use(knowledgeRoutes);
 routes.use("/users", userRoutes);
 
 export default routes;

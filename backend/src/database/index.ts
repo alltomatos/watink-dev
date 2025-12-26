@@ -17,6 +17,9 @@ import Deal from "../models/Deal";
 import Flow from "../models/Flow";
 import FlowSession from "../models/FlowSession";
 import FlowTrigger from "../models/FlowTrigger";
+import KnowledgeBase from "../models/KnowledgeBase";
+import KnowledgeSource from "../models/KnowledgeSource";
+import KnowledgeVector from "../models/KnowledgeVector";
 
 // eslint-disable-next-line
 const dbConfig = require("../config/database");
@@ -41,7 +44,10 @@ const models = [
   Deal,
   Flow,
   FlowSession,
-  FlowTrigger
+  FlowTrigger,
+  KnowledgeBase,
+  KnowledgeSource,
+  KnowledgeVector
 ];
 
 sequelize.addModels(models);

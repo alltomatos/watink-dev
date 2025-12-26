@@ -18,6 +18,7 @@ import AccountTreeOutlinedIcon from "@material-ui/icons/AccountTreeOutlined";
 import QuestionAnswerOutlinedIcon from "@material-ui/icons/QuestionAnswerOutlined";
 import MenuBookIcon from "@material-ui/icons/MenuBook";
 import DeviceHubIcon from "@material-ui/icons/DeviceHub";
+import LibraryBooksIcon from "@material-ui/icons/LibraryBooks";
 
 import { i18n } from "../translate/i18n";
 import { WhatsAppsContext } from "../context/WhatsApp/WhatsAppsContext";
@@ -183,6 +184,13 @@ const MainListItems = (props) => {
               primary={i18n.t("mainDrawer.listItems.queues")}
               icon={<AccountTreeOutlinedIcon />}
               iconColor={googleColors.yellow}
+              collapsed={collapsed}
+            />
+            <ListItemLink
+              to="/knowledge-bases"
+              primary={i18n.t("knowledgeBase.menu")}
+              icon={<LibraryBooksIcon />}
+              iconColor={googleColors.orange}
               collapsed={collapsed}
             />
             <ListItemLink
