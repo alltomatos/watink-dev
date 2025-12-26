@@ -1,44 +1,42 @@
 import React, { useState, useCallback, useContext } from "react";
-import { toast } from "react-toastify";
 import { format, parseISO } from "date-fns";
 import { useHistory } from "react-router-dom";
 
 import { makeStyles } from "@material-ui/core/styles";
-import { green } from "@material-ui/core/colors";
+import { green, red, orange } from "@material-ui/core/colors";
 import {
 	Button,
-	IconButton,
-	Paper,
 	Typography,
 	CircularProgress,
 	Grid,
-	Card,
-	CardContent,
-	CardActions,
-	CardActionArea,
-	Box
+	Box,
+	Chip,
+	IconButton,
+	Menu,
+	MenuItem,
+	ListItemIcon
 } from "@material-ui/core";
 import {
-	Edit,
 	CheckCircle,
-	SignalCellularConnectedNoInternet2Bar,
 	SignalCellularConnectedNoInternet0Bar,
 	SignalCellular4Bar,
 	CropFree,
-	DeleteOutline,
+	SignalCellularConnectedNoInternet2Bar,
+	Add,
+	MoreVert,
+	Edit,
+	FiberManualRecord
 } from "@material-ui/icons";
 
 import MainContainer from "../../components/MainContainer";
 import MainHeader from "../../components/MainHeader";
 import MainHeaderButtonsWrapper from "../../components/MainHeaderButtonsWrapper";
 import Title from "../../components/Title";
+import BaseCard from "../../components/BaseCard";
 
-import api from "../../services/api";
 import WhatsAppModal from "../../components/WhatsAppModal";
-import ConfirmationModal from "../../components/ConfirmationModal";
 import { i18n } from "../../translate/i18n";
 import { WhatsAppsContext } from "../../context/WhatsApp/WhatsAppsContext";
-import toastError from "../../errors/toastError";
 
 const useStyles = makeStyles(theme => ({
 	mainPaper: {
@@ -47,22 +45,52 @@ const useStyles = makeStyles(theme => ({
 		overflowY: "scroll",
 		...theme.scrollbarStyles,
 	},
-	card: {
-		height: '100%',
-		display: 'flex',
-		flexDirection: 'column',
-		position: 'relative'
+	customCard: {
+		cursor: "pointer",
+		height: "100%",
 	},
-	cardContent: {
-		flexGrow: 1,
+	pulsingDot: {
+		width: 10,
+		height: 10,
+		borderRadius: "50%",
+		marginRight: 8,
+		position: "relative",
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			top: -1,
+			left: -1,
+			width: "100%",
+			height: "100%",
+			borderRadius: "50%",
+			border: "1px solid currentColor",
+			animation: "$pulse 2s infinite",
+			opacity: 0.5,
+			padding: 1,
+		},
 	},
-	statusIcon: {
-		position: 'absolute',
-		top: theme.spacing(1),
-		right: theme.spacing(1),
+	"@keyframes pulse": {
+		"0%": {
+			transform: "scale(1)",
+			opacity: 1,
+		},
+		"100%": {
+			transform: "scale(2.5)",
+			opacity: 0,
+		},
 	},
-	cardActions: {
-		justifyContent: 'flex-end',
+	chipRoot: {
+		fontWeight: 600,
+		borderRadius: 8,
+		height: 28,
+		padding: "4px 0",
+		"& .MuiChip-label": {
+			paddingLeft: 8,
+			paddingRight: 8,
+			display: 'flex',
+			alignItems: 'center',
+			width: "100%"
+		}
 	}
 }));
 
@@ -73,17 +101,8 @@ const Connections = () => {
 	const { whatsApps, loading } = useContext(WhatsAppsContext);
 	const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
 	const [selectedWhatsApp, setSelectedWhatsApp] = useState(null);
-	const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-	const confirmationModalInitialState = {
-		action: "",
-		title: "",
-		message: "",
-		whatsAppId: "",
-		open: false,
-	};
-	const [confirmModalInfo, setConfirmModalInfo] = useState(
-		confirmationModalInitialState
-	);
+	const [anchorEl, setAnchorEl] = useState(null);
+	const [menuTargetId, setMenuTargetId] = useState(null);
 
 	const handleOpenWhatsAppModal = () => {
 		setSelectedWhatsApp(null);
@@ -95,88 +114,69 @@ const Connections = () => {
 		setSelectedWhatsApp(null);
 	}, [setSelectedWhatsApp, setWhatsAppModalOpen]);
 
-	const handleEditWhatsApp = (e, whatsApp) => {
-		e.stopPropagation();
-		setSelectedWhatsApp(whatsApp);
-		setWhatsAppModalOpen(true);
+	const handleMenuOpen = (event, whatsappId) => {
+		event.stopPropagation();
+		setAnchorEl(event.currentTarget);
+		setMenuTargetId(whatsappId);
 	};
 
-	const handleOpenConfirmationModal = (e, action, whatsAppId) => {
-		e.stopPropagation();
-		if (action === "disconnect") {
-			setConfirmModalInfo({
-				action: action,
-				title: i18n.t("connections.confirmationModal.disconnectTitle"),
-				message: i18n.t("connections.confirmationModal.disconnectMessage"),
-				whatsAppId: whatsAppId,
-			});
-		}
-
-		if (action === "delete") {
-			setConfirmModalInfo({
-				action: action,
-				title: i18n.t("connections.confirmationModal.deleteTitle"),
-				message: i18n.t("connections.confirmationModal.deleteMessage"),
-				whatsAppId: whatsAppId,
-			});
-		}
-		setConfirmModalOpen(true);
+	const handleMenuClose = () => {
+		setAnchorEl(null);
+		setMenuTargetId(null);
 	};
 
-	const handleSubmitConfirmationModal = async () => {
-		if (confirmModalInfo.action === "disconnect") {
-			try {
-				await api.delete(`/whatsappsession/${confirmModalInfo.whatsAppId}`);
-			} catch (err) {
-				toastError(err);
-			}
+	const getStatusColor = (status) => {
+		switch (status) {
+			case "CONNECTED": return green[600];
+			case "DISCONNECTED": return red[600];
+			case "qrcode": return orange[600];
+			case "PAIRING": return orange[400];
+			default: return "#9ca3af";
 		}
+	};
 
-		if (confirmModalInfo.action === "delete") {
-			try {
-				await api.delete(`/whatsapp/${confirmModalInfo.whatsAppId}`);
-				toast.success(i18n.t("connections.toasts.deleted"));
-			} catch (err) {
-				toastError(err);
-			}
+	const getStatusBackgroundColor = (status) => {
+		switch (status) {
+			case "CONNECTED": return "#E8F5E9";
+			case "DISCONNECTED": return "#FFEBEE";
+			case "qrcode": return "#FFF3E0";
+			default: return "#F3F4F6";
 		}
-
-		setConfirmModalInfo(confirmationModalInitialState);
 	};
 
 	const renderStatusIcon = status => {
+		return <SignalCellular4Bar fontSize="default" />;
+	};
+
+	const renderStatusLabel = status => {
 		switch (status) {
-			case "DISCONNECTED":
-				return <SignalCellularConnectedNoInternet0Bar color="secondary" />;
-			case "OPENING":
-				return <CircularProgress size={24} />;
-			case "qrcode":
-				return <CropFree />;
-			case "CONNECTED":
-				return <SignalCellular4Bar style={{ color: green[500] }} />;
-			case "TIMEOUT":
-			case "PAIRING":
-				return <SignalCellularConnectedNoInternet2Bar color="secondary" />;
-			default:
-				return null;
+			case "DISCONNECTED": return "Desconectado";
+			case "OPENING": return "Iniciando...";
+			case "qrcode": return "Escanear QR Code";
+			case "CONNECTED": return "Conectado";
+			case "TIMEOUT": return "Tempo Esgotado";
+			case "PAIRING": return "Pareando";
+			default: return "Desconhecido";
+		}
+	}
+
+	const handleCardClick = (whatsappId) => {
+		if (!anchorEl) {
+			history.push(`/connections/${whatsappId}`);
 		}
 	};
 
-	const handleCardClick = (whatsappId) => {
-		history.push(`/connections/${whatsappId}`);
+	const handleEditWhatsApp = () => {
+		const whatsapp = whatsApps.find(w => w.id === menuTargetId);
+		if (whatsapp) {
+			setSelectedWhatsApp(whatsapp);
+			setWhatsAppModalOpen(true);
+		}
+		handleMenuClose();
 	};
 
 	return (
 		<MainContainer>
-			<ConfirmationModal
-				title={confirmModalInfo.title}
-				open={confirmModalOpen}
-				onClose={setConfirmModalOpen}
-				onConfirm={handleSubmitConfirmationModal}
-			>
-				{confirmModalInfo.message}
-			</ConfirmationModal>
-
 			<WhatsAppModal
 				open={whatsAppModalOpen}
 				onClose={handleCloseWhatsAppModal}
@@ -190,6 +190,7 @@ const Connections = () => {
 						variant="contained"
 						color="primary"
 						onClick={handleOpenWhatsAppModal}
+						startIcon={<Add />}
 					>
 						{i18n.t("connections.buttons.add")}
 					</Button>
@@ -204,51 +205,99 @@ const Connections = () => {
 				) : (
 					<Grid container spacing={3}>
 						{whatsApps?.length > 0 &&
-							whatsApps.map(whatsApp => (
-								<Grid item xs={12} sm={6} md={4} key={whatsApp.id}>
-									<Card className={classes.card} variant="outlined">
-										<CardActionArea onClick={() => handleCardClick(whatsApp.id)}>
-											<Box className={classes.statusIcon}>
-												{renderStatusIcon(whatsApp.status)}
+							whatsApps.map(whatsApp => {
+								const statusColor = getStatusColor(whatsApp.status);
+								const bgColor = getStatusBackgroundColor(whatsApp.status);
+
+								return (
+									<Grid item xs={12} sm={6} md={4} lg={3} key={whatsApp.id}>
+										<BaseCard
+											className={classes.customCard}
+											title={whatsApp.name}
+											subtitle={
+												<span style={{ fontSize: 13, fontWeight: 400, color: '#8e8e8e', display: 'flex', gap: 4 }}>
+													Atualizado em {whatsApp.updatedAt
+														? format(parseISO(whatsApp.updatedAt), "dd/MM")
+														: "N/A"
+													}
+												</span>
+											}
+											iconColor={bgColor}
+											icon={React.cloneElement(renderStatusIcon(whatsApp.status), { style: { color: statusColor, fontSize: 24 } })}
+
+											actions={
+												<IconButton
+													size="small"
+													onClick={(e) => handleMenuOpen(e, whatsApp.id)}
+												>
+													<MoreVert fontSize="small" style={{ color: '#94a3b8' }} />
+												</IconButton>
+											}
+											hoverEffect={true}
+											onClick={() => handleCardClick(whatsApp.id)}
+										>
+
+											<Box mt={2} display="flex" alignItems="center">
+												<Chip
+													classes={{ root: classes.chipRoot }}
+													style={{
+														backgroundColor: bgColor,
+														color: statusColor,
+														width: "100%",
+													}}
+													label={
+														<Box display="flex" alignItems="center" width="100%">
+															<Box
+																className={classes.pulsingDot}
+																style={{
+																	backgroundColor: statusColor,
+																	color: statusColor
+																}}
+															/>
+															<Typography variant="body2" style={{ fontWeight: 600, fontSize: '0.8125rem' }}>
+																{renderStatusLabel(whatsApp.status)}
+															</Typography>
+
+															{whatsApp.isDefault && (
+																<Box ml="auto">
+																	<CheckCircle style={{ fontSize: 16 }} />
+																</Box>
+															)}
+														</Box>
+													}
+												/>
 											</Box>
-											<CardContent className={classes.cardContent}>
-												<Typography variant="h6" component="h2" gutterBottom>
-													{whatsApp.name}
-												</Typography>
-												<Typography variant="body2" color="textSecondary">
-													Status: {whatsApp.status}
-												</Typography>
-												<Typography variant="body2" color="textSecondary">
-													{i18n.t("connections.table.lastUpdate")}: {whatsApp.updatedAt ? format(parseISO(whatsApp.updatedAt), "dd/MM/yy HH:mm") : "N/A"}
-												</Typography>
-												{whatsApp.isDefault && (
-													<Box display="flex" alignItems="center" mt={1}>
-														<CheckCircle style={{ color: green[500], fontSize: 16, marginRight: 4 }} />
-														<Typography variant="caption">{i18n.t("connections.table.default")}</Typography>
-													</Box>
-												)}
-											</CardContent>
-										</CardActionArea>
-										<CardActions className={classes.cardActions}>
-											<IconButton
-												size="small"
-												onClick={(e) => handleEditWhatsApp(e, whatsApp)}
-											>
-												<Edit />
-											</IconButton>
-											<IconButton
-												size="small"
-												onClick={(e) => handleOpenConfirmationModal(e, "delete", whatsApp.id)}
-											>
-												<DeleteOutline />
-											</IconButton>
-										</CardActions>
-									</Card>
-								</Grid>
-							))}
+										</BaseCard>
+									</Grid>
+								)
+							})}
 					</Grid>
 				)}
 			</Box>
+
+			<Menu
+				anchorEl={anchorEl}
+				keepMounted
+				open={Boolean(anchorEl)}
+				onClose={handleMenuClose}
+				elevation={2}
+				getContentAnchorEl={null}
+				anchorOrigin={{
+					vertical: 'bottom',
+					horizontal: 'right',
+				}}
+				transformOrigin={{
+					vertical: 'top',
+					horizontal: 'right',
+				}}
+			>
+				<MenuItem onClick={handleEditWhatsApp}>
+					<ListItemIcon style={{ minWidth: 32 }}>
+						<Edit fontSize="small" />
+					</ListItemIcon>
+					<Typography variant="body2">Editar</Typography>
+				</MenuItem>
+			</Menu>
 		</MainContainer>
 	);
 };

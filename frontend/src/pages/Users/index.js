@@ -3,18 +3,16 @@ import { toast } from "react-toastify";
 import openSocket from "../../services/socket-io";
 
 import { makeStyles } from "@material-ui/core/styles";
-import Paper from "@material-ui/core/Paper";
-import Button from "@material-ui/core/Button";
-import Table from "@material-ui/core/Table";
-import TableBody from "@material-ui/core/TableBody";
-import TableCell from "@material-ui/core/TableCell";
-import TableHead from "@material-ui/core/TableHead";
-import TableRow from "@material-ui/core/TableRow";
-import IconButton from "@material-ui/core/IconButton";
+import {
+  Box,
+  Button,
+  TextField,
+  InputAdornment,
+  Grid,
+  CircularProgress,
+  IconButton,
+} from "@material-ui/core";
 import SearchIcon from "@material-ui/icons/Search";
-import TextField from "@material-ui/core/TextField";
-import InputAdornment from "@material-ui/core/InputAdornment";
-
 import DeleteOutlineIcon from "@material-ui/icons/DeleteOutline";
 import EditIcon from "@material-ui/icons/Edit";
 
@@ -22,10 +20,10 @@ import MainContainer from "../../components/MainContainer";
 import MainHeader from "../../components/MainHeader";
 import MainHeaderButtonsWrapper from "../../components/MainHeaderButtonsWrapper";
 import Title from "../../components/Title";
+import ListItemCard from "../../components/ListItemCard";
 
 import api from "../../services/api";
 import { i18n } from "../../translate/i18n";
-import TableRowSkeleton from "../../components/TableRowSkeleton";
 import UserModal from "../../components/UserModal";
 import ConfirmationModal from "../../components/ConfirmationModal";
 import toastError from "../../errors/toastError";
@@ -77,11 +75,25 @@ const reducer = (state, action) => {
 const useStyles = makeStyles((theme) => ({
   mainPaper: {
     flex: 1,
-    padding: theme.spacing(1),
-    overflowY: "scroll",
+    padding: theme.spacing(2),
+    overflowY: "auto",
     ...theme.scrollbarStyles,
   },
 }));
+
+// Mapeia perfis para cores de status
+const getProfileStatus = (profile) => {
+  switch (profile) {
+    case "admin":
+      return { label: "Admin", color: "error" };
+    case "supervisor":
+      return { label: "Supervisor", color: "warning" };
+    case "user":
+      return { label: "Usuário", color: "info" };
+    default:
+      return { label: profile || "N/A", color: "default" };
+  }
+};
 
 const Users = () => {
   const classes = useStyles();
@@ -187,8 +199,7 @@ const Users = () => {
       <ConfirmationModal
         title={
           deletingUser &&
-          `${i18n.t("users.confirmationModal.deleteTitle")} ${
-            deletingUser.name
+          `${i18n.t("users.confirmationModal.deleteTitle")} ${deletingUser.name
           }?`
         }
         open={confirmModalOpen}
@@ -228,62 +239,45 @@ const Users = () => {
           </Button>
         </MainHeaderButtonsWrapper>
       </MainHeader>
-      <Paper
-        className={classes.mainPaper}
-        variant="outlined"
-        onScroll={handleScroll}
-      >
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell align="center">{i18n.t("users.table.name")}</TableCell>
-              <TableCell align="center">
-                {i18n.t("users.table.email")}
-              </TableCell>
-              <TableCell align="center">
-                {i18n.t("users.table.profile")}
-              </TableCell>
-              <TableCell align="center">
-                {i18n.t("users.table.whatsapp")}
-              </TableCell>              
-              <TableCell align="center">
-                {i18n.t("users.table.actions")}
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            <>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell align="center">{user.name}</TableCell>
-                  <TableCell align="center">{user.email}</TableCell>
-                  <TableCell align="center">{user.profile}</TableCell>
-                  <TableCell align="center">{user.whatsapp?.name}</TableCell>
-                  <TableCell align="center">
+
+      <Box className={classes.mainPaper} onScroll={handleScroll}>
+        <Grid container spacing={2}>
+          {users.map((user) => (
+            <Grid item xs={12} sm={6} md={4} key={user.id}>
+              <ListItemCard
+                title={user.name}
+                subtitle={user.email}
+                status={getProfileStatus(user.profile)}
+                actions={
+                  <>
                     <IconButton
                       size="small"
                       onClick={() => handleEditUser(user)}
                     >
-                      <EditIcon />
+                      <EditIcon fontSize="small" />
                     </IconButton>
-
                     <IconButton
                       size="small"
-                      onClick={(e) => {
+                      onClick={() => {
                         setConfirmModalOpen(true);
                         setDeletingUser(user);
                       }}
                     >
-                      <DeleteOutlineIcon />
+                      <DeleteOutlineIcon fontSize="small" />
                     </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {loading && <TableRowSkeleton columns={4} />}
-            </>
-          </TableBody>
-        </Table>
-      </Paper>
+                  </>
+                }
+              />
+            </Grid>
+          ))}
+        </Grid>
+
+        {loading && (
+          <Box display="flex" justifyContent="center" mt={3}>
+            <CircularProgress />
+          </Box>
+        )}
+      </Box>
     </MainContainer>
   );
 };

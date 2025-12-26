@@ -1,7 +1,8 @@
 .docker/
 ssl/
-#.env
+.env
 .wwebjs_auth
 node_modules
 dist
 sssbuild
+engine-go

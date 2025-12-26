@@ -1,20 +1,16 @@
 import React from "react";
-import { Paper, Typography, Grid, makeStyles } from "@material-ui/core";
+import { Grid } from "@material-ui/core";
+import {
+  Assignment,
+  HourglassEmpty,
+  CheckCircle
+} from "@material-ui/icons";
+
+import MetricCard from "../../../components/MetricCard";
 import { i18n } from "../../../translate/i18n";
 import useTickets from "../../../hooks/useTickets";
 
-const useStyles = makeStyles((theme) => ({
-  customFixedHeightPaper: {
-    padding: theme.spacing(2),
-    display: "flex",
-    overflow: "auto",
-    flexDirection: "column",
-    height: 120,
-  },
-}));
-
 const TicketsInfo = ({ userQueueIds }) => {
-  const classes = useStyles();
 
   const GetTickets = (status, showAll, withUnreadMessages) => {
     const { count } = useTickets({
@@ -28,41 +24,29 @@ const TicketsInfo = ({ userQueueIds }) => {
 
   return (
     <React.Fragment>
-      <Grid item xs={4}>
-        <Paper className={classes.customFixedHeightPaper} style={{ overflow: "hidden" }}>
-          <Typography component="h3" variant="h6" color="primary" paragraph>
-            {i18n.t("dashboard.messages.inAttendance.title")}
-          </Typography>
-          <Grid item>
-            <Typography component="h1" variant="h4">
-              {GetTickets("open", "true", "false")}
-            </Typography>
-          </Grid>
-        </Paper>
+      <Grid item xs={12} sm={6} md={4}>
+        <MetricCard
+          label={i18n.t("dashboard.messages.inAttendance.title")}
+          value={GetTickets("open", "true", "false")}
+          icon={<Assignment />}
+          color="primary"
+        />
       </Grid>
-      <Grid item xs={4}>
-        <Paper className={classes.customFixedHeightPaper} style={{ overflow: "hidden" }}>
-          <Typography component="h3" variant="h6" color="primary" paragraph>
-            {i18n.t("dashboard.messages.waiting.title")}
-          </Typography>
-          <Grid item>
-            <Typography component="h1" variant="h4">
-              {GetTickets("pending", "true", "false")}
-            </Typography>
-          </Grid>
-        </Paper>
+      <Grid item xs={12} sm={6} md={4}>
+        <MetricCard
+          label={i18n.t("dashboard.messages.waiting.title")}
+          value={GetTickets("pending", "true", "false")}
+          icon={<HourglassEmpty />}
+          color="warning"
+        />
       </Grid>
-      <Grid item xs={4}>
-        <Paper className={classes.customFixedHeightPaper} style={{ overflow: "hidden" }}>
-          <Typography component="h3" variant="h6" color="primary" paragraph>
-            {i18n.t("dashboard.messages.closed.title")}
-          </Typography>
-          <Grid item>
-            <Typography component="h1" variant="h4">
-              {GetTickets("closed", "true", "false")}
-            </Typography>
-          </Grid>
-        </Paper>
+      <Grid item xs={12} sm={6} md={4}>
+        <MetricCard
+          label={i18n.t("dashboard.messages.closed.title")}
+          value={GetTickets("closed", "true", "false")}
+          icon={<CheckCircle />}
+          color="success"
+        />
       </Grid>
     </React.Fragment>
   );

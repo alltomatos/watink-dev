@@ -7,6 +7,7 @@ networks:
 services:
 
   backend:
+    image: watic-premium/backend:latest
     build:
       context: ./backend
       dockerfile: ./Dockerfile
@@ -30,7 +31,7 @@ services:
     ports:
       - ${BACKEND_PORT:-8080}:8080
     volumes:
-      - ./backend/public/:/usr/src/app/public/
+      - ./backend/public/:/app/public/
       - ./backend/.wwebjs_auth/:/usr/src/app/.wwebjs_auth/
     depends_on:
       - postgres
@@ -39,6 +40,7 @@ services:
       - watic-premium
 
   frontend:
+    image: watic-premium/frontend:latest
     ports:
       - ${FRONTEND_PORT:-3000}:80
       - ${FRONTEND_SSL_PORT:-3001}:443
@@ -88,6 +90,7 @@ services:
       - watic-premium
 
   whaileys-engine:
+    image: watic-premium/engine:latest
     container_name: watic-premium-engine
     build:
       context: ./engine-standard
@@ -98,3 +101,5 @@ services:
       - rabbitmq
     networks:
       - watic-premium
+    volumes:
+      - ./engine-standard/.sessions_auth/:/usr/src/app/.sessions_auth/

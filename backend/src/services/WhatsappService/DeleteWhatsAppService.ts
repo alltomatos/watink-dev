@@ -11,6 +11,14 @@ const DeleteWhatsAppService = async (id: string): Promise<void> => {
     throw new AppError("ERR_NO_WAPP_FOUND", 404);
   }
 
+  if (
+    whatsapp.status === "CONNECTED" ||
+    whatsapp.status === "PAIRING" ||
+    whatsapp.status === "OPENING"
+  ) {
+    throw new AppError("ERR_WAPP_CHECK_BEFORE_DELETE");
+  }
+
   await StopWhatsAppSession(whatsapp.id); // [NEW] Ensure session is stopped in engine
   await whatsapp.destroy();
 };

@@ -10,10 +10,19 @@ import Queue from "../models/Queue";
 import WhatsappQueue from "../models/WhatsappQueue";
 import UserQueue from "../models/UserQueue";
 import QuickAnswer from "../models/QuickAnswer";
+import Tenant from "../models/Tenant";
+import Pipeline from "../models/Pipeline";
+import PipelineStage from "../models/PipelineStage";
+import Deal from "../models/Deal";
+import Flow from "../models/Flow";
+import FlowSession from "../models/FlowSession";
+import FlowTrigger from "../models/FlowTrigger";
+import KnowledgeBase from "../models/KnowledgeBase";
+import KnowledgeSource from "../models/KnowledgeSource";
+import KnowledgeVector from "../models/KnowledgeVector";
 
 // eslint-disable-next-line
 const dbConfig = require("../config/database");
-// import dbConfig from "../config/database";
 
 const sequelize = new Sequelize(dbConfig);
 
@@ -28,7 +37,17 @@ const models = [
   Queue,
   WhatsappQueue,
   UserQueue,
-  QuickAnswer
+  QuickAnswer,
+  Tenant,
+  Pipeline,
+  PipelineStage,
+  Deal,
+  Flow,
+  FlowSession,
+  FlowTrigger,
+  KnowledgeBase,
+  KnowledgeSource,
+  KnowledgeVector
 ];
 
 sequelize.addModels(models);

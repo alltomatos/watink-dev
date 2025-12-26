@@ -1,10 +1,10 @@
-### Projeto Whaticket Premium
+### Projeto watic Premium
 
 Sempre responder e ou criar planos documentos em portugues do brasil
 
 Repositorio: https://github.com/alltomatos/whaticket-premium.git
 
-O projeto deve sempre focar na stack Docker contida em `whaticket-premium`.
+O projeto deve sempre focar na stack Docker contida em `watic-premium`.
 
 Repositorio Original: https://github.com/canove/whaticket-community.git
 
@@ -55,7 +55,7 @@ O projeto agora opera em arquitetura de microserviços orientada a eventos, subs
 AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
 DB_DIALECT=postgres
 DB_HOST=postgres
-POSTGRES_DB=whaticket
+POSTGRES_DB=watic
 ```
 
 ### Fase 3: Frontend & Dashboard SaaS
@@ -69,3 +69,8 @@ POSTGRES_DB=whaticket
 - [x] **[OPS-002] Configuração do API Gateway (Traefik/Nginx)** (Concluído: Traefik configurado no stack com roteamento dinâmico. Documentação em `docs/tasks_microservice/artifacts/OPS-002_api_gateway_config.md`.)
 - [ ] **[OPS-003] Pipelines de CI/CD**
 - [ ] **[OPS-004] Procedimentos de Rollback e Monitoramento**
+
+### Fase 5: Flow Engine Scalability (Novo)
+- [ ] **[FLOW-001] Event-Driven Architecture**: Refatorar `wbotMessageListener` para publicar eventos de fluxo no RabbitMQ ao invés de executar síncrono.
+- [ ] **[FLOW-002] Flow Worker Service**: Criar microserviço dedicado (`flow-engine-worker`) para processar a fila de fluxos.
+- [ ] **[FLOW-003] Redis State Cache**: Implementar cache de sessões ativas no Redis para reduzir load no Postgres.

@@ -5,7 +5,7 @@ const options = {
         openapi: "3.0.0",
         info: {
             title: "Watic Premium API",
-            version: "1.2.0",
+            version: "1.2.64",
             description: "Documentação da API do Watic Premium",
         },
         servers: [

@@ -16,9 +16,13 @@ services:
       - FRONTEND_URL=http://localhost
       - ENGINE_VERSION=1.0.1
       - PORT=8080
+      - NODE_OPTIONS=--max-old-space-size=800
     ports:
       - "8080:8080"
+    volumes:
+      - backend_public_data:/app/public
     networks:
+
       - watic-premium_public
       - watic-premium_private
     dns:
@@ -33,7 +37,7 @@ services:
       resources:
         limits:
           cpus: '0.50'
-          memory: 512M
+          memory: 1024M
 
   frontend:
     image: watic-premium/frontend:latest
@@ -55,6 +59,32 @@ services:
   whaileys-engine:
     image: watic-premium/engine:latest
     environment:
+      - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+    networks:
+      - watic-premium_private
+    volumes:
+      - sessions_auth_data:/usr/src/app/.sessions_auth/
+    dns:
+      - 192.168.26.253
+      - 8.8.8.8
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+
+  flow-engine-worker:
+    image: watic-premium/backend:latest
+    command: ["node", "dist/src/flow-worker.js"]
+    environment:
+      - DB_DIALECT=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - DB_NAME=watic
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
     networks:
       - watic-premium_private
@@ -110,3 +140,6 @@ networks:
 
 volumes:
   db_data:
+  sessions_auth_data:
+  backend_public_data:
+

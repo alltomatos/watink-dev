@@ -13,8 +13,8 @@ sleep 10
 echo "Running migrations..."
 npx sequelize db:migrate
 
-echo "Running seeds..."
-npx sequelize db:seed:all
+# echo "Running seeds..."
+# npx sequelize db:seed:all
 
 echo "Starting application..."
 if [ -n "$SERVER_PATH" ]; then

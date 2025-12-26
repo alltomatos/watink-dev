@@ -4,7 +4,13 @@ import { ToastContainer } from "react-toastify";
 
 import LoggedInLayout from "../layout";
 import Dashboard from "../pages/Dashboard/";
+import Pipelines from "../pages/Pipelines/";
+import PipelineWizard from "../pages/Pipelines/PipelineWizard";
+import PipelineCreator from "../pages/Pipelines/PipelineCreator";
+import PipelineBoard from "../pages/Pipelines/PipelineBoard";
 import Tickets from "../pages/Tickets/";
+import FlowBuilder from "../pages/FlowBuilder/";
+import FlowManager from "../pages/FlowManager/";
 import Signup from "../pages/Signup/";
 import Login from "../pages/Login/";
 import Connections from "../pages/Connections/";
@@ -14,6 +20,8 @@ import Users from "../pages/Users";
 import Contacts from "../pages/Contacts/";
 import QuickAnswers from "../pages/QuickAnswers/";
 import Queues from "../pages/Queues/";
+import KnowledgeBase from "../pages/KnowledgeBase/";
+import KnowledgeBaseConfig from "../pages/KnowledgeBase/KnowledgeBaseConfig";
 import Swagger from "../pages/Swagger/";
 import { AuthProvider } from "../context/Auth/AuthContext";
 import { WhatsAppsProvider } from "../context/WhatsApp/WhatsAppsContext";
@@ -26,7 +34,12 @@ const PrivateRoutes = () => {
       <LoggedInLayout>
         <Switch>
           <Route exact path="/" component={Dashboard} isPrivate />
+          <Route exact path="/pipelines" component={Pipelines} isPrivate />
+          <Route exact path="/pipelines/new" component={PipelineCreator} isPrivate />
+          <Route exact path="/pipelines/:pipelineId" component={PipelineBoard} isPrivate />
           <Route exact path="/tickets/:ticketId?" component={Tickets} isPrivate />
+          <Route exact path="/flowbuilder" component={FlowManager} isPrivate />
+          <Route exact path="/flowbuilder/:flowId" component={FlowBuilder} isPrivate />
           <Route exact path="/connections" component={Connections} isPrivate />
           <Route exact path="/connections/:whatsappId" component={ConnectionConfig} isPrivate />
           <Route exact path="/contacts" component={Contacts} isPrivate />
@@ -34,6 +47,8 @@ const PrivateRoutes = () => {
           <Route exact path="/quickAnswers" component={QuickAnswers} isPrivate />
           <Route exact path="/Settings" component={Settings} isPrivate />
           <Route exact path="/Queues" component={Queues} isPrivate />
+          <Route exact path="/knowledge-bases" component={KnowledgeBase} isPrivate />
+          <Route exact path="/knowledge-bases/:knowledgeBaseId" component={KnowledgeBaseConfig} isPrivate />
           <Route exact path="/swagger" component={Swagger} isPrivate />
         </Switch>
       </LoggedInLayout>

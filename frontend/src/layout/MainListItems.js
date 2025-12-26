@@ -8,6 +8,7 @@ import ListSubheader from "@material-ui/core/ListSubheader";
 import Divider from "@material-ui/core/Divider";
 import { Badge, Tooltip, makeStyles } from "@material-ui/core";
 import DashboardOutlinedIcon from "@material-ui/icons/DashboardOutlined";
+import ListAltIcon from "@material-ui/icons/ListAlt";
 import WhatsAppIcon from "@material-ui/icons/WhatsApp";
 import SyncAltIcon from "@material-ui/icons/SyncAlt";
 import SettingsOutlinedIcon from "@material-ui/icons/SettingsOutlined";
@@ -16,6 +17,8 @@ import ContactPhoneOutlinedIcon from "@material-ui/icons/ContactPhoneOutlined";
 import AccountTreeOutlinedIcon from "@material-ui/icons/AccountTreeOutlined";
 import QuestionAnswerOutlinedIcon from "@material-ui/icons/QuestionAnswerOutlined";
 import MenuBookIcon from "@material-ui/icons/MenuBook";
+import DeviceHubIcon from "@material-ui/icons/DeviceHub";
+import LibraryBooksIcon from "@material-ui/icons/LibraryBooks";
 
 import { i18n } from "../translate/i18n";
 import { WhatsAppsContext } from "../context/WhatsApp/WhatsAppsContext";
@@ -112,6 +115,13 @@ const MainListItems = (props) => {
         collapsed={collapsed}
       />
       <ListItemLink
+        to="/pipelines"
+        primary="Pipelines"
+        icon={<ListAltIcon />}
+        iconColor={googleColors.purple}
+        collapsed={collapsed}
+      />
+      <ListItemLink
         to="/tickets"
         primary={i18n.t("mainDrawer.listItems.tickets")}
         icon={<WhatsAppIcon />}
@@ -131,6 +141,13 @@ const MainListItems = (props) => {
         primary={i18n.t("mainDrawer.listItems.quickAnswers")}
         icon={<QuestionAnswerOutlinedIcon />}
         iconColor={googleColors.purple}
+        collapsed={collapsed}
+      />
+      <ListItemLink
+        to="/flowbuilder"
+        primary="Flow Builder"
+        icon={<DeviceHubIcon />}
+        iconColor={googleColors.blue}
         collapsed={collapsed}
       />
       <Can
@@ -167,6 +184,13 @@ const MainListItems = (props) => {
               primary={i18n.t("mainDrawer.listItems.queues")}
               icon={<AccountTreeOutlinedIcon />}
               iconColor={googleColors.yellow}
+              collapsed={collapsed}
+            />
+            <ListItemLink
+              to="/knowledge-bases"
+              primary={i18n.t("knowledgeBase.menu")}
+              icon={<LibraryBooksIcon />}
+              iconColor={googleColors.orange}
               collapsed={collapsed}
             />
             <ListItemLink

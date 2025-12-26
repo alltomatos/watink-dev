@@ -25,6 +25,7 @@ import UpdateTicketService from "../TicketServices/UpdateTicketService";
 import CreateContactService from "../ContactServices/CreateContactService";
 import GetContactService from "../ContactServices/GetContactService";
 import formatBody from "../../helpers/Mustache";
+import FlowQueueService from "../FlowServices/FlowQueueService";
 
 interface Session extends Client {
   id?: number;
@@ -355,6 +356,26 @@ const handleMessage = async (
       unreadMessages,
       groupContact
     );
+
+    // --- FLOW BUILDER INTEGRATION (EVENT DRIVEN) ---
+    if (!msg.fromMe) {
+      try {
+        await FlowQueueService.add(
+          "whatsapp_message",
+          {
+            ticketId: ticket.id,
+            contactId: contact.id,
+            messageBody: msg.body,
+            fromMe: msg.fromMe,
+            isGroup: chat.isGroup
+          },
+          ticket.tenantId
+        );
+      } catch (err) {
+        logger.error(`Error publishing flow event: ${err}`);
+      }
+    }
+    // --------------------------------
 
     if (msg.hasMedia) {
       await verifyMediaMessage(msg, ticket, contact);

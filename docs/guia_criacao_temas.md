@@ -207,6 +207,222 @@ Antes de finalizar um tema, verifique:
 
 ---
 
+## 🃏 Cards Premium (Design System v2)
+
+A partir da versão **0.5.31**, o sistema utiliza um novo padrão de design para componentes de Cards, seguindo as melhores práticas de UI/UX para SaaS modernos.
+
+### Princípios de Design
+
+| Princípio | Implementação |
+|-----------|---------------|
+| **Profundidade** | Substituir bordas sólidas por sombras difusas (`box-shadow`) |
+| **Hierarquia** | Títulos grandes e encorpados; detalhes sutis em cinza claro |
+| **Interatividade** | Efeitos hover com elevação (`translateY`) |
+| **Status Dinâmico** | Indicadores visuais pulsantes para estados ativos |
+
+---
+
+### 📦 Componente BaseCard (Reutilizável)
+
+O componente `BaseCard` é a base para todos os cards do sistema. Localizado em:
+```
+frontend/src/components/BaseCard/index.js
+```
+
+#### Props Disponíveis
+
+| Prop | Tipo | Padrão | Descrição |
+|------|------|--------|-----------|
+| `title` | `string` | - | Título do card |
+| `subtitle` | `ReactNode` | - | Subtítulo ou descrição secundária |
+| `icon` | `ReactNode` | - | Ícone exibido no header |
+| `iconColor` | `string` | `primary.light` | Cor de fundo do wrapper do ícone |
+| `actions` | `ReactNode` | - | Botões/ações no lado direito do header |
+| `hoverEffect` | `boolean` | `false` | Ativa animação de hover (elevação + sombra) |
+| `onClick` | `function` | - | Handler de clique no card |
+| `className` | `string` | - | Classes CSS customizadas |
+| `children` | `ReactNode` | - | Conteúdo interno (corpo do card) |
+
+#### Exemplo de Uso Básico
+
+```jsx
+import BaseCard from "../../components/BaseCard";
+import { WhatsApp, MoreVert } from "@material-ui/icons";
+
+<BaseCard
+    title="Minha Conexão"
+    subtitle="Atualizado em 25/12"
+    icon={<WhatsApp style={{ color: "#25D366" }} />}
+    iconColor="#E8F5E9"
+    actions={
+        <IconButton size="small">
+            <MoreVert />
+        </IconButton>
+    }
+    hoverEffect={true}
+    onClick={() => handleClick(id)}
+>
+    {/* Conteúdo adicional do card */}
+    <Chip label="Conectado" />
+</BaseCard>
+```
+
+#### Variações Implementadas
+
+| Componente | Localização | Uso Recomendado |
+|------------|-------------|-----------------|
+| **BaseCard** | `components/BaseCard` | Base genérica para cards customizados |
+| **MetricCard** | `components/MetricCard` | Dashboards, KPIs, métricas numéricas |
+| **ListItemCard** | `components/ListItemCard` | Listas de contatos, usuários, itens |
+| **InfoCard** | `components/InfoCard` | Detalhes, configurações, formulários |
+
+---
+
+### 📊 MetricCard
+
+Card para exibir métricas numéricas com visual premium.
+
+```jsx
+import MetricCard from "../../components/MetricCard";
+import { Assignment } from "@material-ui/icons";
+
+<MetricCard
+    label="Em Atendimento"
+    value={42}
+    icon={<Assignment />}
+    color="primary"        // primary, success, warning, error, info
+    trend={{ value: "+12%", positive: true }}  // opcional
+/>
+```
+
+**Props:** `label`, `value`, `icon`, `color`, `trend`
+
+---
+
+### 👥 ListItemCard
+
+Card para exibir itens em formato de lista com avatar e status.
+
+```jsx
+import ListItemCard from "../../components/ListItemCard";
+import { IconButton } from "@material-ui/core";
+import { Edit, Delete } from "@material-ui/icons";
+
+<ListItemCard
+    avatar="https://..."
+    title="João Silva"
+    subtitle="joao@email.com"
+    status={{ label: "Ativo", color: "success" }}
+    actions={
+        <>
+            <IconButton size="small"><Edit /></IconButton>
+            <IconButton size="small"><Delete /></IconButton>
+        </>
+    }
+    onClick={() => handleClick(id)}
+/>
+```
+
+**Props:** `avatar`, `title`, `subtitle`, `status`, `actions`, `onClick`
+
+---
+
+### 📋 InfoCard
+
+Card para informações detalhadas com header, body e footer.
+
+```jsx
+import InfoCard from "../../components/InfoCard";
+import { Button } from "@material-ui/core";
+
+<InfoCard
+    title="Configurações"
+    subtitle="Ajuste suas preferências"
+    headerColor="#4caf50"
+    actions={
+        <>
+            <Button>Cancelar</Button>
+            <Button variant="contained" color="primary">Salvar</Button>
+        </>
+    }
+>
+    {/* Conteúdo do formulário */}
+</InfoCard>
+```
+
+**Props:** `title`, `subtitle`, `headerColor`, `headerActions`, `children`, `actions`, `noPadding`
+
+---
+
+### Especificações Técnicas do BaseCard
+
+```javascript
+// Estilos Base do Card Premium
+{
+    borderRadius: 16,                                    // Cantos muito arredondados
+    boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.08)",      // Sombra difusa
+    transition: "all 0.3s cubic-bezier(.25,.8,.25,1)",
+    "&:hover": {
+        transform: "translateY(-6px)",                   // Levitação
+        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+    }
+}
+```
+
+### Paleta de Cores por Status
+
+| Status | Cor do Indicador | Fundo do Chip | Texto do Chip |
+|--------|------------------|---------------|---------------|
+| Conectado | `#4CAF50` | `#E8F5E9` | `#2E7D32` |
+| Desconectado | `#EF5350` | `#FFEBEE` | `#C62828` |
+| Pendente/QR Code | `#FF9800` | `#FFF3E0` | `#E65100` |
+
+### Componentes de Referência
+
+#### Avatar com Fundo Suave
+```javascript
+<Avatar style={{ 
+    backgroundColor: "#E8F5E9",  // Fundo verde claro
+    color: "#4CAF50",            // Ícone verde
+    width: 48, 
+    height: 48 
+}}>
+    <WhatsAppIcon />
+</Avatar>
+```
+
+#### Chip de Status com Indicador Pulsante
+```javascript
+<Chip
+    icon={<FiberManualRecord style={{ color: "#4CAF50" }} />}
+    label="Conectado"
+    style={{
+        backgroundColor: "#E8F5E9",
+        color: "#2E7D32",
+        fontWeight: 600,
+        borderRadius: 8,
+    }}
+/>
+```
+
+#### Animação CSS do Indicador Pulsante
+```css
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(2.5); opacity: 0; }
+}
+
+.pulsingDot::before {
+    animation: pulse 2s infinite;
+}
+```
+
+### Exemplo de Implementação Completa
+
+Veja o arquivo: [`frontend/src/pages/Connections/index.js`](file:///c:/dev/watic-premium/frontend/src/pages/Connections/index.js)
+
+---
+
 ## 📚 Recursos
 
 - [Material-UI v4 Themes](https://v4.mui.com/customization/theming/)

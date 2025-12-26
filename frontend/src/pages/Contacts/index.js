@@ -4,33 +4,30 @@ import { toast } from "react-toastify";
 import { useHistory } from "react-router-dom";
 
 import { makeStyles } from "@material-ui/core/styles";
-import Table from "@material-ui/core/Table";
-import TableBody from "@material-ui/core/TableBody";
-import TableCell from "@material-ui/core/TableCell";
-import TableHead from "@material-ui/core/TableHead";
-import TableRow from "@material-ui/core/TableRow";
-import Paper from "@material-ui/core/Paper";
-import Button from "@material-ui/core/Button";
-import Avatar from "@material-ui/core/Avatar";
-import WhatsAppIcon from "@material-ui/icons/WhatsApp";
+import {
+  Box,
+  Button,
+  TextField,
+  InputAdornment,
+  Grid,
+  CircularProgress,
+  IconButton,
+} from "@material-ui/core";
 import SearchIcon from "@material-ui/icons/Search";
-import TextField from "@material-ui/core/TextField";
-import InputAdornment from "@material-ui/core/InputAdornment";
-
-import IconButton from "@material-ui/core/IconButton";
+import WhatsAppIcon from "@material-ui/icons/WhatsApp";
 import DeleteOutlineIcon from "@material-ui/icons/DeleteOutline";
 import EditIcon from "@material-ui/icons/Edit";
 
+import MainContainer from "../../components/MainContainer";
+import MainHeader from "../../components/MainHeader";
+import MainHeaderButtonsWrapper from "../../components/MainHeaderButtonsWrapper";
+import Title from "../../components/Title";
+import ListItemCard from "../../components/ListItemCard";
+
 import api from "../../services/api";
-import TableRowSkeleton from "../../components/TableRowSkeleton";
+import { i18n } from "../../translate/i18n";
 import ContactModal from "../../components/ContactModal";
 import ConfirmationModal from "../../components/ConfirmationModal/";
-
-import { i18n } from "../../translate/i18n";
-import MainHeader from "../../components/MainHeader";
-import Title from "../../components/Title";
-import MainHeaderButtonsWrapper from "../../components/MainHeaderButtonsWrapper";
-import MainContainer from "../../components/MainContainer";
 import toastError from "../../errors/toastError";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
@@ -82,11 +79,19 @@ const reducer = (state, action) => {
 const useStyles = makeStyles((theme) => ({
   mainPaper: {
     flex: 1,
-    padding: theme.spacing(1),
-    overflowY: "scroll",
+    padding: theme.spacing(2),
+    overflowY: "auto",
     ...theme.scrollbarStyles,
   },
 }));
+
+// Status baseado na presença de LID
+const getContactStatus = (contact) => {
+  if (contact.lid) {
+    return { label: "Verificado", color: "success" };
+  }
+  return { label: "Pendente", color: "default" };
+};
 
 const Contacts = () => {
   const classes = useStyles();
@@ -274,63 +279,31 @@ const Contacts = () => {
           </Button>
         </MainHeaderButtonsWrapper>
       </MainHeader>
-      <Paper
-        className={classes.mainPaper}
-        variant="outlined"
-        onScroll={handleScroll}
-      >
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell padding="checkbox" />
-              <TableCell>{i18n.t("contacts.table.name")}</TableCell>
-              <TableCell align="center">
-                {i18n.t("contacts.table.whatsapp")}
-              </TableCell>
-              <TableCell align="center">
-                LID
-              </TableCell>
-              <TableCell align="center">
-                {i18n.t("contacts.table.email")}
-              </TableCell>
-              <TableCell align="center">
-                {i18n.t("contacts.table.actions")}
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            <>
-              {contacts.map((contact) => (
-                <TableRow key={contact.id}>
-                  <TableCell style={{ paddingRight: 0 }}>
-                    {<Avatar src={contact.profilePicUrl} />}
-                  </TableCell>
-                  <TableCell>{contact.name}</TableCell>
-                  <TableCell align="center">{contact.number}</TableCell>
-                  <TableCell align="center">
-                    {contact.lid ? (
-                      <div style={{ color: "green", fontWeight: "bold", fontSize: "0.8rem" }}>
-                        ✓
-                      </div>
-                    ) : (
-                      <div style={{ color: "gray", fontSize: "0.8rem" }}>
-                        -
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell align="center">{contact.email}</TableCell>
-                  <TableCell align="center">
+
+      <Box className={classes.mainPaper} onScroll={handleScroll}>
+        <Grid container spacing={2}>
+          {contacts.map((contact) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={contact.id}>
+              <ListItemCard
+                avatar={contact.profilePicUrl}
+                title={contact.name}
+                subtitle={contact.number}
+                status={getContactStatus(contact)}
+                actions={
+                  <>
                     <IconButton
                       size="small"
                       onClick={() => handleSaveTicket(contact.id)}
+                      title="Iniciar conversa"
                     >
-                      <WhatsAppIcon />
+                      <WhatsAppIcon fontSize="small" style={{ color: "#25D366" }} />
                     </IconButton>
                     <IconButton
                       size="small"
                       onClick={() => hadleEditContact(contact.id)}
+                      title="Editar"
                     >
-                      <EditIcon />
+                      <EditIcon fontSize="small" />
                     </IconButton>
                     <Can
                       role={user.profile}
@@ -338,23 +311,29 @@ const Contacts = () => {
                       yes={() => (
                         <IconButton
                           size="small"
-                          onClick={(e) => {
+                          onClick={() => {
                             setConfirmOpen(true);
                             setDeletingContact(contact);
                           }}
+                          title="Excluir"
                         >
-                          <DeleteOutlineIcon />
+                          <DeleteOutlineIcon fontSize="small" />
                         </IconButton>
                       )}
                     />
-                  </TableCell>
-                </TableRow>
-              ))}
-              {loading && <TableRowSkeleton avatar columns={3} />}
-            </>
-          </TableBody>
-        </Table>
-      </Paper>
+                  </>
+                }
+              />
+            </Grid>
+          ))}
+        </Grid>
+
+        {loading && (
+          <Box display="flex" justifyContent="center" mt={3}>
+            <CircularProgress />
+          </Box>
+        )}
+      </Box>
     </MainContainer>
   );
 };

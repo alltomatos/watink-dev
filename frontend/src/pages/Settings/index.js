@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import openSocket from "../../services/socket-io";
+import MemoryIcon from "@material-ui/icons/Memory";
 
 import { makeStyles } from "@material-ui/core/styles";
 import Paper from "@material-ui/core/Paper";
@@ -26,6 +27,21 @@ import { i18n } from "../../translate/i18n.js";
 import toastError from "../../errors/toastError";
 import { useThemeContext } from "../../context/DarkMode";
 import { getBackendUrl } from "../../config";
+
+const AI_MODELS = {
+	openai: [
+		{ value: "gpt-4o-mini", name: "GPT-4o Mini", price: "$0.15 / 1M tokens (Recomendado)" },
+		{ value: "gpt-4o", name: "GPT-4o", price: "$2.50 / 1M tokens" },
+		{ value: "gpt-4-turbo", name: "GPT-4 Turbo", price: "$10.00 / 1M tokens" },
+		{ value: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", price: "$0.50 / 1M tokens" },
+		{ value: "o1-mini", name: "o1-mini", price: "$3.00 / 1M tokens" },
+		{ value: "o1-preview", name: "o1-preview", price: "$15.00 / 1M tokens" }
+	],
+	grok: [
+		{ value: "grok-beta", name: "Grok Beta", price: "Gratuito (Beta)" },
+		{ value: "grok-2", name: "Grok 2", price: "Preço a definir" }
+	]
+};
 
 const useStyles = makeStyles((theme) => ({
 	root: {
@@ -125,6 +141,12 @@ const Settings = () => {
 	const [loginImagePreview, setLoginImagePreview] = useState(null);
 	const [loginLayout, setLoginLayout] = useState("split_left");
 
+	// AI Settings
+	const [aiProvider, setAiProvider] = useState("openai");
+	const [aiApiKey, setAiApiKey] = useState("");
+	const [aiModel, setAiModel] = useState("");
+	const [aiGuidePrompt, setAiGuidePrompt] = useState("");
+
 	useEffect(() => {
 		const fetchSession = async () => {
 			try {
@@ -149,6 +171,19 @@ const Settings = () => {
 
 				const loginLayoutSetting = data.find(s => s.key === "login_layout");
 				if (loginLayoutSetting) setLoginLayout(loginLayoutSetting.value || "split_left");
+
+				// AI Settings Load
+				const aiProviderSetting = data.find(s => s.key === "aiProvider");
+				if (aiProviderSetting) setAiProvider(aiProviderSetting.value);
+
+				const aiApiKeySetting = data.find(s => s.key === "aiApiKey");
+				if (aiApiKeySetting) setAiApiKey(aiApiKeySetting.value);
+
+				const aiModelSetting = data.find(s => s.key === "aiModel");
+				if (aiModelSetting) setAiModel(aiModelSetting.value);
+
+				const aiGuidePromptSetting = data.find(s => s.key === "aiGuidePrompt");
+				if (aiGuidePromptSetting) setAiGuidePrompt(aiGuidePromptSetting.value);
 
 			} catch (err) {
 				toastError(err);
@@ -615,11 +650,117 @@ const Settings = () => {
 						</ListItemIcon>
 						<ListItemText primary="Personalizar" />
 					</ListItem>
+					<ListItem
+						button
+						selected={activeSection === "ai"}
+						onClick={() => setActiveSection("ai")}
+						className={classes.menuItem}
+					>
+						<ListItemIcon>
+							<MemoryIcon />
+						</ListItemIcon>
+						<ListItemText primary="Inteligência Artificial" />
+					</ListItem>
 				</List>
 			</Box>
 			<Box className={classes.content}>
 				{activeSection === "general" && renderGeneralSection()}
 				{activeSection === "customize" && renderCustomizeSection()}
+				{activeSection === "ai" && (
+					<>
+						<Typography variant="h5" className={classes.sectionTitle}>
+							Inteligência Artificial (IA)
+						</Typography>
+						<Paper className={classes.paper} style={{ display: 'block' }}>
+							<Box mb={2}>
+								<Typography variant="body1">Provedor de IA</Typography>
+								<Select
+									margin="dense"
+									variant="outlined"
+									native
+									fullWidth
+									value={aiProvider}
+									onChange={async (e) => {
+										const newProvider = e.target.value;
+										setAiProvider(newProvider);
+										await api.put("/settings/aiProvider", { value: newProvider });
+
+										// Auto-select first model available for the new provider
+										const defaultModel = AI_MODELS[newProvider]?.[0]?.value || "";
+										setAiModel(defaultModel);
+										await api.put("/settings/aiModel", { value: defaultModel });
+
+										toast.success("Provedor atualizado!");
+									}}
+								>
+									<option value="openai">OpenAI (ChatGPT)</option>
+									<option value="grok">xAI (Grok)</option>
+								</Select>
+							</Box>
+							<Box mb={2}>
+								<Typography variant="body1">API Key</Typography>
+								<TextField
+									fullWidth
+									variant="outlined"
+									margin="dense"
+									type="password"
+									value={aiApiKey}
+									onChange={(e) => setAiApiKey(e.target.value)}
+									onBlur={async () => {
+										await api.put("/settings/aiApiKey", { value: aiApiKey });
+										toast.success("API Key salva!");
+									}}
+									helperText="Sua chave será armazenada com segurança."
+								/>
+							</Box>
+
+
+							<Box mb={2}>
+								<Typography variant="body1">Modelo de IA</Typography>
+								<Select
+									margin="dense"
+									variant="outlined"
+									native
+									fullWidth
+									value={aiModel}
+									onChange={async (e) => {
+										setAiModel(e.target.value);
+										await api.put("/settings/aiModel", { value: e.target.value });
+										toast.success("Modelo atualizado!");
+									}}
+								>
+									<option value="" disabled>Selecione um modelo</option>
+									{AI_MODELS[aiProvider]?.map((model) => (
+										<option key={model.value} value={model.value}>
+											{model.name} — {model.price}
+										</option>
+									))}
+								</Select>
+								<Typography variant="caption" color="textSecondary">
+									Selecione o modelo desejado. Os preços são estimativas para tokens de entrada.
+								</Typography>
+							</Box>
+							<Box mb={2}>
+								<Typography variant="body1">Prompt Guia (Contexto do Negócio)</Typography>
+								<TextField
+									fullWidth
+									variant="outlined"
+									margin="dense"
+									multiline
+									rows={4}
+									placeholder="Ex: Somos uma imobiliária de alto padrão. Sempre use linguagem formal e foque em etapas de qualificação de leads."
+									value={aiGuidePrompt}
+									onChange={(e) => setAiGuidePrompt(e.target.value)}
+									onBlur={async () => {
+										await api.put("/settings/aiGuidePrompt", { value: aiGuidePrompt });
+										toast.success("Prompt guia atualizado!");
+									}}
+									helperText="Esse texto será enviado para a IA como contexto global para entender melhor o seu negócio."
+								/>
+							</Box>
+						</Paper>
+					</>
+				)}
 			</Box>
 		</Box>
 	);

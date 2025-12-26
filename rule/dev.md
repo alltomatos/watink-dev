@@ -1,6 +1,6 @@
-# 🛠️ Guia de Desenvolvimento - Whaticket Premium
+# 🛠️ Guia de Desenvolvimento - watic Premium
 
-Este documento serve como referência técnica para desenvolvedores que atuam no projeto **Whaticket Premium**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
+Este documento serve como referência técnica para desenvolvedores que atuam no projeto **watic Premium**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
 
 > [!IMPORTANT]
 > **Leitura Complementar Obrigatória**: Consulte também [dev_micro.md](./dev_micro.md) para detalhes específicos da arquitetura de microserviços.
@@ -76,7 +76,21 @@ Workers independentes que se conectam ao WhatsApp.
 
 ---
 
+## 🌊 Flow Engine (Automação)
 
+Sistema de automação híbrido e agnóstico à plataforma, capaz de orquestrar fluxos complexos iniciados por diversos eventos (WhatsApp, Kanban, Tickets, etc.).
+
+*   **Arquitetura**: Baseada em Grafos (Nós e Arestas), Gatilhos (Triggers) e Sessões (Sessions).
+*   **Componentes Chave**:
+    *   `FlowExecutorService`: Motor de execução que processa a lógica dos nós.
+    *   `FlowTriggerService`: Identifica eventos do sistema e inicia fluxos correspondentes.
+    *   `FlowSessions`: Mantém o estado persistente de cada execução.
+*   **Extensibilidade**: Projetado para receber novos tipos de gatilhos e nós de ação facilmente.
+
+> [!TIP]
+> **Documentação Completa**: Para detalhes de implementação, como criar novos gatilhos e nós, consulte [FLOW_ENGINE.md](../docs/engine_whaileys/FLOW_ENGINE.md).
+
+---
 
 ## 🗄️ Banco de Dados: PostgreSQL + Extensions
 
@@ -97,7 +111,7 @@ Todo o ciclo de vida da aplicação é gerenciado via Docker Swarm.
 ### 1. Inicialização
 Para subir a stack completa:
 ```bash
-docker stack deploy -c docker-stack.yml whaticket-premium
+docker stack deploy -c docker-stack.yml watic-premium
 ```
 
 ### 2. Aplicando Alterações
@@ -109,10 +123,10 @@ Como não rodamos localmente, o fluxo para refletir mudanças de código é:
     docker compose build backend
     
     # Tagging (se necessário, para bater com o stack file)
-    docker tag whaticket-premium-backend:latest whaticket-premium/backend:latest
+    docker tag watic-premium-backend:latest watic-premium/backend:latest
     
     # Atualização forçada do serviço
-    docker service update --image whaticket-premium/backend:latest whaticket-premium_backend --force
+    docker service update --image watic-premium/backend:latest watic-premium_backend --force
     ```
 
 1.  **Engine (Whaileys)**:
@@ -121,21 +135,21 @@ Como não rodamos localmente, o fluxo para refletir mudanças de código é:
     docker compose build whaileys-engine
     
     # Tagging
-    docker tag whaticket-premium-whaileys-engine:latest whaticket-premium/engine:latest
+    docker tag watic-premium-whaileys-engine:latest watic-premium/engine:latest
     
     # Atualização forçada do serviço
-    docker service update --image whaticket-premium/engine:latest whaticket-premium_whaileys-engine --force
+    docker service update --image watic-premium/engine:latest watic-premium_whaileys-engine --force
     ```
 
 2.  **Frontend**:
     ```bash
     docker compose build frontend
-    docker tag whaticket-premium-frontend:latest whaticket-premium/frontend:latest
-    docker service update --image whaticket-premium/frontend:latest whaticket-premium_frontend --force
+    docker tag watic-premium-frontend:latest watic-premium/frontend:latest
+    docker service update --image watic-premium/frontend:latest watic-premium_frontend --force
     ```
 
 ### 3. Debug & Logs
-*   **Logs**: `docker service logs -f whaticket-premium_backend` (ou frontend, whaileys-engine, etc).
+*   **Logs**: `docker service logs -f watic-premium_backend` (ou frontend, whaileys-engine, etc).
 *   **Swagger**: Acesse `http://localhost:8080/docs` para testar/documentar a API.
 *   **RabbitMQ**: `http://localhost:15672` para monitorar filas.
 
@@ -164,13 +178,13 @@ Seguimos estritamente o **Semantic Versioning (SemVer)** (ex: `1.0.0`).
     Ao construir a imagem, use a nova versão como tag, além da `latest`.
     ```bash
     # Exemplo para Backend v1.0.1
-    docker build -t whaticket-premium/backend:1.2.0 -t whaticket-premium/backend:latest .
-    docker push whaticket-premium/backend:1.2.0
-    docker push whaticket-premium/backend:latest
+    docker build -t watic-premium/backend:1.2.0 -t watic-premium/backend:latest .
+    docker push watic-premium/backend:1.2.0
+    docker push watic-premium/backend:latest
     ```
 
 4.  **Atualize o Serviço**:
     No ambiente de produção, fixe a versão específica para evitar atualizações acidentais, ou use `latest` em desenvolvimento.
     ```bash
-    docker service update --image whaticket-premium/backend:1.2.0 whaticket-premium_backend
+    docker service update --image watic-premium/backend:1.2.0 watic-premium_backend
     ```
