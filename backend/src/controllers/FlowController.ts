@@ -3,6 +3,7 @@ import FlowAIService from "../services/FlowServices/FlowAIService";
 import { CreateFlowService, ListFlowsService, UpdateFlowService, ShowFlowService, ToggleFlowService } from "../services/FlowServices/FlowService";
 import FlowExecutorService from "../services/FlowServices/FlowExecutorService";
 import AppError from "../errors/AppError";
+import { logger } from "../utils/logger";
 
 export const generateFlowAI = async (req: Request, res: Response): Promise<Response> => {
     const { prompt } = req.body;
@@ -12,6 +13,7 @@ export const generateFlowAI = async (req: Request, res: Response): Promise<Respo
     }
 
     const { tenantId } = req.user;
+    logger.info(`FlowController.generateFlowAI: Gerando fluxo para tenant ${tenantId} com prompt: ${prompt.substring(0, 50)}...`);
     const flowData = await FlowAIService.generateFlowFromPrompt(prompt, tenantId);
 
     return res.json(flowData);
