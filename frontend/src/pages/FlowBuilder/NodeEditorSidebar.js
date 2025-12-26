@@ -115,6 +115,7 @@ const NodeEditorSidebar = ({ open, node, onClose, onSave, onDelete }) => {
     const [pipelines, setPipelines] = React.useState([]);
     const [queues, setQueues] = React.useState([]);
     const [users, setUsers] = React.useState([]);
+    const [knowledgeBases, setKnowledgeBases] = React.useState([]);
 
     React.useEffect(() => {
         if (node && node.data) {
@@ -140,7 +141,11 @@ const NodeEditorSidebar = ({ open, node, onClose, onSave, onDelete }) => {
                     setUsers(res.data.users);
                 })
                 .catch(err => console.error("Erro ao carregar usuários", err));
-            console.log('Node data after useEffect:', formData);
+        }
+        if (node && node.type === 'knowledge') {
+            api.get('/knowledge-bases')
+                .then(res => setKnowledgeBases(res.data))
+                .catch(err => console.error("Erro ao carregar bases de conhecimento", err));
         }
     }, [node]);
 
@@ -823,8 +828,11 @@ const NodeEditorSidebar = ({ open, node, onClose, onSave, onDelete }) => {
                     onChange={(e) => handleChange('knowledgeBaseId', e.target.value)}
                     label="Base de Conhecimento"
                 >
-                    <MenuItem value="default">Base Padrão</MenuItem>
-                    {/* Idealmente carregar da API */}
+
+                    <MenuItem value=""><em>Selecione</em></MenuItem>
+                    {knowledgeBases.map(kb => (
+                        <MenuItem key={kb.id} value={kb.id}>{kb.name}</MenuItem>
+                    ))}
                 </Select>
             </FormControl>
         </>
