@@ -1,562 +1,160 @@
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/donate?business=VWW3BHW4AWHUY&item_name=Desenvolvimento+de+Software&currency_code=BRL)
-[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B21084%2Fgithub.com%2Fcanove%2Fwhaticket.svg?type=shield)](https://app.fossa.com/projects/custom%2B21084%2Fgithub.com%2Fcanove%2Fwhaticket?ref=badge_shield)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=canove_whaticket&metric=alert_status)](https://sonarcloud.io/dashboard?id=canove_whaticket)
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=canove_whaticket&metric=sqale_rating)](https://sonarcloud.io/dashboard?id=canove_whaticket)
-[![Discord Chat](https://img.shields.io/discord/784109818247774249.svg?logo=discord)](https://discord.gg/Dp2tTZRYHg)
-[![Forum](https://img.shields.io/badge/forum-online-blue.svg?logo=discourse)](https://whaticket.online/)
+# Watic Premium - Plataforma de Gestão de Atendimento WhatsApp
 
-# Whaticket Premium
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
+[![React](https://img.shields.io/badge/react-%2320232a.svg?style=flat&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
+[![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=flat&logo=node.js&logoColor=white)](https://nodejs.org/)
 
-**NOTE**: The new version of whatsapp-web.js required Node 14. Upgrade your installations to keep using it.
+**Watic Premium** é uma solução completa de nível empresarial para gestão de atendimento via WhatsApp, projetada para escalar operações de suporte, vendas e engajamento. Agora com **Flow Builder Visual**, **CRM Kanban** e arquitetura de microsserviços via Docker Swarm.
 
-A _very simple_ Ticket System based on WhatsApp messages. Now upgraded to **Premium Edition**.
+---
 
-Backend uses [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) to receive and send WhatsApp messages, create tickets from them and store all in a PostgreSQL database.
+## 🚀 Funcionalidades Principais
 
-Frontend is a full-featured multi-user _chat app_ bootstrapped with react-create-app and Material UI, that comunicates with backend using REST API and Websockets. It allows you to interact with contacts, tickets, send and receive WhatsApp messages.
+### 🎨 Flow Builder Visual (Drag & Drop)
+Crie fluxos de conversação complexos e autômatos de atendimento sem escrever código.
+- **Nós de Interação**: Texto, Áudio, Imagens, Vídeos.
+- **Lógica Condicional**: Desvios baseados em respostas ou palavras-chave.
+- **Integrações**: Webhooks para sistemas externos.
+- **Visualização**: Interface intuitiva baseada em `React Flow`.
 
-**NOTE**: I can't guarantee you will not be blocked by using this method, although it has worked for me. WhatsApp does not allow bots or unofficial clients on their platform, so this shouldn't be considered totally safe.
+### 📊 CRM & Pipeline (Kanban)
+Organize seus leads e atendimentos em um funil de vendas visual.
+- **Etapas Personalizáveis**: Configure seu próprio fluxo de vendas.
+- **Cartões de Interação**: Visualize rapidamente o status de cada contato.
+- **Automação de Movimentação**: Mova leads automaticamente baseando-se em gatilhos do fluxo.
 
-## How it works?
+### 💬 Mensagens Interativas
+Vá além do texto simples com recursos avançados do WhatsApp Business API (via Engine proprietária).
+- **List Messages**: Menus de opções para facilitar a escolha do usuário.
+- **Button Messages**: Botões de resposta rápida e Call-to-Action.
+- **Carrosséis**: Exiba produtos ou serviços em cartões deslizantes.
 
-On every new message received in an associated WhatsApp, a new Ticket is created. Then, this ticket can be reached in a _queue_ on _Tickets_ page, where you can assign ticket to your yourself by _aceppting_ it, respond ticket message and eventually _resolve_ it.
+### 🏢 Multi-Atendimento & Multi-Departamento
+- **Múltiplos Usuários**: Agentes simultâneos em um mesmo número.
+- **Filas e Departamentos**: Distribuição automática de tickets.
+- **Chat Interno**: Comunicação privada entre a equipe.
 
-Subsequent messages from same contact will be related to first **open/pending** ticket found.
+### 📈 Campanhas e Disparos
+- **Gestão de Campanhas**: Disparos em massa com agendamento.
+- **Tagging**: Segmentação de contatos por etiquetas.
 
-If a contact sent a new message in less than 2 hours interval, and there is no ticket from this contact with **pending/open** status, the newest **closed** ticket will be reopen, instead of creating a new one.
+---
 
-## Screenshots
+## 🛠️ Stack Tecnológica
 
-![](https://github.com/canove/whaticket/raw/master/images/whaticket-queues.gif)
-<img src="https://raw.githubusercontent.com/canove/whaticket/master/images/chat2.png" width="350"> <img src="https://raw.githubusercontent.com/canove/whaticket/master/images/chat3.png" width="350"> <img src="https://raw.githubusercontent.com/canove/whaticket/master/images/multiple-whatsapps2.png" width="350"> <img src="https://raw.githubusercontent.com/canove/whaticket/master/images/contacts1.png" width="350">
+O projeto utiliza uma arquitetura moderna e escalável:
 
-## Features
+- **Frontend**: 
+  - React 17
+  - Material UI (v4)
+  - Vite (Build ultra-rápido)
+  - React Flow (Builder)
+- **Backend**: 
+  - Node.js (v20+)
+  - TypeScript
+  - Express
+  - Sequelize ORM
+- **Engine WhatsApp**: 
+  - Whaileys Engine (Baseada em Baileys/Go)
+  - Suporte a QR Code e Multi-Device
+- **Infraestrutura & Dados**:
+  - **Banco de Dados**: PostgreSQL (com extensão `pgvector` para recursos de IA)
+  - **Filas**: RabbitMQ (Gerenciamento de alta carga de mensagens)
+  - **Cache/Sessão**: Redis (Opcional/Integrado)
+  - **Orquestração**: Docker Swarm
 
-- Have multiple users chating in same WhatsApp Number ✅
-- Connect to multiple WhatsApp accounts and receive all messages in one place ✅ 🆕
-- Create and chat with new contacts without touching cellphone ✅
-- Send and receive message ✅
-- Send media (images/audio/documents) ✅
-- Receive media (images/audio/video/documents) ✅
+---
 
-## Installation and Usage (Docker - Recommended)
+## 📋 Pré-requisitos
 
-### Database Configuration (PostgreSQL)
+Para rodar este projeto, você precisará de:
 
-The project now uses PostgreSQL instead of MySQL/MariaDB for better performance and vector support.
+- **Node.js** (v20 Recomendado)
+- **Docker** & **Docker Compose**
+- **Git**
 
-Configure your `.env` file (copy from `.env.example`):
+---
 
-```bash
-# DATABASE
-POSTGRES_DB=whaticket
-POSTGRES_PASSWORD=strongpassword
-POSTGRES_USER=postgres
-POSTGRES_PORT=5432
-TZ=America/Sao_Paulo
+## 🚀 Instalação e Deploy (Docker Swarm)
 
-# BACKEND
-BACKEND_URL=http://localhost:8080
-...
-```
+A forma recomendada de executar o Watic Premium em produção é utilizando Docker Swarm.
 
-Run using `docker-compose`:
+### 1. Preparação do Ambiente
 
-```bash
-docker-compose up -d --build
-```
-
-Run migrations and seeds (first run):
-
-```bash
-docker-compose exec backend npx sequelize db:migrate
-docker-compose exec backend npx sequelize db:seed:all
-```
-
-### SaaS Premium Theme
-
-The frontend has been updated with a new "SaaS Premium" theme, featuring:
-- Modern typography (Inter font).
-- Flat/Bordered design.
-- Fixed Sidebar.
-- Improved Chat Interface.
-
-### Legacy MySQL Support
-
-If you need to migrate from an old MariaDB installation, you will need to dump your data and convert it to PostgreSQL format, or continue using the old docker-compose setup (not recommended).
-
-
-Install puppeteer dependencies:
+Clone o repositório e acesse a pasta:
 
 ```bash
-sudo apt-get install -y libxshmfence-dev libgbm-dev wget unzip fontconfig locales gconf-service libasound2 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 ca-certificates fonts-liberation libappindicator1 libnss3 lsb-release xdg-utils
+git clone https://github.com/seu-repo/watic-premium.git
+cd watic-premium
 ```
 
-Clone this repo
+### 2. Configuração
 
-```bash
-git clone https://github.com/canove/whaticket/ whaticket-premium
-```
-
-Go to backend folder and create .env file:
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-Fill `.env` file with environment variables:
-
-```bash
-NODE_ENV=DEVELOPMENT      #it helps on debugging
-BACKEND_URL=http://localhost
-FRONTEND_URL=https://localhost:3000
-PROXY_PORT=8080
-PORT=8080
-
-DB_HOST=                  #DB host IP, usually localhost
-DB_DIALECT=
-DB_USER=
-DB_PASS=
-DB_NAME=
-
-JWT_SECRET=***REMOVED_JWT_SECRET***
-JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***
-```
-
-Install backend dependencies, build app, run migrations and seeds:
-
-```bash
-npm install
-npm run build
-npx sequelize db:migrate
-npx sequelize db:seed:all
-```
-
-Start backend:
-
-```bash
-npm start
-```
-
-Open a second terminal, go to frontend folder and create .env file:
-
-```bash
-nano .env
-REACT_APP_BACKEND_URL = http://localhost:8080/ # Your previous configured backend app URL.
-```
-
-Start frontend app:
-
-```bash
-npm start
-```
-
-- Go to http://your_server_ip:3000/signup
-- Create an user and login with it.
-- On the sidebard, go to _Connections_ page and create your first WhatsApp connection.
-- Wait for QR CODE button to appear, click it and read qr code.
-- Done. Every message received by your synced WhatsApp number will appear in Tickets List.
-
-## Basic production deployment
-
-### Using Ubuntu 20.04 VPS
-
-All instructions below assumes you are NOT running as root, since it will give an error in puppeteer. So let's start creating a new user and granting sudo privileges to it:
-
-```bash
-adduser deploy
-usermod -aG sudo deploy
-```
-
-Now we can login with this new user:
-
-```bash
-su deploy
-```
-
-You'll need two subdomains forwarding to yours VPS ip to follow these instructions. We'll use `myapp.mydomain.com` to frontend and `api.mydomain.com` to backend in the following example.
-
-Update all system packages:
-
-```bash
-sudo apt update && sudo apt upgrade
-```
-
-Install node, and confirm node command is available:
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
-sudo apt-get install -y nodejs
-node -v
-npm -v
-```
-
-Install docker and add you user to docker group:
-
-```bash
-sudo apt install apt-transport-https ca-certificates curl software-properties-common
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
-sudo apt update
-sudo apt install docker-ce
-sudo systemctl status docker
-sudo usermod -aG docker ${USER}
-su - ${USER}
-```
-
-Create PostgreSQL Database using docker:
-_Note_: change POSTGRES_DB, POSTGRES_PASSWORD and POSTGRES_USER.
-
-```bash
-docker run --name whaticketdb -e POSTGRES_PASSWORD=strongpassword -e POSTGRES_DB=whaticket -e POSTGRES_USER=postgres --restart always -p 5432:5432 -d postgres:latest
-
-# Or run using `docker-compose` as below
-# Before copy .env.example to .env first and set the variables in the file.
-docker-compose up -d postgres
-
-# To administer this mysql database easily using phpmyadmin. 
-# It will run by default on port 9000, but can be changed in .env using `PMA_PORT`
-docker-compose -f docker-compose.phpmyadmin.yaml up -d
-```
-
-Clone this repository:
-
-```bash
-cd ~
-git clone https://github.com/canove/whaticket whaticket-premium
-```
-
-Create backend .env file and fill with details:
-
-```bash
-cp whaticket-premium/backend/.env.example whaticket-premium/backend/.env
-nano whaticket-premium/backend/.env
-```
-
-```bash
-NODE_ENV=
-BACKEND_URL=https://api.mydomain.com      #USE HTTPS HERE, WE WILL ADD SSL LATTER
-FRONTEND_URL=https://myapp.mydomain.com   #USE HTTPS HERE, WE WILL ADD SSL LATTER, CORS RELATED!
-PROXY_PORT=443                            #USE NGINX REVERSE PROXY PORT HERE, WE WILL CONFIGURE IT LATTER
-PORT=8080
-
-DB_HOST=localhost
-DB_DIALECT=
-DB_USER=
-DB_PASS=
-DB_NAME=
-
-JWT_SECRET=***REMOVED_JWT_SECRET***
-JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***
-```
-
-Install puppeteer dependencies:
-
-```bash
-sudo apt-get install -y libxshmfence-dev libgbm-dev wget unzip fontconfig locales gconf-service libasound2 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 ca-certificates fonts-liberation libappindicator1 libnss3 lsb-release xdg-utils
-```
-
-Install backend dependencies, build app, run migrations and seeds:
-
-```bash
-cd whaticket-premium/backend
-npm install
-npm run build
-npx sequelize db:migrate
-npx sequelize db:seed:all
-```
-
-Start it with `npm start`, you should see: `Server started on port...` on console. Hit `CTRL + C` to exit.
-
-Install pm2 **with sudo**, and start backend with it:
-
-```bash
-sudo npm install -g pm2
-pm2 start dist/server.js --name whaticket-backend
-```
-
-Make pm2 auto start after reboot:
-
-```bash
-pm2 startup ubuntu -u `YOUR_USERNAME`
-```
-
-Copy the last line outputed from previus command and run it, its something like:
-
-```bash
-sudo env PATH=\$PATH:/usr/bin pm2 startup ubuntu -u YOUR_USERNAME --hp /home/YOUR_USERNAM
-```
-
-Go to frontend folder and install dependencies:
-
-```bash
-cd ../frontend
-npm install
-```
-
-Create frontend .env file and fill it ONLY with your backend address, it should look like this:
-
-```bash
-REACT_APP_BACKEND_URL = https://api.mydomain.com/
-```
-
-Build frontend app:
-
-```bash
-npm run build
-```
-
-Start frontend with pm2, and save pm2 process list to start automatically after reboot:
-
-```bash
-pm2 start server.js --name whaticket-frontend
-pm2 save
-```
-
-To check if it's running, run `pm2 list`, it should look like:
-
-```bash
-deploy@ubuntu-whats:~$ pm2 list
-┌─────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-│ id  │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ .    │ status    │ cpu      │ mem      │ user     │ watching │
-├─────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-│ 1   │ whaticket-frontend      │ default     │ 0.1.0   │ fork    │ 179249   │ 12D    │ 0    │ online    │ 0.3%     │ 50.2mb   │ deploy   │ disabled │
-│ 6   │ whaticket-backend       │ default     │ 1.0.0   │ fork    │ 179253   │ 12D    │ 15   │ online    │ 0.3%     │ 118.5mb  │ deploy   │ disabled │
-└─────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
-
-```
-
-Install nginx:
-
-```bash
-sudo apt install nginx
-```
-
-Remove nginx default site:
-
-```bash
-sudo rm /etc/nginx/sites-enabled/default
-```
-
-Create a new nginx site to frontend app:
-
-```bash
-sudo nano /etc/nginx/sites-available/whaticket-frontend
-```
-
-Edit and fill it with this information, changing `server_name` to yours equivalent to `myapp.mydomain.com`:
-
-```bash
-server {
-  server_name myapp.mydomain.com;
-
-  location / {
-    proxy_pass http://127.0.0.1:3333;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_cache_bypass $http_upgrade;
-  }
-}
-```
-
-Create another one to backend api, changing `server_name` to yours equivalent to `api.mydomain.com`, and `proxy_pass` to your localhost backend node server URL:
-
-```bash
-sudo cp /etc/nginx/sites-available/whaticket-frontend /etc/nginx/sites-available/whaticket-backend
-sudo nano /etc/nginx/sites-available/whaticket-backend
-```
-
-```bash
-server {
-  server_name api.mydomain.com;
-
-  location / {
-    proxy_pass http://127.0.0.1:8080;
-    ......
-}
-```
-
-Create a symbolic links to enable nginx sites:
-
-```bash
-sudo ln -s /etc/nginx/sites-available/whaticket-frontend /etc/nginx/sites-enabled
-sudo ln -s /etc/nginx/sites-available/whaticket-backend /etc/nginx/sites-enabled
-```
-
-By default, nginx limit body size to 1MB, which isn't enough for some media uploads. Lets change it to 20MB, adding a new line to config file:
-
-```bash
-sudo nano /etc/nginx/nginx.conf
-...
-http {
-    ...
-    client_max_body_size 20M; # HANDLE BIGGER UPLOADS
-}
-```
-
-Test nginx configuration and restart server:
-
-```bash
-sudo nginx -t
-sudo service nginx restart
-```
-
-Now, enable SSL (https) on your sites to use all app features like notifications and sending audio messages. An easy way to this is using Certbot:
-
-Install certbot:
-
-```bash
-sudo snap install --classic certbot
-sudo apt update
-```
-
-Enable SSL on nginx (Fill / Accept all information required):
-
-```bash
-sudo certbot --nginx
-```
-
-### Using docker and docker-compose
-
-To run WhaTicket using docker you must perform the following steps:
+Copie o arquivo de exemplo de variáveis de ambiente:
 
 ```bash
 cp .env.example .env
 ```
+Edite o arquivo `.env` com suas configurações de banco de dados, senhas e URLs.
 
-Now it will be necessary to configure the .env using its information, the variables are the same as those mentioned in the deployment using ubuntu, with the exception of mysql settings that were not in the .env. 
+### 3. Deploy da Stack
+
+O projeto inclui um arquivo `docker-stack.yml` configurado para orquestração. Para iniciar:
 
 ```bash
-# MYSQL
-MYSQL_ENGINE=                           # default: mariadb
-MYSQL_VERSION=                          # default: 10.6
-MYSQL_ROOT_PASSWORD=strongpassword      # change it please
-MYSQL_DATABASE=whaticket
-MYSQL_PORT=3306                         # default: 3306; Use this port to expose mysql server
-TZ=America/Fortaleza                    # default: America/Fortaleza; Timezone for mysql
+# Inicialize o Swarm (se ainda não estiver ativo)
+docker swarm init
 
-# BACKEND
-BACKEND_PORT=                           # default: 8080; but access by host not use this port
-BACKEND_SERVER_NAME=api.mydomain.com
-BACKEND_URL=https://api.mydomain.com
-PROXY_PORT=443
-JWT_SECRET=***REMOVED_JWT_SECRET***                # change it please
-JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***          # change it please
+# Crie a rede overlay (se necessário, ou deixe o stack criar)
+docker network create --driver overlay watic-premium_public
+docker network create --driver overlay watic-premium_private
 
-# FRONTEND
-FRONTEND_PORT=80                        # default: 3000; Use port 80 to expose in production
-FRONTEND_SSL_PORT=443                   # default: 3001; Use port 443 to expose in production
-FRONTEND_SERVER_NAME=myapp.mydomain.com
-FRONTEND_URL=https://myapp.mydomain.com
-
-# BROWSERLESS
-MAX_CONCURRENT_SESSIONS=                # default: 1; Use only if using browserless
+# Realize o deploy
+docker stack deploy -c docker-stack.yml watic
 ```
 
-After defining the variables, run the following command:
+### 4. Gestão
 
+Para verificar o status dos serviços:
 ```bash
-docker-compose up -d --build
+docker service ls
 ```
 
-On the `first` run it will be necessary to seed the database tables using the following command:
+---
+
+## 💻 Desenvolvimento Local
+
+Para contribuir ou customizar o código:
+
+### Backend
 
 ```bash
-docker-compose exec backend npx sequelize db:seed:all
-```
-
-#### SSL Certificate
-
-To deploy the ssl certificate, add it to the `ssl/certs` folder. Inside it there should be a `backend` and a `frontend` folder, and each of them should contain the files `fullchain.pem` and `privkey.pem`, as in the structure below:
-
-```bash
-.
-├── certs
-│   ├── backend
-│   │   ├── fullchain.pem
-│   │   └── privkey.pem
-│   └── frontend
-│       ├── fullchain.pem
-│       └── privkey.pem
-└── www
-```
-
-To generate the certificate files use `certbot` which can be installed using snap, I used the following command:
-
-Note: The frontend container that runs nginx is already prepared to receive the request made by certboot to validate the certificate.
-
-```bash
-# BACKEND
-certbot certonly --cert-name backend --webroot --webroot-path ./ssl/www/ -d api.mydomain.com
-
-# FRONTEND
-certbot certonly --cert-name frontend --webroot --webroot-path ./ssl/www/ -d myapp.mydomain.com
-```
-
-## Access Data
-
-User: admin@whaticket.com
-Password: admin
-
-## Upgrading
-
-WhaTicket is a working in progress and we are adding new features frequently. To update your old installation and get all the new features, you can use a bash script like this:
-
-**Note**: Always check the .env.example and adjust your .env file before upgrading, since some new variable may be added.
-
-```bash
-nano updateWhaticket
-```
-
-```bash
-#!/bin/bash
-echo "Updating Whaticket, please wait."
-
-cd ~
-cd whaticket-premium
-git pull
 cd backend
+cp .env.example .env
 npm install
-rm -rf dist
-npm run build
-npx sequelize db:migrate
-npx sequelize db:seed
-cd ../frontend
-npm install
-rm -rf build
-npm run build
-pm2 restart all
-
-echo "Update finished. Enjoy!"
+npm run dev
 ```
 
-Make it executable and run it:
+### Frontend
 
 ```bash
-chmod +x updateWhaticket
-./updateWhaticket
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
 ```
 
-## Contributing
+O Frontend rodará via Vite, proporcionando Hot Module Replacement (HMR) instantâneo.
 
-This project helps you and you want to help keep it going? Buy me a coffee:
+---
 
-<a href="https://www.buymeacoffee.com/canove" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 61px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
+## ⚠️ Disclaimer
 
-Para doações em BRL, utilize o Paypal:
+Este software é uma solução de "Código Aberto" para fins educacionais e de gestão privada. O uso de automações no WhatsApp pode estar sujeito às políticas da Meta/Facebook. Utilize com responsabilidade para evitar banimentos de números.
 
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/donate?business=VWW3BHW4AWHUY&item_name=Desenvolvimento+de+Software&currency_code=BRL)
+---
 
-Any help and suggestions will be apreciated.
+## 📄 Licença
 
-## Disclaimer
-
-I just started leaning Javascript a few months ago and this is my first project. It may have security issues and many bugs. I recommend using it only on local network.
-
-This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or its affiliates. The official WhatsApp website can be found at https://whatsapp.com. "WhatsApp" as well as related names, marks, emblems and images are registered trademarks of their respective owners.
+Distribuído sob a licença MIT. Veja `LICENSE` para mais informações.

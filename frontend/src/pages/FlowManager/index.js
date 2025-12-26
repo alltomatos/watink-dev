@@ -65,9 +65,12 @@ const FlowManager = () => {
     const [loading, setLoading] = useState(false);
     const [openModal, setOpenModal] = useState(false);
     const [newFlowName, setNewFlowName] = useState('');
+    const [whatsapps, setWhatsapps] = useState([]);
+    const [selectedWhatsapp, setSelectedWhatsapp] = useState('');
 
     useEffect(() => {
         fetchFlows();
+        fetchWhatsapps();
     }, []);
 
     const fetchFlows = async () => {
@@ -81,17 +84,28 @@ const FlowManager = () => {
         setLoading(false);
     };
 
+    const fetchWhatsapps = async () => {
+        try {
+            const { data } = await api.get('/whatsapp');
+            setWhatsapps(data);
+        } catch (err) {
+            toast.error("Erro ao carregar conexões");
+        }
+    };
+
     const handleCreateFlow = async () => {
         if (!newFlowName) return;
         try {
             const { data } = await api.post('/flows', {
                 name: newFlowName,
+                whatsappId: selectedWhatsapp ? selectedWhatsapp : null,
                 nodes: [{ id: '1', position: { x: 250, y: 50 }, data: { label: 'Início do Fluxo' }, type: 'input' }],
                 edges: []
             });
             toast.success("Fluxo criado com sucesso!");
             setOpenModal(false);
             setNewFlowName('');
+            setSelectedWhatsapp('');
             history.push(`/flowbuilder/${data.id}`);
         } catch (err) {
             toast.error("Erro ao criar fluxo");
@@ -100,6 +114,10 @@ const FlowManager = () => {
 
     const handleEditFlow = (id) => {
         history.push(`/flowbuilder/${id}`);
+    };
+
+    const isConnectionUsed = (whatsappId) => {
+        return flows.some(flow => flow.whatsappId === whatsappId && flow.isActive);
     };
 
     return (
@@ -126,9 +144,14 @@ const FlowManager = () => {
                                 <Typography variant="h5" component="h2">
                                     {flow.name}
                                 </Typography>
-                                <Typography color="textSecondary">
+                                <Typography color="textSecondary" gutterBottom>
                                     Status: {flow.isActive ? 'Ativo' : 'Inativo'}
                                 </Typography>
+                                {flow.whatsapp && (
+                                    <Typography variant="body2" component="p">
+                                        Conexão: <strong>{flow.whatsapp.name}</strong>
+                                    </Typography>
+                                )}
                             </CardContent>
                             <CardActions>
                                 <Button size="small" color="primary" onClick={() => handleEditFlow(flow.id)} startIcon={<Edit />}>
@@ -154,6 +177,39 @@ const FlowManager = () => {
                         value={newFlowName}
                         onChange={(e) => setNewFlowName(e.target.value)}
                     />
+
+                    <div style={{ marginTop: 20 }}>
+                        <Typography variant="caption" color="textSecondary">
+                            Vincular Conexão (Opcional)
+                        </Typography>
+                        <TextField
+                            select
+                            fullWidth
+                            margin="dense"
+                            label="Selecione uma Conexão"
+                            value={selectedWhatsapp}
+                            onChange={(e) => setSelectedWhatsapp(e.target.value)}
+                            SelectProps={{
+                                native: true,
+                            }}
+                            variant="outlined"
+                        >
+                            <option value="">Nenhuma (Fluxo Solto)</option>
+                            {whatsapps.map((whatsapp) => {
+                                const used = isConnectionUsed(whatsapp.id);
+                                return (
+                                    <option
+                                        key={whatsapp.id}
+                                        value={whatsapp.id}
+                                        disabled={used}
+                                    >
+                                        {whatsapp.name} {used ? '(Em uso)' : ''}
+                                    </option>
+                                );
+                            })}
+                        </TextField>
+                    </div>
+
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpenModal(false)} color="primary">
