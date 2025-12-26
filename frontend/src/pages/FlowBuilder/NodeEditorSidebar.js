@@ -16,7 +16,9 @@ import {
     Box,
     Checkbox,
     FormControlLabel,
-    FormGroup
+    FormGroup,
+    ListItemText,
+    Input
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import {
@@ -25,10 +27,10 @@ import {
     Delete as DeleteIcon
 } from '@material-ui/icons';
 
-// Componentes NOCODE
 import ConditionBuilder from './components/ConditionBuilder';
 import FilterBuilder from './components/FilterBuilder';
 import DataBuilder from './components/DataBuilder';
+import api from "../../services/api";
 
 const useStyles = makeStyles((theme) => ({
     drawer: {
@@ -86,9 +88,11 @@ const nodeTitles = {
     'switch': 'Configurar Decisão',
     'pipeline': 'Configurar Pipeline (Kanban)',
     'ticket': 'Configurar Ticket',
+    'webhook': 'Configurar Webhook',
     'knowledge': 'Configurar Conhecimento',
     'database': 'Configurar Database',
     'filter': 'Configurar Filtro de Dados',
+    'api': 'Configurar Requisição API',
     'end': 'Configurar Fim',
     'output': 'Configurar Fim'
 };
@@ -108,10 +112,35 @@ const TABLE_ALL_FIELDS = {
 const NodeEditorSidebar = ({ open, node, onClose, onSave, onDelete }) => {
     const classes = useStyles();
     const [formData, setFormData] = React.useState({});
+    const [pipelines, setPipelines] = React.useState([]);
+    const [queues, setQueues] = React.useState([]);
+    const [users, setUsers] = React.useState([]);
 
     React.useEffect(() => {
         if (node && node.data) {
             setFormData({ ...node.data });
+        }
+    }, [node]);
+
+    React.useEffect(() => {
+        if (node && node.type === 'pipeline') {
+            api.get('/pipelines')
+                .then(res => setPipelines(res.data))
+                .catch(err => console.error("Erro ao carregar pipelines", err));
+        }
+        if (node && node.type === 'ticket') {
+            api.get('/queue')
+                .then(res => {
+                    setQueues(res.data);
+                })
+                .catch(err => console.error("Erro ao carregar filas", err));
+
+            api.get('/users')
+                .then(res => {
+                    setUsers(res.data.users);
+                })
+                .catch(err => console.error("Erro ao carregar usuários", err));
+            console.log('Node data after useEffect:', formData);
         }
     }, [node]);
 
@@ -143,12 +172,16 @@ const NodeEditorSidebar = ({ open, node, onClose, onSave, onDelete }) => {
                 return renderPipelineForm();
             case 'ticket':
                 return renderTicketForm();
+            case 'webhook':
+                return renderWebhookForm();
             case 'knowledge':
                 return renderKnowledgeForm();
             case 'database':
                 return renderDatabaseForm();
             case 'filter':
                 return renderFilterForm();
+            case 'api':
+                return renderAPIForm();
             case 'end':
             case 'output':
                 return renderEndForm();
@@ -395,7 +428,6 @@ const NodeEditorSidebar = ({ open, node, onClose, onSave, onDelete }) => {
                     <MenuItem value="moveToQueue">Mover para Fila</MenuItem>
                     <MenuItem value="assignUser">Atribuir Atendente</MenuItem>
                     <MenuItem value="changeStatus">Alterar Status</MenuItem>
-                    <MenuItem value="addTag">Adicionar Tag</MenuItem>
                 </Select>
             </FormControl>
 
@@ -416,30 +448,271 @@ const NodeEditorSidebar = ({ open, node, onClose, onSave, onDelete }) => {
 
             {/* Campos de ID para Fila e Usuário (Adicionando suporte real) */}
             {formData.ticketAction === 'moveToQueue' && (
-                <TextField
-                    fullWidth
-                    label="ID da Fila (ou Variável)"
-                    variant="outlined"
-                    size="small"
-                    className={classes.field}
-                    value={formData.queueId || ''}
-                    onChange={(e) => handleChange('queueId', e.target.value)}
-                    helperText="Ex: 5 ou {{queueId}}"
-                />
+                <FormControl fullWidth className={classes.field} variant="outlined" size="small">
+                    <InputLabel>Fila</InputLabel>
+                    <Select
+                        value={formData.queueId || ''}
+                        onChange={(e) => handleChange('queueId', e.target.value)}
+                        label="Fila"
+                    >
+                        {queues.map(q => (
+                            <MenuItem key={q.id} value={q.id} style={{ color: q.color }}>
+                                {q.name}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
             )}
 
             {formData.ticketAction === 'assignUser' && (
-                <TextField
-                    fullWidth
-                    label="ID do Usuário (ou Variável)"
-                    variant="outlined"
-                    size="small"
-                    className={classes.field}
-                    value={formData.userId || ''}
-                    onChange={(e) => handleChange('userId', e.target.value)}
-                    helperText="Ex: 10 ou {{userId}}"
-                />
+                <FormControl fullWidth className={classes.field} variant="outlined" size="small">
+                    <InputLabel>Usuário (Atendente)</InputLabel>
+                    <Select
+                        value={formData.userId || ''}
+                        onChange={(e) => handleChange('userId', e.target.value)}
+                        label="Usuário (Atendente)"
+                    >
+                        {users.map(u => (
+                            <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
             )}
+        </>
+    );
+
+    const renderWebhookForm = () => (
+        <>
+            <FormControl fullWidth className={classes.field} variant="outlined" size="small">
+                <InputLabel>Método</InputLabel>
+                <Select
+                    value={formData.method || 'POST'}
+                    onChange={(e) => handleChange('method', e.target.value)}
+                    label="Método"
+                >
+                    <MenuItem value="GET">GET</MenuItem>
+                    <MenuItem value="POST">POST</MenuItem>
+                    <MenuItem value="PUT">PUT</MenuItem>
+                    <MenuItem value="DELETE">DELETE</MenuItem>
+                    <MenuItem value="PATCH">PATCH</MenuItem>
+                </Select>
+            </FormControl>
+
+            <TextField
+                fullWidth
+                label="URL"
+                variant="outlined"
+                size="small"
+                className={classes.field}
+                value={formData.url || ''}
+                onChange={(e) => handleChange('url', e.target.value)}
+                placeholder="https://api.exemplo.com/webhook"
+            />
+
+            <Typography variant="subtitle2" style={{ marginTop: 16 }}>Headers (JSON)</Typography>
+            <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                className={classes.field}
+                multiline
+                rows={3}
+                value={formData.headers || ''}
+                onChange={(e) => handleChange('headers', e.target.value)}
+                placeholder='{ "Authorization": "Bearer 123" }'
+            />
+
+            <Typography variant="subtitle2" style={{ marginTop: 16 }}>Body (JSON)</Typography>
+            <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                className={classes.field}
+                multiline
+                rows={5}
+                value={formData.body || ''}
+                onChange={(e) => handleChange('body', e.target.value)}
+                placeholder='{ "nome": "{{contact.name}}", "telefone": "{{contact.number}}" }'
+            />
+
+            <Typography variant="subtitle2" style={{ marginTop: 16 }}>Dados do Contato</Typography>
+            <FormControl fullWidth className={classes.field} variant="outlined" size="small">
+                <Select
+                    multiple
+                    value={formData.contactFields || []}
+                    onChange={(e) => handleChange('contactFields', e.target.value)}
+                    input={<Input />}
+                    renderValue={(selected) => selected.join(', ')}
+                    MenuProps={{
+                        anchorOrigin: {
+                            vertical: "bottom",
+                            horizontal: "left"
+                        },
+                        transformOrigin: {
+                            vertical: "top",
+                            horizontal: "left"
+                        },
+                        getContentAnchorEl: null,
+                    }}
+                >
+                    {['name', 'number', 'email', 'profilePicUrl', 'id'].map((name) => (
+                        <MenuItem key={name} value={name}>
+                            <Checkbox checked={(formData.contactFields || []).indexOf(name) > -1} />
+                            <ListItemText primary={name} />
+                        </MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
+            <Typography variant="subtitle2" style={{ marginTop: 16 }}>Dados do Ticket</Typography>
+            <FormControl fullWidth className={classes.field} variant="outlined" size="small">
+                <Select
+                    multiple
+                    value={formData.ticketFields || []}
+                    onChange={(e) => handleChange('ticketFields', e.target.value)}
+                    input={<Input />}
+                    renderValue={(selected) => selected.join(', ')}
+                    MenuProps={{
+                        anchorOrigin: {
+                            vertical: "bottom",
+                            horizontal: "left"
+                        },
+                        transformOrigin: {
+                            vertical: "top",
+                            horizontal: "left"
+                        },
+                        getContentAnchorEl: null,
+                    }}
+                >
+                    {['id', 'status', 'queueId', 'userId', 'lastMessage', 'chatbot'].map((name) => (
+                        <MenuItem key={name} value={name}>
+                            <Checkbox checked={(formData.ticketFields || []).indexOf(name) > -1} />
+                            <ListItemText primary={name} />
+                        </MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
+            <Typography variant="subtitle2" style={{ marginTop: 16 }}>Dados do Pipeline (CRM)</Typography>
+            <FormControl fullWidth className={classes.field} variant="outlined" size="small">
+                <Select
+                    multiple
+                    value={formData.pipelineFields || []}
+                    onChange={(e) => handleChange('pipelineFields', e.target.value)}
+                    input={<Input />}
+                    renderValue={(selected) => selected.join(', ')}
+                    MenuProps={{
+                        anchorOrigin: {
+                            vertical: "bottom",
+                            horizontal: "left"
+                        },
+                        transformOrigin: {
+                            vertical: "top",
+                            horizontal: "left"
+                        },
+                        getContentAnchorEl: null,
+                    }}
+                >
+                    {['dealTitle', 'dealValue', 'pipelineName', 'stageName', 'dealId', 'priority'].map((name) => (
+                        <MenuItem key={name} value={name}>
+                            <Checkbox checked={(formData.pipelineFields || []).indexOf(name) > -1} />
+                            <ListItemText primary={name} />
+                        </MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
+            <FormControlLabel
+                control={
+                    <Checkbox
+                        checked={formData.includeContext || false}
+                        onChange={(e) => handleChange('includeContext', e.target.checked)}
+                        name="includeContext"
+                        color="primary"
+                    />
+                }
+                label="Incluir Contexto do Fluxo"
+            />
+            <FormControlLabel
+                control={
+                    <Checkbox
+                        checked={formData.fullData || false}
+                        onChange={(e) => handleChange('fullData', e.target.checked)}
+                        name="fullData"
+                        color="primary"
+                    />
+                }
+                label="Enviar todos os dados (Contato, Ticket, Pipeline)"
+            />
+        </>
+    );
+
+    const renderAPIForm = () => (
+        <>
+            <FormControl fullWidth className={classes.field} variant="outlined" size="small">
+                <InputLabel>Método</InputLabel>
+                <Select
+                    value={formData.method || 'GET'}
+                    onChange={(e) => handleChange('method', e.target.value)}
+                    label="Método"
+                >
+                    <MenuItem value="GET">GET</MenuItem>
+                    <MenuItem value="POST">POST</MenuItem>
+                    <MenuItem value="PUT">PUT</MenuItem>
+                    <MenuItem value="DELETE">DELETE</MenuItem>
+                    <MenuItem value="PATCH">PATCH</MenuItem>
+                </Select>
+            </FormControl>
+
+            <TextField
+                fullWidth
+                label="URL"
+                variant="outlined"
+                size="small"
+                className={classes.field}
+                value={formData.url || ''}
+                onChange={(e) => handleChange('url', e.target.value)}
+                placeholder="https://api.exemplo.com/dados"
+            />
+
+            <Typography variant="subtitle2" style={{ marginTop: 16 }}>Headers (JSON)</Typography>
+            <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                className={classes.field}
+                multiline
+                rows={3}
+                value={formData.headers || ''}
+                onChange={(e) => handleChange('headers', e.target.value)}
+                placeholder='{ "Authorization": "Bearer 123" }'
+            />
+
+            <Typography variant="subtitle2" style={{ marginTop: 16 }}>Body (JSON)</Typography>
+            <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                className={classes.field}
+                multiline
+                rows={5}
+                value={formData.body || ''}
+                onChange={(e) => handleChange('body', e.target.value)}
+                placeholder='{ "id": "{{contact.id}}" }'
+            />
+
+            <Typography variant="subtitle2" style={{ marginTop: 16 }}>Saída</Typography>
+            <TextField
+                fullWidth
+                label="Nome da Variável de Resultado"
+                variant="outlined"
+                size="small"
+                className={classes.field}
+                value={formData.resultVariable || ''}
+                onChange={(e) => handleChange('resultVariable', e.target.value)}
+                placeholder="Ex: resultadoApi"
+                helperText="O resultado será salvo em {{resultadoApi}}"
+            />
         </>
     );
 
@@ -461,27 +734,70 @@ const NodeEditorSidebar = ({ open, node, onClose, onSave, onDelete }) => {
                 </Select>
             </FormControl>
 
-            <TextField
-                fullWidth
-                label="Pipeline ID"
-                variant="outlined"
-                size="small"
-                className={classes.field}
-                value={formData.pipelineId || ''}
-                onChange={(e) => handleChange('pipelineId', e.target.value)}
-                helperText="ID do seu Kanban de Negócios"
-            />
+            {/* Campos para Criação de Oportunidade */}
+            {formData.kanbanAction === 'createDeal' && (
+                <>
+                    <TextField
+                        fullWidth
+                        label="Título da Oportunidade"
+                        variant="outlined"
+                        size="small"
+                        className={classes.field}
+                        value={formData.dealTitle || ''}
+                        onChange={(e) => handleChange('dealTitle', e.target.value)}
+                        helperText="Use variáveis como {{contactName}}"
+                    />
+                    <TextField
+                        fullWidth
+                        label="Valor (R$)"
+                        variant="outlined"
+                        size="small"
+                        className={classes.field}
+                        value={formData.dealValue || ''}
+                        onChange={(e) => handleChange('dealValue', e.target.value)}
+                        helperText="Ex: 150.00"
+                    />
+                    <FormControl fullWidth className={classes.field} variant="outlined" size="small">
+                        <InputLabel>Prioridade</InputLabel>
+                        <Select
+                            value={formData.dealPriority || '1'}
+                            onChange={(e) => handleChange('dealPriority', e.target.value)}
+                            label="Prioridade"
+                        >
+                            <MenuItem value="1">Baixa</MenuItem>
+                            <MenuItem value="2">Média</MenuItem>
+                            <MenuItem value="3">Alta</MenuItem>
+                        </Select>
+                    </FormControl>
+                </>
+            )}
 
-            <TextField
-                fullWidth
-                label="Etapa (Stage) ID"
-                variant="outlined"
-                size="small"
-                className={classes.field}
-                value={formData.stageId || ''}
-                onChange={(e) => handleChange('stageId', e.target.value)}
-                helperText="ID da Coluna/Etapa para mover/criar"
-            />
+            <FormControl fullWidth className={classes.field} variant="outlined" size="small">
+                <InputLabel>Pipeline</InputLabel>
+                <Select
+                    value={formData.pipelineId || ''}
+                    onChange={(e) => handleChange('pipelineId', e.target.value)}
+                    label="Pipeline"
+                >
+                    {pipelines.map(p => (
+                        <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
+            <FormControl fullWidth className={classes.field} variant="outlined" size="small">
+                <InputLabel>Etapa (Coluna)</InputLabel>
+                <Select
+                    value={formData.stageId || ''}
+                    onChange={(e) => handleChange('stageId', e.target.value)}
+                    label="Etapa (Coluna)"
+                    disabled={!formData.pipelineId}
+                >
+                    {pipelines.find(p => p.id === formData.pipelineId)?.stages?.map(s => (
+                        <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
         </>
     );
 

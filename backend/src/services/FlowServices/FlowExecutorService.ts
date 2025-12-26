@@ -1,3 +1,4 @@
+import axios from "axios";
 import Flow from "../../models/Flow";
 import FlowSession from "../../models/FlowSession";
 import AppError from "../../errors/AppError";
@@ -16,6 +17,8 @@ import Queue from "../../models/Queue";
 import Whatsapp from "../../models/Whatsapp";
 import QuickAnswer from "../../models/QuickAnswer";
 import Pipeline from "../../models/Pipeline";
+import Deal from "../../models/Deal";
+import PipelineStage from "../../models/PipelineStage";
 import { Op } from "sequelize";
 
 interface FlowContext {
@@ -174,14 +177,17 @@ class FlowExecutorService {
           }
           return this.proceedToNext(session, flow, node);
 
-        // Integração Kanban/CRM (Placeholder)
+        // Integração Kanban/CRM
         case "pipeline":
-          // await this.processKanbanAction(session, node.data);
-          logger.info(`FlowExecutor: Executing Pipeline (Kanban) node ${node.id}`);
+          await this.processKanbanAction(session, node.data);
           return this.proceedToNext(session, flow, node);
 
         case "ticket":
           await this.updateTicket(session, node.data);
+          return this.proceedToNext(session, flow, node);
+
+        case "webhook":
+          await this.processWebhookNode(session, node.data);
           return this.proceedToNext(session, flow, node);
 
         case "switch":
@@ -192,6 +198,10 @@ class FlowExecutorService {
 
         case "filter":
           return this.executeFilter(session, flow, node);
+
+        case "api":
+          await this.processAPINode(session, node.data);
+          return this.proceedToNext(session, flow, node);
 
         default:
           logger.warn(`Unknown node type: ${node.type}`);
@@ -301,6 +311,258 @@ class FlowExecutorService {
         ticketId: context.ticketId
       });
       logger.info(`Flow: Ticket ${context.ticketId} updated via Ticket Node`, updateData);
+    }
+  }
+
+  private async processAPINode(session: FlowSession, nodeData: any) {
+    const context = session.context as FlowContext;
+    let { url, method, headers, body, resultVariable } = nodeData;
+
+    try {
+      if (!url) {
+        logger.warn("FlowExecutor: API Node missing URL");
+        return;
+      }
+
+      url = this.replaceVariables(url, context);
+      method = method || 'GET';
+
+      let parsedHeaders = {};
+      if (headers) {
+        try {
+          const headersStr = this.replaceVariables(headers, context);
+          parsedHeaders = JSON.parse(headersStr);
+        } catch (e) {
+          logger.warn("FlowExecutor: Invalid API Node headers JSON", e);
+        }
+      }
+
+      let parsedBody = undefined;
+      if (body) {
+        const bodyStr = this.replaceVariables(body, context);
+        try {
+          parsedBody = JSON.parse(bodyStr);
+        } catch (e) {
+          parsedBody = bodyStr; // Send as string if not valid JSON
+        }
+      }
+
+      logger.info(`FlowExecutor: Executing API Node ${method} ${url}`);
+
+      const response = await axios({
+        method,
+        url,
+        headers: parsedHeaders,
+        data: parsedBody
+      });
+
+      logger.info(`FlowExecutor: API Node success status: ${response.status}`);
+
+      if (resultVariable) {
+        // Store full response data or just data? Usually data is what users want.
+        // Let's store data.
+        const newContext = { ...context, [resultVariable]: response.data };
+        await session.update({ context: newContext });
+        logger.info(`FlowExecutor: API Result stored in variable ${resultVariable}`);
+      }
+
+    } catch (err: any) {
+      logger.error(`FlowExecutor: API Node failed: ${err.message}`);
+      // Store error info if possible so flow can verify success/fail if needed?
+      // For now, let's store null or error message in the variable so user knows it failed?
+      if (resultVariable) {
+        const newContext = {
+          ...context,
+          [resultVariable]: { error: true, message: err.message, status: err.response?.status }
+        };
+        await session.update({ context: newContext });
+      }
+    }
+  }
+
+  private async processWebhookNode(session: FlowSession, nodeData: any) {
+    const context = session.context as FlowContext;
+    let { url, method, headers, body } = nodeData;
+
+    try {
+      url = this.replaceVariables(url, context);
+      method = method || 'POST';
+
+      let parsedHeaders = {};
+      if (headers) {
+        try {
+          const headersStr = this.replaceVariables(headers, context);
+          parsedHeaders = JSON.parse(headersStr);
+        } catch (e) {
+          logger.warn("FlowExecutor: Invalid headers JSON", e);
+        }
+      }
+
+      let parsedBody = {};
+      if (body) {
+        try {
+          const bodyStr = this.replaceVariables(body, context);
+          parsedBody = JSON.parse(bodyStr);
+        } catch (e) {
+          // If not JSON, send as string or ignore? simpler to assume JSON for now or just log warning
+          logger.warn("FlowExecutor: Body is not valid JSON, sending as is or empty", e);
+          // Fallback: try to send as raw string if useful, but axios data usually expects object for JSON
+        }
+      }
+
+      // Injeção de Dados do Sistema
+      // Injeção de Dados do Sistema
+      if (nodeData.fullData && context.ticketId) {
+        const ticket = await ShowTicketService(context.ticketId);
+        if (ticket) {
+          parsedBody = { ...parsedBody, ticket };
+          if (ticket.contact) {
+            parsedBody = { ...parsedBody, contact: ticket.contact };
+          }
+          try {
+            const deal = await Deal.findOne({
+              where: { ticketId: context.ticketId },
+              include: [
+                { model: Pipeline, as: 'pipeline' },
+                { model: PipelineStage, as: 'stage' }
+              ]
+            });
+            if (deal) parsedBody = { ...parsedBody, pipeline: deal };
+          } catch (err) { }
+        }
+      } else {
+        // Granular Fields Logic
+        if (nodeData.contactFields && nodeData.contactFields.length > 0 && context.ticketId) {
+          const ticket = await ShowTicketService(context.ticketId);
+          if (ticket && ticket.contact) {
+            const filteredContact: any = {};
+            nodeData.contactFields.forEach((field: string) => {
+              if ((ticket.contact as any)[field] !== undefined) filteredContact[field] = (ticket.contact as any)[field];
+            });
+            parsedBody = { ...parsedBody, contact: filteredContact };
+          }
+        } else if (nodeData.includeContact && context.ticketId) {
+          const ticket = await ShowTicketService(context.ticketId);
+          if (ticket && ticket.contact) {
+            parsedBody = { ...parsedBody, contact: ticket.contact };
+          }
+        }
+
+        if (nodeData.ticketFields && nodeData.ticketFields.length > 0 && context.ticketId) {
+          const ticket = await ShowTicketService(context.ticketId);
+          const filteredTicket: any = {};
+          nodeData.ticketFields.forEach((field: string) => {
+            if ((ticket as any)[field] !== undefined) filteredTicket[field] = (ticket as any)[field];
+          });
+          parsedBody = { ...parsedBody, ticket: filteredTicket };
+        } else if (nodeData.includeTicket && context.ticketId) {
+          const ticket = await ShowTicketService(context.ticketId);
+          parsedBody = { ...parsedBody, ticket };
+        }
+
+        // Injeção de Dados do Pipeline (CRM)
+        if (nodeData.pipelineFields && nodeData.pipelineFields.length > 0 && context.ticketId) {
+          try {
+            const deal = await Deal.findOne({
+              where: { ticketId: context.ticketId },
+              include: [
+                { model: Pipeline, as: 'pipeline' },
+                { model: PipelineStage, as: 'stage' }
+              ]
+            });
+
+            if (deal) {
+              const filteredPipeline: any = {};
+              nodeData.pipelineFields.forEach((field: string) => {
+                if (field === 'dealTitle') filteredPipeline.dealTitle = deal.title;
+                if (field === 'dealValue') filteredPipeline.dealValue = deal.value;
+                if (field === 'priority') filteredPipeline.priority = deal.priority;
+                if (field === 'dealId') filteredPipeline.dealId = deal.id;
+                if (field === 'pipelineName' && deal.pipeline) filteredPipeline.pipelineName = deal.pipeline.name;
+                if (field === 'stageName' && deal.stage) filteredPipeline.stageName = deal.stage.name;
+              });
+              parsedBody = { ...parsedBody, pipeline: filteredPipeline };
+            }
+          } catch (err) {
+            logger.warn(`FlowExecutor: Error fetching deal for webhook injection: ${err}`);
+          }
+        }
+      }
+
+      if (nodeData.includeContext) {
+        parsedBody = { ...parsedBody, context };
+      }
+
+      logger.info(`FlowExecutor: Sending Webhook ${method} ${url}`);
+
+      const response = await axios({
+        method,
+        url,
+        headers: parsedHeaders,
+        data: parsedBody
+      });
+
+      logger.info(`FlowExecutor: Webhook success`, response.data);
+      // Optional: Store response in context? context.webhookResponse = response.data;
+      // await session.update({ context }); // if we want to persist
+
+    } catch (err) {
+      logger.error(`FlowExecutor: Webhook failed`, err.message);
+    }
+  }
+
+  private async processKanbanAction(session: FlowSession, nodeData: any) {
+    const context = session.context as FlowContext;
+    if (!context.ticketId) return;
+
+    // Recuperar Ticket para obter TenantId (necessário para Deal)
+    const ticket = await ShowTicketService(context.ticketId);
+    if (!ticket) {
+      logger.warn(`FlowExecutor: Ticket ${context.ticketId} not found for Kanban action`);
+      return;
+    }
+
+    const { kanbanAction, pipelineId, stageId, dealTitle, dealValue, dealPriority } = nodeData;
+
+    try {
+      const pId = this.replaceVariables(pipelineId, context);
+      const sId = this.replaceVariables(stageId, context);
+
+      if (!pId || !sId) {
+        logger.warn(`FlowExecutor: Missing PipelineID or StageID for Kanban action`);
+        return;
+      }
+
+      if (kanbanAction === 'createDeal') {
+        const title = this.replaceVariables(dealTitle || 'Nova Oportunidade', context);
+        const valStr = this.replaceVariables(dealValue || '0', context);
+        const value = parseFloat(valStr.replace(',', '.')); // Tratamento básico de float
+        const priority = parseInt(this.replaceVariables(dealPriority || '1', context));
+
+        await Deal.create({
+          title,
+          value,
+          priority,
+          pipelineId: parseInt(pId),
+          stageId: parseInt(sId),
+          contactId: ticket.contactId,
+          ticketId: ticket.id,
+          tenantId: ticket.tenantId
+        });
+        logger.info(`FlowExecutor: Deal created for ticket ${ticket.id} in pipeline ${pId}`);
+
+      } else if (kanbanAction === 'moveDeal') {
+        // Busca deal associado ao ticket
+        const deal = await Deal.findOne({ where: { ticketId: ticket.id } });
+        if (deal) {
+          await deal.update({ stageId: parseInt(sId) });
+          logger.info(`FlowExecutor: Deal ${deal.id} moved to stage ${sId}`);
+        } else {
+          logger.warn(`FlowExecutor: No deal found for ticket ${ticket.id} to move`);
+        }
+      }
+    } catch (err) {
+      logger.error(`FlowExecutor: Error processing Kanban action: ${err}`);
     }
   }
 
@@ -424,8 +686,19 @@ class FlowExecutorService {
 
   private replaceVariables(str: string, context: FlowContext): string {
     if (!str) return str;
-    return str.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-      return context[key] !== undefined ? String(context[key]) : match;
+    return str.replace(/\{\{([\w\.]+)\}\}/g, (match, key) => {
+      const keys = key.split('.');
+      let value: any = context;
+
+      for (const k of keys) {
+        if (value && typeof value === 'object' && k in value) {
+          value = value[k];
+        } else {
+          return match; // Variable not found or path invalid
+        }
+      }
+
+      return value !== undefined && value !== null ? String(value) : match;
     });
   }
 

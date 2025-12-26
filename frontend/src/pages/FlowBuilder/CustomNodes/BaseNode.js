@@ -102,6 +102,12 @@ const useStyles = makeStyles((theme) => ({
     colorDefault: {
         background: 'linear-gradient(135deg, #607d8b 0%, #455a64 100%)'
     },
+    colorWebhook: {
+        background: 'linear-gradient(135deg, #ff5722 0%, #e64a19 100%)' // Deep Orange
+    },
+    colorApi: {
+        background: 'linear-gradient(135deg, #3f51b5 0%, #283593 100%)' // Indigo
+    },
     // Badge para indicadores
     badge: {
         position: 'absolute',
