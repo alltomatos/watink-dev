@@ -7,7 +7,7 @@ function connectToSocket() {
     return;
   }
   return openSocket(getBackendUrl(), {
-    transports: ["websocket", "polling", "flashsocket"],
+    transports: ["websocket"],
     query: {
       token: JSON.parse(token),
     },

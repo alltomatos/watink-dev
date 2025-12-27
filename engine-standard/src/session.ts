@@ -26,6 +26,7 @@ interface WhaileysSession {
 
 class SessionManager {
   private sessions: Map<number, WhaileysSession> = new Map();
+  private retries: Map<number, number> = new Map();
   private rabbitmq: RabbitMQ;
   private sessionsDir: string;
 
@@ -138,10 +139,43 @@ class SessionManager {
   private async startSession(payload: StartSessionPayload, tenantId: string | number) {
     logger.info(`Starting session ${payload.sessionId}`);
 
+    // Notify backend that session is opening
+    const openingEvent: Envelope = {
+      id: uuidv4(),
+      timestamp: Date.now(),
+      tenantId,
+      type: "session.status",
+      payload: {
+        sessionId: payload.sessionId,
+        status: "OPENING"
+      }
+    };
+    await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, openingEvent);
+
     try {
       if (this.sessions.has(payload.sessionId)) {
         logger.info(`Session ${payload.sessionId} already exists`);
+        
+        const session = this.sessions.get(payload.sessionId);
+        const currentStatus = session?.status === "CONNECTED" ? "CONNECTED" : "OPENING";
+
+        const statusEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId,
+          type: "session.status",
+          payload: {
+            sessionId: payload.sessionId,
+            status: currentStatus as any
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
         return;
+      }
+
+      // Initialize retry counter if not present
+      if (!this.retries.has(payload.sessionId)) {
+        this.retries.set(payload.sessionId, 0);
       }
 
       const { state, saveCreds } = await useMultiFileAuthState(
@@ -218,29 +252,35 @@ class SessionManager {
 
         if (connection === "close") {
           const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-          logger.warn(`Connection closed for session ${payload.sessionId}, reconnecting: ${shouldReconnect}`);
+          const currentRetries = this.retries.get(payload.sessionId) || 0;
+          
+          logger.warn(`Connection closed for session ${payload.sessionId}, reconnecting: ${shouldReconnect}, attempt: ${currentRetries}`);
 
-          const statusEvent: Envelope = {
-            id: uuidv4(),
-            timestamp: Date.now(),
-            tenantId,
-            type: "session.status",
-            payload: {
-              sessionId: payload.sessionId,
-              status: "DISCONNECTED"
-            }
-          };
-          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
-
-          if (shouldReconnect) {
-            this.sessions.delete(payload.sessionId);
-            this.startSession(payload, tenantId);
+          if (shouldReconnect && currentRetries < 5) {
+             this.retries.set(payload.sessionId, currentRetries + 1);
+             this.sessions.delete(payload.sessionId);
+             setTimeout(() => this.startSession(payload, tenantId), 3000 * (currentRetries + 1)); // Exponential backoff
           } else {
-            this.sessions.delete(payload.sessionId);
-            // Cleanup auth files if logged out?
+             // Max retries reached or logged out
+             logger.error(`Session ${payload.sessionId} failed to connect after ${currentRetries} attempts or logged out.`);
+             this.retries.delete(payload.sessionId);
+             this.sessions.delete(payload.sessionId);
+             
+             const statusEvent: Envelope = {
+                id: uuidv4(),
+                timestamp: Date.now(),
+                tenantId,
+                type: "session.status",
+                payload: {
+                  sessionId: payload.sessionId,
+                  status: "DISCONNECTED"
+                }
+              };
+              await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
           }
         } else if (connection === "open") {
           logger.info(`Session ${payload.sessionId} opened`);
+          this.retries.delete(payload.sessionId);
           const session = this.sessions.get(payload.sessionId);
           if (session) session.status = "CONNECTED";
 
