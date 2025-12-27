@@ -148,6 +148,7 @@ export interface SyncContactPayload {
   sessionId: number;
   contactId: number;
   number: string;
+  lid?: string;
 }
 
 export type EventType =
@@ -178,6 +179,8 @@ export interface PairingCodePayload {
 export interface SessionStatusPayload {
   sessionId: number;
   status: "CONNECTED" | "DISCONNECTED" | "QRCODE" | "OPENING";
+  number?: string;
+  profilePicUrl?: string;
 }
 
 export interface MessageReceivedPayload {
@@ -218,5 +221,6 @@ export interface ContactUpdatePayload {
   number: string;
   profilePicUrl?: string;
   pushName?: string;
+  lid?: string;
 }
 

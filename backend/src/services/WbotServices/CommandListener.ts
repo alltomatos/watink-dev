@@ -2,35 +2,29 @@
 import { Envelope } from "../../microservice/contracts";
 import RabbitMQService from "../RabbitMQService";
 import { logger } from "../../utils/logger";
-import EnrichContactService from "../ContactServices/EnrichContactService";
 
 interface ContactSyncPayload {
     contactId: number;
 }
 
 export const CommandListener = async () => {
-    const routingKeys = [
-        "wbot.*.contact.sync"
-    ];
+    // Backend should NOT listen to contact.sync commands intended for the Engine
+    const routingKeys: string[] = [];
 
-    await RabbitMQService.consumeCommands("api.commands.process", routingKeys, async (msg: Envelope) => {
-        logger.info(`Command received: ${msg.type}`);
+    // Se houver outros comandos que o Backend deva processar, adicione aqui.
+    // Por enquanto, contact.sync é processado apenas pelo Engine.
+    
+    if (routingKeys.length > 0) {
+        await RabbitMQService.consumeCommands("api.commands.process", routingKeys, async (msg: Envelope) => {
+            logger.info(`Command received: ${msg.type}`);
 
-        switch (msg.type) {
-            case "contact.sync":
-                await handleContactSync(msg.payload as ContactSyncPayload);
-                break;
-            default:
-                logger.warn(`Unknown command type: ${msg.type}`);
-        }
-    });
-};
-
-const handleContactSync = async (payload: ContactSyncPayload) => {
-    logger.info(`Executing contact sync for ID: ${payload.contactId}`);
-    try {
-        await EnrichContactService({ contactId: payload.contactId });
-    } catch (error) {
-        logger.error(`Failed to sync contact ${payload.contactId}: ${error}`);
+            switch (msg.type) {
+                // case "some.other.command":
+                //     await handleSomething(msg.payload);
+                //     break;
+                default:
+                    logger.warn(`Unknown command type: ${msg.type}`);
+            }
+        });
     }
 };

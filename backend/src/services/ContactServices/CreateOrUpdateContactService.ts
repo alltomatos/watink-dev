@@ -69,6 +69,10 @@ const CreateOrUpdateContactService = async ({
       updates.name = name;
     }
 
+    if (isGroup && !contact.isGroup) {
+      updates.isGroup = true;
+    }
+
     // If there are updates, apply them
     if (Object.keys(updates).length > 0) {
       await contact.update(updates);
@@ -117,6 +121,7 @@ const CreateOrUpdateContactService = async ({
       payload: {
         contactId: contact.id,
         number: contact.number,
+        lid: contact.lid || undefined,
         sessionId: 1
       },
       tenantId: 1

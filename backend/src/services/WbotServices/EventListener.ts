@@ -65,19 +65,29 @@ const handlePairingCode = async (payload: PairingCodePayload) => {
 
 const handleSessionStatus = async (payload: SessionStatusPayload) => {
   const io = getIO();
+  
+  const updateData: any = { status: payload.status, qrcode: "" };
+  if (payload.number) updateData.number = payload.number;
+  if (payload.profilePicUrl) updateData.profilePicUrl = payload.profilePicUrl;
+
   await Whatsapp.update(
-    { status: payload.status, qrcode: "" },
+    updateData,
     { where: { id: payload.sessionId } }
   );
 
   io.emit(`whatsappSession`, {
     action: "update",
-    session: { id: payload.sessionId, status: payload.status }
+    session: { 
+      id: payload.sessionId, 
+      status: payload.status,
+      number: payload.number,
+      profilePicUrl: payload.profilePicUrl
+    }
   });
 };
 
 const handleContactUpdate = async (payload: ContactUpdatePayload) => {
-  const { contactId, number, profilePicUrl, pushName } = payload;
+  const { contactId, number, profilePicUrl, pushName, lid } = payload;
 
   // Find the contact to verify it exists and we're updating the right one
   // Logic: if contactId provided, use it. If not, use logic from existing services?
@@ -86,17 +96,19 @@ const handleContactUpdate = async (payload: ContactUpdatePayload) => {
   if (contactId) {
     const contact = await Contact.findByPk(contactId);
     if (contact) {
-      await contact.update({
-        profilePicUrl: profilePicUrl || contact.profilePicUrl, // Only update if provided
-        // pushName update? usually backend doesn't store pushName in main Contact table unless it matches name logic.
-        // Let's stick to profilePic for now as that's the main goal.
-      });
+      const updates: any = {};
+      if (profilePicUrl) updates.profilePicUrl = profilePicUrl;
+      if (lid) updates.lid = lid;
 
-      const io = getIO();
-      io.emit("contact", {
-        action: "update",
-        contact
-      });
+      if (Object.keys(updates).length > 0) {
+        await contact.update(updates);
+        
+        const io = getIO();
+        io.emit("contact", {
+          action: "update",
+          contact
+        });
+      }
     }
   }
 };

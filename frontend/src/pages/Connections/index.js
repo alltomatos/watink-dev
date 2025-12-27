@@ -14,7 +14,8 @@ import {
 	IconButton,
 	Menu,
 	MenuItem,
-	ListItemIcon
+	ListItemIcon,
+	Avatar
 } from "@material-ui/core";
 import {
 	CheckCircle,
@@ -215,15 +216,32 @@ const Connections = () => {
 											className={classes.customCard}
 											title={whatsApp.name}
 											subtitle={
-												<span style={{ fontSize: 13, fontWeight: 400, color: '#8e8e8e', display: 'flex', gap: 4 }}>
-													Atualizado em {whatsApp.updatedAt
-														? format(parseISO(whatsApp.updatedAt), "dd/MM")
-														: "N/A"
-													}
-												</span>
+												<Box>
+													<span style={{ fontSize: 13, fontWeight: 400, color: '#8e8e8e', display: 'flex', gap: 4 }}>
+														Atualizado em {whatsApp.updatedAt
+															? format(parseISO(whatsApp.updatedAt), "dd/MM")
+															: "N/A"
+														}
+													</span>
+													{whatsApp.status === "CONNECTED" && whatsApp.number && (
+														<Typography variant="body2" color="textSecondary" style={{ marginTop: 4 }}>
+															+{whatsApp.number}
+														</Typography>
+													)}
+												</Box>
 											}
 											iconColor={bgColor}
-											icon={React.cloneElement(renderStatusIcon(whatsApp.status), { style: { color: statusColor, fontSize: 24 } })}
+											icon={
+												whatsApp.status === "CONNECTED" && whatsApp.profilePicUrl ? (
+													<Avatar
+														src={whatsApp.profilePicUrl}
+														alt={whatsApp.name}
+														style={{ width: 56, height: 56 }}
+													/>
+												) : (
+													React.cloneElement(renderStatusIcon(whatsApp.status), { style: { color: statusColor, fontSize: 24 } })
+												)
+											}
 
 											actions={
 												<IconButton

@@ -179,14 +179,8 @@ export const sync = async (req: Request, res: Response): Promise<Response> => {
       payload: {
         contactId: +contactId,
         number: contact.number,
-        sessionId: 1 // Default session or derived? The command might need a specific session context if the engine is multi-tenant/session.
-        // If the queue is global, the consumer (engine) needs to know which session to use.
-        // Assuming sessionId comes from context or we iterate? 
-        // For now, let's assume session 1 or we need to find the default connection. 
-        // However, the engine's handleCommand dispatching usually relies on routing keys wbot.{tenantId}.{sessionId}.
-        // The routing key here is "wbot.global.contact.sync". 
-        // We probably need to target a specific session or the engine needs to find one.
-        // Let's check how the engine consumes.
+        lid: contact.lid || undefined,
+        sessionId: 1
       },
       tenantId: 1
     });
