@@ -19,6 +19,7 @@ import pipelineRoutes from "./pipelineRoutes";
 import dealRoutes from "./dealRoutes";
 import flowRoutes from "./flowRoutes";
 
+import groupRoutes from "./groupRoutes";
 import knowledgeRoutes from "./knowledgeRoutes";
 
 const routes = Router();
@@ -36,6 +37,7 @@ routes.use(quickAnswerRoutes);
 routes.use(apiRoutes);
 routes.use(microserviceRoutes);
 routes.use(tenantRoutes);
+routes.use(groupRoutes);
 routes.use("/version", versionRoutes);
 routes.use(pipelineRoutes);
 routes.use(dealRoutes);

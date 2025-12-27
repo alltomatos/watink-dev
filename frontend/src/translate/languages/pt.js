@@ -218,6 +218,7 @@ const messages = {
           email: "Email",
           password: "Senha",
           profile: "Perfil",
+          group: "Grupo",
           whatsapp: "Conexão Padrão",
         },
         buttons: {
@@ -301,6 +302,7 @@ const messages = {
           queues: "Filas",
           administration: "Administração",
           users: "Usuários",
+          groups: "Grupos",
           settings: "Configurações",
         },
         appBar: {
@@ -373,6 +375,40 @@ const messages = {
           deleteMessage:
             "Todos os dados do usuário serão perdidos. Os tickets abertos deste usuário serão movidos para a fila.",
         },
+      },
+      groups: {
+        title: "Grupos",
+        table: {
+          name: "Nome",
+          actions: "Ações",
+        },
+        buttons: {
+          add: "Adicionar grupo",
+        },
+        toasts: {
+          deleted: "Grupo excluído com sucesso.",
+        },
+        confirmationModal: {
+          deleteTitle: "Excluir",
+          deleteMessage:
+            "Tem certeza? Essa ação não pode ser revertida.",
+        },
+      },
+      groupModal: {
+        title: {
+          add: "Adicionar grupo",
+          edit: "Editar grupo",
+        },
+        form: {
+          name: "Nome",
+          permissions: "Permissões",
+        },
+        buttons: {
+          okAdd: "Adicionar",
+          okEdit: "Salvar",
+          cancel: "Cancelar",
+        },
+        success: "Grupo salvo com sucesso.",
       },
       settings: {
         success: "Configurações salvas com sucesso.",

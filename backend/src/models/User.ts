@@ -21,6 +21,9 @@ import Queue from "./Queue";
 import UserQueue from "./UserQueue";
 import Whatsapp from "./Whatsapp";
 import Tenant from "./Tenant";
+import Group from "./Group";
+import Permission from "./Permission";
+import UserPermission from "./UserPermission";
 
 @Table
 class User extends Model<User> {
@@ -74,6 +77,16 @@ class User extends Model<User> {
 
   @BelongsTo(() => Tenant)
   tenant: Tenant;
+
+  @ForeignKey(() => Group)
+  @Column
+  groupId: number;
+
+  @BelongsTo(() => Group)
+  group: Group;
+
+  @BelongsToMany(() => Permission, () => UserPermission)
+  permissions: Permission[];
 
   @BeforeUpdate
   @BeforeCreate
