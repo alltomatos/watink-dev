@@ -12,6 +12,7 @@ import {
     IconButton,
     Card,
     CardContent,
+    Avatar,
     Tooltip
 } from "@material-ui/core";
 import {
@@ -189,6 +190,24 @@ const ConnectionConfig = () => {
                     <Typography variant="body2" color="textSecondary">
                         Última atualização: {whatsapp?.updatedAt ? new Date(whatsapp.updatedAt).toLocaleString() : "N/A"}
                     </Typography>
+                    
+                    {whatsapp?.status === "CONNECTED" && whatsapp?.number && (
+                        <Box display="flex" alignItems="center" mt={2}>
+                             <Avatar 
+                                src={whatsapp.profilePicUrl} 
+                                alt={whatsapp.name}
+                                style={{ width: 50, height: 50, marginRight: 15 }}
+                             />
+                             <Box>
+                                <Typography variant="subtitle1" style={{ fontWeight: 600 }}>
+                                    {whatsapp.name}
+                                </Typography>
+                                <Typography variant="body1" color="textSecondary">
+                                    +{whatsapp.number}
+                                </Typography>
+                             </Box>
+                        </Box>
+                    )}
                 </Box>
             </Paper>
         );

@@ -13,7 +13,9 @@ import makeWASocket, {
   prepareWAMessageMedia,
   generateWAMessageFromContent,
   downloadMediaMessage,
-  fetchLatestBaileysVersion
+  fetchLatestBaileysVersion,
+  USyncQuery,
+  USyncUser
 } from "whaileys";
 import { Boom } from "@hapi/boom";
 import path from "path";
@@ -89,7 +91,65 @@ class SessionManager {
 
     try {
       logger.info(`Syncing contact ${payload.number} for session ${payload.sessionId}`);
-      const profilePicUrl = await session.socket.profilePictureUrl(`${payload.number}@c.us`, "image").catch(() => "");
+      
+      let jid = payload.lid || (payload.number.includes("@") ? payload.number : `${payload.number}@c.us`);
+      let foundLid = payload.lid;
+
+      // 1. Tenta buscar a foto diretamente (Otimista)
+      let profilePicUrl = await session.socket.profilePictureUrl(jid, "image").catch(() => null);
+
+      // 2. Se não encontrar, ou se não temos LID, tenta resolver
+      if (!profilePicUrl || (!foundLid && !payload.number.includes("@lid"))) {
+        // A. Verifica onWhatsApp (para PNs)
+        try {
+          // Só roda onWhatsApp se não for LID (LIDs não funcionam no onWhatsApp geralmente)
+          if (!jid.includes("@lid")) {
+             const [result] = await session.socket.onWhatsApp(jid);
+             if (result && result.exists) {
+                // Se retornou LID (algumas versões retornam), usa
+                if (result.lid) foundLid = result.lid;
+                
+                // Tenta buscar foto com JID confirmado
+                if (!profilePicUrl) {
+                   profilePicUrl = await session.socket.profilePictureUrl(result.jid, "image").catch(() => "");
+                }
+             }
+          }
+        } catch (err) {
+          logger.warn(`Error checking onWhatsApp for ${payload.number}:`, err);
+        }
+
+        // B. Se ainda não temos LID e é um número de telefone, tenta USync
+        if (!foundLid && !jid.includes("@lid")) {
+           try {
+              logger.info(`Attempting USync to resolve LID for ${payload.number}`);
+              const query = new USyncQuery()
+                .withMode("query")
+                .withUser(new USyncUser().withPhone(payload.number))
+                .withLIDProtocol();
+              
+              const result = await (session.socket as any).executeUSyncQuery(query);
+              if (result && result.list && result.list.length > 0) {
+                 const record = result.list[0];
+                 // Verifica se o protocolo LID retornou algo. 
+                 // Dependendo da versão do whaileys/baileys, o resultado pode estar em 'lid' ou dentro do protocolo.
+                 // Vamos logar para debug se necessário, mas assumir 'lid' no record ou no objeto protocols.
+                 // @ts-ignore
+                 if (record.lid) {
+                    foundLid = record.lid as string;
+                    logger.info(`USync resolved LID for ${payload.number}: ${foundLid}`);
+                 }
+              }
+           } catch (err) {
+              logger.warn(`Error executing USync for ${payload.number}:`, err);
+           }
+        }
+      }
+
+      // Se descobrimos um LID e não tínhamos foto, tenta buscar foto pelo LID (muitas vezes é a única forma pública)
+      if (foundLid && !profilePicUrl) {
+         profilePicUrl = await session.socket.profilePictureUrl(foundLid, "image").catch(() => "");
+      }
 
       const updateEvent: Envelope = {
         id: uuidv4(),
@@ -100,7 +160,8 @@ class SessionManager {
           sessionId: payload.sessionId,
           contactId: payload.contactId,
           number: payload.number,
-          profilePicUrl: profilePicUrl || null
+          profilePicUrl: profilePicUrl || null,
+          lid: foundLid || undefined
         }
       };
 
@@ -113,11 +174,15 @@ class SessionManager {
   private async stopSession(sessionId: number) {
     logger.info(`Stopping session ${sessionId}`);
     const session = this.sessions.get(sessionId);
-    if (!session) return;
-
+    
+    // Mesmo se não encontrar a sessão em memória (pode ter caído), forçamos a limpeza do diretório
     try {
-      await session.socket.end(undefined);
-      this.sessions.delete(sessionId);
+      if (session) {
+        await session.socket.end(undefined);
+        this.sessions.delete(sessionId);
+      }
+      
+      // Cleanup auth files is critical to ensure clean state
       await this.cleanupSession(sessionId);
     } catch (err) {
       logger.error(`Error stopping session ${sessionId}`, err);
@@ -135,6 +200,8 @@ class SessionManager {
     };
     await this.rabbitmq.publishEvent(`wbot.1.${sessionId}.session.status`, statusEvent);
   }
+
+
 
   private async startSession(payload: StartSessionPayload, tenantId: string | number) {
     logger.info(`Starting session ${payload.sessionId}`);
@@ -284,6 +351,19 @@ class SessionManager {
           const session = this.sessions.get(payload.sessionId);
           if (session) session.status = "CONNECTED";
 
+          let number = "";
+          let profilePicUrl = "";
+
+          try {
+             const userJid = sock.user?.id;
+             if (userJid) {
+                 number = userJid.split(":")[0]; // Handle JID format
+                 profilePicUrl = (await sock.profilePictureUrl(userJid, "image").catch(() => "")) || "";
+             }
+          } catch (error) {
+             logger.warn(`Failed to fetch profile info for session ${payload.sessionId}`, error);
+          }
+
           const statusEvent: Envelope = {
             id: uuidv4(),
             timestamp: Date.now(),
@@ -291,7 +371,9 @@ class SessionManager {
             type: "session.status",
             payload: {
               sessionId: payload.sessionId,
-              status: "CONNECTED"
+              status: "CONNECTED",
+              number,
+              profilePicUrl
             }
           };
           await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);

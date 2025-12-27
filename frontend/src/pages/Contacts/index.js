@@ -87,6 +87,9 @@ const useStyles = makeStyles((theme) => ({
 
 // Status baseado na presença de LID
 const getContactStatus = (contact) => {
+  if (contact.isGroup || contact.number?.includes("@g.us")) {
+    return { label: "Grupo", color: "info" };
+  }
   if (contact.lid) {
     return { label: "Verificado", color: "success" };
   }
