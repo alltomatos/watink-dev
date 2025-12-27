@@ -2,6 +2,8 @@ import User from "../../models/User";
 import AppError from "../../errors/AppError";
 import Queue from "../../models/Queue";
 import Whatsapp from "../../models/Whatsapp";
+import Group from "../../models/Group";
+import Permission from "../../models/Permission";
 
 const ShowUserService = async (id: string | number): Promise<User> => {
   const user = await User.findByPk(id, {
@@ -13,9 +15,17 @@ const ShowUserService = async (id: string | number): Promise<User> => {
       "tokenVersion",
       "whatsappId"
     ],
+
+
     include: [
       { model: Queue, as: "queues", attributes: ["id", "name", "color"] },
-      { model: Whatsapp, as: "whatsapp", attributes: ["id", "name"] }
+      { model: Whatsapp, as: "whatsapp", attributes: ["id", "name"] },
+      {
+        model: Group,
+        as: "group",
+        include: [{ model: Permission, as: "permissions", attributes: ["id", "name"] }]
+      },
+      { model: Permission, as: "permissions", attributes: ["id", "name"] }
     ],
     order: [[{ model: Queue, as: "queues" }, "name", "asc"]]
   });

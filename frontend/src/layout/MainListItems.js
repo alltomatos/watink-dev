@@ -11,6 +11,8 @@ import DashboardOutlinedIcon from "@material-ui/icons/DashboardOutlined";
 import ListAltIcon from "@material-ui/icons/ListAlt";
 import WhatsAppIcon from "@material-ui/icons/WhatsApp";
 import SyncAltIcon from "@material-ui/icons/SyncAlt";
+import GroupIcon from "@material-ui/icons/Group";
+import HelpOutlineIcon from "@material-ui/icons/HelpOutline";
 import SettingsOutlinedIcon from "@material-ui/icons/SettingsOutlined";
 import PeopleAltOutlinedIcon from "@material-ui/icons/PeopleAltOutlined";
 import ContactPhoneOutlinedIcon from "@material-ui/icons/ContactPhoneOutlined";
@@ -150,6 +152,20 @@ const MainListItems = (props) => {
         iconColor={googleColors.blue}
         collapsed={collapsed}
       />
+      <Can
+        role={user.profile}
+        perform="view_groups"
+        yes={() => (
+          <ListItemLink
+            to="/groups"
+            primary={i18n.t("mainDrawer.listItems.groups")}
+            icon={<GroupIcon />}
+            iconColor={googleColors.teal}
+            collapsed={collapsed}
+          />
+        )}
+      />
+
       <Can
         role={user.profile}
         perform="drawer-admin-items:view"

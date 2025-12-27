@@ -22,6 +22,23 @@ O projeto evoluiu de um monolito para uma arquitetura distribuída orientada a e
     *   **Engine Enterprise**: Go com **WhatsMeow** (Alta performance).
 4.  **Message Broker**: **RabbitMQ** para comunicação assíncrona entre Backend e Engines.
 5.  **Database**: PostgreSQL com extensões **PostGIS** e **pgvector**.
+6.  **RBAC**: Sistema de controle de acesso granular baseado em Grupos e Permissões.
+
+---
+
+## 🔐 Controle de Acesso (RBAC)
+
+O sistema utiliza um modelo de RBAC (Role-Based Access Control) granular e multi-tenant.
+
+### Estrutura
+1.  **Users**: Pertencem a um `Group` e podem ter `UserPermissions` individuais.
+2.  **Groups**: Conjunto de `Permissions` atribuídas a múltiplos usuários.
+3.  **Permissions**: Ações atômicas (ex: `view_tickets`, `user-modal:editProfile`).
+
+### Implementação
+*   **Backend**: Middleware `checkPermission` verifica as permissões combinadas (Grupo + Individuais) do usuário autenticado.
+*   **Frontend**: Componente `<Can perform="permissao" />` e hook `useAuth` controlam a renderização de elementos protegidos.
+*   **Super Admin**: Usuários com `profile: "admin"` possuem acesso irrestrito (fallback).
 
 ---
 
