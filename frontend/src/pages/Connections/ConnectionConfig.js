@@ -14,7 +14,11 @@ import {
     CardContent,
     Avatar,
     Tooltip,
-    TextField
+    TextField,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
 } from "@material-ui/core";
 import {
     ArrowBack,
@@ -111,6 +115,7 @@ const ConnectionConfig = () => {
     const [showPairingInput, setShowPairingInput] = useState(false);
     const [connectionStarted, setConnectionStarted] = useState(false);
     const [showQrCode, setShowQrCode] = useState(false);
+    const [inputPairingModalOpen, setInputPairingModalOpen] = useState(false);
 
     const fetchWhatsapp = useCallback(async () => {
         try {
@@ -188,8 +193,7 @@ const ConnectionConfig = () => {
     };
 
     const handleShowPairing = () => {
-        setShowPairingInput(true);
-        setShowQrCode(false);
+        setInputPairingModalOpen(true);
     };
 
     const handleRequestPairingCode = async () => {
@@ -204,6 +208,9 @@ const ConnectionConfig = () => {
                 usePairingCode: true,
                 phoneNumber: phoneNumber.replace(/\D/g, "")
             });
+            setInputPairingModalOpen(false);
+            setShowPairingInput(true);
+            setShowQrCode(false);
         } catch (err) {
             toastError(err);
             setPairingLoading(false);
@@ -305,6 +312,38 @@ const ConnectionConfig = () => {
                 whatsAppId={parseInt(whatsappId)}
             />
 
+            <Dialog open={inputPairingModalOpen} onClose={() => setInputPairingModalOpen(false)}>
+                <DialogTitle>Número para Pareamento</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1" gutterBottom>
+                        Digite o número do telefone com DDD (Ex: 5585999999999):
+                    </Typography>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Número do Telefone"
+                        placeholder="5585999999999"
+                        fullWidth
+                        variant="outlined"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setInputPairingModalOpen(false)} color="secondary">
+                        Cancelar
+                    </Button>
+                    <Button 
+                        onClick={handleRequestPairingCode} 
+                        color="primary" 
+                        variant="contained"
+                        disabled={!phoneNumber || phoneNumber.length < 10}
+                    >
+                        Gerar Código
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
             <div className={classes.header}>
                 <Box display="flex" alignItems="center">
                     <IconButton onClick={() => history.push("/connections")}>
@@ -374,31 +413,16 @@ const ConnectionConfig = () => {
                                 </>
                             )}
 
-                            {/* Inline Pairing Code Input */}
+                            {/* Inline Pairing Code Input - Now just displays the code */}
                             {showPairingInput && (!whatsapp.status || whatsapp.status === "DISCONNECTED" || whatsapp.status === "TIMEOUT" || whatsapp.status === "OPENING" || whatsapp.status === "PAIRING") && (
                                 <Box className={classes.qrCodeContainer} style={{ width: "100%" }}>
-                                    <Typography variant="body1" gutterBottom>
-                                        Digite o número do telefone para parear:
-                                    </Typography>
-                                    <TextField
-                                        label="Número do Telefone"
-                                        placeholder="5585999999999"
-                                        variant="outlined"
-                                        size="small"
-                                        value={phoneNumber}
-                                        onChange={(e) => setPhoneNumber(e.target.value)}
-                                        disabled={pairingLoading || pairingCode}
-                                        style={{ marginBottom: 16, width: 250 }}
-                                    />
                                     {!pairingCode && (
-                                        <Button
-                                            variant="contained"
-                                            color="primary"
-                                            onClick={handleRequestPairingCode}
-                                            disabled={pairingLoading || !phoneNumber}
-                                        >
-                                            {pairingLoading ? <CircularProgress size={24} /> : "GERAR CÓDIGO"}
-                                        </Button>
+                                        <Box display="flex" flexDirection="column" alignItems="center">
+                                            <CircularProgress size={40} />
+                                            <Typography variant="body1" style={{ marginTop: 20 }}>
+                                                Solicitando código de pareamento...
+                                            </Typography>
+                                        </Box>
                                     )}
                                     {pairingCode && (
                                         <Box textAlign="center" mt={2}>
