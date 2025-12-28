@@ -57,7 +57,7 @@ services:
       replicas: 1
 
   whaileys-engine:
-    image: watic-premium/engine:1.0.36
+    image: watic-premium/engine:1.0.37
     environment:
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
     networks:
@@ -76,7 +76,7 @@ services:
           memory: 1024M
 
   flow-engine-worker:
-    image: watic-premium/backend:1.3.20
+    image: watic-premium/backend:1.3.21
     command: ["node", "dist/src/flow-worker.js"]
     environment:
       - DB_DIALECT=postgres
