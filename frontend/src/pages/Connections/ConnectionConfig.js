@@ -156,16 +156,23 @@ const ConnectionConfig = () => {
         };
     }, [whatsappId]);
 
-    const handleStartSession = async (usePairingCode = false) => {
+    const handleStartSession = async () => {
         try {
-            if (usePairingCode) {
-                setShowPairingInput(true);
-            } else {
-                await api.post(`/whatsappsession/${whatsappId}`, { usePairingCode: false });
-            }
+            await api.post(`/whatsappsession/${whatsappId}`, { usePairingCode: false });
+            setConnectionStarted(true);
         } catch (err) {
             toastError(err);
         }
+    };
+
+    const handleShowQrCode = () => {
+        setShowQrCode(true);
+        setShowPairingInput(false);
+    };
+
+    const handleShowPairing = () => {
+        setShowPairingInput(true);
+        setShowQrCode(false);
     };
 
     const handleRequestPairingCode = async () => {

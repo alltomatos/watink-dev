@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: watic-premium/backend:1.3.20
+    image: watic-premium/backend:1.3.22
     environment:
       - DB_DIALECT=postgres
       - DB_HOST=postgres
@@ -14,7 +14,7 @@ services:
       - JWT_SECRET=3123123213123
       - JWT_REFRESH_SECRET=75756756756
       - FRONTEND_URL=http://localhost
-      - ENGINE_VERSION=1.0.35
+      - ENGINE_VERSION=1.0.38
       - PORT=8080
       - NODE_OPTIONS=--max-old-space-size=800
     ports:
@@ -40,7 +40,7 @@ services:
           memory: 1024M
 
   frontend:
-    image: watic-premium/frontend:0.6.19
+    image: watic-premium/frontend:0.6.20
     environment:
       - URL_BACKEND=watic-premium_backend:8080
       - VITE_BACKEND_URL=http://localhost:8080/
@@ -57,7 +57,7 @@ services:
       replicas: 1
 
   whaileys-engine:
-    image: watic-premium/engine:1.0.37
+    image: watic-premium/engine:1.0.39
     environment:
       - AMQP_URL=amqp://guest:guest@rabbitmq:5672
     networks:
@@ -76,7 +76,7 @@ services:
           memory: 1024M
 
   flow-engine-worker:
-    image: watic-premium/backend:1.3.21
+    image: watic-premium/backend:1.3.22
     command: ["node", "dist/src/flow-worker.js"]
     environment:
       - DB_DIALECT=postgres
