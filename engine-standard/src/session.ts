@@ -349,11 +349,21 @@ class SessionManager {
 
           if (pairingCodeRequested) return;
 
-          if (!sock.authState.creds.registered && (qr || connection === "connecting")) {
+          if (!sock.authState.creds.registered && qr) {
             pairingCodeRequested = true;
             await requestPairingCodeWithRetry();
           }
         });
+
+        // Fallback: Se não recebermos QR em 6s, tentar pedir o código
+        // Isso ajuda em casos onde o evento QR não é disparado imediatamente
+        setTimeout(async () => {
+             if (!pairingCodeRequested && !sock.authState.creds.registered) {
+                 logger.info(`Fallback: Requesting pairing code for session ${payload.sessionId} after timeout`);
+                 pairingCodeRequested = true;
+                 await requestPairingCodeWithRetry();
+             }
+        }, 6000);
       }
 
       sock.ev.on("connection.update", async (update: any) => {
