@@ -381,9 +381,9 @@ const ConnectionConfig = () => {
                         </Typography>
                         <Divider style={{ marginBottom: 20 }} />
 
-                        <Box display="flex" flexWrap="wrap">
+                        <Box display="flex" flexWrap="wrap" alignItems="center">
                             {/* Actions for DISCONNECTED, TIMEOUT, or invalid status */}
-                            {(!whatsapp.status || whatsapp.status !== "CONNECTED") && (
+                            {(!whatsapp.status || whatsapp.status !== "CONNECTED") && !showQrCode && !showPairingInput && (
                                 <>
                                     <Button
                                         variant="contained"
