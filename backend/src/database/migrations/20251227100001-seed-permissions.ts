@@ -21,7 +21,8 @@ module.exports = {
                 ...p,
                 createdAt: now,
                 updatedAt: now
-            }))
+            })),
+            { ignoreDuplicates: true } as any
         );
     },
 

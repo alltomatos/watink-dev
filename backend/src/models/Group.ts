@@ -34,7 +34,7 @@ class Group extends Model<Group> {
     @BelongsTo(() => Tenant)
     tenant: Tenant;
 
-    @HasMany(() => User)
+    @HasMany(() => User, { sourceKey: "id", foreignKey: "groupId", as: "users" })
     users: User[];
 
     @BelongsToMany(() => Permission, () => GroupPermission)

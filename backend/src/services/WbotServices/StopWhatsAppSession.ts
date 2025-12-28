@@ -2,13 +2,27 @@ import { v4 as uuidv4 } from "uuid";
 import { Envelope } from "../../microservice/contracts";
 import { logger } from "../../utils/logger";
 import RabbitMQService from "../RabbitMQService";
+import Whatsapp from "../../models/Whatsapp";
+import { getIO } from "../../libs/socket";
 
 const StopWhatsAppSession = async (whatsappId: number): Promise<void> => {
     try {
+        const whatsapp = await Whatsapp.findByPk(whatsappId);
+
+        if (whatsapp) {
+            await whatsapp.update({ status: "DISCONNECTED", qrcode: "" });
+
+            const io = getIO();
+            io.emit("whatsappSession", {
+                action: "update",
+                session: whatsapp
+            });
+        }
+
         const envelope: Envelope = {
             id: uuidv4(),
             timestamp: Date.now(),
-            tenantId: 1,
+            tenantId: whatsapp?.tenantId || 1,
             type: "session.stop",
             payload: {
                 sessionId: whatsappId
@@ -16,7 +30,7 @@ const StopWhatsAppSession = async (whatsappId: number): Promise<void> => {
         };
 
         // Use the routing key pattern wbot.tenantId.sessionId.command
-        await RabbitMQService.publishCommand(`wbot.1.${whatsappId}.session.stop`, envelope);
+        await RabbitMQService.publishCommand(`wbot.${whatsapp?.tenantId || 1}.${whatsappId}.session.stop`, envelope);
 
         logger.info(`Session stop command published for WhatsApp ID ${whatsappId}`);
 

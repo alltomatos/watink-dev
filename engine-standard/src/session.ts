@@ -29,6 +29,7 @@ interface WhaileysSession {
 class SessionManager {
   private sessions: Map<number, WhaileysSession> = new Map();
   private retries: Map<number, number> = new Map();
+  private manuallyDisconnected: Set<number> = new Set();
   private rabbitmq: RabbitMQ;
   private sessionsDir: string;
 
@@ -91,7 +92,7 @@ class SessionManager {
 
     try {
       logger.info(`Syncing contact ${payload.number} for session ${payload.sessionId}`);
-      
+
       let jid = payload.lid || (payload.number.includes("@") ? payload.number : `${payload.number}@c.us`);
       let foundLid = payload.lid;
 
@@ -104,16 +105,16 @@ class SessionManager {
         try {
           // Só roda onWhatsApp se não for LID (LIDs não funcionam no onWhatsApp geralmente)
           if (!jid.includes("@lid")) {
-             const [result] = await session.socket.onWhatsApp(jid);
-             if (result && result.exists) {
-                // Se retornou LID (algumas versões retornam), usa
-                if (result.lid) foundLid = result.lid;
-                
-                // Tenta buscar foto com JID confirmado
-                if (!profilePicUrl) {
-                   profilePicUrl = await session.socket.profilePictureUrl(result.jid, "image").catch(() => "");
-                }
-             }
+            const [result] = await session.socket.onWhatsApp(jid);
+            if (result && result.exists) {
+              // Se retornou LID (algumas versões retornam), usa
+              if (result.lid) foundLid = result.lid;
+
+              // Tenta buscar foto com JID confirmado
+              if (!profilePicUrl) {
+                profilePicUrl = await session.socket.profilePictureUrl(result.jid, "image").catch(() => "");
+              }
+            }
           }
         } catch (err) {
           logger.warn(`Error checking onWhatsApp for ${payload.number}:`, err);
@@ -121,34 +122,34 @@ class SessionManager {
 
         // B. Se ainda não temos LID e é um número de telefone, tenta USync
         if (!foundLid && !jid.includes("@lid")) {
-           try {
-              logger.info(`Attempting USync to resolve LID for ${payload.number}`);
-              const query = new USyncQuery()
-                .withMode("query")
-                .withUser(new USyncUser().withPhone(payload.number))
-                .withLIDProtocol();
-              
-              const result = await (session.socket as any).executeUSyncQuery(query);
-              if (result && result.list && result.list.length > 0) {
-                 const record = result.list[0];
-                 // Verifica se o protocolo LID retornou algo. 
-                 // Dependendo da versão do whaileys/baileys, o resultado pode estar em 'lid' ou dentro do protocolo.
-                 // Vamos logar para debug se necessário, mas assumir 'lid' no record ou no objeto protocols.
-                 // @ts-ignore
-                 if (record.lid) {
-                    foundLid = record.lid as string;
-                    logger.info(`USync resolved LID for ${payload.number}: ${foundLid}`);
-                 }
+          try {
+            logger.info(`Attempting USync to resolve LID for ${payload.number}`);
+            const query = new USyncQuery()
+              .withMode("query")
+              .withUser(new USyncUser().withPhone(payload.number))
+              .withLIDProtocol();
+
+            const result = await (session.socket as any).executeUSyncQuery(query);
+            if (result && result.list && result.list.length > 0) {
+              const record = result.list[0];
+              // Verifica se o protocolo LID retornou algo. 
+              // Dependendo da versão do whaileys/baileys, o resultado pode estar em 'lid' ou dentro do protocolo.
+              // Vamos logar para debug se necessário, mas assumir 'lid' no record ou no objeto protocols.
+              // @ts-ignore
+              if (record.lid) {
+                foundLid = record.lid as string;
+                logger.info(`USync resolved LID for ${payload.number}: ${foundLid}`);
               }
-           } catch (err) {
-              logger.warn(`Error executing USync for ${payload.number}:`, err);
-           }
+            }
+          } catch (err) {
+            logger.warn(`Error executing USync for ${payload.number}:`, err);
+          }
         }
       }
 
       // Se descobrimos um LID e não tínhamos foto, tenta buscar foto pelo LID (muitas vezes é a única forma pública)
       if (foundLid && !profilePicUrl) {
-         profilePicUrl = await session.socket.profilePictureUrl(foundLid, "image").catch(() => "");
+        profilePicUrl = await session.socket.profilePictureUrl(foundLid, "image").catch(() => "");
       }
 
       const updateEvent: Envelope = {
@@ -174,14 +175,17 @@ class SessionManager {
   private async stopSession(sessionId: number) {
     logger.info(`Stopping session ${sessionId}`);
     const session = this.sessions.get(sessionId);
-    
+
     // Mesmo se não encontrar a sessão em memória (pode ter caído), forçamos a limpeza do diretório
     try {
+      // Mark as manually disconnected to prevent auto-reconnect
+      this.manuallyDisconnected.add(sessionId);
+
       if (session) {
         await session.socket.end(undefined);
         this.sessions.delete(sessionId);
       }
-      
+
       // Cleanup auth files is critical to ensure clean state
       await this.cleanupSession(sessionId);
     } catch (err) {
@@ -222,7 +226,7 @@ class SessionManager {
     try {
       if (this.sessions.has(payload.sessionId)) {
         logger.info(`Session ${payload.sessionId} already exists`);
-        
+
         const session = this.sessions.get(payload.sessionId);
         const currentStatus = session?.status === "CONNECTED" ? "CONNECTED" : "OPENING";
 
@@ -245,6 +249,12 @@ class SessionManager {
         this.retries.set(payload.sessionId, 0);
       }
 
+      // If using pairing code, always start with clean auth to avoid 401 errors
+      if (payload.usePairingCode && payload.phoneNumber) {
+        logger.info(`Pairing code requested for session ${payload.sessionId}, cleaning up old auth files...`);
+        await this.cleanupSession(payload.sessionId);
+      }
+
       const { state, saveCreds } = await useMultiFileAuthState(
         path.join(this.sessionsDir, `session-${payload.sessionId}`)
       );
@@ -257,10 +267,10 @@ class SessionManager {
         auth: state,
         printQRInTerminal: false,
         logger: logger.child({ level: "warn" }) as any,
-        browser: [payload.name || "Watic Premium", "Chrome", "143.0.7499.148"],
-        syncFullHistory: payload.syncHistory === true,
+        browser: ["Mac OS", "Chrome", "121.0.6167.85"],
+        syncFullHistory: payload.syncHistory || false,
         connectTimeoutMs: 60000,
-        keepAliveIntervalMs: 10000,
+        keepAliveIntervalMs: 30000,
         retryRequestDelayMs: 2000
       });
 
@@ -268,17 +278,27 @@ class SessionManager {
 
       sock.ev.on("creds.update", saveCreds);
 
-      // Se usePairingCode e phoneNumber foram fornecidos, solicitar código de pareamento
-      if (payload.usePairingCode && payload.phoneNumber) {
-        // Aguardar conexão estar pronta para solicitar código
-        sock.ev.on("connection.update", async (update: any) => {
-          if (update.connection === "open") return;
 
-          // Só solicitar pairing code se ainda não conectou
-          if (!sock.authState.creds.registered) {
+      // Se usePairingCode e phoneNumber foram fornecidos, solicitar código de pareamento
+      if (payload.usePairingCode && payload.phoneNumber && !sock.authState.creds.registered) {
+        let pairingCodeRequested = false;
+        const MAX_RETRIES = 5;
+        const RETRY_DELAY_MS = 5000;
+
+        const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+        const requestPairingCodeWithRetry = async () => {
+          let lastError: any = null;
+
+          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
-              logger.info(`Requesting pairing code for session ${payload.sessionId} - Phone: ${payload.phoneNumber}`);
+              logger.info(`Requesting pairing code for session ${payload.sessionId} - Phone: ${payload.phoneNumber} (attempt ${attempt}/${MAX_RETRIES})`);
               const code = await sock.requestPairingCode(payload.phoneNumber!);
+
+              // Format code as XXXX-XXXX
+              const formattedCode = code ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
+
+              logger.info(`Pairing code generated for session ${payload.sessionId}: ${formattedCode}`);
 
               const pairingEvent: Envelope = {
                 id: uuidv4(),
@@ -287,13 +307,51 @@ class SessionManager {
                 type: "session.pairingcode",
                 payload: {
                   sessionId: payload.sessionId,
-                  pairingCode: code
+                  pairingCode: formattedCode
                 }
               };
               await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.pairingcode`, pairingEvent);
-            } catch (error) {
-              logger.error(`Error requesting pairing code for session ${payload.sessionId}`, error);
+              return; // Success, exit function
+
+            } catch (error: any) {
+              lastError = error;
+              logger.warn(`Attempt ${attempt}/${MAX_RETRIES} failed for pairing code: ${error.message}`);
+
+              // Rate limit - don't retry
+              if (error.message?.includes("rate-overlimit")) {
+                logger.error(`Rate limit reached for session ${payload.sessionId}, not retrying.`);
+                break;
+              }
+
+              // Connection Closed - wait and retry
+              if (error.message?.includes("Connection Closed") && attempt < MAX_RETRIES) {
+                logger.info(`Waiting ${RETRY_DELAY_MS}ms before retry...`);
+                await delay(RETRY_DELAY_MS);
+                continue;
+              }
+
+              // Last attempt - break
+              if (attempt === MAX_RETRIES) {
+                break;
+              }
+
+              // Other errors - wait shorter and retry
+              await delay(2000);
             }
+          }
+
+          logger.error(`Error requesting pairing code for session ${payload.sessionId} after ${MAX_RETRIES} attempts`, lastError);
+          pairingCodeRequested = false; // Reset on error to allow retry
+        };
+
+        sock.ev.on("connection.update", async (update: any) => {
+          const { connection, qr } = update;
+
+          if (pairingCodeRequested) return;
+
+          if (!sock.authState.creds.registered && (qr || connection === "connecting")) {
+            pairingCodeRequested = true;
+            await requestPairingCodeWithRetry();
           }
         });
       }
@@ -301,7 +359,7 @@ class SessionManager {
       sock.ev.on("connection.update", async (update: any) => {
         const { connection, lastDisconnect, qr } = update;
 
-        if (qr) {
+        if (qr && !payload.usePairingCode) {
           logger.info(`QR Code generated for session ${payload.sessionId}`);
           const qrEvent: Envelope = {
             id: uuidv4(),
@@ -318,32 +376,57 @@ class SessionManager {
         }
 
         if (connection === "close") {
-          const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+          const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
           const currentRetries = this.retries.get(payload.sessionId) || 0;
-          
-          logger.warn(`Connection closed for session ${payload.sessionId}, reconnecting: ${shouldReconnect}, attempt: ${currentRetries}`);
+          const wasManuallyDisconnected = this.manuallyDisconnected.has(payload.sessionId);
+
+          // Status codes that should NOT trigger auto-reconnect
+          const noRetryCodes = [
+            DisconnectReason.loggedOut,      // 401 - User logged out
+            DisconnectReason.forbidden,      // 403 - Banned
+            DisconnectReason.badSession      // 500 - Auth file corrupted
+          ];
+
+          const shouldReconnect = statusCode === undefined || !noRetryCodes.includes(statusCode);
+
+          logger.warn(`Connection closed for session ${payload.sessionId}, statusCode: ${statusCode}, reconnecting: ${shouldReconnect}, manual: ${wasManuallyDisconnected}, attempt: ${currentRetries}`);
+
+          // Skip reconnection if manually disconnected
+          if (wasManuallyDisconnected) {
+            this.manuallyDisconnected.delete(payload.sessionId);
+            this.retries.delete(payload.sessionId);
+            this.sessions.delete(payload.sessionId);
+            logger.info(`Session ${payload.sessionId} was manually disconnected, skipping reconnection.`);
+            return;
+          }
+
+          // Cleanup auth on badSession to allow fresh start
+          if (statusCode === DisconnectReason.badSession) {
+            logger.warn(`Bad session detected for session ${payload.sessionId}, cleaning up auth files.`);
+            await this.cleanupSession(payload.sessionId);
+          }
 
           if (shouldReconnect && currentRetries < 5) {
-             this.retries.set(payload.sessionId, currentRetries + 1);
-             this.sessions.delete(payload.sessionId);
-             setTimeout(() => this.startSession(payload, tenantId), 3000 * (currentRetries + 1)); // Exponential backoff
+            this.retries.set(payload.sessionId, currentRetries + 1);
+            this.sessions.delete(payload.sessionId);
+            setTimeout(() => this.startSession(payload, tenantId), 3000 * (currentRetries + 1)); // Exponential backoff
           } else {
-             // Max retries reached or logged out
-             logger.error(`Session ${payload.sessionId} failed to connect after ${currentRetries} attempts or logged out.`);
-             this.retries.delete(payload.sessionId);
-             this.sessions.delete(payload.sessionId);
-             
-             const statusEvent: Envelope = {
-                id: uuidv4(),
-                timestamp: Date.now(),
-                tenantId,
-                type: "session.status",
-                payload: {
-                  sessionId: payload.sessionId,
-                  status: "DISCONNECTED"
-                }
-              };
-              await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
+            // Max retries reached or permanent error
+            logger.error(`Session ${payload.sessionId} failed to connect after ${currentRetries} attempts or permanent error (code: ${statusCode}).`);
+            this.retries.delete(payload.sessionId);
+            this.sessions.delete(payload.sessionId);
+
+            const statusEvent: Envelope = {
+              id: uuidv4(),
+              timestamp: Date.now(),
+              tenantId,
+              type: "session.status",
+              payload: {
+                sessionId: payload.sessionId,
+                status: "DISCONNECTED"
+              }
+            };
+            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
           }
         } else if (connection === "open") {
           logger.info(`Session ${payload.sessionId} opened`);
@@ -355,13 +438,13 @@ class SessionManager {
           let profilePicUrl = "";
 
           try {
-             const userJid = sock.user?.id;
-             if (userJid) {
-                 number = userJid.split(":")[0]; // Handle JID format
-                 profilePicUrl = (await sock.profilePictureUrl(userJid, "image").catch(() => "")) || "";
-             }
+            const userJid = sock.user?.id;
+            if (userJid) {
+              number = userJid.split(":")[0]; // Handle JID format
+              profilePicUrl = (await sock.profilePictureUrl(userJid, "image").catch(() => "")) || "";
+            }
           } catch (error) {
-             logger.warn(`Failed to fetch profile info for session ${payload.sessionId}`, error);
+            logger.warn(`Failed to fetch profile info for session ${payload.sessionId}`, error);
           }
 
           const statusEvent: Envelope = {
@@ -381,9 +464,20 @@ class SessionManager {
       });
 
       sock.ev.on("messages.upsert", async ({ messages, type }: any) => {
-        if (type === "notify") {
+        if (type === "notify" || type === "append") {
+          const syncStartTimestamp = payload.syncHistory && payload.syncPeriod ? new Date(payload.syncPeriod).getTime() / 1000 : 0;
+
           for (const msg of messages) {
             if (!msg.message) continue;
+
+            // Strict History Sync Logic: Filter by Date
+            if (payload.syncHistory && syncStartTimestamp > 0) {
+              const msgTimestamp = typeof msg.messageTimestamp === "number" ? msg.messageTimestamp : (msg.messageTimestamp as any)?.low;
+              if (msgTimestamp && msgTimestamp < syncStartTimestamp) {
+                // Ignore messages older than requested start date
+                continue;
+              }
+            }
 
             // Check for media types
             const hasMedia = !!(
@@ -550,13 +644,17 @@ class SessionManager {
 
   private async cleanupSession(sessionId: number) {
     const sessionPath = path.join(this.sessionsDir, `session-${sessionId}`);
+    logger.info(`Attempting cleanup of session ${sessionId} at path: ${sessionPath}`);
+
     if (fs.existsSync(sessionPath)) {
       try {
         fs.rmSync(sessionPath, { recursive: true, force: true });
-        logger.info(`Cleaned up session files for ${sessionId}`);
+        logger.info(`Successfully cleaned up session files for ${sessionId}`);
       } catch (err) {
         logger.error(`Error cleaning up session ${sessionId}:`, err);
       }
+    } else {
+      logger.info(`No existing session files to cleanup for session ${sessionId}`);
     }
   }
 

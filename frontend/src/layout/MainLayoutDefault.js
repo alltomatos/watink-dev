@@ -79,6 +79,8 @@ const useStyles = makeStyles((theme) => ({
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
         }),
+        display: "flex",
+        flexDirection: "column",
     },
     drawerPaperClose: {
         overflowX: "hidden",
@@ -90,6 +92,8 @@ const useStyles = makeStyles((theme) => ({
         [theme.breakpoints.up("sm")]: {
             width: theme.spacing(9),
         },
+        display: "flex",
+        flexDirection: "column",
     },
     appBarSpacer: {
         minHeight: "48px",
@@ -254,7 +258,7 @@ const MainLayoutDefault = ({ children }) => {
                     ) : null}
                 </Box>
                 <Divider />
-                <List style={{ flexGrow: 1 }}>
+                <List style={{ flexGrow: 1, overflowY: "auto", overflowX: "hidden" }}>
                     <MainListItems drawerClose={drawerClose} collapsed={!drawerOpen} />
                 </List>
                 <Divider />

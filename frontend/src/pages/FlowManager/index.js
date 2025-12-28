@@ -186,7 +186,6 @@ const FlowManager = () => {
                             select
                             fullWidth
                             margin="dense"
-                            label="Selecione uma Conexão"
                             value={selectedWhatsapp}
                             onChange={(e) => setSelectedWhatsapp(e.target.value)}
                             SelectProps={{
