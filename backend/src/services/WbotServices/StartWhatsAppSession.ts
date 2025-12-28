@@ -8,7 +8,8 @@ import { Envelope } from "../../microservice/contracts";
 export const StartWhatsAppSession = async (
   whatsapp: Whatsapp,
   usePairingCode?: boolean,
-  phoneNumber?: string
+  phoneNumber?: string,
+  force?: boolean // New param
 ): Promise<void> => {
   await whatsapp.update({ status: "OPENING" });
   logger.info(`StartWhatsAppSession called for session ${whatsapp.id}`);
@@ -31,7 +32,8 @@ export const StartWhatsAppSession = async (
         phoneNumber,
         name: whatsapp.name,
         syncHistory: whatsapp.syncHistory,
-        syncPeriod: whatsapp.syncPeriod
+        syncPeriod: whatsapp.syncPeriod,
+        force // Pass force flag
       }
     };
 
