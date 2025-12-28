@@ -9,7 +9,10 @@ const store = async (req: Request, res: Response): Promise<Response> => {
   const { usePairingCode, phoneNumber } = req.body;
   const whatsapp = await ShowWhatsAppService(whatsappId);
 
-  StartWhatsAppSession(whatsapp, usePairingCode, phoneNumber);
+  // If using pairing code, we force restart the session to ensure clean state
+  const force = !!usePairingCode;
+
+  StartWhatsAppSession(whatsapp, usePairingCode, phoneNumber, force);
 
   return res.status(200).json({ message: "Starting session." });
 };
@@ -23,7 +26,10 @@ const update = async (req: Request, res: Response): Promise<Response> => {
     whatsappData: { session: "" }
   });
 
-  StartWhatsAppSession(whatsapp, usePairingCode, phoneNumber);
+  // For update/reconnect, we generally force
+  const force = true;
+
+  StartWhatsAppSession(whatsapp, usePairingCode, phoneNumber, force);
 
   return res.status(200).json({ message: "Starting session." });
 };
