@@ -173,15 +173,28 @@ const ConnectionConfig = () => {
     }, [whatsappId]);
 
     useEffect(() => {
-        if (whatsapp?.status && whatsapp.status !== "DISCONNECTED" && whatsapp.status !== "TIMEOUT" && whatsapp.status !== "CONNECTED") {
-            setConnectionStarted(true);
+        if (whatsapp?.status && whatsapp.status === "QRCODE") {
+             // Only enable buttons when status is QRCODE (Ready to scan/pair)
+             // But DO NOT auto-show QR Code or Pairing input yet.
+             setConnectionStarted(true);
+        } else if (whatsapp?.status === "CONNECTED") {
+             // If connected, reset everything
+             setConnectionStarted(false);
+             setShowQrCode(false);
+             setShowPairingInput(false);
+        } else if (whatsapp?.status === "DISCONNECTED" || whatsapp?.status === "TIMEOUT") {
+            // If disconnected, reset
+            setConnectionStarted(false);
+            setShowQrCode(false);
+            setShowPairingInput(false);
         }
+        // For OPENING, we just wait.
     }, [whatsapp]);
 
     const handleStartSession = async () => {
         try {
             await api.post(`/whatsappsession/${whatsappId}`, { usePairingCode: false });
-            setConnectionStarted(true);
+            // Do NOT setConnectionStarted(true) immediately. Wait for status update.
         } catch (err) {
             toastError(err);
         }
@@ -377,7 +390,7 @@ const ConnectionConfig = () => {
                                         color="primary"
                                         className={classes.actionButton}
                                         onClick={handleStartSession}
-                                        disabled={connectionStarted || (whatsapp.status && whatsapp.status !== "DISCONNECTED" && whatsapp.status !== "TIMEOUT")}
+                                        disabled={whatsapp.status === "OPENING" || whatsapp.status === "QRCODE" || whatsapp.status === "PAIRING"}
                                         startIcon={<PowerSettingsNew />}
                                     >
                                         CONECTAR
@@ -458,7 +471,7 @@ const ConnectionConfig = () => {
                             {/* Actions for OPENING (only show if not in pairing mode) */}
                             {whatsapp.status === "OPENING" && !showPairingInput && (
                                 <Typography variant="body1">
-                                    Conectando ao WhatsApp... Aguarde.
+                                    Iniciando sessão... Aguarde o status mudar para QR Code.
                                 </Typography>
                             )}
 
