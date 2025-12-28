@@ -35,7 +35,7 @@ export const StartWhatsAppSession = async (
       }
     };
 
-    await RabbitMQService.publishCommand(`wbot.1.${whatsapp.id}.session.start`, command);
+    await RabbitMQService.publishCommand(`wbot.${whatsapp.tenantId}.${whatsapp.id}.session.start`, command);
     logger.info(`Session start command published for session ${whatsapp.id}`);
   } catch (err) {
     logger.error(err);

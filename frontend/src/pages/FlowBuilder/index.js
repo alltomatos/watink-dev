@@ -10,6 +10,7 @@ import ReactFlow, {
     getConnectedEdges
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import './flowbuilder.css';
 
 import { makeStyles } from '@material-ui/core/styles';
 import { Paper, IconButton, Tooltip, Button, CircularProgress, Switch, FormControlLabel } from '@material-ui/core';
@@ -129,6 +130,25 @@ const FlowBuilder = () => {
     // Estado para informações do fluxo (ativo/inativo)
     const [flowInfo, setFlowInfo] = useState({ name: '', isActive: true });
     const [simulatorOpen, setSimulatorOpen] = useState(false);
+    const [aiEnabled, setAiEnabled] = useState(false);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const { data } = await api.get("/settings");
+                const aiEnabledSetting = data.find(s => s.key === "aiEnabled");
+                if (aiEnabledSetting && aiEnabledSetting.value === "true") {
+                    setAiEnabled(true);
+                } else {
+                    setAiEnabled(false);
+                    setIsChatOpen(false); // Force close if disabled
+                }
+            } catch (err) {
+                console.error("Erro ao carregar configurações:", err);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     // AutoSave Timer
     const saveTimeoutRef = useRef(null);
@@ -459,7 +479,7 @@ const FlowBuilder = () => {
                             </Tooltip>
                         </div>
 
-                        {!isChatOpen && (
+                        {!isChatOpen && aiEnabled && (
                             <Tooltip title="Abrir Chat IA">
                                 <IconButton
                                     className={classes.toggleButton}
@@ -474,14 +494,16 @@ const FlowBuilder = () => {
                 </ReactFlowProvider>
             </div>
 
-            <Paper className={`${classes.sidebar} ${!isChatOpen ? classes.sidebarCollapsed : ''}`} square elevation={3}>
-                <div style={{ display: 'flex', justifyContent: 'flex-start', padding: '5px' }}>
-                    <IconButton onClick={() => setIsChatOpen(false)} size="small">
-                        <ChevronRightIcon />
-                    </IconButton>
-                </div>
-                <FlowChat onFlowGenerated={handleAIResponse} />
-            </Paper>
+            {aiEnabled && (
+                <Paper className={`${classes.sidebar} ${!isChatOpen ? classes.sidebarCollapsed : ''}`} square elevation={3}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-start', padding: '5px' }}>
+                        <IconButton onClick={() => setIsChatOpen(false)} size="small">
+                            <ChevronRightIcon />
+                        </IconButton>
+                    </div>
+                    <FlowChat onFlowGenerated={handleAIResponse} />
+                </Paper>
+            )}
 
             {/* Sidebar de edição de nó */}
             <NodeEditorSidebar

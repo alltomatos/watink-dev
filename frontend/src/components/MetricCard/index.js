@@ -34,61 +34,84 @@ const useStyles = makeStyles((theme) => ({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        width: 48,
-        height: 48,
-        borderRadius: 12,
-        backgroundColor: (props) => props.bgColor || "#E3F2FD",
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        background: (props) => props.bgColor,
+        boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
     },
     label: {
         fontSize: "0.875rem",
-        fontWeight: 500,
+        fontWeight: 600,
         color: "#64748b",
         marginBottom: theme.spacing(0.5),
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
     },
     value: {
-        fontSize: "2.25rem",
-        fontWeight: 700,
-        color: "#1e293b",
+        fontSize: "2.5rem",
+        fontWeight: 800,
+        color: (props) => props.textColor || "#1e293b",
         lineHeight: 1.2,
     },
     footer: {
         display: "flex",
         alignItems: "center",
-        marginTop: theme.spacing(1),
+        marginTop: theme.spacing(2),
     },
     trendPositive: {
         display: "flex",
         alignItems: "center",
         fontSize: "0.75rem",
-        fontWeight: 600,
+        fontWeight: 700,
         color: "#10b981",
-        backgroundColor: "#d1fae5",
-        padding: "2px 8px",
-        borderRadius: 12,
+        backgroundColor: "rgba(16, 185, 129, 0.1)",
+        padding: "4px 10px",
+        borderRadius: 20,
     },
     trendNegative: {
         display: "flex",
         alignItems: "center",
         fontSize: "0.75rem",
-        fontWeight: 600,
+        fontWeight: 700,
         color: "#ef4444",
-        backgroundColor: "#fee2e2",
-        padding: "2px 8px",
-        borderRadius: 12,
+        backgroundColor: "rgba(239, 68, 68, 0.1)",
+        padding: "4px 10px",
+        borderRadius: 20,
     },
     trendIcon: {
-        fontSize: 14,
-        marginRight: 2,
+        fontSize: 16,
+        marginRight: 4,
     },
 }));
 
-// Mapeia cores do tema para valores RGB
+// Mapeia cores do tema para valores RGB e Gradients
 const colorMap = {
-    primary: { bg: "#E3F2FD", icon: "#1976d2" },
-    success: { bg: "#E8F5E9", icon: "#4caf50" },
-    warning: { bg: "#FFF3E0", icon: "#ff9800" },
-    error: { bg: "#FFEBEE", icon: "#f44336" },
-    info: { bg: "#E1F5FE", icon: "#03a9f4" },
+    primary: {
+        bg: "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)",
+        icon: "#1565C0",
+        text: "#0D47A1"
+    },
+    success: {
+        bg: "linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)",
+        icon: "#2E7D32",
+        text: "#1B5E20"
+    },
+    warning: {
+        bg: "linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)",
+        icon: "#EF6C00",
+        text: "#E65100"
+    },
+    error: {
+        bg: "linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%)",
+        icon: "#C62828",
+        text: "#B71C1C"
+    },
+    info: {
+        bg: "linear-gradient(135deg, #E1F5FE 0%, #B3E5FC 100%)",
+        icon: "#0277BD",
+        text: "#01579B"
+    },
 };
 
 /**
@@ -114,7 +137,7 @@ const MetricCard = ({
     ...rest
 }) => {
     const colors = colorMap[color] || colorMap.primary;
-    const classes = useStyles({ bgColor: colors.bg });
+    const classes = useStyles({ bgColor: colors.bg, textColor: colors.text });
 
     return (
         <Card className={clsx(classes.root, className)} {...rest}>
@@ -122,7 +145,7 @@ const MetricCard = ({
                 <div className={classes.header}>
                     <div className={classes.iconWrapper}>
                         {icon && React.cloneElement(icon, {
-                            style: { color: colors.icon, fontSize: 24 }
+                            style: { color: colors.icon, fontSize: 30 }
                         })}
                     </div>
                 </div>

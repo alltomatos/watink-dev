@@ -177,6 +177,10 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 											as={TextField}
 											label={i18n.t("whatsappModal.form.syncPeriod")}
 											name="syncPeriod"
+											type="date"
+											InputLabelProps={{
+												shrink: true,
+											}}
 											variant="outlined"
 											margin="dense"
 											className={classes.textField}

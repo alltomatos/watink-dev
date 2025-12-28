@@ -133,6 +133,52 @@ const GroupModal = ({ open, onClose, groupId }) => {
         }
     };
 
+    const categorizePermissions = (permissions) => {
+        const categories = {
+            "contacts": "Contatos",
+            "tickets": "Tickets",
+            "users": "Usuários",
+            "groups": "Grupos",
+            "quick_answers": "Respostas Rápidas",
+            "flows": "Flow Builder",
+            "knowledge_bases": "Base de Conhecimento",
+            "connections": "Conexões",
+            "queues": "Filas",
+            "settings": "Configurações",
+            "dashboard": "Dashboard",
+            "pipelines": "Pipelines",
+            "swagger": "Desenvolvedor"
+        };
+
+        const grouped = {};
+
+        permissions.forEach(permission => {
+            let category = "Outros";
+            for (const [key, label] of Object.entries(categories)) {
+                if (permission.name.includes(key) || permission.name.includes(key.replace("es", ""))) { // simple check
+                    category = label;
+                    if (permission.name.includes("admin_queues")) category = "Filas"; // prioritize specific
+                    if (permission.name.includes("admin_settings")) category = "Configurações";
+                    break;
+                }
+            }
+
+            // Clean up fallback for specific cases if loop didn't catch correctly
+            if (permission.name.includes("admin_queues")) category = "Filas";
+            if (permission.name.includes("admin_settings")) category = "Configurações";
+
+
+            if (!grouped[category]) {
+                grouped[category] = [];
+            }
+            grouped[category].push(permission);
+        });
+
+        return grouped;
+    };
+
+    const groupedPermissions = categorizePermissions(allPermissions);
+
     return (
         <div className={classes.root}>
             <Dialog
@@ -175,24 +221,28 @@ const GroupModal = ({ open, onClose, groupId }) => {
                                     />
                                 </div>
 
-                                <h3>{i18n.t("groupModal.form.permissions")}</h3>
-                                <Grid container spacing={2}>
-                                    {allPermissions.map(permission => (
-                                        <Grid item xs={12} sm={6} md={4} key={permission.id}>
-                                            <FormControlLabel
-                                                control={
-                                                    <Checkbox
-                                                        checked={selectedPermissions.includes(permission.id)}
-                                                        onChange={() => handlePermissionChange(permission.id)}
-                                                        name={`permission-${permission.id}`}
-                                                        color="primary"
+                                {Object.entries(groupedPermissions).map(([category, permissions]) => (
+                                    <div key={category} style={{ marginTop: 20 }}>
+                                        <h3 style={{ margin: "10px 0" }}>{category}</h3>
+                                        <Grid container spacing={2}>
+                                            {permissions.map(permission => (
+                                                <Grid item xs={12} sm={6} md={4} key={permission.id}>
+                                                    <FormControlLabel
+                                                        control={
+                                                            <Checkbox
+                                                                checked={selectedPermissions.includes(permission.id)}
+                                                                onChange={() => handlePermissionChange(permission.id)}
+                                                                name={`permission-${permission.id}`}
+                                                                color="primary"
+                                                            />
+                                                        }
+                                                        label={permission.description || permission.name}
                                                     />
-                                                }
-                                                label={permission.description || permission.name}
-                                            />
+                                                </Grid>
+                                            ))}
                                         </Grid>
-                                    ))}
-                                </Grid>
+                                    </div>
+                                ))}
 
                             </DialogContent>
                             <DialogActions>

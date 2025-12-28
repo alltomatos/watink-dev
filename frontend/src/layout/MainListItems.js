@@ -109,19 +109,31 @@ const MainListItems = (props) => {
 
   return (
     <div onClick={drawerClose}>
-      <ListItemLink
-        to="/"
-        primary="Estatísticas"
-        icon={<DashboardOutlinedIcon />}
-        iconColor={googleColors.blue}
-        collapsed={collapsed}
+      <Can
+        user={user}
+        perform="view_dashboard"
+        yes={() => (
+          <ListItemLink
+            to="/"
+            primary="Estatísticas"
+            icon={<DashboardOutlinedIcon />}
+            iconColor={googleColors.blue}
+            collapsed={collapsed}
+          />
+        )}
       />
-      <ListItemLink
-        to="/pipelines"
-        primary="Pipelines"
-        icon={<ListAltIcon />}
-        iconColor={googleColors.purple}
-        collapsed={collapsed}
+      <Can
+        user={user}
+        perform="view_pipelines"
+        yes={() => (
+          <ListItemLink
+            to="/pipelines"
+            primary="Pipelines"
+            icon={<ListAltIcon />}
+            iconColor={googleColors.purple}
+            collapsed={collapsed}
+          />
+        )}
       />
       <ListItemLink
         to="/tickets"
@@ -138,22 +150,43 @@ const MainListItems = (props) => {
         iconColor={googleColors.orange}
         collapsed={collapsed}
       />
-      <ListItemLink
-        to="/quickAnswers"
-        primary={i18n.t("mainDrawer.listItems.quickAnswers")}
-        icon={<QuestionAnswerOutlinedIcon />}
-        iconColor={googleColors.purple}
-        collapsed={collapsed}
-      />
-      <ListItemLink
-        to="/flowbuilder"
-        primary="Flow Builder"
-        icon={<DeviceHubIcon />}
-        iconColor={googleColors.blue}
-        collapsed={collapsed}
-      />
       <Can
-        role={user.profile}
+        user={user}
+        perform="view_quick_answers"
+        yes={() => (
+          <ListItemLink
+            to="/quickAnswers"
+            primary={i18n.t("mainDrawer.listItems.quickAnswers")}
+            icon={<QuestionAnswerOutlinedIcon />}
+            iconColor={googleColors.purple}
+            collapsed={collapsed}
+          />
+        )}
+      />
+
+      <Can
+        user={user}
+        perform="view_flows"
+        yes={() => (
+          <ListItemLink
+            to="/flowbuilder"
+            primary="Flow Builder"
+            icon={<DeviceHubIcon />}
+            iconColor={googleColors.blue}
+            collapsed={collapsed}
+          />
+        )}
+      />
+
+      <Divider />
+      {!collapsed && (
+        <ListSubheader inset>
+          {i18n.t("mainDrawer.listItems.administration")}
+        </ListSubheader>
+      )}
+
+      <Can
+        user={user}
         perform="view_groups"
         yes={() => (
           <ListItemLink
@@ -167,63 +200,90 @@ const MainListItems = (props) => {
       />
 
       <Can
-        role={user.profile}
-        perform="drawer-admin-items:view"
+        user={user}
+        perform="view_connections"
         yes={() => (
-          <>
-            <Divider />
-            {!collapsed && (
-              <ListSubheader inset>
-                {i18n.t("mainDrawer.listItems.administration")}
-              </ListSubheader>
-            )}
-            <ListItemLink
-              to="/connections"
-              primary={i18n.t("mainDrawer.listItems.connections")}
-              icon={
-                <Badge badgeContent={connectionWarning ? "!" : 0} color="error">
-                  <SyncAltIcon />
-                </Badge>
-              }
-              iconColor={googleColors.teal}
-              collapsed={collapsed}
-            />
-            <ListItemLink
-              to="/users"
-              primary={i18n.t("mainDrawer.listItems.users")}
-              icon={<PeopleAltOutlinedIcon />}
-              iconColor={googleColors.blue}
-              collapsed={collapsed}
-            />
-            <ListItemLink
-              to="/queues"
-              primary={i18n.t("mainDrawer.listItems.queues")}
-              icon={<AccountTreeOutlinedIcon />}
-              iconColor={googleColors.yellow}
-              collapsed={collapsed}
-            />
-            <ListItemLink
-              to="/knowledge-bases"
-              primary={i18n.t("knowledgeBase.menu")}
-              icon={<LibraryBooksIcon />}
-              iconColor={googleColors.orange}
-              collapsed={collapsed}
-            />
-            <ListItemLink
-              to="/settings"
-              primary={i18n.t("mainDrawer.listItems.settings")}
-              icon={<SettingsOutlinedIcon />}
-              iconColor={googleColors.red}
-              collapsed={collapsed}
-            />
-            <ListItemLink
-              to="/swagger"
-              primary="Swagger"
-              icon={<MenuBookIcon />}
-              iconColor={googleColors.pink}
-              collapsed={collapsed}
-            />
-          </>
+          <ListItemLink
+            to="/connections"
+            primary={i18n.t("mainDrawer.listItems.connections")}
+            icon={
+              <Badge badgeContent={connectionWarning ? "!" : 0} color="error">
+                <SyncAltIcon />
+              </Badge>
+            }
+            iconColor={googleColors.teal}
+            collapsed={collapsed}
+          />
+        )}
+      />
+
+      <Can
+        user={user}
+        perform="view_users"
+        yes={() => (
+          <ListItemLink
+            to="/users"
+            primary={i18n.t("mainDrawer.listItems.users")}
+            icon={<PeopleAltOutlinedIcon />}
+            iconColor={googleColors.blue}
+            collapsed={collapsed}
+          />
+        )}
+      />
+
+      <Can
+        user={user}
+        perform="view_admin_queues"
+        yes={() => (
+          <ListItemLink
+            to="/queues"
+            primary={i18n.t("mainDrawer.listItems.queues")}
+            icon={<AccountTreeOutlinedIcon />}
+            iconColor={googleColors.yellow}
+            collapsed={collapsed}
+          />
+        )}
+      />
+
+      <Can
+        user={user}
+        perform="view_knowledge_bases"
+        yes={() => (
+          <ListItemLink
+            to="/knowledge-bases"
+            primary={i18n.t("knowledgeBase.menu")}
+            icon={<LibraryBooksIcon />}
+            iconColor={googleColors.orange}
+            collapsed={collapsed}
+          />
+        )}
+      />
+
+      <Can
+        user={user}
+        perform="view_admin_settings"
+        yes={() => (
+          <ListItemLink
+            to="/settings"
+            primary={i18n.t("mainDrawer.listItems.settings")}
+            icon={<SettingsOutlinedIcon />}
+            iconColor={googleColors.red}
+            collapsed={collapsed}
+          />
+        )}
+      />
+
+      <Can
+        user={user}
+        perform="view_swagger"
+        yes={() => (
+          <ListItemLink
+            to="/swagger"
+            primary="Swagger"
+            icon={<MenuBookIcon />}
+            iconColor={googleColors.pink}
+            collapsed={collapsed}
+          />
         )}
       />
     </div>

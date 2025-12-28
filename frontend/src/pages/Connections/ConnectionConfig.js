@@ -13,7 +13,8 @@ import {
     Card,
     CardContent,
     Avatar,
-    Tooltip
+    Tooltip,
+    TextField
 } from "@material-ui/core";
 import {
     ArrowBack,
@@ -102,7 +103,12 @@ const ConnectionConfig = () => {
     const [pairingModalOpen, setPairingModalOpen] = useState(false);
     const [whatsappModalOpen, setWhatsAppModalOpen] = useState(false);
     const [confirmationOpen, setConfirmationOpen] = useState(false);
-    const [confirmationAction, setConfirmationAction] = useState(null); // 'disconnect' or 'delete'
+    const [confirmationAction, setConfirmationAction] = useState(null);
+    // Inline pairing code states
+    const [phoneNumber, setPhoneNumber] = useState("");
+    const [pairingCode, setPairingCode] = useState("");
+    const [pairingLoading, setPairingLoading] = useState(false);
+    const [showPairingInput, setShowPairingInput] = useState(false);
 
     const fetchWhatsapp = useCallback(async () => {
         try {
@@ -124,6 +130,18 @@ const ConnectionConfig = () => {
         socket.on("whatsappSession", (data) => {
             if (data.action === "update" && data.session.id === parseInt(whatsappId)) {
                 setWhatsapp(prev => ({ ...prev, ...data.session }));
+                // Handle pairing code received
+                if (data.session.pairingCode) {
+                    setPairingCode(data.session.pairingCode);
+                    setPairingLoading(false);
+                }
+                // Handle connection success - reset pairing state
+                if (data.session.status === "CONNECTED") {
+                    setShowPairingInput(false);
+                    setPairingCode("");
+                    setPhoneNumber("");
+                    setPairingLoading(false);
+                }
             }
         });
 
@@ -140,32 +158,51 @@ const ConnectionConfig = () => {
 
     const handleStartSession = async (usePairingCode = false) => {
         try {
-            await api.post(`/whatsappsession/${whatsappId}`, { usePairingCode });
             if (usePairingCode) {
-                setPairingModalOpen(true);
+                setShowPairingInput(true);
+            } else {
+                await api.post(`/whatsappsession/${whatsappId}`, { usePairingCode: false });
             }
         } catch (err) {
             toastError(err);
         }
     };
 
+    const handleRequestPairingCode = async () => {
+        if (!phoneNumber || phoneNumber.length < 10) {
+            toastError({ response: { data: { message: "Número de telefone inválido" } } });
+            return;
+        }
+        setPairingLoading(true);
+        setPairingCode("");
+        try {
+            await api.post(`/whatsappsession/${whatsappId}`, {
+                usePairingCode: true,
+                phoneNumber: phoneNumber.replace(/\D/g, "")
+            });
+        } catch (err) {
+            toastError(err);
+            setPairingLoading(false);
+        }
+    };
+
     const handleDisconnect = async () => {
         try {
             await api.delete(`/whatsappsession/${whatsappId}`);
-            setConfirmationOpen(false);
         } catch (err) {
             toastError(err);
         }
+        setConfirmationOpen(false);
     };
 
     const handleDelete = async () => {
         try {
             await api.delete(`/whatsapp/${whatsappId}`);
-            setConfirmationOpen(false);
             history.push("/connections");
         } catch (err) {
             toastError(err);
         }
+        setConfirmationOpen(false);
     };
 
     const renderStatus = () => {
@@ -190,22 +227,22 @@ const ConnectionConfig = () => {
                     <Typography variant="body2" color="textSecondary">
                         Última atualização: {whatsapp?.updatedAt ? new Date(whatsapp.updatedAt).toLocaleString() : "N/A"}
                     </Typography>
-                    
+
                     {whatsapp?.status === "CONNECTED" && whatsapp?.number && (
                         <Box display="flex" alignItems="center" mt={2}>
-                             <Avatar 
-                                src={whatsapp.profilePicUrl} 
+                            <Avatar
+                                src={whatsapp.profilePicUrl}
                                 alt={whatsapp.name}
                                 style={{ width: 50, height: 50, marginRight: 15 }}
-                             />
-                             <Box>
+                            />
+                            <Box>
                                 <Typography variant="subtitle1" style={{ fontWeight: 600 }}>
                                     {whatsapp.name}
                                 </Typography>
                                 <Typography variant="body1" color="textSecondary">
                                     +{whatsapp.number}
                                 </Typography>
-                             </Box>
+                            </Box>
                         </Box>
                     )}
                 </Box>
@@ -301,10 +338,67 @@ const ConnectionConfig = () => {
                                 </>
                             )}
 
-                            {/* Actions for OPENING */}
-                            {whatsapp.status === "OPENING" && (
+                            {/* Inline Pairing Code Input */}
+                            {showPairingInput && (!whatsapp.status || whatsapp.status === "DISCONNECTED" || whatsapp.status === "TIMEOUT" || whatsapp.status === "OPENING" || whatsapp.status === "PAIRING") && (
+                                <Box className={classes.qrCodeContainer} style={{ width: "100%" }}>
+                                    <Typography variant="body1" gutterBottom>
+                                        Digite o número do telefone para parear:
+                                    </Typography>
+                                    <TextField
+                                        label="Número do Telefone"
+                                        placeholder="5585999999999"
+                                        variant="outlined"
+                                        size="small"
+                                        value={phoneNumber}
+                                        onChange={(e) => setPhoneNumber(e.target.value)}
+                                        disabled={pairingLoading || pairingCode}
+                                        style={{ marginBottom: 16, width: 250 }}
+                                    />
+                                    {!pairingCode && (
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            onClick={handleRequestPairingCode}
+                                            disabled={pairingLoading || !phoneNumber}
+                                        >
+                                            {pairingLoading ? <CircularProgress size={24} /> : "GERAR CÓDIGO"}
+                                        </Button>
+                                    )}
+                                    {pairingCode && (
+                                        <Box textAlign="center" mt={2}>
+                                            <Typography variant="h4" style={{ fontFamily: "monospace", letterSpacing: 4 }}>
+                                                {pairingCode}
+                                            </Typography>
+                                            <Typography variant="body2" color="textSecondary" style={{ marginTop: 8 }}>
+                                                Insira este código no seu WhatsApp: Configurações → Dispositivos Conectados → Vincular Dispositivo → Vincular com código de 8 dígitos
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                    <Button
+                                        variant="outlined"
+                                        color="secondary"
+                                        className={classes.actionButton}
+                                        style={{ marginTop: 20 }}
+                                        onClick={() => {
+                                            setShowPairingInput(false);
+                                            setPairingCode("");
+                                            setPhoneNumber("");
+                                            setPairingLoading(false);
+                                            if (whatsapp.status === "OPENING") {
+                                                setConfirmationAction("disconnect");
+                                                setConfirmationOpen(true);
+                                            }
+                                        }}
+                                    >
+                                        CANCELAR
+                                    </Button>
+                                </Box>
+                            )}
+
+                            {/* Actions for OPENING (only show if not in pairing mode) */}
+                            {whatsapp.status === "OPENING" && !showPairingInput && (
                                 <Typography variant="body1">
-                                    Conectando ao WhatsApp... Aguarde o QR Code.
+                                    Conectando ao WhatsApp... Aguarde.
                                 </Typography>
                             )}
 
@@ -332,7 +426,7 @@ const ConnectionConfig = () => {
                             )}
 
                             {/* Actions for PAIRING */}
-                            {whatsapp.status === "PAIRING" && (
+                            {whatsapp.status === "PAIRING" && !showPairingInput && (
                                 <>
                                     <Button
                                         variant="contained"
@@ -390,6 +484,11 @@ const ConnectionConfig = () => {
                             <Box mb={2}>
                                 <Typography variant="subtitle2" color="textSecondary">Sincronizar Histórico</Typography>
                                 <Typography variant="body1">{whatsapp.syncHistory ? "Ativado" : "Desativado"}</Typography>
+                                {whatsapp.syncHistory && whatsapp.syncPeriod && (
+                                    <Typography variant="body2" color="textSecondary">
+                                        Data Inicial: {new Date(whatsapp.syncPeriod).toLocaleDateString()}
+                                    </Typography>
+                                )}
                             </Box>
                         </CardContent>
                     </Card>

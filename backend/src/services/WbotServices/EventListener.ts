@@ -59,7 +59,7 @@ const handlePairingCode = async (payload: PairingCodePayload) => {
 
   io.emit(`whatsappSession`, {
     action: "update",
-    session: { id: payload.sessionId, pairingCode: payload.pairingCode, status: "QRCODE" }
+    session: { id: payload.sessionId, pairingCode: payload.pairingCode, status: "PAIRING" }
   });
 };
 

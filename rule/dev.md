@@ -38,7 +38,49 @@ O sistema utiliza um modelo de RBAC (Role-Based Access Control) granular e multi
 ### Implementação
 *   **Backend**: Middleware `checkPermission` verifica as permissões combinadas (Grupo + Individuais) do usuário autenticado.
 *   **Frontend**: Componente `<Can perform="permissao" />` e hook `useAuth` controlam a renderização de elementos protegidos.
-*   **Super Admin**: Usuários com `profile: "admin"` possuem acesso irrestrito (fallback).
+### Super Admin
+*   Usuários com `profile: "admin"` possuem acesso irrestrito (fallback).
+
+### 🛡️ Guia: Criando um Novo Módulo com Permissões
+
+Ao criar um novo recurso (ex: "Relatórios"), siga este fluxo para garantir a integração ao RBAC:
+
+1.  **Migration (Backend)**:
+    Crie uma migration (`npx sequelize migration:create --name seed-permissions-reports`) para inserir as permissões na tabela `Permissions`.
+    *   Sempre use `ignoreDuplicates: true` nos seeds.
+    *   Exemplo:
+        ```typescript
+        const permissions = [
+            { name: "view_reports", description: "Visualizar Relatórios" },
+            { name: "export_reports", description: "Exportar Relatórios" }
+        ];
+        await queryInterface.bulkInsert("Permissions", permissions, { ignoreDuplicates: true });
+        ```
+
+2.  **Categorização (Frontend)**:
+    No arquivo `frontend/src/pages/Groups/GroupModal.js`, adicione as novas permissões ao objeto `categories` dentro da função `categorizePermissions`. Isso garante que elas apareçam organizadas no modal de edição de grupos.
+    ```javascript
+    const categories = {
+        // ...
+        "reports": "Relatórios",
+    };
+    ```
+
+3.  **Proteção de Rotas (Backend)**:
+    Adicione o middleware `checkPermission` nas rotas do novo recurso.
+    ```typescript
+    routes.get("/reports", isAuth, checkPermission("view_reports"), ReportController.index);
+    ```
+
+4.  **Proteção de Interface (Frontend)**:
+    Use o componente `<Can>` para esconder botões ou menus.
+    ```javascript
+    <Can
+        role={user.profile}
+        perform="view_reports"
+        yes={() => <MenuItem>Relatórios</MenuItem>}
+    />
+    ```
 
 ---
 
@@ -157,6 +199,8 @@ Como não rodamos localmente, o fluxo para refletir mudanças de código é:
     # Atualização forçada do serviço
     docker service update --image watic-premium/engine:latest watic-premium_whaileys-engine --force
     ```
+    > [!IMPORTANT]
+    > **Atualizar ENGINE_VERSION**: Após atualizar o Engine, lembre-se de atualizar a variável de ambiente `ENGINE_VERSION` no serviço `backend` dentro do `docker-stack.yml`. O Frontend exibe esta versão (obtida via `/api/version` do Backend). Sem essa atualização, a versão exibida ficará incorreta.
 
 2.  **Frontend**:
     ```bash

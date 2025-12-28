@@ -88,6 +88,22 @@ const PipelineWizard = ({ open, onClose }) => {
     const [tabValue, setTabValue] = useState(0);
     const [aiPrompt, setAiPrompt] = useState("");
     const [aiLoading, setAiLoading] = useState(false);
+    const [aiEnabled, setAiEnabled] = useState(false);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const { data } = await api.get("/settings");
+                const aiEnabledSetting = data.find(s => s.key === "aiEnabled");
+                if (aiEnabledSetting) {
+                    setAiEnabled(aiEnabledSetting.value === "true");
+                }
+            } catch (err) {
+                console.error("Erro ao carregar configurações:", err);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     const steps = ["Definições Básicas", "Configurar Etapas"];
 
@@ -194,7 +210,7 @@ const PipelineWizard = ({ open, onClose }) => {
                             variant="fullWidth"
                         >
                             <Tab label="Manual" />
-                            <Tab icon={<AddIcon fontSize="small" />} label="Assistente de IA" />
+                            {aiEnabled && <Tab icon={<AddIcon fontSize="small" />} label="Assistente de IA" />}
                         </Tabs>
 
                         <TabPanel value={tabValue} index={0}>

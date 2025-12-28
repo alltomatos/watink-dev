@@ -22,7 +22,7 @@ const SendWhatsAppMessage = async ({
     const command: Envelope = {
       id: uuidv4(),
       timestamp: Date.now(),
-      tenantId: 1,
+      tenantId: ticket.tenantId,
       type: "message.send.text",
       payload: {
         sessionId: ticket.whatsappId,
@@ -35,7 +35,7 @@ const SendWhatsAppMessage = async ({
     };
 
     await RabbitMQService.publishCommand(
-      `wbot.1.${ticket.whatsappId}.message.send.text`, 
+      `wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.text`, 
       command
     );
 

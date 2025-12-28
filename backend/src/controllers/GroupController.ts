@@ -23,16 +23,23 @@ type GroupFilter = {
 };
 
 export const index = async (req: Request, res: Response): Promise<Response> => {
-    const { tenantId } = req.user;
-    const groups = await Group.findAll({
-        where: { tenantId },
-        include: [
-            { model: Permission, as: "permissions", attributes: ["id", "name"] },
-            { model: User, as: "users", attributes: ["id", "name"] }
-        ]
-    });
+    try {
+        const { tenantId } = req.user;
+        console.log("DEBUG: GroupController.index tenantId:", tenantId, "User:", req.user);
 
-    return res.json(groups);
+        const groups = await Group.findAll({
+            where: { tenantId },
+            include: [
+                { model: Permission, as: "permissions", attributes: ["id", "name"] },
+                { model: User, as: "users", attributes: ["id", "name"] }
+            ]
+        });
+
+        return res.json(groups);
+    } catch (err) {
+        console.error("DEBUG: GroupController.index Error:", err);
+        throw new AppError("INTERNAL_SERVER_ERROR", 500);
+    }
 };
 
 export const store = async (req: Request, res: Response): Promise<Response> => {
