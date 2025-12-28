@@ -254,7 +254,7 @@ const ConnectionConfig = () => {
             CONNECTED: { text: "Conectado", color: green[500], icon: <SignalCellular4Bar fontSize="large" style={{ color: green[500] }} /> },
             DISCONNECTED: { text: "Desconectado", color: red[500], icon: <PowerSettingsNew fontSize="large" color="error" /> },
             QRCODE: { text: "Aguardando Leitura do QR Code", color: orange[500], icon: <CropFree fontSize="large" style={{ color: orange[500] }} /> },
-            PAIRING: { text: "Pareando (Código)", color: orange[500], icon: <PhoneIphone fontSize="large" style={{ color: orange[500] }} /> },
+            PAIRING: { text: "Aguardando Pareamento", color: orange[500], icon: <PhoneIphone fontSize="large" style={{ color: orange[500] }} /> },
             OPENING: { text: "Iniciando...", color: orange[500], icon: <CircularProgress size={30} /> },
             TIMEOUT: { text: "Tempo Esgotado", color: red[500], icon: <PowerSettingsNew fontSize="large" color="error" /> },
         };
@@ -413,7 +413,7 @@ const ConnectionConfig = () => {
                                         disabled={!connectionStarted || showPairingInput}
                                         startIcon={<PhoneIphone />}
                                     >
-                                        PARAMETRO
+                                        CÓDIGO DE PAREAMENTO
                                     </Button>
                                     <Button
                                         variant="outlined"
@@ -471,7 +471,7 @@ const ConnectionConfig = () => {
                             {/* Actions for OPENING (only show if not in pairing mode) */}
                             {whatsapp.status === "OPENING" && !showPairingInput && (
                                 <Typography variant="body1">
-                                    Iniciando sessão... Aguarde o status mudar para QR Code.
+                                    Iniciando sessão... Aguarde o status mudar para QR Code ou Código de Pareamento.
                                 </Typography>
                             )}
 
