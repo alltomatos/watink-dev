@@ -29,7 +29,8 @@ describe("User", () => {
       userData: {
         name: "New name",
         email: "newmail@email.com"
-      }
+      },
+      requestUser: { id: newUser.id, profile: "admin", tenantId: 1 }
     });
 
     expect(updatedUser).toHaveProperty("name", "New name");
@@ -43,7 +44,13 @@ describe("User", () => {
       email: faker.internet.email()
     };
 
-    expect(UpdateUserService({ userId, userData })).rejects.toBeInstanceOf(
+    expect(
+      UpdateUserService({
+        userId,
+        userData,
+        requestUser: { id: 1, profile: "admin", tenantId: 1 }
+      })
+    ).rejects.toBeInstanceOf(
       AppError
     );
   });
@@ -61,7 +68,13 @@ describe("User", () => {
       email: "test.worgn.email"
     };
 
-    expect(UpdateUserService({ userId, userData })).rejects.toBeInstanceOf(
+    expect(
+      UpdateUserService({
+        userId,
+        userData,
+        requestUser: { id: 1, profile: "admin", tenantId: 1 }
+      })
+    ).rejects.toBeInstanceOf(
       AppError
     );
   });

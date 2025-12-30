@@ -1,4 +1,4 @@
-# 🚀 Watic Premium
+# 🚀 Watink
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
@@ -12,7 +12,7 @@
 
 ## 🎯 Visão Geral
 
-O **Watic Premium** é uma solução completa para empresas que precisam escalar operações de atendimento, vendas e engajamento via WhatsApp. Combina automação visual, CRM Kanban e recursos de IA em uma arquitetura de microsserviços escalável.
+O **Watink** é uma solução completa para empresas que precisam escalar operações de atendimento, vendas e engajamento via WhatsApp. Combina automação visual, CRM Kanban e recursos de IA em uma arquitetura de microsserviços escalável.
 
 ---
 
@@ -149,7 +149,7 @@ Adaptação completa ao seu negócio.
 ## 📂 Estrutura do Projeto
 
 ```
-watic-premium/
+watink/
 ├── backend/                 # API Node.js/TypeScript
 │   ├── src/
 │   │   ├── controllers/     # Endpoints da API

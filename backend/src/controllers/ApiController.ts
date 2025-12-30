@@ -41,15 +41,6 @@ const createContact = async (
 
   const number = validNumber;
 
-  const contactData = {
-    name: `${number}`,
-    number,
-    profilePicUrl,
-    isGroup: false
-  };
-
-  const contact = await CreateOrUpdateContactService(contactData);
-
   let whatsapp: Whatsapp | null;
 
   if (whatsappId === undefined) {
@@ -62,7 +53,22 @@ const createContact = async (
     }
   }
 
-  const createTicket = await FindOrCreateTicketService(contact, whatsapp.id, 1);
+  const contactData = {
+    name: `${number}`,
+    number,
+    profilePicUrl,
+    isGroup: false,
+    tenantId: whatsapp.tenantId
+  };
+
+  const contact = await CreateOrUpdateContactService(contactData);
+
+  const createTicket = await FindOrCreateTicketService(
+    contact,
+    whatsapp.id,
+    1,
+    whatsapp.tenantId
+  );
 
   const ticket = await ShowTicketService(createTicket.id);
 

@@ -6,12 +6,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"whaticket-engine-go/pkg/rabbitmq"
-	"whaticket-engine-go/pkg/session"
+	"watink-engine-go/pkg/rabbitmq"
+	"watink-engine-go/pkg/session"
 )
 
 func main() {
-	log.Println("Starting Whaticket Engine Go (High Performance)...")
+	log.Println("Starting watink Engine Go (High Performance)...")
 
 	amqpURL := os.Getenv("AMQP_URL")
 	if amqpURL == "" {

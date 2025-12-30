@@ -69,6 +69,7 @@ const messages = {
           qrcode: "QR CODE",
           newQr: "New QR CODE",
           connecting: "Connectiing",
+          restart: "Restart Connection",
         },
         toolTips: {
           disconnected: {
@@ -100,6 +101,8 @@ const messages = {
         },
       },
       whatsappModal: {
+        deleteTitle: "Delete Connection",
+        deleteMessage: "Are you sure you want to delete this connection?",
         title: {
           add: "Add WhatsApp",
           edit: "Edit WhatsApp",

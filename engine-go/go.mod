@@ -1,4 +1,4 @@
-module whaticket-engine-go
+module watink-engine-go
 
 go 1.24.5
 

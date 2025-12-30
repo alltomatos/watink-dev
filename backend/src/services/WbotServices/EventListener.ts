@@ -33,7 +33,7 @@ export const EventListener = async () => {
         await handleMessageReceived(msg.payload as MessageReceivedPayload, msg.tenantId);
         break;
       case "contact.update":
-        await handleContactUpdate(msg.payload as ContactUpdatePayload);
+        await handleContactUpdate(msg.payload as ContactUpdatePayload, msg.tenantId);
         break;
       default:
         logger.warn(`Unknown event type: ${msg.type}`);
@@ -65,7 +65,7 @@ const handlePairingCode = async (payload: PairingCodePayload) => {
 
 const handleSessionStatus = async (payload: SessionStatusPayload) => {
   const io = getIO();
-  
+
   const updateData: any = { status: payload.status, qrcode: "" };
   if (payload.number) updateData.number = payload.number;
   if (payload.profilePicUrl) updateData.profilePicUrl = payload.profilePicUrl;
@@ -77,8 +77,8 @@ const handleSessionStatus = async (payload: SessionStatusPayload) => {
 
   io.emit(`whatsappSession`, {
     action: "update",
-    session: { 
-      id: payload.sessionId, 
+    session: {
+      id: payload.sessionId,
       status: payload.status,
       number: payload.number,
       profilePicUrl: payload.profilePicUrl
@@ -86,23 +86,50 @@ const handleSessionStatus = async (payload: SessionStatusPayload) => {
   });
 };
 
-const handleContactUpdate = async (payload: ContactUpdatePayload) => {
-  const { contactId, number, profilePicUrl, pushName, lid } = payload;
+import MergeContactsService from "../ContactServices/MergeContactsService";
+import { Op } from "sequelize";
 
-  // Find the contact to verify it exists and we're updating the right one
-  // Logic: if contactId provided, use it. If not, use logic from existing services?
-  // payload has contactId from backend's command, so it should be correct.
+// ... previous imports
+
+const handleContactUpdate = async (payload: ContactUpdatePayload, tenantId: string | number) => {
+  const { contactId, number, profilePicUrl, pushName, lid } = payload;
 
   if (contactId) {
     const contact = await Contact.findByPk(contactId);
     if (contact) {
+      // 1. Check for LID Duplication/Collision
+      if (lid && lid !== contact.lid) {
+        const duplicate = await Contact.findOne({
+          where: {
+            lid: lid,
+            tenantId: contact.tenantId, // Use contact's tenant to be safe
+            id: { [Op.ne]: contact.id } // exclude self
+          }
+        });
+
+        if (duplicate) {
+          logger.info(`[EventListener] LID collision detected: ${lid}. Merging ${contact.id} into ${duplicate.id}`);
+
+          await MergeContactsService({
+            contactIdOrigin: contact.id,
+            contactIdTarget: duplicate.id,
+            tenantId: contact.tenantId
+          });
+
+          // After merge, the origin contact is destroyed. We stop here.
+          return;
+        }
+      }
+
+      // 2. Normal Update
       const updates: any = {};
       if (profilePicUrl) updates.profilePicUrl = profilePicUrl;
       if (lid) updates.lid = lid;
+      if (pushName) updates.name = pushName; // Optionally update name if available
 
       if (Object.keys(updates).length > 0) {
         await contact.update(updates);
-        
+
         const io = getIO();
         io.emit("contact", {
           action: "update",
@@ -164,37 +191,82 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     const number = message.from.replace(/\D/g, "");
     const providedLid = message.senderLid;
 
-    const contactData = {
-      name: message.pushName || message.from,
+    const contactData: any = {
       number: providedLid ? number : (isLid ? null : (number || null)),
       lid: providedLid || (isLid ? message.from : undefined),
       isGroup: false,
       tenantId,
-      profilePicUrl: message.profilePicUrl
     };
 
-    msgContact = await CreateOrUpdateContactService(contactData as any);
-    groupContact = msgContact;
+    // Only update name and pfp if message is NOT from me (incoming)
+    if (!message.fromMe) {
+      contactData.name = message.pushName || message.from;
+      contactData.profilePicUrl = message.profilePicUrl;
+    } else {
+      // If fromMe, use the number/address as name just for creation if it doesn't exist
+      // CreateOrUpdateContactService usually keeps existing name if we don't pass one, 
+      // but if it requires a name for creation, we pass number.
+      contactData.name = message.from;
+    }
+
+    msgContact = await CreateOrUpdateContactService(contactData);
   }
 
+  // ... inside handleMessageReceived
   const ticket = await FindOrCreateTicketService(
-    groupContact,
+    groupContact || msgContact,
     whatsapp.id,
-    1 // Unread messages
+    1, // Unread messages
+    tenantId,
+    groupContact
   );
 
   const msgData = {
     id: message.id,
     ticketId: ticket.id,
-    contactId: msgContact.id, // Message attributed to sender
+    contactId: msgContact.id,
     body: message.body,
     fromMe: message.fromMe,
     read: false,
     mediaType: message.type,
     mediaUrl: message.mediaUrl,
     timestamp: message.timestamp * 1000, // Convert to ms
-    participant: message.participant
+    participant: message.participant,
+    dataJson: JSON.stringify(message),
+    tenantId
   };
+
+  // Logic to handle media that arrived from Engine (Microservice)
+  if (message.hasMedia && message.mediaData) {
+    try {
+      const { join } = require("path");
+      const { writeFile } = require("fs").promises;
+      const uploadConfig = require("../../config/upload").default;
+
+      // Deduce extension
+      const mimetype = message.mimetype || "";
+      const ext = mimetype.split("/")[1]?.split(";")[0] || "bin";
+      const filename = `${new Date().getTime()}-${message.id}.${ext}`;
+
+      const filePath = join(uploadConfig.directory, filename);
+      const buffer = Buffer.from(message.mediaData, "base64");
+
+      await writeFile(filePath, buffer);
+
+      msgData.mediaUrl = filename;
+
+      // Fix mediaType to be more specific if Engine sent "media"
+      if (message.type === "media") {
+        if (mimetype.startsWith("image/")) msgData.mediaType = "image";
+        else if (mimetype.startsWith("video/")) msgData.mediaType = "video";
+        else if (mimetype.startsWith("audio/")) msgData.mediaType = "audio";
+        else msgData.mediaType = "document";
+      }
+    } catch (err) {
+      logger.error(`Error saving media for message ${message.id}: ${err}`);
+      // Fallback: Don't block message creation, but it will lack media
+    }
+  }
 
   await CreateMessageService({ messageData: msgData as any });
 };

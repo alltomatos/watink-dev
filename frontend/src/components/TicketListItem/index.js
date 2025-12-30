@@ -172,7 +172,7 @@ const TicketListItem = ({ ticket }) => {
 				dense
 				button
 				onClick={e => {
-					if (ticket.status === "pending") return;
+					if (ticket.status === "pending" && !ticket?.isGroup && !ticket?.contact?.isGroup) return;
 					handleSelectTicket(ticket.id);
 				}}
 				selected={ticketId && +ticketId === ticket.id}

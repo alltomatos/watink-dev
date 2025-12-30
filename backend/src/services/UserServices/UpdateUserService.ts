@@ -3,6 +3,7 @@ import * as Yup from "yup";
 import AppError from "../../errors/AppError";
 import { SerializeUser } from "../../helpers/SerializeUser";
 import ShowUserService from "./ShowUserService";
+import Permission from "../../models/Permission";
 
 interface UserData {
   email?: string;
@@ -13,9 +14,16 @@ interface UserData {
   whatsappId?: number;
 }
 
+interface RequestUser {
+  id: string | number;
+  profile: string;
+  tenantId: string | number;
+}
+
 interface Request {
   userData: UserData;
   userId: string | number;
+  requestUser: RequestUser;
 }
 
 interface Response {
@@ -27,7 +35,8 @@ interface Response {
 
 const UpdateUserService = async ({
   userData,
-  userId
+  userId,
+  requestUser
 }: Request): Promise<Response | undefined> => {
   const user = await ShowUserService(userId);
 
@@ -53,6 +62,11 @@ const UpdateUserService = async ({
     throw new AppError(err.message);
   }
 
+  // Protection: prevent editing superadmin if not self
+  if (user.profile === "superadmin" && user.id.toString() !== requestUser.id.toString()) {
+    throw new AppError("ERR_NO_PERMISSION", 403);
+  }
+
   await user.update({
     email,
     password,
@@ -62,6 +76,12 @@ const UpdateUserService = async ({
   });
 
   await user.$set("queues", queueIds);
+
+  // Ensure superadmin has all permissions if profile is being updated to superadmin
+  if (profile === "superadmin" || (user.profile === "superadmin" && profile === undefined)) {
+    const allPermissions = await Permission.findAll();
+    await user.$set("permissions", allPermissions);
+  }
 
   await user.reload();
 

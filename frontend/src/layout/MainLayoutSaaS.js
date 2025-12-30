@@ -138,7 +138,7 @@ const MainLayoutSaaS = ({ children }) => {
     const [drawerOpen, setDrawerOpen] = useState(true);
     const [drawerVariant, setDrawerVariant] = useState("permanent");
     const [systemLogo, setSystemLogo] = useState("");
-    const [systemTitle, setSystemTitle] = useState("Watic Premium");
+    const [systemTitle, setSystemTitle] = useState("Watink");
     const [logoEnabled, setLogoEnabled] = useState(true);
 
     useEffect(() => {

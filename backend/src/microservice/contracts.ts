@@ -20,6 +20,7 @@ export type CommandType =
   | "message.send.interactive"
   | "message.send.interactive"
   | "message.send.carousel"
+  | "message.markAsRead"
   | "contact.sync";
 
 export interface StartSessionPayload {
@@ -226,5 +227,11 @@ export interface ContactUpdatePayload {
   profilePicUrl?: string;
   pushName?: string;
   lid?: string;
+}
+
+export interface MarkAsReadPayload {
+  sessionId: number;
+  to: string;
+  messageIds: string[];
 }
 

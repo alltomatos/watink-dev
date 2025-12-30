@@ -167,50 +167,52 @@ Imagem customizada rodando em serviço dedicado no Swarm.
 
 Todo o ciclo de vida da aplicação é gerenciado via Docker Swarm.
 
-### 1. Inicialização
-Para subir a stack completa:
+### 1. Inicialização (Deploy Completo)
+Para subir a stack completa pela primeira vez ou recriar tudo:
 ```bash
-docker stack deploy -c docker-stack.yml watic-premium
+docker stack deploy -c docker-stack.yml watink
 ```
 
-### 2. Aplicando Alterações
-Como não rodamos localmente, o fluxo para refletir mudanças de código é:
+> [!TIP]
+> **Clean Deploy (Reset)**: Se precisar limpar volumes ou garantir um estado limpo (ex: erro de seeds ou banco corrompido), você pode remover a stack e os volumes antes de subir novamente:
+> ```bash
+> docker stack rm watink
+> docker volume rm watink_db_data watink_backend_public_data # Cuidado! Apaga dados.
+> # Aguarde alguns segundos para os containers encerrarem
+> docker stack deploy -c docker-stack.yml watink
+> ```
 
-1.  **Backend/Engine**:
-    ```bash
-    # Rebuild da imagem (ex: backend)
-    docker compose build backend
-    
-    # Tagging (se necessário, para bater com o stack file)
-    docker tag watic-premium-backend:latest watic-premium/backend:latest
-    
-    # Atualização forçada do serviço
-    docker service update --image watic-premium/backend:latest watic-premium_backend --force
-    ```
+### 2. Aplicando Alterações (Update Script)
+Para aplicar mudanças de código (backend, frontend ou engine), utilize sempre o script de automação `./update.sh`. Ele cuida do versionamento (SemVer), build da imagem e atualização do serviço no Swarm.
 
-1.  **Engine (Whaileys)**:
-    ```bash
-    # Rebuild da imagem
-    docker compose build whaileys-engine
-    
-    # Tagging
-    docker tag watic-premium-whaileys-engine:latest watic-premium/engine:latest
-    
-    # Atualização forçada do serviço
-    docker service update --image watic-premium/engine:latest watic-premium_whaileys-engine --force
-    ```
-    > [!IMPORTANT]
-    > **Atualizar ENGINE_VERSION**: Após atualizar o Engine, lembre-se de atualizar a variável de ambiente `ENGINE_VERSION` no serviço `backend` dentro do `docker-stack.yml`. O Frontend exibe esta versão (obtida via `/api/version` do Backend). Sem essa atualização, a versão exibida ficará incorreta.
+Sintaxe: `./update.sh <service> [type]`
+*   **service**: `backend`, `frontend`, `engine` ou `all`.
+*   **type** (opcional): `patch` (padrão), `minor`, `major`.
 
-2.  **Frontend**:
-    ```bash
-    docker compose build frontend
-    docker tag watic-premium-frontend:latest watic-premium/frontend:latest
-    docker service update --image watic-premium/frontend:latest watic-premium_frontend --force
-    ```
+Exemplos:
+```bash
+# Atualizar Backend (cria nova versão patch, builda e atualiza serviço)
+./update.sh backend
+
+# Atualizar Frontend
+./update.sh frontend
+
+# Atualizar Engine com mudança Minor (ex: novas features)
+./update.sh engine minor
+```
+
+> [!WARNING]
+> O script `./update.sh` já executa o `docker service update` automaticamente com a flag `--force`. Não é necessário rodar comandos manuais de docker exceto para debugging.
+
+### 2.1 Atualização de Variáveis e Stack
+Se você alterou o `docker-stack.yml` (ex: novas variáveis de ambiente, portas, volumes):
+```bash
+docker stack deploy -c docker-stack.yml watink
+```
+O Swarm detectará as diferenças e atualizará apenas os serviços afetados.
 
 ### 3. Debug & Logs
-*   **Logs**: `docker service logs -f watic-premium_backend` (ou frontend, whaileys-engine, etc).
+*   **Logs**: `docker service logs -f watink_backend` (ou frontend, whaileys-engine, etc).
 *   **Swagger**: Acesse `http://localhost:8080/docs` para testar/documentar a API.
 *   **RabbitMQ**: `http://localhost:15672` para monitorar filas.
 
@@ -239,13 +241,13 @@ Seguimos estritamente o **Semantic Versioning (SemVer)** (ex: `1.0.0`).
     Ao construir a imagem, use a nova versão como tag, além da `latest`.
     ```bash
     # Exemplo para Backend v1.0.1
-    docker build -t watic-premium/backend:1.2.0 -t watic-premium/backend:latest .
-    docker push watic-premium/backend:1.2.0
-    docker push watic-premium/backend:latest
+    docker build -t watink/backend:1.2.0 -t watink/backend:latest .
+    docker push watink/backend:1.2.0
+    docker push watink/backend:latest
     ```
 
 4.  **Atualize o Serviço**:
     No ambiente de produção, fixe a versão específica para evitar atualizações acidentais, ou use `latest` em desenvolvimento.
     ```bash
-    docker service update --image watic-premium/backend:1.2.0 watic-premium_backend
+    docker service update --image watink/backend:1.2.0 watink_backend
     ```

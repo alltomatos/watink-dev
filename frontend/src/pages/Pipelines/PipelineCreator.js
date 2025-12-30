@@ -159,7 +159,7 @@ const PipelineCreator = () => {
     const [messages, setMessages] = useState([
         {
             role: "ai",
-            content: "Olá! Eu sou o assistente de IA do Watic. \nDescreva o processo que você deseja gerenciar (ex: Vendas de Imóveis, Suporte Técnico) e eu criarei as etapas ideais para você."
+            content: "Olá! Eu sou o assistente de IA do Watink. \nDescreva o processo que você deseja gerenciar (ex: Vendas de Imóveis, Suporte Técnico) e eu criarei as etapas ideais para você."
         }
     ]);
     const [input, setInput] = useState("");

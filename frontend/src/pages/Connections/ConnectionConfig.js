@@ -174,14 +174,15 @@ const ConnectionConfig = () => {
 
     useEffect(() => {
         if (whatsapp?.status && whatsapp.status === "QRCODE") {
-             // Only enable buttons when status is QRCODE (Ready to scan/pair)
-             // But DO NOT auto-show QR Code or Pairing input yet.
-             setConnectionStarted(true);
+            // Enable buttons and SHOW QR Code container (which has the disconnect button)
+            setConnectionStarted(true);
+            setShowQrCode(true); // Force show QR code container so Disconnect button is visible
+            setShowPairingInput(false);
         } else if (whatsapp?.status === "CONNECTED") {
-             // If connected, reset everything
-             setConnectionStarted(false);
-             setShowQrCode(false);
-             setShowPairingInput(false);
+            // If connected, reset everything
+            setConnectionStarted(false);
+            setShowQrCode(false);
+            setShowPairingInput(false);
         } else if (whatsapp?.status === "DISCONNECTED" || whatsapp?.status === "TIMEOUT") {
             // If disconnected, reset
             setConnectionStarted(false);
@@ -191,10 +192,13 @@ const ConnectionConfig = () => {
         // For OPENING, we just wait.
     }, [whatsapp]);
 
-    const handleStartSession = async () => {
+    const handleStartSessionQr = async () => {
         try {
-            await api.post(`/whatsappsession/${whatsappId}`, { usePairingCode: false });
-            // Do NOT setConnectionStarted(true) immediately. Wait for status update.
+            setShowQrCode(true);
+            setShowPairingInput(false);
+            if (whatsapp.status !== "QRCODE") {
+                await api.post(`/whatsappsession/${whatsappId}`, { usePairingCode: false });
+            }
         } catch (err) {
             toastError(err);
         }
@@ -346,9 +350,9 @@ const ConnectionConfig = () => {
                     <Button onClick={() => setInputPairingModalOpen(false)} color="secondary">
                         Cancelar
                     </Button>
-                    <Button 
-                        onClick={handleRequestPairingCode} 
-                        color="primary" 
+                    <Button
+                        onClick={handleRequestPairingCode}
+                        color="primary"
                         variant="contained"
                         disabled={!phoneNumber || phoneNumber.length < 10}
                     >
@@ -383,24 +387,13 @@ const ConnectionConfig = () => {
 
                         <Box display="flex" flexWrap="wrap" alignItems="center">
                             {/* Actions for DISCONNECTED, TIMEOUT, or invalid status */}
-                            {(!whatsapp.status || whatsapp.status !== "CONNECTED") && !showQrCode && !showPairingInput && (
+                            {(!whatsapp.status || whatsapp.status === "DISCONNECTED" || whatsapp.status === "TIMEOUT") && !showQrCode && !showPairingInput && (
                                 <>
                                     <Button
                                         variant="contained"
                                         color="primary"
                                         className={classes.actionButton}
-                                        onClick={handleStartSession}
-                                        disabled={whatsapp.status === "OPENING" || whatsapp.status === "QRCODE" || whatsapp.status === "PAIRING"}
-                                        startIcon={<PowerSettingsNew />}
-                                    >
-                                        CONECTAR
-                                    </Button>
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        className={classes.actionButton}
-                                        onClick={handleShowQrCode}
-                                        disabled={!connectionStarted || showQrCode}
+                                        onClick={handleStartSessionQr}
                                         startIcon={<CropFree />}
                                     >
                                         QR CODE
@@ -410,7 +403,6 @@ const ConnectionConfig = () => {
                                         color="primary"
                                         className={classes.actionButton}
                                         onClick={handleShowPairing}
-                                        disabled={!connectionStarted || showPairingInput}
                                         startIcon={<PhoneIphone />}
                                     >
                                         CÓDIGO DE PAREAMENTO
