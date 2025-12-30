@@ -1,13 +1,14 @@
-import GetDefaultWhatsApp from "../../helpers/GetDefaultWhatsApp";
-import { getWbot } from "../../libs/wbot";
+// import GetDefaultWhatsApp from "../../helpers/GetDefaultWhatsApp";
+// import { getWbot } from "../../libs/wbot";
+import { logger } from "../../utils/logger";
 
-const CheckContactNumber = async (number: string): Promise<void> => {
-  const defaultWhatsapp = await GetDefaultWhatsApp();
-
-  const wbot = getWbot(defaultWhatsapp.id);
-
-  const validNumber: any = await wbot.getNumberId(`${number}@c.us`);
-  return validNumber.user;
+/**
+ * @deprecated This service relies on legacy local Wbot instance.
+ * Use asynchronous validation via RabbitMQ and Engine events instead.
+ */
+const CheckContactNumber = async (number: string): Promise<string> => {
+  logger.warn(`[DEPRECATED] CheckContactNumber called for ${number}. Returning input as fallback.`);
+  return number;
 };
 
 export default CheckContactNumber;

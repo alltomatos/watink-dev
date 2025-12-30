@@ -2,7 +2,7 @@ import {
   Envelope, StartSessionPayload, SendTextPayload, SendMediaPayload,
   SendButtonsPayload, SendListPayload, SendPollPayload,
   SendTemplatePayload, SendInteractivePayload, SendCarouselPayload,
-  CommandType, SyncContactPayload, MarkAsReadPayload
+  CommandType, SyncContactPayload, MarkAsReadPayload, ImportContactPayload
 } from "./contracts";
 import { logger } from "./logger";
 import { RabbitMQ } from "./rabbitmq";
@@ -82,6 +82,9 @@ class SessionManager {
       case "message.markAsRead":
         await this.markAsRead(envelope.payload as MarkAsReadPayload);
         break;
+      case "contact.import":
+        await this.importContacts(envelope.payload as ImportContactPayload, envelope.tenantId);
+        break;
       default:
         logger.warn(`Unknown command type: ${envelope.type}`);
     }
@@ -98,63 +101,87 @@ class SessionManager {
       logger.info(`Syncing contact ${payload.number} for session ${payload.sessionId}`);
 
       let jid = payload.lid || (payload.number.includes("@") ? payload.number : `${payload.number}@c.us`);
+      const isGroup = payload.isGroup || jid.endsWith("@g.us");
+
+      let profilePicUrl: string | undefined | null = undefined;
+      let pushName = undefined;
       let foundLid = payload.lid;
 
-      // 1. Tenta buscar a foto diretamente (Otimista)
-      let profilePicUrl = await session.socket.profilePictureUrl(jid, "image").catch(() => null);
+      if (isGroup) {
+        // Force correct JID format for groups
+        if (!jid.endsWith("@g.us")) jid = `${payload.number}@g.us`;
 
-      // 2. Se não encontrar, ou se não temos LID, tenta resolver
-      if (!profilePicUrl || (!foundLid && !payload.number.includes("@lid"))) {
-        // A. Verifica onWhatsApp (para PNs)
         try {
-          // Só roda onWhatsApp se não for LID (LIDs não funcionam no onWhatsApp geralmente)
-          if (!jid.includes("@lid")) {
-            const results = await session.socket.onWhatsApp(jid);
-            const result = results?.[0];
-            if (result && result.exists) {
-              // Se retornou LID (algumas versões retornam), usa
-              if (result.lid) foundLid = result.lid as string;
-
-              // Tenta buscar foto com JID confirmado
-              if (!profilePicUrl) {
-                profilePicUrl = await session.socket.profilePictureUrl(result.jid, "image").catch(() => "");
-              }
-            }
+          // 1. Fetch Group Metadata for Subject
+          const groupMetadata = await session.socket.groupMetadata(jid);
+          if (groupMetadata && groupMetadata.subject) {
+            pushName = groupMetadata.subject;
           }
         } catch (err) {
-          logger.warn(`Error checking onWhatsApp for ${payload.number}:`, err);
+          logger.warn(`Error fetching group metadata for ${jid}: ${err}`);
         }
 
-        // B. Se ainda não temos LID e é um número de telefone, tenta USync
-        if (!foundLid && !jid.includes("@lid")) {
-          try {
-            logger.info(`Attempting USync to resolve LID for ${payload.number}`);
-            const query = new USyncQuery()
-              .withMode("query")
-              .withUser(new USyncUser().withPhone(payload.number))
-              .withLIDProtocol();
+        try {
+          // 2. Fetch Group Profile Picture
+          profilePicUrl = await session.socket.profilePictureUrl(jid, "image").catch(() => null);
+        } catch (err) { }
 
-            const result = await (session.socket as any).executeUSyncQuery(query);
-            if (result && result.list && result.list.length > 0) {
-              const record = result.list[0];
-              // Verifica se o protocolo LID retornou algo. 
-              // Dependendo da versão do whaileys/baileys, o resultado pode estar em 'lid' ou dentro do protocolo.
-              // Vamos logar para debug se necessário, mas assumir 'lid' no record ou no objeto protocols.
-              // @ts-ignore
-              if (record.lid) {
-                foundLid = record.lid as string;
-                logger.info(`USync resolved LID for ${payload.number}: ${foundLid}`);
+      } else {
+        // Individual Contact Logic
+
+        // 1. Tenta buscar a foto diretamente (Otimista)
+        profilePicUrl = await session.socket.profilePictureUrl(jid, "image").catch(() => null);
+
+        // 2. Se não encontrar, ou se não temos LID, tenta resolver
+        if (!profilePicUrl || (!foundLid && !payload.number.includes("@lid"))) {
+          // A. Verifica onWhatsApp (para PNs)
+          try {
+            // Só roda onWhatsApp se não for LID (LIDs não funcionam no onWhatsApp geralmente)
+            if (!jid.includes("@lid")) {
+              const results = await session.socket.onWhatsApp(jid);
+              const result = results?.[0];
+              if (result && result.exists) {
+                // Se retornou LID (algumas versões retornam), usa
+                if (result.lid) foundLid = result.lid as string;
+
+                // Tenta buscar foto com JID confirmado
+                if (!profilePicUrl) {
+                  profilePicUrl = await session.socket.profilePictureUrl(result.jid, "image").catch(() => "");
+                }
               }
             }
           } catch (err) {
-            logger.warn(`Error executing USync for ${payload.number}:`, err);
+            logger.warn(`Error checking onWhatsApp for ${payload.number}:`, err);
+          }
+
+          // B. Se ainda não temos LID e é um número de telefone, tenta USync
+          if (!foundLid && !jid.includes("@lid")) {
+            try {
+              logger.info(`Attempting USync to resolve LID for ${payload.number}`);
+              const query = new USyncQuery()
+                .withMode("query")
+                .withUser(new USyncUser().withPhone(payload.number))
+                .withLIDProtocol();
+
+              const result = await (session.socket as any).executeUSyncQuery(query);
+              if (result && result.list && result.list.length > 0) {
+                const record = result.list[0];
+                // @ts-ignore
+                if (record.lid) {
+                  foundLid = record.lid as string;
+                  logger.info(`USync resolved LID for ${payload.number}: ${foundLid}`);
+                }
+              }
+            } catch (err) {
+              logger.warn(`Error executing USync for ${payload.number}:`, err);
+            }
           }
         }
-      }
 
-      // Se descobrimos um LID e não tínhamos foto, tenta buscar foto pelo LID (muitas vezes é a única forma pública)
-      if (foundLid && !profilePicUrl) {
-        profilePicUrl = await session.socket.profilePictureUrl(foundLid, "image").catch(() => "");
+        // Se descobrimos um LID e não tínhamos foto, tenta buscar foto pelo LID
+        if (foundLid && !profilePicUrl) {
+          profilePicUrl = await session.socket.profilePictureUrl(foundLid, "image").catch(() => "");
+        }
       }
 
       const updateEvent: Envelope = {
@@ -166,8 +193,9 @@ class SessionManager {
           sessionId: payload.sessionId,
           contactId: payload.contactId,
           number: payload.number,
-          profilePicUrl: profilePicUrl || null,
-          lid: foundLid || undefined
+          profilePicUrl: profilePicUrl || undefined,
+          lid: foundLid || undefined,
+          pushName: pushName
         }
       };
 
@@ -221,7 +249,7 @@ class SessionManager {
 
         const session = this.sessions.get(payload.sessionId);
         const currentStatus = session?.status === "CONNECTED" ? "CONNECTED" : "OPENING";
-        
+
         logger.info(`Session ${payload.sessionId} status is ${session?.status}, sending ${currentStatus}`);
 
         const statusEvent: Envelope = {
@@ -528,6 +556,10 @@ class SessionManager {
             }
           };
           await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
+
+          // [HYDRATION] Disabled per user instruction.
+          // Groups/Contacts should only be created/updated when a message arrives.
+          logger.info(`[HYDRATION] Group hydration disabled for session ${payload.sessionId}`);
         }
       });
 
@@ -569,6 +601,68 @@ class SessionManager {
             };
             await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.ack`, ackEvent);
           }
+        }
+      });
+
+      // Listen for Contacts Update (Profile Pics, etc)
+      sock.ev.on("contacts.update", async (updates: any[]) => {
+        for (const update of updates) {
+          if (!update.id) continue;
+
+          if (typeof update.imgUrl !== "undefined") {
+            const jid = update.id;
+            let profilePicUrl = undefined;
+
+            try {
+              profilePicUrl = await sock.profilePictureUrl(jid, "image").catch(() => null);
+            } catch (e) { }
+
+            const updateEvent: Envelope = {
+              id: uuidv4(),
+              timestamp: Date.now(),
+              tenantId,
+              type: "contact.update",
+              payload: {
+                sessionId: payload.sessionId,
+                contactId: 0, // 0 or undefined, backend should handle
+                number: jid.split("@")[0],
+                profilePicUrl: profilePicUrl || undefined,
+                pushName: update.notify || undefined,
+                isGroup: jid.endsWith("@g.us")
+              }
+            };
+            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
+          }
+        }
+      });
+
+      // Listen for Group Updates (Name changes, etc)
+      sock.ev.on("groups.update", async (updates: any[]) => {
+        for (const group of updates) {
+          if (!group.id) continue;
+
+          const jid = group.id;
+          let profilePicUrl = undefined;
+
+          try {
+            profilePicUrl = await sock.profilePictureUrl(jid, "image").catch(() => null);
+          } catch (e) { }
+
+          const updateEvent: Envelope = {
+            id: uuidv4(),
+            timestamp: Date.now(),
+            tenantId,
+            type: "contact.update",
+            payload: {
+              sessionId: payload.sessionId,
+              contactId: 0,
+              number: jid.split("@")[0],
+              profilePicUrl: profilePicUrl || undefined,
+              pushName: group.subject || undefined,
+              isGroup: true
+            }
+          };
+          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
         }
       });
 
@@ -826,6 +920,23 @@ class SessionManager {
     } catch (err) {
       logger.error(`Error marking messages as read for ${payload.to}:`, err);
     }
+  }
+
+  private async importContacts(payload: ImportContactPayload, tenantId: string | number) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for importing contacts`);
+      return;
+    }
+
+    logger.info(`[importContacts] Starting contact import for session ${payload.sessionId}`);
+
+    // User instruction: Do not scan groups or force create contacts.
+    // Contacts/Tickets should be created only when messages arrive.
+    // This method is kept for architectural compatibility but currently performs no active scanning
+    // to avoid creating unwanted group contacts/tickets.
+
+    logger.info(`[importContacts] Manual import disabled. Contacts are synced automatically via incoming messages.`);
   }
 
   private async sendButtons(payload: SendButtonsPayload) {

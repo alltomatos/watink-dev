@@ -3,6 +3,7 @@ import ShowWhatsAppService from "../services/WhatsappService/ShowWhatsAppService
 import { StartWhatsAppSession } from "../services/WbotServices/StartWhatsAppSession";
 import UpdateWhatsAppService from "../services/WhatsappService/UpdateWhatsAppService";
 import StopWhatsAppSession from "../services/WbotServices/StopWhatsAppSession";
+import RestartAllWhatsAppsService from "../services/WbotServices/RestartAllWhatsAppsService";
 
 const store = async (req: Request, res: Response): Promise<Response> => {
   const { whatsappId } = req.params;
@@ -43,4 +44,11 @@ const remove = async (req: Request, res: Response): Promise<Response> => {
   return res.status(200).json({ message: "Session disconnected." });
 };
 
-export default { store, remove, update };
+const restartAll = async (req: Request, res: Response): Promise<Response> => {
+  const { tenantId } = req.user;
+  await RestartAllWhatsAppsService(tenantId as any);
+  return res.status(200).json({ message: "Restarting all sessions." });
+};
+
+export default { store, remove, update, restartAll };
+

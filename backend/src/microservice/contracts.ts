@@ -152,6 +152,7 @@ export interface SyncContactPayload {
   contactId: number;
   number: string;
   lid?: string;
+  isGroup?: boolean;
 }
 
 // --- EVENTS (Engine -> Backend) ---
@@ -227,6 +228,7 @@ export interface ContactUpdatePayload {
   profilePicUrl?: string;
   pushName?: string;
   lid?: string;
+  isGroup?: boolean;
 }
 
 export interface MarkAsReadPayload {

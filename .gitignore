@@ -2,8 +2,8 @@
 ssl/
 .env
 .wwebjs_auth
-node_modules
-dist
+#node_modules
+#dist
 sssbuild
 engine-go
 

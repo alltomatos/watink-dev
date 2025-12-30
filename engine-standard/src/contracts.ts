@@ -19,9 +19,11 @@ export type CommandType =
   | "message.send.interactive" // NOVO: Native Flow (Interativo)
   | "message.send.carousel"    // NOVO: Carrossel Nativo
   | "message.markAsRead"       // NOVO: Marcar mensagens como lidas
-  | "contact.sync";            // NOVO: Sincronização de Contato
+  | "contact.sync"             // NOVO: Sincronização de Contato
+  | "contact.import";          // NOVO: Importação de Contatos
 
 export interface StartSessionPayload {
+  proxy?: string;
   sessionId: number;
   sessionToken?: string;
   usePairingCode?: boolean;
@@ -151,6 +153,11 @@ export interface SyncContactPayload {
   contactId: number;
   number: string;
   lid?: string;
+  isGroup?: boolean;
+}
+
+export interface ImportContactPayload {
+  sessionId: number;
 }
 
 export type EventType =
@@ -224,6 +231,7 @@ export interface ContactUpdatePayload {
   profilePicUrl?: string;
   pushName?: string;
   lid?: string;
+  isGroup?: boolean;
 }
 
 export interface MarkAsReadPayload {

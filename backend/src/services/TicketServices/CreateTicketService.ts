@@ -4,6 +4,7 @@ import GetDefaultWhatsApp from "../../helpers/GetDefaultWhatsApp";
 import Ticket from "../../models/Ticket";
 import User from "../../models/User";
 import ShowContactService from "../ContactServices/ShowContactService";
+import Whatsapp from "../../models/Whatsapp";
 
 interface Request {
   contactId: number;
@@ -22,22 +23,27 @@ const CreateTicketService = async ({
 
   await CheckContactOpenTickets(contactId, defaultWhatsapp.id);
 
-  const { isGroup } = await ShowContactService(contactId);
+  const { isGroup, tenantId } = await ShowContactService(contactId);
 
   if (queueId === undefined) {
     const user = await User.findByPk(userId, { include: ["queues"] });
     queueId = user?.queues.length === 1 ? user.queues[0].id : undefined;
   }
 
-  const { id }: Ticket = await defaultWhatsapp.$create("ticket", {
+  // Use Model.create instead of deprecated wbot.$create injection
+  const ticket = await Ticket.create({
     contactId,
     status,
     isGroup,
     userId,
-    queueId
+    queueId,
+    whatsappId: defaultWhatsapp.id,
+    tenantId: tenantId || defaultWhatsapp.tenantId
   });
 
-  const ticket = await Ticket.findByPk(id, { include: ["contact"] });
+  await ticket.reload({
+    include: ["contact", "user", "queue", "whatsapp"]
+  });
 
   if (!ticket) {
     throw new AppError("ERR_CREATING_TICKET");

@@ -1,12 +1,12 @@
 import { getIO } from "../../libs/socket";
 import Contact from "../../models/Contact";
-import RabbitMQService from "../RabbitMQService";
-import { v4 as uuidv4 } from "uuid";
-import axios from "axios";
-import fs from "fs";
-import path, { join } from "path";
-import uploadConfig from "../../config/upload";
-import { logger } from "../../utils/logger";
+// import RabbitMQService from "../RabbitMQService";
+// import { v4 as uuidv4 } from "uuid";
+// import axios from "axios";
+// import fs from "fs";
+// import path, { join } from "path";
+// import uploadConfig from "../../config/upload";
+import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
 
 interface ExtraInfo {
   name: string;
@@ -23,62 +23,6 @@ interface Request {
   lid?: string;
   tenantId?: number | string;
 }
-
-const downloadProfileImage = async ({
-  profilePicUrl,
-  tenantId,
-  contactId
-}: {
-  profilePicUrl: string;
-  tenantId: number | string;
-  contactId: number;
-}): Promise<string> => {
-  const publicFolder = uploadConfig.directory;
-  let filename = "";
-
-  const folder = path.join(publicFolder, String(tenantId), "contacts");
-
-  if (!fs.existsSync(folder)) {
-    fs.mkdirSync(folder, { recursive: true });
-    // fs.chmodSync(folder, 0o777); // Windows doesn't need chmod usually, can cause issues
-  }
-
-  const maxAttempts = 3;
-  let attempt = 0;
-
-  // Se já for local ou nula, retorna
-  if (!profilePicUrl || profilePicUrl.includes("/public/") || profilePicUrl.endsWith("nopicture.png")) {
-    return "";
-  }
-
-  while (attempt < maxAttempts) {
-    try {
-      const response = await axios.get(profilePicUrl, {
-        responseType: "arraybuffer",
-        timeout: 10000
-      });
-
-      // Tenta inferir extensão
-      const contentType = response.headers["content-type"];
-      let ext = "jpg";
-      if (contentType) {
-        if (contentType.includes("png")) ext = "png";
-        if (contentType.includes("jpeg")) ext = "jpeg";
-      }
-
-      filename = `${new Date().getTime()}_${contactId}.${ext}`;
-      fs.writeFileSync(join(folder, filename), response.data);
-
-      return filename;
-    } catch (error) {
-      logger.error(`Download profile image failed attempt ${attempt + 1}: ${error}`);
-      attempt++;
-      await new Promise(r => setTimeout(r, 1000));
-    }
-  }
-
-  return "";
-};
 
 const CreateOrUpdateContactService = async ({
   name,
@@ -116,18 +60,31 @@ const CreateOrUpdateContactService = async ({
 
     if (lid && !contact.lid) updates.lid = lid;
     if (number && !contact.number) updates.number = number;
-    if (isGroup && name) updates.name = name;
+
+    // Prevent overwriting group name with JID
+    if (isGroup && name) {
+      const newNameIsJid = name.includes("@g.us");
+      const currentNameIsJid = contact.name?.includes("@g.us") || contact.name === contact.number;
+
+      if (!newNameIsJid || currentNameIsJid) {
+        updates.name = name;
+      }
+    } else if (name) {
+      updates.name = name; // Individual contacts usually don't have this issue
+    }
+
     if (isGroup && !contact.isGroup) updates.isGroup = true;
 
     // Profile Picture logic with Download
     if (profilePicUrl && profilePicUrl !== contact.profilePicUrl) {
-      const filename = await downloadProfileImage({
+      const filename = await DownloadProfileImage({
         profilePicUrl,
         tenantId,
         contactId: contact.id
       });
       if (filename) {
-        updates.profilePicUrl = `${backendUrl}/public/${tenantId}/contacts/${filename}`;
+        // Cache busting: Add version param to force frontend update
+        updates.profilePicUrl = `${backendUrl}/public/${tenantId}/contacts/${filename}?v=${new Date().getTime()}`;
       } else if (profilePicUrl) {
         // Fallback to remote URL if download failed
         updates.profilePicUrl = profilePicUrl;
@@ -157,7 +114,7 @@ const CreateOrUpdateContactService = async ({
     });
 
     if (profilePicUrl) {
-      const filename = await downloadProfileImage({
+      const filename = await DownloadProfileImage({
         profilePicUrl,
         tenantId,
         contactId: contact.id
@@ -165,7 +122,8 @@ const CreateOrUpdateContactService = async ({
 
       let finalUrl = profilePicUrl;
       if (filename) {
-        finalUrl = `${backendUrl}/public/${tenantId}/contacts/${filename}`;
+        // Cache busting
+        finalUrl = `${backendUrl}/public/${tenantId}/contacts/${filename}?v=${new Date().getTime()}`;
       }
 
       await contact.update({ profilePicUrl: finalUrl });
@@ -176,24 +134,6 @@ const CreateOrUpdateContactService = async ({
       contact
     });
   }
-
-  // Auto sync logic (Commented out to prevent infinite loops)
-  // if (!contact.profilePicUrl && contact.number) {
-  //   RabbitMQService.publishCommand("wbot.global.contact.sync", {
-  //     id: uuidv4(),
-  //     timestamp: Date.now(),
-  //     type: "contact.sync",
-  //     payload: {
-  //       contactId: contact.id,
-  //       number: contact.number,
-  //       lid: contact.lid || undefined,
-  //       sessionId: 1 
-  //     },
-  //     tenantId
-  //   }).catch(err => {
-  //     logger.warn("Auto Sync Error:", err);
-  //   });
-  // }
 
   return contact;
 };

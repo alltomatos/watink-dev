@@ -113,4 +113,33 @@ whatsappSessionRoutes.delete(
   WhatsAppSessionController.remove
 );
 
+/**
+ * @swagger
+ * /whatsappsession/all:
+ *   post:
+ *     summary: Reinicia todas as sessões WhatsApp
+ *     description: |
+ *       Solicita o reinício forçado de todas as sessões WhatsApp do tenant.
+ *     tags: [WhatsAppSession]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Comando de reinício enviado para todas as sessões
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Restarting all sessions.
+ */
+whatsappSessionRoutes.post(
+  "/whatsappsession/all",
+  isAuth,
+  WhatsAppSessionController.restartAll
+);
+
 export default whatsappSessionRoutes;
+

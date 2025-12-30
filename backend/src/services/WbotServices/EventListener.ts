@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload, PairingCodePayload, ContactUpdatePayload } from "../../microservice/contracts";
 import RabbitMQService from "../RabbitMQService";
 import { logger } from "../../utils/logger";
@@ -7,13 +8,15 @@ import FindOrCreateTicketService from "../TicketServices/FindOrCreateTicketServi
 import CreateMessageService from "../MessageServices/CreateMessageService";
 import Contact from "../../models/Contact";
 import CreateOrUpdateContactService from "../ContactServices/CreateOrUpdateContactService";
+import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
 
 export const EventListener = async () => {
   const routingKeys = [
     "wbot.*.*.session.qrcode",
     "wbot.*.*.session.pairingcode",
     "wbot.*.*.session.status",
-    "wbot.*.*.message.received"
+    "wbot.*.*.message.received",
+    "wbot.*.*.contact.update"
   ];
 
   await RabbitMQService.consumeEvents("api.events.process", routingKeys, async (msg: Envelope) => {
@@ -92,51 +95,94 @@ import { Op } from "sequelize";
 // ... previous imports
 
 const handleContactUpdate = async (payload: ContactUpdatePayload, tenantId: string | number) => {
-  const { contactId, number, profilePicUrl, pushName, lid } = payload;
+  logger.info(`[EventListener] Received contact.update for ${payload.number} (ID: ${payload.contactId})`);
+  const { contactId, number, profilePicUrl, pushName, lid, isGroup } = payload;
+  const backendUrl = process.env.URL_BACKEND || process.env.BACKEND_URL || "http://localhost:8080";
+
+  let contact: Contact | null = null;
 
   if (contactId) {
-    const contact = await Contact.findByPk(contactId);
-    if (contact) {
-      // 1. Check for LID Duplication/Collision
-      if (lid && lid !== contact.lid) {
-        const duplicate = await Contact.findOne({
-          where: {
-            lid: lid,
-            tenantId: contact.tenantId, // Use contact's tenant to be safe
-            id: { [Op.ne]: contact.id } // exclude self
-          }
-        });
+    contact = await Contact.findByPk(contactId);
+  }
 
-        if (duplicate) {
-          logger.info(`[EventListener] LID collision detected: ${lid}. Merging ${contact.id} into ${duplicate.id}`);
-
-          await MergeContactsService({
-            contactIdOrigin: contact.id,
-            contactIdTarget: duplicate.id,
-            tenantId: contact.tenantId
-          });
-
-          // After merge, the origin contact is destroyed. We stop here.
-          return;
+  // If no contact found by ID (or no ID provided), try to find by LID or Number
+  if (!contact) {
+    if (lid) {
+      contact = await Contact.findOne({ where: { lid, tenantId } });
+    }
+    if (!contact && number) {
+      // Try finding by basic number or remoteJid equivalent
+      contact = await Contact.findOne({
+        where: {
+          [Op.or]: [
+            { number: number },
+            { remoteJid: number }, // Engine sends JID in 'number' field for convenience sometimes
+            { remoteJid: `${number}@${isGroup ? "g.us" : "s.whatsapp.net"}` }
+          ],
+          tenantId
         }
-      }
+      });
+    }
+  }
 
-      // 2. Normal Update
-      const updates: any = {};
-      if (profilePicUrl) updates.profilePicUrl = profilePicUrl;
-      if (lid) updates.lid = lid;
-      if (pushName) updates.name = pushName; // Optionally update name if available
+  if (contact) {
+    // 1. Check for LID Duplication/Collision
+    if (lid && contact.lid && lid !== contact.lid) {
+      const duplicate = await Contact.findOne({
+        where: {
+          lid: lid,
+          tenantId: contact.tenantId, // Use contact's tenant to be safe
+          id: { [Op.ne]: contact.id } // exclude self
+        }
+      });
 
-      if (Object.keys(updates).length > 0) {
-        await contact.update(updates);
+      if (duplicate) {
+        logger.info(`[EventListener] LID collision detected: ${lid}. Merging ${contact.id} into ${duplicate.id}`);
 
-        const io = getIO();
-        io.emit("contact", {
-          action: "update",
-          contact
+        await MergeContactsService({
+          contactIdOrigin: contact.id,
+          contactIdTarget: duplicate.id,
+          tenantId: contact.tenantId
         });
+
+        // After merge, the origin contact is destroyed. We stop here.
+        return;
       }
     }
+
+    // 2. Normal Update
+    const updates: any = {};
+
+    if (profilePicUrl) {
+      const filename = await DownloadProfileImage({
+        profilePicUrl,
+        tenantId,
+        contactId: contact.id
+      });
+      if (filename) {
+        // Cache busting
+        updates.profilePicUrl = `${backendUrl}/public/${tenantId}/contacts/${filename}?v=${new Date().getTime()}`;
+      } else {
+        updates.profilePicUrl = profilePicUrl;
+      }
+    }
+    if (lid) updates.lid = lid;
+    if (pushName) updates.name = pushName; // Optionally update name if available
+
+    if (Object.keys(updates).length > 0) {
+      await contact.update(updates);
+
+      const io = getIO();
+      io.emit("contact", {
+        action: "update",
+        contact
+      });
+    }
+  } else {
+    // Optional: Create contact if it doesn't exist? 
+    // For now, we only update existing contacts to avoid polluting DB with random group updates if the user isn't interacting with them.
+    // However, for groups we are part of, we probably want them? 
+    // Let's stick to updating existing ones for now to be safe.
   }
 };
 
@@ -210,6 +256,42 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     }
 
     msgContact = await CreateOrUpdateContactService(contactData);
+  }
+
+  // [NEW] Sync Contact/Group Info if missing
+  const shouldSyncGroup = groupContact && (groupContact.name === groupContact.number || !groupContact.profilePicUrl);
+  // Sync individual contact if no profile pic or if it's a legacy contact without LID (and not a LID itself)
+  const shouldSyncContact = msgContact && (!msgContact.profilePicUrl || (!msgContact.lid && !msgContact.number?.includes("@lid")));
+
+  if (shouldSyncGroup && groupContact) {
+    await RabbitMQService.publishCommand(`wbot.${tenantId}.${sessionId}.contact.sync`, {
+      id: uuidv4(),
+      timestamp: Date.now(),
+      tenantId,
+      type: "contact.sync",
+      payload: {
+        sessionId,
+        contactId: groupContact.id,
+        number: groupContact.number,
+        isGroup: true
+      }
+    });
+  }
+
+  if (shouldSyncContact && msgContact) {
+    await RabbitMQService.publishCommand(`wbot.${tenantId}.${sessionId}.contact.sync`, {
+      id: uuidv4(),
+      timestamp: Date.now(),
+      tenantId,
+      type: "contact.sync",
+      payload: {
+        sessionId,
+        contactId: msgContact.id,
+        number: msgContact.number,
+        lid: msgContact.lid || undefined,
+        isGroup: false
+      }
+    });
   }
 
   // ... inside handleMessageReceived

@@ -228,6 +228,15 @@ const Connections = () => {
 		handleMenuClose();
 	};
 
+	const handleRestartAllWhatsApp = async () => {
+		try {
+			await api.post("/whatsappsession/all");
+			toast.success(i18n.t("whatsappModal.success"));
+		} catch (err) {
+			toastError(err);
+		}
+	};
+
 	return (
 		<MainContainer>
 			<ConfirmationModal
@@ -257,6 +266,15 @@ const Connections = () => {
 						startIcon={<Add />}
 					>
 						{i18n.t("connections.buttons.add")}
+					</Button>
+					<Button
+						variant="contained"
+						color="primary"
+						onClick={handleRestartAllWhatsApp}
+						startIcon={<Autorenew />}
+						style={{ marginLeft: 8 }}
+					>
+						Reiniciar Todas
 					</Button>
 				</MainHeaderButtonsWrapper>
 			</MainHeader>

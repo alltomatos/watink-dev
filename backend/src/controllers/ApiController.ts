@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as Yup from "yup";
+import { v4 as uuidv4 } from "uuid";
 import AppError from "../errors/AppError";
 import GetDefaultWhatsApp from "../helpers/GetDefaultWhatsApp";
 import SetTicketMessagesAsRead from "../helpers/SetTicketMessagesAsRead";
@@ -8,11 +9,7 @@ import Whatsapp from "../models/Whatsapp";
 import CreateOrUpdateContactService from "../services/ContactServices/CreateOrUpdateContactService";
 import FindOrCreateTicketService from "../services/TicketServices/FindOrCreateTicketService";
 import ShowTicketService from "../services/TicketServices/ShowTicketService";
-import CheckIsValidContact from "../services/WbotServices/CheckIsValidContact";
-import CheckContactNumber from "../services/WbotServices/CheckNumber";
-import GetProfilePicUrl from "../services/WbotServices/GetProfilePicUrl";
-import SendWhatsAppMedia from "../services/WbotServices/SendWhatsAppMedia";
-import SendWhatsAppMessage from "../services/WbotServices/SendWhatsAppMessage";
+import RabbitMQService from "../services/RabbitMQService";
 
 type WhatsappData = {
   whatsappId: number;
@@ -33,13 +30,12 @@ const createContact = async (
   whatsappId: number | undefined,
   newContact: string
 ) => {
-  await CheckIsValidContact(newContact);
-
-  const validNumber: any = await CheckContactNumber(newContact);
-
-  const profilePicUrl = await GetProfilePicUrl(validNumber);
-
-  const number = validNumber;
+  // Legacy validation removed for async processing
+  // await CheckIsValidContact(newContact);
+  // const validNumber: any = await CheckContactNumber(newContact);
+  
+  // Basic cleaning only - validation happens in Engine
+  const number = newContact.replace(/\D/g, "");
 
   let whatsapp: Whatsapp | null;
 
@@ -56,7 +52,7 @@ const createContact = async (
   const contactData = {
     name: `${number}`,
     number,
-    profilePicUrl,
+    profilePicUrl: "", // Will be fetched async
     isGroup: false,
     tenantId: whatsapp.tenantId
   };
@@ -102,12 +98,42 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
   if (medias) {
     await Promise.all(
       medias.map(async (media: Express.Multer.File) => {
-        await SendWhatsAppMedia({ body, media, ticket: contactAndTicket });
+        // Send via RabbitMQ
+        await RabbitMQService.publishCommand(`wbot.${contactAndTicket.tenantId}.${contactAndTicket.whatsappId}.message.send.media`, {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: contactAndTicket.tenantId,
+          type: "message.send.media",
+          payload: {
+            sessionId: contactAndTicket.whatsappId,
+            to: `${contactAndTicket.contact.number}@${contactAndTicket.isGroup ? "g" : "c"}.us`,
+            body: body,
+            media: {
+                mimetype: media.mimetype,
+                filename: media.originalname,
+                path: media.path
+            },
+            ticketId: contactAndTicket.id
+          }
+        });
       })
     );
   } else {
-    await SendWhatsAppMessage({ body, ticket: contactAndTicket, quotedMsg });
+    // Send Text via RabbitMQ
+    await RabbitMQService.publishCommand(`wbot.${contactAndTicket.tenantId}.${contactAndTicket.whatsappId}.message.send.text`, {
+        id: uuidv4(),
+        timestamp: Date.now(),
+        tenantId: contactAndTicket.tenantId,
+        type: "message.send.text",
+        payload: {
+            sessionId: contactAndTicket.whatsappId,
+            to: `${contactAndTicket.contact.number}@${contactAndTicket.isGroup ? "g" : "c"}.us`,
+            text: body,
+            quotedMsg,
+            ticketId: contactAndTicket.id
+        }
+    });
   }
 
-  return res.send();
+  return res.send({ status: "SUCCESS" });
 };

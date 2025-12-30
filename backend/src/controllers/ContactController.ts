@@ -83,7 +83,7 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
   await CheckIsValidContact(newContact.number);
   const validNumber: any = await CheckContactNumber(newContact.number);
 
-  const profilePicUrl = await GetProfilePicUrl(validNumber);
+  const profilePicUrl = await GetProfilePicUrl(validNumber, req.user.tenantId);
 
   let name = newContact.name;
   let number = validNumber;
@@ -135,7 +135,8 @@ export const update = async (
     throw new AppError(err.message);
   }
 
-  await CheckIsValidContact(contactData.number);
+  // Legacy wbot check removed
+  // await CheckIsValidContact(contactData.number);
 
   const { contactId } = req.params;
 
