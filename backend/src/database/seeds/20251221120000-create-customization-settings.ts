@@ -12,7 +12,7 @@ module.exports = {
                 [
                     {
                         key: "systemTitle",
-                        value: "Watic Premium",
+                        value: "Watink",
                         createdAt: new Date(),
                         updatedAt: new Date()
                     }

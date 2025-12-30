@@ -27,7 +27,7 @@ const checkPermission = (permission: string) => {
         }
 
         // Super Admin by profile fallback
-        if (user.profile === "admin") {
+        if (user.profile === "admin" || user.profile === "superadmin") {
             return next();
         }
 

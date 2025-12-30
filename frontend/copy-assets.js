@@ -6,9 +6,11 @@ const publicDir = path.join(__dirname, 'public');
 
 const filesToCopy = [
     { src: 'fundo.png', dest: 'login-background.png' },
-    { src: 'watic-premiun-log.png', dest: 'logo.png' },
-    { src: 'watic-logo-favicon.png', dest: 'favicon.png' },
-    { src: 'watic-logo-favicon.png', dest: 'favicon.ico' } // Fallback for ico
+    { src: 'watink-sf.png', dest: 'logo.png' },
+    { src: 'favicon.png', dest: 'favicon.png' },
+    { src: 'favicon.png', dest: 'favicon.ico' },
+    { src: 'logo-completa.png', dest: 'logo-full.png' },
+    { src: 'watink-logo-letras.png', dest: 'logo-text.png' }
 ];
 
 if (!fs.existsSync(publicDir)) {

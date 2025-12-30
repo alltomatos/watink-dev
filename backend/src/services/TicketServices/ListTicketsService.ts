@@ -140,17 +140,16 @@ const ListTicketsService = async ({
     if (isGroup === "false") {
       whereCondition = {
         ...whereCondition,
-        [Op.and]: [
-          { "$contact.isGroup$": false },
-          { "$contact.number$": { [Op.notILike]: "%g.us" } }
-        ]
+        isGroup: false,
+        "$contact.isGroup$": false
       };
     } else {
+      // Para grupos, ignorar filtros de status/userId e buscar todos os tickets de grupo
       whereCondition = {
-        ...whereCondition,
+        queueId: { [Op.or]: [queueIds, null] },
         [Op.or]: [
-          { "$contact.isGroup$": true },
-          { "$contact.number$": { [Op.like]: "%g.us" } }
+          { isGroup: true },
+          { "$contact.isGroup$": true }
         ]
       };
     }

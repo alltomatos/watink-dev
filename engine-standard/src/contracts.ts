@@ -18,6 +18,7 @@ export type CommandType =
   | "message.send.interactive" // NOVO: Native Flow (Interativo)
   | "message.send.interactive" // NOVO: Native Flow (Interativo)
   | "message.send.carousel"    // NOVO: Carrossel Nativo
+  | "message.markAsRead"       // NOVO: Marcar mensagens como lidas
   | "contact.sync";            // NOVO: Sincronização de Contato
 
 export interface StartSessionPayload {
@@ -28,6 +29,7 @@ export interface StartSessionPayload {
   name?: string;
   syncHistory?: boolean;
   syncPeriod?: string;
+  force?: boolean;
 }
 
 export interface StopSessionPayload {
@@ -222,5 +224,11 @@ export interface ContactUpdatePayload {
   profilePicUrl?: string;
   pushName?: string;
   lid?: string;
+}
+
+export interface MarkAsReadPayload {
+  sessionId: number;
+  to: string;
+  messageIds: string[];
 }
 

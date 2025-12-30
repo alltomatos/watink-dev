@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { getIO } from "../libs/socket";
 import { v4 as uuidv4 } from "uuid";
 import RabbitMQService from "../services/RabbitMQService";
+import BatchEnrichContactsService from "../services/ContactServices/BatchEnrichContactsService";
 
 import ListContactsService from "../services/ContactServices/ListContactsService";
 import CreateContactService from "../services/ContactServices/CreateContactService";
@@ -210,4 +211,20 @@ export const sync = async (req: Request, res: Response): Promise<Response> => {
   } catch (error) {
     throw new AppError(error.message);
   }
+};
+
+export const batchEnrich = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  // Assuming isAuth middleware populates req.user.tenantId
+  const { tenantId } = req.user as any;
+
+  if (!tenantId) {
+    throw new AppError("Tenant ID not found in request", 400);
+  }
+
+  const { count } = await BatchEnrichContactsService(tenantId);
+
+  return res.status(200).json({ message: `Enrichment scheduled for ${count} contacts.` });
 };

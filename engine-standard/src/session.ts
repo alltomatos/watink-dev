@@ -2,7 +2,7 @@ import {
   Envelope, StartSessionPayload, SendTextPayload, SendMediaPayload,
   SendButtonsPayload, SendListPayload, SendPollPayload,
   SendTemplatePayload, SendInteractivePayload, SendCarouselPayload,
-  CommandType, SyncContactPayload
+  CommandType, SyncContactPayload, MarkAsReadPayload
 } from "./contracts";
 import { logger } from "./logger";
 import { RabbitMQ } from "./rabbitmq";
@@ -16,7 +16,7 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   USyncQuery,
   USyncUser
-} from "whaileys";
+} from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import path from "path";
 import fs from "fs";
@@ -24,6 +24,7 @@ import fs from "fs";
 interface WhaileysSession {
   socket: ReturnType<typeof makeWASocket>;
   status: string;
+  tenantId: string | number;
 }
 
 class SessionManager {
@@ -49,7 +50,7 @@ class SessionManager {
         await this.startSession(envelope.payload as StartSessionPayload, envelope.tenantId);
         break;
       case "session.stop":
-        await this.stopSession(envelope.payload.sessionId);
+        await this.stopSession(envelope.payload.sessionId, envelope.tenantId);
         break;
       case "message.send.text":
         await this.sendText(envelope.payload as SendTextPayload);
@@ -78,6 +79,9 @@ class SessionManager {
       case "contact.sync":
         await this.syncContact(envelope.payload as SyncContactPayload, envelope.tenantId);
         break;
+      case "message.markAsRead":
+        await this.markAsRead(envelope.payload as MarkAsReadPayload);
+        break;
       default:
         logger.warn(`Unknown command type: ${envelope.type}`);
     }
@@ -105,10 +109,11 @@ class SessionManager {
         try {
           // Só roda onWhatsApp se não for LID (LIDs não funcionam no onWhatsApp geralmente)
           if (!jid.includes("@lid")) {
-            const [result] = await session.socket.onWhatsApp(jid);
+            const results = await session.socket.onWhatsApp(jid);
+            const result = results?.[0];
             if (result && result.exists) {
               // Se retornou LID (algumas versões retornam), usa
-              if (result.lid) foundLid = result.lid;
+              if (result.lid) foundLid = result.lid as string;
 
               // Tenta buscar foto com JID confirmado
               if (!profilePicUrl) {
@@ -172,8 +177,8 @@ class SessionManager {
     }
   }
 
-  private async stopSession(sessionId: number) {
-    logger.info(`Stopping session ${sessionId}`);
+  private async stopSession(sessionId: number, tenantId: string | number) {
+    logger.info(`Stopping session ${sessionId} for tenant ${tenantId}`);
     const session = this.sessions.get(sessionId);
 
     // Mesmo se não encontrar a sessão em memória (pode ter caído), forçamos a limpeza do diretório
@@ -195,14 +200,14 @@ class SessionManager {
     const statusEvent: Envelope = {
       id: uuidv4(),
       timestamp: Date.now(),
-      tenantId: 1, // Default, should be passed
+      tenantId: tenantId,
       type: "session.status",
       payload: {
         sessionId,
         status: "DISCONNECTED"
       }
     };
-    await this.rabbitmq.publishEvent(`wbot.1.${sessionId}.session.status`, statusEvent);
+    await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId}.session.status`, statusEvent);
   }
 
 
@@ -210,25 +215,14 @@ class SessionManager {
   private async startSession(payload: StartSessionPayload, tenantId: string | number) {
     logger.info(`Starting session ${payload.sessionId}`);
 
-    // Notify backend that session is opening
-    const openingEvent: Envelope = {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      tenantId,
-      type: "session.status",
-      payload: {
-        sessionId: payload.sessionId,
-        status: "OPENING"
-      }
-    };
-    await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, openingEvent);
-
     try {
-      if (this.sessions.has(payload.sessionId)) {
+      if (this.sessions.has(payload.sessionId) && !payload.force) {
         logger.info(`Session ${payload.sessionId} already exists`);
 
         const session = this.sessions.get(payload.sessionId);
         const currentStatus = session?.status === "CONNECTED" ? "CONNECTED" : "OPENING";
+        
+        logger.info(`Session ${payload.sessionId} status is ${session?.status}, sending ${currentStatus}`);
 
         const statusEvent: Envelope = {
           id: uuidv4(),
@@ -242,6 +236,28 @@ class SessionManager {
         };
         await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
         return;
+      }
+
+      // Notify backend that session is opening (only if we are actually starting a new one)
+      const openingEvent: Envelope = {
+        id: uuidv4(),
+        timestamp: Date.now(),
+        tenantId,
+        type: "session.status",
+        payload: {
+          sessionId: payload.sessionId,
+          status: "OPENING"
+        }
+      };
+      await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, openingEvent);
+
+      // If force is true, we need to stop the existing session first if it exists
+
+      if (this.sessions.has(payload.sessionId) && payload.force) {
+        logger.info(`Forcing session start for ${payload.sessionId}, stopping existing session...`);
+        await this.stopSession(payload.sessionId, tenantId);
+        // Add a small delay to ensure cleanup is processed
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       // Initialize retry counter if not present
@@ -262,108 +278,118 @@ class SessionManager {
       const { version, isLatest } = await fetchLatestBaileysVersion();
       logger.info(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
 
+      // Adjust browser config for pairing code to avoid 401 and "Unable to connect"
+      // Using Ubuntu signature is often more stable for Pairing Code
+      const browserConfig = payload.usePairingCode ? ["Ubuntu", "Chrome", "20.0.04"] : ["Mac OS", "Chrome", "121.0.6167.85"];
+
+      logger.info(`Session ${payload.sessionId} starting with browser config: ${JSON.stringify(browserConfig)} (usePairingCode: ${payload.usePairingCode})`);
+
       const sock = makeWASocket({
         version,
         auth: state,
         printQRInTerminal: false,
         logger: logger.child({ level: "warn" }) as any,
-        browser: ["Mac OS", "Chrome", "121.0.6167.85"],
+        browser: browserConfig as any,
         syncFullHistory: payload.syncHistory || false,
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: 30000,
-        retryRequestDelayMs: 2000
+        retryRequestDelayMs: 2000,
+        generateHighQualityLinkPreview: true,
       });
 
-      this.sessions.set(payload.sessionId, { socket: sock, status: "OPENING" });
+      // Salva o socket e o status inicial
+      this.sessions.set(payload.sessionId, { socket: sock, status: "OPENING", tenantId });
 
       sock.ev.on("creds.update", saveCreds);
 
 
-      // Se usePairingCode e phoneNumber foram fornecidos, solicitar código de pareamento
-      if (payload.usePairingCode && payload.phoneNumber && !sock.authState.creds.registered) {
-        let pairingCodeRequested = false;
+      // Variables for pairing code flow
+      let pairingCodeRequested = false;
+      const requestPairingCodeWithRetry = async () => {
+        if (!payload.usePairingCode || !payload.phoneNumber) return;
+
         const MAX_RETRIES = 5;
         const RETRY_DELAY_MS = 5000;
-
         const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-        const requestPairingCodeWithRetry = async () => {
-          let lastError: any = null;
+        let lastError: any = null;
 
-          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            try {
-              logger.info(`Requesting pairing code for session ${payload.sessionId} - Phone: ${payload.phoneNumber} (attempt ${attempt}/${MAX_RETRIES})`);
-              const code = await sock.requestPairingCode(payload.phoneNumber!);
-
-              // Format code as XXXX-XXXX
-              const formattedCode = code ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
-
-              logger.info(`Pairing code generated for session ${payload.sessionId}: ${formattedCode}`);
-
-              const pairingEvent: Envelope = {
-                id: uuidv4(),
-                timestamp: Date.now(),
-                tenantId,
-                type: "session.pairingcode",
-                payload: {
-                  sessionId: payload.sessionId,
-                  pairingCode: formattedCode
-                }
-              };
-              await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.pairingcode`, pairingEvent);
-              return; // Success, exit function
-
-            } catch (error: any) {
-              lastError = error;
-              logger.warn(`Attempt ${attempt}/${MAX_RETRIES} failed for pairing code: ${error.message}`);
-
-              // Rate limit - don't retry
-              if (error.message?.includes("rate-overlimit")) {
-                logger.error(`Rate limit reached for session ${payload.sessionId}, not retrying.`);
-                break;
-              }
-
-              // Connection Closed - wait and retry
-              if (error.message?.includes("Connection Closed") && attempt < MAX_RETRIES) {
-                logger.info(`Waiting ${RETRY_DELAY_MS}ms before retry...`);
-                await delay(RETRY_DELAY_MS);
-                continue;
-              }
-
-              // Last attempt - break
-              if (attempt === MAX_RETRIES) {
-                break;
-              }
-
-              // Other errors - wait shorter and retry
-              await delay(2000);
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            if (sock.authState.creds.registered) {
+              logger.info(`Session ${payload.sessionId} already registered, skipping pairing code.`);
+              return;
             }
+
+            logger.info(`Requesting pairing code for session ${payload.sessionId} - Phone: ${payload.phoneNumber} (attempt ${attempt}/${MAX_RETRIES})`);
+
+            // Removing aggressive check for ws.readyState as it causes issues with some Baileys versions
+            // We rely on the fact that we received a QR code event or are in a state to request it.
+
+            const code = await sock.requestPairingCode(payload.phoneNumber!);
+
+            // Format code as XXXX-XXXX
+            const formattedCode = code ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
+
+            logger.info(`Pairing code generated for session ${payload.sessionId}: ${formattedCode}`);
+
+            const pairingEvent: Envelope = {
+              id: uuidv4(),
+              timestamp: Date.now(),
+              tenantId,
+              type: "session.pairingcode",
+              payload: {
+                sessionId: payload.sessionId,
+                pairingCode: formattedCode
+              }
+            };
+            logger.info(`Publishing pairing code event for session ${payload.sessionId} code ${formattedCode}`);
+            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.pairingcode`, pairingEvent);
+            return; // Success, exit function
+
+          } catch (error: any) {
+            lastError = error;
+            logger.warn(`Attempt ${attempt}/${MAX_RETRIES} failed for pairing code: ${error.message}`);
+
+            // Rate limit - don't retry
+            if (error.message?.includes("rate-overlimit")) {
+              logger.error(`Rate limit reached for session ${payload.sessionId}, not retrying.`);
+              break;
+            }
+
+            // Connection Closed or Failure - wait and retry
+            if ((error.message?.includes("Connection Closed") || error.message?.includes("Connection Failure")) && attempt < MAX_RETRIES) {
+              logger.info(`Connection issue (${error.message}), waiting ${RETRY_DELAY_MS}ms before retry...`);
+              await delay(RETRY_DELAY_MS);
+              continue;
+            }
+
+            // Last attempt - break
+            if (attempt === MAX_RETRIES) {
+              break;
+            }
+
+            // Other errors - wait shorter and retry
+            await delay(3000);
           }
+        }
 
-          logger.error(`Error requesting pairing code for session ${payload.sessionId} after ${MAX_RETRIES} attempts`, lastError);
-          pairingCodeRequested = false; // Reset on error to allow retry
-        };
+        if (lastError) {
+          logger.error(`Failed to generate pairing code for session ${payload.sessionId} after ${MAX_RETRIES} attempts. Last error: ${lastError.message}`);
+        }
 
-        sock.ev.on("connection.update", async (update: any) => {
-          const { connection, qr } = update;
+        pairingCodeRequested = false; // Reset on error to allow retry
+      };
 
-          if (pairingCodeRequested) return;
-
-          if (!sock.authState.creds.registered && qr) {
+      // Fallback: Se não recebermos QR em 10s, tentar pedir o código
+      if (payload.usePairingCode && payload.phoneNumber && !sock.authState.creds.registered) {
+        setTimeout(async () => {
+          if (!pairingCodeRequested && !sock.authState.creds.registered) {
+            logger.info(`Fallback: Requesting pairing code for session ${payload.sessionId} after timeout`);
             pairingCodeRequested = true;
             await requestPairingCodeWithRetry();
           }
-        });
-
-        // Fallback: Se não recebermos QR em 6s, tentar pedir o código
-        // Isso ajuda em casos onde o evento QR não é disparado imediatamente
-        setTimeout(async () => {
-             if (!pairingCodeRequested && !sock.authState.creds.registered) {
-                 logger.info(`Fallback: Requesting pairing code for session ${payload.sessionId} after timeout`);
-                 pairingCodeRequested = true;
-                 await requestPairingCodeWithRetry();
-             }
-        }, 6000);
+        }, 10000);
       }
 
       sock.ev.on("connection.update", async (update: any) => {
@@ -383,6 +409,12 @@ class SessionManager {
             }
           };
           await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.qrcode`, qrEvent);
+        } else if (qr && payload.usePairingCode) {
+          logger.info(`QR Code received for session ${payload.sessionId}, triggering pairing code flow...`);
+          if (!pairingCodeRequested && !sock.authState.creds.registered) {
+            pairingCodeRequested = true;
+            await requestPairingCodeWithRetry();
+          }
         }
 
         if (connection === "close") {
@@ -414,6 +446,32 @@ class SessionManager {
           if (statusCode === DisconnectReason.badSession) {
             logger.warn(`Bad session detected for session ${payload.sessionId}, cleaning up auth files.`);
             await this.cleanupSession(payload.sessionId);
+          }
+
+          // Special handling for Pairing Code flow: Treat 401 as retryable if using pairing code and not registered
+          if (payload.usePairingCode && !sock.authState.creds.registered && statusCode === DisconnectReason.loggedOut) {
+            logger.warn(`401 Logged Out during Pairing Code flow for session ${payload.sessionId} - Cleaning up and Retrying`);
+
+            // Ensure socket is closed and listeners removed
+            try {
+              sock.end(undefined);
+              this.sessions.delete(payload.sessionId);
+            } catch (e) {
+              logger.warn(`Error closing socket for session ${payload.sessionId}`, e);
+            }
+
+            // Wait a bit before cleanup to ensure file locks are released
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            await this.cleanupSession(payload.sessionId);
+
+            // Allow reconnect with more retries
+            if (currentRetries < 10) {
+              this.retries.set(payload.sessionId, currentRetries + 1);
+              // this.sessions.delete(payload.sessionId); // Already deleted above
+              setTimeout(() => this.startSession(payload, tenantId), 2000);
+              return;
+            }
           }
 
           if (shouldReconnect && currentRetries < 5) {
@@ -489,128 +547,7 @@ class SessionManager {
               }
             }
 
-            // Check for media types
-            const hasMedia = !!(
-              msg.message.imageMessage ||
-              msg.message.videoMessage ||
-              msg.message.audioMessage ||
-              msg.message.documentMessage ||
-              msg.message.stickerMessage
-            );
-
-            let body = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
-            let selectedButtonId = undefined;
-            let selectedRowId = undefined;
-            let pollVotes = undefined;
-            let msgType = hasMedia ? "media" : "chat";
-            let mediaData = undefined;
-            let mimetype = undefined;
-
-            // --- Media Handling ---
-            if (hasMedia) {
-              try {
-                const buffer = await downloadMediaMessage(msg, "buffer", {});
-                mediaData = buffer.toString("base64");
-                mimetype = msg.message.imageMessage?.mimetype ||
-                  msg.message.videoMessage?.mimetype ||
-                  msg.message.audioMessage?.mimetype ||
-                  msg.message.documentMessage?.mimetype ||
-                  msg.message.stickerMessage?.mimetype;
-              } catch (err) {
-                logger.warn(`Error downloading media for msg ${msg.key.id}: ${err}`);
-              }
-            }
-
-            // --- Interactive Responses ---
-
-            // 1. Buttons Response
-            if (msg.message.buttonsResponseMessage) {
-              selectedButtonId = msg.message.buttonsResponseMessage.selectedButtonId;
-              body = msg.message.buttonsResponseMessage.selectedDisplayText || "";
-              msgType = "button_response";
-            }
-            // 2. Template Button Response
-            else if (msg.message.templateButtonReplyMessage) {
-              selectedButtonId = msg.message.templateButtonReplyMessage.selectedId;
-              body = msg.message.templateButtonReplyMessage.selectedDisplayText || "";
-              msgType = "button_response";
-            }
-            // 3. List Response
-            else if (msg.message.listResponseMessage) {
-              selectedRowId = msg.message.listResponseMessage.singleSelectReply?.selectedRowId;
-              body = msg.message.listResponseMessage.title || "";
-              msgType = "list_response";
-            }
-            // 3.1 Interactive Response (Native Flow / Carousel)
-            else if (msg.message.interactiveResponseMessage) {
-              const interactiveResp = msg.message.interactiveResponseMessage;
-              if (interactiveResp.nativeFlowResponseMessage) {
-                const params = JSON.parse(interactiveResp.nativeFlowResponseMessage.paramsJson || "{}");
-                selectedButtonId = params.id;
-              }
-              body = interactiveResp.body?.text || "";
-              msgType = "interactive_response";
-            }
-            // 4. Poll Response
-            else if (msg.message.pollUpdateMessage) {
-              msgType = "poll_response";
-            }
-
-            // Fetch Profile Pic (Best effort)
-            let profilePicUrl = "";
-            try {
-              // profilePicUrl = await sock.profilePictureUrl(msg.key.participant || msg.key.remoteJid || "", "image").catch(() => "");
-            } catch (e) { }
-
-            // Enhanced Contact Identification (LID/JID)
-            let senderLid = undefined;
-            const senderJid = msg.key.participant || msg.key.remoteJid || "";
-
-            if (senderJid && !senderJid.includes("@lid")) {
-              try {
-                // If it's a standard JID (PN based), try to fetch the LID which is permanent
-                // This answers the requirement: "todo contato tem LID mas podem haver casos de contatos antigos... sistema deve buscar o LID"
-                const [result] = await sock.onWhatsApp(senderJid);
-                if (result && result.lid) {
-                  senderLid = result.lid;
-                }
-              } catch (err) {
-                // Ignore errors during LID fetch to not block message processing
-              }
-            } else if (senderJid && senderJid.includes("@lid")) {
-              senderLid = senderJid;
-            }
-
-            const msgEvent: Envelope = {
-              id: uuidv4(),
-              timestamp: Date.now(),
-              tenantId,
-              type: "message.received",
-              payload: {
-                sessionId: payload.sessionId,
-                message: {
-                  id: msg.key.id || "",
-                  from: msg.key.remoteJid || "",
-                  to: msg.key.remoteJid || "",
-                  body: body,
-                  fromMe: msg.key.fromMe || false,
-                  isGroup: msg.key.remoteJid?.endsWith("@g.us") || false,
-                  type: msgType,
-                  timestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : 0,
-                  hasMedia: hasMedia,
-                  mediaData,
-                  mimetype,
-                  selectedButtonId,
-                  selectedRowId,
-                  pollVotes,
-                  pushName: msg.pushName || "",
-                  participant: msg.key.participant || "",
-                  profilePicUrl,
-                  senderLid
-                }
-              }
-            };
-            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.received`, msgEvent);
+            await this.handleMessage(msg, sock, payload.sessionId, tenantId);
           }
         }
       });
@@ -675,11 +612,147 @@ class SessionManager {
       return;
     }
 
-    logger.info(`Sending text to ${payload.to}: ${payload.body}`);
+    logger.info(`[sendText] Sending text to ${payload.to}: ${payload.body}`);
 
-    await session.socket.sendMessage(payload.to, {
+    const msg = await session.socket.sendMessage(payload.to, {
       text: payload.body
     });
+
+    if (msg) {
+      logger.info(`[sendText] Message sent, triggering handleMessage. Msg ID: ${msg.key.id} Tenant: ${session.tenantId}`);
+      await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId);
+    } else {
+      logger.warn(`[sendText] Message rejected or no response from Baileys.`);
+    }
+  }
+
+  private async handleMessage(msg: any, sock: any, sessionId: number, tenantId: string | number) {
+    if (!msg.message) return;
+    logger.info(`[handleMessage] Processing message ${msg.key.id} fromMe: ${msg.key.fromMe}`);
+
+    // Check for media types
+    const hasMedia = !!(
+      msg.message.imageMessage ||
+      msg.message.videoMessage ||
+      msg.message.audioMessage ||
+      msg.message.documentMessage ||
+      msg.message.stickerMessage
+    );
+
+    let body = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+    let selectedButtonId = undefined;
+    let selectedRowId = undefined;
+    let pollVotes = undefined;
+    let msgType = hasMedia ? "media" : "chat";
+    let mediaData = undefined;
+    let mimetype = undefined;
+
+    // --- Media Handling ---
+    if (hasMedia) {
+      try {
+        const buffer = await downloadMediaMessage(msg, "buffer", {});
+        mediaData = buffer.toString("base64");
+        mimetype = msg.message.imageMessage?.mimetype ||
+          msg.message.videoMessage?.mimetype ||
+          msg.message.audioMessage?.mimetype ||
+          msg.message.documentMessage?.mimetype ||
+          msg.message.stickerMessage?.mimetype;
+      } catch (err) {
+        logger.warn(`Error downloading media for msg ${msg.key.id}: ${err}`);
+      }
+    }
+
+    // --- Interactive Responses ---
+
+    // 1. Buttons Response
+    if (msg.message.buttonsResponseMessage) {
+      selectedButtonId = msg.message.buttonsResponseMessage.selectedButtonId;
+      body = msg.message.buttonsResponseMessage.selectedDisplayText || "";
+      msgType = "button_response";
+    }
+    // 2. Template Button Response
+    else if (msg.message.templateButtonReplyMessage) {
+      selectedButtonId = msg.message.templateButtonReplyMessage.selectedId;
+      body = msg.message.templateButtonReplyMessage.selectedDisplayText || "";
+      msgType = "button_response";
+    }
+    // 3. List Response
+    else if (msg.message.listResponseMessage) {
+      selectedRowId = msg.message.listResponseMessage.singleSelectReply?.selectedRowId;
+      body = msg.message.listResponseMessage.title || "";
+      msgType = "list_response";
+    }
+    // 3.1 Interactive Response (Native Flow / Carousel)
+    else if (msg.message.interactiveResponseMessage) {
+      const interactiveResp = msg.message.interactiveResponseMessage;
+      if (interactiveResp.nativeFlowResponseMessage) {
+        const params = JSON.parse(interactiveResp.nativeFlowResponseMessage.paramsJson || "{}");
+        selectedButtonId = params.id;
+      }
+      body = interactiveResp.body?.text || "";
+      msgType = "interactive_response";
+    }
+    // 4. Poll Response
+    else if (msg.message.pollUpdateMessage) {
+      msgType = "poll_response";
+    }
+
+    // Fetch Profile Pic (Best effort)
+    let profilePicUrl = "";
+    try {
+      // profilePicUrl = await sock.profilePictureUrl(msg.key.participant || msg.key.remoteJid || "", "image").catch(() => "");
+    } catch (e) { }
+
+    // Enhanced Contact Identification (LID/JID)
+    let senderLid = undefined;
+    const senderJid = msg.key.participant || msg.key.remoteJid || "";
+
+    if (senderJid && !senderJid.includes("@lid")) {
+      try {
+        // If it's a standard JID (PN based), try to fetch the LID which is permanent
+        // This answers the requirement: "todo contato tem LID mas podem haver casos de contatos antigos... sistema deve buscar o LID"
+        const results = await sock.onWhatsApp(senderJid);
+        const result = results?.[0];
+        if (result && result.lid) {
+          senderLid = result.lid;
+        }
+      } catch (err) {
+        // Ignore errors during LID fetch to not block message processing
+      }
+    } else if (senderJid && senderJid.includes("@lid")) {
+      senderLid = senderJid;
+    }
+
+    const msgEvent: Envelope = {
+      id: uuidv4(),
+      timestamp: Date.now(),
+      tenantId,
+      type: "message.received",
+      payload: {
+        sessionId: sessionId,
+        message: {
+          id: msg.key.id || "",
+          from: msg.key.remoteJid || "",
+          to: msg.key.remoteJid || "",
+          body: body,
+          fromMe: msg.key.fromMe || false,
+          isGroup: msg.key.remoteJid?.endsWith("@g.us") || false,
+          type: msgType,
+          timestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : 0,
+          hasMedia: hasMedia,
+          mediaData,
+          mimetype,
+          selectedButtonId,
+          selectedRowId,
+          pollVotes,
+          pushName: msg.pushName || "",
+          participant: msg.key.participant || "",
+          profilePicUrl,
+          senderLid
+        }
+      }
+    };
+    await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId}.message.received`, msgEvent);
   }
 
   private async sendMedia(payload: SendMediaPayload, tenantId: string | number) {
@@ -727,7 +800,32 @@ class SessionManager {
       };
     }
 
-    await session.socket.sendMessage(payload.to, content);
+    const msg = await session.socket.sendMessage(payload.to, content);
+
+    if (msg) {
+      await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId);
+    }
+  }
+
+  private async markAsRead(payload: MarkAsReadPayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for marking messages as read`);
+      return;
+    }
+
+    try {
+      logger.info(`Marking ${payload.messageIds.length} messages as read for ${payload.to}`);
+      const keys = payload.messageIds.map(id => ({
+        remoteJid: payload.to,
+        id: id,
+        fromMe: false // Usually we mark received messages as read
+      }));
+
+      await session.socket.readMessages(keys);
+    } catch (err) {
+      logger.error(`Error marking messages as read for ${payload.to}:`, err);
+    }
   }
 
   private async sendButtons(payload: SendButtonsPayload) {

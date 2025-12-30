@@ -2,6 +2,11 @@ import { getIO } from "../../libs/socket";
 import Contact from "../../models/Contact";
 import RabbitMQService from "../RabbitMQService";
 import { v4 as uuidv4 } from "uuid";
+import axios from "axios";
+import fs from "fs";
+import path, { join } from "path";
+import uploadConfig from "../../config/upload";
+import { logger } from "../../utils/logger";
 
 interface ExtraInfo {
   name: string;
@@ -16,7 +21,64 @@ interface Request {
   profilePicUrl?: string;
   extraInfo?: ExtraInfo[];
   lid?: string;
+  tenantId?: number | string;
 }
+
+const downloadProfileImage = async ({
+  profilePicUrl,
+  tenantId,
+  contactId
+}: {
+  profilePicUrl: string;
+  tenantId: number | string;
+  contactId: number;
+}): Promise<string> => {
+  const publicFolder = uploadConfig.directory;
+  let filename = "";
+
+  const folder = path.join(publicFolder, String(tenantId), "contacts");
+
+  if (!fs.existsSync(folder)) {
+    fs.mkdirSync(folder, { recursive: true });
+    // fs.chmodSync(folder, 0o777); // Windows doesn't need chmod usually, can cause issues
+  }
+
+  const maxAttempts = 3;
+  let attempt = 0;
+
+  // Se já for local ou nula, retorna
+  if (!profilePicUrl || profilePicUrl.includes("/public/") || profilePicUrl.endsWith("nopicture.png")) {
+    return "";
+  }
+
+  while (attempt < maxAttempts) {
+    try {
+      const response = await axios.get(profilePicUrl, {
+        responseType: "arraybuffer",
+        timeout: 10000
+      });
+
+      // Tenta inferir extensão
+      const contentType = response.headers["content-type"];
+      let ext = "jpg";
+      if (contentType) {
+        if (contentType.includes("png")) ext = "png";
+        if (contentType.includes("jpeg")) ext = "jpeg";
+      }
+
+      filename = `${new Date().getTime()}_${contactId}.${ext}`;
+      fs.writeFileSync(join(folder, filename), response.data);
+
+      return filename;
+    } catch (error) {
+      logger.error(`Download profile image failed attempt ${attempt + 1}: ${error}`);
+      attempt++;
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+
+  return "";
+};
 
 const CreateOrUpdateContactService = async ({
   name,
@@ -25,61 +87,56 @@ const CreateOrUpdateContactService = async ({
   isGroup,
   email = "",
   extraInfo = [],
-  lid
+  lid,
+  tenantId = 1
 }: Request): Promise<Contact> => {
   const number = isGroup ? rawNumber : rawNumber?.replace(/[^0-9]/g, "");
   const io = getIO();
   let contact: Contact | null = null;
+  const backendUrl = process.env.URL_BACKEND || process.env.BACKEND_URL || "http://localhost:8080";
 
-  // 1. Try to find by LID first (Most reliable unique identifier)
+  // 1. Try to find by LID first
   if (lid) {
-    contact = await Contact.findOne({ where: { lid } });
+    contact = await Contact.findOne({ where: { lid, tenantId } });
   }
 
-  // 2. If not found by LID, try to find by Number (Legacy/Fallback)
-  // This handles the "Enrichment" case: we have the number stored, but not the LID yet.
+  // 2. If not found by LID, try to find by Number
   if (!contact && number) {
-    contact = await Contact.findOne({ where: { number } });
+    contact = await Contact.findOne({ where: { number, tenantId } });
   }
 
-  // 3. Fallback: If not found by LID nor Number, and both are missing, try to find by Name
-  // This prevents creating duplicate "ghost" contacts for system messages or malformed JIDs
+  // 3. Fallback: Try to find by Name
   if (!contact && !number && !lid && name) {
-    contact = await Contact.findOne({ where: { name } });
+    contact = await Contact.findOne({ where: { name, tenantId } });
   }
 
   if (contact) {
-    // Contact exists (either by LID or Number) -> Update it
-    // Check if we can Enrich it (add missing LID or Number)
+    // Update existing contact
     const updates: any = {};
 
-    if (lid && !contact.lid) {
-      updates.lid = lid; // Enrich: Found by number, now adding LID
+    if (lid && !contact.lid) updates.lid = lid;
+    if (number && !contact.number) updates.number = number;
+    if (isGroup && name) updates.name = name;
+    if (isGroup && !contact.isGroup) updates.isGroup = true;
+
+    // Profile Picture logic with Download
+    if (profilePicUrl && profilePicUrl !== contact.profilePicUrl) {
+      const filename = await downloadProfileImage({
+        profilePicUrl,
+        tenantId,
+        contactId: contact.id
+      });
+      if (filename) {
+        updates.profilePicUrl = `${backendUrl}/public/${tenantId}/contacts/${filename}`;
+      } else if (profilePicUrl) {
+        // Fallback to remote URL if download failed
+        updates.profilePicUrl = profilePicUrl;
+      }
     }
 
-    if (number && !contact.number) {
-      updates.number = number; // Enrich: Found by LID, now adding Number
-    }
-
-    if (profilePicUrl) {
-      updates.profilePicUrl = profilePicUrl;
-    }
-
-    if (isGroup && name) {
-      updates.name = name;
-    }
-
-    if (isGroup && !contact.isGroup) {
-      updates.isGroup = true;
-    }
-
-    // If there are updates, apply them
     if (Object.keys(updates).length > 0) {
       await contact.update(updates);
     }
-
-    // Always update extraInfo if provided
-    // (Logic for extraInfo usually loops and upserts, simplified here as per original)
 
     io.emit("contact", {
       action: "update",
@@ -87,16 +144,32 @@ const CreateOrUpdateContactService = async ({
     });
 
   } else {
-    // 3. Not found by LID nor Number -> Create new
+    // Create new contact
     contact = await Contact.create({
       name,
       number: number || null,
       lid: lid || null,
-      profilePicUrl,
+      profilePicUrl: "", // Will update after creation to have ID for filename
       email,
       isGroup,
-      extraInfo
+      extraInfo,
+      tenantId
     });
+
+    if (profilePicUrl) {
+      const filename = await downloadProfileImage({
+        profilePicUrl,
+        tenantId,
+        contactId: contact.id
+      });
+
+      let finalUrl = profilePicUrl;
+      if (filename) {
+        finalUrl = `${backendUrl}/public/${tenantId}/contacts/${filename}`;
+      }
+
+      await contact.update({ profilePicUrl: finalUrl });
+    }
 
     io.emit("contact", {
       action: "create",
@@ -104,31 +177,23 @@ const CreateOrUpdateContactService = async ({
     });
   }
 
-  if (!contact.profilePicUrl && contact.number) {
-    // Determine which session is managing this? 
-    // Ideally we should know which connection is active.
-    // For now, using tenantId 1 and logic similar to Controller.
-    // NOTE: This might trigger often if fetching fails.
-    // But engine has "best effort" and returns empty string if fails.
-    // Let's rely on event listener to update it.
-
-    // We can't await this if we want speed, but RabbitMQ is async publish anyway.
-
-    RabbitMQService.publishCommand("wbot.global.contact.sync", {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      type: "contact.sync",
-      payload: {
-        contactId: contact.id,
-        number: contact.number,
-        lid: contact.lid || undefined,
-        sessionId: 1
-      },
-      tenantId: 1
-    }).catch(err => {
-      console.error("Auto Sync Error:", err);
-    });
-  }
+  // Auto sync logic (Commented out to prevent infinite loops)
+  // if (!contact.profilePicUrl && contact.number) {
+  //   RabbitMQService.publishCommand("wbot.global.contact.sync", {
+  //     id: uuidv4(),
+  //     timestamp: Date.now(),
+  //     type: "contact.sync",
+  //     payload: {
+  //       contactId: contact.id,
+  //       number: contact.number,
+  //       lid: contact.lid || undefined,
+  //       sessionId: 1 
+  //     },
+  //     tenantId
+  //   }).catch(err => {
+  //     logger.warn("Auto Sync Error:", err);
+  //   });
+  // }
 
   return contact;
 };

@@ -151,10 +151,10 @@ Edite `frontend/src/pages/Settings/index.js`, linha ~361:
 
 ```bash
 # Rebuild do frontend
-docker build -t watic-premium/frontend:latest -f frontend/Dockerfile ./frontend
+docker build -t watink/frontend:latest -f frontend/Dockerfile ./frontend
 
 # Atualize o serviço
-docker service update --force watic-premium_frontend
+docker service update --force watink_frontend
 ```
 
 ---
@@ -419,7 +419,7 @@ import { Button } from "@material-ui/core";
 
 ### Exemplo de Implementação Completa
 
-Veja o arquivo: [`frontend/src/pages/Connections/index.js`](file:///c:/dev/watic-premium/frontend/src/pages/Connections/index.js)
+Veja o arquivo: [`frontend/src/pages/Connections/index.js`](file:///c:/dev/watink/frontend/src/pages/Connections/index.js)
 
 ---
 

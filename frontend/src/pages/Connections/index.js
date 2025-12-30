@@ -15,7 +15,8 @@ import {
 	Menu,
 	MenuItem,
 	ListItemIcon,
-	Avatar
+	Avatar,
+	Tooltip
 } from "@material-ui/core";
 import {
 	CheckCircle,
@@ -26,7 +27,9 @@ import {
 	Add,
 	MoreVert,
 	Edit,
-	FiberManualRecord
+	FiberManualRecord,
+	DeleteOutline,
+	Autorenew
 } from "@material-ui/icons";
 
 import MainContainer from "../../components/MainContainer";
@@ -36,6 +39,10 @@ import Title from "../../components/Title";
 import BaseCard from "../../components/BaseCard";
 
 import WhatsAppModal from "../../components/WhatsAppModal";
+import ConfirmationModal from "../../components/ConfirmationModal";
+import api from "../../services/api";
+import { toast } from "react-toastify";
+import toastError from "../../errors/toastError";
 import { i18n } from "../../translate/i18n";
 import { WhatsAppsContext } from "../../context/WhatsApp/WhatsAppsContext";
 
@@ -101,6 +108,7 @@ const Connections = () => {
 
 	const { whatsApps, loading } = useContext(WhatsAppsContext);
 	const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
+	const [confirmationOpen, setConfirmationOpen] = useState(false);
 	const [selectedWhatsApp, setSelectedWhatsApp] = useState(null);
 	const [anchorEl, setAnchorEl] = useState(null);
 	const [menuTargetId, setMenuTargetId] = useState(null);
@@ -114,6 +122,40 @@ const Connections = () => {
 		setWhatsAppModalOpen(false);
 		setSelectedWhatsApp(null);
 	}, [setSelectedWhatsApp, setWhatsAppModalOpen]);
+
+	const handleOpenConfirmationModal = () => {
+		setConfirmationOpen(true);
+		setAnchorEl(null);
+	};
+
+	const handleCloseConfirmationModal = () => {
+		setConfirmationOpen(false);
+		setMenuTargetId(null);
+	};
+
+	const handleDeleteWhatsApp = async () => {
+		if (!menuTargetId) return;
+		const whatsapp = whatsApps.find(w => w.id === menuTargetId);
+
+		try {
+			if (whatsapp && whatsapp.status !== "DISCONNECTED" && whatsapp.status !== "TIMEOUT") {
+				// For Unknown or other non-disconnected states (that passed the Connected check), try to stop session first
+				try {
+					await api.delete(`/whatsappsession/${menuTargetId}`);
+				} catch (err) {
+					// Ignore error if session doesn't exist or can't be stopped, proceed to delete record
+					console.warn("Could not stop session before deleting:", err);
+				}
+			}
+
+			await api.delete(`/whatsapp/${menuTargetId}`);
+			toast.success(i18n.t("whatsappModal.success"));
+		} catch (err) {
+			toastError(err);
+		}
+		setConfirmationOpen(false);
+		setMenuTargetId(null);
+	};
 
 	const handleMenuOpen = (event, whatsappId) => {
 		event.stopPropagation();
@@ -176,8 +218,29 @@ const Connections = () => {
 		handleMenuClose();
 	};
 
+	const handleRestartWhatsApp = async (whatsappId) => {
+		try {
+			await api.put(`/whatsappsession/${whatsappId}`);
+			toast.success(i18n.t("whatsappModal.success"));
+		} catch (err) {
+			toastError(err);
+		}
+		handleMenuClose();
+	};
+
 	return (
 		<MainContainer>
+			<ConfirmationModal
+				title={i18n.t("whatsappModal.deleteTitle")}
+				open={confirmationOpen}
+				onClose={handleCloseConfirmationModal}
+				onConfirm={handleDeleteWhatsApp}
+			>
+				{i18n.t("whatsappModal.deleteMessage")}
+				<Typography variant="body2" color="error" style={{ marginTop: 8 }}>
+					Esta ação não pode ser desfeita.
+				</Typography>
+			</ConfirmationModal>
 			<WhatsAppModal
 				open={whatsAppModalOpen}
 				onClose={handleCloseWhatsAppModal}
@@ -244,12 +307,25 @@ const Connections = () => {
 											}
 
 											actions={
-												<IconButton
-													size="small"
-													onClick={(e) => handleMenuOpen(e, whatsApp.id)}
-												>
-													<MoreVert fontSize="small" style={{ color: '#94a3b8' }} />
-												</IconButton>
+												<>
+													<Tooltip title={i18n.t("connections.buttons.restart")}>
+														<span>
+															<IconButton
+																size="small"
+																onClick={() => handleRestartWhatsApp(whatsApp.id)}
+																disabled={whatsApp.status === "CONNECTED"}
+															>
+																<Autorenew fontSize="small" style={{ color: whatsApp.status === "CONNECTED" ? '#bdbdbd' : '#94a3b8' }} />
+															</IconButton>
+														</span>
+													</Tooltip>
+													<IconButton
+														size="small"
+														onClick={(e) => handleMenuOpen(e, whatsApp.id)}
+													>
+														<MoreVert fontSize="small" style={{ color: '#94a3b8' }} />
+													</IconButton>
+												</>
 											}
 											hoverEffect={true}
 											onClick={() => handleCardClick(whatsApp.id)}
@@ -309,11 +385,31 @@ const Connections = () => {
 					horizontal: 'right',
 				}}
 			>
+				<MenuItem onClick={() => handleRestartWhatsApp(menuTargetId)} disabled={whatsApps.find(w => w.id === menuTargetId)?.status === "CONNECTED"}>
+					<ListItemIcon style={{ minWidth: 32 }}>
+						<Autorenew fontSize="small" />
+					</ListItemIcon>
+					<Typography variant="body2">{i18n.t("connections.buttons.restart")}</Typography>
+				</MenuItem>
 				<MenuItem onClick={handleEditWhatsApp}>
 					<ListItemIcon style={{ minWidth: 32 }}>
 						<Edit fontSize="small" />
 					</ListItemIcon>
 					<Typography variant="body2">Editar</Typography>
+				</MenuItem>
+				<MenuItem onClick={() => {
+					const whatsapp = whatsApps.find(w => w.id === menuTargetId);
+					if (whatsapp && whatsapp.status === "CONNECTED") {
+						toast.error("Não é possível excluir uma conexão ativa. Desconecte-se primeiro.");
+						handleMenuClose();
+					} else {
+						handleOpenConfirmationModal();
+					}
+				}}>
+					<ListItemIcon style={{ minWidth: 32 }}>
+						<DeleteOutline fontSize="small" color="secondary" />
+					</ListItemIcon>
+					<Typography variant="body2" color="error">Excluir</Typography>
 				</MenuItem>
 			</Menu>
 		</MainContainer>

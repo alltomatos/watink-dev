@@ -71,6 +71,7 @@ const messages = {
           newQr: "Novo QR CODE",
           connecting: "Conectando",
           pairingCode: "Código de Pareamento",
+          restart: "Reiniciar Conexão",
         },
         pairingCodeModal: {
           title: "Código de Pareamento",
@@ -109,6 +110,8 @@ const messages = {
         },
       },
       whatsappModal: {
+        deleteTitle: "Deletar Conexão",
+        deleteMessage: "Tem certeza que deseja deletar esta conexão?",
         title: {
           add: "Adicionar WhatsApp",
           edit: "Editar WhatsApp",

@@ -303,12 +303,12 @@ const MessageInput = ({ ticketStatus }) => {
 
     try {
       await api.post(`/messages/${ticketId}`, formData);
+      setMedias([]);
     } catch (err) {
       toastError(err);
     }
 
     setLoading(false);
-    setMedias([]);
   };
 
   const handleSendMessage = async () => {
@@ -326,14 +326,14 @@ const MessageInput = ({ ticketStatus }) => {
     };
     try {
       await api.post(`/messages/${ticketId}`, message);
+      setInputMessage("");
+      setShowEmoji(false);
+      setLoading(false);
+      setReplyingMessage(null);
     } catch (err) {
       toastError(err);
+      setLoading(false);
     }
-
-    setInputMessage("");
-    setShowEmoji(false);
-    setLoading(false);
-    setReplyingMessage(null);
   };
 
   const handleStartRecording = async () => {

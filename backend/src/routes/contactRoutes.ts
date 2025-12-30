@@ -50,4 +50,13 @@ contactRoutes.post(
   ContactController.sync
 );
 
+contactRoutes.post(
+  "/contacts/enrich",
+  isAuth,
+  checkPermission("create_contacts"),
+  // 'create_contacts' or 'edit_contacts' - enrichment feels like cleanup/maintenance.
+  // Using 'create_contacts' as it can essentially "create" new data for contacts.
+  ContactController.batchEnrich
+);
+
 export default contactRoutes;

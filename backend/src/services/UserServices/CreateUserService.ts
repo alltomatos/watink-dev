@@ -3,6 +3,7 @@ import * as Yup from "yup";
 import AppError from "../../errors/AppError";
 import { SerializeUser } from "../../helpers/SerializeUser";
 import User from "../../models/User";
+import Permission from "../../models/Permission";
 
 interface Request {
   email: string;
@@ -64,7 +65,12 @@ const CreateUserService = async ({
     { include: ["queues", "whatsapp"] }
   );
 
-  await user.$set("queues", queueIds);
+  if (profile === "superadmin") {
+    const allPermissions = await Permission.findAll();
+    await user.$set("permissions", allPermissions);
+  } else {
+    await user.$set("queues", queueIds);
+  }
 
   await user.reload();
 
