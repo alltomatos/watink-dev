@@ -1,4 +1,4 @@
-### Projeto watic Premium
+### Projeto Watink
 
 Sempre responder e ou criar planos documentos em portugues do brasil
 
@@ -55,7 +55,7 @@ O projeto agora opera em arquitetura de microserviços orientada a eventos, subs
 AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
 DB_DIALECT=postgres
 DB_HOST=postgres
-POSTGRES_DB=watic
+POSTGRES_DB=watink
 ```
 
 ### Fase 3: Frontend & Dashboard SaaS
