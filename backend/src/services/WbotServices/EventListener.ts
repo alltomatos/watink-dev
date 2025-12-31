@@ -101,7 +101,15 @@ import { Op } from "sequelize";
 
 const handleContactUpdate = async (payload: ContactUpdatePayload, tenantId: string | number) => {
   logger.info(`[EventListener] Received contact.update for ${payload.number} (ID: ${payload.contactId})`);
-  const { contactId, number, profilePicUrl, pushName, lid, isGroup } = payload;
+  const { contactId, number, profilePicUrl, pushName, lid, isGroup, sessionId } = payload;
+
+  if (!tenantId && sessionId) {
+    const whatsapp = await Whatsapp.findByPk(sessionId);
+    if (whatsapp) {
+      tenantId = whatsapp.tenantId;
+    }
+  }
+
   const backendUrl = process.env.URL_BACKEND || process.env.BACKEND_URL || "http://localhost:8080";
 
   let contact: Contact | null = null;
@@ -197,6 +205,15 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
 
   const whatsapp = await Whatsapp.findByPk(sessionId);
   if (!whatsapp) return;
+
+  if (!tenantId && whatsapp.tenantId) {
+    tenantId = whatsapp.tenantId;
+  }
+
+  if (!tenantId) {
+    logger.error(`[EventListener] handleMessageReceived: Tenant ID is missing for session ${sessionId}`);
+    return;
+  }
 
   let groupContact: Contact | undefined;
   let msgContact: Contact | undefined;
@@ -384,7 +401,15 @@ const waitForContactEnrichment = async (contactId: number, isGroup: boolean, ten
 
 const handleMessageReaction = async (payload: MessageReactionPayload, tenantId: string | number) => {
   try {
-    const { messageId, reaction, sender, timestamp } = payload;
+    const { messageId, reaction, sender, timestamp, sessionId } = payload;
+
+    if (!tenantId && sessionId) {
+      const whatsapp = await Whatsapp.findByPk(sessionId);
+      if (whatsapp) {
+        tenantId = whatsapp.tenantId;
+      }
+    }
+
     logger.info(`[EventListener] Received reaction for message ${messageId}: ${reaction} from ${sender}`);
 
     const message = await Message.findOne({

@@ -85,8 +85,10 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 				toastError(err);
 			}
 		};
-		fetchSession();
-	}, [whatsAppId]);
+		if (open) {
+			fetchSession();
+		}
+	}, [whatsAppId, open]);
 
 	const handleSaveWhatsApp = async values => {
 		const whatsappData = { ...values, queueIds: selectedQueueIds };
