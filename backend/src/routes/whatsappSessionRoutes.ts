@@ -49,96 +49,27 @@ const whatsappSessionRoutes = Router();
  *                   example: Session start command sent
  */
 whatsappSessionRoutes.post(
+  "/whatsappsession/all",
+  isAuth,
+  WhatsAppSessionController.restartAll
+);
+
+whatsappSessionRoutes.post(
   "/whatsappsession/:whatsappId",
   isAuth,
   WhatsAppSessionController.store
 );
 
-/**
- * @swagger
- * /whatsappsession/{whatsappId}:
- *   put:
- *     summary: Atualiza/Reconecta uma sessão WhatsApp
- *     description: |
- *       Solicita reconexão de uma sessão existente. Útil quando a sessão
- *       está em estado de erro ou foi desconectada.
- *     tags: [WhatsAppSession]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: whatsappId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Comando de reconexão enviado ao Engine
- */
 whatsappSessionRoutes.put(
   "/whatsappsession/:whatsappId",
   isAuth,
   WhatsAppSessionController.update
 );
 
-/**
- * @swagger
- * /whatsappsession/{whatsappId}:
- *   delete:
- *     summary: Encerra uma sessão WhatsApp
- *     description: |
- *       Envia comando para o Engine (whaileys-engine) via RabbitMQ para 
- *       encerrar/desconectar a sessão.
- *       
- *       **Fluxo:**
- *       1. Backend publica `session.logout` na fila `wbot.commands`
- *       2. Engine consome e desconecta da sessão WhatsApp
- *       3. Engine publica `session.status` com status DISCONNECTED
- *     tags: [WhatsAppSession]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: whatsappId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Comando de logout enviado ao Engine
- */
 whatsappSessionRoutes.delete(
   "/whatsappsession/:whatsappId",
   isAuth,
   WhatsAppSessionController.remove
-);
-
-/**
- * @swagger
- * /whatsappsession/all:
- *   post:
- *     summary: Reinicia todas as sessões WhatsApp
- *     description: |
- *       Solicita o reinício forçado de todas as sessões WhatsApp do tenant.
- *     tags: [WhatsAppSession]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Comando de reinício enviado para todas as sessões
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Restarting all sessions.
- */
-whatsappSessionRoutes.post(
-  "/whatsappsession/all",
-  isAuth,
-  WhatsAppSessionController.restartAll
 );
 
 export default whatsappSessionRoutes;

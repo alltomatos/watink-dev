@@ -183,26 +183,23 @@ docker stack deploy -c docker-stack.yml watink
 > ```
 
 ### 2. Aplicando Alterações (Update Script)
-Para aplicar mudanças de código (backend, frontend ou engine), utilize sempre o script de automação `./update.sh`. Ele cuida do versionamento (SemVer), build da imagem e atualização do serviço no Swarm.
+Para aplicar mudanças de código (backend, frontend ou engine), utilize sempre o script de automação `./update.sh`. Ele cuida do versionamento (SemVer), build da imagem, **atualização do `docker-stack.yml`** e redeploy da stack.
 
 Sintaxe: `./update.sh <service> [type]`
-*   **service**: `backend`, `frontend`, `engine` ou `all`.
-*   **type** (opcional): `patch` (padrão), `minor`, `major`.
+
+**O que o script faz:**
+1.  Incrementa versão no `package.json`.
+2.  Gera tags docker correspondentes.
+3.  **Atualiza o `docker-stack.yml` com a nova tag específica (ex: 1.0.5).**
+4.  Executa `docker stack deploy` para aplicar o novo estado.
 
 Exemplos:
 ```bash
-# Atualizar Backend (cria nova versão patch, builda e atualiza serviço)
 ./update.sh backend
-
-# Atualizar Frontend
-./update.sh frontend
-
-# Atualizar Engine com mudança Minor (ex: novas features)
-./update.sh engine minor
 ```
 
 > [!WARNING]
-> O script `./update.sh` já executa o `docker service update` automaticamente com a flag `--force`. Não é necessário rodar comandos manuais de docker exceto para debugging.
+> O `docker-stack.yml` é a fonte da verdade. O script irá garantirá que a versão da imagem no arquivo seja a que está rodando.
 
 ### 2.1 Atualização de Variáveis e Stack
 Se você alterou o `docker-stack.yml` (ex: novas variáveis de ambiente, portas, volumes):
@@ -247,7 +244,7 @@ Seguimos estritamente o **Semantic Versioning (SemVer)** (ex: `1.0.0`).
     ```
 
 4.  **Atualize o Serviço**:
-    No ambiente de produção, fixe a versão específica para evitar atualizações acidentais, ou use `latest` em desenvolvimento.
+    No ambiente de produção (e agora também em desenvolvimento para evitar cache agressivo), **SEMPRE** use a versão específica.
     ```bash
     docker service update --image watink/backend:1.2.0 watink_backend
     ```
