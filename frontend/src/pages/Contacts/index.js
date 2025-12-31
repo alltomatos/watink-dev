@@ -12,11 +12,20 @@ import {
   Grid,
   CircularProgress,
   IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Paper,
+  Avatar,
 } from "@material-ui/core";
 import SearchIcon from "@material-ui/icons/Search";
 import WhatsAppIcon from "@material-ui/icons/WhatsApp";
 import DeleteOutlineIcon from "@material-ui/icons/DeleteOutline";
 import EditIcon from "@material-ui/icons/Edit";
+import ViewModuleIcon from "@material-ui/icons/ViewModule";
+import ViewListIcon from "@material-ui/icons/ViewList";
 
 import MainContainer from "../../components/MainContainer";
 import MainHeader from "../../components/MainHeader";
@@ -31,6 +40,7 @@ import ConfirmationModal from "../../components/ConfirmationModal/";
 import toastError from "../../errors/toastError";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
+import { useLocalStorage } from "../../hooks/useLocalStorage";
 
 const reducer = (state, action) => {
   if (action.type === "LOAD_CONTACTS") {
@@ -87,6 +97,9 @@ const useStyles = makeStyles((theme) => ({
 
 // Status baseado na presença de LID
 const getContactStatus = (contact) => {
+  if (contact.isGroup || contact.number?.includes("@g.us")) {
+    return { label: "Grupo", color: "info" };
+  }
   if (contact.lid) {
     return { label: "Verificado", color: "success" };
   }
@@ -108,6 +121,7 @@ const Contacts = () => {
   const [deletingContact, setDeletingContact] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const [view, setView] = useLocalStorage("contactsView", "card");
 
   useEffect(() => {
     dispatch({ type: "RESET" });
@@ -277,56 +291,124 @@ const Contacts = () => {
           >
             {i18n.t("contacts.buttons.add")}
           </Button>
+          <IconButton
+            onClick={() => setView(view === "card" ? "table" : "card")}
+          >
+            {view === "card" ? <ViewListIcon /> : <ViewModuleIcon />}
+          </IconButton>
         </MainHeaderButtonsWrapper>
       </MainHeader>
 
       <Box className={classes.mainPaper} onScroll={handleScroll}>
-        <Grid container spacing={2}>
-          {contacts.map((contact) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={contact.id}>
-              <ListItemCard
-                avatar={contact.profilePicUrl}
-                title={contact.name}
-                subtitle={contact.number}
-                status={getContactStatus(contact)}
-                actions={
-                  <>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleSaveTicket(contact.id)}
-                      title="Iniciar conversa"
-                    >
-                      <WhatsAppIcon fontSize="small" style={{ color: "#25D366" }} />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => hadleEditContact(contact.id)}
-                      title="Editar"
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <Can
-                      role={user.profile}
-                      perform="contacts-page:deleteContact"
-                      yes={() => (
-                        <IconButton
-                          size="small"
-                          onClick={() => {
-                            setConfirmOpen(true);
-                            setDeletingContact(contact);
-                          }}
-                          title="Excluir"
-                        >
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                    />
-                  </>
-                }
-              />
-            </Grid>
-          ))}
-        </Grid>
+        {view === "card" ? (
+          <Grid container spacing={2}>
+            {contacts.map((contact) => (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={contact.id}>
+                <ListItemCard
+                  avatar={contact.profilePicUrl}
+                  title={contact.name}
+                  subtitle={contact.number}
+                  status={getContactStatus(contact)}
+                  actions={
+                    <>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleSaveTicket(contact.id)}
+                        title="Iniciar conversa"
+                      >
+                        <WhatsAppIcon fontSize="small" style={{ color: "#25D366" }} />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => hadleEditContact(contact.id)}
+                        title="Editar"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <Can
+                        role={user.profile}
+                        perform="contacts-page:deleteContact"
+                        yes={() => (
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setConfirmOpen(true);
+                              setDeletingContact(contact);
+                            }}
+                            title="Excluir"
+                          >
+                            <DeleteOutlineIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                      />
+                    </>
+                  }
+                />
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <Paper elevation={0}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell padding="checkbox" />
+                  <TableCell>{i18n.t("contacts.table.name")}</TableCell>
+                  <TableCell align="center">
+                    {i18n.t("contacts.table.whatsapp")}
+                  </TableCell>
+                  <TableCell align="center">
+                    {i18n.t("contacts.table.email")}
+                  </TableCell>
+                  <TableCell align="center">
+                    {i18n.t("contacts.table.actions")}
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {contacts.map((contact) => (
+                  <TableRow key={contact.id}>
+                    <TableCell style={{ paddingRight: 0 }}>
+                      {<Avatar src={contact.profilePicUrl} />}
+                    </TableCell>
+                    <TableCell>{contact.name}</TableCell>
+                    <TableCell align="center">{contact.number}</TableCell>
+                    <TableCell align="center">{contact.email}</TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleSaveTicket(contact.id)}
+                      >
+                        <WhatsAppIcon fontSize="small" style={{ color: "#25D366" }} />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => hadleEditContact(contact.id)}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <Can
+                        role={user.profile}
+                        perform="contacts-page:deleteContact"
+                        yes={() => (
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              setConfirmOpen(true);
+                              setDeletingContact(contact);
+                            }}
+                          >
+                            <DeleteOutlineIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
+        )}
 
         {loading && (
           <Box display="flex" justifyContent="center" mt={3}>

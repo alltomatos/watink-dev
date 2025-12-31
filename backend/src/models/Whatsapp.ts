@@ -38,6 +38,12 @@ class Whatsapp extends Model<Whatsapp> {
   @Column(DataType.TEXT)
   qrcode: string;
 
+  @Column(DataType.STRING)
+  number: string;
+
+  @Column(DataType.STRING)
+  profilePicUrl: string;
+
   @Column
   status: string;
 
@@ -66,6 +72,11 @@ class Whatsapp extends Model<Whatsapp> {
 
   @Column(DataType.TEXT)
   syncPeriod: string;
+
+  @Default(false)
+  @AllowNull
+  @Column(DataType.BOOLEAN)
+  keepAlive: boolean;
 
   @CreatedAt
   createdAt: Date;

@@ -10,11 +10,11 @@ module.exports = {
         "Users",
         [
           {
-            name: "Administrador",
+            name: "Super Admin",
             email: "admin@admin.com",
             passwordHash:
               "$2a$08$3DhljWiasvNJHe4PZi0ODe5q1B1SbPAJg7NMhPk6T3H9RmK7gLlO6",
-            profile: "admin",
+            profile: "superadmin",
             tokenVersion: 0,
             createdAt: new Date(),
             updatedAt: new Date()

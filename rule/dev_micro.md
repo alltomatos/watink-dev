@@ -4,7 +4,7 @@ Sempre responder e ou criar planos documentos em portugues do brasil
 
 Repositorio: https://github.com/alltomatos/whaticket-premium.git
 
-O projeto deve sempre focar na stack Docker contida em `watic-premium`.
+O projeto deve sempre focar na stack Docker contida em `watink`.
 
 Repositorio Original: https://github.com/canove/whaticket-community.git
 

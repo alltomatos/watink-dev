@@ -6,6 +6,9 @@ import {
 } from "../../helpers/CreateTokens";
 import { SerializeUser } from "../../helpers/SerializeUser";
 import Queue from "../../models/Queue";
+import Whatsapp from "../../models/Whatsapp";
+import Group from "../../models/Group";
+import Permission from "../../models/Permission";
 
 interface SerializedUser {
   id: number;
@@ -13,6 +16,7 @@ interface SerializedUser {
   email: string;
   profile: string;
   queues: Queue[];
+  tenantId: number | string;
 }
 
 interface Request {
@@ -30,9 +34,20 @@ const AuthUserService = async ({
   email,
   password
 }: Request): Promise<Response> => {
+
+
   const user = await User.findOne({
     where: { email },
-    include: ["queues"]
+    include: [
+      { model: Queue, as: "queues", attributes: ["id", "name", "color"] },
+      { model: Whatsapp, as: "whatsapp", attributes: ["id", "name"] },
+      {
+        model: Group,
+        as: "group",
+        include: [{ model: Permission, as: "permissions", attributes: ["id", "name"] }]
+      },
+      { model: Permission, as: "permissions", attributes: ["id", "name"] }
+    ]
   });
 
   if (!user) {

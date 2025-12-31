@@ -1,6 +1,10 @@
 import AppError from "../../errors/AppError";
 import Contact from "../../models/Contact";
 import ContactCustomField from "../../models/ContactCustomField";
+import RabbitMQService from "../../services/RabbitMQService";
+import { v4 as uuidv4 } from "uuid";
+import Whatsapp from "../../models/Whatsapp";
+import { logger } from "../../utils/logger";
 
 interface ExtraInfo {
   id?: number;
@@ -28,7 +32,7 @@ const UpdateContactService = async ({
 
   const contact = await Contact.findOne({
     where: { id: contactId },
-    attributes: ["id", "name", "number", "email", "profilePicUrl"],
+    attributes: ["id", "name", "number", "email", "profilePicUrl", "tenantId"],
     include: ["extraInfo"]
   });
 
@@ -56,8 +60,6 @@ const UpdateContactService = async ({
 
   const { email: newEmail, name: newName, number: newNumber, extraInfo: newExtraInfo, lid } = contactData;
 
-  // ... (omitted lines)
-
   await contact.update({
     name: newName,
     number: newNumber,
@@ -66,9 +68,35 @@ const UpdateContactService = async ({
   });
 
   await contact.reload({
-    attributes: ["id", "name", "number", "email", "profilePicUrl"],
+    attributes: ["id", "name", "number", "email", "profilePicUrl", "tenantId"],
     include: ["extraInfo"]
   });
+
+  try {
+    const tenantId = contact.tenantId || 1;
+    const whatsapp = await Whatsapp.findOne({
+      where: { status: "CONNECTED", tenantId }
+    });
+
+    if (whatsapp) {
+      await RabbitMQService.publishCommand("wbot.global.contact.sync", {
+        id: uuidv4(),
+        timestamp: Date.now(),
+        type: "contact.sync",
+        payload: {
+          contactId: contact.id,
+          number: contact.number,
+          sessionId: whatsapp.id
+        },
+        tenantId
+      });
+      logger.info(
+        `[UpdateContactService] Sent contact.sync command for contact ${contact.id}`
+      );
+    }
+  } catch (err) {
+    logger.error(`[UpdateContactService] Error sending sync command: ${err}`);
+  }
 
   return contact;
 };

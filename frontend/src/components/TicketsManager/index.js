@@ -15,6 +15,7 @@ import TicketsList from "../TicketsList";
 import TabPanel from "../TabPanel";
 import { i18n } from "../../translate/i18n";
 import { AuthContext } from "../../context/Auth/AuthContext";
+import { useTicketsContext } from "../../context/Tickets/TicketsContext";
 import { Can } from "../Can";
 import TicketsQueueSelect from "../TicketsQueueSelect";
 import { Button } from "@material-ui/core";
@@ -87,9 +88,12 @@ const TicketsManager = () => {
   const classes = useStyles();
   const [searchParam, setSearchParam] = useState("");
   const [tab, setTab] = useState("open");
-  const [tabOpen, setTabOpen] = useState("open");
+  const { tabOpen, setTabOpen } = useTicketsContext();
   const [newTicketModalOpen, setNewTicketModalOpen] = useState(false);
-  const [showAllTickets, setShowAllTickets] = useState(false);
+  const [showAllTickets, setShowAllTickets] = useState(() => {
+    const saved = localStorage.getItem("showAllTickets");
+    return saved ? JSON.parse(saved) : false;
+  });
   const searchInputRef = useRef();
   const { user } = useContext(AuthContext);
   const [openCount, setOpenCount] = useState(0);
@@ -100,10 +104,18 @@ const TicketsManager = () => {
 
   useEffect(() => {
     if (user.profile.toUpperCase() === "ADMIN") {
-      setShowAllTickets(true);
+      const saved = localStorage.getItem("showAllTickets");
+      if (saved === null) {
+        setShowAllTickets(true);
+        localStorage.setItem("showAllTickets", JSON.stringify(true));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("showAllTickets", JSON.stringify(showAllTickets));
+  }, [showAllTickets]);
 
   useEffect(() => {
     if (tab === "search") {
@@ -293,7 +305,6 @@ const TicketsManager = () => {
             isGroup="false"
           />
           <TicketsList
-            status="open"
             showAll={showAllTickets}
             selectedQueueIds={selectedQueueIds}
             updateCount={(val) => setGroupsCount(val)}

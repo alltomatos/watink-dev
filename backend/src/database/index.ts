@@ -20,6 +20,10 @@ import FlowTrigger from "../models/FlowTrigger";
 import KnowledgeBase from "../models/KnowledgeBase";
 import KnowledgeSource from "../models/KnowledgeSource";
 import KnowledgeVector from "../models/KnowledgeVector";
+import Group from "../models/Group";
+import GroupPermission from "../models/GroupPermission";
+import Permission from "../models/Permission";
+import UserPermission from "../models/UserPermission";
 
 // eslint-disable-next-line
 const dbConfig = require("../config/database");
@@ -47,7 +51,11 @@ const models = [
   FlowTrigger,
   KnowledgeBase,
   KnowledgeSource,
-  KnowledgeVector
+  KnowledgeVector,
+  Group,
+  GroupPermission,
+  Permission,
+  UserPermission
 ];
 
 sequelize.addModels(models);

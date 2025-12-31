@@ -17,8 +17,10 @@ import Connections from "../pages/Connections/";
 import ConnectionConfig from "../pages/Connections/ConnectionConfig";
 import Settings from "../pages/Settings/";
 import Users from "../pages/Users";
+import UserEdit from "../pages/UserEdit";
 import Contacts from "../pages/Contacts/";
 import QuickAnswers from "../pages/QuickAnswers/";
+import Groups from "../pages/Groups";
 import Queues from "../pages/Queues/";
 import KnowledgeBase from "../pages/KnowledgeBase/";
 import KnowledgeBaseConfig from "../pages/KnowledgeBase/KnowledgeBaseConfig";
@@ -26,32 +28,37 @@ import Swagger from "../pages/Swagger/";
 import { AuthProvider } from "../context/Auth/AuthContext";
 import { WhatsAppsProvider } from "../context/WhatsApp/WhatsAppsContext";
 import { ThemeProvider } from "../context/DarkMode";
+import { TicketsProvider } from "../context/Tickets/TicketsContext";
 import Route from "./Route";
 
 const PrivateRoutes = () => {
   return (
     <WhatsAppsProvider>
-      <LoggedInLayout>
-        <Switch>
-          <Route exact path="/" component={Dashboard} isPrivate />
-          <Route exact path="/pipelines" component={Pipelines} isPrivate />
-          <Route exact path="/pipelines/new" component={PipelineCreator} isPrivate />
-          <Route exact path="/pipelines/:pipelineId" component={PipelineBoard} isPrivate />
-          <Route exact path="/tickets/:ticketId?" component={Tickets} isPrivate />
-          <Route exact path="/flowbuilder" component={FlowManager} isPrivate />
-          <Route exact path="/flowbuilder/:flowId" component={FlowBuilder} isPrivate />
-          <Route exact path="/connections" component={Connections} isPrivate />
-          <Route exact path="/connections/:whatsappId" component={ConnectionConfig} isPrivate />
-          <Route exact path="/contacts" component={Contacts} isPrivate />
-          <Route exact path="/users" component={Users} isPrivate />
-          <Route exact path="/quickAnswers" component={QuickAnswers} isPrivate />
-          <Route exact path="/Settings" component={Settings} isPrivate />
-          <Route exact path="/Queues" component={Queues} isPrivate />
-          <Route exact path="/knowledge-bases" component={KnowledgeBase} isPrivate />
-          <Route exact path="/knowledge-bases/:knowledgeBaseId" component={KnowledgeBaseConfig} isPrivate />
-          <Route exact path="/swagger" component={Swagger} isPrivate />
-        </Switch>
-      </LoggedInLayout>
+      <TicketsProvider>
+        <LoggedInLayout>
+          <Switch>
+            <Route exact path="/" component={Dashboard} isPrivate />
+            <Route exact path="/pipelines" component={Pipelines} isPrivate />
+            <Route exact path="/pipelines/new" component={PipelineCreator} isPrivate />
+            <Route exact path="/pipelines/:pipelineId" component={PipelineBoard} isPrivate />
+            <Route exact path="/tickets/:ticketId?" component={Tickets} isPrivate />
+            <Route exact path="/flowbuilder" component={FlowManager} isPrivate />
+            <Route exact path="/flowbuilder/:flowId" component={FlowBuilder} isPrivate />
+            <Route exact path="/connections" component={Connections} isPrivate />
+            <Route exact path="/connections/:whatsappId" component={ConnectionConfig} isPrivate />
+            <Route exact path="/contacts" component={Contacts} isPrivate />
+            <Route exact path="/users" component={Users} isPrivate />
+            <Route exact path="/users/:userId" component={UserEdit} isPrivate />
+            <Route exact path="/quickAnswers" component={QuickAnswers} isPrivate />
+            <Route exact path="/Settings" component={Settings} isPrivate />
+            <Route exact path="/groups" component={Groups} isPrivate />
+            <Route exact path="/queues" component={Queues} isPrivate />
+            <Route exact path="/knowledge-bases" component={KnowledgeBase} isPrivate />
+            <Route exact path="/knowledge-bases/:knowledgeBaseId" component={KnowledgeBaseConfig} isPrivate />
+            <Route exact path="/swagger" component={Swagger} isPrivate />
+          </Switch>
+        </LoggedInLayout>
+      </TicketsProvider>
     </WhatsAppsProvider>
   );
 };

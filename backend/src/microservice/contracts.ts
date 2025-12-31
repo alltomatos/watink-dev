@@ -20,6 +20,7 @@ export type CommandType =
   | "message.send.interactive"
   | "message.send.interactive"
   | "message.send.carousel"
+  | "message.markAsRead"
   | "contact.sync";
 
 export interface StartSessionPayload {
@@ -150,6 +151,8 @@ export interface SyncContactPayload {
   sessionId: number;
   contactId: number;
   number: string;
+  lid?: string;
+  isGroup?: boolean;
 }
 
 // --- EVENTS (Engine -> Backend) ---
@@ -165,6 +168,7 @@ export type EventType =
   | "message.response.poll"
   | "message.response.poll"
   | "message.response.interactive"
+  | "message.reaction"
   | "contact.update";
 
 
@@ -182,6 +186,8 @@ export interface PairingCodePayload {
 export interface SessionStatusPayload {
   sessionId: number;
   status: "CONNECTED" | "DISCONNECTED" | "QRCODE" | "OPENING";
+  number?: string;
+  profilePicUrl?: string;
 }
 
 export interface MessageReceivedPayload {
@@ -216,11 +222,27 @@ export interface MessageAckPayload {
   ack: number;
 }
 
+export interface MessageReactionPayload {
+  sessionId: number;
+  messageId: string;
+  reaction: string;
+  sender: string;
+  timestamp: number;
+}
+
 export interface ContactUpdatePayload {
   sessionId: number;
   contactId: number;
   number: string;
   profilePicUrl?: string;
   pushName?: string;
+  lid?: string;
+  isGroup?: boolean;
+}
+
+export interface MarkAsReadPayload {
+  sessionId: number;
+  to: string;
+  messageIds: string[];
 }
 

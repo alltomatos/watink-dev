@@ -281,6 +281,22 @@ const useStyles = makeStyles((theme) => ({
     backgroundColor: "inherit",
     padding: 10,
   },
+
+  messageReactions: {
+    position: "absolute",
+    bottom: -10,
+    right: 10,
+    backgroundColor: "#fff",
+    borderRadius: "12px",
+    padding: "2px 6px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+    fontSize: "12px",
+    display: "flex",
+    alignItems: "center",
+    zIndex: 10,
+    cursor: "pointer",
+    border: "1px solid #e0e0e0",
+  },
 }));
 
 const reducer = (state, action) => {
@@ -297,7 +313,9 @@ const reducer = (state, action) => {
       }
     });
 
-    return [...newMessages, ...state];
+    return [...newMessages, ...state].sort((a, b) => {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
   }
 
   if (action.type === "ADD_MESSAGE") {
@@ -310,7 +328,9 @@ const reducer = (state, action) => {
       state.push(newMessage);
     }
 
-    return [...state];
+    return [...state].sort((a, b) => {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
   }
 
   if (action.type === "UPDATE_MESSAGE") {
@@ -321,7 +341,9 @@ const reducer = (state, action) => {
       state[messageIndex] = messageToUpdate;
     }
 
-    return [...state];
+    return [...state].sort((a, b) => {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
   }
 
   if (action.type === "RESET") {
@@ -343,6 +365,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const messageOptionsMenuOpen = Boolean(anchorEl);
   const currentTicketId = useRef(ticketId);
+  const shouldScrollRef = useRef(false);
 
   useEffect(() => {
     dispatch({ type: "RESET" });
@@ -350,6 +373,13 @@ const MessagesList = ({ ticketId, isGroup }) => {
 
     currentTicketId.current = ticketId;
   }, [ticketId]);
+
+  useEffect(() => {
+    if (shouldScrollRef.current) {
+      scrollToBottom();
+      shouldScrollRef.current = false;
+    }
+  }, [messagesList]);
 
   useEffect(() => {
     setLoading(true);
@@ -367,7 +397,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
           }
 
           if (pageNumber === 1 && data.messages.length > 1) {
-            scrollToBottom();
+            shouldScrollRef.current = true;
           }
         } catch (err) {
           setLoading(false);
@@ -389,7 +419,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
     socket.on("appMessage", (data) => {
       if (data.action === "create") {
         dispatch({ type: "ADD_MESSAGE", payload: data.message });
-        scrollToBottom();
+        shouldScrollRef.current = true;
       }
 
       if (data.action === "update") {
@@ -613,6 +643,26 @@ const MessagesList = ({ ticketId, isGroup }) => {
     );
   };
 
+  const renderMessageReactions = (message) => {
+    const reactions = message.reactions || [];
+    if (reactions.length === 0) return null;
+
+    const counts = reactions.reduce((acc, curr) => {
+      acc[curr.text] = (acc[curr.text] || 0) + 1;
+      return acc;
+    }, {});
+
+    return (
+      <div className={classes.messageReactions}>
+        {Object.entries(counts).map(([emoji, count]) => (
+          <span key={emoji} style={{ marginRight: 4 }}>
+            {emoji}{count > 1 ? ` ${count}` : ''}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
   const renderMessages = () => {
     if (messagesList.length > 0) {
       const viewMessagesList = messagesList.map((message, index) => {
@@ -651,6 +701,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                     {format(parseISO(message.createdAt), "HH:mm")}
                   </span>
                 </div>
+                {renderMessageReactions(message)}
               </div>
             </React.Fragment>
           );
@@ -696,6 +747,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                     {renderMessageAck(message)}
                   </span>
                 </div>
+                {renderMessageReactions(message)}
               </div>
             </React.Fragment>
           );

@@ -18,9 +18,12 @@ export type CommandType =
   | "message.send.interactive" // NOVO: Native Flow (Interativo)
   | "message.send.interactive" // NOVO: Native Flow (Interativo)
   | "message.send.carousel"    // NOVO: Carrossel Nativo
-  | "contact.sync";            // NOVO: Sincronização de Contato
+  | "message.markAsRead"       // NOVO: Marcar mensagens como lidas
+  | "contact.sync"             // NOVO: Sincronização de Contato
+  | "contact.import";          // NOVO: Importação de Contatos
 
 export interface StartSessionPayload {
+  proxy?: string;
   sessionId: number;
   sessionToken?: string;
   usePairingCode?: boolean;
@@ -28,6 +31,8 @@ export interface StartSessionPayload {
   name?: string;
   syncHistory?: boolean;
   syncPeriod?: string;
+  keepAlive?: boolean;
+  force?: boolean;
 }
 
 export interface StopSessionPayload {
@@ -148,6 +153,12 @@ export interface SyncContactPayload {
   sessionId: number;
   contactId: number;
   number: string;
+  lid?: string;
+  isGroup?: boolean;
+}
+
+export interface ImportContactPayload {
+  sessionId: number;
 }
 
 export type EventType =
@@ -161,6 +172,7 @@ export type EventType =
   | "message.response.poll"
   | "message.response.poll"
   | "message.response.interactive"
+  | "message.reaction"
   | "contact.update";
 
 
@@ -178,6 +190,8 @@ export interface PairingCodePayload {
 export interface SessionStatusPayload {
   sessionId: number;
   status: "CONNECTED" | "DISCONNECTED" | "QRCODE" | "OPENING";
+  number?: string;
+  profilePicUrl?: string;
 }
 
 export interface MessageReceivedPayload {
@@ -212,11 +226,27 @@ export interface MessageAckPayload {
   ack: number;
 }
 
+export interface MessageReactionPayload {
+  sessionId: number;
+  messageId: string;
+  reaction: string;
+  sender: string;
+  timestamp: number;
+}
+
 export interface ContactUpdatePayload {
   sessionId: number;
   contactId: number;
   number: string;
   profilePicUrl?: string;
   pushName?: string;
+  lid?: string;
+  isGroup?: boolean;
+}
+
+export interface MarkAsReadPayload {
+  sessionId: number;
+  to: string;
+  messageIds: string[];
 }
 

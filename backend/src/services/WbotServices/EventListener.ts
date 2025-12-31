@@ -1,4 +1,5 @@
-import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload, PairingCodePayload, ContactUpdatePayload } from "../../microservice/contracts";
+import { v4 as uuidv4 } from "uuid";
+import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload, PairingCodePayload, ContactUpdatePayload, MessageReactionPayload } from "../../microservice/contracts";
 import RabbitMQService from "../RabbitMQService";
 import { logger } from "../../utils/logger";
 import Whatsapp from "../../models/Whatsapp";
@@ -6,14 +7,18 @@ import { getIO } from "../../libs/socket";
 import FindOrCreateTicketService from "../TicketServices/FindOrCreateTicketService";
 import CreateMessageService from "../MessageServices/CreateMessageService";
 import Contact from "../../models/Contact";
+import Message from "../../models/Message";
 import CreateOrUpdateContactService from "../ContactServices/CreateOrUpdateContactService";
+import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
 
 export const EventListener = async () => {
   const routingKeys = [
     "wbot.*.*.session.qrcode",
     "wbot.*.*.session.pairingcode",
     "wbot.*.*.session.status",
-    "wbot.*.*.message.received"
+    "wbot.*.*.message.received",
+    "wbot.*.*.message.reaction",
+    "wbot.*.*.contact.update"
   ];
 
   await RabbitMQService.consumeEvents("api.events.process", routingKeys, async (msg: Envelope) => {
@@ -32,8 +37,11 @@ export const EventListener = async () => {
       case "message.received":
         await handleMessageReceived(msg.payload as MessageReceivedPayload, msg.tenantId);
         break;
+      case "message.reaction":
+        await handleMessageReaction(msg.payload as MessageReactionPayload, msg.tenantId);
+        break;
       case "contact.update":
-        await handleContactUpdate(msg.payload as ContactUpdatePayload);
+        await handleContactUpdate(msg.payload as ContactUpdatePayload, msg.tenantId);
         break;
       default:
         logger.warn(`Unknown event type: ${msg.type}`);
@@ -59,38 +67,123 @@ const handlePairingCode = async (payload: PairingCodePayload) => {
 
   io.emit(`whatsappSession`, {
     action: "update",
-    session: { id: payload.sessionId, pairingCode: payload.pairingCode, status: "QRCODE" }
+    session: { id: payload.sessionId, pairingCode: payload.pairingCode, status: "PAIRING" }
   });
 };
 
 const handleSessionStatus = async (payload: SessionStatusPayload) => {
   const io = getIO();
+
+  const updateData: any = { status: payload.status, qrcode: "" };
+  if (payload.number) updateData.number = payload.number;
+  if (payload.profilePicUrl) updateData.profilePicUrl = payload.profilePicUrl;
+
   await Whatsapp.update(
-    { status: payload.status, qrcode: "" },
+    updateData,
     { where: { id: payload.sessionId } }
   );
 
   io.emit(`whatsappSession`, {
     action: "update",
-    session: { id: payload.sessionId, status: payload.status }
+    session: {
+      id: payload.sessionId,
+      status: payload.status,
+      number: payload.number,
+      profilePicUrl: payload.profilePicUrl
+    }
   });
 };
 
-const handleContactUpdate = async (payload: ContactUpdatePayload) => {
-  const { contactId, number, profilePicUrl, pushName } = payload;
+import MergeContactsService from "../ContactServices/MergeContactsService";
+import { Op } from "sequelize";
 
-  // Find the contact to verify it exists and we're updating the right one
-  // Logic: if contactId provided, use it. If not, use logic from existing services?
-  // payload has contactId from backend's command, so it should be correct.
+// ... previous imports
+
+const handleContactUpdate = async (payload: ContactUpdatePayload, tenantId: string | number) => {
+  logger.info(`[EventListener] Received contact.update for ${payload.number} (ID: ${payload.contactId})`);
+  const { contactId, number, profilePicUrl, pushName, lid, isGroup, sessionId } = payload;
+
+  if (!tenantId && sessionId) {
+    const whatsapp = await Whatsapp.findByPk(sessionId);
+    if (whatsapp) {
+      tenantId = whatsapp.tenantId;
+    }
+  }
+
+  const backendUrl = process.env.URL_BACKEND || process.env.BACKEND_URL || "http://localhost:8080";
+
+  let contact: Contact | null = null;
 
   if (contactId) {
-    const contact = await Contact.findByPk(contactId);
-    if (contact) {
-      await contact.update({
-        profilePicUrl: profilePicUrl || contact.profilePicUrl, // Only update if provided
-        // pushName update? usually backend doesn't store pushName in main Contact table unless it matches name logic.
-        // Let's stick to profilePic for now as that's the main goal.
+    contact = await Contact.findByPk(contactId);
+  }
+
+  // If no contact found by ID (or no ID provided), try to find by LID or Number
+  if (!contact) {
+    if (lid) {
+      contact = await Contact.findOne({ where: { lid, tenantId } });
+    }
+    if (!contact && number) {
+      // Try finding by basic number or remoteJid equivalent
+      contact = await Contact.findOne({
+        where: {
+          [Op.or]: [
+            { number: number },
+            { remoteJid: number }, // Engine sends JID in 'number' field for convenience sometimes
+            { remoteJid: `${number}@${isGroup ? "g.us" : "s.whatsapp.net"}` }
+          ],
+          tenantId
+        }
       });
+    }
+  }
+
+  if (contact) {
+    // 1. Check for LID Duplication/Collision
+    if (lid && contact.lid && lid !== contact.lid) {
+      const duplicate = await Contact.findOne({
+        where: {
+          lid: lid,
+          tenantId: contact.tenantId, // Use contact's tenant to be safe
+          id: { [Op.ne]: contact.id } // exclude self
+        }
+      });
+
+      if (duplicate) {
+        logger.info(`[EventListener] LID collision detected: ${lid}. Merging ${contact.id} into ${duplicate.id}`);
+
+        await MergeContactsService({
+          contactIdOrigin: contact.id,
+          contactIdTarget: duplicate.id,
+          tenantId: contact.tenantId
+        });
+
+        // After merge, the origin contact is destroyed. We stop here.
+        return;
+      }
+    }
+
+    // 2. Normal Update
+    const updates: any = {};
+
+    if (profilePicUrl) {
+      const filename = await DownloadProfileImage({
+        profilePicUrl,
+        tenantId,
+        contactId: contact.id
+      });
+      if (filename) {
+        // Cache busting
+        updates.profilePicUrl = `${backendUrl}/public/${tenantId}/contacts/${filename}?v=${new Date().getTime()}`;
+      } else {
+        updates.profilePicUrl = profilePicUrl;
+      }
+    }
+    if (lid) updates.lid = lid;
+    if (pushName) updates.name = pushName; // Optionally update name if available
+
+    if (Object.keys(updates).length > 0) {
+      await contact.update(updates);
 
       const io = getIO();
       io.emit("contact", {
@@ -98,14 +191,29 @@ const handleContactUpdate = async (payload: ContactUpdatePayload) => {
         contact
       });
     }
+  } else {
+    // Optional: Create contact if it doesn't exist? 
+    // For now, we only update existing contacts to avoid polluting DB with random group updates if the user isn't interacting with them.
+    // However, for groups we are part of, we probably want them? 
+    // Let's stick to updating existing ones for now to be safe.
   }
 };
 
 const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: string | number) => {
   const { message, sessionId } = payload;
+  logger.info(`[EventListener] handleMessageReceived: ${JSON.stringify(payload)}`);
 
   const whatsapp = await Whatsapp.findByPk(sessionId);
   if (!whatsapp) return;
+
+  if (!tenantId && whatsapp.tenantId) {
+    tenantId = whatsapp.tenantId;
+  }
+
+  if (!tenantId) {
+    logger.error(`[EventListener] handleMessageReceived: Tenant ID is missing for session ${sessionId}`);
+    return;
+  }
 
   let groupContact: Contact | undefined;
   let msgContact: Contact | undefined;
@@ -122,7 +230,9 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     // We don't want to overwrite the group name with JID if it already exists and has a name
     // CreateOrUpdateContactService overwrites name. Ideally we should check this.
     // For now, passing message.from as name is standard behavior if name not known.
-    groupContact = await CreateOrUpdateContactService(groupData);
+    (groupData as any).waitEnrichment = true;
+    (groupData as any).sessionId = sessionId;
+    groupContact = await CreateOrUpdateContactService(groupData as any);
 
     // 2. Participant Contact (Sender)
     const participant = message.participant || "";
@@ -133,56 +243,211 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     }
 
     const participantNumber = participant.replace(/\D/g, "");
-    // Check if we received an explicit LID from the engine via onWhatsApp lookup
-    const providedLid = message.senderLid;
-    const isLid = participant.includes("@lid");
 
-    const participantData = {
-      name: message.pushName || participantNumber || "Unknown",
-      number: providedLid ? participantNumber : (isLid ? null : (participantNumber || null)),
-      lid: providedLid || (isLid ? participant : undefined),
-      isGroup: false,
-      tenantId,
-      profilePicUrl: message.profilePicUrl
-    };
-    msgContact = await CreateOrUpdateContactService(participantData as any);
+    // Check if we already have this participant as a contact
+    // If not, we DO NOT create a contact for them (to avoid pollution).
+    // Instead, we link the message to the Group Contact (or simply use the groupContact as msgContact context)
+    // However, existing logic passed msgContact to FindOrCreateTicketService.
+    // If we pass groupContact as msgContact, the ticket is created for the group (correct).
+
+    let savedParticipant = await Contact.findOne({
+      where: {
+        number: participantNumber,
+        tenantId
+      }
+    });
+
+    if (savedParticipant) {
+      msgContact = savedParticipant;
+    } else {
+      // DOES NOT EXIST: Treat as Group Contact for the purpose of Ticket/Message linking context
+      // The frontend uses 'participant' field in Message table to identify the sender.
+      msgContact = groupContact;
+    }
   } else {
     // Individual Contact
     const isLid = message.from.includes("@lid");
     const number = message.from.replace(/\D/g, "");
     const providedLid = message.senderLid;
 
-    const contactData = {
-      name: message.pushName || message.from,
+    const contactData: any = {
       number: providedLid ? number : (isLid ? null : (number || null)),
       lid: providedLid || (isLid ? message.from : undefined),
       isGroup: false,
       tenantId,
-      profilePicUrl: message.profilePicUrl
+      waitEnrichment: true,
+      sessionId
     };
 
-    msgContact = await CreateOrUpdateContactService(contactData as any);
-    groupContact = msgContact;
+    // Only update name and pfp if message is NOT from me (incoming)
+    if (!message.fromMe) {
+      contactData.name = message.pushName || message.from;
+      contactData.profilePicUrl = message.profilePicUrl;
+    } else {
+      // If fromMe, use the number/address as name just for creation if it doesn't exist
+      // CreateOrUpdateContactService usually keeps existing name if we don't pass one, 
+      // but if it requires a name for creation, we pass number.
+      contactData.name = message.from;
+    }
+
+    msgContact = await CreateOrUpdateContactService(contactData);
   }
 
+  // ... inside handleMessageReceived
+  // message.timestamp is usually in seconds (Unix). Convert to ms for comparison.
+  const isOldMessage = Date.now() - (message.timestamp * 1000) > 1000 * 60 * 60 * 2; // 2 hours
+
   const ticket = await FindOrCreateTicketService(
-    groupContact,
+    groupContact || msgContact,
     whatsapp.id,
-    1 // Unread messages
+    1, // Unread messages
+    tenantId,
+    groupContact,
+    isOldMessage
   );
 
   const msgData = {
     id: message.id,
     ticketId: ticket.id,
-    contactId: msgContact.id, // Message attributed to sender
+    contactId: msgContact.id,
     body: message.body,
     fromMe: message.fromMe,
     read: false,
     mediaType: message.type,
     mediaUrl: message.mediaUrl,
     timestamp: message.timestamp * 1000, // Convert to ms
-    participant: message.participant
+    participant: message.participant,
+    dataJson: JSON.stringify(message),
+    tenantId
   };
 
+  // Logic to handle media that arrived from Engine (Microservice)
+  if (message.hasMedia && message.mediaData) {
+    try {
+      const { join } = require("path");
+      const { writeFile } = require("fs").promises;
+      const uploadConfig = require("../../config/upload").default;
+
+      // Deduce extension
+      const mimetype = message.mimetype || "";
+      const ext = mimetype.split("/")[1]?.split(";")[0] || "bin";
+      const filename = `${new Date().getTime()}-${message.id}.${ext}`;
+
+      const filePath = join(uploadConfig.directory, filename);
+      const buffer = Buffer.from(message.mediaData, "base64");
+
+      await writeFile(filePath, buffer);
+
+      msgData.mediaUrl = filename;
+
+      // Fix mediaType to be more specific if Engine sent "media"
+      if (message.type === "media") {
+        if (mimetype.startsWith("image/")) msgData.mediaType = "image";
+        else if (mimetype.startsWith("video/")) msgData.mediaType = "video";
+        else if (mimetype.startsWith("audio/")) msgData.mediaType = "audio";
+        else msgData.mediaType = "document";
+      }
+    } catch (err) {
+      logger.error(`Error saving media for message ${message.id}: ${err}`);
+      // Fallback: Don't block message creation, but it will lack media
+    }
+  }
+
   await CreateMessageService({ messageData: msgData as any });
+};
+
+// Helper function for Poll Barrier
+const waitForContactEnrichment = async (contactId: number, isGroup: boolean, tenantId: string | number) => {
+  const MAX_WAIT_MS = 5000; // 5 seconds max
+  const POLLING_INTERVAL = 500;
+  let waited = 0;
+
+  logger.info(`[Barrier] Waiting for enrichment of contact ${contactId} (Group: ${isGroup})...`);
+
+  // Helper sleep
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  while (waited < MAX_WAIT_MS) {
+    const contact = await Contact.findByPk(contactId);
+
+    if (!contact) return; // Should not happen
+
+    let isReady = false;
+
+    if (isGroup) {
+      // Ready if has Photo AND Name is not raw number
+      const hasPhoto = !!contact.profilePicUrl;
+      const hasRealName = contact.name && contact.name !== contact.number;
+      isReady = !!(hasPhoto && hasRealName);
+    } else {
+      // Ready if has Photo AND (Name is not number)
+      // Note: pushName is already merged into 'name' by CreateOrUpdateContactService logic
+      const hasPhoto = !!contact.profilePicUrl;
+      const hasRealName = contact.name && contact.name !== contact.number;
+      isReady = !!(hasPhoto && hasRealName);
+    }
+
+    if (isReady) {
+      logger.info(`[Barrier] Contact ${contactId} enriched after ${waited}ms!`);
+      return;
+    }
+
+    await sleep(POLLING_INTERVAL);
+    waited += POLLING_INTERVAL;
+  }
+
+  logger.warn(`[Barrier] Timeout waiting for enrichment of contact ${contactId} after ${MAX_WAIT_MS}ms. Proceeding anyway.`);
+};
+
+const handleMessageReaction = async (payload: MessageReactionPayload, tenantId: string | number) => {
+  try {
+    const { messageId, reaction, sender, timestamp, sessionId } = payload;
+
+    if (!tenantId && sessionId) {
+      const whatsapp = await Whatsapp.findByPk(sessionId);
+      if (whatsapp) {
+        tenantId = whatsapp.tenantId;
+      }
+    }
+
+    logger.info(`[EventListener] Received reaction for message ${messageId}: ${reaction} from ${sender}`);
+
+    const message = await Message.findOne({
+      where: { id: messageId, tenantId }
+    });
+
+    if (!message) {
+      logger.warn(`[EventListener] Message ${messageId} not found for reaction update.`);
+      return;
+    }
+
+    // Update reactions JSON
+    // Structure: [{ sender: string, text: string, timestamp: number }]
+    let currentReactions: any[] = (message.reactions as any[]) || [];
+
+    // Remove previous reaction from this sender if exists
+    currentReactions = currentReactions.filter(r => r.sender !== sender);
+
+    // If reaction is not empty, add new one
+    // WhatsApp sends empty string when removing a reaction
+    if (reaction) {
+      currentReactions.push({
+        sender,
+        text: reaction,
+        timestamp
+      });
+    }
+
+    await message.update({ reactions: currentReactions });
+
+    // Emit via Socket.IO
+    const io = getIO();
+    io.to(message.ticketId.toString()).emit(`appMessage`, {
+      action: "update",
+      message: message
+    });
+
+  } catch (err) {
+    logger.error(`[EventListener] Error handling message reaction: ${err}`);
+  }
 };

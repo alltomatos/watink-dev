@@ -18,6 +18,7 @@ interface WhatsappData {
   queueIds?: number[];
   syncHistory?: boolean; // [NEW]
   syncPeriod?: string;   // [NEW]
+  keepAlive?: boolean;   // [NEW]
 }
 
 interface Request {
@@ -49,7 +50,8 @@ const UpdateWhatsAppService = async ({
     farewellMessage,
     queueIds = [],
     syncHistory,
-    syncPeriod
+    syncPeriod,
+    keepAlive
   } = whatsappData;
 
   logger.info(`UpdateWhatsAppService - ID: ${whatsappId}, Data: ${JSON.stringify(whatsappData)} `); // [DEBUG]
@@ -86,11 +88,12 @@ const UpdateWhatsAppService = async ({
     farewellMessage,
     isDefault,
     syncHistory,
-    syncPeriod
+    syncPeriod,
+    keepAlive
   });
 
   // [NEW] If critical settings changed, stop session to force reconnection with new settings
-  if (whatsapp.status === "CONNECTED" && (syncHistory !== undefined || syncPeriod !== undefined)) {
+  if (whatsapp.status === "CONNECTED" && (syncHistory !== undefined || syncPeriod !== undefined || keepAlive !== undefined)) {
     // Import dynamically or at top if cycle allows. 
     // Using dynamic import or moving StopWhatsAppSession import to top.
     // Let's assume standard import at top.
@@ -99,7 +102,7 @@ const UpdateWhatsAppService = async ({
   await AssociateWhatsappQueue(whatsapp, queueIds);
 
   // Checks if sync settings were updated and connection is active/opening
-  if (syncHistory !== undefined || syncPeriod !== undefined) {
+  if (syncHistory !== undefined || syncPeriod !== undefined || keepAlive !== undefined) {
     await StopWhatsAppSession(whatsapp.id);
   }
 

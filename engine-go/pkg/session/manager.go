@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"time"
+
+	"watink-engine-go/pkg/rabbitmq"
 
 	"github.com/google/uuid"
 	"go.mau.fi/whatsmeow"
@@ -13,7 +14,6 @@ import (
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
-	"whaticket-engine-go/pkg/rabbitmq"
 
 	_ "github.com/mattn/go-sqlite3"
 )

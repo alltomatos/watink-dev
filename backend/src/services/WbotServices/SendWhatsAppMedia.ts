@@ -28,7 +28,7 @@ const SendWhatsAppMedia = async ({
     const command: Envelope = {
       id: uuidv4(),
       timestamp: Date.now(),
-      tenantId: 1,
+      tenantId: ticket.tenantId,
       type: "message.send.media",
       payload: {
         sessionId: ticket.whatsappId,

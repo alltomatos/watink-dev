@@ -12,6 +12,7 @@ import {
   CircularProgress,
   IconButton,
 } from "@material-ui/core";
+import { useHistory } from "react-router-dom";
 import SearchIcon from "@material-ui/icons/Search";
 import DeleteOutlineIcon from "@material-ui/icons/DeleteOutline";
 import EditIcon from "@material-ui/icons/Edit";
@@ -97,6 +98,7 @@ const getProfileStatus = (profile) => {
 
 const Users = () => {
   const classes = useStyles();
+  const history = useHistory();
 
   const [loading, setLoading] = useState(false);
   const [pageNumber, setPageNumber] = useState(1);
@@ -166,8 +168,7 @@ const Users = () => {
   };
 
   const handleEditUser = (user) => {
-    setSelectedUser(user);
-    setUserModalOpen(true);
+    history.push(`/users/${user.id}`);
   };
 
   const handleDeleteUser = async (userId) => {

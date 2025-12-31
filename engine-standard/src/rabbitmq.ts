@@ -46,6 +46,8 @@ export class RabbitMQ {
       return;
     }
 
+    logger.info(`[RabbitMQ] Publishing event to ${routingKey}: ${message.type}`);
+
     this.channel.publish(
       "wbot.events",
       routingKey,
@@ -67,13 +69,14 @@ export class RabbitMQ {
     const q = await this.channel.assertQueue("", { exclusive: true });
 
     await this.channel.bindQueue(q.queue, "wbot.commands", "command.general");
-    await this.channel.bindQueue(q.queue, "wbot.commands", "wbot.*.*.session.start");
-    await this.channel.bindQueue(q.queue, "wbot.commands", "wbot.*.*.message.send.text");
-    await this.channel.bindQueue(q.queue, "wbot.commands", "wbot.*.*.message.send.media");
+    // Bind all session and message commands using wildcard
+    // Pattern: wbot.<tenantId>.<sessionId>.<commandType>
+    await this.channel.bindQueue(q.queue, "wbot.commands", "wbot.*.*.#");
 
     this.channel.consume(q.queue, async (msg: ConsumeMessage | null) => {
       if (msg) {
         try {
+          logger.info(`[RabbitMQ] Engine Received command on ${msg.fields.routingKey}`);
           const content: Envelope = JSON.parse(msg.content.toString());
           if (this.handler) {
             await this.handler(content);

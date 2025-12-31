@@ -12,6 +12,7 @@ interface MessageData {
   read?: boolean;
   mediaType?: string;
   mediaUrl?: string;
+  tenantId?: number | string;
 }
 interface Request {
   messageData: MessageData;
@@ -60,6 +61,9 @@ const CreateMessageService = async ({
       ticket: message.ticket,
       contact: message.ticket.contact
     });
+
+  const { logger } = require("../../utils/logger");
+  logger.info(`[CreateMessageService] Emitted appMessage create for msg ${message.id} ticket ${message.ticketId}`);
 
   return message;
 };

@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { getIO } from "../libs/socket";
 import { v4 as uuidv4 } from "uuid";
 import RabbitMQService from "../services/RabbitMQService";
+import BatchEnrichContactsService from "../services/ContactServices/BatchEnrichContactsService";
 
 import ListContactsService from "../services/ContactServices/ListContactsService";
 import CreateContactService from "../services/ContactServices/CreateContactService";
@@ -10,9 +11,6 @@ import ShowContactService from "../services/ContactServices/ShowContactService";
 import UpdateContactService from "../services/ContactServices/UpdateContactService";
 import DeleteContactService from "../services/ContactServices/DeleteContactService";
 
-import CheckContactNumber from "../services/WbotServices/CheckNumber";
-import CheckIsValidContact from "../services/WbotServices/CheckIsValidContact";
-import GetProfilePicUrl from "../services/WbotServices/GetProfilePicUrl";
 import AppError from "../errors/AppError";
 import GetContactService from "../services/ContactServices/GetContactService";
 
@@ -63,6 +61,9 @@ export const getContact = async (
 };
 
 export const store = async (req: Request, res: Response): Promise<Response> => {
+  const { tenantId } = req.user as any;
+  console.log(`[ContactController.store] Creating contact for user: ${JSON.stringify(req.user)}, tenantId: ${tenantId}, type: ${typeof tenantId}`);
+
   const newContact: ContactData = req.body;
   newContact.number = newContact.number.replace("-", "").replace(" ", "");
 
@@ -79,31 +80,35 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     throw new AppError(err.message);
   }
 
-  await CheckIsValidContact(newContact.number);
-  const validNumber: any = await CheckContactNumber(newContact.number);
-
-  const profilePicUrl = await GetProfilePicUrl(validNumber);
-
+  const validNumber = newContact.number;
+  const profilePicUrl = "";
   let name = newContact.name;
   let number = validNumber;
   let email = newContact.email;
   let extraInfo = newContact.extraInfo;
 
-  const contact = await CreateContactService({
-    name,
-    number,
-    email,
-    extraInfo,
-    profilePicUrl
-  });
+  try {
+    const contact = await CreateContactService({
+      name,
+      number,
+      email,
+      extraInfo,
+      profilePicUrl,
+      tenantId,
+      waitEnrichment: true
+    });
 
-  const io = getIO();
-  io.emit("contact", {
-    action: "create",
-    contact
-  });
+    const io = getIO();
+    io.emit("contact", {
+      action: "create",
+      contact
+    });
 
-  return res.status(200).json(contact);
+    return res.status(200).json(contact);
+  } catch (err) {
+    console.error("Error in ContactController.store:", err);
+    throw new AppError("INTERNAL_ERR_CREATING_CONTACT: " + err.message, 500);
+  }
 };
 
 export const show = async (req: Request, res: Response): Promise<Response> => {
@@ -133,8 +138,6 @@ export const update = async (
   } catch (err) {
     throw new AppError(err.message);
   }
-
-  await CheckIsValidContact(contactData.number);
 
   const { contactId } = req.params;
 
@@ -168,6 +171,7 @@ export const remove = async (
 
 export const sync = async (req: Request, res: Response): Promise<Response> => {
   const { contactId } = req.params;
+  const { tenantId } = req.user as any;
 
   try {
     const contact = await ShowContactService(contactId);
@@ -179,16 +183,10 @@ export const sync = async (req: Request, res: Response): Promise<Response> => {
       payload: {
         contactId: +contactId,
         number: contact.number,
-        sessionId: 1 // Default session or derived? The command might need a specific session context if the engine is multi-tenant/session.
-        // If the queue is global, the consumer (engine) needs to know which session to use.
-        // Assuming sessionId comes from context or we iterate? 
-        // For now, let's assume session 1 or we need to find the default connection. 
-        // However, the engine's handleCommand dispatching usually relies on routing keys wbot.{tenantId}.{sessionId}.
-        // The routing key here is "wbot.global.contact.sync". 
-        // We probably need to target a specific session or the engine needs to find one.
-        // Let's check how the engine consumes.
+        lid: contact.lid || undefined,
+        sessionId: 1
       },
-      tenantId: 1
+      tenantId
     });
 
     // Wait, the routing key in RabbitMQService.publishCommand uses the key passed.
@@ -216,4 +214,20 @@ export const sync = async (req: Request, res: Response): Promise<Response> => {
   } catch (error) {
     throw new AppError(error.message);
   }
+};
+
+export const batchEnrich = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  // Assuming isAuth middleware populates req.user.tenantId
+  const { tenantId } = req.user as any;
+
+  if (!tenantId) {
+    throw new AppError("Tenant ID not found in request", 400);
+  }
+
+  const { count } = await BatchEnrichContactsService(tenantId);
+
+  return res.status(200).json({ message: `Enrichment scheduled for ${count} contacts.` });
 };

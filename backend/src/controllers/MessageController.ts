@@ -39,12 +39,14 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
   const { ticketId } = req.params;
   const { body, quotedMsg }: MessageData = req.body;
   const medias = req.files as Express.Multer.File[];
+  const { logger } = require("../utils/logger");
+  logger.info(`[MessageController] Store requested for ticket ${ticketId}. Body: ${body}`);
 
   const ticket = await ShowTicketService(ticketId);
 
   SetTicketMessagesAsRead(ticket);
 
-  if (medias) {
+  if (medias && medias.length > 0) {
     await Promise.all(
       medias.map(async (media: Express.Multer.File) => {
         await SendWhatsAppMedia({ media, ticket });

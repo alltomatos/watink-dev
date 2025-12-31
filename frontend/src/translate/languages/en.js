@@ -22,6 +22,8 @@ const messages = {
         form: {
           email: "Email",
           password: "Password",
+          rememberMe: "Remember me",
+          passwordVisibility: "Toggle password visibility",
         },
         buttons: {
           submit: "Enter",
@@ -69,6 +71,7 @@ const messages = {
           qrcode: "QR CODE",
           newQr: "New QR CODE",
           connecting: "Connectiing",
+          restart: "Restart Connection",
         },
         toolTips: {
           disconnected: {
@@ -100,6 +103,8 @@ const messages = {
         },
       },
       whatsappModal: {
+        deleteTitle: "Delete Connection",
+        deleteMessage: "Are you sure you want to delete this connection?",
         title: {
           add: "Add WhatsApp",
           edit: "Edit WhatsApp",

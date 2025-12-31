@@ -49,6 +49,8 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: "#1E293B",
         color: "#E2E8F0",
         boxShadow: "0 0 20px rgba(0,0,0,0.1)",
+        display: "flex",
+        flexDirection: "column",
     },
     drawerPaperClose: {
         overflowX: "hidden",
@@ -57,6 +59,8 @@ const useStyles = makeStyles((theme) => ({
             duration: theme.transitions.duration.leavingScreen,
         }),
         width: drawerWidthClosed,
+        display: "flex",
+        flexDirection: "column",
     },
     appBar: {
         zIndex: theme.zIndex.drawer + 1,
@@ -134,7 +138,7 @@ const MainLayoutSaaS = ({ children }) => {
     const [drawerOpen, setDrawerOpen] = useState(true);
     const [drawerVariant, setDrawerVariant] = useState("permanent");
     const [systemLogo, setSystemLogo] = useState("");
-    const [systemTitle, setSystemTitle] = useState("Watic Premium");
+    const [systemTitle, setSystemTitle] = useState("Watink");
     const [logoEnabled, setLogoEnabled] = useState(true);
 
     useEffect(() => {
@@ -248,7 +252,7 @@ const MainLayoutSaaS = ({ children }) => {
                     ) : null}
                 </Box>
                 <Divider />
-                <List style={{ flexGrow: 1 }}>
+                <List style={{ flexGrow: 1, overflowY: "auto", overflowX: "hidden" }}>
                     <MainListItems drawerClose={drawerClose} collapsed={!drawerOpen} />
                 </List>
                 <Divider />

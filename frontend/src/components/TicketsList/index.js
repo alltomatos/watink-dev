@@ -175,12 +175,12 @@ const TicketsList = (props) => {
 	});
 
 	useEffect(() => {
-		if (!status && !searchParam) return;
+		if (!status && !searchParam && !isGroup) return;
 		dispatch({
 			type: "LOAD_TICKETS",
 			payload: tickets,
 		});
-	}, [tickets]);
+	}, [tickets, status, searchParam, isGroup]);
 
 	useEffect(() => {
 		const socket = openSocket();

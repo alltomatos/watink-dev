@@ -30,8 +30,8 @@ const useStyles = makeStyles((theme) => ({
         gap: theme.spacing(2),
     },
     avatar: {
-        width: 48,
-        height: 48,
+        width: 56,
+        height: 56,
         fontSize: "1.25rem",
         fontWeight: 600,
         backgroundColor: "#E3F2FD",

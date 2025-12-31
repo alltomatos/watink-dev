@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { getIO } from "../libs/socket";
-import { removeWbot } from "../libs/wbot";
 import { StartWhatsAppSession } from "../services/WbotServices/StartWhatsAppSession";
 
 import CreateWhatsAppService from "../services/WhatsappService/CreateWhatsAppService";
@@ -18,6 +17,7 @@ interface WhatsappData {
   isDefault?: boolean;
   syncHistory?: boolean;
   syncPeriod?: string;
+  keepAlive?: boolean;
 }
 
 export const index = async (req: Request, res: Response): Promise<Response> => {
@@ -35,8 +35,11 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     farewellMessage,
     queueIds,
     syncHistory,
-    syncPeriod
+    syncPeriod,
+    keepAlive
   }: WhatsappData = req.body;
+
+  const { tenantId } = (req as any).user;
 
   const { whatsapp, oldDefaultWhatsapp } = await CreateWhatsAppService({
     name,
@@ -46,7 +49,9 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     farewellMessage,
     queueIds,
     syncHistory,
-    syncPeriod
+    syncPeriod,
+    keepAlive,
+    tenantId
   });
 
   // StartWhatsAppSession(whatsapp); // [REMOVED] Manual connect only
@@ -110,7 +115,6 @@ export const remove = async (
   const { whatsappId } = req.params;
 
   await DeleteWhatsAppService(whatsappId);
-  removeWbot(+whatsappId);
 
   const io = getIO();
   io.emit("whatsapp", {

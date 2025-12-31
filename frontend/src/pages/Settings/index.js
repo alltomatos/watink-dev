@@ -146,6 +146,7 @@ const Settings = () => {
 	const [aiApiKey, setAiApiKey] = useState("");
 	const [aiModel, setAiModel] = useState("");
 	const [aiGuidePrompt, setAiGuidePrompt] = useState("");
+	const [aiEnabled, setAiEnabled] = useState(false);
 
 	useEffect(() => {
 		const fetchSession = async () => {
@@ -184,6 +185,9 @@ const Settings = () => {
 
 				const aiGuidePromptSetting = data.find(s => s.key === "aiGuidePrompt");
 				if (aiGuidePromptSetting) setAiGuidePrompt(aiGuidePromptSetting.value);
+
+				const aiEnabledSetting = data.find(s => s.key === "aiEnabled");
+				if (aiEnabledSetting) setAiEnabled(aiEnabledSetting.value === "true");
 
 			} catch (err) {
 				toastError(err);
@@ -673,6 +677,27 @@ const Settings = () => {
 						</Typography>
 						<Paper className={classes.paper} style={{ display: 'block' }}>
 							<Box mb={2}>
+								<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+									<div>
+										<Typography variant="body1">Habilitar Uso de IA</Typography>
+										<Typography variant="caption" color="textSecondary">
+											Ative para disponibilizar recursos de IA em todo o sistema (Pipelines, Flow Builder, etc).
+										</Typography>
+									</div>
+									<Switch
+										checked={aiEnabled}
+										onChange={async (e) => {
+											const newValue = e.target.checked;
+											setAiEnabled(newValue);
+											await api.put("/settings/aiEnabled", { value: newValue ? "true" : "false" });
+											toast.success(`IA ${newValue ? "ativada" : "desativada"} com sucesso!`);
+										}}
+										color="primary"
+									/>
+								</div>
+								<Divider />
+							</Box>
+							<Box mb={2} style={{ opacity: aiEnabled ? 1 : 0.5, pointerEvents: aiEnabled ? 'auto' : 'none', transition: 'opacity 0.3s' }}>
 								<Typography variant="body1">Provedor de IA</Typography>
 								<Select
 									margin="dense"

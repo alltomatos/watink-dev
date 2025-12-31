@@ -8,12 +8,11 @@ import {
 	YAxis,
 	Label,
 	ResponsiveContainer,
+	Tooltip,
 } from "recharts";
 import { startOfHour, parseISO, format } from "date-fns";
-import Grid from "@material-ui/core/Grid";
 
 import { i18n } from "../../translate/i18n";
-
 import Title from "./Title";
 import useTickets from "../../hooks/useTickets";
 
@@ -55,9 +54,8 @@ const Chart = () => {
 
 	return (
 		<React.Fragment>
-			<Title>{`${i18n.t("dashboard.charts.perDay.title")}${
-				tickets.length
-			}`}</Title>
+			<Title>{`${i18n.t("dashboard.charts.perDay.title")}${tickets.length
+				}`}</Title>
 			<ResponsiveContainer>
 				<BarChart
 					data={chartData}
@@ -71,6 +69,12 @@ const Chart = () => {
 						left: 24,
 					}}
 				>
+					<defs>
+						<linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+							<stop offset="5%" stopColor={theme.palette.primary.main} stopOpacity={0.8} />
+							<stop offset="95%" stopColor={theme.palette.primary.main} stopOpacity={0.1} />
+						</linearGradient>
+					</defs>
 					<CartesianGrid strokeDasharray="3 3" />
 					<XAxis dataKey="time" stroke={theme.palette.text.secondary} />
 					<YAxis
@@ -86,7 +90,8 @@ const Chart = () => {
 							Tickets
 						</Label>
 					</YAxis>
-					<Bar dataKey="amount" fill={theme.palette.primary.main} />
+					<Tooltip cursor={{ fill: 'transparent' }} />
+					<Bar dataKey="amount" fill="url(#colorAmount)" radius={[8, 8, 0, 0]} />
 				</BarChart>
 			</ResponsiveContainer>
 		</React.Fragment>

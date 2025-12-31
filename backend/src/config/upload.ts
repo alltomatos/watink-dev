@@ -1,7 +1,7 @@
 import path from "path";
 import multer from "multer";
 
-const publicFolder = path.resolve(__dirname, "..", "..", "public");
+const publicFolder = path.resolve(process.cwd(), "public");
 export default {
   directory: publicFolder,
 

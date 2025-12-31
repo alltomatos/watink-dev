@@ -138,12 +138,28 @@ const PipelineCreator = () => {
         stages: ["Novo", "Em Andamento", "Concluído"]
     });
     const [loading, setLoading] = useState(false);
+    const [aiEnabled, setAiEnabled] = useState(false);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const { data } = await api.get("/settings");
+                const aiEnabledSetting = data.find(s => s.key === "aiEnabled");
+                if (aiEnabledSetting) {
+                    setAiEnabled(aiEnabledSetting.value === "true");
+                }
+            } catch (err) {
+                console.error("Erro ao carregar configurações:", err);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     // Chat State
     const [messages, setMessages] = useState([
         {
             role: "ai",
-            content: "Olá! Eu sou o assistente de IA do Watic. \nDescreva o processo que você deseja gerenciar (ex: Vendas de Imóveis, Suporte Técnico) e eu criarei as etapas ideais para você."
+            content: "Olá! Eu sou o assistente de IA do Watink. \nDescreva o processo que você deseja gerenciar (ex: Vendas de Imóveis, Suporte Técnico) e eu criarei as etapas ideais para você."
         }
     ]);
     const [input, setInput] = useState("");
@@ -366,54 +382,56 @@ const PipelineCreator = () => {
                 </Box>
 
                 {/* Right Side: Chat Drawer */}
-                <Paper className={classes.chatArea} elevation={0}>
-                    <Box p={2} borderBottom="1px solid rgba(0,0,0,0.12)" display="flex" alignItems="center" gap={1}>
-                        <AndroidIcon color="secondary" />
-                        <Typography variant="subtitle1" style={{ fontWeight: 600 }}>IA Assistant</Typography>
-                    </Box>
+                {aiEnabled && (
+                    <Paper className={classes.chatArea} elevation={0}>
+                        <Box p={2} borderBottom="1px solid rgba(0,0,0,0.12)" display="flex" alignItems="center" gap={1}>
+                            <AndroidIcon color="secondary" />
+                            <Typography variant="subtitle1" style={{ fontWeight: 600 }}>IA Assistant</Typography>
+                        </Box>
 
-                    <div className={classes.chatMessages}>
-                        {messages.map((msg, i) => (
-                            <div key={i} className={`${classes.messageBubble} ${msg.role === 'user' ? classes.userMessage : classes.aiMessage}`}>
-                                <Typography variant="body2" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</Typography>
-                            </div>
-                        ))}
-                        {aiLoading && (
-                            <div className={`${classes.messageBubble} ${classes.aiMessage}`}>
-                                <Box display="flex" alignItems="center" gap={1}>
-                                    <CircularProgress size={16} color="inherit" />
-                                    <Typography variant="caption">Pensando...</Typography>
-                                </Box>
-                            </div>
-                        )}
-                        <div ref={messagesEndRef} />
-                    </div>
+                        <div className={classes.chatMessages}>
+                            {messages.map((msg, i) => (
+                                <div key={i} className={`${classes.messageBubble} ${msg.role === 'user' ? classes.userMessage : classes.aiMessage}`}>
+                                    <Typography variant="body2" style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</Typography>
+                                </div>
+                            ))}
+                            {aiLoading && (
+                                <div className={`${classes.messageBubble} ${classes.aiMessage}`}>
+                                    <Box display="flex" alignItems="center" gap={1}>
+                                        <CircularProgress size={16} color="inherit" />
+                                        <Typography variant="caption">Pensando...</Typography>
+                                    </Box>
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
 
-                    <div className={classes.chatInputContainer}>
-                        <TextField
-                            fullWidth
-                            variant="outlined"
-                            placeholder="Descreva seu processo..."
-                            size="small"
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            disabled={aiLoading}
-                            InputProps={{
-                                endAdornment: (
-                                    <InputAdornment position="end">
-                                        <IconButton onClick={handleSendMessage} disabled={!input.trim() || aiLoading} color="primary">
-                                            <SendIcon />
-                                        </IconButton>
-                                    </InputAdornment>
-                                )
-                            }}
-                        />
-                        <Typography variant="caption" color="textSecondary" style={{ display: 'block', marginTop: 4, textAlign: 'center' }}>
-                            A IA atualizará as etapas automaticamente.
-                        </Typography>
-                    </div>
-                </Paper>
+                        <div className={classes.chatInputContainer}>
+                            <TextField
+                                fullWidth
+                                variant="outlined"
+                                placeholder="Descreva seu processo..."
+                                size="small"
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                disabled={aiLoading}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton onClick={handleSendMessage} disabled={!input.trim() || aiLoading} color="primary">
+                                                <SendIcon />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
+                            />
+                            <Typography variant="caption" color="textSecondary" style={{ display: 'block', marginTop: 4, textAlign: 'center' }}>
+                                A IA atualizará as etapas automaticamente.
+                            </Typography>
+                        </div>
+                    </Paper>
+                )}
             </Paper>
         </MainContainer>
     );

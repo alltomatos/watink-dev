@@ -66,6 +66,7 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 		isDefault: false,
 		syncHistory: false,
 		syncPeriod: "",
+		keepAlive: true,
 	};
 	const [whatsApp, setWhatsApp] = useState(initialState);
 	const [selectedQueueIds, setSelectedQueueIds] = useState([]);
@@ -84,8 +85,10 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 				toastError(err);
 			}
 		};
-		fetchSession();
-	}, [whatsAppId]);
+		if (open) {
+			fetchSession();
+		}
+	}, [whatsAppId, open]);
 
 	const handleSaveWhatsApp = async values => {
 		const whatsappData = { ...values, queueIds: selectedQueueIds };
@@ -166,6 +169,19 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 											<Field
 												as={Switch}
 												color="primary"
+												name="keepAlive"
+												checked={values.keepAlive}
+											/>
+										}
+										label="Reconexão Automática (Keep Alive)"
+									/>
+								</div>
+								<div className={classes.multFieldLine}>
+									<FormControlLabel
+										control={
+											<Field
+												as={Switch}
+												color="primary"
 												name="syncHistory"
 												checked={values.syncHistory}
 											/>
@@ -177,6 +193,10 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 											as={TextField}
 											label={i18n.t("whatsappModal.form.syncPeriod")}
 											name="syncPeriod"
+											type="date"
+											InputLabelProps={{
+												shrink: true,
+											}}
 											variant="outlined"
 											margin="dense"
 											className={classes.textField}

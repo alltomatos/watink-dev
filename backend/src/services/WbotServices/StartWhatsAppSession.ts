@@ -8,7 +8,8 @@ import { Envelope } from "../../microservice/contracts";
 export const StartWhatsAppSession = async (
   whatsapp: Whatsapp,
   usePairingCode?: boolean,
-  phoneNumber?: string
+  phoneNumber?: string,
+  force?: boolean // New param
 ): Promise<void> => {
   await whatsapp.update({ status: "OPENING" });
   logger.info(`StartWhatsAppSession called for session ${whatsapp.id}`);
@@ -31,11 +32,13 @@ export const StartWhatsAppSession = async (
         phoneNumber,
         name: whatsapp.name,
         syncHistory: whatsapp.syncHistory,
-        syncPeriod: whatsapp.syncPeriod
+        syncPeriod: whatsapp.syncPeriod,
+        keepAlive: whatsapp.keepAlive,
+        force // Pass force flag
       }
     };
 
-    await RabbitMQService.publishCommand(`wbot.1.${whatsapp.id}.session.start`, command);
+    await RabbitMQService.publishCommand(`wbot.${whatsapp.tenantId}.${whatsapp.id}.session.start`, command);
     logger.info(`Session start command published for session ${whatsapp.id}`);
   } catch (err) {
     logger.error(err);

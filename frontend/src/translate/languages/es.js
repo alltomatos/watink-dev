@@ -23,6 +23,8 @@ const messages = {
         form: {
           email: "Correo Electrónico",
           password: "Contraseña",
+          rememberMe: "Recuérdame",
+          passwordVisibility: "Alternar visibilidad de contraseña",
         },
         buttons: {
           submit: "Ingresa",
@@ -71,6 +73,7 @@ const messages = {
           qrcode: "QR CODE",
           newQr: "Nuevo QR CODE",
           connecting: "Conectando",
+          restart: "Reiniciar Conexión",
         },
         toolTips: {
           disconnected: {
@@ -102,6 +105,8 @@ const messages = {
         },
       },
       whatsappModal: {
+        deleteTitle: "Eliminar conexión",
+        deleteMessage: "¿Estás seguro de que deseas eliminar esta conexión?",
         title: {
           add: "Agrega WhatsApp",
           edit: "Edita WhatsApp",

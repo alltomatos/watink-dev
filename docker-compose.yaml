@@ -1,13 +1,13 @@
 version: '3'
 
 networks:
-  watic-premium:
+  watink:
 
 
 services:
 
   backend:
-    image: watic-premium/backend:latest
+    image: watink/backend:latest
     build:
       context: ./backend
       dockerfile: ./Dockerfile
@@ -17,7 +17,7 @@ services:
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASS=${POSTGRES_PASSWORD:-postgres}
-      - DB_NAME=${POSTGRES_DB:-watic}
+      - DB_NAME=${POSTGRES_DB:-watink}
       - DB_READ_HOST=${DB_READ_HOST:-postgres}
       - JWT_SECRET=${JWT_SECRET:-***REMOVED_JWT_SECRET***}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-***REMOVED_JWT_REFRESH_SECRET***}
@@ -37,10 +37,10 @@ services:
       - postgres
       - rabbitmq
     networks:
-      - watic-premium
+      - watink
 
   frontend:
-    image: watic-premium/frontend:latest
+    image: watink/frontend:latest
     ports:
       - ${FRONTEND_PORT:-3000}:80
       - ${FRONTEND_SSL_PORT:-3001}:443
@@ -57,25 +57,25 @@ services:
       - ./ssl/certs/:/etc/nginx/ssl/
       - ./ssl/www/:/var/www/letsencrypt/
     networks:
-      - watic-premium
+      - watink
 
   postgres:
     image: ronaldodavi/pgvectorgis:latest
     volumes:
       - ./.docker/db_data/:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-watic}
+      - POSTGRES_DB=${POSTGRES_DB:-watink}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - TZ=${TZ:-America/Sao_Paulo}
     ports:
       - ${MYSQL_PORT:-5432}:5432
     restart: always
     networks:
-      - watic-premium
+      - watink
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    container_name: watic-premium-rabbitmq
+    container_name: watink-rabbitmq
     restart: always
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}
@@ -87,11 +87,11 @@ services:
       - ./.docker/rabbitmq/data:/var/lib/rabbitmq/mnesia/
       - ./.docker/rabbitmq/log:/var/log/rabbitmq
     networks:
-      - watic-premium
+      - watink
 
   whaileys-engine:
-    image: watic-premium/engine:latest
-    container_name: watic-premium-engine
+    image: watink/engine:latest
+    container_name: watink-engine
     build:
       context: ./engine-standard
       dockerfile: ./Dockerfile
@@ -100,6 +100,6 @@ services:
     depends_on:
       - rabbitmq
     networks:
-      - watic-premium
+      - watink
     volumes:
       - ./engine-standard/.sessions_auth/:/usr/src/app/.sessions_auth/
