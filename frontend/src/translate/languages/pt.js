@@ -22,6 +22,8 @@ const messages = {
         form: {
           email: "Email",
           password: "Senha",
+          rememberMe: "Lembrar de mim",
+          passwordVisibility: "Alternar visibilidade da senha",
         },
         buttons: {
           submit: "Entrar",

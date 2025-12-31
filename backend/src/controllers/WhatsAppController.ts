@@ -17,6 +17,7 @@ interface WhatsappData {
   isDefault?: boolean;
   syncHistory?: boolean;
   syncPeriod?: string;
+  keepAlive?: boolean;
 }
 
 export const index = async (req: Request, res: Response): Promise<Response> => {

@@ -480,11 +480,12 @@ class SessionManager {
             await this.cleanupSession(payload.sessionId);
           }
 
+
           // Special handling for Pairing Code flow: Treat 401 as retryable if using pairing code and not registered
           if (payload.usePairingCode && !sock.authState.creds.registered && statusCode === DisconnectReason.loggedOut) {
             logger.warn(`401 Logged Out during Pairing Code flow for session ${payload.sessionId} - Cleaning up and Retrying`);
 
-            // Ensure socket is closed and listeners removed
+            // ... (cleanup logic same as before) ...
             try {
               sock.end(undefined);
               this.sessions.delete(payload.sessionId);
@@ -498,21 +499,32 @@ class SessionManager {
             await this.cleanupSession(payload.sessionId);
 
             // Allow reconnect with more retries
-            if (currentRetries < 10) {
+            // Use keepAlive or default 10 for pairing flow
+            const maxRetries = payload.keepAlive ? 999999 : 10;
+            if (currentRetries < maxRetries) {
               this.retries.set(payload.sessionId, currentRetries + 1);
-              // this.sessions.delete(payload.sessionId); // Already deleted above
               setTimeout(() => this.startSession(payload, tenantId), 2000);
               return;
             }
           }
 
-          if (shouldReconnect && currentRetries < 5) {
+          // Check if we should retry based on KeepAlive or standard retry limit
+          const maxRetries = payload.keepAlive ? 999999 : 5;
+
+          if (shouldReconnect && currentRetries < maxRetries) {
             this.retries.set(payload.sessionId, currentRetries + 1);
             this.sessions.delete(payload.sessionId);
-            setTimeout(() => this.startSession(payload, tenantId), 3000 * (currentRetries + 1)); // Exponential backoff
+
+            // Calculate delay: Exponential backoff with cap
+            // If keepAlive is true, we might want a capped delay to avoid waiting too long
+            const delay = Math.min(3000 * (currentRetries + 1), 60000); // Max 60s
+
+            logger.info(`Session ${payload.sessionId} reconnecting in ${delay}ms... (Attempt ${currentRetries + 1}/${payload.keepAlive ? "∞" : maxRetries})`);
+
+            setTimeout(() => this.startSession(payload, tenantId), delay);
           } else {
             // Max retries reached or permanent error
-            logger.error(`Session ${payload.sessionId} failed to connect after ${currentRetries} attempts or permanent error (code: ${statusCode}).`);
+            logger.error(`Session ${payload.sessionId} failed to connect after ${currentRetries} attempts or permanent error (code: ${statusCode}). KeepAlive: ${payload.keepAlive}`);
             this.retries.delete(payload.sessionId);
             this.sessions.delete(payload.sessionId);
 

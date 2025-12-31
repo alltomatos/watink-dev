@@ -12,7 +12,9 @@ import {
   Container,
   InputAdornment,
   IconButton,
-  Link
+  Link,
+  Checkbox,
+  FormControlLabel
 } from '@material-ui/core';
 
 import { LockOutlined, Visibility, VisibilityOff } from '@material-ui/icons';
@@ -63,6 +65,7 @@ const Login = () => {
 
   const [user, setUser] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [settings, setSettings] = useState({
     loginLayout: "split_left", // split_left, split_right, centered
     loginBackground: "", // url
@@ -98,7 +101,7 @@ const Login = () => {
 
   const handlSubmit = (e) => {
     e.preventDefault();
-    handleLogin(user);
+    handleLogin(user, rememberMe);
   };
 
   const renderLoginForm = () => (
@@ -147,7 +150,7 @@ const Login = () => {
             endAdornment: (
               <InputAdornment position="end">
                 <IconButton
-                  aria-label="toggle password visibility"
+                  aria-label={i18n.t("login.form.passwordVisibility")}
                   onClick={() => setShowPassword((e) => !e)}
                 >
                   {showPassword ? <VisibilityOff /> : <Visibility />}
@@ -156,6 +159,21 @@ const Login = () => {
             )
           }}
         />
+        <Grid container alignItems="center">
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  name="rememberMe"
+                  color="primary"
+                />
+              }
+              label={i18n.t("login.form.rememberMe")}
+            />
+          </Grid>
+        </Grid>
         <Button
           type="submit"
           fullWidth

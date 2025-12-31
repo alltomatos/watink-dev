@@ -23,6 +23,8 @@ const messages = {
         form: {
           email: "Correo Electrónico",
           password: "Contraseña",
+          rememberMe: "Recuérdame",
+          passwordVisibility: "Alternar visibilidad de contraseña",
         },
         buttons: {
           submit: "Ingresa",
