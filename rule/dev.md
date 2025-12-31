@@ -1,6 +1,6 @@
-# 🛠️ Guia de Desenvolvimento - watic Premium
+# 🛠️ Guia de Desenvolvimento - Watink
 
-Este documento serve como referência técnica para desenvolvedores que atuam no projeto **watic Premium**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
+Este documento serve como referência técnica para desenvolvedores que atuam no projeto **Watink**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
 
 > [!IMPORTANT]
 > **Leitura Complementar Obrigatória**: Consulte também [dev_micro.md](./dev_micro.md) para detalhes específicos da arquitetura de microserviços.
