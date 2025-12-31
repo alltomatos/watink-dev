@@ -3,7 +3,7 @@ import fs from "fs";
 import path, { join } from "path";
 import uploadConfig from "../config/upload";
 import { logger } from "../utils/logger";
-import sharp from "sharp";
+// import sharp from "sharp";
 
 interface Request {
     profilePicUrl: string;
@@ -46,17 +46,27 @@ export const DownloadProfileImage = async ({
                 timeout: 10000
             });
 
-            // Process image with sharp
-            await sharp(response.data)
-                .resize(500, 500, {
-                    fit: 'inside', // Maintain aspect ratio, max 500x500
-                    withoutEnlargement: true // Don't upscale if smaller
-                })
-                .jpeg({
-                    quality: 80,
-                    mozjpeg: true
-                })
-                .toFile(filePath);
+            // Process image with sharp if available, else save directly
+            try {
+                const sharp = require("sharp");
+                await sharp(response.data)
+                    .resize(500, 500, {
+                        fit: 'inside', // Maintain aspect ratio, max 500x500
+                        withoutEnlargement: true // Don't upscale if smaller
+                    })
+                    .jpeg({
+                        quality: 80,
+                        mozjpeg: true
+                    })
+                    .toFile(filePath);
+            } catch (err) {
+                if (err.code === 'MODULE_NOT_FOUND') {
+                    logger.warn(`[DownloadProfileImage] Sharp module not found. Saving image directly without processing.`);
+                    fs.writeFileSync(filePath, response.data);
+                } else {
+                     throw err;
+                }
+            }
 
             logger.info(`[DownloadProfileImage] Successfully downloaded and processed image for contact ${contactId} to ${filename}`);
             return filename;
