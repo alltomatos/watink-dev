@@ -7,6 +7,7 @@ import Contact from "../../models/Contact";
 // import path, { join } from "path";
 // import uploadConfig from "../../config/upload";
 import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
+import MergeContactsService from "./MergeContactsService";
 
 interface ExtraInfo {
   name: string;
@@ -39,17 +40,41 @@ const CreateOrUpdateContactService = async ({
   let contact: Contact | null = null;
   const backendUrl = process.env.URL_BACKEND || process.env.BACKEND_URL || "http://localhost:8080";
 
-  // 1. Try to find by LID first
+  // 1. Try to find by LID
   if (lid) {
     contact = await Contact.findOne({ where: { lid, tenantId } });
   }
 
-  // 2. If not found by LID, try to find by Number
-  if (!contact && number) {
-    contact = await Contact.findOne({ where: { number, tenantId } });
+  // 2. Try to find by Number (only if valid number)
+  let contactByNumber: Contact | null = null;
+  if (number) {
+    contactByNumber = await Contact.findOne({ where: { number, tenantId } });
   }
 
-  // 3. Fallback: Try to find by Name
+  // 3. Merge Logic
+  if (contact && contactByNumber) {
+    if (contact.id === contactByNumber.id) {
+      // Same contact found by both ways
+    } else {
+      // Merge: Prefer contactByNumber (Target), delete contact (Origin - LID-only)
+      // Ensure Target has the LID
+      if (!contactByNumber.lid && contact.lid) {
+        await contactByNumber.update({ lid: contact.lid });
+      }
+
+      await MergeContactsService({
+        contactIdOrigin: contact.id,
+        contactIdTarget: contactByNumber.id,
+        tenantId
+      });
+
+      contact = contactByNumber;
+    }
+  } else if (!contact && contactByNumber) {
+    contact = contactByNumber;
+  }
+
+  // 4. Fallback: Try to find by Name (if still no contact)
   if (!contact && !number && !lid && name) {
     contact = await Contact.findOne({ where: { name, tenantId } });
   }
@@ -70,7 +95,14 @@ const CreateOrUpdateContactService = async ({
         updates.name = name;
       }
     } else if (name) {
-      updates.name = name; // Individual contacts usually don't have this issue
+      // Individual Contact: Prioritize PushName/Notify if available, OR if current name is placeholder
+      // If the new name is just a number, ignore it if we already have a text name
+      const newNameIsNumber = name.replace(/\D/g, "") === name || name.includes("@");
+      const currentNameIsNumber = contact.name.replace(/\D/g, "") === contact.name || contact.name.includes("@");
+
+      if (!newNameIsNumber || currentNameIsNumber) {
+        updates.name = name;
+      }
     }
 
     if (isGroup && !contact.isGroup) updates.isGroup = true;
@@ -93,6 +125,7 @@ const CreateOrUpdateContactService = async ({
 
     if (Object.keys(updates).length > 0) {
       await contact.update(updates);
+      await contact.reload();
     }
 
     io.emit("contact", {
@@ -127,6 +160,7 @@ const CreateOrUpdateContactService = async ({
       }
 
       await contact.update({ profilePicUrl: finalUrl });
+      await contact.reload();
     }
 
     io.emit("contact", {
