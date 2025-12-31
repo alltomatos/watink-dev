@@ -107,7 +107,12 @@ const Login = () => {
   const renderLoginForm = () => (
     <div className={classes.paper}>
       {settings.systemLogo && (
-        <img src={settings.systemLogo} alt="Logo" style={{ maxWidth: 200, marginBottom: 20 }} />
+        <img
+          src={settings.systemLogo}
+          alt="Logo"
+          style={{ maxWidth: 200, marginBottom: 20 }}
+          onError={(e) => { e.target.onerror = null; e.target.src = "/logo.png"; }}
+        />
       )}
       {!settings.systemLogo && (
         <Avatar className={classes.avatar}>

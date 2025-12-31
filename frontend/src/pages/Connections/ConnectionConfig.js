@@ -102,6 +102,7 @@ const ConnectionConfig = () => {
     const classes = useStyles();
     const history = useHistory();
     const { whatsappId } = useParams();
+    console.log("ConnectionConfig Render. WhatsappID:", whatsappId);
     const [whatsapp, setWhatsapp] = useState(null);
     const [loading, setLoading] = useState(true);
     const [pairingModalOpen, setPairingModalOpen] = useState(false);
@@ -116,6 +117,14 @@ const ConnectionConfig = () => {
     const [connectionStarted, setConnectionStarted] = useState(false);
     const [showQrCode, setShowQrCode] = useState(false);
     const [inputPairingModalOpen, setInputPairingModalOpen] = useState(false);
+
+    console.log("ConnectionConfig State:", {
+        status: whatsapp?.status,
+        showQrCode,
+        showPairingInput,
+        loading,
+        connectionStarted
+    });
 
     const fetchWhatsapp = useCallback(async () => {
         try {
@@ -545,6 +554,10 @@ const ConnectionConfig = () => {
                             <Box mb={2}>
                                 <Typography variant="subtitle2" color="textSecondary">Padrão</Typography>
                                 <Typography variant="body1">{whatsapp.isDefault ? "Sim" : "Não"}</Typography>
+                            </Box>
+                            <Box mb={2}>
+                                <Typography variant="subtitle2" color="textSecondary">Reconexão Automática (Keep Alive)</Typography>
+                                <Typography variant="body1">{whatsapp.keepAlive ? "Ativado" : "Desativado"}</Typography>
                             </Box>
                             <Box mb={2}>
                                 <Typography variant="subtitle2" color="textSecondary">Sincronizar Histórico</Typography>

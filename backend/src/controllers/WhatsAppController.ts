@@ -35,8 +35,11 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     farewellMessage,
     queueIds,
     syncHistory,
-    syncPeriod
+    syncPeriod,
+    keepAlive
   }: WhatsappData = req.body;
+
+  const { tenantId } = (req as any).user;
 
   const { whatsapp, oldDefaultWhatsapp } = await CreateWhatsAppService({
     name,
@@ -46,7 +49,9 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     farewellMessage,
     queueIds,
     syncHistory,
-    syncPeriod
+    syncPeriod,
+    keepAlive,
+    tenantId
   });
 
   // StartWhatsAppSession(whatsapp); // [REMOVED] Manual connect only
