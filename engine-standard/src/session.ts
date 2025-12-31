@@ -312,6 +312,8 @@ class SessionManager {
 
       logger.info(`Session ${payload.sessionId} starting with browser config: ${JSON.stringify(browserConfig)} (usePairingCode: ${payload.usePairingCode})`);
 
+
+
       const sock = makeWASocket({
         version,
         auth: state,
@@ -324,6 +326,8 @@ class SessionManager {
         retryRequestDelayMs: 2000,
         generateHighQualityLinkPreview: true,
       });
+
+
 
       // Salva o socket e o status inicial
       this.sessions.set(payload.sessionId, { socket: sock, status: "OPENING", tenantId });
