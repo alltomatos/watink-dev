@@ -11,9 +11,6 @@ import ShowContactService from "../services/ContactServices/ShowContactService";
 import UpdateContactService from "../services/ContactServices/UpdateContactService";
 import DeleteContactService from "../services/ContactServices/DeleteContactService";
 
-import CheckContactNumber from "../services/WbotServices/CheckNumber";
-import CheckIsValidContact from "../services/WbotServices/CheckIsValidContact";
-import GetProfilePicUrl from "../services/WbotServices/GetProfilePicUrl";
 import AppError from "../errors/AppError";
 import GetContactService from "../services/ContactServices/GetContactService";
 
@@ -80,10 +77,10 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     throw new AppError(err.message);
   }
 
-  await CheckIsValidContact(newContact.number);
-  const validNumber: any = await CheckContactNumber(newContact.number);
+  // Use the number provided (cleaned) - validation/enrichment happens asynchronously via RabbitMQ
+  const validNumber = newContact.number;
 
-  const profilePicUrl = await GetProfilePicUrl(validNumber, req.user.tenantId);
+  const profilePicUrl = "";
 
   let name = newContact.name;
   let number = validNumber;
@@ -134,9 +131,6 @@ export const update = async (
   } catch (err) {
     throw new AppError(err.message);
   }
-
-  // Legacy wbot check removed
-  // await CheckIsValidContact(contactData.number);
 
   const { contactId } = req.params;
 

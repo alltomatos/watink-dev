@@ -5,13 +5,13 @@ ssl/
 node_modules/
 dist/
 sssbuild
-#engine-go
+engine-go
 
 # Global ignores
 **/node_modules/
-**/dist/
+#**/dist/
 **/build/
-**/.env
+#**/.env
 **/.DS_Store
 **/*.log
 **/.vscode/

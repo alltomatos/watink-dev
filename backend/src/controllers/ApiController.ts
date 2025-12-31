@@ -30,10 +30,6 @@ const createContact = async (
   whatsappId: number | undefined,
   newContact: string
 ) => {
-  // Legacy validation removed for async processing
-  // await CheckIsValidContact(newContact);
-  // const validNumber: any = await CheckContactNumber(newContact);
-  
   // Basic cleaning only - validation happens in Engine
   const number = newContact.replace(/\D/g, "");
 
@@ -109,9 +105,9 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
             to: `${contactAndTicket.contact.number}@${contactAndTicket.isGroup ? "g" : "c"}.us`,
             body: body,
             media: {
-                mimetype: media.mimetype,
-                filename: media.originalname,
-                path: media.path
+              mimetype: media.mimetype,
+              filename: media.originalname,
+              path: media.path
             },
             ticketId: contactAndTicket.id
           }
@@ -121,17 +117,17 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
   } else {
     // Send Text via RabbitMQ
     await RabbitMQService.publishCommand(`wbot.${contactAndTicket.tenantId}.${contactAndTicket.whatsappId}.message.send.text`, {
-        id: uuidv4(),
-        timestamp: Date.now(),
-        tenantId: contactAndTicket.tenantId,
-        type: "message.send.text",
-        payload: {
-            sessionId: contactAndTicket.whatsappId,
-            to: `${contactAndTicket.contact.number}@${contactAndTicket.isGroup ? "g" : "c"}.us`,
-            text: body,
-            quotedMsg,
-            ticketId: contactAndTicket.id
-        }
+      id: uuidv4(),
+      timestamp: Date.now(),
+      tenantId: contactAndTicket.tenantId,
+      type: "message.send.text",
+      payload: {
+        sessionId: contactAndTicket.whatsappId,
+        to: `${contactAndTicket.contact.number}@${contactAndTicket.isGroup ? "g" : "c"}.us`,
+        text: body,
+        quotedMsg,
+        ticketId: contactAndTicket.id
+      }
     });
   }
 
