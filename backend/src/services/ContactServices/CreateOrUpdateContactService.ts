@@ -77,10 +77,13 @@ const CreateOrUpdateContactService = async ({
   email = "",
   extraInfo = [],
   lid,
-  tenantId = 1,
+  tenantId,
   waitEnrichment = false,
   sessionId
 }: Request): Promise<Contact> => {
+  if (!tenantId) {
+    throw new Error("Tenant ID is required for CreateOrUpdateContactService");
+  }
   const number = isGroup ? rawNumber : rawNumber?.replace(/[^0-9]/g, "");
   const io = getIO();
   let contact: Contact | null = null;

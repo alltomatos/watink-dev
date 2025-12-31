@@ -6,13 +6,14 @@ import ShowTicketService from "../services/TicketServices/ShowTicketService";
 import AppError from "../errors/AppError";
 
 export const sendButtons = async (req: Request, res: Response): Promise<Response> => {
+    const { tenantId } = req.user as any;
     const { ticketId, text, footer, buttons, imageUrl } = req.body;
     const ticket = await ShowTicketService(ticketId);
 
     const command: Envelope = {
         id: uuidv4(),
         timestamp: Date.now(),
-        tenantId: 1, // Assuming default tenant
+        tenantId,
         type: "message.send.buttons",
         payload: {
             sessionId: ticket.whatsappId,
@@ -29,13 +30,14 @@ export const sendButtons = async (req: Request, res: Response): Promise<Response
 };
 
 export const sendList = async (req: Request, res: Response): Promise<Response> => {
+    const { tenantId } = req.user as any;
     const { ticketId, text, footer, buttonText, sections } = req.body;
     const ticket = await ShowTicketService(ticketId);
 
     const command: Envelope = {
         id: uuidv4(),
         timestamp: Date.now(),
-        tenantId: 1,
+        tenantId,
         type: "message.send.list",
         payload: {
             sessionId: ticket.whatsappId,
@@ -52,13 +54,14 @@ export const sendList = async (req: Request, res: Response): Promise<Response> =
 };
 
 export const sendPoll = async (req: Request, res: Response): Promise<Response> => {
+    const { tenantId } = req.user as any;
     const { ticketId, name, options, selectableCount } = req.body;
     const ticket = await ShowTicketService(ticketId);
 
     const command: Envelope = {
         id: uuidv4(),
         timestamp: Date.now(),
-        tenantId: 1,
+        tenantId,
         type: "message.send.poll",
         payload: {
             sessionId: ticket.whatsappId,
@@ -74,13 +77,14 @@ export const sendPoll = async (req: Request, res: Response): Promise<Response> =
 };
 
 export const sendCarousel = async (req: Request, res: Response): Promise<Response> => {
+    const { tenantId } = req.user as any;
     const { ticketId, text, footer, cards } = req.body;
     const ticket = await ShowTicketService(ticketId);
 
     const command: Envelope = {
         id: uuidv4(),
         timestamp: Date.now(),
-        tenantId: 1,
+        tenantId,
         type: "message.send.carousel",
         payload: {
             sessionId: ticket.whatsappId,

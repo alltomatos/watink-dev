@@ -66,6 +66,7 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 		isDefault: false,
 		syncHistory: false,
 		syncPeriod: "",
+		keepAlive: true,
 	};
 	const [whatsApp, setWhatsApp] = useState(initialState);
 	const [selectedQueueIds, setSelectedQueueIds] = useState([]);
@@ -158,6 +159,19 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 											/>
 										}
 										label={i18n.t("whatsappModal.form.default")}
+									/>
+								</div>
+								<div className={classes.multFieldLine}>
+									<FormControlLabel
+										control={
+											<Field
+												as={Switch}
+												color="primary"
+												name="keepAlive"
+												checked={values.keepAlive}
+											/>
+										}
+										label="Reconexão Automática (Keep Alive)"
 									/>
 								</div>
 								<div className={classes.multFieldLine}>

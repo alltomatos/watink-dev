@@ -31,6 +31,7 @@ export interface StartSessionPayload {
   name?: string;
   syncHistory?: boolean;
   syncPeriod?: string;
+  keepAlive?: boolean;
   force?: boolean;
 }
 
