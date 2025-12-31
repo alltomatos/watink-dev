@@ -207,7 +207,9 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     // We don't want to overwrite the group name with JID if it already exists and has a name
     // CreateOrUpdateContactService overwrites name. Ideally we should check this.
     // For now, passing message.from as name is standard behavior if name not known.
-    groupContact = await CreateOrUpdateContactService(groupData);
+    (groupData as any).waitEnrichment = true;
+    (groupData as any).sessionId = sessionId;
+    groupContact = await CreateOrUpdateContactService(groupData as any);
 
     // 2. Participant Contact (Sender)
     const participant = message.participant || "";
@@ -228,7 +230,9 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
       lid: providedLid || (isLid ? participant : undefined),
       isGroup: false,
       tenantId,
-      profilePicUrl: message.profilePicUrl
+      profilePicUrl: message.profilePicUrl,
+      waitEnrichment: true,
+      sessionId
     };
     msgContact = await CreateOrUpdateContactService(participantData as any);
   } else {
@@ -242,6 +246,8 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
       lid: providedLid || (isLid ? message.from : undefined),
       isGroup: false,
       tenantId,
+      waitEnrichment: true,
+      sessionId
     };
 
     // Only update name and pfp if message is NOT from me (incoming)
@@ -256,42 +262,6 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     }
 
     msgContact = await CreateOrUpdateContactService(contactData);
-  }
-
-  // [NEW] Sync Contact/Group Info if missing
-  const shouldSyncGroup = groupContact && (groupContact.name === groupContact.number || !groupContact.profilePicUrl);
-  // Sync individual contact if no profile pic or if it's a legacy contact without LID (and not a LID itself)
-  const shouldSyncContact = msgContact && (!msgContact.profilePicUrl || (!msgContact.lid && !msgContact.number?.includes("@lid")));
-
-  if (shouldSyncGroup && groupContact) {
-    await RabbitMQService.publishCommand(`wbot.${tenantId}.${sessionId}.contact.sync`, {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      tenantId,
-      type: "contact.sync",
-      payload: {
-        sessionId,
-        contactId: groupContact.id,
-        number: groupContact.number,
-        isGroup: true
-      }
-    });
-  }
-
-  if (shouldSyncContact && msgContact) {
-    await RabbitMQService.publishCommand(`wbot.${tenantId}.${sessionId}.contact.sync`, {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      tenantId,
-      type: "contact.sync",
-      payload: {
-        sessionId,
-        contactId: msgContact.id,
-        number: msgContact.number,
-        lid: msgContact.lid || undefined,
-        isGroup: false
-      }
-    });
   }
 
   // ... inside handleMessageReceived
@@ -351,4 +321,47 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   }
 
   await CreateMessageService({ messageData: msgData as any });
+};
+
+// Helper function for Poll Barrier
+const waitForContactEnrichment = async (contactId: number, isGroup: boolean, tenantId: string | number) => {
+  const MAX_WAIT_MS = 5000; // 5 seconds max
+  const POLLING_INTERVAL = 500;
+  let waited = 0;
+
+  logger.info(`[Barrier] Waiting for enrichment of contact ${contactId} (Group: ${isGroup})...`);
+
+  // Helper sleep
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  while (waited < MAX_WAIT_MS) {
+    const contact = await Contact.findByPk(contactId);
+
+    if (!contact) return; // Should not happen
+
+    let isReady = false;
+
+    if (isGroup) {
+      // Ready if has Photo AND Name is not raw number
+      const hasPhoto = !!contact.profilePicUrl;
+      const hasRealName = contact.name && contact.name !== contact.number;
+      isReady = !!(hasPhoto && hasRealName);
+    } else {
+      // Ready if has Photo AND (Name is not number)
+      // Note: pushName is already merged into 'name' by CreateOrUpdateContactService logic
+      const hasPhoto = !!contact.profilePicUrl;
+      const hasRealName = contact.name && contact.name !== contact.number;
+      isReady = !!(hasPhoto && hasRealName);
+    }
+
+    if (isReady) {
+      logger.info(`[Barrier] Contact ${contactId} enriched after ${waited}ms!`);
+      return;
+    }
+
+    await sleep(POLLING_INTERVAL);
+    waited += POLLING_INTERVAL;
+  }
+
+  logger.warn(`[Barrier] Timeout waiting for enrichment of contact ${contactId} after ${MAX_WAIT_MS}ms. Proceeding anyway.`);
 };

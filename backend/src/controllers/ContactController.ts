@@ -92,7 +92,8 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     number,
     email,
     extraInfo,
-    profilePicUrl
+    profilePicUrl,
+    waitEnrichment: true
   });
 
   const io = getIO();
