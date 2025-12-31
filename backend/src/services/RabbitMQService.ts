@@ -15,7 +15,7 @@ class RabbitMQService {
   async connect(): Promise<void> {
     try {
       this.connection = await client.connect(this.url) as any;
-      
+
       this.connection.on("error", (err: any) => {
         logger.error("RabbitMQ Connection Error", err);
         setTimeout(() => this.connect(), 5000);
@@ -49,6 +49,7 @@ class RabbitMQService {
       return;
     }
 
+    logger.info(`[RabbitMQ] Publishing command to ${routingKey}`);
     this.channel.publish(
       "wbot.commands",
       routingKey,
@@ -72,7 +73,7 @@ class RabbitMQService {
           await handler(content);
           this.channel?.ack(msg);
         } catch (error) {
-          logger.error("Error processing event", error);
+          logger.error(`Error processing event: ${(error as Error).message}\n${(error as Error).stack}`);
           this.channel?.nack(msg, false, false);
         }
       }

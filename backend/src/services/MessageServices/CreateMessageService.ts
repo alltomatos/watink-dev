@@ -62,6 +62,9 @@ const CreateMessageService = async ({
       contact: message.ticket.contact
     });
 
+  const { logger } = require("../../utils/logger");
+  logger.info(`[CreateMessageService] Emitted appMessage create for msg ${message.id} ticket ${message.ticketId}`);
+
   return message;
 };
 

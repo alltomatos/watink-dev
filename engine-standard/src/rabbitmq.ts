@@ -46,6 +46,8 @@ export class RabbitMQ {
       return;
     }
 
+    logger.info(`[RabbitMQ] Publishing event to ${routingKey}: ${message.type}`);
+
     this.channel.publish(
       "wbot.events",
       routingKey,
@@ -74,6 +76,7 @@ export class RabbitMQ {
     this.channel.consume(q.queue, async (msg: ConsumeMessage | null) => {
       if (msg) {
         try {
+          logger.info(`[RabbitMQ] Engine Received command on ${msg.fields.routingKey}`);
           const content: Envelope = JSON.parse(msg.content.toString());
           if (this.handler) {
             await this.handler(content);

@@ -608,6 +608,29 @@ class SessionManager {
         }
       });
 
+      // Listen for message reactions
+      sock.ev.on("messages.reaction", async (reactions: any[]) => {
+        for (const reaction of reactions) {
+          logger.info(`[Reaction] Received reaction for message ${reaction.key.id}`);
+
+          const reactionEvent: Envelope = {
+            id: uuidv4(),
+            timestamp: Date.now(),
+            tenantId,
+            type: "message.reaction",
+            payload: {
+              sessionId: payload.sessionId,
+              messageId: reaction.key.id || "",
+              reaction: reaction.reaction.text || "",
+              sender: reaction.key.participant || reaction.key.remoteJid || "",
+              timestamp: reaction.reaction.key?.timestamp || Date.now()
+            }
+          };
+
+          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.reaction`, reactionEvent);
+        }
+      });
+
       // Listen for Contacts Update (Profile Pics, etc)
       sock.ev.on("contacts.update", async (updates: any[]) => {
         for (const update of updates) {
@@ -718,6 +741,7 @@ class SessionManager {
 
     if (msg) {
       logger.info(`[sendText] Message sent, triggering handleMessage. Msg ID: ${msg.key.id} Tenant: ${session.tenantId}`);
+      logger.info(`[sendText] DEBUG MSG OBJECT: ${JSON.stringify(msg)}`);
       await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId);
     } else {
       logger.warn(`[sendText] Message rejected or no response from Baileys.`);
@@ -725,7 +749,12 @@ class SessionManager {
   }
 
   private async handleMessage(msg: any, sock: any, sessionId: number, tenantId: string | number) {
-    if (!msg.message) return;
+    logger.info(`[handleMessage] RAW ENTRY msg.key.id: ${msg?.key?.id} msg.message defined? ${!!msg?.message}`);
+
+    if (!msg.message) {
+      logger.warn(`[handleMessage] Message ignored because msg.message is undefined. Msg ID: ${msg?.key?.id}`);
+      return;
+    }
     logger.info(`[handleMessage] Processing message ${msg.key.id} fromMe: ${msg.key.fromMe}`);
 
     // Check for media types
@@ -850,6 +879,7 @@ class SessionManager {
         }
       }
     };
+    logger.info(`[handleMessage] Publishing received event for ${msg.key.id} (fromMe: ${msgEvent.payload.message.fromMe})`);
     await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId}.message.received`, msgEvent);
   }
 

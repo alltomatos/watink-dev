@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: watink/backend:1.3.68
+    image: watink/backend:1.3.73
     environment:
       - DB_DIALECT=postgres
       - DB_HOST=postgres
@@ -15,7 +15,7 @@ services:
       - JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***
       - FRONTEND_URL=http://localhost
       - URL_BACKEND=http://localhost:8080
-      - ENGINE_VERSION=1.0.70
+      - ENGINE_VERSION=1.0.72
       - PORT=8080
       - NODE_OPTIONS=--max-old-space-size=800
     ports:
@@ -40,7 +40,7 @@ services:
           memory: 1024M
 
   frontend:
-    image: watink/frontend:latest
+    image: watink/frontend:0.6.56
     environment:
       - URL_BACKEND=watink_backend:8080
       - VITE_BACKEND_URL=http://localhost:8080/
@@ -57,7 +57,7 @@ services:
       replicas: 1
 
   whaileys-engine:
-    image: watink/engine:1.0.70
+    image: watink/engine:1.0.72
     environment:
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
     networks:
@@ -76,7 +76,7 @@ services:
           memory: 1024M
 
   flow-engine-worker:
-    image: watink/backend:1.3.68
+    image: watink/backend:1.3.73
     command: ["node", "dist/src/flow-worker.js"]
     environment:
       - DB_DIALECT=postgres

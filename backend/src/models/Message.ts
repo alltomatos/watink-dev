@@ -47,6 +47,10 @@ class Message extends Model<Message> {
   @Column
   mediaType: string;
 
+  @Default([])
+  @Column(DataType.JSONB)
+  reactions: object;
+
   @Default(false)
   @Column
   isDeleted: boolean;

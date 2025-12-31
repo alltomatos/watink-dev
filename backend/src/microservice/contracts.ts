@@ -168,6 +168,7 @@ export type EventType =
   | "message.response.poll"
   | "message.response.poll"
   | "message.response.interactive"
+  | "message.reaction"
   | "contact.update";
 
 
@@ -219,6 +220,14 @@ export interface MessageAckPayload {
   sessionId: number;
   messageId: string;
   ack: number;
+}
+
+export interface MessageReactionPayload {
+  sessionId: number;
+  messageId: string;
+  reaction: string;
+  sender: string;
+  timestamp: number;
 }
 
 export interface ContactUpdatePayload {

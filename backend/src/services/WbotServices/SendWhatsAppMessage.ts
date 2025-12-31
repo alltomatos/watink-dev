@@ -18,7 +18,11 @@ const SendWhatsAppMessage = async ({
 }: Request): Promise<any> => {
   try {
     const formattedBody = formatBody(body, ticket.contact);
-    
+
+    if (!ticket.whatsappId) {
+      throw new AppError("ERR_TICKET_WRONG_WHATSAPP_ID");
+    }
+
     const command: Envelope = {
       id: uuidv4(),
       timestamp: Date.now(),
@@ -35,12 +39,12 @@ const SendWhatsAppMessage = async ({
     };
 
     await RabbitMQService.publishCommand(
-      `wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.text`, 
+      `wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.text`,
       command
     );
 
     await ticket.update({ lastMessage: body });
-    
+
     // Return a mock or empty object as we are async now
     return { id: "pending", body: formattedBody };
   } catch (err) {

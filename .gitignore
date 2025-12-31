@@ -8,7 +8,7 @@ sssbuild
 engine-go
 
 # Global ignores
-**/node_modules/
+#**/node_modules/
 #**/dist/
 **/build/
 #**/.env

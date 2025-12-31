@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload, PairingCodePayload, ContactUpdatePayload } from "../../microservice/contracts";
+import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload, PairingCodePayload, ContactUpdatePayload, MessageReactionPayload } from "../../microservice/contracts";
 import RabbitMQService from "../RabbitMQService";
 import { logger } from "../../utils/logger";
 import Whatsapp from "../../models/Whatsapp";
@@ -7,6 +7,7 @@ import { getIO } from "../../libs/socket";
 import FindOrCreateTicketService from "../TicketServices/FindOrCreateTicketService";
 import CreateMessageService from "../MessageServices/CreateMessageService";
 import Contact from "../../models/Contact";
+import Message from "../../models/Message";
 import CreateOrUpdateContactService from "../ContactServices/CreateOrUpdateContactService";
 import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
 
@@ -16,6 +17,7 @@ export const EventListener = async () => {
     "wbot.*.*.session.pairingcode",
     "wbot.*.*.session.status",
     "wbot.*.*.message.received",
+    "wbot.*.*.message.reaction",
     "wbot.*.*.contact.update"
   ];
 
@@ -34,6 +36,9 @@ export const EventListener = async () => {
         break;
       case "message.received":
         await handleMessageReceived(msg.payload as MessageReceivedPayload, msg.tenantId);
+        break;
+      case "message.reaction":
+        await handleMessageReaction(msg.payload as MessageReactionPayload, msg.tenantId);
         break;
       case "contact.update":
         await handleContactUpdate(msg.payload as ContactUpdatePayload, msg.tenantId);
@@ -188,6 +193,7 @@ const handleContactUpdate = async (payload: ContactUpdatePayload, tenantId: stri
 
 const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: string | number) => {
   const { message, sessionId } = payload;
+  logger.info(`[EventListener] handleMessageReceived: ${JSON.stringify(payload)}`);
 
   const whatsapp = await Whatsapp.findByPk(sessionId);
   if (!whatsapp) return;
@@ -364,4 +370,49 @@ const waitForContactEnrichment = async (contactId: number, isGroup: boolean, ten
   }
 
   logger.warn(`[Barrier] Timeout waiting for enrichment of contact ${contactId} after ${MAX_WAIT_MS}ms. Proceeding anyway.`);
+};
+
+const handleMessageReaction = async (payload: MessageReactionPayload, tenantId: string | number) => {
+  try {
+    const { messageId, reaction, sender, timestamp } = payload;
+    logger.info(`[EventListener] Received reaction for message ${messageId}: ${reaction} from ${sender}`);
+
+    const message = await Message.findOne({
+      where: { id: messageId, tenantId }
+    });
+
+    if (!message) {
+      logger.warn(`[EventListener] Message ${messageId} not found for reaction update.`);
+      return;
+    }
+
+    // Update reactions JSON
+    // Structure: [{ sender: string, text: string, timestamp: number }]
+    let currentReactions: any[] = (message.reactions as any[]) || [];
+
+    // Remove previous reaction from this sender if exists
+    currentReactions = currentReactions.filter(r => r.sender !== sender);
+
+    // If reaction is not empty, add new one
+    // WhatsApp sends empty string when removing a reaction
+    if (reaction) {
+      currentReactions.push({
+        sender,
+        text: reaction,
+        timestamp
+      });
+    }
+
+    await message.update({ reactions: currentReactions });
+
+    // Emit via Socket.IO
+    const io = getIO();
+    io.to(message.ticketId.toString()).emit(`appMessage`, {
+      action: "update",
+      message: message
+    });
+
+  } catch (err) {
+    logger.error(`[EventListener] Error handling message reaction: ${err}`);
+  }
 };
