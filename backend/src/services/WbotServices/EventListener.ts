@@ -226,21 +226,27 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     }
 
     const participantNumber = participant.replace(/\D/g, "");
-    // Check if we received an explicit LID from the engine via onWhatsApp lookup
-    const providedLid = message.senderLid;
-    const isLid = participant.includes("@lid");
 
-    const participantData = {
-      name: message.pushName || participantNumber || "Unknown",
-      number: providedLid ? participantNumber : (isLid ? null : (participantNumber || null)),
-      lid: providedLid || (isLid ? participant : undefined),
-      isGroup: false,
-      tenantId,
-      profilePicUrl: message.profilePicUrl,
-      waitEnrichment: true,
-      sessionId
-    };
-    msgContact = await CreateOrUpdateContactService(participantData as any);
+    // Check if we already have this participant as a contact
+    // If not, we DO NOT create a contact for them (to avoid pollution).
+    // Instead, we link the message to the Group Contact (or simply use the groupContact as msgContact context)
+    // However, existing logic passed msgContact to FindOrCreateTicketService.
+    // If we pass groupContact as msgContact, the ticket is created for the group (correct).
+
+    let savedParticipant = await Contact.findOne({
+      where: {
+        number: participantNumber,
+        tenantId
+      }
+    });
+
+    if (savedParticipant) {
+      msgContact = savedParticipant;
+    } else {
+      // DOES NOT EXIST: Treat as Group Contact for the purpose of Ticket/Message linking context
+      // The frontend uses 'participant' field in Message table to identify the sender.
+      msgContact = groupContact;
+    }
   } else {
     // Individual Contact
     const isLid = message.from.includes("@lid");
@@ -271,12 +277,16 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   }
 
   // ... inside handleMessageReceived
+  // message.timestamp is usually in seconds (Unix). Convert to ms for comparison.
+  const isOldMessage = Date.now() - (message.timestamp * 1000) > 1000 * 60 * 60 * 2; // 2 hours
+
   const ticket = await FindOrCreateTicketService(
     groupContact || msgContact,
     whatsapp.id,
     1, // Unread messages
     tenantId,
-    groupContact
+    groupContact,
+    isOldMessage
   );
 
   const msgData = {

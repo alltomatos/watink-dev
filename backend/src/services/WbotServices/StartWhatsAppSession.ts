@@ -33,6 +33,7 @@ export const StartWhatsAppSession = async (
         name: whatsapp.name,
         syncHistory: whatsapp.syncHistory,
         syncPeriod: whatsapp.syncPeriod,
+        keepAlive: whatsapp.keepAlive,
         force // Pass force flag
       }
     };

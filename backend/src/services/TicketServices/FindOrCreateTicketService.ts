@@ -9,7 +9,8 @@ const FindOrCreateTicketService = async (
   whatsappId: number,
   unreadMessages: number,
   tenantId: number | string,
-  groupContact?: Contact
+  groupContact?: Contact,
+  isOldMessage?: boolean
 ): Promise<Ticket> => {
   let ticket = await Ticket.findOne({
     where: {
@@ -23,7 +24,37 @@ const FindOrCreateTicketService = async (
   });
 
   if (ticket) {
-    await ticket.update({ unreadMessages });
+    if (!isOldMessage) {
+      await ticket.update({ unreadMessages });
+    }
+    return await ShowTicketService(ticket.id);
+  }
+
+  // Logic for Old Messages (History Sync)
+  // If it's an old message and no open ticket exists, we try to find ANY ticket (including closed)
+  // to avoid creating spam tickets. If none found, we create a CLOSED one.
+  if (isOldMessage) {
+    ticket = await Ticket.findOne({
+      where: {
+        contactId: groupContact ? groupContact.id : contact.id,
+        whatsappId: whatsappId,
+        tenantId
+      },
+      order: [["updatedAt", "DESC"]]
+    });
+
+    if (!ticket) {
+      ticket = await Ticket.create({
+        contactId: groupContact ? groupContact.id : contact.id,
+        status: "closed",
+        isGroup: !!groupContact,
+        unreadMessages: 0,
+        whatsappId,
+        tenantId
+      });
+    }
+
+    return await ShowTicketService(ticket.id);
   }
 
   if (!ticket && groupContact) {

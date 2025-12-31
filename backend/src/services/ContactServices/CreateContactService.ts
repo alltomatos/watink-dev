@@ -27,9 +27,13 @@ const CreateContactService = async ({
   number,
   email = "",
   extraInfo = [],
-  tenantId = 1,
+  tenantId,
   waitEnrichment = false // Default false to maintain backward compat unless requested
 }: Request): Promise<Contact> => {
+  if (!tenantId) {
+    throw new AppError("Tenant ID is required for creating a contact.", 403);
+  }
+
   const numberExists = await Contact.findOne({
     where: { number, tenantId }
   });

@@ -73,6 +73,11 @@ class Whatsapp extends Model<Whatsapp> {
   @Column(DataType.TEXT)
   syncPeriod: string;
 
+  @Default(false)
+  @AllowNull
+  @Column(DataType.BOOLEAN)
+  keepAlive: boolean;
+
   @CreatedAt
   createdAt: Date;
 

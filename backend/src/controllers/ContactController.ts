@@ -61,6 +61,9 @@ export const getContact = async (
 };
 
 export const store = async (req: Request, res: Response): Promise<Response> => {
+  const { tenantId } = req.user as any;
+  console.log(`[ContactController.store] Creating contact for user: ${JSON.stringify(req.user)}, tenantId: ${tenantId}, type: ${typeof tenantId}`);
+
   const newContact: ContactData = req.body;
   newContact.number = newContact.number.replace("-", "").replace(" ", "");
 
@@ -77,32 +80,35 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     throw new AppError(err.message);
   }
 
-  // Use the number provided (cleaned) - validation/enrichment happens asynchronously via RabbitMQ
   const validNumber = newContact.number;
-
   const profilePicUrl = "";
-
   let name = newContact.name;
   let number = validNumber;
   let email = newContact.email;
   let extraInfo = newContact.extraInfo;
 
-  const contact = await CreateContactService({
-    name,
-    number,
-    email,
-    extraInfo,
-    profilePicUrl,
-    waitEnrichment: true
-  });
+  try {
+    const contact = await CreateContactService({
+      name,
+      number,
+      email,
+      extraInfo,
+      profilePicUrl,
+      tenantId,
+      waitEnrichment: true
+    });
 
-  const io = getIO();
-  io.emit("contact", {
-    action: "create",
-    contact
-  });
+    const io = getIO();
+    io.emit("contact", {
+      action: "create",
+      contact
+    });
 
-  return res.status(200).json(contact);
+    return res.status(200).json(contact);
+  } catch (err) {
+    console.error("Error in ContactController.store:", err);
+    throw new AppError("INTERNAL_ERR_CREATING_CONTACT: " + err.message, 500);
+  }
 };
 
 export const show = async (req: Request, res: Response): Promise<Response> => {
@@ -165,6 +171,7 @@ export const remove = async (
 
 export const sync = async (req: Request, res: Response): Promise<Response> => {
   const { contactId } = req.params;
+  const { tenantId } = req.user as any;
 
   try {
     const contact = await ShowContactService(contactId);
@@ -179,7 +186,7 @@ export const sync = async (req: Request, res: Response): Promise<Response> => {
         lid: contact.lid || undefined,
         sessionId: 1
       },
-      tenantId: 1
+      tenantId
     });
 
     // Wait, the routing key in RabbitMQService.publishCommand uses the key passed.
