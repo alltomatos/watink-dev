@@ -4,6 +4,7 @@ import Ticket from "../../models/Ticket";
 import formatBody from "../../helpers/Mustache";
 import RabbitMQService from "../RabbitMQService";
 import { Envelope, SendButtonsPayload, SendListPayload } from "../../microservice/contracts";
+import Message from "../../models/Message";
 
 interface Request {
     body: string;
@@ -29,12 +30,28 @@ const SendWhatsAppInteractive = async ({
     ticket,
     buttons,
     list
-}: Request): Promise<any> => {
+}: Request): Promise<Message> => {
     try {
         const formattedBody = formatBody(body, ticket.contact);
         const id = uuidv4();
         const sessionId = ticket.whatsappId;
-        const to = `${ticket.contact.number}@${ticket.isGroup ? "g" : "c"}.us`;
+        const contactNumber = ticket.contact.number.replace(/\D/g, "");
+        const to = `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+
+        const messageData = {
+            id: uuidv4(),
+            ticketId: ticket.id,
+            contactId: undefined,
+            body: formattedBody,
+            fromMe: true,
+            mediaType: "chat",
+            read: true,
+            quotedMsgId: undefined,
+            ack: 0,
+            timestamp: new Date().getTime()
+        };
+
+        const message = await Message.create(messageData);
 
         let command: Envelope;
         let routingKey = "";
@@ -42,6 +59,7 @@ const SendWhatsAppInteractive = async ({
         if (buttons && buttons.length > 0) {
             const payload: SendButtonsPayload = {
                 sessionId,
+                messageId: message.id,
                 to,
                 text: formattedBody,
                 buttons: buttons.map(b => ({
@@ -62,6 +80,7 @@ const SendWhatsAppInteractive = async ({
         } else if (list) {
             const payload: SendListPayload = {
                 sessionId,
+                messageId: message.id,
                 to,
                 text: formattedBody,
                 buttonText: list.buttonText || "Opções",
@@ -92,7 +111,7 @@ const SendWhatsAppInteractive = async ({
 
         await ticket.update({ lastMessage: body });
 
-        return { id: "pending", body: formattedBody };
+        return message;
     } catch (err) {
         throw new AppError("ERR_SENDING_WAPP_INTERACTIVE");
     }

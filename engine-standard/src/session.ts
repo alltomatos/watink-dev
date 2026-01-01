@@ -16,7 +16,7 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   USyncQuery,
   USyncUser
-} from "@whiskeysockets/baileys";
+} from "whaileys";
 import { Boom } from "@hapi/boom";
 import path from "path";
 import fs from "fs";
@@ -100,7 +100,7 @@ class SessionManager {
     try {
       logger.info(`Syncing contact ${payload.number} for session ${payload.sessionId}`);
 
-      let jid = payload.lid || (payload.number.includes("@") ? payload.number : `${payload.number}@c.us`);
+      let jid = payload.lid || (payload.number.includes("@") ? payload.number : `${payload.number}@s.whatsapp.net`);
       const isGroup = payload.isGroup || jid.endsWith("@g.us");
 
       let profilePicUrl: string | undefined | null = undefined;
@@ -604,6 +604,28 @@ class SessionManager {
       sock.ev.on("messages.update", async (updates: any[]) => {
         for (const update of updates) {
           if (update.update?.status) {
+
+            // Mapping Baileys status to our status
+            // Baileys: 0=ERROR, 1=PENDING, 2=SERVER_ACK, 3=DELIVERY_ACK, 4=READ, 5=PLAYED
+            // Our UI: 0=Clock, 1=Sent, 2=Received, 3=Read, 4=Played, 5=Error
+
+            let status = 0;
+            const baileystatus = update.update.status;
+
+            if (baileystatus === 0) {
+              status = 5; // Error
+            } else if (baileystatus === 1) {
+              status = 0; // Pending
+            } else if (baileystatus === 2) {
+              status = 1; // Sent (Server ACK)
+            } else if (baileystatus === 3) {
+              status = 2; // Received (Delivery ACK)
+            } else if (baileystatus === 4) {
+              status = 3; // Read
+            } else if (baileystatus === 5) {
+              status = 4; // Played
+            }
+
             const ackEvent: Envelope = {
               id: uuidv4(),
               timestamp: Date.now(),
@@ -612,7 +634,7 @@ class SessionManager {
               payload: {
                 sessionId: payload.sessionId,
                 messageId: update.key?.id || "",
-                ack: update.update.status // 0=pending, 1=sent, 2=received, 3=read, 4=played
+                ack: status
               }
             };
             await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.ack`, ackEvent);
@@ -738,29 +760,117 @@ class SessionManager {
     }
   }
 
+  private async validateAndCorrectJid(session: WhaileysSession, jid: string, lid: string | undefined, tenantId: string | number): Promise<string> {
+    if (jid.endsWith("@g.us")) return jid;
+
+    try {
+      const results = await session.socket.onWhatsApp(jid);
+      const result = results?.[0];
+
+      if (result && result.exists) {
+        const correctJid = result.jid;
+        if (correctJid !== jid) {
+          logger.warn(`[validateJid] JID Mismatch: ${jid} -> ${correctJid}`);
+
+          if (lid) {
+            const updateEvent: Envelope = {
+              id: uuidv4(),
+              timestamp: Date.now(),
+              tenantId,
+              type: "contact.update",
+              payload: {
+                sessionId: -1,
+                contactId: 0,
+                lid: lid,
+                number: correctJid.split("@")[0]
+              }
+            };
+            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${tenantId}.contact.update`, updateEvent);
+          }
+
+          return correctJid;
+        } else {
+            logger.info(`[validateJid] JID Verified: ${jid}`);
+            return jid;
+        }
+      } else {
+          logger.error(`[validateJid] JID ${jid} invalid or not on WhatsApp!`);
+          throw new Error(`JID ${jid} is not valid on WhatsApp`);
+      }
+    } catch (error) {
+      logger.error(`[validateJid] Validation failed for ${jid}: ${error}`);
+      throw error;
+    }
+  }
+
+  // Re-writing the entire method to better handle try-catch and ID availability
   private async sendText(payload: SendTextPayload) {
     const session = this.sessions.get(payload.sessionId);
     if (!session) {
+      // If session not found, try to emit error if we have messageId
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: "1", // Fallback if session missing
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error - Session not found
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+      }
       logger.error(`Session ${payload.sessionId} not found for sending message`);
       return;
     }
 
-    logger.info(`[sendText] Sending text to ${payload.to}: ${payload.body}`);
+    try {
+      const jid = await this.validateAndCorrectJid(session, payload.to, payload.lid, session.tenantId);
 
-    const msg = await session.socket.sendMessage(payload.to, {
-      text: payload.body
-    });
+      logger.info(`[sendText] Sending text to ${jid}: ${payload.body} (Ref Message ID: ${payload.messageId})`);
 
-    if (msg) {
-      logger.info(`[sendText] Message sent, triggering handleMessage. Msg ID: ${msg.key.id} Tenant: ${session.tenantId}`);
-      logger.info(`[sendText] DEBUG MSG OBJECT: ${JSON.stringify(msg)}`);
-      await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId);
-    } else {
-      logger.warn(`[sendText] Message rejected or no response from Baileys.`);
+      const msg = await session.socket.sendMessage(jid, {
+        text: payload.body
+      }, {
+        quoted: payload.options?.quotedMsgId ? { key: { id: payload.options.quotedMsgId } } as any : undefined
+      });
+
+      if (msg) {
+        logger.info(`[sendText] Message sent successfully. WA Msg ID: ${msg.key.id}. Ref Message ID: ${payload.messageId}`);
+        // We still trigger handleMessage to ensure standard flow works (saving self-message)
+        // Ideally handleMessage should maybe UPDATE the existing message if we could link them, 
+        // but currently handleMessage creates a new record or upserts based on WA ID.
+        await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
+      } else {
+        throw new Error("Message rejected (msg undefined)");
+      }
+    } catch (error) {
+      logger.error(`[sendText] Error sending message to ${payload.to}: ${error}`);
+
+      if (payload.messageId) {
+        // Emit failure ACK using the backend's message ID
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: session.tenantId,
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+        logger.info(`[sendText] Emitted ACK 5 (Error) for Message ID: ${payload.messageId}`);
+      } else {
+        logger.warn(`[sendText] Failed to send. Cannot emit ACK 5 because I don't have the context message ID.`);
+      }
     }
   }
 
-  private async handleMessage(msg: any, sock: any, sessionId: number, tenantId: string | number) {
+  private async handleMessage(msg: any, sock: any, sessionId: number, tenantId: string | number, originalMessageId?: string) {
     logger.info(`[handleMessage] RAW ENTRY msg.key.id: ${msg?.key?.id} msg.message defined? ${!!msg?.message}`);
 
     if (!msg.message) {
@@ -796,6 +906,13 @@ class SessionManager {
           msg.message.audioMessage?.mimetype ||
           msg.message.documentMessage?.mimetype ||
           msg.message.stickerMessage?.mimetype;
+        
+        // Extract caption if available and body is empty
+        if (!body) {
+          body = msg.message.imageMessage?.caption || 
+                 msg.message.videoMessage?.caption || 
+                 msg.message.documentMessage?.caption || "";
+        }
       } catch (err) {
         logger.warn(`Error downloading media for msg ${msg.key.id}: ${err}`);
       }
@@ -887,7 +1004,8 @@ class SessionManager {
           pushName: msg.pushName || "",
           participant: msg.key.participant || "",
           profilePicUrl,
-          senderLid
+          senderLid,
+          originalId: originalMessageId
         }
       }
     };
@@ -898,52 +1016,86 @@ class SessionManager {
   private async sendMedia(payload: SendMediaPayload, tenantId: string | number) {
     const session = this.sessions.get(payload.sessionId);
     if (!session) {
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: tenantId,
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+      }
       logger.error(`Session ${payload.sessionId} not found for sending media`);
       return;
     }
 
-    logger.info(`Sending media to ${payload.to}: ${payload.media.filename}`);
+    try {
+      const jid = await this.validateAndCorrectJid(session, payload.to, payload.lid, session.tenantId);
 
-    // Convert base64 to buffer
-    const mediaBuffer = Buffer.from(payload.media.data, 'base64');
-    const mimetype = payload.media.mimetype;
-    const filename = payload.media.filename;
+      logger.info(`Sending media to ${jid}: ${payload.media.filename}`);
 
-    let content: any = {};
+      // Convert base64 to buffer
+      const mediaBuffer = Buffer.from(payload.media.data, 'base64');
+      const mimetype = payload.media.mimetype;
+      const filename = payload.media.filename;
 
-    // Determine media type based on mimetype
-    if (mimetype.startsWith('image/')) {
-      content = {
-        image: mediaBuffer,
-        caption: payload.caption || '',
-        mimetype: mimetype
-      };
-    } else if (mimetype.startsWith('video/')) {
-      content = {
-        video: mediaBuffer,
-        caption: payload.caption || '',
-        mimetype: mimetype
-      };
-    } else if (mimetype.startsWith('audio/')) {
-      content = {
-        audio: mediaBuffer,
-        mimetype: mimetype,
-        ptt: mimetype === 'audio/ogg' // Voice note if ogg
-      };
-    } else {
-      // Document (PDF, etc)
-      content = {
-        document: mediaBuffer,
-        caption: payload.caption || '',
-        fileName: filename,
-        mimetype: mimetype
-      };
-    }
+      let content: any = {};
 
-    const msg = await session.socket.sendMessage(payload.to, content);
+      // Determine media type based on mimetype
+      if (mimetype.startsWith('image/')) {
+        content = {
+          image: mediaBuffer,
+          caption: payload.caption || '',
+          mimetype: mimetype
+        };
+      } else if (mimetype.startsWith('video/')) {
+        content = {
+          video: mediaBuffer,
+          caption: payload.caption || '',
+          mimetype: mimetype
+        };
+      } else if (mimetype.startsWith('audio/')) {
+        content = {
+          audio: mediaBuffer,
+          mimetype: mimetype,
+          ptt: mimetype === 'audio/ogg' // Voice note if ogg
+        };
+      } else {
+        // Document (PDF, etc)
+        content = {
+          document: mediaBuffer,
+          caption: payload.caption || '',
+          fileName: filename,
+          mimetype: mimetype
+        };
+      }
 
-    if (msg) {
-      await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId);
+      const msg = await session.socket.sendMessage(jid, content);
+
+      if (msg) {
+        await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
+      }
+    } catch (error) {
+      logger.error(`Error sending media to ${payload.to}: ${error}`);
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: session.tenantId,
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+      }
     }
   }
 
@@ -988,154 +1140,274 @@ class SessionManager {
   private async sendButtons(payload: SendButtonsPayload) {
     const session = this.sessions.get(payload.sessionId);
     if (!session) {
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: "1",
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+      }
       logger.error(`Session ${payload.sessionId} not found for sending buttons`);
       return;
     }
 
-    const buttons = payload.buttons.map(btn => ({
-      buttonId: btn.buttonId,
-      buttonText: { displayText: btn.buttonText },
-      type: 1
-    }));
+    try {
+      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
 
-    const buttonMessage: any = {
-      text: payload.text,
-      footer: payload.footer,
-      buttons: buttons,
-      headerType: 1
-    };
+      const buttons = payload.buttons.map(btn => ({
+        buttonId: btn.buttonId,
+        buttonText: { displayText: btn.buttonText },
+        type: 1
+      }));
 
-    if (payload.imageUrl) {
-      buttonMessage.image = { url: payload.imageUrl };
-      buttonMessage.headerType = 4;
+      const buttonMessage: any = {
+        text: payload.text,
+        footer: payload.footer,
+        buttons: buttons,
+        headerType: 1
+      };
+
+      if (payload.imageUrl) {
+        buttonMessage.image = { url: payload.imageUrl };
+        buttonMessage.headerType = 4;
+      }
+
+      const msg = await session.socket.sendMessage(jid, buttonMessage as any);
+
+      if (msg) {
+        await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
+      }
+    } catch (error) {
+      logger.error(`Error sending buttons to ${payload.to}: ${error}`);
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: session.tenantId,
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+      }
     }
-
-    await session.socket.sendMessage(payload.to, buttonMessage as any);
   }
 
   private async sendList(payload: SendListPayload) {
     const session = this.sessions.get(payload.sessionId);
     if (!session) {
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: "1",
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+      }
       logger.error(`Session ${payload.sessionId} not found for sending list`);
       return;
     }
 
-    const listMessage = {
-      text: payload.text,
-      footer: payload.footer,
-      title: payload.text.split('\n')[0], // Use first line as title if not provided
-      buttonText: payload.buttonText,
-      sections: payload.sections
-    };
+    try {
+      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
 
-    await session.socket.sendMessage(payload.to, listMessage as any);
+      const listMessage = {
+        text: payload.text,
+        footer: payload.footer,
+        title: payload.text.split('\n')[0], // Use first line as title if not provided
+        buttonText: payload.buttonText,
+        sections: payload.sections
+      };
+
+      const msg = await session.socket.sendMessage(jid, listMessage as any);
+
+      if (msg) {
+        await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
+      }
+    } catch (error) {
+      logger.error(`Error sending list to ${payload.to}: ${error}`);
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: session.tenantId,
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+      }
+    }
   }
 
   private async sendPoll(payload: SendPollPayload) {
     const session = this.sessions.get(payload.sessionId);
     if (!session) {
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: "1",
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+      }
       logger.error(`Session ${payload.sessionId} not found for sending poll`);
       return;
     }
 
-    await session.socket.sendMessage(payload.to, {
-      poll: {
-        name: payload.name,
-        values: payload.options,
-        selectableCount: payload.selectableCount || 1
+    try {
+      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+
+      const msg = await session.socket.sendMessage(jid, {
+        poll: {
+          name: payload.name,
+          values: payload.options,
+          selectableCount: payload.selectableCount || 1
+        }
+      } as any);
+
+      if (msg) {
+        await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
-    } as any);
+    } catch (error) {
+      logger.error(`Error sending poll to ${payload.to}: ${error}`);
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: session.tenantId,
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+      }
+    }
   }
 
   private async sendTemplate(payload: SendTemplatePayload) {
     const session = this.sessions.get(payload.sessionId);
     if (!session) {
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: "1",
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+      }
       logger.error(`Session ${payload.sessionId} not found for sending template`);
       return;
     }
 
-    const templateButtons = payload.buttons.map((btn: any, index: number) => {
-      const base = { index: index + 1 };
-      if (btn.type === 'url') {
-        return { ...base, urlButton: { displayText: btn.text, url: btn.url } };
-      } else if (btn.type === 'call') {
-        return { ...base, callButton: { displayText: btn.text, phoneNumber: btn.phoneNumber } };
-      } else {
-        return { ...base, quickReplyButton: { displayText: btn.text, id: btn.buttonId } };
+    try {
+      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+
+      const templateButtons = payload.buttons.map((btn: any, index: number) => {
+        const base = { index: index + 1 };
+        if (btn.type === 'url') {
+          return { ...base, urlButton: { displayText: btn.text, url: btn.url } };
+        } else if (btn.type === 'call') {
+          return { ...base, callButton: { displayText: btn.text, phoneNumber: btn.phoneNumber } };
+        } else {
+          return { ...base, quickReplyButton: { displayText: btn.text, id: btn.buttonId } };
+        }
+      });
+
+      const message: any = {
+        text: payload.text,
+        footer: payload.footer,
+        templateButtons: templateButtons
+      };
+
+      if (payload.mediaUrl) {
+        // Logic for image/video in template header
+        message.image = { url: payload.mediaUrl }; // Simplification, could check extension
       }
-    });
 
-    const message: any = {
-      text: payload.text,
-      footer: payload.footer,
-      templateButtons: templateButtons
-    };
+      const msg = await session.socket.sendMessage(jid, message as any);
 
-    if (payload.mediaUrl) {
-      // Logic for image/video in template header
-      message.image = { url: payload.mediaUrl }; // Simplification, could check extension
+      if (msg) {
+        await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
+      }
+    } catch (error) {
+      logger.error(`Error sending template to ${payload.to}: ${error}`);
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: session.tenantId,
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+      }
     }
-
-    await session.socket.sendMessage(payload.to, message as any);
   }
 
   private async sendInteractive(payload: SendInteractivePayload) {
     const session = this.sessions.get(payload.sessionId);
     if (!session) {
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: "1",
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+      }
       logger.error(`Session ${payload.sessionId} not found for sending interactive message`);
       return;
     }
 
-    const buttons = payload.buttons.map((btn: any) => {
-      if (btn.type === 'url') {
-        return {
-          name: "cta_url",
-          buttonParamsJson: JSON.stringify({
-            display_text: btn.text,
-            url: btn.url,
-            merchant_url: btn.url
-          })
-        };
-      } else {
-        return {
-          name: "quick_reply",
-          buttonParamsJson: JSON.stringify({
-            display_text: btn.text,
-            id: btn.buttonId
-          })
-        };
-      }
-    });
+    try {
+      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
 
-    const interactiveMessage = {
-      interactiveMessage: {
-        body: { text: payload.text },
-        footer: { text: payload.footer },
-        header: payload.mediaUrl ? {
-          title: "",
-          subtitle: "",
-          hasMediaAttachment: true,
-          imageMessage: { url: payload.mediaUrl } // Simplified
-        } : { hasMediaAttachment: false },
-        nativeFlowMessage: {
-          buttons: buttons
-        }
-      }
-    };
-
-    // Relay message is often safer for complex interactive messages
-    await session.socket.sendMessage(payload.to, interactiveMessage as any);
-  }
-
-  private async sendCarousel(payload: SendCarouselPayload) {
-    const session = this.sessions.get(payload.sessionId);
-    if (!session) {
-      logger.error(`Session ${payload.sessionId} not found for sending carousel`);
-      return;
-    }
-
-    const cards = await Promise.all(payload.cards.map(async (card) => {
-      const buttons = card.buttons.map(btn => {
+      const buttons = payload.buttons.map((btn: any) => {
         if (btn.type === 'url') {
           return {
             name: "cta_url",
@@ -1156,54 +1428,171 @@ class SessionManager {
         }
       });
 
-      const cardObj: any = {
-        body: { text: card.body },
-        footer: { text: card.footer || "" },
-        nativeFlowMessage: {
-          buttons: buttons
+      const interactiveMessage = {
+        interactiveMessage: {
+          body: { text: payload.text },
+          footer: { text: payload.footer },
+          header: payload.mediaUrl ? {
+            title: "",
+            subtitle: "",
+            hasMediaAttachment: true,
+            imageMessage: { url: payload.mediaUrl } // Simplified
+          } : { hasMediaAttachment: false },
+          nativeFlowMessage: {
+            buttons: buttons
+          }
         }
       };
 
-      if (card.headerUrl) {
-        // Prepare media for card header
-        const media = await prepareWAMessageMedia(
-          { image: { url: card.headerUrl } },
-          { upload: session.socket.waUploadToServer }
-        );
-        cardObj.header = {
-          hasMediaAttachment: true,
-          ...media
-        };
-      } else {
-        cardObj.header = { hasMediaAttachment: false };
+      // Relay message is often safer for complex interactive messages
+      const msg = await session.socket.sendMessage(jid, interactiveMessage as any);
+
+      if (msg) {
+        await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
+    } catch (error) {
+      logger.error(`Error sending interactive message to ${payload.to}: ${error}`);
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: session.tenantId,
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+      }
+    }
+  }
 
-      return cardObj;
-    }));
+  private async sendCarousel(payload: SendCarouselPayload) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: "1",
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+      }
+      logger.error(`Session ${payload.sessionId} not found for sending carousel`);
+      return;
+    }
 
-    const messageContent = {
-      viewOnceMessage: {
-        message: {
-          interactiveMessage: {
-            body: { text: payload.text },
-            footer: { text: payload.footer || "" },
-            header: { hasMediaAttachment: false },
-            carouselMessage: {
-              cards: cards,
-              messageVersion: 1
+    try {
+      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+
+      const cards = await Promise.all(payload.cards.map(async (card) => {
+        const buttons = card.buttons.map(btn => {
+          if (btn.type === 'url') {
+            return {
+              name: "cta_url",
+              buttonParamsJson: JSON.stringify({
+                display_text: btn.text,
+                url: btn.url,
+                merchant_url: btn.url
+              })
+            };
+          } else {
+            return {
+              name: "quick_reply",
+              buttonParamsJson: JSON.stringify({
+                display_text: btn.text,
+                id: btn.buttonId
+              })
+            };
+          }
+        });
+
+        const cardObj: any = {
+          body: { text: card.body },
+          footer: { text: card.footer || "" },
+          nativeFlowMessage: {
+            buttons: buttons
+          }
+        };
+
+        if (card.headerUrl) {
+          // Prepare media for card header
+          const media = await prepareWAMessageMedia(
+            { image: { url: card.headerUrl } },
+            { upload: session.socket.waUploadToServer }
+          );
+          cardObj.header = {
+            hasMediaAttachment: true,
+            ...media
+          };
+        } else {
+          cardObj.header = { hasMediaAttachment: false };
+        }
+
+        return cardObj;
+      }));
+
+      const messageContent = {
+        viewOnceMessage: {
+          message: {
+            interactiveMessage: {
+              body: { text: payload.text },
+              footer: { text: payload.footer || "" },
+              header: { hasMediaAttachment: false },
+              carouselMessage: {
+                cards: cards,
+                messageVersion: 1
+              }
             }
           }
         }
+      };
+
+      const msg = generateWAMessageFromContent(jid, messageContent as any, {
+        userJid: session.socket.user?.id || "",
+      });
+
+      await session.socket.relayMessage(jid, msg.message!, {
+        messageId: msg.key.id!
+      });
+
+      // Manually trigger handleMessage because relayMessage doesn't return a full message object
+      // and we want to store it. But we need to construct a fake message object.
+      // Or we can just trust the relay was successful if no error.
+      // But handleMessage expects a full WAMessage.
+      // Let's try to construct a minimal one.
+      const fakeMsg: any = {
+          key: msg.key,
+          message: msg.message,
+          messageTimestamp: Math.floor(Date.now() / 1000)
+      };
+      await this.handleMessage(fakeMsg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
+
+    } catch (error) {
+      logger.error(`Error sending carousel to ${payload.to}: ${error}`);
+      if (payload.messageId) {
+        const ackEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId: session.tenantId,
+          type: "message.ack",
+          payload: {
+            sessionId: payload.sessionId,
+            messageId: payload.messageId,
+            ack: 5 // Error
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
       }
-    };
-
-    const msg = generateWAMessageFromContent(payload.to, messageContent as any, {
-      userJid: session.socket.user?.id || "",
-    });
-
-    await session.socket.relayMessage(payload.to, msg.message!, {
-      messageId: msg.key.id!
-    });
+    }
   }
 }
 
