@@ -220,11 +220,20 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   // Deduplication handling for Optimistic UI
   // If we receive 'originalId', it means this message corresponds to a pending message (UUID) created by Backend.
   // We must DELETE the pending message so the new one (WA ID) can replace it in the frontend.
+  let preservedBody: string | null = null;
+  let preservedMediaUrl: string | null = null;
+  let preservedMediaType: string | null = null;
+
   if (message.originalId) {
     logger.info(`[EventListener] handleMessageReceived - Deduping: Found originalId ${message.originalId}. Processing replacement.`);
     try {
       const pendingMessage = await Message.findByPk(message.originalId);
       if (pendingMessage) {
+        // PRESERVE: Capture data from pending message before destroying
+        preservedBody = pendingMessage.body;
+        preservedMediaUrl = pendingMessage.getDataValue("mediaUrl");
+        preservedMediaType = pendingMessage.mediaType;
+
         await pendingMessage.destroy();
         logger.info(`[EventListener] Pending message ${message.originalId} destroyed successfully.`);
         
@@ -337,11 +346,11 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     id: message.id,
     ticketId: ticket.id,
     contactId: msgContact.id,
-    body: message.body,
+    body: preservedBody || message.body,
     fromMe: message.fromMe,
     read: message.fromMe || false,
-    mediaType: message.type,
-    mediaUrl: message.mediaUrl,
+    mediaType: preservedMediaType || message.type,
+    mediaUrl: preservedMediaUrl || message.mediaUrl,
     timestamp: message.timestamp * 1000, // Convert to ms
     participant: message.participant,
     dataJson: JSON.stringify(message),
@@ -350,7 +359,8 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   };
 
   // Logic to handle media that arrived from Engine (Microservice)
-  if (message.hasMedia && message.mediaData) {
+  // Only process new media if we don't have a preserved one
+  if (message.hasMedia && message.mediaData && !preservedMediaUrl) {
     try {
       const { join } = require("path");
       const { writeFile } = require("fs").promises;
