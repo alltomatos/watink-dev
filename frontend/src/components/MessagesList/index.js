@@ -537,18 +537,6 @@ const MessagesList = ({ ticketId, isGroup }) => {
       return (
         <>
           <FilePreview mediaUrl={message.mediaUrl} filename={message.body} />
-          {/* <div className={classes.downloadMedia}>
-            <Button
-              startIcon={<GetApp />}
-              color="primary"
-              variant="outlined"
-              target="_blank"
-              href={message.mediaUrl}
-            >
-              Download
-            </Button>
-          </div> */}
-          <Divider />
         </>
       );
     }
@@ -670,6 +658,15 @@ const MessagesList = ({ ticketId, isGroup }) => {
     );
   };
 
+  const getFileNameFromUrl = (url) => {
+    if (!url) return null;
+    const nameParts = url.split('/').pop().split('-');
+    if (nameParts.length > 1 && /^\d{10,}$/.test(nameParts[0])) {
+       return nameParts.slice(1).join('-').replace(/_/g, ' ');
+    }
+    return null;
+  };
+
   const renderMessages = () => {
     if (messagesList.length > 0) {
       const viewMessagesList = messagesList.map((message, index) => {
@@ -703,7 +700,9 @@ const MessagesList = ({ ticketId, isGroup }) => {
                 ) && checkMessageMedia(message)}
                 <div className={classes.textContentItem}>
                   {message.quotedMsg && renderQuotedMessage(message)}
-                  <MarkdownWrapper>{message.body}</MarkdownWrapper>
+                  { (message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null : 
+                     <MarkdownWrapper>{message.body}</MarkdownWrapper> 
+                  }
                   <span className={classes.timestamp}>
                     {format(parseISO(message.createdAt), "HH:mm")}
                   </span>
@@ -748,7 +747,9 @@ const MessagesList = ({ ticketId, isGroup }) => {
                     />
                   )}
                   {message.quotedMsg && renderQuotedMessage(message)}
-                  <MarkdownWrapper>{message.body}</MarkdownWrapper>
+                  { (message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null : 
+                     <MarkdownWrapper>{message.body}</MarkdownWrapper> 
+                  }
                   <span className={classes.timestamp}>
                     {format(parseISO(message.createdAt), "HH:mm")}
                     {renderMessageAck(message)}

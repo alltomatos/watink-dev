@@ -18,27 +18,30 @@ const useStyles = makeStyles((theme) => ({
     alignItems: 'center',
     padding: theme.spacing(1),
     maxWidth: '100%',
-    width: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    borderRadius: '6px',
+    width: '300px',
+    backgroundColor: '#ffffff',
+    borderRadius: '8px',
+    border: '1px solid #e0e0e0',
     overflow: 'hidden',
+    position: 'relative',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
   },
   iconContainer: {
     marginRight: theme.spacing(1.5),
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 34,
-    height: 40,
-    borderRadius: 4,
+    width: 48,
+    height: 48,
+    borderRadius: 8,
     color: '#fff',
-    fontSize: 24,
+    fontSize: 28,
   },
   thumbnail: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     objectFit: 'cover',
-    borderRadius: 4,
+    borderRadius: 8,
     marginRight: theme.spacing(1.5),
   },
   details: {
@@ -49,12 +52,12 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
   },
   filename: {
-    fontWeight: 500,
+    fontWeight: 600,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     fontSize: '14px',
-    lineHeight: '1.2',
+    lineHeight: '1.4',
     color: '#303030',
   },
   meta: {
@@ -62,6 +65,7 @@ const useStyles = makeStyles((theme) => ({
     color: '#999',
     marginTop: 2,
     textTransform: 'uppercase',
+    fontWeight: 500,
   },
   action: {
     marginLeft: theme.spacing(1),
@@ -71,17 +75,16 @@ const useStyles = makeStyles((theme) => ({
     padding: 8,
     borderRadius: '50%',
     backgroundColor: 'transparent',
-    color: '#999',
-    border: '1px solid #ddd',
+    color: '#757575',
     '&:hover': {
         backgroundColor: 'rgba(0,0,0,0.05)',
-        borderColor: '#ccc',
+        color: '#303030',
     }
   },
 }));
 
 const getFileIcon = (extension) => {
-  const style = { fontSize: 24 };
+  const style = { fontSize: 32 };
   switch (extension) {
     case 'pdf':
       return <PictureAsPdf style={style} />;
@@ -129,6 +132,8 @@ const getFileColor = (extension) => {
     case 'ppt':
     case 'pptx':
       return '#FF9800'; // Material Orange
+    case 'txt':
+      return '#9E9E9E'; // Grey
     default:
       return '#7E57C2'; // Material Deep Purple (Generic)
   }
@@ -155,16 +160,37 @@ const FilePreview = ({ mediaUrl, filename }) => {
   if (!extension) extension = 'file';
 
   // Determine display filename
-  let displayFilename = filename;
-  if (!displayFilename && mediaUrl) {
-    // Try to extract from URL: timestamp-name.ext
+  // Priority: 1. Extract from mediaUrl (if format timestamp-name)
+  //           2. filename prop (if it looks like a filename)
+  //           3. default
+  let displayFilename = null;
+
+  if (mediaUrl) {
     const nameParts = mediaUrl.split('/').pop().split('-');
-    if (nameParts.length > 1) {
+    // Check if first part is a timestamp (digits, length > 10)
+    if (nameParts.length > 1 && /^\d{10,}$/.test(nameParts[0])) {
        displayFilename = nameParts.slice(1).join('-'); // Remove timestamp prefix
-    } else {
-       displayFilename = nameParts[0];
     }
   }
+
+  if (!displayFilename) {
+      // If filename prop looks like a file (has extension), use it
+      if (filename && filename.toLowerCase().endsWith(`.${extension}`)) {
+          displayFilename = filename;
+      }
+  }
+  
+  // Final fallback
+  if (!displayFilename) {
+      // If we couldn't extract from URL and filename prop doesn't look like a file,
+      // we might just display "Document" or the extension, 
+      // BUT if the filename prop IS the caption, we don't want to show it here usually?
+      // Actually, for better UX, let's show the extension + "File" if we can't find a name.
+      displayFilename = filename || `${extension.toUpperCase()} File`;
+  }
+
+  // Clean up underscores
+  displayFilename = displayFilename.replace(/_/g, ' ');
 
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension);
 
@@ -183,7 +209,7 @@ const FilePreview = ({ mediaUrl, filename }) => {
 
       <div className={classes.details}>
         <Typography variant="body2" className={classes.filename} title={displayFilename}>
-          {displayFilename || 'Download'}
+          {displayFilename}
         </Typography>
         <div className={classes.meta}>
            {extension.toUpperCase()} 
@@ -191,16 +217,15 @@ const FilePreview = ({ mediaUrl, filename }) => {
       </div>
 
       <div className={classes.action}>
-        <Button
+        <IconButton
           className={classes.downloadBtn}
-          variant="contained"
-          color="primary"
           href={mediaUrl}
           target="_blank"
           download
+          size="small"
         >
           <GetApp fontSize="small" />
-        </Button>
+        </IconButton>
       </div>
     </div>
   );
