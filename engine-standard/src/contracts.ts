@@ -41,7 +41,9 @@ export interface StopSessionPayload {
 
 export interface SendTextPayload {
   sessionId: number;
+  messageId?: string;
   to: string;
+  lid?: string; // NOVO: LID do destinatário para validação cruzada
   body: string;
   options?: {
     quotedMsgId?: string;
@@ -50,7 +52,9 @@ export interface SendTextPayload {
 
 export interface SendMediaPayload {
   sessionId: number;
+  messageId?: string;
   to: string;
+  lid?: string; // NOVO
   caption?: string;
   media: {
     mimetype: string;
@@ -62,6 +66,7 @@ export interface SendMediaPayload {
 // Botões simples (até 3 botões)
 export interface SendButtonsPayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   text: string;
   footer?: string;
@@ -75,6 +80,7 @@ export interface SendButtonsPayload {
 // Lista de opções com seções
 export interface SendListPayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   text: string;
   footer?: string;
@@ -92,6 +98,7 @@ export interface SendListPayload {
 // Enquete/Poll
 export interface SendPollPayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   name: string;           // Pergunta
   options: string[];      // Opções (2-12)
@@ -101,6 +108,7 @@ export interface SendPollPayload {
 // Mensagem Template (URL, Call, Reply)
 export interface SendTemplatePayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   text: string;
   footer?: string;
@@ -117,6 +125,7 @@ export interface SendTemplatePayload {
 // Mensagem Interativa (Native Flow)
 export interface SendInteractivePayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   text: string;
   footer?: string;
@@ -132,6 +141,7 @@ export interface SendInteractivePayload {
 // Carrossel Nativo
 export interface SendCarouselPayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   text: string;
   footer?: string;
@@ -217,6 +227,7 @@ export interface MessageReceivedPayload {
     pushName?: string;
     profilePicUrl?: string; // Avatar URL of the sender
     senderLid?: string;
+    originalId?: string; // UUID from Backend
   };
 }
 

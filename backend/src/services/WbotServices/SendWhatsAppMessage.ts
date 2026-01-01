@@ -4,6 +4,8 @@ import Ticket from "../../models/Ticket";
 import formatBody from "../../helpers/Mustache";
 import RabbitMQService from "../RabbitMQService";
 import { Envelope } from "../../microservice/contracts";
+import Message from "../../models/Message";
+import { getIO } from "../../libs/socket";
 
 interface Request {
   body: string;
@@ -23,14 +25,43 @@ const SendWhatsAppMessage = async ({
       throw new AppError("ERR_TICKET_WRONG_WHATSAPP_ID");
     }
 
-    const command: Envelope = {
+    // Sanitize number to ensure only digits
+    const contactNumber = ticket.contact.number.replace(/\D/g, "");
+
+    const messageData = {
       id: uuidv4(),
+      ticketId: ticket.id,
+      contactId: undefined,
+      body: formattedBody,
+      fromMe: true,
+      mediaType: "chat",
+      read: true,
+      quotedMsgId: quotedMsg?.id,
+      ack: 0, // Pending
+      timestamp: new Date().getTime(),
+      tenantId: ticket.tenantId
+    };
+
+    const message = await Message.create(messageData);
+
+    const io = getIO();
+    io.to(message.ticketId.toString()).emit("appMessage", {
+      action: "create",
+      message,
+      ticket: ticket,
+      contact: ticket.contact
+    });
+
+    const command: Envelope = {
+      id: uuidv4(), // Envelope ID
       timestamp: Date.now(),
       tenantId: ticket.tenantId,
       type: "message.send.text",
       payload: {
         sessionId: ticket.whatsappId,
-        to: `${ticket.contact.number}@${ticket.isGroup ? "g" : "c"}.us`,
+        messageId: message.id, // Passing the created message ID
+        to: `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
+        lid: ticket.contact.lid || undefined, // Pass LID if available
         body: formattedBody,
         options: {
           quotedMsgId: quotedMsg?.id
@@ -45,8 +76,7 @@ const SendWhatsAppMessage = async ({
 
     await ticket.update({ lastMessage: body });
 
-    // Return a mock or empty object as we are async now
-    return { id: "pending", body: formattedBody };
+    return message;
   } catch (err) {
     throw new AppError("ERR_SENDING_WAPP_MSG");
   }
