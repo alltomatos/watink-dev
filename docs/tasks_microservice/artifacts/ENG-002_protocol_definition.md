@@ -49,7 +49,7 @@ Solicita que o Engine inicie uma sessão do WhatsApp.
   "type": "message.send.text",
   "payload": {
     "sessionId": 1,
-    "to": "5511999999999@c.us", // ou g.us para grupos
+    "to": "5511999999999@s.whatsapp.net", // ou g.us para grupos
     "body": "Olá, tudo bem?",
     "options": {
       "quotedMsgId": "id-da-mensagem-citada" // Opcional
@@ -67,7 +67,7 @@ Solicita que o Engine inicie uma sessão do WhatsApp.
   "type": "message.send.media",
   "payload": {
     "sessionId": 1,
-    "to": "5511999999999@c.us",
+    "to": "5511999999999@s.whatsapp.net",
     "media": {
       "mimetype": "image/jpeg",
       "filename": "foto.jpg",
@@ -122,8 +122,8 @@ Enviados para o Exchange `wbot.events`.
     "sessionId": 1,
     "message": {
       "id": "id-da-mensagem-wbot",
-      "from": "5511999999999@c.us",
-      "to": "5511888888888@c.us",
+      "from": "5511999999999@s.whatsapp.net",
+      "to": "5511888888888@s.whatsapp.net",
       "body": "Texto da mensagem",
       "fromMe": false,
       "isGroup": false,

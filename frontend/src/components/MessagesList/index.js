@@ -26,6 +26,7 @@ import VcardPreview from "../VcardPreview";
 import LocationPreview from "../LocationPreview";
 import ModalImageCors from "../ModalImageCors";
 import MessageOptionsMenu from "../MessageOptionsMenu";
+import FilePreview from "../FilePreview";
 import whatsBackground from "../../assets/wa-background.png";
 
 import api from "../../services/api";
@@ -285,7 +286,7 @@ const useStyles = makeStyles((theme) => ({
   messageReactions: {
     position: "absolute",
     bottom: -10,
-    right: 10,
+    left: 10,
     backgroundColor: "#fff",
     borderRadius: "12px",
     padding: "2px 6px",
@@ -524,16 +525,19 @@ const MessagesList = ({ ticketId, isGroup }) => {
       return <Audio url={message.mediaUrl} />
     } else if (message.mediaType === "video") {
       return (
-        <video
-          className={classes.messageMedia}
-          src={message.mediaUrl}
-          controls
-        />
+        <div style={{ position: 'relative', width: '100%', maxWidth: '300px', borderRadius: 8, overflow: 'hidden' }}>
+          <video
+            src={message.mediaUrl}
+            controls
+            style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain', backgroundColor: '#000' }}
+          />
+        </div>
       );
     } else {
       return (
         <>
-          <div className={classes.downloadMedia}>
+          <FilePreview mediaUrl={message.mediaUrl} filename={message.body} />
+          {/* <div className={classes.downloadMedia}>
             <Button
               startIcon={<GetApp />}
               color="primary"
@@ -543,7 +547,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
             >
               Download
             </Button>
-          </div>
+          </div> */}
           <Divider />
         </>
       );
@@ -562,6 +566,9 @@ const MessagesList = ({ ticketId, isGroup }) => {
     }
     if (message.ack === 3 || message.ack === 4) {
       return <DoneAll fontSize="small" className={classes.ackDoneAllIcon} />;
+    }
+    if (message.ack === 5) {
+      return <ErrorOutline fontSize="small" className={classes.ackErrorIcon} style={{ color: "#f44336" }} />;
     }
   };
 

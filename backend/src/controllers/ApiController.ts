@@ -102,7 +102,7 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
           type: "message.send.media",
           payload: {
             sessionId: contactAndTicket.whatsappId,
-            to: `${contactAndTicket.contact.number}@${contactAndTicket.isGroup ? "g" : "c"}.us`,
+            to: `${contactAndTicket.contact.number}@${contactAndTicket.isGroup ? "g.us" : "s.whatsapp.net"}`,
             body: body,
             media: {
               mimetype: media.mimetype,
@@ -123,7 +123,7 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
       type: "message.send.text",
       payload: {
         sessionId: contactAndTicket.whatsappId,
-        to: `${contactAndTicket.contact.number}@${contactAndTicket.isGroup ? "g" : "c"}.us`,
+        to: `${contactAndTicket.contact.number}@${contactAndTicket.isGroup ? "g.us" : "s.whatsapp.net"}`,
         text: body,
         quotedMsg,
         ticketId: contactAndTicket.id

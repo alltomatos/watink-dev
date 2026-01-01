@@ -39,6 +39,7 @@ export interface StopSessionPayload {
 
 export interface SendTextPayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   body: string;
   options?: {
@@ -48,7 +49,9 @@ export interface SendTextPayload {
 
 export interface SendMediaPayload {
   sessionId: number;
+  messageId?: string;
   to: string;
+  lid?: string;
   caption?: string;
   media: {
     mimetype: string;
@@ -59,6 +62,7 @@ export interface SendMediaPayload {
 
 export interface SendButtonsPayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   text: string;
   footer?: string;
@@ -71,6 +75,7 @@ export interface SendButtonsPayload {
 
 export interface SendListPayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   text: string;
   footer?: string;
@@ -87,6 +92,7 @@ export interface SendListPayload {
 
 export interface SendPollPayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   name: string;
   options: string[];
@@ -96,6 +102,7 @@ export interface SendPollPayload {
 // Mensagem Template (URL, Call, Reply)
 export interface SendTemplatePayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   text: string;
   footer?: string;
@@ -112,6 +119,7 @@ export interface SendTemplatePayload {
 // Mensagem Interativa (Native Flow)
 export interface SendInteractivePayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   text: string;
   footer?: string;
@@ -127,6 +135,7 @@ export interface SendInteractivePayload {
 // Carrossel Nativo
 export interface SendCarouselPayload {
   sessionId: number;
+  messageId?: string;
   to: string;
   text: string;
   footer?: string;
@@ -213,6 +222,9 @@ export interface MessageReceivedPayload {
     profilePicUrl: string;
     pushName?: string;
     senderLid?: string;
+    originalId?: string; // UUID from Backend
+    status?: number;
+    ack?: number;
   };
 }
 
