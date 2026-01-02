@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="userguide/imagens/watink-oss.png" alt="Watink Logo" width="200" />
+  <img src="images/logo.png" alt="Watink Logo" width="200" />
 </p>
 
 # 🌐 Watink: Open Source Distributed WhatsApp Platform
@@ -64,7 +64,7 @@ Nossa stack é escolhida para performance e confiabilidade:
 | **Messaging** | **RabbitMQ** | Backbone de eventos para garantir entrega de mensagens. |
 | **Database** | PostgreSQL + **PostGIS** | Dados relacionais e geográficos. |
 | **Vector DB** | **pgvector** | Busca semântica para Inteligência Artificial. |
-| **Cache** | Redis | Sessões e performance em tempo real. |
+
 | **Engine** | Microserviços Isolados | Workers dedicados para cada conexão WhatsApp. |
 
 ---
