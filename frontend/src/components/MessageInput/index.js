@@ -120,6 +120,79 @@ const useStyles = makeStyles(theme => ({
     borderTop: "1px solid rgba(0, 0, 0, 0.12)",
   },
 
+  previewMediaWrapper: {
+    display: "flex",
+    flexDirection: "column",
+    padding: "8px",
+    alignItems: "center",
+    width: "100%",
+    backgroundColor: "#eee",
+    borderTop: "1px solid rgba(0, 0, 0, 0.12)",
+  },
+  previewMediaContainer: {
+    display: "flex",
+    overflowX: "auto",
+    width: "100%",
+    marginBottom: "10px",
+    gap: "10px",
+    "&::-webkit-scrollbar": {
+      height: "6px",
+    },
+    "&::-webkit-scrollbar-thumb": {
+      backgroundColor: "rgba(0,0,0,0.2)",
+      borderRadius: "3px",
+    },
+  },
+  previewMediaItem: {
+    position: "relative",
+    minWidth: "150px",
+    height: "180px",
+    border: "1px solid #ddd",
+    borderRadius: "4px",
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    marginRight: "10px",
+  },
+  previewMediaImage: {
+    width: "100%",
+    height: "120px",
+    objectFit: "cover",
+  },
+  previewMediaInput: {
+    width: "100%",
+    padding: "4px",
+    fontSize: "12px",
+    border: "none",
+    borderTop: "1px solid #ddd",
+    outline: "none",
+    height: "60px",
+    resize: "none",
+  },
+  previewMediaRemoveIcon: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    color: "red",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    borderRadius: "0 0 0 4px",
+    padding: "2px",
+    cursor: "pointer",
+    zIndex: 1,
+    "&:hover": {
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
+    },
+  },
+  previewMediaInputWrapper: {
+    display: "flex",
+    width: "100%",
+    alignItems: "center",
+    gap: "10px",
+  },
+
   emojiBox: {
     position: "absolute",
     bottom: 63,
@@ -226,7 +299,7 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-const MessageInput = ({ ticketStatus }) => {
+const MessageInput = ({ ticketStatus, whatsappStatus }) => {
   const classes = useStyles();
   const { ticketId } = useParams();
 
@@ -247,11 +320,11 @@ const MessageInput = ({ ticketStatus }) => {
   const [signMessage, setSignMessage] = useLocalStorage("signOption", true);
 
   useEffect(() => {
-    inputRef.current.focus();
+    if (inputRef.current) inputRef.current.focus();
   }, [replyingMessage]);
 
   useEffect(() => {
-    inputRef.current.focus();
+    if (inputRef.current) inputRef.current.focus();
     return () => {
       setInputMessage("");
       setShowEmoji(false);
@@ -280,35 +353,66 @@ const MessageInput = ({ ticketStatus }) => {
       return;
     }
 
-    const selectedMedias = Array.from(e.target.files);
-    setMedias(selectedMedias);
+    const selectedMedias = Array.from(e.target.files).map((file, index) => {
+      let caption = "";
+      if (index === 0 && medias.length === 0 && inputMessage) {
+        caption = inputMessage;
+      }
+      return {
+        file,
+        caption
+      };
+    });
+
+    if (medias.length === 0 && inputMessage) {
+      setInputMessage("");
+    }
+
+    setMedias(prev => [...prev, ...selectedMedias]);
   };
 
   const handleInputPaste = e => {
     if (e.clipboardData.files[0]) {
-      setMedias([e.clipboardData.files[0]]);
+      const caption = medias.length === 0 && inputMessage ? inputMessage : "";
+      setMedias(prev => [...prev, { file: e.clipboardData.files[0], caption }]);
+      
+      if (medias.length === 0 && inputMessage) {
+        setInputMessage("");
+      }
     }
+  };
+
+  const handleMediaCaptionChange = (index, value) => {
+    setMedias(prev => prev.map((media, i) => 
+      i === index ? { ...media, caption: value } : media
+    ));
   };
 
   const handleUploadMedia = async e => {
     setLoading(true);
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     const formData = new FormData();
     formData.append("fromMe", true);
+    
     medias.forEach(media => {
-      formData.append("medias", media);
-      formData.append("body", media.name);
+      formData.append("medias", media.file);
+      formData.append("body", media.caption); // Send caption for each file
     });
 
     try {
       await api.post(`/messages/${ticketId}`, formData);
       setMedias([]);
+      setInputMessage("");
     } catch (err) {
       toastError(err);
     }
 
     setLoading(false);
+  };
+
+  const handleRemoveMedia = (index) => {
+    setMedias(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSendMessage = async () => {
@@ -452,35 +556,112 @@ const MessageInput = ({ ticketStatus }) => {
     );
   };
 
+  if (ticketStatus !== "open") {
+    return (
+      <Paper square elevation={0} className={classes.mainWrapper}>
+        <div className={classes.newMessageBox}>
+          <span style={{ fontSize: "16px", padding: "10px", margin: "0 auto", color: "gray" }}>
+            {i18n.t("messagesInput.placeholderClosed")}
+          </span>
+        </div>
+      </Paper>
+    );
+  }
+
+  if (whatsappStatus && whatsappStatus !== "CONNECTED") {
+    return (
+      <Paper square elevation={0} className={classes.mainWrapper}>
+        <div className={classes.newMessageBox}>
+          <div style={{ padding: "10px", width: "100%", textAlign: "center", backgroundColor: "#ffebee", color: "#c62828", borderRadius: "5px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <span style={{ fontWeight: "bold", fontSize: "14px" }}>CONEXÃO INTERROMPIDA</span>
+            <span style={{ fontSize: "12px", marginTop: "5px" }}>Não é possível enviar mensagens. Por favor, vá em "Conexões" e reconecte o WhatsApp.</span>
+          </div>
+        </div>
+      </Paper>
+    );
+  }
+
   if (medias.length > 0)
     return (
-      <Paper elevation={0} square className={classes.viewMediaInputWrapper}>
+      <Paper elevation={0} square className={classes.previewMediaWrapper}>
         <IconButton
           aria-label="cancel-upload"
           component="span"
           onClick={e => setMedias([])}
+          style={{ alignSelf: "flex-end", padding: "4px" }}
         >
           <CancelIcon className={classes.sendMessageIcons} />
         </IconButton>
 
-        {loading ? (
-          <div>
-            <CircularProgress className={classes.circleLoading} />
-          </div>
-        ) : (
-          <span>
-            {medias[0]?.name}
-            {/* <img src={media.preview} alt=""></img> */}
-          </span>
-        )}
-        <IconButton
-          aria-label="send-upload"
-          component="span"
-          onClick={handleUploadMedia}
-          disabled={loading}
-        >
-          <SendIcon className={classes.sendMessageIcons} />
-        </IconButton>
+        <div className={classes.previewMediaContainer}>
+          {medias.map((media, index) => (
+            <div key={index} className={classes.previewMediaItem}>
+              {loading ? (
+                <CircularProgress className={classes.circleLoading} size={20} />
+              ) : (
+                <>
+                  <div 
+                    className={classes.previewMediaRemoveIcon} 
+                    onClick={() => handleRemoveMedia(index)}
+                  >
+                    <CancelIcon style={{ fontSize: 16 }} />
+                  </div>
+                  {media.file.type.startsWith("image/") ? (
+                    <img 
+                      src={URL.createObjectURL(media.file)} 
+                      alt="preview" 
+                      className={classes.previewMediaImage} 
+                    />
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "5px", fontSize: "10px", textAlign: "center", height: "120px", justifyContent: "center" }}>
+                      <AttachFileIcon style={{ fontSize: 40, color: "#888" }} />
+                      <span style={{ maxWidth: "130px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {media.file.name}
+                      </span>
+                    </div>
+                  )}
+                  <textarea
+                    className={classes.previewMediaInput}
+                    placeholder={i18n.t("messagesInput.placeholderOpen")}
+                    value={media.caption}
+                    onChange={(e) => handleMediaCaptionChange(index, e.target.value)}
+                  />
+                </>
+              )}
+            </div>
+          ))}
+          
+          {/* Add more button */}
+          {!loading && (
+            <div 
+              className={classes.previewMediaItem} 
+              style={{ borderStyle: "dashed", cursor: "pointer", alignItems: "center", justifyContent: "center" }}
+            >
+               <input
+                multiple
+                type="file"
+                id="add-more-media"
+                className={classes.uploadInput}
+                onChange={handleChangeMedias}
+              />
+              <label htmlFor="add-more-media" style={{ width: "100%", height: "100%", display: "flex", justifyContent: "center", alignItems: "center", cursor: "pointer" }}>
+                <AttachFileIcon style={{ fontSize: 30, color: "#aaa" }} />
+              </label>
+            </div>
+          )}
+        </div>
+
+        <div className={classes.previewMediaInputWrapper}>
+          <IconButton
+            aria-label="send-upload"
+            component="span"
+            onClick={handleUploadMedia}
+            disabled={loading}
+            style={{ marginLeft: "auto" }}
+          >
+            <SendIcon className={classes.sendMessageIcons} />
+          </IconButton>
+        </div>
       </Paper>
     );
   else {

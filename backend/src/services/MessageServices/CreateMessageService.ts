@@ -13,6 +13,7 @@ interface MessageData {
   mediaType?: string;
   mediaUrl?: string;
   tenantId?: number | string;
+  ack?: number;
 }
 interface Request {
   messageData: MessageData;

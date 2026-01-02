@@ -47,9 +47,15 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
   SetTicketMessagesAsRead(ticket);
 
   if (medias && medias.length > 0) {
+    // req.body.body can be a string or an array of strings (if multiple bodies sent)
+    // Multer/Express handles 'body' field. If multiple fields with same name 'body', it becomes an array.
+    // If we appended 'body' for each media in the same order, we expect an array (or string if just 1).
+    const bodies = Array.isArray(body) ? body : [body];
+
     await Promise.all(
-      medias.map(async (media: Express.Multer.File) => {
-        await SendWhatsAppMedia({ media, ticket });
+      medias.map(async (media: Express.Multer.File, index: number) => {
+        const caption = bodies[index] !== undefined ? bodies[index] : (bodies[0] || "");
+        await SendWhatsAppMedia({ media, ticket, body: caption });
       })
     );
   } else {
