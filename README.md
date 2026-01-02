@@ -23,7 +23,7 @@ Diferente de soluções monolíticas tradicionais, o Watink foi construído sobr
 
 *   **🔓 100% Open Source**: Código transparente, sem lock-in. A comunidade constrói junto.
 *   **🐳 Native Swarm**: Deploy on-premise ou cloud com orquestração de containers profissional.
-*   **🔌 Drivers Modulares**: Suporte a múltiplos motores de conexão (Baileys/WWebJS) via microserviços.
+*   **🔌 Drivers Modulares**: Suporte a múltiplos motores de conexão (Whaileys/WhatsMeow) via microserviços.
 *   **🧠 IA Integrada (RAG)**: Chatbots que leem seus documentos PDF/Web e respondem humanamente usando Vector Database (pgvector).
 
 ---
