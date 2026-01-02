@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="userguide/imagens/watink-oss.png" alt="Watink Logo" width="200" />
+</p>
+
 # 🌐 Watink: Open Source Distributed WhatsApp Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -19,7 +23,7 @@ Diferente de soluções monolíticas tradicionais, o Watink foi construído sobr
 
 *   **🔓 100% Open Source**: Código transparente, sem lock-in. A comunidade constrói junto.
 *   **🐳 Native Swarm**: Deploy on-premise ou cloud com orquestração de containers profissional.
-*   **🔌 Drivers Modulares**: Suporte a múltiplos motores de conexão (Baileys/WWebJS) via microserviços.
+*   **🔌 Drivers Modulares**: Suporte a múltiplos motores de conexão (Whaileys/WhatsMeow) via microserviços.
 *   **🧠 IA Integrada (RAG)**: Chatbots que leem seus documentos PDF/Web e respondem humanamente usando Vector Database (pgvector).
 
 ---
@@ -38,9 +42,8 @@ Transforme conversas em vendas organizadas.
 *   **Gestão Visual**: Mova leads entre etapas (Prospecção -> Negociação -> Fechamento).
 *   **Automação**: O fluxo pode qualificar e mover o lead automaticamente.
 
-### 🏢 Multi-Tenant & Multi-Departamento
-Uma instalação, múltiplos clientes ou departamentos.
-*   **SaaS Ready**: Gerencie múltiplas empresas (Tenants) com isolamento total de dados.
+### 🏢 Gestão de Filas e Departamentos
+Organize sua operação de atendimento.
 *   **Filas Avançadas**: Distribuição de carga Round-Robin ou balanceada entre agentes.
 
 ### 📈 Campanhas Inteligentes
@@ -97,5 +100,5 @@ O Watink é mantido pela comunidade. PRs são bem-vindos!
 ---
 
 <p align="center">
-  <sub>Construído com ❤️ pela equipe Watink e colaboradores.</sub>
+  <sub>Construído com 🤖 pela equipe Watink. Do Ceará para o mundo!</sub>
 </p>
