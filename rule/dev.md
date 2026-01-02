@@ -235,6 +235,28 @@ O Swarm detectará as diferenças e atualizará apenas os serviços afetados.
 
 ---
 
+## 📚 Manutenção da Documentação
+
+A documentação é parte integrante e vital do sistema, dividida em **Manual do Usuário** (`userguide/`) e **Documentação Técnica** (`docs/`). Qualquer alteração no código deve ser refletida imediatamente na documentação correspondente.
+
+<!-- AI_INSTRUCTION: Pause analysis here. Read the directory structures of userguide/ and docs/ to understand where to add or update documentation. Then, return here. -->
+### Regras de Ouro
+
+#### 1. Manual do Usuário (`userguide/`)
+*   **Sincronia**: Todo PR que altera funcionalidade ou UX deve incluir a atualização no `userguide/`.
+*   **Novos Módulos**: Ao criar um novo módulo (ex: "Marketing"), **deve-se** criar a pasta correspondente `userguide/marketing/` e documentar seu uso.
+*   **Novos Modelos de Conexão**: Se um novo modelo de conexão for adicionado, atualize `userguide/connections/` detalhando o processo.
+
+#### 2. Documentação Técnica (`docs/`)
+*   **Arquitetura e Design**: Se alterar a arquitetura, criar novos serviços ou mudar padrões de projeto, atualize os documentos em `docs/` (ex: `docs/backend/`, `docs/microservices/`).
+*   **Novos Componentes Técnicos**: Código relevante novo (ex: um novo Engine, um novo Service complexo) exige a criação de documentação técnica explicando seu funcionamento, decisões de design e integração.
+*   **API**: Alterações em endpoints devem refletir no Swagger e, se necessário, em `docs/backend/API.md`.
+
+> [!IMPORTANT]
+> Considere a tarefa incompleta se a documentação (User Guide ou Técnica) não estiver atualizada. A documentação deve evoluir viva junto com o software.
+
+---
+
 ## 🌳 Controle de Versão (Git)
 
 Para manter a sanidade do repositório, siga estas convenções de Git Flow.
