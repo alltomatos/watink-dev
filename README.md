@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="userguide/imagens/watink-oss.png" alt="Watink Logo" width="200" />
+</p>
+
 # 🌐 Watink: Open Source Distributed WhatsApp Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
