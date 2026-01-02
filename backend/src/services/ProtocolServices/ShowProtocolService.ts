@@ -7,10 +7,10 @@ import AppError from "../../errors/AppError";
 
 const ShowProtocolService = async (
     protocolId: number,
-    companyId: number
+    tenantId: number
 ): Promise<Protocol> => {
     const protocol = await Protocol.findOne({
-        where: { id: protocolId, companyId },
+        where: { id: protocolId, tenantId },
         include: [
             { model: Contact, as: "contact" },
             { model: User, as: "user" },

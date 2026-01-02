@@ -12,7 +12,7 @@ import {
     DataType,
     Default,
 } from "sequelize-typescript";
-import Company from "./Company";
+import Tenant from "./Tenant";
 import Ticket from "./Ticket";
 import Contact from "./Contact";
 import User from "./User";
@@ -25,12 +25,12 @@ class Protocol extends Model<Protocol> {
     @Column
     id: number;
 
-    @ForeignKey(() => Company)
-    @Column
-    companyId: number;
+    @ForeignKey(() => Tenant)
+    @Column(DataType.UUID)
+    tenantId: string;
 
-    @BelongsTo(() => Company)
-    company: Company;
+    @BelongsTo(() => Tenant)
+    tenant: Tenant;
 
     @Column(DataType.STRING(50))
     protocolNumber: string;

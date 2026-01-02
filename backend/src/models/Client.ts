@@ -12,7 +12,7 @@ import {
     DataType,
     Default,
 } from "sequelize-typescript";
-import Company from "./Company";
+import Tenant from "./Tenant";
 import ClientContact from "./ClientContact";
 import ClientAddress from "./ClientAddress";
 
@@ -23,12 +23,12 @@ class Client extends Model<Client> {
     @Column
     id: number;
 
-    @ForeignKey(() => Company)
-    @Column
-    companyId: number;
+    @ForeignKey(() => Tenant)
+    @Column(DataType.UUID)
+    tenantId: string;
 
-    @BelongsTo(() => Company)
-    company: Company;
+    @BelongsTo(() => Tenant)
+    tenant: Tenant;
 
     @Default("pf")
     @Column(DataType.STRING(10))

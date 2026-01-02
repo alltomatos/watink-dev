@@ -5,11 +5,11 @@ import ShowProtocolService from "../services/ProtocolServices/ShowProtocolServic
 import UpdateProtocolService from "../services/ProtocolServices/UpdateProtocolService";
 
 export const index = async (req: Request, res: Response): Promise<Response> => {
-    const { tenantId: companyId, id: userId } = req.user;
+    const { tenantId: tenantId, id: userId } = req.user;
     const { searchParam, pageNumber, status, priority, contactId, ticketId } = req.query;
 
     const { protocols, count, hasMore } = await ListProtocolsService({
-        companyId: Number(companyId),
+        tenantId: Number(tenantId),
         searchParam: searchParam as string,
         pageNumber: pageNumber as string,
         status: status as string,
@@ -22,13 +22,13 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
 };
 
 export const store = async (req: Request, res: Response): Promise<Response> => {
-    const { tenantId: companyId, id: userId } = req.user;
+    const { tenantId: tenantId, id: userId } = req.user;
     const protocolData = req.body;
 
     const protocol = await CreateProtocolService(
         {
             ...protocolData,
-            companyId: Number(companyId)
+            tenantId: Number(tenantId)
         },
         Number(userId)
     );
@@ -37,16 +37,16 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
 };
 
 export const show = async (req: Request, res: Response): Promise<Response> => {
-    const { tenantId: companyId } = req.user;
+    const { tenantId: tenantId } = req.user;
     const { protocolId } = req.params;
 
-    const protocol = await ShowProtocolService(Number(protocolId), Number(companyId));
+    const protocol = await ShowProtocolService(Number(protocolId), Number(tenantId));
 
     return res.json(protocol);
 };
 
 export const update = async (req: Request, res: Response): Promise<Response> => {
-    const { tenantId: companyId, id: userId } = req.user;
+    const { tenantId: tenantId, id: userId } = req.user;
     const { protocolId } = req.params;
     const protocolData = req.body;
 
@@ -54,7 +54,7 @@ export const update = async (req: Request, res: Response): Promise<Response> => 
         {
             ...protocolData,
             id: Number(protocolId),
-            companyId: Number(companyId)
+            tenantId: Number(tenantId)
         },
         Number(userId)
     );
@@ -64,13 +64,13 @@ export const update = async (req: Request, res: Response): Promise<Response> => 
 
 // Endpoint para criar protocolo diretamente de um contato (usado pelo botão no drawer)
 export const createFromContact = async (req: Request, res: Response): Promise<Response> => {
-    const { tenantId: companyId, id: userId } = req.user;
+    const { tenantId: tenantId, id: userId } = req.user;
     const { contactId } = req.params;
     const { subject, description, priority, ticketId } = req.body;
 
     const protocol = await CreateProtocolService(
         {
-            companyId: Number(companyId),
+            tenantId: Number(tenantId),
             contactId: Number(contactId),
             ticketId: ticketId ? Number(ticketId) : undefined,
             subject: subject || "Novo Protocolo de Atendimento",

@@ -6,7 +6,7 @@ import Ticket from "../../models/Ticket";
 import { format } from "date-fns";
 
 interface CreateProtocolData {
-    companyId: number;
+    tenantId: number;
     ticketId?: number;
     contactId?: number;
     userId?: number;

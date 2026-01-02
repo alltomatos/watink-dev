@@ -5,7 +5,7 @@ import AppError from "../../errors/AppError";
 
 interface UpdateClientData {
     id: number;
-    companyId: number;
+    tenantId: number;
     type?: string;
     name?: string;
     document?: string;
@@ -37,9 +37,9 @@ interface UpdateClientData {
 }
 
 const UpdateClientService = async (data: UpdateClientData): Promise<Client> => {
-    const { id, companyId, contacts, addresses, ...updateData } = data;
+    const { id, tenantId, contacts, addresses, ...updateData } = data;
 
-    const client = await Client.findOne({ where: { id, companyId } });
+    const client = await Client.findOne({ where: { id, tenantId } });
 
     if (!client) {
         throw new AppError("ERR_CLIENT_NOT_FOUND", 404);

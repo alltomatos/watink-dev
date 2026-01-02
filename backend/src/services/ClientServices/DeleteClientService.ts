@@ -5,10 +5,10 @@ import AppError from "../../errors/AppError";
 
 const DeleteClientService = async (
     clientId: number,
-    companyId: number
+    tenantId: number
 ): Promise<void> => {
     const client = await Client.findOne({
-        where: { id: clientId, companyId }
+        where: { id: clientId, tenantId }
     });
 
     if (!client) {
