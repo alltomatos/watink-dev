@@ -1,91 +1,101 @@
-# 🚀 Watink
+# 🌐 Watink: Open Source Distributed WhatsApp Platform
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
-[![React](https://img.shields.io/badge/react-%2320232a.svg?style=flat&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
-[![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=flat&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Architecture: Microservices](https://img.shields.io/badge/Architecture-Microservices-blueviolet)](docs/microservices/ARCHITECTURE.md)
+[![orchestration: swarm](https://img.shields.io/badge/Orchestration-Docker%20Swarm-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/engine/swarm/)
+[![stack: node+react](https://img.shields.io/badge/Stack-Node.js%20%7C%20React-green)](rule/dev.md)
 
-**A Plataforma Definitiva de Atendimento WhatsApp**  
-*Automação Visual, CRM Kanban e Inteligência Artificial em uma única solução.*
+**Watink** é uma plataforma de atendimento omnicanal **Open Source**, distribuída e altamente escalável. Projetada nativamente para **Docker Swarm**, ela permite que empresas de qualquer porte orquestrem milhares de conversas simultâneas com estabilidade, automação e inteligência.
 
----
-
-## ⚡ Principais Funcionalidades
-
-O **Watink** transforma a maneira como sua empresa se comunica, centralizando atendimento, vendas e engajamento.
-
-### 🔄 Automação Visual (Flow Builder)
-Crie fluxos de conversa complexos **sem escrever código**. Arraste e solte para construir:
-- **Menus Interativos**: Listas, Botões e Carrosséis.
-- **Roteamento Inteligente**: Direcione clientes baseados em respostas ou horários.
-- **Integrações**: Webhooks para conectar com seu ERP ou CRM externo.
-- **Ações Automáticas**: Adicione etiquetas, mova leads no Kanban ou atribua a departamentos.
-
-### 🧠 Inteligência Artificial (RAG)
-Transforme seus documentos em atendimento automático:
-- **Treinamento Simples**: Upload de PDFs, textos ou sites.
-- **Respostas Humanizadas**: A IA responde dúvidas baseada no seu conteúdo.
-- **Modos Flexíveis**: Automação total ou sugestão de resposta para o atendente.
-
-### 📊 CRM & Kanban de Vendas
-Visualize e gerencie suas oportunidades em tempo real:
-- **Pipeline Personalizável**: Crie etapas que refletem seu processo de vendas.
-- **Movimentação Automática**: O Flow Builder pode avançar leads no funil automaticamente.
-- **Cartões Ricos**: Veja valor, responsável e histórico em um relance.
-
-### 🏢 Gestão Multi-Departamento
-Organize sua operação de atendimento:
-- **Filas e Setores**: Separe Suporte, Vendas e Financeiro.
-- **Multi-Atendentes**: Vários usuários no mesmo número de WhatsApp.
-- **Permissões Granulares**: Controle total sobre o que cada usuário pode ver ou fazer.
-
-### 📈 Campanhas em Massa
-Engaje sua base de clientes com segurança:
-- **Disparos Agendados**: Programe mensagens para o momento ideal.
-- **Segmentação Precisa**: Envie apenas para contatos com Tags específicas.
-- **Relatórios Detalhados**: Acompanhe a entrega e leitura em tempo real.
+> *Do desenvolvedor para a comunidade. Livre, robusto e pronto para produção.*
 
 ---
 
-## 🏗️ Arquitetura Moderna
+## 🚀 Por que Watink?
 
-Projetado para **escalabilidade e performance**:
+Diferente de soluções monolíticas tradicionais, o Watink foi construído sobre uma **Arquitetura Orientada a Eventos**. Isso significa que cada componente – do motor de conexão WhatsApp ao construtor de fluxos – escala independentemente, garantindo que sua operação nunca pare.
 
-- **Frontend**: React (Vite) + Material UI - *Rápido e Responsivo*.
-- **Backend**: Node.js + TypeScript - *Seguro e Tipado*.
-- **Database**: PostgreSQL + pgvector - *Busca vetorial integrada*.
-- **Engine**: Whaileys (Baileys) - *Conexão estável e Multi-Device*.
-- **Filas**: RabbitMQ - *Processamento assíncrono robusto*.
+### Destaques do Ecossistema
 
----
-
-## 📂 Estrutura do Repositório
-
-```
-watink/
-├── backend/                 # API REST & WebSocket
-├── frontend/                # Interface SPA
-├── engine-standard/         # Motor de Conexão WhatsApp
-├── docker-stack.yml         # Deploy via Docker Swarm
-└── docs/                    # Documentação Completa
-```
+*   **🔓 100% Open Source**: Código transparente, sem lock-in. A comunidade constrói junto.
+*   **🐳 Native Swarm**: Deploy on-premise ou cloud com orquestração de containers profissional.
+*   **🔌 Drivers Modulares**: Suporte a múltiplos motores de conexão (Baileys/WWebJS) via microserviços.
+*   **🧠 IA Integrada (RAG)**: Chatbots que leem seus documentos PDF/Web e respondem humanamente usando Vector Database (pgvector).
 
 ---
 
-## 🚀 Começando
+## 💥 Funcionalidades Poderosas
 
-Consulte nossa documentação técnica para iniciar:
+O Watink não é apenas um "disparador". É um sistema operacional completo para atendimento ao cliente.
 
-- [Guia de Desenvolvimento](rule/dev.md)
-- [Arquitetura de Microsserviços](rule/dev_micro.md)
+### 🎨 Flow Builder Visual
+Crie automações complexas arrastando e soltando blocos.
+*   **No-Code**: Construa menus, capture dados e tome decisões.
+*   **Integração Total**: Dispare Webhooks ou mova cards no Kanban diretamente do fluxo.
+
+### 📊 CRM & Pipeline Kanban
+Transforme conversas em vendas organizadas.
+*   **Gestão Visual**: Mova leads entre etapas (Prospecção -> Negociação -> Fechamento).
+*   **Automação**: O fluxo pode qualificar e mover o lead automaticamente.
+
+### 🏢 Multi-Tenant & Multi-Departamento
+Uma instalação, múltiplos clientes ou departamentos.
+*   **SaaS Ready**: Gerencie múltiplas empresas (Tenants) com isolamento total de dados.
+*   **Filas Avançadas**: Distribuição de carga Round-Robin ou balanceada entre agentes.
+
+### 📈 Campanhas Inteligentes
+Marketing de alto impacto.
+*   **Segmentação por Tags**: Envie a mensagem certa para o público certo.
+*   **Agendamento Preciso**: Prepare campanhas para datas especiais.
 
 ---
 
-## 📄 Licença
+## 🏗️ Engenharia Distribuída
 
-Distribuído sob a licença **MIT**. Veja [LICENSE](LICENSE) para mais informações.
+Nossa stack é escolhida para performance e confiabilidade:
+
+| Camada | Tecnologia | Função |
+| :--- | :--- | :--- |
+| **Frontend** | React + Vite + MUI | Interface SPA reativa e leve. |
+| **Backend** | Node.js + Express | API Gateway e Regras de Negócio. |
+| **Messaging** | **RabbitMQ** | Backbone de eventos para garantir entrega de mensagens. |
+| **Database** | PostgreSQL + **PostGIS** | Dados relacionais e geográficos. |
+| **Vector DB** | **pgvector** | Busca semântica para Inteligência Artificial. |
+| **Cache** | Redis | Sessões e performance em tempo real. |
+| **Engine** | Microserviços Isolados | Workers dedicados para cada conexão WhatsApp. |
 
 ---
 
-**Watink** - *Potencializando conversas, automatizando resultados.*
+## � Documentação
+
+Acreditamos que um bom software precisa de uma ótima documentação.
+
+### 👤 Para Usuários e Gestores
+Acesse o **Manual Completo do Usuário (User Guide)** para aprender a operar a plataforma:
+*   [🚀 Primeiros Passos e Conexão](userguide/connections/CONNECTING.md)
+*   [💬 Gestão de Atendimentos](userguide/chats/USING_CHATS.md)
+*   [⚙️ Criando Fluxos no Flow Builder](userguide/flowbuilder/CREATING_FLOWS.md)
+*   [📚 Ver Manual Completo](userguide/README.md)
+
+### � Para Desenvolvedores
+Quer contribuir ou customizar? Mergulhe na nossa **Documentação Técnica**:
+*   [🛠️ Guia de Contribuição e Regras](rule/dev.md)
+*   [🏗️ Arquitetura de Microserviços](docs/microservices/ARCHITECTURE.md)
+*   [🔌 API Reference (Swagger)](docs/backend/API.md)
+
+---
+
+## 🤝 Contribua
+
+O Watink é mantido pela comunidade. PRs são bem-vindos!
+1.  Faça um Fork do projeto.
+2.  Crie sua Feature Branch (`git checkout -b feature/AmazingFeature`).
+3.  Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`).
+4.  Push para a Branch (`git push origin feature/AmazingFeature`).
+5.  Abra um Pull Request.
+
+---
+
+<p align="center">
+  <sub>Construído com ❤️ pela equipe Watink e colaboradores.</sub>
+</p>
