@@ -5,6 +5,7 @@ import formatBody from "../../helpers/Mustache";
 import RabbitMQService from "../RabbitMQService";
 import { Envelope, SendButtonsPayload, SendListPayload } from "../../microservice/contracts";
 import Message from "../../models/Message";
+import GenerateWAMessageId from "../../helpers/GenerateWAMessageId";
 
 interface Request {
     body: string;
@@ -39,7 +40,7 @@ const SendWhatsAppInteractive = async ({
         const to = `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
 
         const messageData = {
-            id: uuidv4(),
+            id: GenerateWAMessageId(),
             ticketId: ticket.id,
             contactId: undefined,
             body: formattedBody,
