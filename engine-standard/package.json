@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "dependencies": {
     "whaileys": "github:alltomatos/whaileys",
     "@hapi/boom": "^10.0.1",

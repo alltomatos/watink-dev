@@ -4,7 +4,7 @@
 
 # 🌐 Watink: Open Source Distributed WhatsApp Platform
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 [![Architecture: Microservices](https://img.shields.io/badge/Architecture-Microservices-blueviolet)](docs/microservices/ARCHITECTURE.md)
 [![orchestration: swarm](https://img.shields.io/badge/Orchestration-Docker%20Swarm-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/engine/swarm/)
 [![stack: node+react](https://img.shields.io/badge/Stack-Node.js%20%7C%20React-green)](rule/dev.md)
