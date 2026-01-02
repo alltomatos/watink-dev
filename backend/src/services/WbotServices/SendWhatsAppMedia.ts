@@ -1,4 +1,6 @@
 import fs from "fs";
+import path from "path";
+import uploadConfig from "../../config/upload";
 import { v4 as uuidv4 } from "uuid";
 import AppError from "../../errors/AppError";
 import Ticket from "../../models/Ticket";
@@ -27,6 +29,14 @@ const SendWhatsAppMedia = async ({
     // Read file and convert to base64
     const fileData = fs.readFileSync(media.path, { encoding: "base64" });
 
+    // Move file to tenant folder
+    const tenantFolder = path.join(uploadConfig.directory, ticket.tenantId.toString());
+    if (!fs.existsSync(tenantFolder)) {
+      fs.mkdirSync(tenantFolder, { recursive: true });
+    }
+    const newPath = path.join(tenantFolder, media.filename);
+    fs.renameSync(media.path, newPath);
+
     // Sanitize number to ensure only digits
     const contactNumber = ticket.contact.number.replace(/\D/g, "");
 
@@ -41,7 +51,7 @@ const SendWhatsAppMedia = async ({
       quotedMsgId: undefined,
       ack: 0, // Pending
       timestamp: new Date().getTime(),
-      mediaUrl: media.filename,
+      mediaUrl: `${ticket.tenantId}/${media.filename}`,
       tenantId: ticket.tenantId
     };
 
@@ -80,8 +90,6 @@ const SendWhatsAppMedia = async ({
     );
 
     await ticket.update({ lastMessage: body || media.originalname });
-
-    fs.unlinkSync(media.path);
 
     return message;
   } catch (err) {
