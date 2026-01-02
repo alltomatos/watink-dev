@@ -64,7 +64,7 @@ Nossa stack é escolhida para performance e confiabilidade:
 | **Messaging** | **RabbitMQ** | Backbone de eventos para garantir entrega de mensagens. |
 | **Database** | PostgreSQL + **PostGIS** | Dados relacionais e geográficos. |
 | **Vector DB** | **pgvector** | Busca semântica para Inteligência Artificial. |
-| **Cache** | Redis | Sessões e performance em tempo real. |
+
 | **Engine** | Microserviços Isolados | Workers dedicados para cada conexão WhatsApp. |
 
 ---
