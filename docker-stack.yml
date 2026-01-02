@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: watink/backend:1.3.96
+    image: watink/backend:1.3.97
     environment:
       - DB_DIALECT=postgres
       - DB_HOST=postgres
@@ -76,7 +76,7 @@ services:
           memory: 1024M
 
   flow-engine-worker:
-    image: watink/backend:1.3.96
+    image: watink/backend:1.3.97
     command: ["node", "dist/src/flow-worker.js"]
     environment:
       - DB_DIALECT=postgres

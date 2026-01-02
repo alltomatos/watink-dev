@@ -31,6 +31,7 @@ class SessionManager {
   private sessions: Map<number, WhaileysSession> = new Map();
   private retries: Map<number, number> = new Map();
   private manuallyDisconnected: Set<number> = new Set();
+  private recentlySent: Set<string> = new Set();
   private rabbitmq: RabbitMQ;
   private sessionsDir: string;
 
@@ -595,6 +596,13 @@ class SessionManager {
               }
             }
 
+            // Dedup logic: If we recently sent this message (fromMe), ignore it in upsert
+            // because we already handled it with context in sendText/sendMedia
+            if (msg.key.fromMe && msg.key.id && this.recentlySent.has(msg.key.id)) {
+              logger.info(`Ignoring upsert for recently sent message ${msg.key.id}`);
+              continue;
+            }
+
             await this.handleMessage(msg, sock, payload.sessionId, tenantId);
           }
         }
@@ -838,6 +846,10 @@ class SessionManager {
       });
 
       if (msg) {
+        if (msg.key.id) {
+          this.recentlySent.add(msg.key.id);
+          setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
+        }
         logger.info(`[sendText] Message sent successfully. WA Msg ID: ${msg.key.id}. Ref Message ID: ${payload.messageId}`);
         // We still trigger handleMessage to ensure standard flow works (saving self-message)
         // Ideally handleMessage should maybe UPDATE the existing message if we could link them, 
@@ -1078,6 +1090,10 @@ class SessionManager {
       const msg = await session.socket.sendMessage(jid, content);
 
       if (msg) {
+        if (msg.key.id) {
+          this.recentlySent.add(msg.key.id);
+          setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
+        }
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
     } catch (error) {
@@ -1182,6 +1198,10 @@ class SessionManager {
       const msg = await session.socket.sendMessage(jid, buttonMessage as any);
 
       if (msg) {
+        if (msg.key.id) {
+          this.recentlySent.add(msg.key.id);
+          setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
+        }
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
     } catch (error) {
@@ -1238,6 +1258,10 @@ class SessionManager {
       const msg = await session.socket.sendMessage(jid, listMessage as any);
 
       if (msg) {
+        if (msg.key.id) {
+          this.recentlySent.add(msg.key.id);
+          setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
+        }
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
     } catch (error) {
@@ -1292,6 +1316,10 @@ class SessionManager {
       } as any);
 
       if (msg) {
+        if (msg.key.id) {
+          this.recentlySent.add(msg.key.id);
+          setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
+        }
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
     } catch (error) {
@@ -1362,6 +1390,10 @@ class SessionManager {
       const msg = await session.socket.sendMessage(jid, message as any);
 
       if (msg) {
+        if (msg.key.id) {
+          this.recentlySent.add(msg.key.id);
+          setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
+        }
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
     } catch (error) {
