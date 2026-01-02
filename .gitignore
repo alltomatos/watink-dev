@@ -17,3 +17,7 @@ engine-go
 **/.vscode/
 **/.idea/
 **/coverage/
+
+# Legacy & Obsolete
+docs/old/
+rule/dev_micro.md

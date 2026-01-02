@@ -215,6 +215,28 @@ O Swarm detectará as diferenças e atualizará apenas os serviços afetados.
 
 ---
 
+## 🌳 Controle de Versão (Git)
+
+Para manter a sanidade do repositório, siga estas convenções de Git Flow.
+
+### 1. Padrão de Branches
+*   **`devel_developer`**: Branch principal de desenvolvimento (staging).
+*   **`main`**: Produção (estável).
+*   **`feature/nome-atividade`**: Novas funcionalidades (ex: `feature/nova-api-chat`).
+*   **`fix/nome-correcao`**: Correções de bugs (ex: `fix/scroll-chat`).
+*   **`chore/nome-tarefa`**: Tarefas de manutenção, docs ou config (ex: `chore/atualizar-readme`).
+
+### 2. Fluxo de Trabalho (Workflow)
+1.  **Branching**: Sempre crie sua branch a partir da `devel_developer` (ou da branch de integração vigente).
+2.  **Desenvolvimento**: Realize suas alterações e testes no Swarm.
+3.  **Preparação para Merge**:
+    *   Verifique se tudo funciona.
+    *   Execute `./update.sh` para incrementar a versão e atualizar o `docker-stack.yml`.
+4.  **Commit & Push**:
+    *   Inclua os arquivos de versão (`package.json`) e o `docker-stack.yml` atualizado no commit.
+    *   Mensagens de commit devem seguir o [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `chore:`.
+5.  **Pull Request**: Abra o PR para a branch principal.
+
 ## 🏷️ Versionamento e Release
 
 Seguimos estritamente o **Semantic Versioning (SemVer)** (ex: `1.0.0`).
