@@ -18,7 +18,8 @@ export const EventListener = async () => {
     "wbot.*.*.session.status",
     "wbot.*.*.message.received",
     "wbot.*.*.message.reaction",
-    "wbot.*.*.contact.update"
+    "wbot.*.*.contact.update",
+    "wbot.*.*.message.ack"
   ];
 
   await RabbitMQService.consumeEvents("api.events.process", routingKeys, async (msg: Envelope) => {
@@ -42,6 +43,9 @@ export const EventListener = async () => {
         break;
       case "contact.update":
         await handleContactUpdate(msg.payload as ContactUpdatePayload, msg.tenantId);
+        break;
+      case "message.ack":
+        await handleMessageAck(msg.payload as any, msg.tenantId);
         break;
       default:
         logger.warn(`Unknown event type: ${msg.type}`);
@@ -128,9 +132,7 @@ const handleContactUpdate = async (payload: ContactUpdatePayload, tenantId: stri
       contact = await Contact.findOne({
         where: {
           [Op.or]: [
-            { number: number },
-            { remoteJid: number }, // Engine sends JID in 'number' field for convenience sometimes
-            { remoteJid: `${number}@${isGroup ? "g.us" : "s.whatsapp.net"}` }
+            { number: number }
           ],
           tenantId
         }
@@ -213,6 +215,51 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   if (!tenantId) {
     logger.error(`[EventListener] handleMessageReceived: Tenant ID is missing for session ${sessionId}`);
     return;
+  }
+
+  // Deduplication handling for Optimistic UI
+  // If we receive 'originalId', it means this message corresponds to a pending message (UUID) created by Backend.
+  // We must DELETE the pending message so the new one (WA ID) can replace it in the frontend.
+  let preservedBody: string | null = null;
+  let preservedMediaUrl: string | null = null;
+  let preservedMediaType: string | null = null;
+
+  if (message.originalId) {
+    if (message.originalId === message.id) {
+      logger.info(`[EventListener] handleMessageReceived - Deduping: IDs match (${message.id}). Skipping destruction.`);
+      
+      const existingMsg = await Message.findByPk(message.id);
+      if (existingMsg) {
+        preservedBody = existingMsg.body;
+        preservedMediaUrl = existingMsg.getDataValue("mediaUrl");
+        preservedMediaType = existingMsg.mediaType;
+      }
+    } else {
+      logger.info(`[EventListener] handleMessageReceived - Deduping: Found originalId ${message.originalId}. Processing replacement.`);
+      try {
+        const pendingMessage = await Message.findByPk(message.originalId);
+        if (pendingMessage) {
+          // PRESERVE: Capture data from pending message before destroying
+          preservedBody = pendingMessage.body;
+          preservedMediaUrl = pendingMessage.getDataValue("mediaUrl");
+          preservedMediaType = pendingMessage.mediaType;
+
+          await pendingMessage.destroy();
+          logger.info(`[EventListener] Pending message ${message.originalId} destroyed successfully.`);
+          
+          // Emit deletion event to frontend to remove the clock icon
+          const io = getIO();
+          io.to(pendingMessage.ticketId.toString()).emit(`appMessage`, {
+            action: "delete",
+            messageId: message.originalId
+          });
+        } else {
+          logger.warn(`[EventListener] Pending message ${message.originalId} not found in DB.`);
+        }
+      } catch (dedupeErr) {
+        logger.error(`[EventListener] Error deleting pending message ${message.originalId}: ${dedupeErr}`);
+      }
+    }
   }
 
   let groupContact: Contact | undefined;
@@ -310,19 +357,29 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     id: message.id,
     ticketId: ticket.id,
     contactId: msgContact.id,
-    body: message.body,
+    body: preservedBody || message.body,
     fromMe: message.fromMe,
-    read: false,
-    mediaType: message.type,
-    mediaUrl: message.mediaUrl,
+    read: message.fromMe || false,
+    mediaType: preservedMediaType || message.type,
+    mediaUrl: preservedMediaUrl || message.mediaUrl,
     timestamp: message.timestamp * 1000, // Convert to ms
     participant: message.participant,
     dataJson: JSON.stringify(message),
+    ack: message.status || message.ack || 0,
     tenantId
   };
 
+  // If this is an existing sent message, we should not revert the ACK if it is already higher
+  if (message.fromMe) {
+    const currentMsg = await Message.findByPk(message.id);
+    if (currentMsg && currentMsg.ack > msgData.ack) {
+      msgData.ack = currentMsg.ack;
+    }
+  }
+
   // Logic to handle media that arrived from Engine (Microservice)
-  if (message.hasMedia && message.mediaData) {
+  // Only process new media if we don't have a preserved one
+  if (message.hasMedia && message.mediaData && !preservedMediaUrl) {
     try {
       const { join } = require("path");
       const { writeFile } = require("fs").promises;
@@ -333,12 +390,17 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
       const ext = mimetype.split("/")[1]?.split(";")[0] || "bin";
       const filename = `${new Date().getTime()}-${message.id}.${ext}`;
 
-      const filePath = join(uploadConfig.directory, filename);
+      const tenantFolder = join(uploadConfig.directory, tenantId.toString());
+      if (!require("fs").existsSync(tenantFolder)) {
+        require("fs").mkdirSync(tenantFolder, { recursive: true });
+      }
+
+      const filePath = join(tenantFolder, filename);
       const buffer = Buffer.from(message.mediaData, "base64");
 
       await writeFile(filePath, buffer);
 
-      msgData.mediaUrl = filename;
+      msgData.mediaUrl = `${tenantId}/${filename}`;
 
       // Fix mediaType to be more specific if Engine sent "media"
       if (message.type === "media") {
@@ -449,5 +511,51 @@ const handleMessageReaction = async (payload: MessageReactionPayload, tenantId: 
 
   } catch (err) {
     logger.error(`[EventListener] Error handling message reaction: ${err}`);
+  }
+};
+
+const handleMessageAck = async (payload: { messageId: string; ack: number; sessionId: number }, tenantId: string | number) => {
+  try {
+    const { messageId, ack, sessionId } = payload;
+
+    if (!tenantId && sessionId) {
+      const whatsapp = await Whatsapp.findByPk(sessionId);
+      if (whatsapp) {
+        tenantId = whatsapp.tenantId;
+      }
+    }
+
+    logger.info(`[EventListener] handleMessageAck: Processing ACK ${ack} for msg ${messageId}`);
+
+    // Simple retry logic for race condition (ACK before Message Creation)
+    // Try up to 10 times with 500ms delay (5 seconds total)
+    let message: Message | null = null;
+
+    for (let i = 0; i < 10; i++) {
+      message = await Message.findOne({
+        where: { id: messageId, tenantId }
+      });
+
+      if (message) break;
+
+      if (i === 0) logger.info(`[EventListener] Message ${messageId} not found for ACK update. Starting retries...`);
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    if (!message) {
+      logger.warn(`[EventListener] Message ${messageId} not found after retries. ACK ${ack} lost.`);
+      return;
+    }
+
+    await message.update({ ack });
+
+    const io = getIO();
+    io.to(message.ticketId.toString()).emit(`appMessage`, {
+      action: "update",
+      message: message
+    });
+
+  } catch (err) {
+    logger.error(`[EventListener] Error handling message ACK: ${err}`);
   }
 };

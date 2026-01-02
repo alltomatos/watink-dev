@@ -9,6 +9,7 @@ export const sendButtons = async (req: Request, res: Response): Promise<Response
     const { tenantId } = req.user as any;
     const { ticketId, text, footer, buttons, imageUrl } = req.body;
     const ticket = await ShowTicketService(ticketId);
+    const contactNumber = ticket.contact.number.replace(/\D/g, "");
 
     const command: Envelope = {
         id: uuidv4(),
@@ -17,7 +18,7 @@ export const sendButtons = async (req: Request, res: Response): Promise<Response
         type: "message.send.buttons",
         payload: {
             sessionId: ticket.whatsappId,
-            to: `${ticket.contact.number}@${ticket.isGroup ? "g" : "c"}.us`,
+            to: `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
             text,
             footer,
             buttons,
@@ -33,6 +34,7 @@ export const sendList = async (req: Request, res: Response): Promise<Response> =
     const { tenantId } = req.user as any;
     const { ticketId, text, footer, buttonText, sections } = req.body;
     const ticket = await ShowTicketService(ticketId);
+    const contactNumber = ticket.contact.number.replace(/\D/g, "");
 
     const command: Envelope = {
         id: uuidv4(),
@@ -41,7 +43,7 @@ export const sendList = async (req: Request, res: Response): Promise<Response> =
         type: "message.send.list",
         payload: {
             sessionId: ticket.whatsappId,
-            to: `${ticket.contact.number}@${ticket.isGroup ? "g" : "c"}.us`,
+            to: `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
             text,
             footer,
             buttonText,
@@ -57,6 +59,7 @@ export const sendPoll = async (req: Request, res: Response): Promise<Response> =
     const { tenantId } = req.user as any;
     const { ticketId, name, options, selectableCount } = req.body;
     const ticket = await ShowTicketService(ticketId);
+    const contactNumber = ticket.contact.number.replace(/\D/g, "");
 
     const command: Envelope = {
         id: uuidv4(),
@@ -65,7 +68,7 @@ export const sendPoll = async (req: Request, res: Response): Promise<Response> =
         type: "message.send.poll",
         payload: {
             sessionId: ticket.whatsappId,
-            to: `${ticket.contact.number}@${ticket.isGroup ? "g" : "c"}.us`,
+            to: `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
             name,
             options,
             selectableCount
@@ -80,6 +83,7 @@ export const sendCarousel = async (req: Request, res: Response): Promise<Respons
     const { tenantId } = req.user as any;
     const { ticketId, text, footer, cards } = req.body;
     const ticket = await ShowTicketService(ticketId);
+    const contactNumber = ticket.contact.number.replace(/\D/g, "");
 
     const command: Envelope = {
         id: uuidv4(),
@@ -88,7 +92,7 @@ export const sendCarousel = async (req: Request, res: Response): Promise<Respons
         type: "message.send.carousel",
         payload: {
             sessionId: ticket.whatsappId,
-            to: `${ticket.contact.number}@${ticket.isGroup ? "g" : "c"}.us`,
+            to: `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
             text,
             footer,
             cards

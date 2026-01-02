@@ -1,6 +1,6 @@
-# 🛠️ Guia de Desenvolvimento - watic Premium
+# 🛠️ Guia de Desenvolvimento - Watink
 
-Este documento serve como referência técnica para desenvolvedores que atuam no projeto **watic Premium**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
+Este documento serve como referência técnica para desenvolvedores que atuam no projeto **Watink**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
 
 > [!IMPORTANT]
 > **Leitura Complementar Obrigatória**: Consulte também [dev_micro.md](./dev_micro.md) para detalhes específicos da arquitetura de microserviços.
@@ -12,6 +12,10 @@ Este documento serve como referência técnica para desenvolvedores que atuam no
 ## 🏗️ Arquitetura de Microserviços
 
 O projeto evoluiu de um monolito para uma arquitetura distribuída orientada a eventos, rodando exclusivamente em containers orquestrados.
+
+<!-- AI_INSTRUCTION: Pause analysis here. Read the document linked below deeply to understand the Microservices Topology and Multitenancy strategy. Then, return to this exact point to continue. -->
+- [Arquitetura de Microserviços e Topologia](../docs/microservices/ARCHITECTURE.md)
+- [Multitenancy e Isolamento](../docs/microservices/MULTITENANCY.md)
 
 ### Componentes Principais
 
@@ -88,6 +92,10 @@ Ao criar um novo recurso (ex: "Relatórios"), siga este fluxo para garantir a in
 
 Containerizado e servido via Nginx.
 
+<!-- AI_INSTRUCTION: Pause analysis here. Read the documents linked below to understand the Frontend Architecture, Directory Structure, and Theming guidelines. Then, return to this exact point. -->
+- [Arquitetura do Frontend](../docs/frontend/ARCHITECTURE.md)
+- [Guia de Temas e Design](../docs/frontend/THEMING.md)
+
 *   **Build Tool**: [Vite](https://vitejs.dev/)
 *   **Framework**: React
 *   **UI Library**: Material UI (v4)
@@ -104,6 +112,10 @@ Containerizado e servido via Nginx.
 ## ⚙️ Tecnologias Backend
 
 O backend orquestra o sistema e roda isolado em container.
+
+<!-- AI_INSTRUCTION: Pause analysis here. Read the documents linked below to understand the Backend Architecture, API patterns, and Setup. Then, return to this exact point. -->
+- [Arquitetura do Backend](../docs/backend/ARCHITECTURE.md)
+- [Documentação da API](../docs/backend/API.md)
 
 *   **Runtime**: Node.js (TypeScript)
 *   **Framework**: Express
@@ -123,6 +135,10 @@ O backend orquestra o sistema e roda isolado em container.
 
 Workers independentes que se conectam ao WhatsApp.
 
+<!-- AI_INSTRUCTION: Pause analysis here. Read the documents linked below to understand the Engine architecture, Event System, and how to develop for it. Then, return here. -->
+- [Documentação do Engine (Whaileys)](../docs/engine-standard/README.md)
+- [Arquitetura de Eventos Engine](../docs/engine-standard/ARCHITECTURE.md)
+
 ### Engine Standard (`whaileys-engine`)
 *   **Tecnologia**: Node.js / TypeScript
 *   **Lib Core**: **Whaileys**
@@ -139,6 +155,10 @@ Workers independentes que se conectam ao WhatsApp.
 
 Sistema de automação híbrido e agnóstico à plataforma, capaz de orquestrar fluxos complexos iniciados por diversos eventos (WhatsApp, Kanban, Tickets, etc.).
 
+<!-- AI_INSTRUCTION: Pause analysis here. Read the documents linked below to understand the Flow Builder implementation. Then, return here. -->
+- [Visão Geral do Flow Builder](../docs/frontend/flowbuilder/OVERVIEW.md)
+- [Componentes do Flow Builder](../docs/frontend/flowbuilder/COMPONENTS.md)
+
 *   **Arquitetura**: Baseada em Grafos (Nós e Arestas), Gatilhos (Triggers) e Sessões (Sessions).
 *   **Componentes Chave**:
     *   `FlowExecutorService`: Motor de execução que processa a lógica dos nós.
@@ -146,14 +166,14 @@ Sistema de automação híbrido e agnóstico à plataforma, capaz de orquestrar 
     *   `FlowSessions`: Mantém o estado persistente de cada execução.
 *   **Extensibilidade**: Projetado para receber novos tipos de gatilhos e nós de ação facilmente.
 
-> [!TIP]
-> **Documentação Completa**: Para detalhes de implementação, como criar novos gatilhos e nós, consulte [FLOW_ENGINE.md](../docs/engine_whaileys/FLOW_ENGINE.md).
-
 ---
 
 ## 🗄️ Banco de Dados: PostgreSQL + Extensions
 
 Imagem customizada rodando em serviço dedicado no Swarm.
+
+<!-- AI_INSTRUCTION: Pause analysis here. Read the document linked below to understand the Multitenancy isolation and RLS security. Then, return here. -->
+- [Multitenancy e RLS](../docs/microservices/MULTITENANCY.md)
 
 *   **Imagem Docker**: `ronaldodavi/pgvectorgis:latest`
 *   **Extensões**:
@@ -215,6 +235,28 @@ O Swarm detectará as diferenças e atualizará apenas os serviços afetados.
 
 ---
 
+## 📚 Manutenção da Documentação
+
+A documentação é parte integrante e vital do sistema, dividida em **Manual do Usuário** (`userguide/`) e **Documentação Técnica** (`docs/`). Qualquer alteração no código deve ser refletida imediatamente na documentação correspondente.
+
+<!-- AI_INSTRUCTION: Pause analysis here. Read the directory structures of userguide/ and docs/ to understand where to add or update documentation. Then, return here. -->
+### Regras de Ouro
+
+#### 1. Manual do Usuário (`userguide/`)
+*   **Sincronia**: Todo PR que altera funcionalidade ou UX deve incluir a atualização no `userguide/`.
+*   **Novos Módulos**: Ao criar um novo módulo (ex: "Marketing"), **deve-se** criar a pasta correspondente `userguide/marketing/` e documentar seu uso.
+*   **Novos Modelos de Conexão**: Se um novo modelo de conexão for adicionado, atualize `userguide/connections/` detalhando o processo.
+
+#### 2. Documentação Técnica (`docs/`)
+*   **Arquitetura e Design**: Se alterar a arquitetura, criar novos serviços ou mudar padrões de projeto, atualize os documentos em `docs/` (ex: `docs/backend/`, `docs/microservices/`).
+*   **Novos Componentes Técnicos**: Código relevante novo (ex: um novo Engine, um novo Service complexo) exige a criação de documentação técnica explicando seu funcionamento, decisões de design e integração.
+*   **API**: Alterações em endpoints devem refletir no Swagger e, se necessário, em `docs/backend/API.md`.
+
+> [!IMPORTANT]
+> Considere a tarefa incompleta se a documentação (User Guide ou Técnica) não estiver atualizada. A documentação deve evoluir viva junto com o software.
+
+---
+
 ## 🌳 Controle de Versão (Git)
 
 Para manter a sanidade do repositório, siga estas convenções de Git Flow.
@@ -236,6 +278,8 @@ Para manter a sanidade do repositório, siga estas convenções de Git Flow.
     *   Inclua os arquivos de versão (`package.json`) e o `docker-stack.yml` atualizado no commit.
     *   Mensagens de commit devem seguir o [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `chore:`.
 5.  **Pull Request**: Abra o PR para a branch principal.
+
+---
 
 ## 🏷️ Versionamento e Release
 

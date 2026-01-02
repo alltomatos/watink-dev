@@ -26,6 +26,7 @@ import VcardPreview from "../VcardPreview";
 import LocationPreview from "../LocationPreview";
 import ModalImageCors from "../ModalImageCors";
 import MessageOptionsMenu from "../MessageOptionsMenu";
+import FilePreview from "../FilePreview";
 import whatsBackground from "../../assets/wa-background.png";
 
 import api from "../../services/api";
@@ -285,7 +286,7 @@ const useStyles = makeStyles((theme) => ({
   messageReactions: {
     position: "absolute",
     bottom: -10,
-    right: 10,
+    left: 10,
     backgroundColor: "#fff",
     borderRadius: "12px",
     padding: "2px 6px",
@@ -365,7 +366,8 @@ const MessagesList = ({ ticketId, isGroup }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const messageOptionsMenuOpen = Boolean(anchorEl);
   const currentTicketId = useRef(ticketId);
-  const shouldScrollRef = useRef(false);
+  const shouldScrollRef = useRef();
+  const messagesListRef = useRef();
 
   useEffect(() => {
     dispatch({ type: "RESET" });
@@ -376,8 +378,8 @@ const MessagesList = ({ ticketId, isGroup }) => {
 
   useEffect(() => {
     if (shouldScrollRef.current) {
-      scrollToBottom();
-      shouldScrollRef.current = false;
+      scrollToBottom(shouldScrollRef.current === "smooth" ? "smooth" : "auto");
+      shouldScrollRef.current = null;
     }
   }, [messagesList]);
 
@@ -396,8 +398,8 @@ const MessagesList = ({ ticketId, isGroup }) => {
             setLoading(false);
           }
 
-          if (pageNumber === 1 && data.messages.length > 1) {
-            shouldScrollRef.current = true;
+          if (pageNumber === 1 && data.messages.length > 0) {
+            shouldScrollRef.current = "auto";
           }
         } catch (err) {
           setLoading(false);
@@ -419,7 +421,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
     socket.on("appMessage", (data) => {
       if (data.action === "create") {
         dispatch({ type: "ADD_MESSAGE", payload: data.message });
-        shouldScrollRef.current = true;
+        shouldScrollRef.current = "smooth";
       }
 
       if (data.action === "update") {
@@ -436,10 +438,15 @@ const MessagesList = ({ ticketId, isGroup }) => {
     setPageNumber((prevPageNumber) => prevPageNumber + 1);
   };
 
-  const scrollToBottom = () => {
-    if (lastMessageRef.current) {
-      lastMessageRef.current.scrollIntoView({});
+  const scrollToBottom = (behavior = "auto") => {
+    if (pageNumber > 1) {
+      return;
     }
+    setTimeout(() => {
+      if (lastMessageRef.current) {
+        lastMessageRef.current.scrollIntoView({ behavior });
+      }
+    }, 100);
   };
 
   const handleScroll = (e) => {
@@ -447,7 +454,8 @@ const MessagesList = ({ ticketId, isGroup }) => {
     const { scrollTop } = e.currentTarget;
 
     if (scrollTop === 0) {
-      document.getElementById("messagesList").scrollTop = 1;
+      // document.getElementById("messagesList").scrollTop = 1;
+      messagesListRef.current.scrollTop = 1;
     }
 
     if (loading) {
@@ -524,27 +532,18 @@ const MessagesList = ({ ticketId, isGroup }) => {
       return <Audio url={message.mediaUrl} />
     } else if (message.mediaType === "video") {
       return (
-        <video
-          className={classes.messageMedia}
-          src={message.mediaUrl}
-          controls
-        />
+        <div style={{ position: 'relative', width: '100%', maxWidth: '300px', borderRadius: 8, overflow: 'hidden' }}>
+          <video
+            src={message.mediaUrl}
+            controls
+            style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain', backgroundColor: '#000' }}
+          />
+        </div>
       );
     } else {
       return (
         <>
-          <div className={classes.downloadMedia}>
-            <Button
-              startIcon={<GetApp />}
-              color="primary"
-              variant="outlined"
-              target="_blank"
-              href={message.mediaUrl}
-            >
-              Download
-            </Button>
-          </div>
-          <Divider />
+          <FilePreview mediaUrl={message.mediaUrl} filename={message.body} />
         </>
       );
     }
@@ -563,6 +562,9 @@ const MessagesList = ({ ticketId, isGroup }) => {
     if (message.ack === 3 || message.ack === 4) {
       return <DoneAll fontSize="small" className={classes.ackDoneAllIcon} />;
     }
+    if (message.ack === 5) {
+      return <ErrorOutline fontSize="small" className={classes.ackErrorIcon} style={{ color: "#f44336" }} />;
+    }
   };
 
   const renderDailyTimestamps = (message, index) => {
@@ -578,7 +580,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
         </span>
       );
     }
-    if (index < messagesList.length - 1) {
+    if (index > 0) {
       let messageDay = parseISO(messagesList[index].createdAt);
       let previousMessageDay = parseISO(messagesList[index - 1].createdAt);
 
@@ -594,15 +596,6 @@ const MessagesList = ({ ticketId, isGroup }) => {
           </span>
         );
       }
-    }
-    if (index === messagesList.length - 1) {
-      return (
-        <div
-          key={`ref-${message.createdAt}`}
-          ref={lastMessageRef}
-          style={{ float: "left", clear: "both" }}
-        />
-      );
     }
   };
 
@@ -663,6 +656,15 @@ const MessagesList = ({ ticketId, isGroup }) => {
     );
   };
 
+  const getFileNameFromUrl = (url) => {
+    if (!url) return null;
+    const nameParts = url.split('/').pop().split('-');
+    if (nameParts.length > 1 && /^\d{10,}$/.test(nameParts[0])) {
+      return nameParts.slice(1).join('-').replace(/_/g, ' ');
+    }
+    return null;
+  };
+
   const renderMessages = () => {
     if (messagesList.length > 0) {
       const viewMessagesList = messagesList.map((message, index) => {
@@ -696,7 +698,9 @@ const MessagesList = ({ ticketId, isGroup }) => {
                 ) && checkMessageMedia(message)}
                 <div className={classes.textContentItem}>
                   {message.quotedMsg && renderQuotedMessage(message)}
-                  <MarkdownWrapper>{message.body}</MarkdownWrapper>
+                  {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
+                    <MarkdownWrapper>{message.body}</MarkdownWrapper>
+                  }
                   <span className={classes.timestamp}>
                     {format(parseISO(message.createdAt), "HH:mm")}
                   </span>
@@ -741,7 +745,9 @@ const MessagesList = ({ ticketId, isGroup }) => {
                     />
                   )}
                   {message.quotedMsg && renderQuotedMessage(message)}
-                  <MarkdownWrapper>{message.body}</MarkdownWrapper>
+                  {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
+                    <MarkdownWrapper>{message.body}</MarkdownWrapper>
+                  }
                   <span className={classes.timestamp}>
                     {format(parseISO(message.createdAt), "HH:mm")}
                     {renderMessageAck(message)}
@@ -771,8 +777,10 @@ const MessagesList = ({ ticketId, isGroup }) => {
         id="messagesList"
         className={classes.messagesList}
         onScroll={handleScroll}
+        ref={messagesListRef}
       >
         {messagesList.length > 0 ? renderMessages() : []}
+        <div ref={lastMessageRef} />
       </div>
       {loading && (
         <div>
@@ -784,3 +792,4 @@ const MessagesList = ({ ticketId, isGroup }) => {
 };
 
 export default MessagesList;
+
