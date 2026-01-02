@@ -4,7 +4,7 @@ import ClientAddress from "../../models/ClientAddress";
 import AppError from "../../errors/AppError";
 
 interface CreateClientData {
-    companyId: number;
+    tenantId: number;
     type: string;
     name: string;
     document?: string;

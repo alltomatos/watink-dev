@@ -10,10 +10,10 @@ module.exports = {
                 primaryKey: true,
                 allowNull: false
             },
-            companyId: {
-                type: DataTypes.INTEGER,
+            tenantId: {
+                type: DataTypes.UUID,
                 allowNull: false,
-                references: { model: "Companies", key: "id" },
+                references: { model: "Tenants", key: "id" },
                 onUpdate: "CASCADE",
                 onDelete: "CASCADE"
             },
@@ -134,7 +134,7 @@ module.exports = {
         });
 
         // Add indexes
-        await queryInterface.addIndex("Protocols", ["companyId"]);
+        await queryInterface.addIndex("Protocols", ["tenantId"]);
         await queryInterface.addIndex("Protocols", ["protocolNumber"]);
         await queryInterface.addIndex("Protocols", ["ticketId"]);
         await queryInterface.addIndex("Protocols", ["contactId"]);

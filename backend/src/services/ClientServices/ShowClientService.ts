@@ -5,10 +5,10 @@ import AppError from "../../errors/AppError";
 
 const ShowClientService = async (
     clientId: number,
-    companyId: number
+    tenantId: number
 ): Promise<Client> => {
     const client = await Client.findOne({
-        where: { id: clientId, companyId },
+        where: { id: clientId, tenantId },
         include: [
             { model: ClientContact, as: "contacts" },
             { model: ClientAddress, as: "addresses" }

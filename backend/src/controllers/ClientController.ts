@@ -6,11 +6,11 @@ import UpdateClientService from "../services/ClientServices/UpdateClientService"
 import DeleteClientService from "../services/ClientServices/DeleteClientService";
 
 export const index = async (req: Request, res: Response): Promise<Response> => {
-    const { tenantId: companyId } = req.user;
+    const { tenantId: tenantId } = req.user;
     const { searchParam, pageNumber, isActive } = req.query;
 
     const { clients, count, hasMore } = await ListClientsService({
-        companyId: Number(companyId),
+        tenantId: Number(tenantId),
         searchParam: searchParam as string,
         pageNumber: pageNumber as string,
         isActive: isActive === "true" ? true : isActive === "false" ? false : undefined
@@ -20,45 +20,45 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
 };
 
 export const store = async (req: Request, res: Response): Promise<Response> => {
-    const { tenantId: companyId } = req.user;
+    const { tenantId: tenantId } = req.user;
     const clientData = req.body;
 
     const client = await CreateClientService({
         ...clientData,
-        companyId
+        tenantId
     });
 
     return res.status(201).json(client);
 };
 
 export const show = async (req: Request, res: Response): Promise<Response> => {
-    const { tenantId: companyId } = req.user;
+    const { tenantId: tenantId } = req.user;
     const { clientId } = req.params;
 
-    const client = await ShowClientService(Number(clientId), Number(companyId));
+    const client = await ShowClientService(Number(clientId), Number(tenantId));
 
     return res.json(client);
 };
 
 export const update = async (req: Request, res: Response): Promise<Response> => {
-    const { tenantId: companyId } = req.user;
+    const { tenantId: tenantId } = req.user;
     const { clientId } = req.params;
     const clientData = req.body;
 
     const client = await UpdateClientService({
         ...clientData,
         id: Number(clientId),
-        companyId
+        tenantId
     });
 
     return res.json(client);
 };
 
 export const remove = async (req: Request, res: Response): Promise<Response> => {
-    const { tenantId: companyId } = req.user;
+    const { tenantId: tenantId } = req.user;
     const { clientId } = req.params;
 
-    await DeleteClientService(Number(clientId), Number(companyId));
+    await DeleteClientService(Number(clientId), Number(tenantId));
 
     return res.status(200).json({ message: "Client deleted" });
 };

@@ -6,7 +6,7 @@ import User from "../../models/User";
 import Ticket from "../../models/Ticket";
 
 interface ListProtocolsParams {
-    companyId: number;
+    tenantId: number;
     searchParam?: string;
     pageNumber?: string | number;
     status?: string;
@@ -22,7 +22,7 @@ interface ListProtocolsResult {
 }
 
 const ListProtocolsService = async ({
-    companyId,
+    tenantId,
     searchParam = "",
     pageNumber = "1",
     status,
@@ -34,7 +34,7 @@ const ListProtocolsService = async ({
     const offset = limit * (Number(pageNumber) - 1);
 
     const whereCondition: any = {
-        companyId
+        tenantId
     };
 
     if (searchParam) {

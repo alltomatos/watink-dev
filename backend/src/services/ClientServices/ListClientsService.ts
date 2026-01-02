@@ -4,7 +4,7 @@ import ClientContact from "../../models/ClientContact";
 import ClientAddress from "../../models/ClientAddress";
 
 interface ListClientsParams {
-    companyId: number;
+    tenantId: number;
     searchParam?: string;
     pageNumber?: string | number;
     isActive?: boolean;
@@ -17,7 +17,7 @@ interface ListClientsResult {
 }
 
 const ListClientsService = async ({
-    companyId,
+    tenantId,
     searchParam = "",
     pageNumber = "1",
     isActive
@@ -26,7 +26,7 @@ const ListClientsService = async ({
     const offset = limit * (Number(pageNumber) - 1);
 
     const whereCondition: any = {
-        companyId
+        tenantId
     };
 
     if (searchParam) {

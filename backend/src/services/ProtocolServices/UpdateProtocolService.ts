@@ -7,7 +7,7 @@ import AppError from "../../errors/AppError";
 
 interface UpdateProtocolData {
     id: number;
-    companyId: number;
+    tenantId: number;
     userId?: number;
     subject?: string;
     description?: string;
@@ -24,9 +24,9 @@ const UpdateProtocolService = async (
     data: UpdateProtocolData,
     updatedByUserId?: number
 ): Promise<Protocol> => {
-    const { id, companyId, comment, ...updateData } = data;
+    const { id, tenantId, comment, ...updateData } = data;
 
-    const protocol = await Protocol.findOne({ where: { id, companyId } });
+    const protocol = await Protocol.findOne({ where: { id, tenantId } });
 
     if (!protocol) {
         throw new AppError("ERR_PROTOCOL_NOT_FOUND", 404);
