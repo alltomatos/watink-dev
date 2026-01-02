@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="userguide/imagens/watink-oss.png" alt="Watink Logo" width="200" />
+  <img src="images/logo.png" alt="Watink Logo" width="200" />
 </p>
 
 # 🌐 Watink: Open Source Distributed WhatsApp Platform
