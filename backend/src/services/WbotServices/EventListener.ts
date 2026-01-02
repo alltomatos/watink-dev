@@ -371,12 +371,17 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
       const ext = mimetype.split("/")[1]?.split(";")[0] || "bin";
       const filename = `${new Date().getTime()}-${message.id}.${ext}`;
 
-      const filePath = join(uploadConfig.directory, filename);
+      const tenantFolder = join(uploadConfig.directory, tenantId.toString());
+      if (!require("fs").existsSync(tenantFolder)) {
+        require("fs").mkdirSync(tenantFolder, { recursive: true });
+      }
+
+      const filePath = join(tenantFolder, filename);
       const buffer = Buffer.from(message.mediaData, "base64");
 
       await writeFile(filePath, buffer);
 
-      msgData.mediaUrl = filename;
+      msgData.mediaUrl = `${tenantId}/${filename}`;
 
       // Fix mediaType to be more specific if Engine sent "media"
       if (message.type === "media") {
