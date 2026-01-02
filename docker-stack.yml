@@ -40,7 +40,7 @@ services:
           memory: 1024M
 
   frontend:
-    image: watink/frontend:0.6.69
+    image: watink/frontend:0.6.73
     environment:
       - URL_BACKEND=watink_backend:8080
       - VITE_BACKEND_URL=http://localhost:8080/
