@@ -12,6 +12,8 @@ import Button from "@material-ui/core/Button";
 import Paper from "@material-ui/core/Paper";
 import DeleteOutlineIcon from "@material-ui/icons/DeleteOutline";
 import AddIcon from "@material-ui/icons/Add";
+import AssignmentIcon from "@material-ui/icons/Assignment";
+import TextField from "@material-ui/core/TextField";
 import Select from "@material-ui/core/Select";
 import MenuItem from "@material-ui/core/MenuItem";
 import Dialog from "@material-ui/core/Dialog";
@@ -131,6 +133,10 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 	const [selectedPipeline, setSelectedPipeline] = useState("");
 	const [selectedStage, setSelectedStage] = useState("");
 	const [stages, setStages] = useState([]);
+	// Protocol creation state
+	const [protocolModalOpen, setProtocolModalOpen] = useState(false);
+	const [protocolSubject, setProtocolSubject] = useState("");
+	const [protocolPriority, setProtocolPriority] = useState("medium");
 
 	useEffect(() => {
 		if (open && ticketId) {
@@ -197,6 +203,26 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 			fetchDeals();
 		} catch (err) {
 			toast.error("Erro ao remover deal");
+		}
+	};
+
+	const handleCreateProtocol = async () => {
+		if (!protocolSubject.trim()) {
+			toast.error("Assunto é obrigatório");
+			return;
+		}
+		try {
+			await api.post(`/contacts/${contact.id}/protocols`, {
+				subject: protocolSubject,
+				priority: protocolPriority,
+				ticketId: ticketId
+			});
+			toast.success("Protocolo criado com sucesso!");
+			setProtocolModalOpen(false);
+			setProtocolSubject("");
+			setProtocolPriority("medium");
+		} catch (err) {
+			toast.error("Erro ao criar protocolo");
 		}
 	};
 
@@ -341,47 +367,102 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 						</Button>
 					</Paper>
 
-					<Dialog open={pipelineModalOpen} onClose={() => setPipelineModalOpen(false)}>
-						<DialogTitle>Novo Deal</DialogTitle>
-						<DialogContent>
-							<FormControl fullWidth margin="dense">
-								<InputLabel>Pipeline</InputLabel>
-								<Select
-									value={selectedPipeline}
-									onChange={(e) => handlePipelineChange(e.target.value)}
-								>
-									{pipelines.map(p => (
-										<MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-									))}
-								</Select>
-							</FormControl>
-							{selectedPipeline && (
+					{/* Helpdesk - Protocolos Section */}
+					<Paper square variant="outlined" className={classes.contactDetails}>
+						<Typography variant="subtitle1" style={{ marginBottom: 8 }}>
+							🎫 Helpdesk - Protocolos
+						</Typography>
+						<Button
+							variant="outlined"
+							color="primary"
+							startIcon={<AssignmentIcon />}
+							onClick={() => setProtocolModalOpen(true)}
+							fullWidth
+						>
+							Abrir Protocolo
+						</Button>
+</Paper>
+
+						<Dialog open={pipelineModalOpen} onClose={() => setPipelineModalOpen(false)}>
+							<DialogTitle>Novo Deal</DialogTitle>
+							<DialogContent>
 								<FormControl fullWidth margin="dense">
-									<InputLabel>Etapa</InputLabel>
+									<InputLabel>Pipeline</InputLabel>
 									<Select
-										value={selectedStage}
-										onChange={(e) => setSelectedStage(e.target.value)}
+										value={selectedPipeline}
+										onChange={(e) => handlePipelineChange(e.target.value)}
 									>
-										{stages.map(s => (
-											<MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+										{pipelines.map(p => (
+											<MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
 										))}
 									</Select>
 								</FormControl>
-							)}
-						</DialogContent>
-						<DialogActions>
-							<Button onClick={() => setPipelineModalOpen(false)} color="secondary">
-								Cancelar
-							</Button>
-							<Button
-								onClick={handleSaveDeal}
-								color="primary"
-								disabled={!selectedPipeline || !selectedStage}
-							>
-								Salvar
-							</Button>
-						</DialogActions>
-					</Dialog>
+								{selectedPipeline && (
+									<FormControl fullWidth margin="dense">
+										<InputLabel>Etapa</InputLabel>
+										<Select
+											value={selectedStage}
+											onChange={(e) => setSelectedStage(e.target.value)}
+										>
+											{stages.map(s => (
+												<MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+											))}
+										</Select>
+									</FormControl>
+								)}
+							</DialogContent>
+							<DialogActions>
+								<Button onClick={() => setPipelineModalOpen(false)} color="secondary">
+									Cancelar
+								</Button>
+								<Button
+									onClick={handleSaveDeal}
+									color="primary"
+									disabled={!selectedPipeline || !selectedStage}
+								>
+									Salvar
+								</Button>
+							</DialogActions>
+						</Dialog>
+
+						{/* Protocol Creation Dialog */}
+						<Dialog open={protocolModalOpen} onClose={() => setProtocolModalOpen(false)}>
+							<DialogTitle>Novo Protocolo de Atendimento</DialogTitle>
+							<DialogContent>
+								<TextField
+									autoFocus
+									margin="dense"
+									label="Assunto"
+									fullWidth
+									value={protocolSubject}
+									onChange={(e) => setProtocolSubject(e.target.value)}
+								/>
+								<FormControl fullWidth margin="dense">
+									<InputLabel>Prioridade</InputLabel>
+									<Select
+										value={protocolPriority}
+										onChange={(e) => setProtocolPriority(e.target.value)}
+									>
+										<MenuItem value="low">Baixa</MenuItem>
+										<MenuItem value="medium">Média</MenuItem>
+										<MenuItem value="high">Alta</MenuItem>
+										<MenuItem value="urgent">Urgente</MenuItem>
+									</Select>
+								</FormControl>
+							</DialogContent>
+							<DialogActions>
+								<Button onClick={() => setProtocolModalOpen(false)} color="secondary">
+									Cancelar
+								</Button>
+								<Button
+									onClick={handleCreateProtocol}
+									color="primary"
+									disabled={!protocolSubject.trim()}
+								>
+									Criar Protocolo
+								</Button>
+							</DialogActions>
+						</Dialog>
 
 				</div>
 			)}
