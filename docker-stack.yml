@@ -99,6 +99,29 @@ services:
           cpus: '0.50'
           memory: 512M
 
+  plugin-manager:
+    image: watink/plugin-manager:1.0.0
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/watink?sslmode=disable
+      - PLUGIN_CDN_URL=https://plugins.watink.com
+      - PORT=3005
+      - ENVIRONMENT=production
+    ports:
+      - "3005:3005"
+    networks:
+      - watink_private
+      - watink_public
+    dns:
+      - 192.168.26.253
+      - 8.8.8.8
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
   rabbitmq:
     image: rabbitmq:3-management-alpine
     networks:
