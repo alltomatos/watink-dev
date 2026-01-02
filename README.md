@@ -100,5 +100,5 @@ O Watink é mantido pela comunidade. PRs são bem-vindos!
 ---
 
 <p align="center">
-  <sub>Construído com ❤️ pela equipe Watink e colaboradores.</sub>
+  <sub>Construído com 🤖 pela equipe Watink. Do Ceará para o mundo!</sub>
 </p>
