@@ -6,6 +6,7 @@ import RabbitMQService from "../RabbitMQService";
 import { Envelope } from "../../microservice/contracts";
 import Message from "../../models/Message";
 import { getIO } from "../../libs/socket";
+import GenerateWAMessageId from "../../helpers/GenerateWAMessageId";
 
 interface Request {
   body: string;
@@ -29,7 +30,7 @@ const SendWhatsAppMessage = async ({
     const contactNumber = ticket.contact.number.replace(/\D/g, "");
 
     const messageData = {
-      id: uuidv4(),
+      id: GenerateWAMessageId(),
       ticketId: ticket.id,
       contactId: undefined,
       body: formattedBody,

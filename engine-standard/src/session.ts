@@ -843,7 +843,10 @@ class SessionManager {
 
       logger.info(`[sendText] Sending text to ${jid}: ${payload.body} (Ref Message ID: ${payload.messageId})`);
 
-      const waMsgId = this.generateWAMessageId();
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
+        ? payload.messageId 
+        : this.generateWAMessageId();
+
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
@@ -1092,7 +1095,10 @@ class SessionManager {
         };
       }
 
-      const waMsgId = this.generateWAMessageId();
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
+        ? payload.messageId 
+        : this.generateWAMessageId();
+
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
@@ -1200,7 +1206,10 @@ class SessionManager {
         buttonMessage.headerType = 4;
       }
 
-      const waMsgId = this.generateWAMessageId();
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
+        ? payload.messageId 
+        : this.generateWAMessageId();
+
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
@@ -1260,7 +1269,10 @@ class SessionManager {
         sections: payload.sections
       };
 
-      const waMsgId = this.generateWAMessageId();
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
+        ? payload.messageId 
+        : this.generateWAMessageId();
+
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
@@ -1312,7 +1324,10 @@ class SessionManager {
     try {
       const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
 
-      const waMsgId = this.generateWAMessageId();
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
+        ? payload.messageId 
+        : this.generateWAMessageId();
+
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
@@ -1392,7 +1407,10 @@ class SessionManager {
         message.image = { url: payload.mediaUrl }; // Simplification, could check extension
       }
 
-      const waMsgId = this.generateWAMessageId();
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
+        ? payload.messageId 
+        : this.generateWAMessageId();
+
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
@@ -1482,7 +1500,10 @@ class SessionManager {
       };
 
       // Relay message is often safer for complex interactive messages
-      const waMsgId = this.generateWAMessageId();
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
+        ? payload.messageId 
+        : this.generateWAMessageId();
+
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
