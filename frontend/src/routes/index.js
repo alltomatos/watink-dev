@@ -27,6 +27,7 @@ import KnowledgeBaseConfig from "../pages/KnowledgeBase/KnowledgeBaseConfig";
 import Marketplace from "../pages/Marketplace/";
 import PluginDetail from "../pages/Marketplace/PluginDetail";
 import Clients from "../pages/Clients/";
+import Helpdesk from "../pages/Helpdesk/";
 import Swagger from "../pages/Swagger/";
 import { AuthProvider } from "../context/Auth/AuthContext";
 import { WhatsAppsProvider } from "../context/WhatsApp/WhatsAppsContext";
@@ -62,6 +63,7 @@ const PrivateRoutes = () => {
             <Route exact path="/admin/settings/marketplace" component={Marketplace} isPrivate />
             <Route exact path="/admin/settings/marketplace/:slug" component={PluginDetail} isPrivate />
             <Route exact path="/clients" component={Clients} isPrivate />
+            <Route exact path="/helpdesk" component={Helpdesk} isPrivate />
           </Switch>
         </LoggedInLayout>
       </TicketsProvider>

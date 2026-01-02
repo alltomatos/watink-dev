@@ -22,6 +22,7 @@ import flowRoutes from "./flowRoutes";
 import groupRoutes from "./groupRoutes";
 import knowledgeRoutes from "./knowledgeRoutes";
 import clientRoutes from "./clientRoutes";
+import protocolRoutes from "./protocolRoutes";
 
 const routes = Router();
 
@@ -45,6 +46,7 @@ routes.use(dealRoutes);
 routes.use(flowRoutes);
 routes.use(knowledgeRoutes);
 routes.use(clientRoutes);
+routes.use(protocolRoutes);
 routes.use("/users", userRoutes);
 
 export default routes;
