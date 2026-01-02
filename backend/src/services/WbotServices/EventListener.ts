@@ -225,29 +225,40 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   let preservedMediaType: string | null = null;
 
   if (message.originalId) {
-    logger.info(`[EventListener] handleMessageReceived - Deduping: Found originalId ${message.originalId}. Processing replacement.`);
-    try {
-      const pendingMessage = await Message.findByPk(message.originalId);
-      if (pendingMessage) {
-        // PRESERVE: Capture data from pending message before destroying
-        preservedBody = pendingMessage.body;
-        preservedMediaUrl = pendingMessage.getDataValue("mediaUrl");
-        preservedMediaType = pendingMessage.mediaType;
-
-        await pendingMessage.destroy();
-        logger.info(`[EventListener] Pending message ${message.originalId} destroyed successfully.`);
-        
-        // Emit deletion event to frontend to remove the clock icon
-        const io = getIO();
-        io.to(pendingMessage.ticketId.toString()).emit(`appMessage`, {
-          action: "delete",
-          messageId: message.originalId
-        });
-      } else {
-        logger.warn(`[EventListener] Pending message ${message.originalId} not found in DB.`);
+    if (message.originalId === message.id) {
+      logger.info(`[EventListener] handleMessageReceived - Deduping: IDs match (${message.id}). Skipping destruction.`);
+      
+      const existingMsg = await Message.findByPk(message.id);
+      if (existingMsg) {
+        preservedBody = existingMsg.body;
+        preservedMediaUrl = existingMsg.getDataValue("mediaUrl");
+        preservedMediaType = existingMsg.mediaType;
       }
-    } catch (dedupeErr) {
-      logger.error(`[EventListener] Error deleting pending message ${message.originalId}: ${dedupeErr}`);
+    } else {
+      logger.info(`[EventListener] handleMessageReceived - Deduping: Found originalId ${message.originalId}. Processing replacement.`);
+      try {
+        const pendingMessage = await Message.findByPk(message.originalId);
+        if (pendingMessage) {
+          // PRESERVE: Capture data from pending message before destroying
+          preservedBody = pendingMessage.body;
+          preservedMediaUrl = pendingMessage.getDataValue("mediaUrl");
+          preservedMediaType = pendingMessage.mediaType;
+
+          await pendingMessage.destroy();
+          logger.info(`[EventListener] Pending message ${message.originalId} destroyed successfully.`);
+          
+          // Emit deletion event to frontend to remove the clock icon
+          const io = getIO();
+          io.to(pendingMessage.ticketId.toString()).emit(`appMessage`, {
+            action: "delete",
+            messageId: message.originalId
+          });
+        } else {
+          logger.warn(`[EventListener] Pending message ${message.originalId} not found in DB.`);
+        }
+      } catch (dedupeErr) {
+        logger.error(`[EventListener] Error deleting pending message ${message.originalId}: ${dedupeErr}`);
+      }
     }
   }
 
@@ -357,6 +368,14 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     ack: message.status || message.ack || 0,
     tenantId
   };
+
+  // If this is an existing sent message, we should not revert the ACK if it is already higher
+  if (message.fromMe) {
+    const currentMsg = await Message.findByPk(message.id);
+    if (currentMsg && currentMsg.ack > msgData.ack) {
+      msgData.ack = currentMsg.ack;
+    }
+  }
 
   // Logic to handle media that arrived from Engine (Microservice)
   // Only process new media if we don't have a preserved one
