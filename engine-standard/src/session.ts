@@ -811,6 +811,10 @@ class SessionManager {
     }
   }
 
+  private generateWAMessageId(): string {
+    return "3EB0" + Math.random().toString(36).slice(2).toUpperCase() + Math.random().toString(36).slice(2).toUpperCase().substring(0, 12);
+  }
+
   // Re-writing the entire method to better handle try-catch and ID availability
   private async sendText(payload: SendTextPayload) {
     const session = this.sessions.get(payload.sessionId);
@@ -839,17 +843,18 @@ class SessionManager {
 
       logger.info(`[sendText] Sending text to ${jid}: ${payload.body} (Ref Message ID: ${payload.messageId})`);
 
+      const waMsgId = this.generateWAMessageId();
+      this.recentlySent.add(waMsgId);
+      setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
+
       const msg = await session.socket.sendMessage(jid, {
         text: payload.body
       }, {
-        quoted: payload.options?.quotedMsgId ? { key: { id: payload.options.quotedMsgId } } as any : undefined
+        quoted: payload.options?.quotedMsgId ? { key: { id: payload.options.quotedMsgId } } as any : undefined,
+        messageId: waMsgId
       });
 
       if (msg) {
-        if (msg.key.id) {
-          this.recentlySent.add(msg.key.id);
-          setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
-        }
         logger.info(`[sendText] Message sent successfully. WA Msg ID: ${msg.key.id}. Ref Message ID: ${payload.messageId}`);
         // We still trigger handleMessage to ensure standard flow works (saving self-message)
         // Ideally handleMessage should maybe UPDATE the existing message if we could link them, 
@@ -1087,13 +1092,13 @@ class SessionManager {
         };
       }
 
-      const msg = await session.socket.sendMessage(jid, content);
+      const waMsgId = this.generateWAMessageId();
+      this.recentlySent.add(waMsgId);
+      setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
+
+      const msg = await session.socket.sendMessage(jid, content, { messageId: waMsgId });
 
       if (msg) {
-        if (msg.key.id) {
-          this.recentlySent.add(msg.key.id);
-          setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
-        }
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
     } catch (error) {
@@ -1195,13 +1200,13 @@ class SessionManager {
         buttonMessage.headerType = 4;
       }
 
-      const msg = await session.socket.sendMessage(jid, buttonMessage as any);
+      const waMsgId = this.generateWAMessageId();
+      this.recentlySent.add(waMsgId);
+      setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
+
+      const msg = await session.socket.sendMessage(jid, buttonMessage as any, { messageId: waMsgId });
 
       if (msg) {
-        if (msg.key.id) {
-          this.recentlySent.add(msg.key.id);
-          setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
-        }
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
     } catch (error) {
@@ -1255,13 +1260,13 @@ class SessionManager {
         sections: payload.sections
       };
 
-      const msg = await session.socket.sendMessage(jid, listMessage as any);
+      const waMsgId = this.generateWAMessageId();
+      this.recentlySent.add(waMsgId);
+      setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
+
+      const msg = await session.socket.sendMessage(jid, listMessage as any, { messageId: waMsgId });
 
       if (msg) {
-        if (msg.key.id) {
-          this.recentlySent.add(msg.key.id);
-          setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
-        }
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
     } catch (error) {
@@ -1307,19 +1312,19 @@ class SessionManager {
     try {
       const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
 
+      const waMsgId = this.generateWAMessageId();
+      this.recentlySent.add(waMsgId);
+      setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
+
       const msg = await session.socket.sendMessage(jid, {
         poll: {
           name: payload.name,
           values: payload.options,
           selectableCount: payload.selectableCount || 1
         }
-      } as any);
+      } as any, { messageId: waMsgId });
 
       if (msg) {
-        if (msg.key.id) {
-          this.recentlySent.add(msg.key.id);
-          setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
-        }
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
     } catch (error) {
@@ -1387,13 +1392,13 @@ class SessionManager {
         message.image = { url: payload.mediaUrl }; // Simplification, could check extension
       }
 
-      const msg = await session.socket.sendMessage(jid, message as any);
+      const waMsgId = this.generateWAMessageId();
+      this.recentlySent.add(waMsgId);
+      setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
+
+      const msg = await session.socket.sendMessage(jid, message as any, { messageId: waMsgId });
 
       if (msg) {
-        if (msg.key.id) {
-          this.recentlySent.add(msg.key.id);
-          setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
-        }
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
     } catch (error) {
@@ -1477,7 +1482,11 @@ class SessionManager {
       };
 
       // Relay message is often safer for complex interactive messages
-      const msg = await session.socket.sendMessage(jid, interactiveMessage as any);
+      const waMsgId = this.generateWAMessageId();
+      this.recentlySent.add(waMsgId);
+      setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
+
+      const msg = await session.socket.sendMessage(jid, interactiveMessage as any, { messageId: waMsgId });
 
       if (msg) {
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
@@ -1591,6 +1600,11 @@ class SessionManager {
       const msg = generateWAMessageFromContent(jid, messageContent as any, {
         userJid: session.socket.user?.id || "",
       });
+
+      if (msg.key.id) {
+        this.recentlySent.add(msg.key.id);
+        setTimeout(() => this.recentlySent.delete(msg.key.id!), 10000);
+      }
 
       await session.socket.relayMessage(jid, msg.message!, {
         messageId: msg.key.id!
