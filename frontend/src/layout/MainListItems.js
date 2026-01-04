@@ -1,3 +1,4 @@
+// MainListItems.js modifications
 import React, { useContext, useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
@@ -21,12 +22,15 @@ import QuestionAnswerOutlinedIcon from "@material-ui/icons/QuestionAnswerOutline
 import MenuBookIcon from "@material-ui/icons/MenuBook";
 import DeviceHubIcon from "@material-ui/icons/DeviceHub";
 import LibraryBooksIcon from "@material-ui/icons/LibraryBooks";
+import PersonOutlineIcon from "@material-ui/icons/PersonOutline";
+import HeadsetMicIcon from "@material-ui/icons/HeadsetMic";
 
 import { i18n } from "../translate/i18n";
 import { WhatsAppsContext } from "../context/WhatsApp/WhatsAppsContext";
 import { AuthContext } from "../context/Auth/AuthContext";
 import { Can } from "../components/Can";
 import { useThemeContext } from "../context/DarkMode";
+import api from "../services/api"; // Import API
 
 // Cores do Google para ícones (MD3)
 const googleColors = {
@@ -84,6 +88,20 @@ const MainListItems = (props) => {
   const { whatsApps } = useContext(WhatsAppsContext);
   const { user } = useContext(AuthContext);
   const [connectionWarning, setConnectionWarning] = useState(false);
+  const [activePlugins, setActivePlugins] = useState([]);
+
+  useEffect(() => {
+    // Fetch active plugins
+    const fetchPlugins = async () => {
+      try {
+        const { data } = await api.get("/plugins/api/v1/plugins/installed");
+        setActivePlugins(data.active || []);
+      } catch (err) {
+        console.error("Failed to fetch plugins", err);
+      }
+    };
+    fetchPlugins();
+  }, []);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
@@ -178,6 +196,27 @@ const MainListItems = (props) => {
         )}
       />
 
+      {/* Dynamic Plugins */}
+      {activePlugins.includes("clientes") && (
+        <ListItemLink
+          to="/clients"
+          primary="Clientes"
+          icon={<PersonOutlineIcon />}
+          iconColor={googleColors.blue}
+          collapsed={collapsed}
+        />
+      )}
+
+      {activePlugins.includes("helpdesk") && (
+        <ListItemLink
+          to="/helpdesk"
+          primary="Helpdesk"
+          icon={<HeadsetMicIcon />}
+          iconColor={googleColors.red}
+          collapsed={collapsed}
+        />
+      )}
+
       <Divider />
       {!collapsed && (
         <ListSubheader inset>
@@ -198,6 +237,8 @@ const MainListItems = (props) => {
           />
         )}
       />
+
+      {/* ... keeping other items ... */}
 
       <Can
         user={user}

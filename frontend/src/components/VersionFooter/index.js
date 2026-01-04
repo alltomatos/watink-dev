@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from "react";
-import api from "../../services/api";
-import { i18n } from "../../translate/i18n";
-import { makeStyles, Typography, Collapse } from "@material-ui/core";
+import React from "react";
+import { makeStyles, Typography } from "@material-ui/core";
+import { Link as RouterLink } from "react-router-dom";
 
 const useStyles = makeStyles((theme) => ({
     footer: {
@@ -14,26 +13,15 @@ const useStyles = makeStyles((theme) => ({
         overflow: "hidden",
         whiteSpace: "nowrap",
     },
+    link: {
+        textDecoration: "none",
+        color: theme.palette.primary.main,
+        fontWeight: 600,
+    },
 }));
 
 const VersionFooter = ({ collapsed = false }) => {
     const classes = useStyles();
-    const [backendVersion, setBackendVersion] = useState("-");
-    const [engineVersion, setEngineVersion] = useState("-");
-    const frontendVersion = process.env.npm_package_version || "0.1.0";
-
-    useEffect(() => {
-        const fetchVersion = async () => {
-            try {
-                const { data } = await api.get("/version");
-                setBackendVersion(data.version);
-                setEngineVersion(data.engineVersion);
-            } catch (err) {
-                console.error("Failed to fetch backend version", err);
-            }
-        };
-        fetchVersion();
-    }, []);
 
     // Esconder footer quando drawer está colapsado
     if (collapsed) {
@@ -42,12 +30,11 @@ const VersionFooter = ({ collapsed = false }) => {
 
     return (
         <div className={classes.footer}>
-            <Typography variant="caption" display="block">
-                Front: v{frontendVersion} | Back: v{backendVersion}
-            </Typography>
-            <Typography variant="caption" display="block">
-                Engine: v{engineVersion}
-            </Typography>
+            <RouterLink to="/versions" className={classes.link}>
+                <Typography variant="caption" display="block">
+                    Versões
+                </Typography>
+            </RouterLink>
         </div>
     );
 };

@@ -5,7 +5,7 @@ import AppError from "../../errors/AppError";
 
 interface UpdateClientData {
     id: number;
-    tenantId: number;
+    tenantId: string | number;
     type?: string;
     name?: string;
     document?: string;

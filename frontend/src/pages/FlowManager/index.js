@@ -77,7 +77,7 @@ const FlowManager = () => {
         setLoading(true);
         try {
             const { data } = await api.get('/flows');
-            setFlows(data);
+            setFlows(Array.isArray(data) ? data : []);
         } catch (err) {
             toast.error("Erro ao carregar fluxos");
         }
@@ -87,7 +87,7 @@ const FlowManager = () => {
     const fetchWhatsapps = async () => {
         try {
             const { data } = await api.get('/whatsapp');
-            setWhatsapps(data);
+            setWhatsapps(Array.isArray(data) ? data : []);
         } catch (err) {
             toast.error("Erro ao carregar conexões");
         }

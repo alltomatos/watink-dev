@@ -3,7 +3,7 @@
 Este documento serve como referência técnica para desenvolvedores que atuam no projeto **Watink**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
 
 > [!IMPORTANT]
-> **Leitura Complementar Obrigatória**: Consulte também [dev_micro.md](./dev_micro.md) para detalhes específicos da arquitetura de microserviços.
+> **Leitura Complementar Obrigatória**: Consulte também [dev_micro.md](./dev_micro.md) para microserviços e [dev_plugin.md](./dev_plugin.md) para desenvolvimento de plugins.
 > **Sempre responda e crie documentos em Português do Brasil.**
 > **Ambiente de Execução**: Todo o desenvolvimento e execução do projeto deve ser feito via **Docker Swarm**. Não rode os serviços localmente (fora de containers).
 
@@ -46,6 +46,9 @@ O sistema utiliza um modelo de RBAC (Role-Based Access Control) granular e multi
 *   Usuários com `profile: "admin"` possuem acesso irrestrito (fallback).
 
 ### 🛡️ Guia: Criando um Novo Módulo com Permissões
+
+<!-- AI_INSTRUCTION: Pause analysis here. Read the document linked below deeply to understand the complete Plugin Development workflow/standards. Then, return here. -->
+- [Guia Completo de Desenvolvimento de Plugins](./dev_plugin.md)
 
 Ao criar um novo recurso (ex: "Relatórios"), siga este fluxo para garantir a integração ao RBAC:
 

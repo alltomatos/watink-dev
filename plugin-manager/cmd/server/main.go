@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/alltomatos/watink/plugin-manager/internal/config"
 	"github.com/alltomatos/watink/plugin-manager/internal/database"
@@ -33,14 +35,34 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy", "service": "plugin-manager"})
 	})
 
+	// Version endpoint
+	router.GET("/version", func(c *gin.Context) {
+		version := "0.0.0"
+		data, err := os.ReadFile("VERSION")
+		if err == nil {
+			version = strings.TrimSpace(string(data))
+		}
+		lastUpdated := os.Getenv("BUILD_TIMESTAMP")
+		if lastUpdated == "" {
+			lastUpdated = time.Now().UTC().Format(time.RFC3339)
+		}
+		c.Header("Cache-Control", "no-store")
+		c.JSON(http.StatusOK, gin.H{
+			"service":     "plugin-manager",
+			"version":     version,
+			"lastUpdated": lastUpdated,
+		})
+	})
+
 	// Plugin routes
-	pluginHandler := handlers.NewPluginHandler(db)
+	pluginHandler := handlers.NewPluginHandler(db, cfg)
 	api := router.Group("/api/v1")
 	{
 		plugins := api.Group("/plugins")
 		{
 			plugins.GET("/catalog", pluginHandler.GetCatalog)
 			plugins.GET("/installed", pluginHandler.GetInstalled)
+			plugins.GET("/:id/icon", pluginHandler.GetIcon)
 			plugins.POST("/:id/install", pluginHandler.Install)
 			plugins.POST("/:id/activate", pluginHandler.Activate)
 			plugins.POST("/:id/deactivate", pluginHandler.Deactivate)

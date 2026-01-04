@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import openSocket from "../../services/socket-io";
 import MemoryIcon from "@material-ui/icons/Memory";
+import ExtensionIcon from "@material-ui/icons/Extension";
+import { useHistory } from "react-router-dom";
 
 import { makeStyles } from "@material-ui/core/styles";
 import Paper from "@material-ui/core/Paper";
@@ -27,6 +29,7 @@ import { i18n } from "../../translate/i18n.js";
 import toastError from "../../errors/toastError";
 import { useThemeContext } from "../../context/DarkMode";
 import { getBackendUrl } from "../../config";
+import { AuthContext } from "../../context/Auth/AuthContext";
 
 const AI_MODELS = {
 	openai: [
@@ -130,6 +133,8 @@ const useStyles = makeStyles((theme) => ({
 const Settings = () => {
 	const classes = useStyles();
 	const { appTheme, setAppTheme } = useThemeContext();
+	const history = useHistory();
+	const { user } = useContext(AuthContext);
 
 	const [activeSection, setActiveSection] = useState("general");
 	const [settings, setSettings] = useState([]);
@@ -152,41 +157,42 @@ const Settings = () => {
 		const fetchSession = async () => {
 			try {
 				const { data } = await api.get("/settings");
-				setSettings(data);
+				const settingsData = Array.isArray(data) ? data : [];
+				setSettings(settingsData);
 
-				const titleSetting = data.find(s => s.key === "systemTitle");
+				const titleSetting = settingsData.find(s => s.key === "systemTitle");
 				if (titleSetting) setSystemTitle(titleSetting.value);
 
-				const logoSetting = data.find(s => s.key === "systemLogo");
+				const logoSetting = settingsData.find(s => s.key === "systemLogo");
 				if (logoSetting && logoSetting.value) setLogoPreview(logoSetting.value);
 
-				const logoEnabledSetting = data.find(s => s.key === "systemLogoEnabled");
+				const logoEnabledSetting = settingsData.find(s => s.key === "systemLogoEnabled");
 				if (logoEnabledSetting) setLogoEnabled(logoEnabledSetting.value === "true");
 
-				const faviconSetting = data.find(s => s.key === "systemFavicon");
+				const faviconSetting = settingsData.find(s => s.key === "systemFavicon");
 				if (faviconSetting && faviconSetting.value) setFaviconPreview(faviconSetting.value);
 
 				// Login Settings
-				const loginImageSetting = data.find(s => s.key === "login_backgroundImage");
+				const loginImageSetting = settingsData.find(s => s.key === "login_backgroundImage");
 				if (loginImageSetting && loginImageSetting.value) setLoginImagePreview(loginImageSetting.value);
 
-				const loginLayoutSetting = data.find(s => s.key === "login_layout");
+				const loginLayoutSetting = settingsData.find(s => s.key === "login_layout");
 				if (loginLayoutSetting) setLoginLayout(loginLayoutSetting.value || "split_left");
 
 				// AI Settings Load
-				const aiProviderSetting = data.find(s => s.key === "aiProvider");
+				const aiProviderSetting = settingsData.find(s => s.key === "aiProvider");
 				if (aiProviderSetting) setAiProvider(aiProviderSetting.value);
 
-				const aiApiKeySetting = data.find(s => s.key === "aiApiKey");
+				const aiApiKeySetting = settingsData.find(s => s.key === "aiApiKey");
 				if (aiApiKeySetting) setAiApiKey(aiApiKeySetting.value);
 
-				const aiModelSetting = data.find(s => s.key === "aiModel");
+				const aiModelSetting = settingsData.find(s => s.key === "aiModel");
 				if (aiModelSetting) setAiModel(aiModelSetting.value);
 
-				const aiGuidePromptSetting = data.find(s => s.key === "aiGuidePrompt");
+				const aiGuidePromptSetting = settingsData.find(s => s.key === "aiGuidePrompt");
 				if (aiGuidePromptSetting) setAiGuidePrompt(aiGuidePromptSetting.value);
 
-				const aiEnabledSetting = data.find(s => s.key === "aiEnabled");
+				const aiEnabledSetting = settingsData.find(s => s.key === "aiEnabled");
 				if (aiEnabledSetting) setAiEnabled(aiEnabledSetting.value === "true");
 
 			} catch (err) {
@@ -665,6 +671,18 @@ const Settings = () => {
 						</ListItemIcon>
 						<ListItemText primary="Inteligência Artificial" />
 					</ListItem>
+					{["admin","superadmin"].includes(user?.profile) && (
+						<ListItem
+							button
+							onClick={() => history.push("/admin/settings/marketplace")}
+							className={classes.menuItem}
+						>
+							<ListItemIcon>
+								<ExtensionIcon />
+							</ListItemIcon>
+							<ListItemText primary="Marketplace" />
+						</ListItem>
+					)}
 				</List>
 			</Box>
 			<Box className={classes.content}>

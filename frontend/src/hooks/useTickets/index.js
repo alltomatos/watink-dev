@@ -36,7 +36,7 @@ const useTickets = ({
                             isGroup,
                         },
                     })
-                    setTickets(data.tickets)
+                    setTickets(data.tickets || [])
 
                     let horasFecharAutomaticamente = getHoursCloseTicketsAuto();
 
