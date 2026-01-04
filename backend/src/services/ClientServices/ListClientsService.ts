@@ -4,7 +4,7 @@ import ClientContact from "../../models/ClientContact";
 import ClientAddress from "../../models/ClientAddress";
 
 interface ListClientsParams {
-    tenantId: number;
+    tenantId: string | number;
     searchParam?: string;
     pageNumber?: string | number;
     isActive?: boolean;

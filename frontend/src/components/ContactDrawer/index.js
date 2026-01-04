@@ -381,7 +381,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 						>
 							Abrir Protocolo
 						</Button>
-</Paper>
+					</Paper>
 
 						<Dialog open={pipelineModalOpen} onClose={() => setPipelineModalOpen(false)}>
 							<DialogTitle>Novo Deal</DialogTitle>

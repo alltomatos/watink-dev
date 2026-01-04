@@ -123,7 +123,7 @@ const Users = () => {
           const { data } = await api.get("/users/", {
             params: { searchParam, pageNumber },
           });
-          dispatch({ type: "LOAD_USERS", payload: data.users });
+          dispatch({ type: "LOAD_USERS", payload: data.users || [] });
           setHasMore(data.hasMore);
           setLoading(false);
         } catch (err) {

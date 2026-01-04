@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:alpine AS builder
 
 WORKDIR /app
 
@@ -22,6 +22,7 @@ WORKDIR /app
 
 # Copy the binary from builder
 COPY --from=builder /plugin-manager .
+COPY VERSION ./VERSION
 
 # Expose port
 EXPOSE 3005

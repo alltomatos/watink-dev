@@ -21,7 +21,8 @@ interface WhatsappData {
 }
 
 export const index = async (req: Request, res: Response): Promise<Response> => {
-  const whatsapps = await ListWhatsAppsService();
+  const { tenantId } = (req as any).user;
+  const whatsapps = await ListWhatsAppsService(tenantId);
 
   return res.status(200).json(whatsapps);
 };
