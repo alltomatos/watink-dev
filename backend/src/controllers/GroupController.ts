@@ -25,6 +25,7 @@ type GroupFilter = {
 export const index = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { tenantId } = req.user;
+        console.log("DEBUG: GroupController.index tenantId:", tenantId, "UserID:", req.user.id);
         console.log("DEBUG: GroupController.index tenantId:", tenantId, "User:", req.user);
 
         const groups = await Group.findAll({

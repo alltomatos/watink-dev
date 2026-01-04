@@ -1,0 +1,7 @@
+{
+  "name": "Plugin de Helpdesk",
+  "slug": "helpdesk",
+  "version": "1.0.0",
+  "description": "Sistema de protocolos de atendimento vinculados a tickets.",
+  "type": "plugin"
+}

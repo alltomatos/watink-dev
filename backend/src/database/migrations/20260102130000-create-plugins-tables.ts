@@ -69,9 +69,9 @@ module.exports = {
         allowNull: false
       },
       tenantId: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.UUID,
         allowNull: false,
-        references: { model: "Companies", key: "id" },
+        references: { model: "Tenants", key: "id" },
         onUpdate: "CASCADE",
         onDelete: "CASCADE"
       },

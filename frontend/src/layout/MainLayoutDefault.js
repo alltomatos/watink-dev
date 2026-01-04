@@ -160,10 +160,12 @@ const MainLayoutDefault = ({ children }) => {
         const fetchSettings = async () => {
             try {
                 const { data } = await api.get("/settings");
-                const logoSetting = data.find(s => s.key === "systemLogo");
-                const titleSetting = data.find(s => s.key === "systemTitle");
-                const logoEnabledSetting = data.find(s => s.key === "systemLogoEnabled");
-                const faviconSetting = data.find(s => s.key === "systemFavicon");
+                const settingsData = Array.isArray(data) ? data : [];
+
+                const logoSetting = settingsData.find(s => s.key === "systemLogo");
+                const titleSetting = settingsData.find(s => s.key === "systemTitle");
+                const logoEnabledSetting = settingsData.find(s => s.key === "systemLogoEnabled");
+                const faviconSetting = settingsData.find(s => s.key === "systemFavicon");
 
                 if (logoSetting && logoSetting.value) {
                     setSystemLogo(logoSetting.value);

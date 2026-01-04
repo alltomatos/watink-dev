@@ -1,10 +1,12 @@
 function getConfig(name, defaultValue = null) {
-  // If inside a docker container, use window.ENV
-  if (window.ENV !== undefined) {
-    return window.ENV[name] || defaultValue;
+  if (typeof window !== "undefined") {
+    const runtimeEnv = window.ENV;
+    if (runtimeEnv && runtimeEnv[name] !== undefined) {
+      return runtimeEnv[name];
+    }
   }
-
-  return import.meta.env[name] || defaultValue;
+  const value = import.meta.env[name];
+  return value !== undefined ? value : defaultValue;
 }
 
 export function getBackendUrl() {
@@ -13,4 +15,8 @@ export function getBackendUrl() {
 
 export function getHoursCloseTicketsAuto() {
   return getConfig("VITE_HOURS_CLOSE_TICKETS_AUTO");
+}
+
+export function getPluginManagerUrl() {
+  return getConfig("VITE_PLUGIN_MANAGER_URL") || getBackendUrl();
 }

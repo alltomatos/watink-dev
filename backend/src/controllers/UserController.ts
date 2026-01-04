@@ -17,10 +17,12 @@ type IndexQuery = {
 
 export const index = async (req: Request, res: Response): Promise<Response> => {
   const { searchParam, pageNumber } = req.query as IndexQuery;
+  const { tenantId } = req.user;
 
   const { users, count, hasMore } = await ListUsersService({
     searchParam,
-    pageNumber
+    pageNumber,
+    tenantId
   });
 
   return res.json({ users, count, hasMore });

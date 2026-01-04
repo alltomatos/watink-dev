@@ -147,7 +147,10 @@ const GroupModal = ({ open, onClose, groupId }) => {
             "settings": "Configurações",
             "dashboard": "Dashboard",
             "pipelines": "Pipelines",
-            "swagger": "Desenvolvedor"
+            "swagger": "Desenvolvedor",
+            "clients": "Clientes",
+            "helpdesk": "Helpdesk",
+            "marketplace": "Marketplace"
         };
 
         const grouped = {};
