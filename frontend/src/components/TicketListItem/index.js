@@ -23,6 +23,7 @@ import { Tooltip } from "@material-ui/core";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { useThemeContext } from "../../context/DarkMode";
 import toastError from "../../errors/toastError";
+import { getBackendUrl } from "../../helpers/urlUtils";
 
 const useStyles = makeStyles(theme => ({
 	ticket: {
@@ -192,7 +193,7 @@ const TicketListItem = ({ ticket }) => {
 					></span>
 				</Tooltip>
 				<ListItemAvatar>
-					<Avatar src={ticket?.contact?.profilePicUrl?.replace("localhost:8081", "localhost").replace("localhost:8080", "localhost")} />
+					<Avatar src={getBackendUrl(ticket?.contact?.profilePicUrl)} />
 				</ListItemAvatar>
 				<ListItemText
 					disableTypography

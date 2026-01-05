@@ -41,6 +41,7 @@ import toastError from "../../errors/toastError";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { getBackendUrl } from "../../helpers/urlUtils";
 
 const reducer = (state, action) => {
   if (action.type === "LOAD_CONTACTS") {
@@ -305,7 +306,7 @@ const Contacts = () => {
             {contacts.map((contact) => (
               <Grid item xs={12} sm={6} md={4} lg={3} key={contact.id}>
                 <ListItemCard
-                  avatar={contact.profilePicUrl}
+                  avatar={getBackendUrl(contact.profilePicUrl)}
                   title={contact.name}
                   subtitle={contact.number}
                   status={getContactStatus(contact)}
@@ -369,7 +370,7 @@ const Contacts = () => {
                 {contacts.map((contact) => (
                   <TableRow key={contact.id}>
                     <TableCell style={{ paddingRight: 0 }}>
-                      {<Avatar src={contact.profilePicUrl} />}
+                      {<Avatar src={getBackendUrl(contact.profilePicUrl)} />}
                     </TableCell>
                     <TableCell>{contact.name}</TableCell>
                     <TableCell align="center">{contact.number}</TableCell>

@@ -33,6 +33,7 @@ import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import { useThemeContext } from "../../context/DarkMode";
 import Audio from "../Audio";
+import { getBackendUrl } from "../../helpers/urlUtils";
 
 const useStyles = makeStyles((theme) => ({
   messagesListWrapper: {
@@ -563,14 +564,14 @@ const MessagesList = ({ ticketId, isGroup }) => {
       } else return (<></>)
     }*/
     else if (/^.*\.(jpe?g|png|gif)?$/i.exec(message.mediaUrl) && message.mediaType === "image") {
-      return <ModalImageCors imageUrl={message.mediaUrl?.replace("localhost:8081", "localhost").replace("localhost:8080", "localhost")} />;
+      return <ModalImageCors imageUrl={getBackendUrl(message.mediaUrl)} />;
     } else if (message.mediaType === "audio") {
-      return <Audio url={message.mediaUrl?.replace("localhost:8081", "localhost").replace("localhost:8080", "localhost")} />
+      return <Audio url={getBackendUrl(message.mediaUrl)} />
     } else if (message.mediaType === "video") {
       return (
         <div style={{ position: 'relative', width: '100%', maxWidth: '300px', borderRadius: 8, overflow: 'hidden' }}>
           <video
-            src={message.mediaUrl?.replace("localhost:8081", "localhost").replace("localhost:8080", "localhost")}
+            src={getBackendUrl(message.mediaUrl)}
             controls
             style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain', backgroundColor: '#000' }}
           />
@@ -579,7 +580,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
     } else {
       return (
         <>
-          <FilePreview mediaUrl={message.mediaUrl?.replace("localhost:8081", "localhost").replace("localhost:8080", "localhost")} filename={message.body} />
+          <FilePreview mediaUrl={getBackendUrl(message.mediaUrl)} filename={message.body} />
         </>
       );
     }
