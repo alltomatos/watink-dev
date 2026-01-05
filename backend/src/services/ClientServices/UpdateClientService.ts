@@ -1,6 +1,7 @@
 import Client from "../../models/Client";
 import ClientContact from "../../models/ClientContact";
 import ClientAddress from "../../models/ClientAddress";
+import Contact from "../../models/Contact";
 import AppError from "../../errors/AppError";
 
 interface UpdateClientData {
@@ -51,10 +52,36 @@ const UpdateClientService = async (data: UpdateClientData): Promise<Client> => {
     if (contacts !== undefined) {
         await ClientContact.destroy({ where: { clientId: id } });
         if (contacts.length > 0) {
-            const contactsWithClientId = contacts.map(c => ({
-                ...c,
-                clientId: id
-            }));
+            const contactsWithClientId = [];
+
+            for (const contact of contacts) {
+                let contactId = contact.contactId;
+
+                if (!contactId && contact.phone) {
+                    const existingContact = await Contact.findOne({
+                        where: { number: contact.phone, tenantId }
+                    });
+
+                    if (existingContact) {
+                        contactId = existingContact.id;
+                    } else {
+                        const newContact = await Contact.create({
+                            name: contact.name,
+                            number: contact.phone,
+                            email: contact.email || "",
+                            tenantId
+                        });
+                        contactId = newContact.id;
+                    }
+                }
+
+                contactsWithClientId.push({
+                    ...contact,
+                    contactId,
+                    clientId: id
+                });
+            }
+
             await ClientContact.bulkCreate(contactsWithClientId);
         }
     }

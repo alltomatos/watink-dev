@@ -25,13 +25,13 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const endpoints = [
-  { key: "frontend", url: "/version" },
-  { key: "backend", url: "/backend/version" },
+  { key: "frontend", url: "/version.json" },
+  { key: "backend", url: "/api/version" },
   { key: "plugin-manager", url: "/plugins/version" },
-  { key: "whaileys-engine", url: "/engine/version" },
-  { key: "flow-worker", url: "/flow/version" },
-  { key: "pgvectorgis", url: "/postgres/version" },
-  { key: "rabbitmq", url: "/rabbitmq/version" },
+  { key: "whaileys-engine", url: "/api/engine/version" },
+  { key: "flow-worker", url: "/api/flow/version" },
+  { key: "pgvectorgis", url: "/api/postgres/version" },
+  { key: "rabbitmq", url: "/api/rabbitmq/version" },
 ];
 
 export default function VersionDashboard() {

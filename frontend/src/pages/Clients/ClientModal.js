@@ -19,6 +19,7 @@ import {
     Tabs,
     Tab,
 } from "@material-ui/core";
+import { Autocomplete } from "@material-ui/lab";
 import {
     Add as AddIcon,
     Delete as DeleteIcon,
@@ -61,6 +62,7 @@ const emptyContact = {
     phone: "",
     email: "",
     isPrimary: false,
+    contactId: null,
 };
 
 const emptyAddress = {
@@ -89,6 +91,35 @@ const ClientModal = ({ open, onClose, client }) => {
         contacts: [],
         addresses: [],
     });
+
+    const [contactOptions, setContactOptions] = useState([]);
+    const [loadingContacts, setLoadingContacts] = useState(false);
+    const searchTimeoutRef = React.useRef(null);
+
+    const fetchContacts = (inputValue) => {
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        if (!inputValue) {
+            setContactOptions([]);
+            return;
+        }
+
+        searchTimeoutRef.current = setTimeout(async () => {
+            setLoadingContacts(true);
+            try {
+                const { data } = await api.get("/contacts", {
+                    params: { searchParam: inputValue }
+                });
+                setContactOptions(data.contacts);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoadingContacts(false);
+            }
+        }, 500);
+    };
 
     useEffect(() => {
         if (client) {
@@ -325,13 +356,54 @@ const ClientModal = ({ open, onClose, client }) => {
                                     </IconButton>
                                     <Grid container spacing={2}>
                                         <Grid item xs={12} sm={6}>
-                                            <TextField
-                                                label="Nome"
-                                                value={contact.name}
-                                                onChange={(e) => handleContactChange(index, "name", e.target.value)}
-                                                variant="outlined"
-                                                size="small"
-                                                fullWidth
+                                            <Autocomplete
+                                                freeSolo
+                                                options={contactOptions}
+                                                getOptionLabel={(option) => option.name || ""}
+                                                onChange={(e, value) => {
+                                                    if (typeof value === 'string') {
+                                                        handleContactChange(index, "name", value);
+                                                        handleContactChange(index, "contactId", null);
+                                                    } else if (value && value.id) {
+                                                        const newContacts = [...formData.contacts];
+                                                        newContacts[index] = {
+                                                            ...newContacts[index],
+                                                            contactId: value.id,
+                                                            name: value.name,
+                                                            phone: value.number,
+                                                            email: value.email
+                                                        };
+                                                        setFormData(prev => ({ ...prev, contacts: newContacts }));
+                                                    } else {
+                                                        handleContactChange(index, "name", "");
+                                                        handleContactChange(index, "contactId", null);
+                                                    }
+                                                }}
+                                                onInputChange={(e, newInputValue, reason) => {
+                                                    handleContactChange(index, "name", newInputValue);
+                                                    if (reason === 'input') {
+                                                        fetchContacts(newInputValue);
+                                                    }
+                                                }}
+                                                inputValue={contact.name}
+                                                renderInput={(params) => (
+                                                    <TextField
+                                                        {...params}
+                                                        label="Nome"
+                                                        variant="outlined"
+                                                        size="small"
+                                                        fullWidth
+                                                        InputProps={{
+                                                            ...params.InputProps,
+                                                            endAdornment: (
+                                                                <React.Fragment>
+                                                                    {loadingContacts ? <CircularProgress color="inherit" size={20} /> : null}
+                                                                    {params.InputProps.endAdornment}
+                                                                </React.Fragment>
+                                                            ),
+                                                        }}
+                                                    />
+                                                )}
                                             />
                                         </Grid>
                                         <Grid item xs={12} sm={6}>

@@ -14,6 +14,9 @@ interface MessageData {
   mediaUrl?: string;
   tenantId?: number | string;
   ack?: number;
+  quotedMsgId?: string;
+  dataJson?: object;
+  participant?: string;
 }
 interface Request {
   messageData: MessageData;
