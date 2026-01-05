@@ -192,7 +192,7 @@ const TicketListItem = ({ ticket }) => {
 					></span>
 				</Tooltip>
 				<ListItemAvatar>
-					<Avatar src={ticket?.contact?.profilePicUrl} />
+					<Avatar src={ticket?.contact?.profilePicUrl?.replace("localhost:8081", "localhost").replace("localhost:8080", "localhost")} />
 				</ListItemAvatar>
 				<ListItemText
 					disableTypography

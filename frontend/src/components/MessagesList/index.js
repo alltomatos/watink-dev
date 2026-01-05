@@ -563,14 +563,14 @@ const MessagesList = ({ ticketId, isGroup }) => {
       } else return (<></>)
     }*/
     else if (/^.*\.(jpe?g|png|gif)?$/i.exec(message.mediaUrl) && message.mediaType === "image") {
-      return <ModalImageCors imageUrl={message.mediaUrl} />;
+      return <ModalImageCors imageUrl={message.mediaUrl?.replace("localhost:8081", "localhost").replace("localhost:8080", "localhost")} />;
     } else if (message.mediaType === "audio") {
-      return <Audio url={message.mediaUrl} />
+      return <Audio url={message.mediaUrl?.replace("localhost:8081", "localhost").replace("localhost:8080", "localhost")} />
     } else if (message.mediaType === "video") {
       return (
         <div style={{ position: 'relative', width: '100%', maxWidth: '300px', borderRadius: 8, overflow: 'hidden' }}>
           <video
-            src={message.mediaUrl}
+            src={message.mediaUrl?.replace("localhost:8081", "localhost").replace("localhost:8080", "localhost")}
             controls
             style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain', backgroundColor: '#000' }}
           />
@@ -579,7 +579,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
     } else {
       return (
         <>
-          <FilePreview mediaUrl={message.mediaUrl} filename={message.body} />
+          <FilePreview mediaUrl={message.mediaUrl?.replace("localhost:8081", "localhost").replace("localhost:8080", "localhost")} filename={message.body} />
         </>
       );
     }
@@ -732,7 +732,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
   };
 
   const renderSenderName = (message) => {
-    if (!message.ticket?.isGroup) return null;
+    if (!isGroup) return null;
 
     // If it's my message, no need to show my name
     if (message.fromMe) return null;
@@ -768,9 +768,9 @@ const MessagesList = ({ ticketId, isGroup }) => {
     const color = "#128C7E"; // WhatsApp teal or random color generator based on participant
 
     return (
-      <div style={{ fontSize: 13, color: color, fontWeight: 'bold', marginBottom: 4 }}>
+      <span className={classes.messageContactName}>
         {`~${displayName} ${pushName && participantNumber ? displayNumber : ""}`}
-      </div>
+      </span>
     )
 
   };
@@ -798,16 +798,12 @@ const MessagesList = ({ ticketId, isGroup }) => {
                 >
                   <ExpandMore />
                 </IconButton>
-                {isGroup && (
-                  <span className={classes.messageContactName}>
-                    {message.contact?.name}
-                  </span>
-                )}
+                {renderSenderName(message)}
                 {(message.mediaUrl || message.mediaType === "location" || message.mediaType === "vcard"
                   //|| message.mediaType === "multi_vcard" 
                 ) && checkMessageMedia(message)}
                 <div className={classes.textContentItem}>
-                  {renderSenderName(message)}
+                  {message.quotedMsg && renderQuotedMessage(message)}
                   {message.quotedMsg && renderQuotedMessage(message)}
                   {renderUrlPreview(message)}
                   {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
