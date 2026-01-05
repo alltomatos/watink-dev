@@ -413,6 +413,7 @@ const ConnectionConfig = () => {
                                         className={classes.actionButton}
                                         onClick={handleShowPairing}
                                         startIcon={<PhoneIphone />}
+                                        style={{ display: "none" }}
                                     >
                                         CÓDIGO DE PAREAMENTO
                                     </Button>
