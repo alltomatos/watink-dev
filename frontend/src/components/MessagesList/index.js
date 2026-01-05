@@ -649,6 +649,29 @@ const MessagesList = ({ ticketId, isGroup }) => {
     }
   };
 
+  const getMessageBody = (message) => {
+    if (!message) return null;
+    if (message.body && message.body.length > 0) return message.body;
+    if (message.dataJson) {
+      try {
+        const data = typeof message.dataJson === 'string' ? JSON.parse(message.dataJson) : message.dataJson;
+
+        // Extended text message with context
+        if (data?.message?.extendedTextMessage?.text) return data.message.extendedTextMessage.text;
+
+        // Simple conversation
+        if (data?.message?.conversation) return data.message.conversation;
+
+        // Direct properties (sometimes extracted top-level)
+        if (data?.conversation) return data.conversation;
+        if (data?.text) return data.text;
+      } catch (e) {
+        console.error("Error parsing message body from json", e);
+      }
+    }
+    return null;
+  };
+
   const renderQuotedMessage = (message) => {
     return (
       <div
@@ -667,7 +690,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
               {message.quotedMsg?.contact?.name}
             </span>
           )}
-          {message.quotedMsg?.body}
+          {getMessageBody(message.quotedMsg)}
         </div>
       </div>
     );
@@ -701,6 +724,8 @@ const MessagesList = ({ ticketId, isGroup }) => {
     }
     return null;
   };
+
+
 
   const renderUrlPreview = (message) => {
     let urlPreview = message.dataJson?.urlPreview;
@@ -807,7 +832,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                   {message.quotedMsg && renderQuotedMessage(message)}
                   {renderUrlPreview(message)}
                   {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
-                    <MarkdownWrapper>{message.body}</MarkdownWrapper>
+                    <MarkdownWrapper>{getMessageBody(message)}</MarkdownWrapper>
                   }
                   <span className={classes.timestamp}>
                     {format(parseISO(message.createdAt), "HH:mm")}
@@ -855,7 +880,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                   {message.quotedMsg && renderQuotedMessage(message)}
                   {renderUrlPreview(message)}
                   {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
-                    <MarkdownWrapper>{message.body}</MarkdownWrapper>
+                    <MarkdownWrapper>{getMessageBody(message)}</MarkdownWrapper>
                   }
                   <span className={classes.timestamp}>
                     {format(parseISO(message.createdAt), "HH:mm")}
