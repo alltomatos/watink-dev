@@ -778,14 +778,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
 
   const renderMessages = () => {
     if (messagesList.length > 0) {
-      const viewMessagesList = messagesList.filter(msg => {
-        if (msg.isDeleted) return true;
-        if (msg.mediaUrl) return true;
-        if (msg.quotedMsg) return true;
-        if (msg.body && msg.body.toString().trim().length > 0) return true;
-        if (msg.mediaType === "vcard" || msg.mediaType === "location" || msg.mediaType === "multi_vcard") return true;
-        return false;
-      }).map((message, index) => {
+      const viewMessagesList = messagesList.map((message, index) => {
         if (!message.fromMe) {
           return (
             <React.Fragment key={message.id}>
