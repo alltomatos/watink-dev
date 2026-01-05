@@ -587,6 +587,11 @@ const MessagesList = ({ ticketId, isGroup }) => {
   };
 
   const renderMessageAck = (message) => {
+    // Hide read receipts in group chats - unnecessary
+    if (isGroup) {
+      return null;
+    }
+
     if (message.ack === 0) {
       return <AccessTime fontSize="small" className={classes.ackIcons} />;
     }
