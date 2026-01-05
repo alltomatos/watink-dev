@@ -778,7 +778,14 @@ const MessagesList = ({ ticketId, isGroup }) => {
 
   const renderMessages = () => {
     if (messagesList.length > 0) {
-      const viewMessagesList = messagesList.map((message, index) => {
+      const viewMessagesList = messagesList.filter(msg => {
+        if (msg.isDeleted) return true;
+        if (msg.mediaUrl) return true;
+        if (msg.quotedMsg) return true;
+        if (msg.body && msg.body.toString().trim().length > 0) return true;
+        if (msg.mediaType === "vcard" || msg.mediaType === "location" || msg.mediaType === "multi_vcard") return true;
+        return false;
+      }).map((message, index) => {
         if (!message.fromMe) {
           return (
             <React.Fragment key={message.id}>
@@ -804,7 +811,6 @@ const MessagesList = ({ ticketId, isGroup }) => {
                   //|| message.mediaType === "multi_vcard" 
                 ) && checkMessageMedia(message)}
                 <div className={classes.textContentItem}>
-                  {message.quotedMsg && renderQuotedMessage(message)}
                   {message.quotedMsg && renderQuotedMessage(message)}
                   {renderUrlPreview(message)}
                   {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
