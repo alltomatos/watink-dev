@@ -14,6 +14,10 @@ import apiRoutes from "./apiRoutes";
 import microserviceRoutes from "./microserviceRoutes";
 import tenantRoutes from "./tenantRoutes";
 import versionRoutes from "./versionRoutes";
+import postgresVersionRoutes from "./postgresVersionRoutes";
+import rabbitmqVersionRoutes from "./rabbitmqVersionRoutes";
+import engineVersionRoutes from "./engineVersionRoutes";
+import flowVersionRoutes from "./flowVersionRoutes";
 
 import pipelineRoutes from "./pipelineRoutes";
 import dealRoutes from "./dealRoutes";
@@ -23,6 +27,8 @@ import groupRoutes from "./groupRoutes";
 import knowledgeRoutes from "./knowledgeRoutes";
 import clientRoutes from "./clientRoutes";
 import protocolRoutes from "./protocolRoutes";
+
+import pluginRoutes from "./pluginRoutes";
 
 const routes = Router();
 
@@ -41,12 +47,17 @@ routes.use(microserviceRoutes);
 routes.use(tenantRoutes);
 routes.use(groupRoutes);
 routes.use("/version", versionRoutes);
+routes.use(postgresVersionRoutes);
+routes.use(rabbitmqVersionRoutes);
+routes.use(engineVersionRoutes);
+routes.use(flowVersionRoutes);
 routes.use(pipelineRoutes);
 routes.use(dealRoutes);
 routes.use(flowRoutes);
 routes.use(knowledgeRoutes);
 routes.use(clientRoutes);
 routes.use(protocolRoutes);
+routes.use(pluginRoutes);
 routes.use("/users", userRoutes);
 
 export default routes;

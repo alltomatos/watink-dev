@@ -120,7 +120,7 @@ const KnowledgeBase = () => {
             setLoading(true);
             try {
                 const { data } = await api.get("/knowledge-bases");
-                dispatch({ type: "LOAD_KNOWLEDGE_BASES", payload: data });
+                dispatch({ type: "LOAD_KNOWLEDGE_BASES", payload: Array.isArray(data) ? data : [] });
             } catch (err) {
                 toastError(err);
             }

@@ -223,6 +223,22 @@ export interface MessageReceivedPayload {
     pushName?: string;
     senderLid?: string;
     originalId?: string; // UUID from Backend
+    // Quoted Message
+    quotedMsgId?: string;
+    quotedMsg?: {
+      id: string;
+      body: string;
+      participant: string;
+      type: string;
+    };
+    // Link Preview
+    urlPreview?: {
+      title?: string;
+      description?: string;
+      canonicalUrl?: string;
+      thumbnail?: string; // Base64
+      previewType?: string;
+    };
     status?: number;
     ack?: number;
   };

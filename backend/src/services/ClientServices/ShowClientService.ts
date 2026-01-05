@@ -5,7 +5,7 @@ import AppError from "../../errors/AppError";
 
 const ShowClientService = async (
     clientId: number,
-    tenantId: number
+    tenantId: string | number
 ): Promise<Client> => {
     const client = await Client.findOne({
         where: { id: clientId, tenantId },

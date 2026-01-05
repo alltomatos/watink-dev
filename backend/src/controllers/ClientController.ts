@@ -10,7 +10,7 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
     const { searchParam, pageNumber, isActive } = req.query;
 
     const { clients, count, hasMore } = await ListClientsService({
-        tenantId: Number(tenantId),
+        tenantId: tenantId as string | number,
         searchParam: searchParam as string,
         pageNumber: pageNumber as string,
         isActive: isActive === "true" ? true : isActive === "false" ? false : undefined
@@ -25,7 +25,7 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
 
     const client = await CreateClientService({
         ...clientData,
-        tenantId
+        tenantId: tenantId as string | number
     });
 
     return res.status(201).json(client);
@@ -35,7 +35,7 @@ export const show = async (req: Request, res: Response): Promise<Response> => {
     const { tenantId: tenantId } = req.user;
     const { clientId } = req.params;
 
-    const client = await ShowClientService(Number(clientId), Number(tenantId));
+    const client = await ShowClientService(Number(clientId), tenantId as string | number);
 
     return res.json(client);
 };
@@ -48,7 +48,7 @@ export const update = async (req: Request, res: Response): Promise<Response> => 
     const client = await UpdateClientService({
         ...clientData,
         id: Number(clientId),
-        tenantId
+        tenantId: tenantId as string | number
     });
 
     return res.json(client);
@@ -58,7 +58,7 @@ export const remove = async (req: Request, res: Response): Promise<Response> => 
     const { tenantId: tenantId } = req.user;
     const { clientId } = req.params;
 
-    await DeleteClientService(Number(clientId), Number(tenantId));
+    await DeleteClientService(Number(clientId), tenantId as string | number);
 
     return res.status(200).json({ message: "Client deleted" });
 };

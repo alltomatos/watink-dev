@@ -136,7 +136,7 @@ const Contacts = () => {
           const { data } = await api.get("/contacts/", {
             params: { searchParam, pageNumber },
           });
-          dispatch({ type: "LOAD_CONTACTS", payload: data.contacts });
+          dispatch({ type: "LOAD_CONTACTS", payload: data.contacts || [] });
           setHasMore(data.hasMore);
           setLoading(false);
         } catch (err) {

@@ -6,13 +6,10 @@ import {
     Grid,
     Card,
     CardContent,
-    CardMedia,
     CardActions,
     Button,
     Chip,
-    IconButton,
-    ToggleButton,
-    ToggleButtonGroup,
+
     Box,
     Table,
     TableBody,
@@ -33,8 +30,12 @@ import {
 } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
 import { useHistory } from "react-router-dom";
-import api from "../../services/api";
+import { useContext } from "react";
+import { AuthContext } from "../../context/Auth/AuthContext";
+import { Can } from "../../components/Can";
+import pluginApi from "../../services/pluginApi";
 import { toast } from "react-toastify";
+import { ToggleButton, ToggleButtonGroup, Alert } from "@material-ui/lab";
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -110,10 +111,12 @@ const useStyles = makeStyles((theme) => ({
 const Marketplace = () => {
     const classes = useStyles();
     const history = useHistory();
+    const { user } = useContext(AuthContext);
     const [viewMode, setViewMode] = useState("cards");
     const [plugins, setPlugins] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const [offline, setOffline] = useState(false);
 
     useEffect(() => {
         loadPlugins();
@@ -122,44 +125,25 @@ const Marketplace = () => {
     const loadPlugins = async () => {
         try {
             setLoading(true);
-            // TODO: Replace with actual API call to plugin-manager
-            const mockPlugins = [
-                {
-                    id: "550e8400-e29b-41d4-a716-446655440001",
-                    slug: "clientes",
-                    name: "Plugin de Clientes",
-                    description: "Gestão completa de clientes com múltiplos contatos e endereços. Integração ViaCEP.",
-                    version: "1.0.0",
-                    type: "free",
-                    category: "gestao",
-                    installed: false,
-                    active: false,
-                },
-                {
-                    id: "550e8400-e29b-41d4-a716-446655440002",
-                    slug: "helpdesk",
-                    name: "Plugin de Helpdesk",
-                    description: "Sistema de protocolos de atendimento vinculados a tickets.",
-                    version: "1.0.0",
-                    type: "free",
-                    category: "suporte",
-                    installed: false,
-                    active: false,
-                },
-                {
-                    id: "550e8400-e29b-41d4-a716-446655440003",
-                    slug: "whatsmeow",
-                    name: "Motor WhatsMeow",
-                    description: "Engine de alta performance em Go para conexões WhatsApp.",
-                    version: "1.0.0",
-                    type: "premium",
-                    price: 199.90,
-                    category: "engine",
-                    installed: false,
-                    active: false,
-                },
-            ];
-            setPlugins(mockPlugins);
+            const { data: catalogRes } = await pluginApi.get("/api/v1/plugins/catalog");
+            setOffline(Boolean(catalogRes?.offline));
+            const { data: installedRes } = await pluginApi.get("/api/v1/plugins/installed");
+            const activeSlugs = new Set(Array.isArray(installedRes?.active) ? installedRes.active : []);
+            const all = Array.isArray(catalogRes?.plugins) ? catalogRes.plugins : [];
+            const filtered = all.filter(p => ["clientes", "helpdesk"].includes(p.slug));
+            const normalized = filtered.map(p => ({
+                id: p.id,
+                slug: p.slug,
+                name: p.name,
+                description: p.description,
+                version: p.version,
+                type: p.type,
+                category: p.category,
+                iconUrl: p.iconUrl,
+                installed: activeSlugs.has(p.slug),
+                active: activeSlugs.has(p.slug),
+            }));
+            setPlugins(normalized);
         } catch (err) {
             toast.error("Erro ao carregar plugins");
         } finally {
@@ -189,7 +173,11 @@ const Marketplace = () => {
                 <Grid item xs={12} sm={6} md={4} key={plugin.id}>
                     <Card className={classes.card} onClick={() => handlePluginClick(plugin)}>
                         <Box className={classes.cardMedia}>
-                            <ExtensionIcon className={classes.cardIcon} />
+                            {plugin.iconUrl ? (
+                                <img src={plugin.iconUrl} alt={plugin.name} style={{ height: 80 }} />
+                            ) : (
+                                <ExtensionIcon className={classes.cardIcon} />
+                            )}
                         </Box>
                         <CardContent className={classes.cardContent}>
                             <Box display="flex" alignItems="center" mb={1}>
@@ -248,7 +236,11 @@ const Marketplace = () => {
                         >
                             <TableCell>
                                 <Box display="flex" alignItems="center">
-                                    <ExtensionIcon style={{ marginRight: 8 }} />
+                                    {plugin.iconUrl ? (
+                                        <img src={plugin.iconUrl} alt={plugin.name} style={{ width: 24, height: 24, marginRight: 8 }} />
+                                    ) : (
+                                        <ExtensionIcon style={{ marginRight: 8 }} />
+                                    )}
                                     <Box>
                                         <Typography variant="subtitle2">{plugin.name}</Typography>
                                         <Typography variant="caption" color="textSecondary">
@@ -288,55 +280,79 @@ const Marketplace = () => {
     );
 
     return (
-        <Container maxWidth="lg" className={classes.root}>
-            <Paper elevation={0} style={{ padding: 24 }}>
-                <Box className={classes.header}>
-                    <Typography variant="h4" className={classes.title}>
-                        🧩 Marketplace de Plugins
-                    </Typography>
-                    <ToggleButtonGroup
-                        value={viewMode}
-                        exclusive
-                        onChange={handleViewChange}
-                        size="small"
-                    >
-                        <ToggleButton value="cards">
-                            <ViewModuleIcon />
-                        </ToggleButton>
-                        <ToggleButton value="table">
-                            <ViewListIcon />
-                        </ToggleButton>
-                    </ToggleButtonGroup>
-                </Box>
+        <Can
+            user={user}
+            perform="view_marketplace"
+            yes={() => (
+                <Container maxWidth="lg" className={classes.root}>
+                    <Paper elevation={0} style={{ padding: 24 }}>
+                        <Box className={classes.header}>
+                            <Typography variant="h4" className={classes.title}>
+                                🧩 Marketplace de Plugins
+                            </Typography>
+                            <ToggleButtonGroup
+                                value={viewMode}
+                                exclusive
+                                onChange={handleViewChange}
+                                size="small"
+                            >
+                                <ToggleButton value="cards">
+                                    <ViewModuleIcon />
+                                </ToggleButton>
+                                <ToggleButton value="table">
+                                    <ViewListIcon />
+                                </ToggleButton>
+                            </ToggleButtonGroup>
+                        </Box>
 
-                <TextField
-                    className={classes.searchBox}
-                    variant="outlined"
-                    size="small"
-                    placeholder="Buscar plugins..."
-                    fullWidth
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon />
-                            </InputAdornment>
-                        ),
-                    }}
-                />
+                        {offline && (
+                            <Box mb={2}>
+                                <Alert severity="warning">
+                                    Modo offline: exibindo catálogo local. Conexão com Marketplace remoto indisponível.
+                                </Alert>
+                            </Box>
+                        )}
 
-                {loading ? (
-                    <Box className={classes.loader}>
-                        <CircularProgress />
-                    </Box>
-                ) : viewMode === "cards" ? (
-                    renderCards()
-                ) : (
-                    renderTable()
-                )}
-            </Paper>
-        </Container>
+                        <TextField
+                            className={classes.searchBox}
+                            variant="outlined"
+                            size="small"
+                            placeholder="Buscar plugins..."
+                            fullWidth
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon />
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+
+                        {loading ? (
+                            <Box className={classes.loader}>
+                                <CircularProgress />
+                            </Box>
+                        ) : viewMode === "cards" ? (
+                            renderCards()
+                        ) : (
+                            renderTable()
+                        )}
+                    </Paper>
+                </Container>
+            )}
+            no={() => (
+                <Container maxWidth="lg" className={classes.root}>
+                    <Paper elevation={0} style={{ padding: 24 }}>
+                        <Typography variant="h5">Sem permissão</Typography>
+                        <Typography variant="body2" color="textSecondary">
+                            Apenas o Admin pode acessar o Marketplace.
+                        </Typography>
+                    </Paper>
+                </Container>
+            )}
+        />
     );
 };
 
