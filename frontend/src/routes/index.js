@@ -28,6 +28,7 @@ import Marketplace from "../pages/Marketplace/";
 import PluginDetail from "../pages/Marketplace/PluginDetail";
 import Clients from "../pages/Clients/";
 import Helpdesk from "../pages/Helpdesk/";
+import ProtocolDetails from "../pages/Helpdesk/ProtocolDetails";
 import Swagger from "../pages/Swagger/";
 import VersionDashboard from "../pages/VersionDashboard/";
 import { AuthProvider } from "../context/Auth/AuthContext";
@@ -64,8 +65,9 @@ const PrivateRoutes = () => {
             <Route exact path="/admin/settings/marketplace" component={Marketplace} isPrivate />
             <Route exact path="/admin/settings/marketplace/:slug" component={PluginDetail} isPrivate />
             <Route exact path="/clients" component={Clients} isPrivate />
-          <Route exact path="/helpdesk" component={Helpdesk} isPrivate />
-          <Route exact path="/versions" component={VersionDashboard} isPrivate />
+            <Route exact path="/helpdesk" component={Helpdesk} isPrivate />
+            <Route exact path="/helpdesk/:protocolId" component={ProtocolDetails} isPrivate />
+            <Route exact path="/versions" component={VersionDashboard} isPrivate />
           </Switch>
         </LoggedInLayout>
       </TicketsProvider>
