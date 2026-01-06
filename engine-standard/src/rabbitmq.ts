@@ -65,8 +65,8 @@ export class RabbitMQ {
   private async setupConsumer(): Promise<void> {
     if (!this.channel || !this.handler) return;
 
-    // Create a temporary queue for this engine instance
-    const q = await this.channel.assertQueue("", { exclusive: true });
+    // Create a durable queue for this engine instance to prevent message loss during startup
+    const q = await this.channel.assertQueue("wbot_engine_commands", { durable: true });
 
     await this.channel.bindQueue(q.queue, "wbot.commands", "command.general");
     // Bind all session and message commands using wildcard

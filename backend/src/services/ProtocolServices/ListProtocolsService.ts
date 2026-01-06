@@ -6,7 +6,7 @@ import User from "../../models/User";
 import Ticket from "../../models/Ticket";
 
 interface ListProtocolsParams {
-    tenantId: number;
+    tenantId: string | number;
     searchParam?: string;
     pageNumber?: string | number;
     status?: string;

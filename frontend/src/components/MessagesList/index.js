@@ -897,7 +897,27 @@ const MessagesList = ({ ticketId, isGroup }) => {
 
   const renderMessages = () => {
     if (messagesList.length > 0) {
+      const getDeletedBy = (message) => {
+        let data = message.dataJson;
+        if (typeof data === "string") {
+          try { data = JSON.parse(data); } catch (e) { data = {}; }
+        }
+        return data?.deletedBy;
+      };
+
+      const renderDeletedMessage = (message) => {
+        if (!message.isDeleted) return null;
+        const deletedBy = getDeletedBy(message);
+        return (
+          <div style={{ fontSize: 13, color: "rgba(0, 0, 0, 0.5)", fontStyle: "italic", marginBottom: 5 }}>
+            <Block fontSize="small" style={{ fontSize: 16, marginRight: 5, verticalAlign: "bottom" }} />
+            {deletedBy ? `Mensagem apagada por: ${deletedBy}` : "Mensagem apagada"}
+          </div>
+        );
+      };
+
       const viewMessagesList = messagesList.map((message, index) => {
+
         if (!message.fromMe) {
           return (
             <React.Fragment key={message.id}>
@@ -934,12 +954,16 @@ const MessagesList = ({ ticketId, isGroup }) => {
                   </IconButton>
                   {renderSenderName(message)}
                   {(message.mediaUrl || message.mediaType === "location" || message.mediaType === "vcard") && checkMessageMedia(message)}
-                  <div className={classes.textContentItem}>
+                  <div className={clsx(classes.textContentItem, {
+                    [classes.textContentItemDeleted]: message.isDeleted,
+                  })}>
+                    {renderDeletedMessage(message)}
                     {message.quotedMsg && renderQuotedMessage(message)}
                     {renderUrlPreview(message)}
                     {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
                       <MarkdownWrapper>{getMessageBody(message)}</MarkdownWrapper>
                     }
+
                     <span className={classes.timestamp}>
                       {format(parseISO(message.createdAt), "HH:mm")}
                     </span>
@@ -977,13 +1001,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                     [classes.textContentItemDeleted]: message.isDeleted,
                   })}
                 >
-                  {message.isDeleted && (
-                    <Block
-                      color="disabled"
-                      fontSize="small"
-                      className={classes.deletedIcon}
-                    />
-                  )}
+                  {renderDeletedMessage(message)}
                   {message.quotedMsg && renderQuotedMessage(message)}
                   {renderUrlPreview(message)}
                   {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
