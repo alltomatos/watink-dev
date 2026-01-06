@@ -7,6 +7,7 @@ import DeleteTicketService from "../services/TicketServices/DeleteTicketService"
 import ListTicketsService from "../services/TicketServices/ListTicketsService";
 import ShowTicketService from "../services/TicketServices/ShowTicketService";
 import UpdateTicketService from "../services/TicketServices/UpdateTicketService";
+import CloseAllTicketsService from "../services/TicketServices/CloseAllTicketsService";
 import SendWhatsAppMessage from "../services/WbotServices/SendWhatsAppMessage";
 import ShowWhatsAppService from "../services/WhatsappService/ShowWhatsAppService";
 import formatBody from "../helpers/Mustache";
@@ -190,4 +191,23 @@ export const syncHistory = async (
     message: "Sincronização de histórico iniciada",
     ticketId: ticket.id
   });
+};
+
+export const closeAll = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { tenantId } = req.user;
+  const userId = Number(req.user.id);
+  const { statusOpen, statusPending, includeGroups } = req.body;
+
+  const closedCount = await CloseAllTicketsService({
+    tenantId,
+    userId,
+    statusOpen,
+    statusPending,
+    includeGroups
+  });
+
+  return res.status(200).json({ closedCount });
 };

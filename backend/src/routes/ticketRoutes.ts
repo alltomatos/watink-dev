@@ -14,6 +14,8 @@ ticketRoutes.get("/tickets/:ticketId", isAuth, TicketController.show);
 
 ticketRoutes.post("/tickets", isAuth, TicketController.store);
 
+ticketRoutes.put("/tickets/close-all", isAuth, TicketController.closeAll);
+
 ticketRoutes.put("/tickets/:ticketId", isAuth, TicketController.update);
 
 ticketRoutes.delete(

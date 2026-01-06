@@ -17,6 +17,7 @@ interface MessageData {
   quotedMsgId?: string;
   dataJson?: object;
   participant?: string;
+  createdAt?: Date;
 }
 interface Request {
   messageData: MessageData;

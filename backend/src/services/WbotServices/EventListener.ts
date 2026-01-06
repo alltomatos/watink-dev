@@ -342,7 +342,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   if (isOldMessage) {
     logger.info(`[EventListener] Old message detected (${message.id}). Checking for existing ticket...`);
 
-    const existingTicket = await Ticket.findOne({
+    let ticketForMessage: Ticket | null = await Ticket.findOne({
       where: {
         contactId: (groupContact || msgContact).id,
         whatsappId: whatsapp.id,
@@ -351,13 +351,26 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
       order: [["updatedAt", "DESC"]]
     });
 
-    if (existingTicket) {
-      // Salvar mensagem no ticket existente (histórico)
-      logger.info(`[EventListener] Saving old message ${message.id} to existing ticket ${existingTicket.id}`);
+    if (!ticketForMessage) {
+      logger.info(`[EventListener] Old message ${message.id} has no ticket. Creating CLOSED ticket to save history.`);
 
-      const msgData = {
+      ticketForMessage = await Ticket.create({
+        contactId: groupContact ? groupContact.id : msgContact.id,
+        status: "closed",
+        isGroup: !!groupContact,
+        unreadMessages: 0,
+        whatsappId: whatsapp.id,
+        tenantId
+      });
+    }
+
+    if (ticketForMessage) {
+      // Salvar mensagem no ticket (histórico)
+      logger.info(`[EventListener] Saving old message ${message.id} to ticket ${ticketForMessage.id} (Status: ${ticketForMessage.status})`);
+
+      const msgDataVal = {
         id: message.id,
-        ticketId: existingTicket.id,
+        ticketId: ticketForMessage.id,
         contactId: msgContact.id,
         body: preservedBody || message.body,
         fromMe: message.fromMe,
@@ -365,6 +378,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
         mediaType: preservedMediaType || message.type,
         mediaUrl: preservedMediaUrl || message.mediaUrl,
         timestamp: message.timestamp * 1000,
+        createdAt: new Date(message.timestamp * 1000), // Fix Timestamp
         participant: message.participant,
         dataJson: message,
         quotedMsgId: message.quotedMsgId,
@@ -388,24 +402,22 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
           const filePath = join(tenantFolder, filename);
           const buffer = Buffer.from(message.mediaData, "base64");
           await writeFile(filePath, buffer);
-          (msgData as any).mediaUrl = `${tenantId}/${filename}`;
+          (msgDataVal as any).mediaUrl = `${tenantId}/${filename}`;
           if (message.type === "media") {
-            if (mimetype.startsWith("image/")) (msgData as any).mediaType = "image";
-            else if (mimetype.startsWith("video/")) (msgData as any).mediaType = "video";
-            else if (mimetype.startsWith("audio/")) (msgData as any).mediaType = "audio";
-            else (msgData as any).mediaType = "document";
+            if (mimetype.startsWith("image/")) (msgDataVal as any).mediaType = "image";
+            else if (mimetype.startsWith("video/")) (msgDataVal as any).mediaType = "video";
+            else if (mimetype.startsWith("audio/")) (msgDataVal as any).mediaType = "audio";
+            else (msgDataVal as any).mediaType = "document";
           }
         } catch (err) {
           logger.error(`Error saving media for old message ${message.id}: ${err}`);
         }
       }
 
-      await CreateMessageService({ messageData: msgData as any });
-    } else {
-      logger.info(`[EventListener] No existing ticket for old message ${message.id}. Skipping.`);
+      await CreateMessageService({ messageData: msgDataVal as any });
     }
 
-    return; // Não criar novo ticket para mensagens antigas
+    return; // Stop here, do not create pending ticket
   }
 
   // Apenas para mensagens NOVAS - criar ticket pending
@@ -427,6 +439,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     mediaType: preservedMediaType || message.type,
     mediaUrl: preservedMediaUrl || message.mediaUrl,
     timestamp: message.timestamp * 1000, // Convert to ms
+    createdAt: new Date(message.timestamp * 1000), // Fix Timestamp
     participant: message.participant,
     dataJson: message, // Store full payload including urlPreview and pushName
     quotedMsgId: message.quotedMsgId,
