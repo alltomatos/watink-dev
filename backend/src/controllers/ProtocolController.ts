@@ -9,7 +9,7 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
     const { searchParam, pageNumber, status, priority, contactId, ticketId } = req.query;
 
     const { protocols, count, hasMore } = await ListProtocolsService({
-        tenantId: Number(tenantId),
+        tenantId,
         searchParam: searchParam as string,
         pageNumber: pageNumber as string,
         status: status as string,
@@ -28,7 +28,7 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     const protocol = await CreateProtocolService(
         {
             ...protocolData,
-            tenantId: Number(tenantId)
+            tenantId
         },
         Number(userId)
     );
@@ -40,7 +40,7 @@ export const show = async (req: Request, res: Response): Promise<Response> => {
     const { tenantId: tenantId } = req.user;
     const { protocolId } = req.params;
 
-    const protocol = await ShowProtocolService(Number(protocolId), Number(tenantId));
+    const protocol = await ShowProtocolService(Number(protocolId), tenantId);
 
     return res.json(protocol);
 };
@@ -54,7 +54,7 @@ export const update = async (req: Request, res: Response): Promise<Response> => 
         {
             ...protocolData,
             id: Number(protocolId),
-            tenantId: Number(tenantId)
+            tenantId
         },
         Number(userId)
     );
@@ -70,7 +70,7 @@ export const createFromContact = async (req: Request, res: Response): Promise<Re
 
     const protocol = await CreateProtocolService(
         {
-            tenantId: Number(tenantId),
+            tenantId,
             contactId: Number(contactId),
             ticketId: ticketId ? Number(ticketId) : undefined,
             subject: subject || "Novo Protocolo de Atendimento",

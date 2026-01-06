@@ -29,6 +29,7 @@ import api from "../../services/api";
 import { toast } from "react-toastify";
 
 import ContactModal from "../ContactModal";
+import ClientModal from "../../pages/Clients/ClientModal"; // Import ClientModal
 import ContactDrawerSkeleton from "../ContactDrawerSkeleton";
 import MarkdownWrapper from "../MarkdownWrapper";
 import ContactAIInsights from "../ContactAIInsights";
@@ -141,6 +142,9 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 	const [protocolSubject, setProtocolSubject] = useState("");
 	const [protocolPriority, setProtocolPriority] = useState("medium");
 
+	// Client Modal State
+	const [clientModalOpen, setClientModalOpen] = useState(false);
+
 	// AI Settings state
 	const [activeTab, setActiveTab] = useState(0);
 	const [aiEnabled, setAiEnabled] = useState(false);
@@ -228,6 +232,21 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 			toast.error("Erro ao remover deal");
 		}
 	};
+
+	// Plugins active state
+	const [activePlugins, setActivePlugins] = useState([]);
+
+	useEffect(() => {
+		const fetchPlugins = async () => {
+			try {
+				const { data } = await api.get("/plugins/api/v1/plugins/installed");
+				setActivePlugins(data.active || []);
+			} catch (err) {
+				console.error("Erro ao carregar plugins:", err);
+			}
+		};
+		fetchPlugins();
+	}, []);
 
 	const handleCreateProtocol = async () => {
 		if (!protocolSubject.trim()) {
@@ -329,6 +348,25 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 								>
 									Atualizar
 								</Button>
+								{(!contact.clients || contact.clients.length === 0) && (
+									<Button
+										variant="outlined"
+										color="primary"
+										onClick={() => setClientModalOpen(true)}
+										style={{ marginLeft: 8 }}
+									>
+										Criar Cliente
+									</Button>
+								)}
+								{contact.clients && contact.clients.length > 0 && (
+									<Button
+										variant="outlined"
+										disabled
+										style={{ marginLeft: 8 }}
+									>
+										Cliente Vinculado
+									</Button>
+								)}
 							</Paper>
 							<Paper square variant="outlined" className={classes.contactDetails}>
 								<ContactModal
@@ -409,20 +447,22 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 							</Paper>
 
 							{/* Helpdesk - Protocolos Section */}
-							<Paper square variant="outlined" className={classes.contactDetails}>
-								<Typography variant="subtitle1" style={{ marginBottom: 8 }}>
-									🎫 Helpdesk - Protocolos
-								</Typography>
-								<Button
-									variant="outlined"
-									color="primary"
-									startIcon={<AssignmentIcon />}
-									onClick={() => setProtocolModalOpen(true)}
-									fullWidth
-								>
-									Abrir Protocolo
-								</Button>
-							</Paper>
+							{activePlugins.includes("helpdesk") && (
+								<Paper square variant="outlined" className={classes.contactDetails}>
+									<Typography variant="subtitle1" style={{ marginBottom: 8 }}>
+										🎫 Helpdesk - Protocolos
+									</Typography>
+									<Button
+										variant="outlined"
+										color="primary"
+										startIcon={<AssignmentIcon />}
+										onClick={() => setProtocolModalOpen(true)}
+										fullWidth
+									>
+										Abrir Protocolo
+									</Button>
+								</Paper>
+							)}
 
 							<Dialog open={pipelineModalOpen} onClose={() => setPipelineModalOpen(false)}>
 								<DialogTitle>Novo Deal</DialogTitle>
@@ -504,6 +544,13 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 									</Button>
 								</DialogActions>
 							</Dialog>
+
+							<ClientModal
+								open={clientModalOpen}
+								onClose={() => setClientModalOpen(false)}
+								client={null}
+								initialContact={contact}
+							/>
 
 						</div>
 					)}

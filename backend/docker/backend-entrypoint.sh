@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 echo "Listing dist directory..."
 ls -R dist

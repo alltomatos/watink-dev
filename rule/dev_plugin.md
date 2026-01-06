@@ -22,13 +22,22 @@ Um plugin no Watink não é uma entidade isolada no vácuo; ele deve se integrar
 *   **Frontend**:
     *   `src/pages/SeuPlugin/` (Componentes da UI)
 
+### 1.1 Dados e Tipagem
+> [!WARNING]
+> **Atenção aos IDs e Tenancy**:
+> O sistema utiliza **UUID** (string) para `tenantId` e para a maioria dos IDs de entidades novas.
+>
+> 1. **Não use `number` ou `integer` para `tenantId`**. Seus Services e Controllers devem tipar `tenantId` como `string`.
+> 2. Ao criar relações com tabelas antigas (que usam Integer), verifique sempre a modelagem antes de definir a migration.
+> 3. Entidades Core (User, Contact, Ticket, Tenant) possuem tipagens específicas. Consulte os Models (`backend/src/models`) antes de assumir tipos.
+
 ---
 
 ## 🔐 2. Integração de Permissões (RBAC)
 
 Para que o plugin seja seguro e gerenciável, suas permissões devem ser registradas no banco e acessíveis via UI.
 
-### Passo 2.1: Migration de Permissões (Backend)
+### Passo 2.2: Migration de Permissões (Backend)
 Crie uma migration de seed para inserir as permissões na tabela `Permissions`.
 Use o prefixo da ação + nome do módulo (ex: `view_helpdesk`, `edit_helpdesk`).
 
@@ -50,18 +59,7 @@ export default {
         createdAt: new Date(),
         updatedAt: new Date()
       },
-      {
-        name: "edit_nome_do_plugin",
-        description: "Editar Nome do Plugin",
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        name: "delete_nome_do_plugin",
-        description: "Excluir Nome do Plugin",
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
+      // ... outras permissões
     ];
 
     // Use ignoreDuplicates para evitar erros se rodar múltiplas vezes
@@ -70,13 +68,54 @@ export default {
 
   down: async (queryInterface: QueryInterface) => {
     await queryInterface.bulkDelete("Permissions", { 
-        name: ["view_nome_do_plugin", "edit_nome_do_plugin", "delete_nome_do_plugin"] 
+        name: ["view_nome_do_plugin"] 
     }, {});
   }
 };
 ```
 
-### Passo 2.2: Categorização no Frontend
+### Passo 2.3: Seed de Instalação (Instalação por Tenant)
+Para que o plugin seja ativado (e apareça no frontend), ele precisa estar registrado na tabela `PluginInstallations`. Crie um seed separado para isso.
+
+**Regra Importante**: Crie um seed **individual** para cada plugin. Não agrupe múltiplos plugins no mesmo arquivo.
+
+Comando:
+```bash
+npx sequelize seed:generate --name seed-nome-do-plugin-installation
+```
+
+Exemplo de conteúdo:
+```typescript
+import { QueryInterface } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
+
+module.exports = {
+  up: async (queryInterface: QueryInterface) => {
+    // 1. Buscar tenant padrão
+    const tenants = await queryInterface.sequelize.query(`SELECT id FROM "Tenants" LIMIT 1;`);
+    const tenantId = (tenants[0][0] as any).id;
+    const pluginId = "seu-uuid-do-plugin"; 
+
+    // 2. Instalar
+    await queryInterface.bulkInsert("PluginInstallations", [
+      {
+        id: uuidv4(),
+        tenantId: tenantId,
+        pluginId: pluginId,
+        status: "active",
+        installedAt: new Date(),
+        activatedAt: new Date()
+      }
+    ], { ignoreDuplicates: true });
+  },
+  
+  down: async (queryInterface: QueryInterface) => {
+     // Lógica de remoção
+  }
+};
+```
+
+### Passo 2.4: Categorização no Frontend
 Para que as permissões apareçam agrupadas no modal de edição de grupos, edite `frontend/src/pages/Groups/GroupModal.js`.
 
 Adicione seu plugin ao objeto `categories` dentro da função `categorizePermissions`:

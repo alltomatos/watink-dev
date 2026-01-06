@@ -27,7 +27,7 @@ export const StartWhatsAppSession = async (
       tenantId: whatsapp.tenantId,
       type: "session.start",
       payload: {
-        sessionId: whatsapp.id,
+        sessionId: whatsapp.id, // Reverting to stable ID for persistence
         usePairingCode,
         phoneNumber,
         name: whatsapp.name,

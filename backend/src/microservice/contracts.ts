@@ -178,7 +178,8 @@ export type EventType =
   | "message.response.poll"
   | "message.response.interactive"
   | "message.reaction"
-  | "contact.update";
+  | "contact.update"
+  | "message.revoke";
 
 
 export interface QrCodePayload {
@@ -266,6 +267,12 @@ export interface ContactUpdatePayload {
   pushName?: string;
   lid?: string;
   isGroup?: boolean;
+}
+
+export interface MessageRevokePayload {
+  sessionId: number;
+  messageId: string;
+  participant?: string; // Quem deletou
 }
 
 export interface MarkAsReadPayload {

@@ -40,6 +40,7 @@ import ConfirmationModal from "../../components/ConfirmationModal/";
 import toastError from "../../errors/toastError";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
+import ClientModal from "../Clients/ClientModal"; // Import ClientModal
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { getBackendUrl } from "../../helpers/urlUtils";
 
@@ -122,7 +123,12 @@ const Contacts = () => {
   const [deletingContact, setDeletingContact] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  /* Removed duplicate hasMore declaration */
   const [view, setView] = useLocalStorage("contactsView", "card");
+
+  // Client Modal State
+  const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [selectedInitialContact, setSelectedInitialContact] = useState(null);
 
   useEffect(() => {
     dispatch({ type: "RESET" });
@@ -179,6 +185,16 @@ const Contacts = () => {
   const handleCloseContactModal = () => {
     setSelectedContactId(null);
     setContactModalOpen(false);
+  };
+
+  const handleOpenClientModal = (contact) => {
+    setSelectedInitialContact(contact);
+    setClientModalOpen(true);
+  };
+
+  const handleCloseClientModal = () => {
+    setSelectedInitialContact(null);
+    setClientModalOpen(false);
   };
 
   const handleSaveTicket = async (contactId) => {
@@ -243,6 +259,12 @@ const Contacts = () => {
         aria-labelledby="form-dialog-title"
         contactId={selectedContactId}
       ></ContactModal>
+      <ClientModal
+        open={clientModalOpen}
+        onClose={handleCloseClientModal}
+        client={null}
+        initialContact={selectedInitialContact}
+      />
       <ConfirmationModal
         title={
           deletingContact
@@ -326,6 +348,13 @@ const Contacts = () => {
                       >
                         <EditIcon fontSize="small" />
                       </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenClientModal(contact)}
+                        title="Criar Cliente"
+                      >
+                        <AddIcon fontSize="small" />
+                      </IconButton>
                       <Can
                         role={user.profile}
                         perform="contacts-page:deleteContact"
@@ -387,6 +416,13 @@ const Contacts = () => {
                         onClick={() => hadleEditContact(contact.id)}
                       >
                         <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenClientModal(contact)}
+                        title="Criar Cliente"
+                      >
+                        <AddIcon fontSize="small" />
                       </IconButton>
                       <Can
                         role={user.profile}

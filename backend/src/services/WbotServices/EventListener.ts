@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload, PairingCodePayload, ContactUpdatePayload, MessageReactionPayload } from "../../microservice/contracts";
+import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload, PairingCodePayload, ContactUpdatePayload, MessageReactionPayload, MessageRevokePayload } from "../../microservice/contracts";
 import RabbitMQService from "../RabbitMQService";
 import { logger } from "../../utils/logger";
 import Whatsapp from "../../models/Whatsapp";
@@ -12,6 +12,10 @@ import CreateOrUpdateContactService from "../ContactServices/CreateOrUpdateConta
 import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
 import Ticket from "../../models/Ticket";
 
+const getSessionId = (sessionId: string | number): number => {
+  return parseInt(String(sessionId).split("-")[0], 10);
+};
+
 export const EventListener = async () => {
   const routingKeys = [
     "wbot.*.*.session.qrcode",
@@ -19,8 +23,10 @@ export const EventListener = async () => {
     "wbot.*.*.session.status",
     "wbot.*.*.message.received",
     "wbot.*.*.message.reaction",
+    "wbot.*.*.message.reaction",
     "wbot.*.*.contact.update",
-    "wbot.*.*.message.ack"
+    "wbot.*.*.message.ack",
+    "wbot.*.*.message.revoke"
   ];
 
   await RabbitMQService.consumeEvents("api.events.process", routingKeys, async (msg: Envelope) => {
@@ -48,6 +54,9 @@ export const EventListener = async () => {
       case "message.ack":
         await handleMessageAck(msg.payload as any, msg.tenantId);
         break;
+      case "message.revoke":
+        await handleMessageRevoke(msg.payload as MessageRevokePayload, msg.tenantId);
+        break;
       default:
         logger.warn(`Unknown event type: ${msg.type}`);
     }
@@ -58,12 +67,12 @@ const handleQrCode = async (payload: QrCodePayload) => {
   const io = getIO();
   await Whatsapp.update(
     { qrcode: payload.qrcode, status: "QRCODE" },
-    { where: { id: payload.sessionId } }
+    { where: { id: getSessionId(payload.sessionId) } }
   );
 
   io.emit(`whatsappSession`, {
     action: "update",
-    session: { id: payload.sessionId, qrcode: payload.qrcode, status: "QRCODE" }
+    session: { id: getSessionId(payload.sessionId), qrcode: payload.qrcode, status: "QRCODE" }
   });
 };
 
@@ -72,7 +81,7 @@ const handlePairingCode = async (payload: PairingCodePayload) => {
 
   io.emit(`whatsappSession`, {
     action: "update",
-    session: { id: payload.sessionId, pairingCode: payload.pairingCode, status: "PAIRING" }
+    session: { id: getSessionId(payload.sessionId), pairingCode: payload.pairingCode, status: "PAIRING" }
   });
 };
 
@@ -85,13 +94,13 @@ const handleSessionStatus = async (payload: SessionStatusPayload) => {
 
   await Whatsapp.update(
     updateData,
-    { where: { id: payload.sessionId } }
+    { where: { id: getSessionId(payload.sessionId) } }
   );
 
   io.emit(`whatsappSession`, {
     action: "update",
     session: {
-      id: payload.sessionId,
+      id: getSessionId(payload.sessionId),
       status: payload.status,
       number: payload.number,
       profilePicUrl: payload.profilePicUrl
@@ -109,7 +118,7 @@ const handleContactUpdate = async (payload: ContactUpdatePayload, tenantId: stri
   const { contactId, number, profilePicUrl, pushName, lid, isGroup, sessionId } = payload;
 
   if (!tenantId && sessionId) {
-    const whatsapp = await Whatsapp.findByPk(sessionId);
+    const whatsapp = await Whatsapp.findByPk(getSessionId(sessionId));
     if (whatsapp) {
       tenantId = whatsapp.tenantId;
     }
@@ -206,7 +215,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   const { message, sessionId } = payload;
   logger.info(`[EventListener] handleMessageReceived: ${JSON.stringify(payload)}`);
 
-  const whatsapp = await Whatsapp.findByPk(sessionId);
+  const whatsapp = await Whatsapp.findByPk(getSessionId(sessionId));
   if (!whatsapp) return;
 
   if (!tenantId && whatsapp.tenantId) {
@@ -224,6 +233,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   let preservedBody: string | null = null;
   let preservedMediaUrl: string | null = null;
   let preservedMediaType: string | null = null;
+  let preservedCreatedAt: Date | null = null;
 
   if (message.originalId) {
     if (message.originalId === message.id) {
@@ -244,6 +254,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
           preservedBody = pendingMessage.body;
           preservedMediaUrl = pendingMessage.getDataValue("mediaUrl");
           preservedMediaType = pendingMessage.mediaType;
+          preservedCreatedAt = pendingMessage.createdAt;
 
           await pendingMessage.destroy();
           logger.info(`[EventListener] Pending message ${message.originalId} destroyed successfully.`);
@@ -429,6 +440,19 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     groupContact
   );
 
+  let creationDate = new Date(message.timestamp * 1000);
+
+  // FIX: If timestamp is 0 or invalid (resulting in 1970/1969), use preserved CreatedAt or NOW
+  if (creationDate.getFullYear() < 2020) {
+    if (preservedCreatedAt) {
+      creationDate = preservedCreatedAt;
+      logger.info(`[EventListener] Invalid timestamp ${message.timestamp}. Restoring preserved createdAt: ${creationDate}`);
+    } else {
+      creationDate = new Date();
+      logger.info(`[EventListener] Invalid timestamp ${message.timestamp}. using NOW: ${creationDate}`);
+    }
+  }
+
   const msgData = {
     id: message.id,
     ticketId: ticket.id,
@@ -439,7 +463,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     mediaType: preservedMediaType || message.type,
     mediaUrl: preservedMediaUrl || message.mediaUrl,
     timestamp: message.timestamp * 1000, // Convert to ms
-    createdAt: new Date(message.timestamp * 1000), // Fix Timestamp
+    createdAt: creationDate, // Fix Timestamp
     participant: message.participant,
     dataJson: message, // Store full payload including urlPreview and pushName
     quotedMsgId: message.quotedMsgId,
@@ -544,7 +568,7 @@ const handleMessageReaction = async (payload: MessageReactionPayload, tenantId: 
     const { messageId, reaction, sender, timestamp, sessionId } = payload;
 
     if (!tenantId && sessionId) {
-      const whatsapp = await Whatsapp.findByPk(sessionId);
+      const whatsapp = await Whatsapp.findByPk(getSessionId(sessionId));
       if (whatsapp) {
         tenantId = whatsapp.tenantId;
       }
@@ -597,7 +621,7 @@ const handleMessageAck = async (payload: { messageId: string; ack: number; sessi
     const { messageId, ack, sessionId } = payload;
 
     if (!tenantId && sessionId) {
-      const whatsapp = await Whatsapp.findByPk(sessionId);
+      const whatsapp = await Whatsapp.findByPk(getSessionId(sessionId));
       if (whatsapp) {
         tenantId = whatsapp.tenantId;
       }
@@ -635,5 +659,50 @@ const handleMessageAck = async (payload: { messageId: string; ack: number; sessi
 
   } catch (err) {
     logger.error(`[EventListener] Error handling message ACK: ${err}`);
+  }
+};
+
+const handleMessageRevoke = async (payload: MessageRevokePayload, tenantId: string | number) => {
+  try {
+    const { messageId, sessionId, participant } = payload;
+
+    if (!tenantId && sessionId) {
+      const whatsapp = await Whatsapp.findByPk(getSessionId(sessionId));
+      if (whatsapp) {
+        tenantId = whatsapp.tenantId;
+      }
+    }
+
+    logger.info(`[EventListener] handleMessageRevoke: Revoking msg ${messageId} (by ${participant})`);
+
+    const message = await Message.findOne({
+      where: { id: messageId, tenantId }
+    });
+
+    if (!message) {
+      logger.warn(`[EventListener] Message ${messageId} not found for revocation.`);
+      return;
+    }
+
+    // Update isDeleted and store deleter info in dataJson
+    // We preserve the original body in the DB, but frontend must know it's deleted.
+    const currentDataJson = (message.dataJson as object) || {};
+
+    await message.update({
+      isDeleted: true,
+      dataJson: {
+        ...currentDataJson,
+        deletedBy: participant
+      }
+    });
+
+    const io = getIO();
+    io.to(message.ticketId.toString()).emit(`appMessage`, {
+      action: "update",
+      message: message
+    });
+
+  } catch (err) {
+    logger.error(`[EventListener] Error handling message revocation: ${err}`);
   }
 };
