@@ -10,6 +10,7 @@ import Contact from "../../models/Contact";
 import Message from "../../models/Message";
 import CreateOrUpdateContactService from "../ContactServices/CreateOrUpdateContactService";
 import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
+import Ticket from "../../models/Ticket";
 
 export const EventListener = async () => {
   const routingKeys = [
@@ -333,17 +334,87 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     msgContact = await CreateOrUpdateContactService(contactData);
   }
 
-  // ... inside handleMessageReceived
   // message.timestamp is usually in seconds (Unix). Convert to ms for comparison.
   const isOldMessage = Date.now() - (message.timestamp * 1000) > 1000 * 60 * 60 * 2; // 2 hours
 
+  // NOVA LÓGICA: Mensagens históricas não criam ticket
+  // Apenas salvam mensagem se já existir um ticket para este contato
+  if (isOldMessage) {
+    logger.info(`[EventListener] Old message detected (${message.id}). Checking for existing ticket...`);
+
+    const existingTicket = await Ticket.findOne({
+      where: {
+        contactId: (groupContact || msgContact).id,
+        whatsappId: whatsapp.id,
+        tenantId
+      },
+      order: [["updatedAt", "DESC"]]
+    });
+
+    if (existingTicket) {
+      // Salvar mensagem no ticket existente (histórico)
+      logger.info(`[EventListener] Saving old message ${message.id} to existing ticket ${existingTicket.id}`);
+
+      const msgData = {
+        id: message.id,
+        ticketId: existingTicket.id,
+        contactId: msgContact.id,
+        body: preservedBody || message.body,
+        fromMe: message.fromMe,
+        read: true, // Mensagens antigas são marcadas como lidas
+        mediaType: preservedMediaType || message.type,
+        mediaUrl: preservedMediaUrl || message.mediaUrl,
+        timestamp: message.timestamp * 1000,
+        participant: message.participant,
+        dataJson: message,
+        quotedMsgId: message.quotedMsgId,
+        ack: 3, // Mensagens antigas assumem ACK = read
+        tenantId
+      };
+
+      // Processar mídia se houver
+      if (message.hasMedia && message.mediaData && !preservedMediaUrl) {
+        try {
+          const { join } = require("path");
+          const { writeFile } = require("fs").promises;
+          const uploadConfig = require("../../config/upload").default;
+          const mimetype = message.mimetype || "";
+          const ext = mimetype.split("/")[1]?.split(";")[0] || "bin";
+          const filename = `${new Date().getTime()}-${message.id}.${ext}`;
+          const tenantFolder = join(uploadConfig.directory, tenantId.toString());
+          if (!require("fs").existsSync(tenantFolder)) {
+            require("fs").mkdirSync(tenantFolder, { recursive: true });
+          }
+          const filePath = join(tenantFolder, filename);
+          const buffer = Buffer.from(message.mediaData, "base64");
+          await writeFile(filePath, buffer);
+          (msgData as any).mediaUrl = `${tenantId}/${filename}`;
+          if (message.type === "media") {
+            if (mimetype.startsWith("image/")) (msgData as any).mediaType = "image";
+            else if (mimetype.startsWith("video/")) (msgData as any).mediaType = "video";
+            else if (mimetype.startsWith("audio/")) (msgData as any).mediaType = "audio";
+            else (msgData as any).mediaType = "document";
+          }
+        } catch (err) {
+          logger.error(`Error saving media for old message ${message.id}: ${err}`);
+        }
+      }
+
+      await CreateMessageService({ messageData: msgData as any });
+    } else {
+      logger.info(`[EventListener] No existing ticket for old message ${message.id}. Skipping.`);
+    }
+
+    return; // Não criar novo ticket para mensagens antigas
+  }
+
+  // Apenas para mensagens NOVAS - criar ticket pending
   const ticket = await FindOrCreateTicketService(
     groupContact || msgContact,
     whatsapp.id,
     1, // Unread messages
     tenantId,
-    groupContact,
-    isOldMessage
+    groupContact
   );
 
   const msgData = {

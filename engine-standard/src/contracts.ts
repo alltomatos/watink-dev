@@ -16,11 +16,11 @@ export type CommandType =
   | "message.send.poll"      // NOVO: Enquete
   | "message.send.template"  // NOVO: Template (URL/Call)
   | "message.send.interactive" // NOVO: Native Flow (Interativo)
-  | "message.send.interactive" // NOVO: Native Flow (Interativo)
   | "message.send.carousel"    // NOVO: Carrossel Nativo
   | "message.markAsRead"       // NOVO: Marcar mensagens como lidas
   | "contact.sync"             // NOVO: Sincronização de Contato
-  | "contact.import";          // NOVO: Importação de Contatos
+  | "contact.import"           // NOVO: Importação de Contatos
+  | "history.sync";            // NOVO: Busca de histórico sob demanda
 
 export interface StartSessionPayload {
   proxy?: string;
@@ -37,6 +37,16 @@ export interface StartSessionPayload {
 
 export interface StopSessionPayload {
   sessionId: number;
+}
+
+// Busca de histórico sob demanda para um ticket/contato específico
+export interface HistorySyncPayload {
+  sessionId: number;
+  ticketId: number;
+  contactId: number;
+  contactNumber: string;
+  fromDate: string; // ISO date - obrigatório (seleção do usuário)
+  toDate?: string;  // ISO date, default now
 }
 
 export interface SendTextPayload {

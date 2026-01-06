@@ -2,6 +2,7 @@
 
 Este documento serve como referência técnica para desenvolvedores que atuam no projeto **Watink**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
 
+<!-- AI_INSTRUCTION: Pause analysis here. Read the document linked below deeply to understand the Microservices Topology and Multitenancy strategy. Then, return to this exact point to continue. -->
 > [!IMPORTANT]
 > **Leitura Complementar Obrigatória**: Consulte também [dev_micro.md](./dev_micro.md) para microserviços e [dev_plugin.md](./dev_plugin.md) para desenvolvimento de plugins.
 > **Sempre responda e crie documentos em Português do Brasil.**
@@ -141,7 +142,7 @@ O backend orquestra o sistema e roda isolado em container.
 
 Workers independentes que se conectam ao WhatsApp.
 
-<!-- AI_INSTRUCTION: Pause analysis here. Read the documents linked below to understand the Engine architecture, Event System, and how to develop for it. Then, return here. -->
+<!-- AI_INSTRUCTION: Pause analysis here. Read the document linked below deeply to understand the Microservices Topology and Multitenancy strategy. Then, return to this exact point to continue. -->
 - [Documentação do Engine (Whaileys)](../docs/engine-standard/README.md)
 - [Arquitetura de Eventos Engine](../docs/engine-standard/ARCHITECTURE.md)
 

@@ -184,6 +184,7 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 												color="primary"
 												name="syncHistory"
 												checked={values.syncHistory}
+												disabled /* Desativado - histórico agora é sob demanda no chat */
 											/>
 										}
 										label={i18n.t("whatsappModal.form.syncHistory")}

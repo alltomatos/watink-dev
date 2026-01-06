@@ -18,10 +18,10 @@ export type CommandType =
   | "message.send.poll"
   | "message.send.template"
   | "message.send.interactive"
-  | "message.send.interactive"
   | "message.send.carousel"
   | "message.markAsRead"
-  | "contact.sync";
+  | "contact.sync"
+  | "history.sync";
 
 export interface StartSessionPayload {
   sessionId: number;
@@ -274,3 +274,12 @@ export interface MarkAsReadPayload {
   messageIds: string[];
 }
 
+// Busca de histórico sob demanda para um ticket/contato específico
+export interface HistorySyncPayload {
+  sessionId: number;
+  ticketId: number;
+  contactId: number;
+  contactNumber: string;
+  fromDate: string; // ISO date - obrigatório (seleção do usuário)
+  toDate?: string;  // ISO date, default now
+}

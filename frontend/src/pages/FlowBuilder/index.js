@@ -136,8 +136,12 @@ const FlowBuilder = () => {
         const fetchSettings = async () => {
             try {
                 const { data } = await api.get("/settings");
+                // Verifica aiEnabled master E aiFlowBuilderEnabled específico
                 const aiEnabledSetting = data.find(s => s.key === "aiEnabled");
-                if (aiEnabledSetting && aiEnabledSetting.value === "true") {
+                const aiFlowBuilderSetting = data.find(s => s.key === "aiFlowBuilderEnabled");
+                const masterEnabled = aiEnabledSetting?.value === "true";
+                const flowBuilderEnabled = aiFlowBuilderSetting?.value === "true";
+                if (masterEnabled && flowBuilderEnabled) {
                     setAiEnabled(true);
                 } else {
                     setAiEnabled(false);

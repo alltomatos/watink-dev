@@ -1,6 +1,6 @@
 {
   "name": "whaileys-engine",
-  "version": "1.0.91",
+  "version": "1.0.94",
   "description": "WhatsApp Engine for Whaticket (Node.js/Whaileys)",
   "main": "dist/index.js",
   "scripts": {

@@ -11,7 +11,16 @@ import {
   Divider,
   IconButton,
   makeStyles,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Tooltip,
 } from "@material-ui/core";
+import { Avatar } from "@material-ui/core";
+import { useTheme } from "@material-ui/core/styles";
+import { lighten, darken } from "@material-ui/core/styles/colorManipulator";
 import {
   AccessTime,
   Block,
@@ -19,6 +28,7 @@ import {
   DoneAll,
   ExpandMore,
   GetApp,
+  History as HistoryIcon,
 } from "@material-ui/icons";
 
 import MarkdownWrapper from "../MarkdownWrapper";
@@ -34,6 +44,7 @@ import toastError from "../../errors/toastError";
 import { useThemeContext } from "../../context/DarkMode";
 import Audio from "../Audio";
 import { getBackendUrl } from "../../helpers/urlUtils";
+import { toast } from "react-toastify";
 
 const useStyles = makeStyles((theme) => ({
   messagesListWrapper: {
@@ -335,6 +346,20 @@ const useStyles = makeStyles((theme) => ({
     "-webkit-box-orient": "vertical",
     overflow: "hidden"
   },
+  groupMessageRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 8
+  },
+  groupAvatar: {
+    width: 32,
+    height: 32,
+    marginTop: 2
+  },
+  senderSpacer: {
+    display: "block",
+    height: 12
+  }
 }));
 
 const reducer = (state, action) => {
@@ -391,6 +416,7 @@ const reducer = (state, action) => {
 
 const MessagesList = ({ ticketId, isGroup }) => {
   const classes = useStyles();
+  const muiTheme = useTheme();
   const { appTheme } = useThemeContext();
 
   const [messagesList, dispatch] = useReducer(reducer, []);
@@ -405,6 +431,11 @@ const MessagesList = ({ ticketId, isGroup }) => {
   const currentTicketId = useRef(ticketId);
   const shouldScrollRef = useRef();
   const messagesListRef = useRef();
+
+  // Estado para modal de busca de histórico
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyFromDate, setHistoryFromDate] = useState("");
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     dispatch({ type: "RESET" });
@@ -511,6 +542,28 @@ const MessagesList = ({ ticketId, isGroup }) => {
 
   const handleCloseMessageOptionsMenu = (e) => {
     setAnchorEl(null);
+  };
+
+  // Handler para buscar histórico de mensagens
+  const handleSyncHistory = async () => {
+    if (!historyFromDate) {
+      toast.error("Selecione uma data de início");
+      return;
+    }
+
+    setHistoryLoading(true);
+    try {
+      await api.post(`/tickets/${ticketId}/history`, {
+        fromDate: historyFromDate
+      });
+      toast.success("Buscando histórico de mensagens...");
+      setHistoryModalOpen(false);
+      setHistoryFromDate("");
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   const checkMessageMedia = (message) => {
@@ -642,15 +695,23 @@ const MessagesList = ({ ticketId, isGroup }) => {
   };
 
   const renderMessageDivider = (message, index) => {
-    if (index < messagesList.length && index > 0) {
-      let messageUser = messagesList[index].fromMe;
-      let previousMessageUser = messagesList[index - 1].fromMe;
-
-      if (messageUser !== previousMessageUser) {
-        return (
-          <span style={{ marginTop: 16 }} key={`divider-${message.id}`}></span>
-        );
+    if (index <= 0 || index >= messagesList.length) return null;
+    const getSenderKey = (m) => {
+      if (!m) return "unknown";
+      if (m.fromMe) return "me";
+      if (isGroup) {
+        let data = m.dataJson;
+        if (typeof data === "string") {
+          try { data = JSON.parse(data); } catch (e) { data = {}; }
+        }
+        return m.participant || data?.participant || data?.senderLid || data?.pushName || "unknown";
       }
+      return "other";
+    };
+    const currentKey = getSenderKey(messagesList[index]);
+    const previousKey = getSenderKey(messagesList[index - 1]);
+    if (currentKey !== previousKey) {
+      return <span className={classes.senderSpacer} key={`divider-${message.id}`} />;
     }
   };
 
@@ -730,8 +791,6 @@ const MessagesList = ({ ticketId, isGroup }) => {
     return null;
   };
 
-
-
   const renderUrlPreview = (message) => {
     let urlPreview = message.dataJson?.urlPreview;
 
@@ -760,6 +819,38 @@ const MessagesList = ({ ticketId, isGroup }) => {
       )
     }
     return null;
+  };
+
+  const groupColorCacheRef = useRef(new Map());
+  const getParticipantColor = (message) => {
+    if (!isGroup || message.fromMe) return "#6bcbef";
+    let key = "";
+    let data = message.dataJson;
+    if (typeof data === "string") {
+      try { data = JSON.parse(data); } catch (e) { data = {}; }
+    }
+    key = message.participant || data?.senderLid || data?.pushName || "";
+    if (!key) key = (message.participant || "").replace(/\D/g, "");
+    const cache = groupColorCacheRef.current;
+    const isDark = muiTheme?.palette?.type === "dark";
+    const primary = muiTheme?.palette?.primary?.main || "#1565C0";
+    const secondary = muiTheme?.palette?.secondary?.main || "#AD1457";
+    const palette = [
+      primary,
+      secondary,
+      isDark ? lighten(primary, 0.2) : darken(primary, 0.2),
+      isDark ? lighten(secondary, 0.2) : darken(secondary, 0.2),
+      isDark ? lighten(primary, 0.4) : darken(primary, 0.4),
+      isDark ? lighten(secondary, 0.4) : darken(secondary, 0.4),
+      isDark ? lighten(primary, 0.6) : darken(primary, 0.6),
+      isDark ? lighten(secondary, 0.6) : darken(secondary, 0.6),
+    ];
+    if (cache.has(key)) return cache.get(key);
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) { hash = (hash << 5) - hash + key.charCodeAt(i); hash |= 0; }
+    const color = palette[Math.abs(hash) % palette.length];
+    cache.set(key, color);
+    return color;
   };
 
   const renderSenderName = (message) => {
@@ -796,10 +887,8 @@ const MessagesList = ({ ticketId, isGroup }) => {
     // If there is a pushName, show: ~PushName (Number)
     // If only number: ~Number
 
-    const color = "#128C7E"; // WhatsApp teal or random color generator based on participant
-
     return (
-      <span className={classes.messageContactName}>
+      <span className={classes.messageContactName} style={{ color: getParticipantColor(message) }}>
         {`~${displayName} ${pushName && participantNumber ? displayNumber : ""}`}
       </span>
     )
@@ -814,36 +903,49 @@ const MessagesList = ({ ticketId, isGroup }) => {
             <React.Fragment key={message.id}>
               {renderDailyTimestamps(message, index)}
               {renderMessageDivider(message, index)}
-              <div
-                className={clsx(classes.messageLeft, {
-                  [classes.messageLeftSaas]: appTheme === "saas",
-                })}
-              >
-                <IconButton
-                  variant="contained"
-                  size="small"
-                  id="messageActionsButton"
-                  disabled={message.isDeleted}
-                  className={classes.messageActionsButton}
-                  onClick={(e) => handleOpenMessageOptionsMenu(e, message)}
+              <div className={isGroup ? classes.groupMessageRow : undefined}>
+                {isGroup && (
+                  <Avatar
+                    className={classes.groupAvatar}
+                    src={(function () {
+                      let data = message.dataJson;
+                      if (typeof data === "string") {
+                        try { data = JSON.parse(data); } catch (e) { data = {}; }
+                      }
+                      const url = data?.profilePicUrl || "";
+                      return getBackendUrl(url);
+                    })()}
+                  />
+                )}
+                <div
+                  className={clsx(classes.messageLeft, {
+                    [classes.messageLeftSaas]: appTheme === "saas",
+                  })}
                 >
-                  <ExpandMore />
-                </IconButton>
-                {renderSenderName(message)}
-                {(message.mediaUrl || message.mediaType === "location" || message.mediaType === "vcard"
-                  //|| message.mediaType === "multi_vcard" 
-                ) && checkMessageMedia(message)}
-                <div className={classes.textContentItem}>
-                  {message.quotedMsg && renderQuotedMessage(message)}
-                  {renderUrlPreview(message)}
-                  {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
-                    <MarkdownWrapper>{getMessageBody(message)}</MarkdownWrapper>
-                  }
-                  <span className={classes.timestamp}>
-                    {format(parseISO(message.createdAt), "HH:mm")}
-                  </span>
+                  <IconButton
+                    variant="contained"
+                    size="small"
+                    id="messageActionsButton"
+                    disabled={message.isDeleted}
+                    className={classes.messageActionsButton}
+                    onClick={(e) => handleOpenMessageOptionsMenu(e, message)}
+                  >
+                    <ExpandMore />
+                  </IconButton>
+                  {renderSenderName(message)}
+                  {(message.mediaUrl || message.mediaType === "location" || message.mediaType === "vcard") && checkMessageMedia(message)}
+                  <div className={classes.textContentItem}>
+                    {message.quotedMsg && renderQuotedMessage(message)}
+                    {renderUrlPreview(message)}
+                    {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
+                      <MarkdownWrapper>{getMessageBody(message)}</MarkdownWrapper>
+                    }
+                    <span className={classes.timestamp}>
+                      {format(parseISO(message.createdAt), "HH:mm")}
+                    </span>
+                  </div>
+                  {renderMessageReactions(message)}
                 </div>
-                {renderMessageReactions(message)}
               </div>
             </React.Fragment>
           );
@@ -912,6 +1014,66 @@ const MessagesList = ({ ticketId, isGroup }) => {
         menuOpen={messageOptionsMenuOpen}
         handleClose={handleCloseMessageOptionsMenu}
       />
+
+      {/* Botão de buscar histórico no topo */}
+      <div style={{
+        display: "flex",
+        justifyContent: "center",
+        padding: "8px",
+        backgroundColor: "rgba(255,255,255,0.9)",
+        borderBottom: "1px solid #e0e0e0"
+      }}>
+        <Tooltip title="Buscar histórico de mensagens">
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<HistoryIcon />}
+            onClick={() => setHistoryModalOpen(true)}
+            style={{ textTransform: "none" }}
+          >
+            Buscar Histórico
+          </Button>
+        </Tooltip>
+      </div>
+
+      {/* Modal de seleção de data para histórico */}
+      <Dialog
+        open={historyModalOpen}
+        onClose={() => setHistoryModalOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Buscar Histórico de Mensagens</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Data de início"
+            type="date"
+            value={historyFromDate}
+            onChange={(e) => setHistoryFromDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+            margin="dense"
+            helperText="Selecione a data a partir da qual deseja buscar as mensagens"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setHistoryModalOpen(false)}
+            color="secondary"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSyncHistory}
+            color="primary"
+            variant="contained"
+            disabled={historyLoading || !historyFromDate}
+          >
+            {historyLoading ? <CircularProgress size={20} /> : "Buscar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <div
         id="messagesList"
         className={classes.messagesList}

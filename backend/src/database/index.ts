@@ -29,6 +29,7 @@ import ClientAddress from "../models/ClientAddress";
 import ClientContact from "../models/ClientContact";
 import Protocol from "../models/Protocol";
 import ProtocolHistory from "../models/ProtocolHistory";
+import ConversationEmbedding from "../models/ConversationEmbedding";
 
 // eslint-disable-next-line
 const dbConfig = require("../config/database");
@@ -65,7 +66,8 @@ const models = [
   ClientAddress,
   ClientContact,
   Protocol,
-  ProtocolHistory
+  ProtocolHistory,
+  ConversationEmbedding
 ];
 
 sequelize.addModels(models);
