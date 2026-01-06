@@ -23,4 +23,7 @@ ticketRoutes.delete(
     TicketController.remove
 );
 
+// Novo: Rota para buscar histórico de mensagens sob demanda
+ticketRoutes.post("/tickets/:ticketId/history", isAuth, TicketController.syncHistory);
+
 export default ticketRoutes;

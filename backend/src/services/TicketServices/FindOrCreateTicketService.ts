@@ -9,9 +9,9 @@ const FindOrCreateTicketService = async (
   whatsappId: number,
   unreadMessages: number,
   tenantId: number | string,
-  groupContact?: Contact,
-  isOldMessage?: boolean
+  groupContact?: Contact
 ): Promise<Ticket> => {
+  // Buscar ticket aberto ou pendente existente
   let ticket = await Ticket.findOne({
     where: {
       status: {
@@ -24,39 +24,15 @@ const FindOrCreateTicketService = async (
   });
 
   if (ticket) {
-    if (!isOldMessage) {
-      await ticket.update({ unreadMessages });
-    }
+    await ticket.update({ unreadMessages });
     return await ShowTicketService(ticket.id);
   }
 
-  // Logic for Old Messages (History Sync)
-  // If it's an old message and no open ticket exists, we try to find ANY ticket (including closed)
-  // to avoid creating spam tickets. If none found, we create a CLOSED one.
-  if (isOldMessage) {
-    ticket = await Ticket.findOne({
-      where: {
-        contactId: groupContact ? groupContact.id : contact.id,
-        whatsappId: whatsappId,
-        tenantId
-      },
-      order: [["updatedAt", "DESC"]]
-    });
+  // Lógica removida: Mensagens antigas agora são tratadas no EventListener
+  // e não criam tickets - apenas salvam no histórico se ticket existir
 
-    if (!ticket) {
-      ticket = await Ticket.create({
-        contactId: groupContact ? groupContact.id : contact.id,
-        status: "closed",
-        isGroup: !!groupContact,
-        unreadMessages: 0,
-        whatsappId,
-        tenantId
-      });
-    }
 
-    return await ShowTicketService(ticket.id);
-  }
-
+  // Para grupos: reabrir como 'open' (grupos sempre prontos para resposta)
   if (!ticket && groupContact) {
     ticket = await Ticket.findOne({
       where: {
@@ -69,8 +45,7 @@ const FindOrCreateTicketService = async (
 
     if (ticket) {
       await ticket.update({
-        status: "pending",
-        userId: null,
+        status: "open", // Grupos sempre abertos
         unreadMessages
       });
     }
@@ -99,9 +74,13 @@ const FindOrCreateTicketService = async (
   }
 
   if (!ticket) {
+    // Grupos: criar como 'open' (sempre prontos para resposta)
+    // Individuais: criar como 'pending' (aguardando aceite)
+    const ticketStatus = groupContact ? "open" : "pending";
+
     ticket = await Ticket.create({
       contactId: groupContact ? groupContact.id : contact.id,
-      status: "pending",
+      status: ticketStatus,
       isGroup: !!groupContact,
       unreadMessages,
       whatsappId,

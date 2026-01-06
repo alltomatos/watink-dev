@@ -2,7 +2,8 @@ import {
   Envelope, StartSessionPayload, SendTextPayload, SendMediaPayload,
   SendButtonsPayload, SendListPayload, SendPollPayload,
   SendTemplatePayload, SendInteractivePayload, SendCarouselPayload,
-  CommandType, SyncContactPayload, MarkAsReadPayload, ImportContactPayload
+  CommandType, SyncContactPayload, MarkAsReadPayload, ImportContactPayload,
+  HistorySyncPayload
 } from "./contracts";
 import { logger } from "./logger";
 import { RabbitMQ } from "./rabbitmq";
@@ -32,6 +33,7 @@ class SessionManager {
   private retries: Map<number, number> = new Map();
   private manuallyDisconnected: Set<number> = new Set();
   private recentlySent: Set<string> = new Set();
+  private avatarCache: Map<string, string> = new Map();
   private rabbitmq: RabbitMQ;
   private sessionsDir: string;
 
@@ -85,6 +87,9 @@ class SessionManager {
         break;
       case "contact.import":
         await this.importContacts(envelope.payload as ImportContactPayload, envelope.tenantId);
+        break;
+      case "history.sync":
+        await this.syncHistory(envelope.payload as HistorySyncPayload, envelope.tenantId);
         break;
       default:
         logger.warn(`Unknown command type: ${envelope.type}`);
@@ -321,7 +326,7 @@ class SessionManager {
         printQRInTerminal: false,
         logger: logger.child({ level: "warn" }) as any,
         browser: browserConfig as any,
-        syncFullHistory: payload.syncHistory || false,
+        syncFullHistory: false, // Histórico sempre desativado - busca sob demanda via history.sync
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: 30000,
         retryRequestDelayMs: 2000,
@@ -1001,10 +1006,22 @@ class SessionManager {
       msgType = "poll_response";
     }
 
-    // Fetch Profile Pic (Best effort)
     let profilePicUrl = "";
     try {
-      // profilePicUrl = await sock.profilePictureUrl(msg.key.participant || msg.key.remoteJid || "", "image").catch(() => "");
+      const senderJid = msg.key.participant || msg.key.remoteJid || "";
+      const isGroupMsg = (msg.key.remoteJid?.endsWith("@g.us") || false) && !msg.key.fromMe;
+      if (isGroupMsg && senderJid) {
+        const cached = this.avatarCache.get(senderJid);
+        if (cached) {
+          profilePicUrl = cached;
+        } else {
+          const fetched = await sock.profilePictureUrl(senderJid, "image").catch(() => "");
+          if (fetched) {
+            profilePicUrl = fetched;
+            this.avatarCache.set(senderJid, fetched);
+          }
+        }
+      }
     } catch (e) { }
 
     // Enhanced Contact Identification (LID/JID)
@@ -1258,6 +1275,72 @@ class SessionManager {
     logger.info(`[importContacts] Manual import disabled. Contacts are synced automatically via incoming messages.`);
   }
 
+  // Busca de histórico de mensagens sob demanda para um contato/ticket específico
+  private async syncHistory(payload: HistorySyncPayload, tenantId: string | number) {
+    const session = this.sessions.get(payload.sessionId);
+    if (!session) {
+      logger.error(`Session ${payload.sessionId} not found for history sync`);
+      return;
+    }
+
+    try {
+      const jid = payload.contactNumber.includes("@")
+        ? payload.contactNumber
+        : `${payload.contactNumber}@s.whatsapp.net`;
+
+      logger.info(`[HistorySync] Fetching messages for ${jid} from ${payload.fromDate} for ticket ${payload.ticketId}`);
+
+      const fromTimestamp = new Date(payload.fromDate).getTime() / 1000;
+      const toTimestamp = payload.toDate ? new Date(payload.toDate).getTime() / 1000 : Date.now() / 1000;
+
+      // Nota: O Baileys não possui um método direto para buscar histórico de mensagens de um chat específico
+      // O histórico é sincronizado automaticamente quando syncFullHistory está ativo
+      // Para busca sob demanda, precisamos usar a store local se disponível
+      // ou re-sincronizar a sessão com syncFullHistory:true temporariamente
+
+      // Por enquanto, emitimos um evento de status informando que a busca foi iniciada
+      // e dependemos do mecanismo existente de messages.upsert para receber as mensagens
+      // quando o WhatsApp as envia como parte de qualquer cache/sync
+
+      logger.info(`[HistorySync] History sync requested for ${jid}. Note: Baileys does not support on-demand history fetch.`);
+      logger.info(`[HistorySync] Messages will be captured via normal upsert flow if WhatsApp sends them.`);
+
+      // Emitir evento de status para o backend
+      const statusEvent: Envelope = {
+        id: uuidv4(),
+        timestamp: Date.now(),
+        tenantId,
+        type: "history.status",
+        payload: {
+          sessionId: payload.sessionId,
+          ticketId: payload.ticketId,
+          contactId: payload.contactId,
+          status: "requested",
+          message: "Busca de histórico solicitada. Mensagens serão sincronizadas conforme disponíveis."
+        }
+      };
+
+      await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.history.status`, statusEvent);
+
+    } catch (error) {
+      logger.error(`[HistorySync] Error syncing history for ${payload.contactNumber}:`, error);
+
+      const errorEvent: Envelope = {
+        id: uuidv4(),
+        timestamp: Date.now(),
+        tenantId,
+        type: "history.status",
+        payload: {
+          sessionId: payload.sessionId,
+          ticketId: payload.ticketId,
+          status: "error",
+          message: `Erro ao buscar histórico: ${error}`
+        }
+      };
+
+      await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.history.status`, errorEvent);
+    }
+  }
   private async sendButtons(payload: SendButtonsPayload) {
     const session = this.sessions.get(payload.sessionId);
     if (!session) {
