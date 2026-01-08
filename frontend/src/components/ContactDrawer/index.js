@@ -11,7 +11,7 @@ import Avatar from "@material-ui/core/Avatar";
 import Button from "@material-ui/core/Button";
 import Paper from "@material-ui/core/Paper";
 import DeleteOutlineIcon from "@material-ui/icons/DeleteOutline";
-import AddIcon from "@material-ui/icons/Add";
+// import AddIcon from "@material-ui/icons/Add";
 import AssignmentIcon from "@material-ui/icons/Assignment";
 import TextField from "@material-ui/core/TextField";
 import Select from "@material-ui/core/Select";
@@ -33,6 +33,7 @@ import ClientModal from "../../pages/Clients/ClientModal"; // Import ClientModal
 import ContactDrawerSkeleton from "../ContactDrawerSkeleton";
 import MarkdownWrapper from "../MarkdownWrapper";
 import ContactAIInsights from "../ContactAIInsights";
+import ProtocolDrawer from "../../pages/Helpdesk/ProtocolDrawer";
 
 const drawerWidth = 320;
 
@@ -138,9 +139,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 	const [selectedStage, setSelectedStage] = useState("");
 	const [stages, setStages] = useState([]);
 	// Protocol creation state
-	const [protocolModalOpen, setProtocolModalOpen] = useState(false);
-	const [protocolSubject, setProtocolSubject] = useState("");
-	const [protocolPriority, setProtocolPriority] = useState("medium");
+	const [protocolDrawerOpen, setProtocolDrawerOpen] = useState(false);
 
 	// Client Modal State
 	const [clientModalOpen, setClientModalOpen] = useState(false);
@@ -248,25 +247,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 		fetchPlugins();
 	}, []);
 
-	const handleCreateProtocol = async () => {
-		if (!protocolSubject.trim()) {
-			toast.error("Assunto é obrigatório");
-			return;
-		}
-		try {
-			await api.post(`/contacts/${contact.id}/protocols`, {
-				subject: protocolSubject,
-				priority: protocolPriority,
-				ticketId: ticketId
-			});
-			toast.success("Protocolo criado com sucesso!");
-			setProtocolModalOpen(false);
-			setProtocolSubject("");
-			setProtocolPriority("medium");
-		} catch (err) {
-			toast.error("Erro ao criar protocolo");
-		}
-	};
+
 
 	return (
 		<Drawer
@@ -437,7 +418,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 								<Button
 									variant="outlined"
 									color="primary"
-									startIcon={<AddIcon />}
+									// startIcon={<AddIcon />}
 									onClick={() => setPipelineModalOpen(true)}
 									style={{ marginTop: 8 }}
 									fullWidth
@@ -456,7 +437,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 										variant="outlined"
 										color="primary"
 										startIcon={<AssignmentIcon />}
-										onClick={() => setProtocolModalOpen(true)}
+										onClick={() => setProtocolDrawerOpen(true)}
 										fullWidth
 									>
 										Abrir Protocolo
@@ -506,44 +487,12 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 								</DialogActions>
 							</Dialog>
 
-							{/* Protocol Creation Dialog */}
-							<Dialog open={protocolModalOpen} onClose={() => setProtocolModalOpen(false)}>
-								<DialogTitle>Novo Protocolo de Atendimento</DialogTitle>
-								<DialogContent>
-									<TextField
-										autoFocus
-										margin="dense"
-										label="Assunto"
-										fullWidth
-										value={protocolSubject}
-										onChange={(e) => setProtocolSubject(e.target.value)}
-									/>
-									<FormControl fullWidth margin="dense">
-										<InputLabel>Prioridade</InputLabel>
-										<Select
-											value={protocolPriority}
-											onChange={(e) => setProtocolPriority(e.target.value)}
-										>
-											<MenuItem value="low">Baixa</MenuItem>
-											<MenuItem value="medium">Média</MenuItem>
-											<MenuItem value="high">Alta</MenuItem>
-											<MenuItem value="urgent">Urgente</MenuItem>
-										</Select>
-									</FormControl>
-								</DialogContent>
-								<DialogActions>
-									<Button onClick={() => setProtocolModalOpen(false)} color="secondary">
-										Cancelar
-									</Button>
-									<Button
-										onClick={handleCreateProtocol}
-										color="primary"
-										disabled={!protocolSubject.trim()}
-									>
-										Criar Protocolo
-									</Button>
-								</DialogActions>
-							</Dialog>
+							<ProtocolDrawer
+								open={protocolDrawerOpen}
+								onClose={() => setProtocolDrawerOpen(false)}
+								contactId={contact.id}
+								ticketId={ticketId}
+							/>
 
 							<ClientModal
 								open={clientModalOpen}

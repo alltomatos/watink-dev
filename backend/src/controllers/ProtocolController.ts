@@ -75,7 +75,8 @@ export const createFromContact = async (req: Request, res: Response): Promise<Re
             ticketId: ticketId ? Number(ticketId) : undefined,
             subject: subject || "Novo Protocolo de Atendimento",
             description,
-            priority
+            priority,
+            carouselCards: req.body.carouselCards
         },
         Number(userId)
     );

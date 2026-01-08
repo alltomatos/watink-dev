@@ -26,6 +26,7 @@ import DeleteOutlineIcon from "@material-ui/icons/DeleteOutline";
 import EditIcon from "@material-ui/icons/Edit";
 import ViewModuleIcon from "@material-ui/icons/ViewModule";
 import ViewListIcon from "@material-ui/icons/ViewList";
+import AddIcon from "@material-ui/icons/Add";
 
 import MainContainer from "../../components/MainContainer";
 import MainHeader from "../../components/MainHeader";

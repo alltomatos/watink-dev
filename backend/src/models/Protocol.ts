@@ -35,6 +35,10 @@ class Protocol extends Model<Protocol> {
     @Column(DataType.STRING(50))
     protocolNumber: string;
 
+    @Default(DataType.UUIDV4)
+    @Column(DataType.UUID)
+    token: string;
+
     @ForeignKey(() => Ticket)
     @Column
     ticketId: number;
