@@ -26,7 +26,34 @@ O Engine escuta na exchange `wbot.commands` com a routing key `wbot.*.*.#`.
 **Routing Key**: `session.start`
 **Payload**: `StartSessionPayload` (sessionId, force, usePairingCode).
 
-### 3. Outros Comandos
+### 3. Envio de Mensagem com Botão Interativo (URL)
+**Routing Key**: `wbot.{tenantId}.{sessionId}.message.send.interactive`
+**Payload**:
+```json
+{
+  "sessionId": 1,
+  "to": "5511999999999@s.whatsapp.net",
+  "content": {
+    "text": "Corpo da mensagem",
+    "footer": "Rodapé da mensagem",
+    "buttons": [
+      {
+        "index": 1,
+        "urlButton": {
+          "displayText": "Texto do Botão",
+          "url": "https://exemplo.com"
+        }
+      }
+    ]
+  },
+  "messageId": "uuid-v4"
+}
+```
+**Processamento no Engine**:
+- Utiliza `session.socket.sendMessage` com payload `interactive` nativo do `whaileys`.
+- Ideal para notificações de protocolo e CTAs.
+
+### 4. Outros Comandos
 - `session.stop`: Desconectar.
 - `message.send.media`: Enviar arquivo.
 - `contact.sync`: Sincronizar contato/grupo.

@@ -10,8 +10,8 @@ const store = async (req: Request, res: Response): Promise<Response> => {
   const { usePairingCode, phoneNumber } = req.body;
   const whatsapp = await ShowWhatsAppService(whatsappId);
 
-  // If using pairing code, we force restart the session to ensure clean state
-  const force = !!usePairingCode;
+  // Always force restart on manual start request to clear stuck sessions
+  const force = true;
 
   StartWhatsAppSession(whatsapp, usePairingCode, phoneNumber, force);
 

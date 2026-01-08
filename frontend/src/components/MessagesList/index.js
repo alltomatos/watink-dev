@@ -79,8 +79,10 @@ const useStyles = makeStyles((theme) => ({
 
   messageLeft: {
     marginRight: 20,
-    marginTop: 2,
-    minWidth: 100,
+    marginTop: 5,
+    marginBottom: 15,
+    // minWidth: 100,
+    width: "fit-content",
     maxWidth: 600,
     height: "auto",
     display: "block",
@@ -143,8 +145,9 @@ const useStyles = makeStyles((theme) => ({
   },
 
   messageRight: {
-    marginLeft: 20,
-    marginTop: 2,
+    marginLeft: "auto",
+    marginTop: 5,
+    marginBottom: 15,
     minWidth: 100,
     maxWidth: 600,
     height: "auto",
@@ -306,7 +309,7 @@ const useStyles = makeStyles((theme) => ({
     fontSize: "12px",
     display: "flex",
     alignItems: "center",
-    zIndex: 10,
+    zIndex: 20,
     cursor: "pointer",
     border: "1px solid #e0e0e0",
   },
@@ -358,13 +361,14 @@ const useStyles = makeStyles((theme) => ({
   },
   senderSpacer: {
     display: "block",
-    height: 12
+    height: 28,
+    clear: "both"
   }
 }));
 
 const reducer = (state, action) => {
   if (action.type === "LOAD_MESSAGES") {
-    const messages = action.payload;
+    const messages = action.payload || [];
     const newMessages = [];
 
     messages.forEach((message) => {
@@ -630,6 +634,39 @@ const MessagesList = ({ ticketId, isGroup }) => {
           />
         </div>
       );
+
+    } else if (message.mediaType === "carousel") {
+      let data = message.dataJson;
+      if (typeof data === "string") {
+        try { data = JSON.parse(data); } catch (e) { data = {}; }
+      }
+      if (data?.cards) {
+        return (
+          <div style={{ display: 'flex', overflowX: 'auto', maxWidth: 350, gap: 10, paddingBottom: 10, paddingTop: 5 }}>
+            {data.cards.map((card, idx) => (
+              <div key={idx} style={{ minWidth: 220, backgroundColor: '#fff', borderRadius: 8, border: '1px solid #eee', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                {card.headerUrl && <img src={card.headerUrl} style={{ width: '100%', height: 120, objectFit: 'cover' }} alt={card.title} />}
+                <div style={{ padding: 8 }}>
+                  <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 4 }}>{card.title}</div>
+                  <div style={{ fontSize: 12, color: '#555', whiteSpace: 'pre-wrap' }}>{card.body}</div>
+                </div>
+                {card.buttons && card.buttons.length > 0 && (
+                  <div style={{ borderTop: '1px solid #f0f0f0', padding: 5 }}>
+                    {card.buttons.map((btn, bIdx) => (
+                      <div key={bIdx} style={{ fontSize: 12, textAlign: 'center', color: '#007bff', padding: '4px 0', cursor: 'pointer' }}
+                        onClick={() => btn.url ? window.open(btn.url, '_blank') : null}
+                      >
+                        {btn.text}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      }
+      return null;
     } else {
       return (
         <>
@@ -662,7 +699,15 @@ const MessagesList = ({ ticketId, isGroup }) => {
     }
   };
 
+  const isDateValid = (dateStr) => {
+    if (!dateStr) return false;
+    const date = parseISO(dateStr);
+    return !isNaN(date.getTime()) && date.getFullYear() > 2000;
+  };
+
   const renderDailyTimestamps = (message, index) => {
+    if (!isDateValid(message.createdAt)) return null;
+
     if (index === 0) {
       return (
         <span
@@ -676,6 +721,19 @@ const MessagesList = ({ ticketId, isGroup }) => {
       );
     }
     if (index > 0) {
+      if (!isDateValid(messagesList[index - 1].createdAt)) {
+        return (
+          <span
+            className={classes.dailyTimestamp}
+            key={`timestamp-${message.id}`}
+          >
+            <div className={classes.dailyTimestampText}>
+              {format(parseISO(messagesList[index].createdAt), "dd/MM/yyyy")}
+            </div>
+          </span>
+        );
+      }
+
       let messageDay = parseISO(messagesList[index].createdAt);
       let previousMessageDay = parseISO(messagesList[index - 1].createdAt);
 
@@ -694,51 +752,75 @@ const MessagesList = ({ ticketId, isGroup }) => {
     }
   };
 
-  const renderMessageDivider = (message, index) => {
-    if (index <= 0 || index >= messagesList.length) return null;
-    const getSenderKey = (m) => {
-      if (!m) return "unknown";
-      if (m.fromMe) return "me";
-      if (isGroup) {
-        let data = m.dataJson;
-        if (typeof data === "string") {
-          try { data = JSON.parse(data); } catch (e) { data = {}; }
-        }
-        return m.participant || data?.participant || data?.senderLid || data?.pushName || "unknown";
-      }
-      return "other";
-    };
-    const currentKey = getSenderKey(messagesList[index]);
-    const previousKey = getSenderKey(messagesList[index - 1]);
-    if (currentKey !== previousKey) {
-      return <span className={classes.senderSpacer} key={`divider-${message.id}`} />;
+  const renderMessageTimestamp = (message) => {
+    if (!isDateValid(message.createdAt)) return null;
+    return (
+      <span className={classes.timestamp}>
+        {format(parseISO(message.createdAt), "HH:mm")}
+        {renderMessageAck(message)}
+      </span>
+    )
+  };
+
+  const groupColorCacheRef = useRef(new Map());
+
+  const getParticipantColor = (message) => {
+    const participantId = message.participant || message.dataJson?.participant || "unknown";
+    if (!groupColorCacheRef.current.has(participantId)) {
+      const colors = [
+        "#FF5722", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3",
+        "#03A9F4", "#00BCD4", "#009688", "#4CAF50", "#8BC34A", "#CDDC39",
+        "#FFC107", "#FF9800", "#795548", "#607D8B"
+      ];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      groupColorCacheRef.current.set(participantId, randomColor);
     }
+    return groupColorCacheRef.current.get(participantId);
+  };
+
+  const renderSenderName = (message) => {
+    if (!isGroup) return null;
+    let name = message.contact?.name || message.participant;
+
+    let data = message.dataJson;
+    if (typeof data === "string") {
+      try { data = JSON.parse(data); } catch (e) { data = {}; }
+    }
+    if (data?.pushName) name = data.pushName;
+
+    const color = getParticipantColor(message);
+
+    return (
+      <span className={classes.messageContactName} style={{ color }}>
+        {name || "Desconhecido"}
+      </span>
+    );
   };
 
   const getMessageBody = (message) => {
-    if (!message) return null;
-    if (message.body && message.body.length > 0) return message.body;
-    if (message.dataJson) {
-      try {
-        const data = typeof message.dataJson === 'string' ? JSON.parse(message.dataJson) : message.dataJson;
-
-        // Extended text message with context
-        if (data?.message?.extendedTextMessage?.text) return data.message.extendedTextMessage.text;
-
-        // Simple conversation
-        if (data?.message?.conversation) return data.message.conversation;
-
-        // Direct properties (sometimes extracted top-level)
-        if (data?.conversation) return data.conversation;
-        if (data?.text) return data.text;
-      } catch (e) {
-        console.error("Error parsing message body from json", e);
-      }
-    }
-    return null;
+    if (message.mediaType === "location") return "Localização";
+    if (message.mediaType === "vcard") return "Contato";
+    if (message.mediaType === "carousel") return "Carrossel";
+    return message.body;
   };
 
   const renderQuotedMessage = (message) => {
+    const getQuotedSenderName = () => {
+      const quotedMsg = message.quotedMsg;
+      const contact = quotedMsg?.contact;
+
+      if (isGroup && contact?.isGroup && quotedMsg?.participant) {
+        let data = quotedMsg.dataJson;
+        if (typeof data === "string") {
+          try { data = JSON.parse(data); } catch (e) { data = {}; }
+        }
+        if (data?.pushName) return data.pushName;
+        return quotedMsg.participant.replace("@s.whatsapp.net", "");
+      }
+
+      return contact?.name;
+    }
+
     return (
       <div
         className={clsx(classes.quotedContainerLeft, {
@@ -750,10 +832,10 @@ const MessagesList = ({ ticketId, isGroup }) => {
             [classes.quotedSideColorRight]: message.quotedMsg?.fromMe,
           })}
         ></span>
-        <div className={classes.quotedMsg}>
+        <div className={message.fromMe ? classes.quotedMsgRight : classes.quotedMsg}>
           {!message.quotedMsg?.fromMe && (
-            <span className={classes.messageContactName}>
-              {message.quotedMsg?.contact?.name}
+            <span className={classes.messageContactName} style={{ color: getParticipantColor(message.quotedMsg) }}>
+              {getQuotedSenderName()}
             </span>
           )}
           {getMessageBody(message.quotedMsg)}
@@ -763,19 +845,26 @@ const MessagesList = ({ ticketId, isGroup }) => {
   };
 
   const renderMessageReactions = (message) => {
-    const reactions = message.reactions || [];
-    if (reactions.length === 0) return null;
+    if (!message.reactions || message.reactions.length === 0) return null;
 
-    const counts = reactions.reduce((acc, curr) => {
-      acc[curr.text] = (acc[curr.text] || 0) + 1;
+    const aggregated = message.reactions.reduce((acc, curr) => {
+      const emoji = curr.text || curr.emoji;
+      if (!emoji) return acc;
+
+      const existing = acc.find((r) => r.emoji === emoji);
+      if (existing) {
+        existing.count++;
+      } else {
+        acc.push({ emoji, count: 1 });
+      }
       return acc;
-    }, {});
+    }, []);
 
     return (
       <div className={classes.messageReactions}>
-        {Object.entries(counts).map(([emoji, count]) => (
-          <span key={emoji} style={{ marginRight: 4 }}>
-            {emoji}{count > 1 ? ` ${count}` : ''}
+        {aggregated.map((reaction, index) => (
+          <span key={index} style={{ marginRight: 4 }}>
+            {reaction.emoji} {reaction.count > 1 ? reaction.count : ""}
           </span>
         ))}
       </div>
@@ -783,120 +872,55 @@ const MessagesList = ({ ticketId, isGroup }) => {
   };
 
   const getFileNameFromUrl = (url) => {
-    if (!url) return null;
-    const nameParts = url.split('/').pop().split('-');
-    if (nameParts.length > 1 && /^\d{10,}$/.test(nameParts[0])) {
-      return nameParts.slice(1).join('-').replace(/_/g, ' ');
+    if (!url) return "";
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname;
+      return pathname.substring(pathname.lastIndexOf('/') + 1);
+    } catch (e) {
+      return url;
     }
-    return null;
   };
 
   const renderUrlPreview = (message) => {
-    let urlPreview = message.dataJson?.urlPreview;
-
-    // Handling legacy or if it comes as string (though API should return object for JSONB)
-    if (!urlPreview && message.dataJson && typeof message.dataJson === 'string') {
-      try {
-        const parsed = JSON.parse(message.dataJson);
-        urlPreview = parsed.urlPreview;
-      } catch (e) { }
-    }
-
-    if (urlPreview) {
-      return (
-        <div
-          className={classes.urlPreviewContainer}
-          onClick={() => window.open(urlPreview.canonicalUrl, "_blank")}
-        >
-          {urlPreview.thumbnail && (
-            <img src={`data:image/jpeg;base64,${urlPreview.thumbnail}`} className={classes.urlPreviewImage} alt="Url Preview" />
-          )}
-          <div className={classes.urlPreviewText}>
-            <b className={classes.urlPreviewTitle}>{urlPreview.title}</b>
-            <p className={classes.urlPreviewDescription}>{urlPreview.description}</p>
-          </div>
-        </div>
-      )
-    }
-    return null;
-  };
-
-  const groupColorCacheRef = useRef(new Map());
-  const getParticipantColor = (message) => {
-    if (!isGroup || message.fromMe) return "#6bcbef";
-    let key = "";
     let data = message.dataJson;
     if (typeof data === "string") {
       try { data = JSON.parse(data); } catch (e) { data = {}; }
     }
-    key = message.participant || data?.senderLid || data?.pushName || "";
-    if (!key) key = (message.participant || "").replace(/\D/g, "");
-    const cache = groupColorCacheRef.current;
-    const isDark = muiTheme?.palette?.type === "dark";
-    const primary = muiTheme?.palette?.primary?.main || "#1565C0";
-    const secondary = muiTheme?.palette?.secondary?.main || "#AD1457";
-    const palette = [
-      primary,
-      secondary,
-      isDark ? lighten(primary, 0.2) : darken(primary, 0.2),
-      isDark ? lighten(secondary, 0.2) : darken(secondary, 0.2),
-      isDark ? lighten(primary, 0.4) : darken(primary, 0.4),
-      isDark ? lighten(secondary, 0.4) : darken(secondary, 0.4),
-      isDark ? lighten(primary, 0.6) : darken(primary, 0.6),
-      isDark ? lighten(secondary, 0.6) : darken(secondary, 0.6),
-    ];
-    if (cache.has(key)) return cache.get(key);
-    let hash = 0;
-    for (let i = 0; i < key.length; i++) { hash = (hash << 5) - hash + key.charCodeAt(i); hash |= 0; }
-    const color = palette[Math.abs(hash) % palette.length];
-    cache.set(key, color);
-    return color;
-  };
-
-  const renderSenderName = (message) => {
-    if (!isGroup) return null;
-
-    // If it's my message, no need to show my name
-    if (message.fromMe) return null;
-
-    let pushName = null;
-    let participantNumber = null;
-
-    // Try to get from dataJson (new way)
-    if (message.dataJson) {
-      // If dataJson is string (legacy), parse it
-      const data = typeof message.dataJson === 'string' ? JSON.parse(message.dataJson) : message.dataJson;
-      pushName = data.pushName;
-    }
-
-    // Fallback to participant column or contact name if it was linked to a saved contact
-    // Note: message.contact is usually the group itself if we decided not to link to participant contact
-    // If we linked to participant contact, message.contact.name is the name.
-
-    // If we rely on the new logic where we DON'T create contacts for participants:
-    // message.contact will be the GROUP contact.
-    // So we must use message.participant or dataJson.pushName to identify sender.
-
-    if (message.participant) {
-      participantNumber = message.participant.replace(/\D/g, "");
-    }
-
-    const displayName = pushName || participantNumber || "Unknown";
-    const displayNumber = participantNumber ? `(${participantNumber})` : "";
-
-    // If there is a pushName, show: ~PushName (Number)
-    // If only number: ~Number
+    if (!data?.preview) return null;
 
     return (
-      <span className={classes.messageContactName} style={{ color: getParticipantColor(message) }}>
-        {`~${displayName} ${pushName && participantNumber ? displayNumber : ""}`}
-      </span>
-    )
-
+      <div className={classes.urlPreviewContainer} onClick={() => window.open(data.preview.url, '_blank')}>
+        {data.preview.image && (
+          <img src={data.preview.image} alt={data.preview.title} className={classes.urlPreviewImage} />
+        )}
+        <div className={classes.urlPreviewText}>
+          <a href={data.preview.url} target="_blank" rel="noopener noreferrer" className={classes.urlPreviewTitle}>
+            {data.preview.title}
+          </a>
+          <p className={classes.urlPreviewDescription}>
+            {data.preview.description}
+          </p>
+        </div>
+      </div>
+    );
   };
 
   const renderMessages = () => {
     if (messagesList.length > 0) {
+      const getSenderKey = (m) => {
+        if (!m) return "unknown";
+        if (m.fromMe) return "me";
+        if (isGroup) {
+          let data = m.dataJson;
+          if (typeof data === "string") {
+            try { data = JSON.parse(data); } catch (e) { data = {}; }
+          }
+          return m.participant || data?.participant || data?.senderLid || data?.pushName || "unknown";
+        }
+        return "other";
+      };
+
       const getDeletedBy = (message) => {
         let data = message.dataJson;
         if (typeof data === "string") {
@@ -916,7 +940,19 @@ const MessagesList = ({ ticketId, isGroup }) => {
         );
       };
 
+      const renderMessageDivider = (message, index) => {
+        if (index <= 0 || index >= messagesList.length) return null;
+        const currentKey = getSenderKey(messagesList[index]);
+        const previousKey = getSenderKey(messagesList[index - 1]);
+        if (currentKey !== previousKey) {
+          return <span className={classes.senderSpacer} key={`divider-${message.id}`} />;
+        }
+      };
+
       const viewMessagesList = messagesList.map((message, index) => {
+        const currentKey = getSenderKey(message);
+        const previousKey = index > 0 ? getSenderKey(messagesList[index - 1]) : null;
+        const sameSender = currentKey === previousKey;
 
         if (!message.fromMe) {
           return (
@@ -927,6 +963,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                 {isGroup && (
                   <Avatar
                     className={classes.groupAvatar}
+                    style={{ visibility: sameSender ? "hidden" : "visible" }}
                     src={(function () {
                       let data = message.dataJson;
                       if (typeof data === "string") {
@@ -952,8 +989,8 @@ const MessagesList = ({ ticketId, isGroup }) => {
                   >
                     <ExpandMore />
                   </IconButton>
-                  {renderSenderName(message)}
-                  {(message.mediaUrl || message.mediaType === "location" || message.mediaType === "vcard") && checkMessageMedia(message)}
+                  {!sameSender && renderSenderName(message)}
+                  {(message.mediaUrl || message.mediaType === "location" || message.mediaType === "vcard" || message.mediaType === "carousel") && checkMessageMedia(message)}
                   <div className={clsx(classes.textContentItem, {
                     [classes.textContentItemDeleted]: message.isDeleted,
                   })}>
@@ -964,9 +1001,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                       <MarkdownWrapper>{getMessageBody(message)}</MarkdownWrapper>
                     }
 
-                    <span className={classes.timestamp}>
-                      {format(parseISO(message.createdAt), "HH:mm")}
-                    </span>
+                    {renderMessageTimestamp(message)}
                   </div>
                   {renderMessageReactions(message)}
                 </div>
@@ -993,7 +1028,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                 >
                   <ExpandMore />
                 </IconButton>
-                {(message.mediaUrl || message.mediaType === "location" || message.mediaType === "vcard"
+                {(message.mediaUrl || message.mediaType === "location" || message.mediaType === "vcard" || message.mediaType === "carousel"
                   //|| message.mediaType === "multi_vcard" 
                 ) && checkMessageMedia(message)}
                 <div
@@ -1007,10 +1042,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                   {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
                     <MarkdownWrapper>{getMessageBody(message)}</MarkdownWrapper>
                   }
-                  <span className={classes.timestamp}>
-                    {format(parseISO(message.createdAt), "HH:mm")}
-                    {renderMessageAck(message)}
-                  </span>
+                  {renderMessageTimestamp(message)}
                 </div>
                 {renderMessageReactions(message)}
               </div>
