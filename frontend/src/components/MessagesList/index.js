@@ -1033,26 +1033,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
         handleClose={handleCloseMessageOptionsMenu}
       />
 
-      {/* Botão de buscar histórico no topo */}
-      <div style={{
-        display: "flex",
-        justifyContent: "center",
-        padding: "8px",
-        backgroundColor: "rgba(255,255,255,0.9)",
-        borderBottom: "1px solid #e0e0e0"
-      }}>
-        <Tooltip title="Buscar histórico de mensagens">
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<HistoryIcon />}
-            onClick={() => setHistoryModalOpen(true)}
-            style={{ textTransform: "none" }}
-          >
-            Buscar Histórico
-          </Button>
-        </Tooltip>
-      </div>
+
 
       {/* Modal de seleção de data para histórico */}
       <Dialog

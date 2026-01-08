@@ -13,6 +13,11 @@ import Paper from "@material-ui/core/Paper";
 import DeleteOutlineIcon from "@material-ui/icons/DeleteOutline";
 import AddIcon from "@material-ui/icons/Add";
 import AssignmentIcon from "@material-ui/icons/Assignment";
+import EditIcon from "@material-ui/icons/Edit";
+import RefreshIcon from "@material-ui/icons/Refresh";
+import PersonAddIcon from "@material-ui/icons/PersonAdd";
+import PersonIcon from "@material-ui/icons/Person";
+import Tooltip from "@material-ui/core/Tooltip";
 import TextField from "@material-ui/core/TextField";
 import Select from "@material-ui/core/Select";
 import MenuItem from "@material-ui/core/MenuItem";
@@ -33,6 +38,7 @@ import ClientModal from "../../pages/Clients/ClientModal"; // Import ClientModal
 import ContactDrawerSkeleton from "../ContactDrawerSkeleton";
 import MarkdownWrapper from "../MarkdownWrapper";
 import ContactAIInsights from "../ContactAIInsights";
+import ProtocolDrawer from "../../pages/Helpdesk/ProtocolDrawer";
 
 const drawerWidth = 320;
 
@@ -137,10 +143,9 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 	const [selectedPipeline, setSelectedPipeline] = useState("");
 	const [selectedStage, setSelectedStage] = useState("");
 	const [stages, setStages] = useState([]);
+
 	// Protocol creation state
-	const [protocolModalOpen, setProtocolModalOpen] = useState(false);
-	const [protocolSubject, setProtocolSubject] = useState("");
-	const [protocolPriority, setProtocolPriority] = useState("medium");
+	const [protocolDrawerOpen, setProtocolDrawerOpen] = useState(false);
 
 	// Client Modal State
 	const [clientModalOpen, setClientModalOpen] = useState(false);
@@ -248,25 +253,6 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 		fetchPlugins();
 	}, []);
 
-	const handleCreateProtocol = async () => {
-		if (!protocolSubject.trim()) {
-			toast.error("Assunto é obrigatório");
-			return;
-		}
-		try {
-			await api.post(`/contacts/${contact.id}/protocols`, {
-				subject: protocolSubject,
-				priority: protocolPriority,
-				ticketId: ticketId
-			});
-			toast.success("Protocolo criado com sucesso!");
-			setProtocolModalOpen(false);
-			setProtocolSubject("");
-			setProtocolPriority("medium");
-		} catch (err) {
-			toast.error("Erro ao criar protocolo");
-		}
-	};
 
 	return (
 		<Drawer
@@ -329,68 +315,55 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 										<Typography variant="body2" color="textSecondary">{contact.lid}</Typography>
 									)}
 								</Typography>
-								<Button
-									variant="outlined"
-									color="primary"
-									onClick={() => setModalOpen(true)}
-								>
-									{i18n.t("contactDrawer.buttons.edit")}
-								</Button>
-								<Button
-									variant="outlined"
-									color="primary"
-									onClick={async () => {
-										try {
-											await api.post(`/contacts/${contact.id}/sync`);
-										} catch (e) { console.error(e); }
-									}}
-									style={{ marginLeft: 8 }}
-								>
-									Atualizar
-								</Button>
-								{(!contact.clients || contact.clients.length === 0) && (
-									<Button
-										variant="outlined"
-										color="primary"
-										onClick={() => setClientModalOpen(true)}
-										style={{ marginLeft: 8 }}
-									>
-										Criar Cliente
-									</Button>
-								)}
-								{contact.clients && contact.clients.length > 0 && (
-									<Button
-										variant="outlined"
-										disabled
-										style={{ marginLeft: 8 }}
-									>
-										Cliente Vinculado
-									</Button>
-								)}
+								<div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+									<Tooltip title={i18n.t("contactDrawer.buttons.edit")}>
+										<IconButton
+											color="primary"
+											onClick={() => setModalOpen(true)}
+										>
+											<EditIcon />
+										</IconButton>
+									</Tooltip>
+									<Tooltip title="Atualizar">
+										<IconButton
+											color="primary"
+											onClick={async () => {
+												try {
+													await api.post(`/contacts/${contact.id}/sync`);
+													toast.success("Sincronização solicitada!");
+												} catch (e) { console.error(e); }
+											}}
+										>
+											<RefreshIcon />
+										</IconButton>
+									</Tooltip>
+									{(!contact.clients || contact.clients.length === 0) && (
+										<Tooltip title="Criar Cliente">
+											<IconButton
+												color="primary"
+												onClick={() => setClientModalOpen(true)}
+											>
+												<PersonAddIcon />
+											</IconButton>
+										</Tooltip>
+									)}
+									{contact.clients && contact.clients.length > 0 && (
+										<Tooltip title="Cliente Vinculado">
+											<IconButton
+												color="primary"
+												disabled
+											>
+												<PersonIcon />
+											</IconButton>
+										</Tooltip>
+									)}
+								</div>
 							</Paper>
-							<Paper square variant="outlined" className={classes.contactDetails}>
-								<ContactModal
-									open={modalOpen}
-									onClose={() => setModalOpen(false)}
-									contactId={contact.id}
-								></ContactModal>
-								<Typography variant="subtitle1">
-									{i18n.t("contactDrawer.extraInfo")}
-								</Typography>
-								{contact?.extraInfo?.map(info => (
-									<Paper
-										key={info.id}
-										square
-										variant="outlined"
-										className={classes.contactExtraInfo}
-									>
-										<InputLabel>{info.name}</InputLabel>
-										<Typography component="div" noWrap style={{ paddingTop: 2 }}>
-											<MarkdownWrapper>{info.value}</MarkdownWrapper>
-										</Typography>
-									</Paper>
-								))}
-							</Paper>
+							<ContactModal
+								open={modalOpen}
+								onClose={() => setModalOpen(false)}
+								contactId={contact.id}
+							></ContactModal>
 
 							<Paper square variant="outlined" className={classes.contactDetails}>
 								<Typography variant="subtitle1" style={{ marginBottom: 8 }}>
@@ -456,7 +429,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 										variant="outlined"
 										color="primary"
 										startIcon={<AssignmentIcon />}
-										onClick={() => setProtocolModalOpen(true)}
+										onClick={() => setProtocolDrawerOpen(true)}
 										fullWidth
 									>
 										Abrir Protocolo
@@ -507,43 +480,16 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 							</Dialog>
 
 							{/* Protocol Creation Dialog */}
-							<Dialog open={protocolModalOpen} onClose={() => setProtocolModalOpen(false)}>
-								<DialogTitle>Novo Protocolo de Atendimento</DialogTitle>
-								<DialogContent>
-									<TextField
-										autoFocus
-										margin="dense"
-										label="Assunto"
-										fullWidth
-										value={protocolSubject}
-										onChange={(e) => setProtocolSubject(e.target.value)}
-									/>
-									<FormControl fullWidth margin="dense">
-										<InputLabel>Prioridade</InputLabel>
-										<Select
-											value={protocolPriority}
-											onChange={(e) => setProtocolPriority(e.target.value)}
-										>
-											<MenuItem value="low">Baixa</MenuItem>
-											<MenuItem value="medium">Média</MenuItem>
-											<MenuItem value="high">Alta</MenuItem>
-											<MenuItem value="urgent">Urgente</MenuItem>
-										</Select>
-									</FormControl>
-								</DialogContent>
-								<DialogActions>
-									<Button onClick={() => setProtocolModalOpen(false)} color="secondary">
-										Cancelar
-									</Button>
-									<Button
-										onClick={handleCreateProtocol}
-										color="primary"
-										disabled={!protocolSubject.trim()}
-									>
-										Criar Protocolo
-									</Button>
-								</DialogActions>
-							</Dialog>
+							{/* Protocol Creation Drawer */}
+							<ProtocolDrawer
+								open={protocolDrawerOpen}
+								onClose={() => setProtocolDrawerOpen(false)}
+								contactId={contact.id}
+								ticketId={ticketId}
+								onSuccess={() => {
+									// Optional: Refresh logs or UI if needed
+								}}
+							/>
 
 							<ClientModal
 								open={clientModalOpen}
