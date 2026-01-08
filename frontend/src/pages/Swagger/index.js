@@ -28,8 +28,9 @@ const Swagger = () => {
     const [url, setUrl] = useState("");
 
     useEffect(() => {
-        const backendUrl = getBackendUrl();
-        setUrl(`${backendUrl}docs`);
+        const backendUrl = getBackendUrl() || "";
+        const base = backendUrl.endsWith("/") ? backendUrl.slice(0, -1) : backendUrl;
+        setUrl(`${base}/docs`);
     }, []);
 
     return (

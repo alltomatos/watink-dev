@@ -298,6 +298,42 @@ const useStyles = makeStyles((theme) => ({
     cursor: "pointer",
     border: "1px solid #e0e0e0",
   },
+
+  urlPreviewContainer: {
+    marginTop: 5,
+    marginBottom: 5,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    borderRadius: 8,
+    overflow: "hidden",
+    maxWidth: 300,
+    border: "1px solid rgba(0,0,0,0.1)",
+    cursor: "pointer",
+  },
+  urlPreviewImage: {
+    width: "100%",
+    height: 150,
+    objectFit: "cover"
+  },
+  urlPreviewText: {
+    padding: 10
+  },
+  urlPreviewTitle: {
+    fontWeight: "bold",
+    textDecoration: "none",
+    color: "inherit",
+    display: "block",
+    marginBottom: 4,
+    fontSize: 14,
+  },
+  urlPreviewDescription: {
+    fontSize: 12,
+    color: "#666",
+    margin: 0,
+    display: "-webkit-box",
+    "-webkit-line-clamp": 3,
+    "-webkit-box-orient": "vertical",
+    overflow: "hidden"
+  },
 }));
 
 const reducer = (state, action) => {
@@ -665,6 +701,80 @@ const MessagesList = ({ ticketId, isGroup }) => {
     return null;
   };
 
+  const renderUrlPreview = (message) => {
+    let urlPreview = message.dataJson?.urlPreview;
+
+    // Handling legacy or if it comes as string (though API should return object for JSONB)
+    if (!urlPreview && message.dataJson && typeof message.dataJson === 'string') {
+      try {
+        const parsed = JSON.parse(message.dataJson);
+        urlPreview = parsed.urlPreview;
+      } catch (e) { }
+    }
+
+    if (urlPreview) {
+      return (
+        <div
+          className={classes.urlPreviewContainer}
+          onClick={() => window.open(urlPreview.canonicalUrl, "_blank")}
+        >
+          {urlPreview.thumbnail && (
+            <img src={`data:image/jpeg;base64,${urlPreview.thumbnail}`} className={classes.urlPreviewImage} alt="Url Preview" />
+          )}
+          <div className={classes.urlPreviewText}>
+            <b className={classes.urlPreviewTitle}>{urlPreview.title}</b>
+            <p className={classes.urlPreviewDescription}>{urlPreview.description}</p>
+          </div>
+        </div>
+      )
+    }
+    return null;
+  };
+
+  const renderSenderName = (message) => {
+    if (!message.ticket?.isGroup) return null;
+
+    // If it's my message, no need to show my name
+    if (message.fromMe) return null;
+
+    let pushName = null;
+    let participantNumber = null;
+
+    // Try to get from dataJson (new way)
+    if (message.dataJson) {
+      // If dataJson is string (legacy), parse it
+      const data = typeof message.dataJson === 'string' ? JSON.parse(message.dataJson) : message.dataJson;
+      pushName = data.pushName;
+    }
+
+    // Fallback to participant column or contact name if it was linked to a saved contact
+    // Note: message.contact is usually the group itself if we decided not to link to participant contact
+    // If we linked to participant contact, message.contact.name is the name.
+
+    // If we rely on the new logic where we DON'T create contacts for participants:
+    // message.contact will be the GROUP contact.
+    // So we must use message.participant or dataJson.pushName to identify sender.
+
+    if (message.participant) {
+      participantNumber = message.participant.replace(/\D/g, "");
+    }
+
+    const displayName = pushName || participantNumber || "Unknown";
+    const displayNumber = participantNumber ? `(${participantNumber})` : "";
+
+    // If there is a pushName, show: ~PushName (Number)
+    // If only number: ~Number
+
+    const color = "#128C7E"; // WhatsApp teal or random color generator based on participant
+
+    return (
+      <div style={{ fontSize: 13, color: color, fontWeight: 'bold', marginBottom: 4 }}>
+        {`~${displayName} ${pushName && participantNumber ? displayNumber : ""}`}
+      </div>
+    )
+
+  };
+
   const renderMessages = () => {
     if (messagesList.length > 0) {
       const viewMessagesList = messagesList.map((message, index) => {
@@ -697,7 +807,9 @@ const MessagesList = ({ ticketId, isGroup }) => {
                   //|| message.mediaType === "multi_vcard" 
                 ) && checkMessageMedia(message)}
                 <div className={classes.textContentItem}>
+                  {renderSenderName(message)}
                   {message.quotedMsg && renderQuotedMessage(message)}
+                  {renderUrlPreview(message)}
                   {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
                     <MarkdownWrapper>{message.body}</MarkdownWrapper>
                   }
@@ -745,6 +857,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                     />
                   )}
                   {message.quotedMsg && renderQuotedMessage(message)}
+                  {renderUrlPreview(message)}
                   {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
                     <MarkdownWrapper>{message.body}</MarkdownWrapper>
                   }

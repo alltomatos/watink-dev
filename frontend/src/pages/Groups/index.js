@@ -119,7 +119,7 @@ const Groups = () => {
                     // or if paginated, data.groups. 
                     // Current Controller returns res.json(groups), which is an array.
                     // Adjust logic for array:
-                    dispatch({ type: "LOAD_GROUPS", payload: data });
+                    dispatch({ type: "LOAD_GROUPS", payload: Array.isArray(data) ? data : [] });
                     setHasMore(false); // Disable pagination for now as controller findAll is simple
                     setLoading(false);
                 } catch (err) {

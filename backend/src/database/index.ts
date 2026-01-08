@@ -24,6 +24,11 @@ import Group from "../models/Group";
 import GroupPermission from "../models/GroupPermission";
 import Permission from "../models/Permission";
 import UserPermission from "../models/UserPermission";
+import Client from "../models/Client";
+import ClientAddress from "../models/ClientAddress";
+import ClientContact from "../models/ClientContact";
+import Protocol from "../models/Protocol";
+import ProtocolHistory from "../models/ProtocolHistory";
 
 // eslint-disable-next-line
 const dbConfig = require("../config/database");
@@ -55,7 +60,12 @@ const models = [
   Group,
   GroupPermission,
   Permission,
-  UserPermission
+  UserPermission,
+  Client,
+  ClientAddress,
+  ClientContact,
+  Protocol,
+  ProtocolHistory
 ];
 
 sequelize.addModels(models);

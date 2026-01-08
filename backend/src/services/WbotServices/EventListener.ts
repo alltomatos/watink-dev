@@ -227,7 +227,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   if (message.originalId) {
     if (message.originalId === message.id) {
       logger.info(`[EventListener] handleMessageReceived - Deduping: IDs match (${message.id}). Skipping destruction.`);
-      
+
       const existingMsg = await Message.findByPk(message.id);
       if (existingMsg) {
         preservedBody = existingMsg.body;
@@ -246,7 +246,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
 
           await pendingMessage.destroy();
           logger.info(`[EventListener] Pending message ${message.originalId} destroyed successfully.`);
-          
+
           // Emit deletion event to frontend to remove the clock icon
           const io = getIO();
           io.to(pendingMessage.ticketId.toString()).emit(`appMessage`, {
@@ -292,11 +292,6 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     const participantNumber = participant.replace(/\D/g, "");
 
     // Check if we already have this participant as a contact
-    // If not, we DO NOT create a contact for them (to avoid pollution).
-    // Instead, we link the message to the Group Contact (or simply use the groupContact as msgContact context)
-    // However, existing logic passed msgContact to FindOrCreateTicketService.
-    // If we pass groupContact as msgContact, the ticket is created for the group (correct).
-
     let savedParticipant = await Contact.findOne({
       where: {
         number: participantNumber,
@@ -308,7 +303,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
       msgContact = savedParticipant;
     } else {
       // DOES NOT EXIST: Treat as Group Contact for the purpose of Ticket/Message linking context
-      // The frontend uses 'participant' field in Message table to identify the sender.
+      // We do NOT create a contact for them to avoid pollution.
       msgContact = groupContact;
     }
   } else {
@@ -332,8 +327,6 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
       contactData.profilePicUrl = message.profilePicUrl;
     } else {
       // If fromMe, use the number/address as name just for creation if it doesn't exist
-      // CreateOrUpdateContactService usually keeps existing name if we don't pass one, 
-      // but if it requires a name for creation, we pass number.
       contactData.name = message.from;
     }
 
@@ -364,7 +357,8 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     mediaUrl: preservedMediaUrl || message.mediaUrl,
     timestamp: message.timestamp * 1000, // Convert to ms
     participant: message.participant,
-    dataJson: JSON.stringify(message),
+    dataJson: message, // Store full payload including urlPreview and pushName
+    quotedMsgId: message.quotedMsgId,
     ack: message.status || message.ack || 0,
     tenantId
   };

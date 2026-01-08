@@ -38,8 +38,8 @@ class Message extends Model<Message> {
   @Column(DataType.STRING)
   get mediaUrl(): string | null {
     if (this.getDataValue("mediaUrl")) {
-      return `${process.env.BACKEND_URL}:${process.env.PROXY_PORT
-        }/public/${this.getDataValue("mediaUrl")}`;
+      const url = process.env.URL_BACKEND || process.env.BACKEND_URL || "";
+      return `${url}/public/${this.getDataValue("mediaUrl")}`;
     }
     return null;
   }
@@ -48,12 +48,19 @@ class Message extends Model<Message> {
   mediaType: string;
 
   @Default([])
+  @Default([])
   @Column(DataType.JSONB)
   reactions: object;
+
+  @Column(DataType.JSONB)
+  dataJson: object;
 
   @Default(false)
   @Column
   isDeleted: boolean;
+
+  @Column(DataType.STRING)
+  participant: string;
 
   @CreatedAt
   @Column(DataType.DATE(6))

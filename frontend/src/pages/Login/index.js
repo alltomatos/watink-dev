@@ -78,10 +78,11 @@ const Login = () => {
     const fetchSettings = async () => {
       try {
         const { data } = await api.get("/public-settings");
+        const settingsData = Array.isArray(data) ? data : [];
 
-        const layoutSetting = data.find(s => s.key === "login_layout");
-        const bgSetting = data.find(s => s.key === "login_backgroundImage");
-        const logoSetting = data.find(s => s.key === "systemLogo");
+        const layoutSetting = settingsData.find(s => s.key === "login_layout");
+        const bgSetting = settingsData.find(s => s.key === "login_backgroundImage");
+        const logoSetting = settingsData.find(s => s.key === "systemLogo");
 
         setSettings({
           loginLayout: layoutSetting?.value || "split_left",

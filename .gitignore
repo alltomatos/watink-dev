@@ -1,4 +1,4 @@
-.docker/
+#.docker/
 ssl/
 .env
 .wwebjs_auth

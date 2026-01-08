@@ -6,6 +6,7 @@ import Whatsapp from "../../models/Whatsapp";
 interface Request {
   searchParam?: string;
   pageNumber?: string | number;
+  tenantId?: number | string;
 }
 
 interface Response {
@@ -16,20 +17,30 @@ interface Response {
 
 const ListUsersService = async ({
   searchParam = "",
-  pageNumber = "1"
+  pageNumber = "1",
+  tenantId
 }: Request): Promise<Response> => {
-  const whereCondition = {
-    [Op.or]: [
-      {
-        "$User.name$": Sequelize.where(
-          Sequelize.fn("LOWER", Sequelize.col("User.name")),
-          "LIKE",
-          `%${searchParam.toLowerCase()}%`
-        )
-      },
-      { email: { [Op.iLike]: `%${searchParam.toLowerCase()}%` } }
-    ]
-  };
+  let whereCondition: any = {};
+  if (tenantId !== undefined) {
+    whereCondition.tenantId = tenantId;
+  }
+  console.log("DEBUG: ListUsersService tenantId:", tenantId, "whereCondition:", whereCondition);
+
+  if (searchParam) {
+    whereCondition = {
+      ...whereCondition,
+      [Op.or]: [
+        {
+          "$User.name$": Sequelize.where(
+            Sequelize.fn("LOWER", Sequelize.col("User.name")),
+            "LIKE",
+            `%${searchParam.toLowerCase()}%`
+          )
+        },
+        { email: { [Op.iLike]: `%${searchParam.toLowerCase()}%` } }
+      ]
+    };
+  }
   const limit = 20;
   const offset = limit * (+pageNumber - 1);
 

@@ -7,29 +7,24 @@ import BackdropLoading from "../components/BackdropLoading";
 const Route = ({ component: Component, isPrivate = false, ...rest }) => {
   const { isAuth, loading } = useContext(AuthContext);
 
+  if (loading) {
+    return <BackdropLoading />;
+  }
+
   if (!isAuth && isPrivate) {
     return (
-      <>
-        {loading && <BackdropLoading />}
-        <Redirect to={{ pathname: "/login", state: { from: rest.location } }} />
-      </>
+      <Redirect to={{ pathname: "/login", state: { from: rest.location } }} />
     );
   }
 
   if (isAuth && !isPrivate) {
     return (
-      <>
-        {loading && <BackdropLoading />}
-        <Redirect to={{ pathname: "/", state: { from: rest.location } }} />;
-      </>
+      <Redirect to={{ pathname: "/", state: { from: rest.location } }} />
     );
   }
 
   return (
-    <>
-      {loading && <BackdropLoading />}
-      <RouterRoute {...rest} component={Component} />
-    </>
+    <RouterRoute {...rest} component={Component} />
   );
 };
 

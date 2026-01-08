@@ -798,12 +798,12 @@ class SessionManager {
 
           return correctJid;
         } else {
-            logger.info(`[validateJid] JID Verified: ${jid}`);
-            return jid;
+          logger.info(`[validateJid] JID Verified: ${jid}`);
+          return jid;
         }
       } else {
-          logger.error(`[validateJid] JID ${jid} invalid or not on WhatsApp!`);
-          throw new Error(`JID ${jid} is not valid on WhatsApp`);
+        logger.error(`[validateJid] JID ${jid} invalid or not on WhatsApp!`);
+        throw new Error(`JID ${jid} is not valid on WhatsApp`);
       }
     } catch (error) {
       logger.error(`[validateJid] Validation failed for ${jid}: ${error}`);
@@ -843,8 +843,8 @@ class SessionManager {
 
       logger.info(`[sendText] Sending text to ${jid}: ${payload.body} (Ref Message ID: ${payload.messageId})`);
 
-      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
-        ? payload.messageId 
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0"))
+        ? payload.messageId
         : this.generateWAMessageId();
 
       this.recentlySent.add(waMsgId);
@@ -926,12 +926,12 @@ class SessionManager {
           msg.message.audioMessage?.mimetype ||
           msg.message.documentMessage?.mimetype ||
           msg.message.stickerMessage?.mimetype;
-        
+
         // Extract caption if available and body is empty
         if (!body) {
-          body = msg.message.imageMessage?.caption || 
-                 msg.message.videoMessage?.caption || 
-                 msg.message.documentMessage?.caption || "";
+          body = msg.message.imageMessage?.caption ||
+            msg.message.videoMessage?.caption ||
+            msg.message.documentMessage?.caption || "";
         }
       } catch (err) {
         logger.warn(`Error downloading media for msg ${msg.key.id}: ${err}`);
@@ -999,6 +999,69 @@ class SessionManager {
       senderLid = senderJid;
     }
 
+    // --- Quoted Message & Link Preview Extraction ---
+    let quotedMsgId = undefined;
+    let quotedMsgObj = undefined;
+    let urlPreviewObj = undefined;
+
+    try {
+      // 1. Find Context Info
+      const content = msg.message?.extendedTextMessage ||
+        msg.message?.imageMessage ||
+        msg.message?.videoMessage ||
+        msg.message?.documentMessage ||
+        msg.message?.stickerMessage ||
+        msg.message?.buttonsResponseMessage ||
+        msg.message?.listResponseMessage ||
+        msg.message?.templateButtonReplyMessage ||
+        msg.message?.interactiveResponseMessage?.nativeFlowResponseMessage;
+
+      // Note: direct 'conversation' usually doesn't have contextInfo
+      const contextInfo = content?.contextInfo;
+
+      if (contextInfo?.quotedMessage) {
+        quotedMsgId = contextInfo.stanzaId;
+        const qMsg = contextInfo.quotedMessage;
+
+        const qBody = qMsg.conversation ||
+          qMsg.extendedTextMessage?.text ||
+          qMsg.imageMessage?.caption ||
+          qMsg.videoMessage?.caption ||
+          (qMsg.imageMessage ? "Imagem" : null) ||
+          (qMsg.videoMessage ? "Vídeo" : null) ||
+          (qMsg.documentMessage ? "Arquivo" : null) ||
+          (qMsg.stickerMessage ? "Sticker" : null) ||
+          "";
+
+        quotedMsgObj = {
+          id: contextInfo.stanzaId,
+          body: qBody,
+          participant: contextInfo.participant || "",
+          type: Object.keys(qMsg)[0] || "unknown"
+        };
+      }
+
+      // 2. Link Preview (Only in extendedTextMessage)
+      if (msg.message?.extendedTextMessage) {
+        const { title, description, canonicalUrl, jpegThumbnail, previewType } = msg.message.extendedTextMessage;
+
+        // Only consider it a preview if we have at least a URL or Title
+        if (canonicalUrl || title) {
+          urlPreviewObj = {
+            title,
+            description,
+            canonicalUrl,
+            thumbnail: jpegThumbnail ? Buffer.from(jpegThumbnail).toString("base64") : undefined,
+            previewType
+          };
+          logger.info(`[handleMessage] Extracted Link Preview: ${title} - ${canonicalUrl}`);
+        }
+      }
+
+    } catch (err) {
+      logger.warn(`[handleMessage] Error extracting quota/preview: ${err}`);
+    }
+
     const msgEvent: Envelope = {
       id: uuidv4(),
       timestamp: Date.now(),
@@ -1025,7 +1088,10 @@ class SessionManager {
           participant: msg.key.participant || "",
           profilePicUrl,
           senderLid,
-          originalId: originalMessageId
+          originalId: originalMessageId,
+          quotedMsgId: quotedMsgId,
+          quotedMsg: quotedMsgObj,
+          urlPreview: urlPreviewObj
         }
       }
     };
@@ -1095,8 +1161,8 @@ class SessionManager {
         };
       }
 
-      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
-        ? payload.messageId 
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0"))
+        ? payload.messageId
         : this.generateWAMessageId();
 
       this.recentlySent.add(waMsgId);
@@ -1206,8 +1272,8 @@ class SessionManager {
         buttonMessage.headerType = 4;
       }
 
-      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
-        ? payload.messageId 
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0"))
+        ? payload.messageId
         : this.generateWAMessageId();
 
       this.recentlySent.add(waMsgId);
@@ -1269,8 +1335,8 @@ class SessionManager {
         sections: payload.sections
       };
 
-      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
-        ? payload.messageId 
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0"))
+        ? payload.messageId
         : this.generateWAMessageId();
 
       this.recentlySent.add(waMsgId);
@@ -1324,8 +1390,8 @@ class SessionManager {
     try {
       const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
 
-      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
-        ? payload.messageId 
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0"))
+        ? payload.messageId
         : this.generateWAMessageId();
 
       this.recentlySent.add(waMsgId);
@@ -1407,8 +1473,8 @@ class SessionManager {
         message.image = { url: payload.mediaUrl }; // Simplification, could check extension
       }
 
-      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
-        ? payload.messageId 
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0"))
+        ? payload.messageId
         : this.generateWAMessageId();
 
       this.recentlySent.add(waMsgId);
@@ -1500,8 +1566,8 @@ class SessionManager {
       };
 
       // Relay message is often safer for complex interactive messages
-      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0")) 
-        ? payload.messageId 
+      const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0"))
+        ? payload.messageId
         : this.generateWAMessageId();
 
       this.recentlySent.add(waMsgId);
@@ -1637,9 +1703,9 @@ class SessionManager {
       // But handleMessage expects a full WAMessage.
       // Let's try to construct a minimal one.
       const fakeMsg: any = {
-          key: msg.key,
-          message: msg.message,
-          messageTimestamp: Math.floor(Date.now() / 1000)
+        key: msg.key,
+        message: msg.message,
+        messageTimestamp: Math.floor(Date.now() / 1000)
       };
       await this.handleMessage(fakeMsg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
 
