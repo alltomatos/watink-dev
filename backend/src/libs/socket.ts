@@ -19,11 +19,14 @@ export const initIO = (httpServer: Server): SocketIO => {
 
   io.on("connection", socket => {
     const { token } = socket.handshake.query;
+    logger.info(`[Socket Debug] Connection attempt. Token provided: ${token ? "YES" : "NO"}`);
+    
     let tokenData = null;
     try {
       tokenData = verify(token, authConfig.secret);
       logger.debug(JSON.stringify(tokenData), "io-onConnection: tokenData");
     } catch (err) {
+      logger.error(`[Socket Debug] Token verification failed: ${err.message}`);
       if (err.name === "TokenExpiredError") {
         logger.warn(`Socket authentication failed: Token expired at ${err.expiredAt}`);
       } else {

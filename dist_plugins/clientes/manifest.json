@@ -1,0 +1,7 @@
+{
+  "name": "Plugin de Clientes",
+  "slug": "clientes",
+  "version": "1.0.0",
+  "description": "Gestão completa de clientes com múltiplos contatos e endereços.",
+  "type": "plugin"
+}

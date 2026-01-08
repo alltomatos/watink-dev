@@ -109,7 +109,7 @@ const QuickAnswers = () => {
           const { data } = await api.get("/quickAnswers/", {
             params: { searchParam, pageNumber },
           });
-          dispatch({ type: "LOAD_QUICK_ANSWERS", payload: data.quickAnswers });
+          dispatch({ type: "LOAD_QUICK_ANSWERS", payload: data.quickAnswers || [] });
           setHasMore(data.hasMore);
           setLoading(false);
         } catch (err) {
@@ -190,8 +190,7 @@ const QuickAnswers = () => {
       <ConfirmationModal
         title={
           deletingQuickAnswers &&
-          `${i18n.t("quickAnswers.confirmationModal.deleteTitle")} ${
-            deletingQuickAnswers.shortcut
+          `${i18n.t("quickAnswers.confirmationModal.deleteTitle")} ${deletingQuickAnswers.shortcut
           }?`
         }
         open={confirmModalOpen}

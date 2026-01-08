@@ -27,25 +27,21 @@ const isAuth = async (req: Request, res: Response, next: NextFunction): Promise<
     const decoded = verify(token, authConfig.secret);
     const { id, profile, tenantId } = decoded as TokenPayload;
 
-    let userTenantId = tenantId;
-
-    if (!userTenantId) {
-      // Fallback for legacy tokens without tenantId
-      const user = await User.findByPk(id);
-      if (user) {
-        userTenantId = user.tenantId;
-      }
+    const user = await User.findByPk(id);
+    if (!user) {
+      throw new AppError("ERR_INVALID_TOKEN", 401);
     }
 
     req.user = {
       id,
       profile,
-      tenantId: userTenantId
+      tenantId: user.tenantId
     };
   } catch (err) {
+    console.log("DEBUG: isAuth failed for token:", token.slice(-6), "Error:", err.message);
     throw new AppError(
       "Invalid token. We'll try to assign a new one on next request",
-      403
+      401
     );
   }
 

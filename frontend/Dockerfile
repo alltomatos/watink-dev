@@ -9,6 +9,7 @@ COPY index.html ./
 COPY vite.config.js ./
 COPY copy-assets.js ./
 RUN npm run build
+RUN node -e "const fs=require('fs');const pkg=require('./package.json');const ts=new Date().toISOString();const data={service:'frontend',version:pkg.version,lastUpdated:ts};fs.writeFileSync('build/version.json',JSON.stringify(data));"
 
 FROM nginx:alpine
 RUN apk add --no-cache jq openssl
@@ -20,7 +21,7 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
 
 ENV PUBLIC_HTML=/var/www/public/
 
-COPY .docker/nginx /etc/nginx/
+COPY .docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=build-deps /usr/src/app/build ${PUBLIC_HTML}
 EXPOSE 80
 

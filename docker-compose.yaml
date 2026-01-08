@@ -42,17 +42,19 @@ services:
   frontend:
     image: watink/frontend:latest
     ports:
-      - ${FRONTEND_PORT:-3000}:80
+      - ${FRONTEND_PORT:-80}:80
       - ${FRONTEND_SSL_PORT:-3001}:443
     build:
       context: ./frontend
       dockerfile: ./Dockerfile
     environment:
+      - VITE_BACKEND_URL=http://localhost:8080/
       - URL_BACKEND=backend:8080
-      - VITE_BACKEND_URL=${BACKEND_URL:-http://localhost}:${PROXY_PORT:-8080}/
-      - VITE_HOURS_CLOSE_TICKETS_AUTO=${HOURS_CLOSE_TICKETS_AUTO}
-      - FRONTEND_SERVER_NAME=${FRONTEND_SERVER_NAME}
-      - BACKEND_SERVER_NAME=${BACKEND_SERVER_NAME}
+      - PROXY_PORT=8080
+      - FRONTEND_SERVER_NAME=${FRONTEND_SERVER_NAME:-localhost}
+      - PURE_FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - VITE_FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - HOURS_CLOSE_TICKETS_AUTO=${HOURS_CLOSE_TICKETS_AUTO}
     volumes:
       - ./ssl/certs/:/etc/nginx/ssl/
       - ./ssl/www/:/var/www/letsencrypt/
@@ -103,3 +105,11 @@ services:
       - watink
     volumes:
       - ./engine-standard/.sessions_auth/:/usr/src/app/.sessions_auth/
+
+  plugin-manager:
+    image: watink/plugin-manager:latest
+    build:
+      context: ./plugin-manager
+      dockerfile: ./Dockerfile
+    networks:
+      - watink
