@@ -346,8 +346,16 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     msgContact = await CreateOrUpdateContactService(contactData);
   }
 
+  // FIX: Se a mensagem veio com timestamp inválido (0) mas temos a data original de criação, restauramos.
+  if (preservedCreatedAt && (!message.timestamp || message.timestamp * 1000 < 1577836800000)) { // < 2020
+    logger.warn(`[EventListener] Timestamp fixed for msg ${message.id}: ${message.timestamp} -> ${preservedCreatedAt}`);
+    message.timestamp = Math.floor(preservedCreatedAt.getTime() / 1000);
+  }
+
   // message.timestamp is usually in seconds (Unix). Convert to ms for comparison.
-  const isOldMessage = Date.now() - (message.timestamp * 1000) > 1000 * 60 * 60 * 2; // 2 hours
+  // FIX: Se o timestamp for inválido (ex: 0), não consideramos mensagem antiga, deixamos cair no fluxo de nova para ser corrigida com Date.now()
+  const hasValidTimestamp = message.timestamp && message.timestamp * 1000 > 1577836800000;
+  const isOldMessage = hasValidTimestamp && (Date.now() - (message.timestamp * 1000) > 1000 * 60 * 60 * 2); // 2 hours
 
   // NOVA LÓGICA: Mensagens históricas não criam ticket
   // Apenas salvam mensagem se já existir um ticket para este contato
@@ -464,7 +472,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     read: message.fromMe || false,
     mediaType: preservedMediaType || message.type,
     mediaUrl: preservedMediaUrl || message.mediaUrl,
-    timestamp: creationDate.getTime(), // Convert corrected Date to ms
+    timestamp: creationDate.getTime(), // Use sanitized timestamp
     createdAt: creationDate, // Fix Timestamp
     participant: message.participant,
     dataJson: message, // Store full payload including urlPreview and pushName

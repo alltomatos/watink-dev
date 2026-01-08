@@ -3,7 +3,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Install system dependencies
-RUN apk add --no-cache \
+RUN apk add \
   chromium \
   nss \
   freetype \

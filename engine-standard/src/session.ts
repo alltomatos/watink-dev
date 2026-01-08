@@ -1046,7 +1046,7 @@ class SessionManager {
       body = msg.message.listResponseMessage.title || "";
       msgType = "list_response";
     }
-    // 3.1 Interactive Response (Native Flow / Carousel)
+    // 3.1 Interactive Response (Native Flow / Carousel - Received Response)
     else if (msg.message.interactiveResponseMessage) {
       const interactiveResp = msg.message.interactiveResponseMessage;
       if (interactiveResp.nativeFlowResponseMessage) {
@@ -1055,6 +1055,16 @@ class SessionManager {
       }
       body = interactiveResp.body?.text || "";
       msgType = "interactive_response";
+    }
+    // 3.2 Interactive Message (Native Flow - Sent Message)
+    else if (msg.message.interactiveMessage) {
+      body = msg.message.interactiveMessage.body?.text || "";
+      msgType = "interactive";
+    }
+    // 3.3 ViewOnce with Interactive (Carousel)
+    else if (msg.message.viewOnceMessage?.message?.interactiveMessage) {
+      body = msg.message.viewOnceMessage.message.interactiveMessage.body?.text || "";
+      msgType = "interactive";
     }
     // 4. Poll Response
     else if (msg.message.pollUpdateMessage) {
@@ -1744,6 +1754,15 @@ class SessionManager {
       const msg = await session.socket.sendMessage(jid, interactiveMessage as any, { messageId: waMsgId });
 
       if (msg) {
+        // Force inject body text from payload if missing in return object
+        // This ensures handleMessage can extract it regardless of Baileys return structure
+        if (!msg.message) msg.message = {};
+        if (!msg.message.interactiveMessage) msg.message.interactiveMessage = {};
+        if (!msg.message.interactiveMessage.body) msg.message.interactiveMessage.body = {};
+
+        // Overwrite or set text explicitly from what we sent
+        msg.message.interactiveMessage.body.text = payload.text;
+
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
       }
     } catch (error) {
