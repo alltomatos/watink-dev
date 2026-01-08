@@ -12,7 +12,7 @@ RUN npm run build
 RUN node -e "const fs=require('fs');const pkg=require('./package.json');const ts=new Date().toISOString();const data={service:'frontend',version:pkg.version,lastUpdated:ts};fs.writeFileSync('build/version.json',JSON.stringify(data));"
 
 FROM nginx:alpine
-RUN apk add --no-cache jq openssl
+RUN apk add jq openssl
 
 ENV DOCKERIZE_VERSION v0.6.1
 RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz \

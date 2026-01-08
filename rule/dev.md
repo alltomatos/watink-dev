@@ -156,6 +156,28 @@ Workers independentes que se conectam ao WhatsApp.
 *   **Lib Core**: **WhatsMeow**
 *   **Função**: Performance extrema para alto volume.
 
+### Recursos de Mensagem (Botões Interativos)
+O Engine Standard suporta o envio de mensagens interativas nativas (Bubbles com botões de URL), ideais para notificações de protocolo e chamadas para ação (CTAs).
+
+**Exemplo de Payload (Interactive URL):**
+```json
+{
+  "text": "Seu protocolo foi aberto",
+  "footer": "Protocolo #1234",
+  "buttons": [
+    {
+      "index": 1,
+      "urlButton": {
+        "displayText": "Ver Protocolo",
+        "url": "https://watink.com/protocols/1234"
+      }
+    }
+  ]
+}
+```
+*   **Compatibilidade**: Android, iOS e Web.
+*   **Uso**: Preferível ao carrossel antigo para notificações simples.
+
 ---
 
 ## 🌊 Flow Engine (Automação)
