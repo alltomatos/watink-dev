@@ -12,7 +12,7 @@ As implementações de SaaS (DB), Microserviços (Engine) e Frontend (Admin) for
 - [ ] **[OPS-004] Procedimentos de Rollback e Monitoramento**: Painel Grafana/Prometheus e scripts de reversão rápida.
 
 ### Fase 5: Flow Engine Scalability (Novo)
-Objetivo: Desacoplar a execução de fluxos do Backend principal.
-- [ ] **[FLOW-001] Event-Driven Architecture**: Refatorar `wbotMessageListener` para publicar eventos de fluxo no RabbitMQ ao invés de executar síncrono.
-- [ ] **[FLOW-002] Flow Worker Service**: Criar microserviço dedicado (`flow-engine-worker`) para processar a fila de fluxos.
-- [ ] **[FLOW-003] Redis State Cache**: Implementar cache de sessões ativas no Redis para reduzir load no Postgres.
+Objetivo: Desacoplar a execução de fluxos do Backend principal e garantir performance.
+- [x] **[FLOW-001] Event-Driven Architecture**: Refatorado `wbotMessageListener` para publicar eventos de fluxo no RabbitMQ.
+- [x] **[FLOW-002] Flow Worker Service**: Microserviço dedicado (`flow-engine-worker`) operacional.
+- [x] **[FLOW-003] Redis Transient Store & Cache**: Implementado Redis para armazenamento de retentativas (Transient Store) e infraestrutura para cache de sessões.
