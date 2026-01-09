@@ -11,6 +11,7 @@ import Message from "../../models/Message";
 import CreateOrUpdateContactService from "../ContactServices/CreateOrUpdateContactService";
 import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
 import Ticket from "../../models/Ticket";
+import Setting from "../../models/Setting";
 
 const getSessionId = (sessionId: string | number): number => {
   return parseInt(String(sessionId).split("-")[0], 10);
@@ -213,6 +214,11 @@ const handleContactUpdate = async (payload: ContactUpdatePayload, tenantId: stri
 
 const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: string | number) => {
   const { message, sessionId } = payload;
+
+  if (message.from === "status@broadcast") {
+    return;
+  }
+
   logger.info(`[EventListener] handleMessageReceived: ${JSON.stringify(payload)}`);
 
   const whatsapp = await Whatsapp.findByPk(getSessionId(sessionId));
@@ -351,15 +357,26 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     message.timestamp = Math.floor(preservedCreatedAt.getTime() / 1000);
   }
 
-  // message.timestamp is usually in seconds (Unix). Convert to ms for comparison.
-  // FIX: Se o timestamp for inválido (ex: 0), não consideramos mensagem antiga, deixamos cair no fluxo de nova para ser corrigida com Date.now()
-  const hasValidTimestamp = message.timestamp && message.timestamp * 1000 > 1577836800000;
-  const isOldMessage = hasValidTimestamp && (Date.now() - (message.timestamp * 1000) > 1000 * 60 * 60 * 2); // 2 hours
+  // --- NOVA LÓGICA DE FILTRO DE TICKET ---
 
-  // NOVA LÓGICA: Mensagens históricas não criam ticket
-  // Apenas salvam mensagem se já existir um ticket para este contato
+  // 1. Validar Timestamp
+  const hasValidTimestamp = message.timestamp && message.timestamp * 1000 > 1577836800000;
+
+  // 2. Calcular idade da mensagem
+  // Se não tem timestamp válido e não foi preservado (pendente), assumimos que é MUITO antiga/inválida.
+  // Se tem timestamp, verificamos se é maior que 24 horas.
+  const isOldMessage = !preservedCreatedAt && (
+    !hasValidTimestamp ||
+    (Date.now() - (message.timestamp * 1000) > 1000 * 60 * 60 * 24) // 24 hours
+  );
+
+  // Lógica de Fuso Horário (opcional para logs ou futuro ajuste fino)
+  // const timezoneSetting = await Setting.findOne({ where: { key: "timezone", tenantId } });
+  // const timezone = timezoneSetting?.value || "America/Sao_Paulo";
+
+  // Mensagens históricas (ou sem data) não criam ticket novo
   if (isOldMessage) {
-    logger.info(`[EventListener] Old message detected (${message.id}). Checking for existing ticket...`);
+    logger.info(`[EventListener] Old/Historic message detected (${message.id}). Timestamp: ${message.timestamp}. Archiving without opening ticket.`);
 
     let ticketForMessage: Ticket | null = await Ticket.findOne({
       where: {
@@ -371,7 +388,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     });
 
     if (!ticketForMessage) {
-      logger.info(`[EventListener] Old message ${message.id} has no ticket. Creating CLOSED ticket to save history.`);
+      logger.info(`[EventListener] Old message ${message.id} has no ticket. Creating USED closed ticket to save history.`);
 
       ticketForMessage = await Ticket.create({
         contactId: groupContact ? groupContact.id : msgContact.id,
@@ -384,8 +401,12 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     }
 
     if (ticketForMessage) {
-      // Salvar mensagem no ticket (histórico)
-      logger.info(`[EventListener] Saving old message ${message.id} to ticket ${ticketForMessage.id} (Status: ${ticketForMessage.status})`);
+      if (ticketForMessage.status === "open" || ticketForMessage.status === "pending") {
+        // Se já existe ticket aberto, salvamos nele sem problemas.
+        logger.info(`[EventListener] Check: Message ${message.id} is old, but ticket ${ticketForMessage.id} is ${ticketForMessage.status}. appending...`);
+      } else {
+        logger.info(`[EventListener] Saving old message ${message.id} to CLOSED ticket ${ticketForMessage.id}.`);
+      }
 
       const msgDataVal = {
         id: message.id,
@@ -396,8 +417,8 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
         read: true, // Mensagens antigas são marcadas como lidas
         mediaType: preservedMediaType || message.type,
         mediaUrl: preservedMediaUrl || message.mediaUrl,
-        timestamp: message.timestamp * 1000,
-        createdAt: new Date(message.timestamp * 1000), // Fix Timestamp
+        timestamp: hasValidTimestamp ? message.timestamp * 1000 : new Date().getTime(), // Fallback to now if invalid just for DB constaint, but logic handled it
+        createdAt: hasValidTimestamp ? new Date(message.timestamp * 1000) : new Date(),
         participant: message.participant,
         dataJson: message,
         quotedMsgId: message.quotedMsgId,
