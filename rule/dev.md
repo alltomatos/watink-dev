@@ -55,8 +55,9 @@ O projeto evoluiu de um monolito para uma arquitetura distribuída orientada a e
     *   **Engine Standard/Pro**: Node.js com **Whaileys** (Wrapper otimizado do Baileys).
     *   **Engine Enterprise**: Go com **WhatsMeow** (Alta performance).
 6.  **Message Broker**: **RabbitMQ** para comunicação assíncrona entre Backend e Engines.
-7.  **Database**: PostgreSQL com extensões **PostGIS** e **pgvector**.
-8.  **RBAC**: Sistema de controle de acesso granular baseado em Grupos e Permissões.
+7.  **Transient Store & Cache**: **Redis** para persistência de curto prazo (retentativas de mensagens), cache de sessões e lock distribuído.
+8.  **Database**: PostgreSQL com extensões **PostGIS** e **pgvector**.
+9.  **RBAC**: Sistema de controle de acesso granular baseado em Grupos e Permissões.
 
 ---
 
@@ -162,6 +163,23 @@ O backend orquestra o sistema e roda isolado em container.
 *   Use o **Service Layer Pattern**: Controllers chamam Services.
 *   Para ações no WhatsApp, publique mensagens no RabbitMQ.
 *   Logs devem ser direcionados para `stdout`/`stderr` para coleta pelo Docker.
+
+---
+
+## ⚡ Cache e Transient Store (Redis)
+
+Introduzido para resolver limitações de escalabilidade e confiabilidade do armazenamento em memória (RAM).
+
+### Motivação Técnica
+1.  **Persistência de Retentativa**: O armazenamento em memória (`makeInMemoryStore`) perdia mensagens pendentes de envio (retentativas) se o container do Engine reiniciasse. O Redis, com persistência AOF (Append Only File), garante que essas mensagens sobrevivam a reinicializações.
+2.  **Statelessness**: Remove o estado local dos containers do Engine, permitindo escalar horizontalmente (múltiplas réplicas do `whaileys-engine`) sem perder contexto de mensagens ou sessões.
+3.  **Performance**: Evita I/O excessivo no PostgreSQL para dados efêmeros (como status de presença ou mensagens que ainda não foram processadas pelo backend).
+
+### Implementação
+*   **Serviço**: `redis` (imagem `redis:alpine` com `--appendonly yes`).
+*   **Uso Atual**:
+    *   Armazenamento de mensagens recebidas/enviadas por 24h (TTL) para suporte a retentativas.
+    *   Cache de metadados de sessão (futuro).
 
 ---
 
