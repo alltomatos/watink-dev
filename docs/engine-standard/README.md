@@ -12,6 +12,10 @@ Nossa versão inclui modificações críticas e funcionalidades que não estão 
 - **Implementação do `usync`**: Sincronização avançada de contatos e status.
 - Correções de estabilidade específicas para o nosso fluxo.
 
+## Dependências Externas
+- **RabbitMQ**: Para comunicação assíncrona (Comandos e Eventos).
+- **Redis**: Utilizado como *Transient Store* para armazenamento temporário de mensagens (Retentativa/Resend) e cache de estado distribuído. Isso garante que reinicializações do container não causem perda de mensagens pendentes de entrega.
+
 ## Funcionalidades
 - **Multisessão**: Gerencia múltiplas conexões simultâneas.
 - **API via Filas**: Totalmente desacoplado via RabbitMQ.

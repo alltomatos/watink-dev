@@ -49,15 +49,27 @@ export interface HistorySyncPayload {
   toDate?: string;  // ISO date, default now
 }
 
+export interface SendOptions {
+  quotedMsgId?: string;
+  quoted?: {
+    key: {
+      id: string;
+      fromMe?: boolean;
+      participant?: string;
+      remoteJid?: string;
+    };
+    message?: any;
+  };
+}
+
 export interface SendTextPayload {
   sessionId: number;
   messageId?: string;
   to: string;
   lid?: string; // NOVO: LID do destinatário para validação cruzada
   body: string;
-  options?: {
-    quotedMsgId?: string;
-  };
+  mentions?: string[]; // Array of JIDs to be mentioned
+  options?: SendOptions;
 }
 
 export interface SendMediaPayload {
@@ -71,6 +83,7 @@ export interface SendMediaPayload {
     filename: string;
     data: string;
   };
+  options?: SendOptions;
 }
 
 // Botões simples (até 3 botões)
@@ -80,11 +93,13 @@ export interface SendButtonsPayload {
   to: string;
   text: string;
   footer?: string;
+  mentions?: string[];
   buttons: Array<{
     buttonId: string;
     buttonText: string;
   }>;
   imageUrl?: string;  // Opcional: adiciona imagem ao header
+  options?: SendOptions;
 }
 
 // Lista de opções com seções
@@ -103,6 +118,7 @@ export interface SendListPayload {
       description?: string;
     }>;
   }>;
+  options?: SendOptions;
 }
 
 // Enquete/Poll
@@ -113,6 +129,7 @@ export interface SendPollPayload {
   name: string;           // Pergunta
   options: string[];      // Opções (2-12)
   selectableCount?: number; // Quantas podem ser selecionadas (padrão: 1)
+  sendOptions?: SendOptions;
 }
 
 // Mensagem Template (URL, Call, Reply)
@@ -130,6 +147,7 @@ export interface SendTemplatePayload {
     buttonId?: string;
   }>;
   mediaUrl?: string; // Imagem ou vídeo opcional no header
+  options?: SendOptions;
 }
 
 // Mensagem Interativa (Native Flow)
@@ -146,6 +164,7 @@ export interface SendInteractivePayload {
     buttonId?: string;
   }>;
   mediaUrl?: string;
+  options?: SendOptions;
 }
 
 // Carrossel Nativo
@@ -167,6 +186,7 @@ export interface SendCarouselPayload {
       buttonId?: string;
     }>;
   }>;
+  options?: SendOptions;
 }
 
 export interface SyncContactPayload {

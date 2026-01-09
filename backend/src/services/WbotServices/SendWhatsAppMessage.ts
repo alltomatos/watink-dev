@@ -12,12 +12,14 @@ interface Request {
   body: string;
   ticket: Ticket;
   quotedMsg?: any;
+  mentionedIds?: string[];
 }
 
 const SendWhatsAppMessage = async ({
   body,
   ticket,
-  quotedMsg
+  quotedMsg,
+  mentionedIds
 }: Request): Promise<any> => {
   try {
     const formattedBody = formatBody(body, ticket.contact);
@@ -71,8 +73,17 @@ const SendWhatsAppMessage = async ({
         to: `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
         lid: ticket.contact.lid || undefined, // Pass LID if available
         body: formattedBody,
+        mentions: mentionedIds,
         options: {
-          quotedMsgId: quotedMsg?.id
+          quotedMsgId: quotedMsg?.id,
+          quoted: quotedMsg ? {
+            key: {
+              id: quotedMsg.id,
+              fromMe: quotedMsg.fromMe,
+              participant: quotedMsg.isGroup ? quotedMsg.participant || quotedMsg.contact?.number + "@s.whatsapp.net" : undefined
+            },
+            message: quotedMsg.dataJson // Optional but helpful
+          } : undefined
         }
       }
     };
@@ -86,6 +97,9 @@ const SendWhatsAppMessage = async ({
 
     return message;
   } catch (err) {
+    const { logger } = require("../../utils/logger");
+    logger.error(`[SendWhatsAppMessage] Error sending message: ticketId=${ticket.id} isGroup=${ticket.isGroup}`);
+    logger.error(err);
     throw new AppError("ERR_SENDING_WAPP_MSG");
   }
 };

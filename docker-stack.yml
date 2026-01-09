@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: watink/backend:1.3.165
+    image: watink/backend:1.3.170
     build:
       context: ./backend
       dockerfile: ./Dockerfile
@@ -18,7 +18,7 @@ services:
       - JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***
       - FRONTEND_URL=http://localhost
       - URL_BACKEND=http://localhost
-      - ENGINE_VERSION=1.0.98
+      - ENGINE_VERSION=1.0.104
       - PORT=8080
       - NODE_OPTIONS=--max-old-space-size=800
 
@@ -52,7 +52,7 @@ services:
         - "traefik.docker.network=watink_watink_public"
 
   frontend:
-    image: watink/frontend:0.7.67
+    image: watink/frontend:0.7.75
     build:
       context: ./frontend
       dockerfile: ./Dockerfile
@@ -111,9 +111,10 @@ services:
         - "traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$8EVDtcp.$$J2A.0.1.0/0.1.0"
 
   whaileys-engine:
-    image: watink/engine:1.0.98
+    image: watink/engine:1.0.104
     environment:
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
     networks:
       - watink_private
       - watink_public
@@ -129,7 +130,7 @@ services:
           memory: 2048M
 
   flow-engine-worker:
-    image: watink/backend:1.3.165
+    image: watink/backend:1.3.170
     command: ["node", "dist/flow-worker.js"]
     environment:
       - DB_DIALECT=postgres
@@ -192,6 +193,20 @@ services:
         limits:
           memory: 1024M
 
+  redis:
+    image: redis:alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - watink_private
+    volumes:
+      - redis_data:/data
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          memory: 512M
+
   postgres:
     image: ronaldodavi/pgvectorgis:latest
     environment:
@@ -217,6 +232,7 @@ networks:
 
 volumes:
   db_data:
+  redis_data:
   sessions_auth_data:
   backend_public_data:
   vol_certificates:
