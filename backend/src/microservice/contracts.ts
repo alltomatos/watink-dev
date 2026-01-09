@@ -18,10 +18,10 @@ export type CommandType =
   | "message.send.poll"
   | "message.send.template"
   | "message.send.interactive"
-  | "message.send.interactive"
   | "message.send.carousel"
   | "message.markAsRead"
-  | "contact.sync";
+  | "contact.sync"
+  | "history.sync";
 
 export interface StartSessionPayload {
   sessionId: number;
@@ -178,7 +178,8 @@ export type EventType =
   | "message.response.poll"
   | "message.response.interactive"
   | "message.reaction"
-  | "contact.update";
+  | "contact.update"
+  | "message.revoke";
 
 
 export interface QrCodePayload {
@@ -268,9 +269,24 @@ export interface ContactUpdatePayload {
   isGroup?: boolean;
 }
 
+export interface MessageRevokePayload {
+  sessionId: number;
+  messageId: string;
+  participant?: string; // Quem deletou
+}
+
 export interface MarkAsReadPayload {
   sessionId: number;
   to: string;
   messageIds: string[];
 }
 
+// Busca de histórico sob demanda para um ticket/contato específico
+export interface HistorySyncPayload {
+  sessionId: number;
+  ticketId: number;
+  contactId: number;
+  contactNumber: string;
+  fromDate: string; // ISO date - obrigatório (seleção do usuário)
+  toDate?: string;  // ISO date, default now
+}

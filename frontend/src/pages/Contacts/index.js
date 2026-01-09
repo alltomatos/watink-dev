@@ -26,6 +26,7 @@ import DeleteOutlineIcon from "@material-ui/icons/DeleteOutline";
 import EditIcon from "@material-ui/icons/Edit";
 import ViewModuleIcon from "@material-ui/icons/ViewModule";
 import ViewListIcon from "@material-ui/icons/ViewList";
+import AddIcon from "@material-ui/icons/Add";
 
 import MainContainer from "../../components/MainContainer";
 import MainHeader from "../../components/MainHeader";
@@ -40,7 +41,9 @@ import ConfirmationModal from "../../components/ConfirmationModal/";
 import toastError from "../../errors/toastError";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
+import ClientModal from "../Clients/ClientModal"; // Import ClientModal
 import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { getBackendUrl } from "../../helpers/urlUtils";
 
 const reducer = (state, action) => {
   if (action.type === "LOAD_CONTACTS") {
@@ -121,7 +124,12 @@ const Contacts = () => {
   const [deletingContact, setDeletingContact] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  /* Removed duplicate hasMore declaration */
   const [view, setView] = useLocalStorage("contactsView", "card");
+
+  // Client Modal State
+  const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [selectedInitialContact, setSelectedInitialContact] = useState(null);
 
   useEffect(() => {
     dispatch({ type: "RESET" });
@@ -178,6 +186,16 @@ const Contacts = () => {
   const handleCloseContactModal = () => {
     setSelectedContactId(null);
     setContactModalOpen(false);
+  };
+
+  const handleOpenClientModal = (contact) => {
+    setSelectedInitialContact(contact);
+    setClientModalOpen(true);
+  };
+
+  const handleCloseClientModal = () => {
+    setSelectedInitialContact(null);
+    setClientModalOpen(false);
   };
 
   const handleSaveTicket = async (contactId) => {
@@ -242,6 +260,12 @@ const Contacts = () => {
         aria-labelledby="form-dialog-title"
         contactId={selectedContactId}
       ></ContactModal>
+      <ClientModal
+        open={clientModalOpen}
+        onClose={handleCloseClientModal}
+        client={null}
+        initialContact={selectedInitialContact}
+      />
       <ConfirmationModal
         title={
           deletingContact
@@ -305,7 +329,7 @@ const Contacts = () => {
             {contacts.map((contact) => (
               <Grid item xs={12} sm={6} md={4} lg={3} key={contact.id}>
                 <ListItemCard
-                  avatar={contact.profilePicUrl}
+                  avatar={getBackendUrl(contact.profilePicUrl)}
                   title={contact.name}
                   subtitle={contact.number}
                   status={getContactStatus(contact)}
@@ -324,6 +348,13 @@ const Contacts = () => {
                         title="Editar"
                       >
                         <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenClientModal(contact)}
+                        title="Criar Cliente"
+                      >
+                        <AddIcon fontSize="small" />
                       </IconButton>
                       <Can
                         role={user.profile}
@@ -369,7 +400,7 @@ const Contacts = () => {
                 {contacts.map((contact) => (
                   <TableRow key={contact.id}>
                     <TableCell style={{ paddingRight: 0 }}>
-                      {<Avatar src={contact.profilePicUrl} />}
+                      {<Avatar src={getBackendUrl(contact.profilePicUrl)} />}
                     </TableCell>
                     <TableCell>{contact.name}</TableCell>
                     <TableCell align="center">{contact.number}</TableCell>
@@ -386,6 +417,13 @@ const Contacts = () => {
                         onClick={() => hadleEditContact(contact.id)}
                       >
                         <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenClientModal(contact)}
+                        title="Criar Cliente"
+                      >
+                        <AddIcon fontSize="small" />
                       </IconButton>
                       <Can
                         role={user.profile}

@@ -23,6 +23,7 @@ import { Tooltip } from "@material-ui/core";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { useThemeContext } from "../../context/DarkMode";
 import toastError from "../../errors/toastError";
+import { getBackendUrl } from "../../helpers/urlUtils";
 
 const useStyles = makeStyles(theme => ({
 	ticket: {
@@ -192,7 +193,7 @@ const TicketListItem = ({ ticket }) => {
 					></span>
 				</Tooltip>
 				<ListItemAvatar>
-					<Avatar src={ticket?.contact?.profilePicUrl} />
+					<Avatar src={getBackendUrl(ticket?.contact?.profilePicUrl)} />
 				</ListItemAvatar>
 				<ListItemText
 					disableTypography
@@ -214,7 +215,8 @@ const TicketListItem = ({ ticket }) => {
 									color="primary"
 								/>
 							)}
-							{ticket.lastMessage && (
+							{/* Mostrar horário: sempre para grupos, ou se tiver lastMessage */}
+							{(ticket.lastMessage || ticket.isGroup || ticket.contact?.isGroup) && (
 								<Typography
 									className={classes.lastMessageTime}
 									component="span"
@@ -224,7 +226,7 @@ const TicketListItem = ({ ticket }) => {
 									{isSameDay(parseISO(ticket.updatedAt), new Date()) ? (
 										<>{format(parseISO(ticket.updatedAt), "HH:mm")}</>
 									) : (
-										<>{format(parseISO(ticket.updatedAt), "dd/MM/yyyy")}</>
+										<>{format(parseISO(ticket.updatedAt), "dd/MM/yyyy HH:mm")}</>
 									)}
 								</Typography>
 							)}
@@ -259,7 +261,8 @@ const TicketListItem = ({ ticket }) => {
 						</span>
 					}
 				/>
-				{ticket.status === "pending" && (
+				{/* Ocultar botão Aceitar para grupos - grupos não são tickets normais */}
+				{ticket.status === "pending" && !ticket.isGroup && !ticket.contact?.isGroup && (
 					<ButtonWithSpinner
 						color="primary"
 						variant="contained"

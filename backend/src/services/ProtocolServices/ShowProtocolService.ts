@@ -7,7 +7,7 @@ import AppError from "../../errors/AppError";
 
 const ShowProtocolService = async (
     protocolId: number,
-    tenantId: number
+    tenantId: string | number
 ): Promise<Protocol> => {
     const protocol = await Protocol.findOne({
         where: { id: protocolId, tenantId },

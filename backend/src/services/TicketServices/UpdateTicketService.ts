@@ -2,9 +2,12 @@ import CheckContactOpenTickets from "../../helpers/CheckContactOpenTickets";
 import SetTicketMessagesAsRead from "../../helpers/SetTicketMessagesAsRead";
 import { getIO } from "../../libs/socket";
 import Ticket from "../../models/Ticket";
+import Setting from "../../models/Setting";
 import SendWhatsAppMessage from "../WbotServices/SendWhatsAppMessage";
 import ShowWhatsAppService from "../WhatsappService/ShowWhatsAppService";
 import ShowTicketService from "./ShowTicketService";
+import EmbeddingService from "../AIServices/EmbeddingService";
+import { logger } from "../../utils/logger";
 
 interface TicketData {
   status?: string;
@@ -74,6 +77,28 @@ const UpdateTicketService = async ({
       action: "update",
       ticket
     });
+
+  // TRIGGER: Process embeddings when ticket is closed (async, non-blocking)
+  if (status === "closed" && oldStatus !== "closed" && !ticket.isGroup) {
+    // Run async to not block the response
+    (async () => {
+      try {
+        // Check if AI is enabled for this tenant
+        const [aiEnabled, aiAssistantEnabled] = await Promise.all([
+          Setting.findOne({ where: { key: "aiEnabled", tenantId: ticket.tenantId } }),
+          Setting.findOne({ where: { key: "aiAssistantEnabled", tenantId: ticket.tenantId } })
+        ]);
+
+        if (aiEnabled?.value === "true" && aiAssistantEnabled?.value === "true") {
+          logger.info(`Processing embeddings for closed ticket #${ticket.id}`);
+          await EmbeddingService.processTicket(ticket.id, ticket.tenantId as string);
+          logger.info(`Embeddings processed successfully for ticket #${ticket.id}`);
+        }
+      } catch (error) {
+        logger.error(`Error processing embeddings for ticket #${ticket.id}:`, error);
+      }
+    })();
+  }
 
   return { ticket, oldStatus, oldUserId };
 };

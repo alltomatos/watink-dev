@@ -17,6 +17,7 @@ interface MessageData {
   quotedMsgId?: string;
   dataJson?: object;
   participant?: string;
+  createdAt?: Date;
 }
 interface Request {
   messageData: MessageData;
@@ -53,6 +54,22 @@ const CreateMessageService = async ({
 
   if (!message) {
     throw new Error("ERR_CREATING_MESSAGE");
+  }
+
+  // Atualizar lastMessage do ticket para manter sidebar sincronizada
+  // Só atualiza se a mensagem for mais recente que a última
+  if (message.ticket && messageData.body) {
+    await Ticket.update(
+      {
+        lastMessage: messageData.body,
+        updatedAt: new Date()
+      },
+      { where: { id: message.ticketId } }
+    );
+
+    // Atualizar o objeto ticket no retorno
+    message.ticket.lastMessage = messageData.body;
+    message.ticket.updatedAt = new Date();
   }
 
   const io = getIO();

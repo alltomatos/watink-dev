@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload, PairingCodePayload, ContactUpdatePayload, MessageReactionPayload } from "../../microservice/contracts";
+import { Envelope, QrCodePayload, SessionStatusPayload, MessageReceivedPayload, PairingCodePayload, ContactUpdatePayload, MessageReactionPayload, MessageRevokePayload } from "../../microservice/contracts";
 import RabbitMQService from "../RabbitMQService";
 import { logger } from "../../utils/logger";
 import Whatsapp from "../../models/Whatsapp";
@@ -10,6 +10,11 @@ import Contact from "../../models/Contact";
 import Message from "../../models/Message";
 import CreateOrUpdateContactService from "../ContactServices/CreateOrUpdateContactService";
 import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
+import Ticket from "../../models/Ticket";
+
+const getSessionId = (sessionId: string | number): number => {
+  return parseInt(String(sessionId).split("-")[0], 10);
+};
 
 export const EventListener = async () => {
   const routingKeys = [
@@ -18,8 +23,10 @@ export const EventListener = async () => {
     "wbot.*.*.session.status",
     "wbot.*.*.message.received",
     "wbot.*.*.message.reaction",
+    "wbot.*.*.message.reaction",
     "wbot.*.*.contact.update",
-    "wbot.*.*.message.ack"
+    "wbot.*.*.message.ack",
+    "wbot.*.*.message.revoke"
   ];
 
   await RabbitMQService.consumeEvents("api.events.process", routingKeys, async (msg: Envelope) => {
@@ -47,6 +54,9 @@ export const EventListener = async () => {
       case "message.ack":
         await handleMessageAck(msg.payload as any, msg.tenantId);
         break;
+      case "message.revoke":
+        await handleMessageRevoke(msg.payload as MessageRevokePayload, msg.tenantId);
+        break;
       default:
         logger.warn(`Unknown event type: ${msg.type}`);
     }
@@ -57,12 +67,12 @@ const handleQrCode = async (payload: QrCodePayload) => {
   const io = getIO();
   await Whatsapp.update(
     { qrcode: payload.qrcode, status: "QRCODE" },
-    { where: { id: payload.sessionId } }
+    { where: { id: getSessionId(payload.sessionId) } }
   );
 
   io.emit(`whatsappSession`, {
     action: "update",
-    session: { id: payload.sessionId, qrcode: payload.qrcode, status: "QRCODE" }
+    session: { id: getSessionId(payload.sessionId), qrcode: payload.qrcode, status: "QRCODE" }
   });
 };
 
@@ -71,7 +81,7 @@ const handlePairingCode = async (payload: PairingCodePayload) => {
 
   io.emit(`whatsappSession`, {
     action: "update",
-    session: { id: payload.sessionId, pairingCode: payload.pairingCode, status: "PAIRING" }
+    session: { id: getSessionId(payload.sessionId), pairingCode: payload.pairingCode, status: "PAIRING" }
   });
 };
 
@@ -84,13 +94,13 @@ const handleSessionStatus = async (payload: SessionStatusPayload) => {
 
   await Whatsapp.update(
     updateData,
-    { where: { id: payload.sessionId } }
+    { where: { id: getSessionId(payload.sessionId) } }
   );
 
   io.emit(`whatsappSession`, {
     action: "update",
     session: {
-      id: payload.sessionId,
+      id: getSessionId(payload.sessionId),
       status: payload.status,
       number: payload.number,
       profilePicUrl: payload.profilePicUrl
@@ -108,7 +118,7 @@ const handleContactUpdate = async (payload: ContactUpdatePayload, tenantId: stri
   const { contactId, number, profilePicUrl, pushName, lid, isGroup, sessionId } = payload;
 
   if (!tenantId && sessionId) {
-    const whatsapp = await Whatsapp.findByPk(sessionId);
+    const whatsapp = await Whatsapp.findByPk(getSessionId(sessionId));
     if (whatsapp) {
       tenantId = whatsapp.tenantId;
     }
@@ -205,7 +215,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   const { message, sessionId } = payload;
   logger.info(`[EventListener] handleMessageReceived: ${JSON.stringify(payload)}`);
 
-  const whatsapp = await Whatsapp.findByPk(sessionId);
+  const whatsapp = await Whatsapp.findByPk(getSessionId(sessionId));
   if (!whatsapp) return;
 
   if (!tenantId && whatsapp.tenantId) {
@@ -223,6 +233,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   let preservedBody: string | null = null;
   let preservedMediaUrl: string | null = null;
   let preservedMediaType: string | null = null;
+  let preservedCreatedAt: Date | null = null;
 
   if (message.originalId) {
     if (message.originalId === message.id) {
@@ -243,6 +254,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
           preservedBody = pendingMessage.body;
           preservedMediaUrl = pendingMessage.getDataValue("mediaUrl");
           preservedMediaType = pendingMessage.mediaType;
+          preservedCreatedAt = pendingMessage.createdAt;
 
           await pendingMessage.destroy();
           logger.info(`[EventListener] Pending message ${message.originalId} destroyed successfully.`);
@@ -333,18 +345,121 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     msgContact = await CreateOrUpdateContactService(contactData);
   }
 
-  // ... inside handleMessageReceived
-  // message.timestamp is usually in seconds (Unix). Convert to ms for comparison.
-  const isOldMessage = Date.now() - (message.timestamp * 1000) > 1000 * 60 * 60 * 2; // 2 hours
+  // FIX: Se a mensagem veio com timestamp inválido (0) mas temos a data original de criação, restauramos.
+  if (preservedCreatedAt && (!message.timestamp || message.timestamp * 1000 < 1577836800000)) { // < 2020
+    logger.warn(`[EventListener] Timestamp fixed for msg ${message.id}: ${message.timestamp} -> ${preservedCreatedAt}`);
+    message.timestamp = Math.floor(preservedCreatedAt.getTime() / 1000);
+  }
 
+  // message.timestamp is usually in seconds (Unix). Convert to ms for comparison.
+  // FIX: Se o timestamp for inválido (ex: 0), não consideramos mensagem antiga, deixamos cair no fluxo de nova para ser corrigida com Date.now()
+  const hasValidTimestamp = message.timestamp && message.timestamp * 1000 > 1577836800000;
+  const isOldMessage = hasValidTimestamp && (Date.now() - (message.timestamp * 1000) > 1000 * 60 * 60 * 2); // 2 hours
+
+  // NOVA LÓGICA: Mensagens históricas não criam ticket
+  // Apenas salvam mensagem se já existir um ticket para este contato
+  if (isOldMessage) {
+    logger.info(`[EventListener] Old message detected (${message.id}). Checking for existing ticket...`);
+
+    let ticketForMessage: Ticket | null = await Ticket.findOne({
+      where: {
+        contactId: (groupContact || msgContact).id,
+        whatsappId: whatsapp.id,
+        tenantId
+      },
+      order: [["updatedAt", "DESC"]]
+    });
+
+    if (!ticketForMessage) {
+      logger.info(`[EventListener] Old message ${message.id} has no ticket. Creating CLOSED ticket to save history.`);
+
+      ticketForMessage = await Ticket.create({
+        contactId: groupContact ? groupContact.id : msgContact.id,
+        status: "closed",
+        isGroup: !!groupContact,
+        unreadMessages: 0,
+        whatsappId: whatsapp.id,
+        tenantId
+      });
+    }
+
+    if (ticketForMessage) {
+      // Salvar mensagem no ticket (histórico)
+      logger.info(`[EventListener] Saving old message ${message.id} to ticket ${ticketForMessage.id} (Status: ${ticketForMessage.status})`);
+
+      const msgDataVal = {
+        id: message.id,
+        ticketId: ticketForMessage.id,
+        contactId: msgContact.id,
+        body: preservedBody || message.body,
+        fromMe: message.fromMe,
+        read: true, // Mensagens antigas são marcadas como lidas
+        mediaType: preservedMediaType || message.type,
+        mediaUrl: preservedMediaUrl || message.mediaUrl,
+        timestamp: message.timestamp * 1000,
+        createdAt: new Date(message.timestamp * 1000), // Fix Timestamp
+        participant: message.participant,
+        dataJson: message,
+        quotedMsgId: message.quotedMsgId,
+        ack: 3, // Mensagens antigas assumem ACK = read
+        tenantId
+      };
+
+      // Processar mídia se houver
+      if (message.hasMedia && message.mediaData && !preservedMediaUrl) {
+        try {
+          const { join } = require("path");
+          const { writeFile } = require("fs").promises;
+          const uploadConfig = require("../../config/upload").default;
+          const mimetype = message.mimetype || "";
+          const ext = mimetype.split("/")[1]?.split(";")[0] || "bin";
+          const filename = `${new Date().getTime()}-${message.id}.${ext}`;
+          const tenantFolder = join(uploadConfig.directory, tenantId.toString());
+          if (!require("fs").existsSync(tenantFolder)) {
+            require("fs").mkdirSync(tenantFolder, { recursive: true });
+          }
+          const filePath = join(tenantFolder, filename);
+          const buffer = Buffer.from(message.mediaData, "base64");
+          await writeFile(filePath, buffer);
+          (msgDataVal as any).mediaUrl = `${tenantId}/${filename}`;
+          if (message.type === "media") {
+            if (mimetype.startsWith("image/")) (msgDataVal as any).mediaType = "image";
+            else if (mimetype.startsWith("video/")) (msgDataVal as any).mediaType = "video";
+            else if (mimetype.startsWith("audio/")) (msgDataVal as any).mediaType = "audio";
+            else (msgDataVal as any).mediaType = "document";
+          }
+        } catch (err) {
+          logger.error(`Error saving media for old message ${message.id}: ${err}`);
+        }
+      }
+
+      await CreateMessageService({ messageData: msgDataVal as any });
+    }
+
+    return; // Stop here, do not create pending ticket
+  }
+
+  // Apenas para mensagens NOVAS - criar ticket pending
   const ticket = await FindOrCreateTicketService(
     groupContact || msgContact,
     whatsapp.id,
     1, // Unread messages
     tenantId,
-    groupContact,
-    isOldMessage
+    groupContact
   );
+
+  let creationDate = new Date(message.timestamp * 1000);
+
+  // FIX: If timestamp is 0 or invalid (resulting in 1970/1969), use preserved CreatedAt or NOW
+  if (creationDate.getFullYear() < 2020) {
+    if (preservedCreatedAt) {
+      creationDate = preservedCreatedAt;
+      logger.info(`[EventListener] Invalid timestamp ${message.timestamp}. Restoring preserved createdAt: ${creationDate}`);
+    } else {
+      creationDate = new Date();
+      logger.info(`[EventListener] Invalid timestamp ${message.timestamp}. using NOW: ${creationDate}`);
+    }
+  }
 
   const msgData = {
     id: message.id,
@@ -355,7 +470,8 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     read: message.fromMe || false,
     mediaType: preservedMediaType || message.type,
     mediaUrl: preservedMediaUrl || message.mediaUrl,
-    timestamp: message.timestamp * 1000, // Convert to ms
+    timestamp: creationDate.getTime(), // Use sanitized timestamp
+    createdAt: creationDate, // Fix Timestamp
     participant: message.participant,
     dataJson: message, // Store full payload including urlPreview and pushName
     quotedMsgId: message.quotedMsgId,
@@ -460,7 +576,7 @@ const handleMessageReaction = async (payload: MessageReactionPayload, tenantId: 
     const { messageId, reaction, sender, timestamp, sessionId } = payload;
 
     if (!tenantId && sessionId) {
-      const whatsapp = await Whatsapp.findByPk(sessionId);
+      const whatsapp = await Whatsapp.findByPk(getSessionId(sessionId));
       if (whatsapp) {
         tenantId = whatsapp.tenantId;
       }
@@ -513,7 +629,7 @@ const handleMessageAck = async (payload: { messageId: string; ack: number; sessi
     const { messageId, ack, sessionId } = payload;
 
     if (!tenantId && sessionId) {
-      const whatsapp = await Whatsapp.findByPk(sessionId);
+      const whatsapp = await Whatsapp.findByPk(getSessionId(sessionId));
       if (whatsapp) {
         tenantId = whatsapp.tenantId;
       }
@@ -551,5 +667,50 @@ const handleMessageAck = async (payload: { messageId: string; ack: number; sessi
 
   } catch (err) {
     logger.error(`[EventListener] Error handling message ACK: ${err}`);
+  }
+};
+
+const handleMessageRevoke = async (payload: MessageRevokePayload, tenantId: string | number) => {
+  try {
+    const { messageId, sessionId, participant } = payload;
+
+    if (!tenantId && sessionId) {
+      const whatsapp = await Whatsapp.findByPk(getSessionId(sessionId));
+      if (whatsapp) {
+        tenantId = whatsapp.tenantId;
+      }
+    }
+
+    logger.info(`[EventListener] handleMessageRevoke: Revoking msg ${messageId} (by ${participant})`);
+
+    const message = await Message.findOne({
+      where: { id: messageId, tenantId }
+    });
+
+    if (!message) {
+      logger.warn(`[EventListener] Message ${messageId} not found for revocation.`);
+      return;
+    }
+
+    // Update isDeleted and store deleter info in dataJson
+    // We preserve the original body in the DB, but frontend must know it's deleted.
+    const currentDataJson = (message.dataJson as object) || {};
+
+    await message.update({
+      isDeleted: true,
+      dataJson: {
+        ...currentDataJson,
+        deletedBy: participant
+      }
+    });
+
+    const io = getIO();
+    io.to(message.ticketId.toString()).emit(`appMessage`, {
+      action: "update",
+      message: message
+    });
+
+  } catch (err) {
+    logger.error(`[EventListener] Error handling message revocation: ${err}`);
   }
 };

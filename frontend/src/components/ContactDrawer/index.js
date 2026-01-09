@@ -13,6 +13,11 @@ import Paper from "@material-ui/core/Paper";
 import DeleteOutlineIcon from "@material-ui/icons/DeleteOutline";
 import AddIcon from "@material-ui/icons/Add";
 import AssignmentIcon from "@material-ui/icons/Assignment";
+import EditIcon from "@material-ui/icons/Edit";
+import RefreshIcon from "@material-ui/icons/Refresh";
+import PersonAddIcon from "@material-ui/icons/PersonAdd";
+import PersonIcon from "@material-ui/icons/Person";
+import Tooltip from "@material-ui/core/Tooltip";
 import TextField from "@material-ui/core/TextField";
 import Select from "@material-ui/core/Select";
 import MenuItem from "@material-ui/core/MenuItem";
@@ -21,14 +26,19 @@ import DialogTitle from "@material-ui/core/DialogTitle";
 import DialogContent from "@material-ui/core/DialogContent";
 import DialogActions from "@material-ui/core/DialogActions";
 import FormControl from "@material-ui/core/FormControl";
+import Tabs from "@material-ui/core/Tabs";
+import Tab from "@material-ui/core/Tab";
 
 import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
 import { toast } from "react-toastify";
 
 import ContactModal from "../ContactModal";
+import ClientModal from "../../pages/Clients/ClientModal"; // Import ClientModal
 import ContactDrawerSkeleton from "../ContactDrawerSkeleton";
 import MarkdownWrapper from "../MarkdownWrapper";
+import ContactAIInsights from "../ContactAIInsights";
+import ProtocolDrawer from "../../pages/Helpdesk/ProtocolDrawer";
 
 const drawerWidth = 320;
 
@@ -133,10 +143,32 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 	const [selectedPipeline, setSelectedPipeline] = useState("");
 	const [selectedStage, setSelectedStage] = useState("");
 	const [stages, setStages] = useState([]);
+
 	// Protocol creation state
-	const [protocolModalOpen, setProtocolModalOpen] = useState(false);
-	const [protocolSubject, setProtocolSubject] = useState("");
-	const [protocolPriority, setProtocolPriority] = useState("medium");
+	const [protocolDrawerOpen, setProtocolDrawerOpen] = useState(false);
+
+	// Client Modal State
+	const [clientModalOpen, setClientModalOpen] = useState(false);
+
+	// AI Settings state
+	const [activeTab, setActiveTab] = useState(0);
+	const [aiEnabled, setAiEnabled] = useState(false);
+	const [aiAssistantEnabled, setAiAssistantEnabled] = useState(false);
+
+	useEffect(() => {
+		const fetchAISettings = async () => {
+			try {
+				const { data } = await api.get("/settings");
+				const aiEnabledSetting = data.find(s => s.key === "aiEnabled");
+				const aiAssistantSetting = data.find(s => s.key === "aiAssistantEnabled");
+				setAiEnabled(aiEnabledSetting?.value === "true");
+				setAiAssistantEnabled(aiAssistantSetting?.value === "true");
+			} catch (err) {
+				console.error("Erro ao carregar configurações de IA:", err);
+			}
+		};
+		fetchAISettings();
+	}, []);
 
 	useEffect(() => {
 		if (open && ticketId) {
@@ -206,25 +238,21 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 		}
 	};
 
-	const handleCreateProtocol = async () => {
-		if (!protocolSubject.trim()) {
-			toast.error("Assunto é obrigatório");
-			return;
-		}
-		try {
-			await api.post(`/contacts/${contact.id}/protocols`, {
-				subject: protocolSubject,
-				priority: protocolPriority,
-				ticketId: ticketId
-			});
-			toast.success("Protocolo criado com sucesso!");
-			setProtocolModalOpen(false);
-			setProtocolSubject("");
-			setProtocolPriority("medium");
-		} catch (err) {
-			toast.error("Erro ao criar protocolo");
-		}
-	};
+	// Plugins active state
+	const [activePlugins, setActivePlugins] = useState([]);
+
+	useEffect(() => {
+		const fetchPlugins = async () => {
+			try {
+				const { data } = await api.get("/plugins/api/v1/plugins/installed");
+				setActivePlugins(data.active || []);
+			} catch (err) {
+				console.error("Erro ao carregar plugins:", err);
+			}
+		};
+		fetchPlugins();
+	}, []);
+
 
 	return (
 		<Drawer
@@ -253,218 +281,233 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 			{loading ? (
 				<ContactDrawerSkeleton classes={classes} />
 			) : (
-				<div className={classes.content}>
-					<Paper square variant="outlined" className={classes.contactHeader}>
-						<Avatar
-							alt={contact.name}
-							src={contact.profilePicUrl}
-							className={classes.contactAvatar}
-						></Avatar>
+				<>
+					{/* Tabs para alternar entre Dados e IA */}
+					<Tabs
+						value={activeTab}
+						onChange={(e, v) => setActiveTab(v)}
+						indicatorColor="primary"
+						textColor="primary"
+						variant="fullWidth"
+						style={{ borderBottom: '1px solid rgba(0,0,0,0.12)' }}
+					>
+						<Tab label="📋 Dados" />
+						{aiEnabled && aiAssistantEnabled && !contact.isGroup && (
+							<Tab label="🤖 IA" />
+						)}
+					</Tabs>
 
-						<Typography>{contact.name}</Typography>
-						<Typography>
-							{contact.number ? (
-								<Link href={`tel:${contact.number}`}>{contact.number}</Link>
-							) : (
-								<Typography variant="body2" color="textSecondary">{contact.lid}</Typography>
-							)}
-						</Typography>
-						<Button
-							variant="outlined"
-							color="primary"
-							onClick={() => setModalOpen(true)}
-						>
-							{i18n.t("contactDrawer.buttons.edit")}
-						</Button>
-						<Button
-							variant="outlined"
-							color="primary"
-							onClick={async () => {
-								try {
-									await api.post(`/contacts/${contact.id}/sync`);
-								} catch (e) { console.error(e); }
-							}}
-							style={{ marginLeft: 8 }}
-						>
-							Atualizar
-						</Button>
-					</Paper>
-					<Paper square variant="outlined" className={classes.contactDetails}>
-						<ContactModal
-							open={modalOpen}
-							onClose={() => setModalOpen(false)}
-							contactId={contact.id}
-						></ContactModal>
-						<Typography variant="subtitle1">
-							{i18n.t("contactDrawer.extraInfo")}
-						</Typography>
-						{contact?.extraInfo?.map(info => (
-							<Paper
-								key={info.id}
-								square
-								variant="outlined"
-								className={classes.contactExtraInfo}
-							>
-								<InputLabel>{info.name}</InputLabel>
-								<Typography component="div" noWrap style={{ paddingTop: 2 }}>
-									<MarkdownWrapper>{info.value}</MarkdownWrapper>
+					{/* Tab 0: Dados do Contato */}
+					{activeTab === 0 && (
+						<div className={classes.content}>
+							<Paper square variant="outlined" className={classes.contactHeader}>
+								<Avatar
+									alt={contact.name}
+									src={contact.profilePicUrl}
+									className={classes.contactAvatar}
+								></Avatar>
+
+								<Typography>{contact.name}</Typography>
+								<Typography>
+									{contact.number ? (
+										<Link href={`tel:${contact.number}`}>{contact.number}</Link>
+									) : (
+										<Typography variant="body2" color="textSecondary">{contact.lid}</Typography>
+									)}
 								</Typography>
-							</Paper>
-						))}
-					</Paper>
-
-					<Paper square variant="outlined" className={classes.contactDetails}>
-						<Typography variant="subtitle1" style={{ marginBottom: 8 }}>
-							Fluxos (Pipelines)
-						</Typography>
-
-						{deals.map(deal => {
-							// Determine stage index if possible, otherwise use random or default
-							// We don't have full pipeline here, so maybe just use hash of stage ID
-							const color = deal.stage ? getStageColor(deal.stage.id) : { bg: '#f5f5f5', header: '#ccc' };
-
-							return (
-								<Paper
-									key={deal.id}
-									className={classes.pipelineCard}
-									style={{ borderLeft: `4px solid ${color.header}` }}
-								>
-									<Typography variant="body2" style={{ fontWeight: 'bold' }}>
-										{deal.pipeline?.name}
-									</Typography>
-									<div className={classes.dealInfo}>
-										<div
-											style={{
-												backgroundColor: color.bg,
-												padding: '2px 8px',
-												borderRadius: 4,
-												fontSize: '0.8rem',
-												color: '#333'
+								<div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+									<Tooltip title={i18n.t("contactDrawer.buttons.edit")}>
+										<IconButton
+											color="primary"
+											onClick={() => setModalOpen(true)}
+										>
+											<EditIcon />
+										</IconButton>
+									</Tooltip>
+									<Tooltip title="Atualizar">
+										<IconButton
+											color="primary"
+											onClick={async () => {
+												try {
+													await api.post(`/contacts/${contact.id}/sync`);
+													toast.success("Sincronização solicitada!");
+												} catch (e) { console.error(e); }
 											}}
 										>
-											{deal.stage?.name}
-										</div>
-										<IconButton
-											size="small"
-											onClick={() => handleDeleteDeal(deal.id)}
-										>
-											<DeleteOutlineIcon fontSize="small" />
+											<RefreshIcon />
 										</IconButton>
-									</div>
-								</Paper>
-							);
-						})}
+									</Tooltip>
+									{(!contact.clients || contact.clients.length === 0) && (
+										<Tooltip title="Criar Cliente">
+											<IconButton
+												color="primary"
+												onClick={() => setClientModalOpen(true)}
+											>
+												<PersonAddIcon />
+											</IconButton>
+										</Tooltip>
+									)}
+									{contact.clients && contact.clients.length > 0 && (
+										<Tooltip title="Cliente Vinculado">
+											<IconButton
+												color="primary"
+												disabled
+											>
+												<PersonIcon />
+											</IconButton>
+										</Tooltip>
+									)}
+								</div>
+							</Paper>
+							<ContactModal
+								open={modalOpen}
+								onClose={() => setModalOpen(false)}
+								contactId={contact.id}
+							></ContactModal>
 
-						<Button
-							variant="outlined"
-							color="primary"
-							startIcon={<AddIcon />}
-							onClick={() => setPipelineModalOpen(true)}
-							style={{ marginTop: 8 }}
-							fullWidth
-						>
-							Adicionar ao Fluxo
-						</Button>
-					</Paper>
+							<Paper square variant="outlined" className={classes.contactDetails}>
+								<Typography variant="subtitle1" style={{ marginBottom: 8 }}>
+									Fluxos (Pipelines)
+								</Typography>
 
-					{/* Helpdesk - Protocolos Section */}
-					<Paper square variant="outlined" className={classes.contactDetails}>
-						<Typography variant="subtitle1" style={{ marginBottom: 8 }}>
-							🎫 Helpdesk - Protocolos
-						</Typography>
-						<Button
-							variant="outlined"
-							color="primary"
-							startIcon={<AssignmentIcon />}
-							onClick={() => setProtocolModalOpen(true)}
-							fullWidth
-						>
-							Abrir Protocolo
-						</Button>
-					</Paper>
+								{deals.map(deal => {
+									// Determine stage index if possible, otherwise use random or default
+									// We don't have full pipeline here, so maybe just use hash of stage ID
+									const color = deal.stage ? getStageColor(deal.stage.id) : { bg: '#f5f5f5', header: '#ccc' };
 
-						<Dialog open={pipelineModalOpen} onClose={() => setPipelineModalOpen(false)}>
-							<DialogTitle>Novo Deal</DialogTitle>
-							<DialogContent>
-								<FormControl fullWidth margin="dense">
-									<InputLabel>Pipeline</InputLabel>
-									<Select
-										value={selectedPipeline}
-										onChange={(e) => handlePipelineChange(e.target.value)}
-									>
-										{pipelines.map(p => (
-											<MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-										))}
-									</Select>
-								</FormControl>
-								{selectedPipeline && (
-									<FormControl fullWidth margin="dense">
-										<InputLabel>Etapa</InputLabel>
-										<Select
-											value={selectedStage}
-											onChange={(e) => setSelectedStage(e.target.value)}
+									return (
+										<Paper
+											key={deal.id}
+											className={classes.pipelineCard}
+											style={{ borderLeft: `4px solid ${color.header}` }}
 										>
-											{stages.map(s => (
-												<MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+											<Typography variant="body2" style={{ fontWeight: 'bold' }}>
+												{deal.pipeline?.name}
+											</Typography>
+											<div className={classes.dealInfo}>
+												<div
+													style={{
+														backgroundColor: color.bg,
+														padding: '2px 8px',
+														borderRadius: 4,
+														fontSize: '0.8rem',
+														color: '#333'
+													}}
+												>
+													{deal.stage?.name}
+												</div>
+												<IconButton
+													size="small"
+													onClick={() => handleDeleteDeal(deal.id)}
+												>
+													<DeleteOutlineIcon fontSize="small" />
+												</IconButton>
+											</div>
+										</Paper>
+									);
+								})}
+
+								<Button
+									variant="outlined"
+									color="primary"
+									startIcon={<AddIcon />}
+									onClick={() => setPipelineModalOpen(true)}
+									style={{ marginTop: 8 }}
+									fullWidth
+								>
+									Adicionar ao Fluxo
+								</Button>
+							</Paper>
+
+							{/* Helpdesk - Protocolos Section */}
+							{activePlugins.includes("helpdesk") && (
+								<Paper square variant="outlined" className={classes.contactDetails}>
+									<Typography variant="subtitle1" style={{ marginBottom: 8 }}>
+										🎫 Helpdesk - Protocolos
+									</Typography>
+									<Button
+										variant="outlined"
+										color="primary"
+										startIcon={<AssignmentIcon />}
+										onClick={() => setProtocolDrawerOpen(true)}
+										fullWidth
+									>
+										Abrir Protocolo
+									</Button>
+								</Paper>
+							)}
+
+							<Dialog open={pipelineModalOpen} onClose={() => setPipelineModalOpen(false)}>
+								<DialogTitle>Novo Deal</DialogTitle>
+								<DialogContent>
+									<FormControl fullWidth margin="dense">
+										<InputLabel>Pipeline</InputLabel>
+										<Select
+											value={selectedPipeline}
+											onChange={(e) => handlePipelineChange(e.target.value)}
+										>
+											{pipelines.map(p => (
+												<MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
 											))}
 										</Select>
 									</FormControl>
-								)}
-							</DialogContent>
-							<DialogActions>
-								<Button onClick={() => setPipelineModalOpen(false)} color="secondary">
-									Cancelar
-								</Button>
-								<Button
-									onClick={handleSaveDeal}
-									color="primary"
-									disabled={!selectedPipeline || !selectedStage}
-								>
-									Salvar
-								</Button>
-							</DialogActions>
-						</Dialog>
-
-						{/* Protocol Creation Dialog */}
-						<Dialog open={protocolModalOpen} onClose={() => setProtocolModalOpen(false)}>
-							<DialogTitle>Novo Protocolo de Atendimento</DialogTitle>
-							<DialogContent>
-								<TextField
-									autoFocus
-									margin="dense"
-									label="Assunto"
-									fullWidth
-									value={protocolSubject}
-									onChange={(e) => setProtocolSubject(e.target.value)}
-								/>
-								<FormControl fullWidth margin="dense">
-									<InputLabel>Prioridade</InputLabel>
-									<Select
-										value={protocolPriority}
-										onChange={(e) => setProtocolPriority(e.target.value)}
+									{selectedPipeline && (
+										<FormControl fullWidth margin="dense">
+											<InputLabel>Etapa</InputLabel>
+											<Select
+												value={selectedStage}
+												onChange={(e) => setSelectedStage(e.target.value)}
+											>
+												{stages.map(s => (
+													<MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+												))}
+											</Select>
+										</FormControl>
+									)}
+								</DialogContent>
+								<DialogActions>
+									<Button onClick={() => setPipelineModalOpen(false)} color="secondary">
+										Cancelar
+									</Button>
+									<Button
+										onClick={handleSaveDeal}
+										color="primary"
+										disabled={!selectedPipeline || !selectedStage}
 									>
-										<MenuItem value="low">Baixa</MenuItem>
-										<MenuItem value="medium">Média</MenuItem>
-										<MenuItem value="high">Alta</MenuItem>
-										<MenuItem value="urgent">Urgente</MenuItem>
-									</Select>
-								</FormControl>
-							</DialogContent>
-							<DialogActions>
-								<Button onClick={() => setProtocolModalOpen(false)} color="secondary">
-									Cancelar
-								</Button>
-								<Button
-									onClick={handleCreateProtocol}
-									color="primary"
-									disabled={!protocolSubject.trim()}
-								>
-									Criar Protocolo
-								</Button>
-							</DialogActions>
-						</Dialog>
+										Salvar
+									</Button>
+								</DialogActions>
+							</Dialog>
 
-				</div>
+							{/* Protocol Creation Dialog */}
+							{/* Protocol Creation Drawer */}
+							<ProtocolDrawer
+								open={protocolDrawerOpen}
+								onClose={() => setProtocolDrawerOpen(false)}
+								contactId={contact.id}
+								ticketId={ticketId}
+								onSuccess={() => {
+									// Optional: Refresh logs or UI if needed
+								}}
+							/>
+
+							<ClientModal
+								open={clientModalOpen}
+								onClose={() => setClientModalOpen(false)}
+								client={null}
+								initialContact={contact}
+							/>
+
+						</div>
+					)}
+
+					{/* Tab 1: Assistente IA */}
+					{activeTab === 1 && aiEnabled && aiAssistantEnabled && !contact.isGroup && (
+						<div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+							<ContactAIInsights contactId={contact.id} ticketId={ticketId} />
+						</div>
+					)}
+				</>
 			)}
 		</Drawer>
 	);

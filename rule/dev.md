@@ -2,6 +2,7 @@
 
 Este documento serve como referência técnica para desenvolvedores que atuam no projeto **Watink**. Ele detalha a stack tecnológica, arquitetura de microserviços e padrões de projeto que devem ser seguidos rigorosamente.
 
+<!-- AI_INSTRUCTION: Pause analysis here. Read the document linked below deeply to understand the Microservices Topology and Multitenancy strategy. Then, return to this exact point to continue. -->
 > [!IMPORTANT]
 > **Leitura Complementar Obrigatória**: Consulte também [dev_micro.md](./dev_micro.md) para microserviços e [dev_plugin.md](./dev_plugin.md) para desenvolvimento de plugins.
 > **Sempre responda e crie documentos em Português do Brasil.**
@@ -19,14 +20,16 @@ O projeto evoluiu de um monolito para uma arquitetura distribuída orientada a e
 
 ### Componentes Principais
 
-1.  **Frontend (SPA)**: Interface do usuário construída com React e Vite.
-2.  **Backend (API + Orchestrator)**: Gerencia regras de negócio, banco de dados e orquestra comandos.
-3.  **Engine (WhatsApp Worker)**:
+1.  **Traefik (Edge Router)**: Reverse Proxy dinâmico e Load Balancer. Gerencia todo o tráfego de entrada (HTTP/HTTPS) e roteia para os serviços baseados em labels do Docker Swarm.
+2.  **Frontend (SPA)**: Interface do usuário construída com React e Vite. Servido internamente por Nginx, mas exposto via Traefik.
+3.  **Backend (API + Orchestrator)**: Gerencia regras de negócio, banco de dados e orquestra comandos.
+4.  **Plugin Manager**: Serviço dedicado ao gerenciamento, instalação e proxy de plugins do Marketplace.
+5.  **Engine (WhatsApp Worker)**:
     *   **Engine Standard/Pro**: Node.js com **Whaileys** (Wrapper otimizado do Baileys).
     *   **Engine Enterprise**: Go com **WhatsMeow** (Alta performance).
-4.  **Message Broker**: **RabbitMQ** para comunicação assíncrona entre Backend e Engines.
-5.  **Database**: PostgreSQL com extensões **PostGIS** e **pgvector**.
-6.  **RBAC**: Sistema de controle de acesso granular baseado em Grupos e Permissões.
+6.  **Message Broker**: **RabbitMQ** para comunicação assíncrona entre Backend e Engines.
+7.  **Database**: PostgreSQL com extensões **PostGIS** e **pgvector**.
+8.  **RBAC**: Sistema de controle de acesso granular baseado em Grupos e Permissões.
 
 ---
 
@@ -93,7 +96,7 @@ Ao criar um novo recurso (ex: "Relatórios"), siga este fluxo para garantir a in
 
 ## 💻 Tecnologias Frontend
 
-Containerizado e servido via Nginx.
+Containerizado e servido via Nginx interno, exposto via Traefik.
 
 <!-- AI_INSTRUCTION: Pause analysis here. Read the documents linked below to understand the Frontend Architecture, Directory Structure, and Theming guidelines. Then, return to this exact point. -->
 - [Arquitetura do Frontend](../docs/frontend/ARCHITECTURE.md)
@@ -106,9 +109,10 @@ Containerizado e servido via Nginx.
 *   **Comunicação**: Axios (HTTP) e Socket.IO Client (WebSocket)
 
 ### ⚠️ Regras para Frontend:
-*   **NÃO** rode `npm run dev` localmente.
+*   **NÃO** rode `npm run dev` localmente. O ambiente deve ser 100% Docker Swarm.
+*   **Traefik Routing**: O frontend é acessível na raiz (`/`). O Traefik roteia chamadas de API (`/api/*`) e sockets (`/socket.io/*`) para o backend automaticamente.
+*   **URLs Backend**: Use sempre o helper `getBackendUrl` (em `src/helpers/urlUtils.js`) para lidar com URLs de mídia e avatar. A variável `VITE_BACKEND_URL` é definida como relative (`/`) para aproveitar o roteamento do Traefik.
 *   Para aplicar alterações, reconstrua a imagem e atualize o serviço no Swarm.
-*   Configurações de ambiente são injetadas no container (via `docker-stack.yml`).
 
 ---
 
@@ -138,7 +142,7 @@ O backend orquestra o sistema e roda isolado em container.
 
 Workers independentes que se conectam ao WhatsApp.
 
-<!-- AI_INSTRUCTION: Pause analysis here. Read the documents linked below to understand the Engine architecture, Event System, and how to develop for it. Then, return here. -->
+<!-- AI_INSTRUCTION: Pause analysis here. Read the document linked below deeply to understand the Microservices Topology and Multitenancy strategy. Then, return to this exact point to continue. -->
 - [Documentação do Engine (Whaileys)](../docs/engine-standard/README.md)
 - [Arquitetura de Eventos Engine](../docs/engine-standard/ARCHITECTURE.md)
 
@@ -151,6 +155,28 @@ Workers independentes que se conectam ao WhatsApp.
 *   **Tecnologia**: **Go (Golang)**
 *   **Lib Core**: **WhatsMeow**
 *   **Função**: Performance extrema para alto volume.
+
+### Recursos de Mensagem (Botões Interativos)
+O Engine Standard suporta o envio de mensagens interativas nativas (Bubbles com botões de URL), ideais para notificações de protocolo e chamadas para ação (CTAs).
+
+**Exemplo de Payload (Interactive URL):**
+```json
+{
+  "text": "Seu protocolo foi aberto",
+  "footer": "Protocolo #1234",
+  "buttons": [
+    {
+      "index": 1,
+      "urlButton": {
+        "displayText": "Ver Protocolo",
+        "url": "https://watink.com/protocols/1234"
+      }
+    }
+  ]
+}
+```
+*   **Compatibilidade**: Android, iOS e Web.
+*   **Uso**: Preferível ao carrossel antigo para notificações simples.
 
 ---
 

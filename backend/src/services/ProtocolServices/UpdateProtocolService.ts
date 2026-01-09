@@ -7,7 +7,7 @@ import AppError from "../../errors/AppError";
 
 interface UpdateProtocolData {
     id: number;
-    tenantId: number;
+    tenantId: string | number;
     userId?: number;
     subject?: string;
     description?: string;
