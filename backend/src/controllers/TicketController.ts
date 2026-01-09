@@ -15,6 +15,8 @@ import Ticket from "../models/Ticket";
 import AppError from "../errors/AppError";
 import RabbitMQService from "../services/RabbitMQService";
 import { Envelope } from "../microservice/contracts";
+import Message from "../models/Message";
+import Contact from "../models/Contact";
 
 type IndexQuery = {
   searchParam: string;
@@ -210,4 +212,29 @@ export const closeAll = async (
   });
 
   return res.status(200).json({ closedCount });
+};
+
+export const showParticipants = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { ticketId } = req.params;
+
+  // Find distinct contacts who sent messages in this ticket
+  const messages = await Message.findAll({
+    where: { ticketId },
+    attributes: ["contactId"],
+    group: ["contactId"]
+  });
+
+  const contactIds = messages.map(m => m.contactId);
+
+  const participants = await Contact.findAll({
+    where: {
+      id: contactIds
+    },
+    attributes: ["id", "name", "number", "profilePicUrl"]
+  });
+
+  return res.status(200).json(participants);
 };

@@ -45,10 +45,17 @@ const SendWhatsAppMessage = async ({
 
     const message = await Message.create(messageData);
 
+    const messageComplete = await Message.findByPk(message.id, {
+      include: [
+        { model: Ticket, as: "ticket" },
+        { model: Message, as: "quotedMsg", include: ["contact"] }
+      ]
+    });
+
     const io = getIO();
     io.to(message.ticketId.toString()).emit("appMessage", {
       action: "create",
-      message,
+      message: messageComplete || message,
       ticket: ticket,
       contact: ticket.contact
     });
