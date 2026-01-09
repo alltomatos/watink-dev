@@ -183,7 +183,7 @@ const useStyles = makeStyles(theme => ({
     cursor: "pointer",
     zIndex: 1,
     "&:hover": {
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
+      backgroundColor: "rgba(255, 255, 255, 0.9)",
     },
   },
   previewMediaInputWrapper: {
@@ -297,6 +297,42 @@ const useStyles = makeStyles(theme => ({
       },
     },
   },
+
+  messageMentionsWrapper: {
+    margin: 0,
+    position: "absolute",
+    bottom: "50px",
+    background: "#ffffff",
+    padding: "2px",
+    border: "1px solid #CCC",
+    left: 0,
+    width: "100%",
+    zIndex: 9999,
+    maxHeight: "200px",
+    overflowY: "auto",
+    "& li": {
+      listStyle: "none",
+      "& a": {
+        display: "flex",
+        alignItems: "center",
+        padding: "8px",
+        textOverflow: "ellipsis",
+        overflow: "hidden",
+        maxHeight: "45px",
+        borderBottom: "1px solid #eee",
+        "&:hover": {
+          background: "#F1F1F1",
+          cursor: "pointer",
+        },
+      },
+      "& img": {
+        width: "30px",
+        height: "30px",
+        borderRadius: "50%",
+        marginRight: "10px",
+      }
+    },
+  },
 }));
 
 const MessageInput = ({ ticketStatus, whatsappStatus }) => {
@@ -375,7 +411,7 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
     if (e.clipboardData.files[0]) {
       const caption = medias.length === 0 && inputMessage ? inputMessage : "";
       setMedias(prev => [...prev, { file: e.clipboardData.files[0], caption }]);
-      
+
       if (medias.length === 0 && inputMessage) {
         setInputMessage("");
       }
@@ -383,7 +419,7 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
   };
 
   const handleMediaCaptionChange = (index, value) => {
-    setMedias(prev => prev.map((media, i) => 
+    setMedias(prev => prev.map((media, i) =>
       i === index ? { ...media, caption: value } : media
     ));
   };
@@ -394,7 +430,7 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
 
     const formData = new FormData();
     formData.append("fromMe", true);
-    
+
     medias.forEach(media => {
       formData.append("medias", media.file);
       formData.append("body", media.caption); // Send caption for each file
@@ -457,6 +493,10 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
     }
   };
 
+  const [mentions, setMentions] = useState([]);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionAnchorEl, setMentionAnchorEl] = useState(null);
+
   const handleLoadQuickAnswer = async value => {
     if (value && value.indexOf("/") === 0) {
       try {
@@ -472,9 +512,35 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
       } catch (err) {
         setTypeBar(false);
       }
-    } else {
-      setTypeBar(false);
+    } else if (value && value.indexOf("@") === value.length - 1) {
+      // Trigger mention list
+      try {
+        const { data } = await api.get(`/tickets/${ticketId}/participants`);
+        setMentions(data);
+        if (data.length > 0) {
+          setMentionOpen(true);
+        }
+      } catch (err) {
+        toastError(err);
+      }
+    } else if (mentionOpen && (value.lastIndexOf("@") < 0 || value.length < inputMessage.length)) {
+      // Close mention list if @ is removed
+      if (value.lastIndexOf("@") === -1) {
+        setMentionOpen(false);
+      }
     }
+    else {
+      setTypeBar(false);
+      // We don't close mentionOpen here immediately to allow filtering - logic can be improved
+    }
+  };
+
+  const handleMentionClick = (contact) => {
+    // Replace the last @ with @<number> 
+    const newValue = inputMessage.substring(0, inputMessage.lastIndexOf("@")) + `@${contact.number || contact.name} `;
+    setInputMessage(newValue);
+    setMentionOpen(false);
+    if (inputRef.current) inputRef.current.focus();
   };
 
   const handleUploadAudio = async () => {
@@ -600,17 +666,17 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
                 <CircularProgress className={classes.circleLoading} size={20} />
               ) : (
                 <>
-                  <div 
-                    className={classes.previewMediaRemoveIcon} 
+                  <div
+                    className={classes.previewMediaRemoveIcon}
                     onClick={() => handleRemoveMedia(index)}
                   >
                     <CancelIcon style={{ fontSize: 16 }} />
                   </div>
                   {media.file.type.startsWith("image/") ? (
-                    <img 
-                      src={URL.createObjectURL(media.file)} 
-                      alt="preview" 
-                      className={classes.previewMediaImage} 
+                    <img
+                      src={URL.createObjectURL(media.file)}
+                      alt="preview"
+                      className={classes.previewMediaImage}
                     />
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "5px", fontSize: "10px", textAlign: "center", height: "120px", justifyContent: "center" }}>
@@ -630,14 +696,14 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
               )}
             </div>
           ))}
-          
+
           {/* Add more button */}
           {!loading && (
-            <div 
-              className={classes.previewMediaItem} 
+            <div
+              className={classes.previewMediaItem}
               style={{ borderStyle: "dashed", cursor: "pointer", alignItems: "center", justifyContent: "center" }}
             >
-               <input
+              <input
                 multiple
                 type="file"
                 id="add-more-media"
@@ -832,8 +898,24 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
                   );
                 })}
               </ul>
-            ) : (
-              <div></div>
+            ) : null}
+
+            {mentionOpen && (
+              <ul className={classes.messageMentionsWrapper}>
+                {mentions.map((contact, index) => (
+                  <li key={index} onClick={() => handleMentionClick(contact)}>
+                    <a>
+                      {contact.profilePicUrl && (
+                        <img
+                          src={contact.profilePicUrl}
+                          alt={contact.name}
+                        />
+                      )}
+                      {contact.name || contact.number}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
           {inputMessage ? (
