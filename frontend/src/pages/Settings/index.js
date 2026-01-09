@@ -406,6 +406,40 @@ const Settings = () => {
 			</Paper>
 
 			<Paper className={classes.paper}>
+				<Typography variant="body1">Fuso Horário</Typography>
+				<Select
+					margin="dense"
+					variant="outlined"
+					native
+					id="timezone-setting"
+					name="timezone"
+					value={settings && settings.length > 0 && getSettingValue("timezone")}
+					className={classes.settingOption}
+					onChange={handleChangeSetting}
+				>
+					<option value="">Selecione um fuso horário</option>
+					{Array.from({ length: 27 }, (_, i) => i - 12).map((offset) => {
+						const sign = offset >= 0 ? "+" : "-";
+						const absOffset = Math.abs(offset);
+						const formattedOffset = `${sign}${absOffset.toString().padStart(2, "0")}:00`;
+						return (
+							<option key={formattedOffset} value={formattedOffset}>
+								UTC {formattedOffset}
+							</option>
+						);
+					})}
+					{/* Adicionando alguns meios-fusos comuns se necessário, mas mantendo simples como solicitado */}
+					<option value="-03:30">UTC -03:30</option>
+					<option value="+03:30">UTC +03:30</option>
+					<option value="+04:30">UTC +04:30</option>
+					<option value="+05:30">UTC +05:30</option>
+					<option value="+05:45">UTC +05:45</option>
+					<option value="+06:30">UTC +06:30</option>
+					<option value="+09:30">UTC +09:30</option>
+				</Select>
+			</Paper>
+
+			<Paper className={classes.paper}>
 				<Typography variant="body1">Tema</Typography>
 				<Select
 					margin="dense"
