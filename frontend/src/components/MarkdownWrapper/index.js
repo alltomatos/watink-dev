@@ -149,22 +149,31 @@ const CustomLink = ({ children, ...props }) => (
 	</a>
 );
 
-const MarkdownWrapper = ({ children }) => {
+const MarkdownWrapper = ({ children, mentionsMap }) => {
 	const boldRegex = /\*(.*?)\*/g;
 	const tildaRegex = /~(.*?)~/g;
-	
-	if(children && children.includes('BEGIN:VCARD'))
+
+	if (children && children.includes('BEGIN:VCARD'))
 		//children = "Diga olá ao seu novo contato clicando em *conversar*!";
 		children = null;
-	
-	if(children && children.includes('data:image/'))
+
+	if (children && children.includes('data:image/'))
 		children = null;
-	
+
 	if (children && boldRegex.test(children)) {
 		children = children.replace(boldRegex, "**$1**");
 	}
 	if (children && tildaRegex.test(children)) {
 		children = children.replace(tildaRegex, "~~$1~~");
+	}
+
+	if (children && /@(\d+)/g.test(children)) {
+		children = children.replace(/@(\d+)/g, (match, number) => {
+			if (mentionsMap && mentionsMap[number]) {
+				return `@${mentionsMap[number]}`;
+			}
+			return match;
+		});
 	}
 
 	const options = React.useMemo(() => {
@@ -186,7 +195,7 @@ const MarkdownWrapper = ({ children }) => {
 	}, []);
 
 	if (!children) return null;
-	
+
 	return <Markdown options={options}>{children}</Markdown>;
 };
 

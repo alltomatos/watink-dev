@@ -358,7 +358,7 @@ const useStyles = makeStyles((theme) => ({
   },
   senderSpacer: {
     display: "block",
-    height: 12
+    height: 15
   }
 }));
 
@@ -616,7 +616,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
         )
       } else return (<></>)
     }*/
-    else if (/^.*\.(jpe?g|png|gif)?$/i.exec(message.mediaUrl) && message.mediaType === "image") {
+    else if (message.mediaType === "image" || message.mediaType === "sticker") {
       return <ModalImageCors imageUrl={getBackendUrl(message.mediaUrl)} />;
     } else if (message.mediaType === "audio") {
       return <Audio url={getBackendUrl(message.mediaUrl)} />
@@ -753,7 +753,27 @@ const MessagesList = ({ ticketId, isGroup }) => {
         <div className={classes.quotedMsg}>
           {!message.quotedMsg?.fromMe && (
             <span className={classes.messageContactName}>
-              {message.quotedMsg?.contact?.name}
+              {(() => {
+                const quoted = message.quotedMsg;
+                let pushName = null;
+                let participantNumber = null;
+
+                if (quoted.dataJson) {
+                  try {
+                    const data = typeof quoted.dataJson === 'string' ? JSON.parse(quoted.dataJson) : quoted.dataJson;
+                    pushName = data.pushName;
+                  } catch (e) { }
+                }
+
+                if (quoted.participant) {
+                  participantNumber = quoted.participant.replace(/\D/g, "");
+                }
+
+                if (pushName) return `~${pushName}`;
+                if (participantNumber) return `~${participantNumber}`;
+
+                return quoted.contact?.name;
+              })()}
             </span>
           )}
           {getMessageBody(message.quotedMsg)}
@@ -853,6 +873,63 @@ const MessagesList = ({ ticketId, isGroup }) => {
     return color;
   };
 
+  const [participants, setParticipants] = useState([]);
+
+  useEffect(() => {
+    const fetchParticipants = async () => {
+      try {
+        const { data } = await api.get(`/tickets/${ticketId}/participants`);
+        setParticipants(data);
+      } catch (err) {
+        // console.error(err);
+      }
+    }
+    if (isGroup) {
+      fetchParticipants();
+    }
+  }, [ticketId, isGroup]);
+
+  const mentionsMap = React.useMemo(() => {
+    const map = {};
+    if (messagesList && messagesList.length > 0) {
+      messagesList.forEach((msg) => {
+        let number = null;
+        let pushName = null;
+
+        if (msg.participant) {
+          number = msg.participant.replace(/\D/g, "");
+          try {
+            const data = typeof msg.dataJson === 'string' ? JSON.parse(msg.dataJson) : msg.dataJson;
+            pushName = data?.pushName;
+          } catch (e) { }
+        }
+
+        if (msg.contact) {
+          if (!number) number = msg.contact.number;
+          if (!pushName) pushName = msg.contact.name;
+        }
+
+        if (number && pushName) {
+          map[number] = pushName;
+        }
+      });
+    }
+
+    // Merge participants from API
+    participants.forEach(p => {
+      if (p.number && p.name) {
+        const number = p.number.replace(/\D/g, "");
+        // Prefer existing map (pushName from message might be more current?) or prefer contact name?
+        // Usually contact name is better if it exists.
+        if (!map[number]) {
+          map[number] = p.name;
+        }
+      }
+    });
+
+    return map;
+  }, [messagesList, participants]);
+
   const renderSenderName = (message) => {
     if (!isGroup) return null;
 
@@ -917,6 +994,38 @@ const MessagesList = ({ ticketId, isGroup }) => {
       };
 
       const viewMessagesList = messagesList.map((message, index) => {
+        const currentSenderKey = (() => {
+          if (message.fromMe) return "me";
+          if (isGroup) {
+            return message.participant ||
+              (message.dataJson && (
+                (typeof message.dataJson === 'string' ? JSON.parse(message.dataJson) : message.dataJson)?.participant ||
+                (typeof message.dataJson === 'string' ? JSON.parse(message.dataJson) : message.dataJson)?.senderLid
+              )) ||
+              message.contact?.number ||
+              "unknown";
+          }
+          return "other";
+        })();
+
+        const previousSenderKey = index > 0 ? (() => {
+          const prev = messagesList[index - 1];
+          if (prev.fromMe) return "me";
+          if (isGroup) {
+            return prev.participant ||
+              (prev.dataJson && (
+                (typeof prev.dataJson === 'string' ? JSON.parse(prev.dataJson) : prev.dataJson)?.participant ||
+                (typeof prev.dataJson === 'string' ? JSON.parse(prev.dataJson) : prev.dataJson)?.senderLid
+              )) ||
+              prev.contact?.number ||
+              "unknown";
+          }
+          return "other";
+        })() : null;
+
+        const isSameSender = currentSenderKey === previousSenderKey;
+        const isSameDayMsg = index > 0 && isSameDay(parseISO(message.createdAt), parseISO(messagesList[index - 1].createdAt));
+        const showGroupInfo = !isSameSender || !isSameDayMsg;
 
         if (!message.fromMe) {
           return (
@@ -925,22 +1034,27 @@ const MessagesList = ({ ticketId, isGroup }) => {
               {renderMessageDivider(message, index)}
               <div className={isGroup ? classes.groupMessageRow : undefined}>
                 {isGroup && (
-                  <Avatar
-                    className={classes.groupAvatar}
-                    src={(function () {
-                      let data = message.dataJson;
-                      if (typeof data === "string") {
-                        try { data = JSON.parse(data); } catch (e) { data = {}; }
-                      }
-                      const url = data?.profilePicUrl || "";
-                      return getBackendUrl(url);
-                    })()}
-                  />
+                  showGroupInfo ? (
+                    <Avatar
+                      className={classes.groupAvatar}
+                      src={(function () {
+                        let data = message.dataJson;
+                        if (typeof data === "string") {
+                          try { data = JSON.parse(data); } catch (e) { data = {}; }
+                        }
+                        const url = data?.profilePicUrl || "";
+                        return getBackendUrl(url);
+                      })()}
+                    />
+                  ) : (
+                    <div className={classes.groupAvatar} />
+                  )
                 )}
                 <div
                   className={clsx(classes.messageLeft, {
                     [classes.messageLeftSaas]: appTheme === "saas",
                   })}
+                  style={{ marginTop: showGroupInfo ? 10 : 2 }}
                 >
                   <IconButton
                     variant="contained"
@@ -952,7 +1066,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                   >
                     <ExpandMore />
                   </IconButton>
-                  {renderSenderName(message)}
+                  {showGroupInfo && renderSenderName(message)}
                   {(message.mediaUrl || message.mediaType === "location" || message.mediaType === "vcard") && checkMessageMedia(message)}
                   <div className={clsx(classes.textContentItem, {
                     [classes.textContentItemDeleted]: message.isDeleted,
@@ -961,7 +1075,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                     {message.quotedMsg && renderQuotedMessage(message)}
                     {renderUrlPreview(message)}
                     {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
-                      <MarkdownWrapper>{getMessageBody(message)}</MarkdownWrapper>
+                      <MarkdownWrapper mentionsMap={mentionsMap}>{getMessageBody(message)}</MarkdownWrapper>
                     }
 
                     <span className={classes.timestamp}>
@@ -982,6 +1096,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                 className={clsx(classes.messageRight, {
                   [classes.messageRightSaas]: appTheme === "saas",
                 })}
+                style={{ marginTop: showGroupInfo ? 10 : 2 }}
               >
                 <IconButton
                   variant="contained"
@@ -1005,7 +1120,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                   {message.quotedMsg && renderQuotedMessage(message)}
                   {renderUrlPreview(message)}
                   {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
-                    <MarkdownWrapper>{getMessageBody(message)}</MarkdownWrapper>
+                    <MarkdownWrapper mentionsMap={mentionsMap}>{getMessageBody(message)}</MarkdownWrapper>
                   }
                   <span className={classes.timestamp}>
                     {format(parseISO(message.createdAt), "HH:mm")}
