@@ -3,15 +3,17 @@ import { useHistory } from "react-router-dom";
 import { format } from "date-fns";
 import openSocket from "../../services/socket-io";
 import useSound from "use-sound";
+import { toast } from "react-toastify";
 
 import Popover from "@material-ui/core/Popover";
 import IconButton from "@material-ui/core/IconButton";
 import List from "@material-ui/core/List";
 import ListItem from "@material-ui/core/ListItem";
 import ListItemText from "@material-ui/core/ListItemText";
-import { makeStyles } from "@material-ui/core/styles";
+import { makeStyles, useTheme } from "@material-ui/core/styles";
 import Badge from "@material-ui/core/Badge";
 import ChatIcon from "@material-ui/icons/Chat";
+import { Avatar, Box, Typography } from "@material-ui/core";
 
 import TicketListItem from "../TicketListItem";
 import { i18n } from "../../translate/i18n";
@@ -42,8 +44,55 @@ const useStyles = makeStyles(theme => ({
 	},
 }));
 
+const NotificationToast = ({ ticket, message, contact, history }) => {
+	const handleToastClick = () => {
+		history.push(`/tickets/${ticket.id}`);
+		// Trigger window focus logic or any other desired behavior
+		window.focus();
+	};
+
+	return (
+		<Box
+			onClick={handleToastClick}
+			style={{
+				cursor: "pointer",
+				display: "flex",
+				alignItems: "center",
+				padding: "4px" // Add some padding
+			}}
+		>
+			<Avatar
+				src={contact.profilePicUrl}
+				alt={contact.name}
+				style={{ marginRight: 12, width: 40, height: 40 }}
+			/>
+			<Box display="flex" flexDirection="column">
+				<Typography variant="body1" style={{ fontWeight: 600 }}>
+					{contact.name || "Contato"}
+				</Typography>
+				<Typography
+					variant="body2"
+					color="textSecondary"
+					style={{
+						overflow: "hidden",
+						textOverflow: "ellipsis",
+						display: "-webkit-box",
+						WebkitLineClamp: 2,
+						WebkitBoxOrient: "vertical",
+						maxWidth: "220px", // Limit width to prevent layout breaking
+						lineHeight: "1.2em"
+					}}
+				>
+					{message.body}
+				</Typography>
+			</Box>
+		</Box>
+	);
+};
+
 const NotificationsPopOver = () => {
 	const classes = useStyles();
+	const theme = useTheme();
 
 	const history = useHistory();
 	const { user } = useContext(AuthContext);
@@ -139,7 +188,7 @@ const NotificationsPopOver = () => {
 		return () => {
 			socket.disconnect();
 		};
-	}, [user]);
+	}, [user, theme]);
 
 	const handleNotifications = data => {
 		const { message, contact, ticket } = data;
@@ -174,6 +223,23 @@ const NotificationsPopOver = () => {
 		});
 
 		soundAlertRef.current();
+
+		toast(<NotificationToast ticket={ticket} message={message} contact={contact} history={historyRef.current} />, {
+			position: "top-right",
+			autoClose: 5000,
+			hideProgressBar: false,
+			closeOnClick: true,
+			pauseOnHover: true,
+			draggable: true,
+			progress: undefined,
+			style: {
+				backgroundColor: theme.palette.background.paper,
+				color: theme.palette.text.primary,
+				borderRadius: theme.shape.borderRadius,
+				boxShadow: theme.shadows[3],
+				border: theme.palette.type === 'dark' ? `1px solid ${theme.palette.divider}` : 'none'
+			}
+		});
 	};
 
 	const handleClick = () => {
@@ -227,6 +293,7 @@ const NotificationsPopOver = () => {
 							</NotificationTicket>
 						))
 					)}
+					{/* TEMPORARY TEST BUTTON REMOVED */}
 				</List>
 			</Popover>
 		</>

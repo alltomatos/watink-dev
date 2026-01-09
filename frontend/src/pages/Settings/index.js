@@ -152,6 +152,10 @@ const Settings = () => {
 	const [aiModel, setAiModel] = useState("");
 	const [aiGuidePrompt, setAiGuidePrompt] = useState("");
 	const [aiEnabled, setAiEnabled] = useState(false);
+	// Toggles granulares de IA
+	const [aiPipelineEnabled, setAiPipelineEnabled] = useState(false);
+	const [aiFlowBuilderEnabled, setAiFlowBuilderEnabled] = useState(false);
+	const [aiAssistantEnabled, setAiAssistantEnabled] = useState(false);
 
 	useEffect(() => {
 		const fetchSession = async () => {
@@ -194,6 +198,16 @@ const Settings = () => {
 
 				const aiEnabledSetting = settingsData.find(s => s.key === "aiEnabled");
 				if (aiEnabledSetting) setAiEnabled(aiEnabledSetting.value === "true");
+
+				// Toggles granulares de IA
+				const aiPipelineSetting = settingsData.find(s => s.key === "aiPipelineEnabled");
+				if (aiPipelineSetting) setAiPipelineEnabled(aiPipelineSetting.value === "true");
+
+				const aiFlowBuilderSetting = settingsData.find(s => s.key === "aiFlowBuilderEnabled");
+				if (aiFlowBuilderSetting) setAiFlowBuilderEnabled(aiFlowBuilderSetting.value === "true");
+
+				const aiAssistantSetting = settingsData.find(s => s.key === "aiAssistantEnabled");
+				if (aiAssistantSetting) setAiAssistantEnabled(aiAssistantSetting.value === "true");
 
 			} catch (err) {
 				toastError(err);
@@ -671,7 +685,7 @@ const Settings = () => {
 						</ListItemIcon>
 						<ListItemText primary="Inteligência Artificial" />
 					</ListItem>
-					{["admin","superadmin"].includes(user?.profile) && (
+					{["admin", "superadmin"].includes(user?.profile) && (
 						<ListItem
 							button
 							onClick={() => history.push("/admin/settings/marketplace")}
@@ -800,6 +814,72 @@ const Settings = () => {
 									}}
 									helperText="Esse texto será enviado para a IA como contexto global para entender melhor o seu negócio."
 								/>
+							</Box>
+
+							<Divider style={{ margin: '16px 0' }} />
+
+							<Typography variant="subtitle1" style={{ fontWeight: 600, marginBottom: 12 }}>
+								Funcionalidades de IA
+							</Typography>
+							<Typography variant="caption" color="textSecondary" style={{ display: 'block', marginBottom: 16 }}>
+								Ative ou desative funcionalidades específicas de IA no sistema.
+							</Typography>
+
+							<Box mb={2} style={{ opacity: aiEnabled ? 1 : 0.5, pointerEvents: aiEnabled ? 'auto' : 'none' }}>
+								<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+									<div>
+										<Typography variant="body2" style={{ fontWeight: 500 }}>IA no Pipeline</Typography>
+										<Typography variant="caption" color="textSecondary">
+											Assistente de IA para criar etapas do funil
+										</Typography>
+									</div>
+									<Switch
+										checked={aiPipelineEnabled}
+										onChange={async (e) => {
+											const newValue = e.target.checked;
+											setAiPipelineEnabled(newValue);
+											await api.put("/settings/aiPipelineEnabled", { value: newValue ? "true" : "false" });
+											toast.success(`IA no Pipeline ${newValue ? "ativada" : "desativada"}!`);
+										}}
+										color="primary"
+									/>
+								</div>
+								<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+									<div>
+										<Typography variant="body2" style={{ fontWeight: 500 }}>IA no Flow Builder</Typography>
+										<Typography variant="caption" color="textSecondary">
+											Geração de fluxos automatizados via IA
+										</Typography>
+									</div>
+									<Switch
+										checked={aiFlowBuilderEnabled}
+										onChange={async (e) => {
+											const newValue = e.target.checked;
+											setAiFlowBuilderEnabled(newValue);
+											await api.put("/settings/aiFlowBuilderEnabled", { value: newValue ? "true" : "false" });
+											toast.success(`IA no Flow Builder ${newValue ? "ativada" : "desativada"}!`);
+										}}
+										color="primary"
+									/>
+								</div>
+								<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+									<div>
+										<Typography variant="body2" style={{ fontWeight: 500 }}>Assistente IA em Conversas</Typography>
+										<Typography variant="caption" color="textSecondary">
+											Análise e insights de conversas com contatos
+										</Typography>
+									</div>
+									<Switch
+										checked={aiAssistantEnabled}
+										onChange={async (e) => {
+											const newValue = e.target.checked;
+											setAiAssistantEnabled(newValue);
+											await api.put("/settings/aiAssistantEnabled", { value: newValue ? "true" : "false" });
+											toast.success(`Assistente IA ${newValue ? "ativado" : "desativado"}!`);
+										}}
+										color="primary"
+									/>
+								</div>
 							</Box>
 						</Paper>
 					</>

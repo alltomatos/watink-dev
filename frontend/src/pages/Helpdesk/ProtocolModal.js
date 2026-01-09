@@ -30,6 +30,7 @@ import {
     Comment as CommentIcon,
     CheckCircle as CheckCircleIcon,
 } from "@material-ui/icons";
+import Autocomplete from "@material-ui/lab/Autocomplete";
 import { makeStyles } from "@material-ui/core/styles";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -57,59 +58,69 @@ const useStyles = makeStyles((theme) => ({
     },
 }));
 
-const ProtocolModal = ({ open, onClose, protocol }) => {
+const ProtocolModal = ({ open, onClose }) => {
     const classes = useStyles();
     const [loading, setLoading] = useState(false);
-    const [tab, setTab] = useState(0);
     const [formData, setFormData] = useState({
         subject: "",
         description: "",
         status: "open",
         priority: "medium",
         category: "",
-        comment: "",
+        contactId: null,
     });
-    const [history, setHistory] = useState([]);
+    const [selectedContact, setSelectedContact] = useState(null);
+    const [contactOptions, setContactOptions] = useState([]);
+    const [contactLoading, setContactLoading] = useState(false);
+    const [contactSearch, setContactSearch] = useState("");
 
     useEffect(() => {
-        if (protocol) {
-            setFormData({
-                subject: protocol.subject || "",
-                description: protocol.description || "",
-                status: protocol.status || "open",
-                priority: protocol.priority || "medium",
-                category: protocol.category || "",
-                comment: "",
-            });
-            setHistory(protocol.history || []);
-            loadFullProtocol();
-        } else {
+        if (!open) {
             setFormData({
                 subject: "",
                 description: "",
                 status: "open",
                 priority: "medium",
                 category: "",
-                comment: "",
+                contactId: null,
             });
-            setHistory([]);
+            setSelectedContact(null);
+            setContactSearch("");
+            setContactOptions([]);
         }
-        setTab(0);
-    }, [protocol, open]);
+    }, [open]);
 
-    const loadFullProtocol = async () => {
-        if (!protocol?.id) return;
-        try {
-            const { data } = await api.get(`/protocols/${protocol.id}`);
-            setHistory(data.history || []);
-        } catch (err) {
-            console.error("Error loading protocol history:", err);
+    useEffect(() => {
+        if (!contactSearch || contactSearch.length < 3) {
+            setContactLoading(false);
+            return;
         }
-    };
+
+        const delayDebounceFn = setTimeout(async () => {
+            setContactLoading(true);
+            try {
+                const { data } = await api.get("contacts", {
+                    params: { searchParam: contactSearch },
+                });
+                setContactOptions(data.contacts);
+            } catch (err) {
+                toast.error("Erro ao buscar contatos");
+            } finally {
+                setContactLoading(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [contactSearch]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleContactChange = (e, newValue) => {
+        setSelectedContact(newValue);
+        setFormData(prev => ({ ...prev, contactId: newValue ? newValue.id : null }));
     };
 
     const handleSubmit = async () => {
@@ -118,200 +129,111 @@ const ProtocolModal = ({ open, onClose, protocol }) => {
             return;
         }
 
+        if (!formData.contactId) {
+            toast.error("Contato é obrigatório");
+            return;
+        }
+
         try {
             setLoading(true);
-            if (protocol) {
-                await api.put(`/protocols/${protocol.id}`, formData);
-                toast.success("Protocolo atualizado com sucesso");
-            } else {
-                await api.post("/protocols", formData);
-                toast.success("Protocolo criado com sucesso");
-            }
+            await api.post("/protocols", formData);
+            toast.success("Protocolo criado com sucesso");
             onClose();
         } catch (err) {
-            toast.error("Erro ao salvar protocolo");
+            toast.error("Erro ao criar protocolo");
         } finally {
             setLoading(false);
         }
     };
 
-    const getActionIcon = (action) => {
-        const iconMap = {
-            created: <CreateIcon fontSize="small" />,
-            status_changed: <UpdateIcon fontSize="small" />,
-            priority_changed: <UpdateIcon fontSize="small" />,
-            commented: <CommentIcon fontSize="small" />,
-            resolved: <CheckCircleIcon fontSize="small" />,
-        };
-        return iconMap[action] || <UpdateIcon fontSize="small" />;
-    };
-
-    const getActionLabel = (action) => {
-        const labelMap = {
-            created: "Criado",
-            status_changed: "Status alterado",
-            priority_changed: "Prioridade alterada",
-            commented: "Comentário",
-            resolved: "Resolvido",
-            closed: "Fechado",
-        };
-        return labelMap[action] || action;
-    };
-
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle>
-                {protocol ? `Protocolo #${protocol.protocolNumber}` : "Novo Protocolo"}
-            </DialogTitle>
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle>Novo Protocolo</DialogTitle>
             <DialogContent className={classes.form}>
-                <Tabs value={tab} onChange={(e, v) => setTab(v)} indicatorColor="primary">
-                    <Tab label="Dados" />
-                    {protocol && <Tab label={`Histórico (${history.length})`} />}
-                </Tabs>
-
-                {tab === 0 && (
-                    <Box mt={2}>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12}>
-                                <TextField
-                                    name="subject"
-                                    label="Assunto"
-                                    value={formData.subject}
-                                    onChange={handleChange}
-                                    variant="outlined"
-                                    size="small"
-                                    fullWidth
-                                    required
-                                />
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                                <FormControl variant="outlined" fullWidth size="small">
-                                    <InputLabel>Status</InputLabel>
-                                    <Select
-                                        name="status"
-                                        value={formData.status}
-                                        onChange={handleChange}
-                                        label="Status"
-                                    >
-                                        <MenuItem value="open">Aberto</MenuItem>
-                                        <MenuItem value="in_progress">Em Andamento</MenuItem>
-                                        <MenuItem value="pending">Pendente</MenuItem>
-                                        <MenuItem value="resolved">Resolvido</MenuItem>
-                                        <MenuItem value="closed">Fechado</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                                <FormControl variant="outlined" fullWidth size="small">
-                                    <InputLabel>Prioridade</InputLabel>
-                                    <Select
-                                        name="priority"
-                                        value={formData.priority}
-                                        onChange={handleChange}
-                                        label="Prioridade"
-                                    >
-                                        <MenuItem value="low">Baixa</MenuItem>
-                                        <MenuItem value="medium">Média</MenuItem>
-                                        <MenuItem value="high">Alta</MenuItem>
-                                        <MenuItem value="urgent">Urgente</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                                <TextField
-                                    name="category"
-                                    label="Categoria"
-                                    value={formData.category}
-                                    onChange={handleChange}
-                                    variant="outlined"
-                                    size="small"
-                                    fullWidth
-                                />
-                            </Grid>
-                            <Grid item xs={12}>
-                                <TextField
-                                    name="description"
-                                    label="Descrição"
-                                    value={formData.description}
-                                    onChange={handleChange}
-                                    variant="outlined"
-                                    size="small"
-                                    fullWidth
-                                    multiline
-                                    rows={4}
-                                />
-                            </Grid>
-                            {protocol && (
-                                <Grid item xs={12}>
+                <Box mt={1}>
+                    <Grid container spacing={2}>
+                        <Grid item xs={12}>
+                            <Autocomplete
+                                options={contactOptions}
+                                loading={contactLoading}
+                                getOptionLabel={(option) => option.name}
+                                onChange={handleContactChange}
+                                onInputChange={(e, newInputValue) => setContactSearch(newInputValue)}
+                                renderInput={(params) => (
                                     <TextField
-                                        name="comment"
-                                        label="Adicionar Comentário"
-                                        value={formData.comment}
-                                        onChange={handleChange}
+                                        {...params}
+                                        label="Contato"
                                         variant="outlined"
                                         size="small"
                                         fullWidth
-                                        multiline
-                                        rows={2}
-                                        placeholder="Opcional: adicione um comentário à atualização"
+                                        required
+                                        InputProps={{
+                                            ...params.InputProps,
+                                            endAdornment: (
+                                                <React.Fragment>
+                                                    {contactLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                                                    {params.InputProps.endAdornment}
+                                                </React.Fragment>
+                                            ),
+                                        }}
                                     />
-                                </Grid>
-                            )}
+                                )}
+                            />
                         </Grid>
-                    </Box>
-                )}
-
-                {tab === 1 && protocol && (
-                    <Box mt={2}>
-                        <Typography variant="subtitle1" gutterBottom>
-                            Histórico de Atividades
-                        </Typography>
-                        {history.length === 0 ? (
-                            <Typography variant="body2" color="textSecondary">
-                                Nenhuma atividade registrada
-                            </Typography>
-                        ) : (
-                            <List dense>
-                                {history.map((item, index) => (
-                                    <ListItem key={index} className={classes.historyItem}>
-                                        <ListItemIcon className={classes.historyIcon}>
-                                            {getActionIcon(item.action)}
-                                        </ListItemIcon>
-                                        <ListItemText
-                                            primary={
-                                                <Box display="flex" alignItems="center" gap={1}>
-                                                    <Chip
-                                                        label={getActionLabel(item.action)}
-                                                        size="small"
-                                                        variant="outlined"
-                                                    />
-                                                    {item.previousValue && item.newValue && (
-                                                        <Typography variant="caption">
-                                                            {item.previousValue} → {item.newValue}
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-                                            }
-                                            secondary={
-                                                <>
-                                                    {item.comment && (
-                                                        <Typography variant="body2" style={{ marginTop: 4 }}>
-                                                            {item.comment}
-                                                        </Typography>
-                                                    )}
-                                                    <Typography variant="caption" color="textSecondary">
-                                                        {item.user?.name || "Sistema"} -{" "}
-                                                        {format(new Date(item.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                                                    </Typography>
-                                                </>
-                                            }
-                                        />
-                                    </ListItem>
-                                ))}
-                            </List>
-                        )}
-                    </Box>
-                )}
+                        <Grid item xs={12}>
+                            <TextField
+                                name="subject"
+                                label="Assunto"
+                                value={formData.subject}
+                                onChange={handleChange}
+                                variant="outlined"
+                                size="small"
+                                fullWidth
+                                required
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <FormControl variant="outlined" fullWidth size="small">
+                                <InputLabel>Prioridade</InputLabel>
+                                <Select
+                                    name="priority"
+                                    value={formData.priority}
+                                    onChange={handleChange}
+                                    label="Prioridade"
+                                >
+                                    <MenuItem value="low">Baixa</MenuItem>
+                                    <MenuItem value="medium">Média</MenuItem>
+                                    <MenuItem value="high">Alta</MenuItem>
+                                    <MenuItem value="urgent">Urgente</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                name="category"
+                                label="Categoria"
+                                value={formData.category}
+                                onChange={handleChange}
+                                variant="outlined"
+                                size="small"
+                                fullWidth
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                name="description"
+                                label="Descrição"
+                                value={formData.description}
+                                onChange={handleChange}
+                                variant="outlined"
+                                size="small"
+                                fullWidth
+                                multiline
+                                rows={4}
+                            />
+                        </Grid>
+                    </Grid>
+                </Box>
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Cancelar</Button>
@@ -321,7 +243,7 @@ const ProtocolModal = ({ open, onClose, protocol }) => {
                     onClick={handleSubmit}
                     disabled={loading}
                 >
-                    {loading ? <CircularProgress size={20} /> : "Salvar"}
+                    {loading ? <CircularProgress size={20} /> : "Criar Protocolo"}
                 </Button>
             </DialogActions>
         </Dialog>

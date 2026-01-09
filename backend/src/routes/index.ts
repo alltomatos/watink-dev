@@ -29,6 +29,7 @@ import clientRoutes from "./clientRoutes";
 import protocolRoutes from "./protocolRoutes";
 
 import pluginRoutes from "./pluginRoutes";
+import aiRoutes from "./aiRoutes";
 
 const routes = Router();
 
@@ -58,6 +59,7 @@ routes.use(knowledgeRoutes);
 routes.use(clientRoutes);
 routes.use(protocolRoutes);
 routes.use(pluginRoutes);
+routes.use(aiRoutes);
 routes.use("/users", userRoutes);
 
 export default routes;

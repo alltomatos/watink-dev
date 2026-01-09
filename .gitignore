@@ -16,5 +16,5 @@ engine-go
 **/coverage/
 
 # Legacy & Obsolete
-docs/old/
-rule/dev_micro.md
+#docs/old/
+#rule/dev_micro.md

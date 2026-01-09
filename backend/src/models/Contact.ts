@@ -12,11 +12,14 @@ import {
   HasMany,
   ForeignKey,
   BelongsTo,
-  DataType
+  DataType,
+  BelongsToMany
 } from "sequelize-typescript";
 import ContactCustomField from "./ContactCustomField";
 import Ticket from "./Ticket";
 import Tenant from "./Tenant";
+import Client from "./Client";
+import ClientContact from "./ClientContact";
 
 @Table
 class Contact extends Model<Contact> {
@@ -69,6 +72,9 @@ class Contact extends Model<Contact> {
 
   @HasMany(() => ContactCustomField)
   extraInfo: ContactCustomField[];
+
+  @BelongsToMany(() => Client, () => ClientContact)
+  clients: Client[];
 }
 
 export default Contact;

@@ -18,7 +18,9 @@ import { AuthContext } from "../../context/Auth/AuthContext";
 import { useTicketsContext } from "../../context/Tickets/TicketsContext";
 import { Can } from "../Can";
 import TicketsQueueSelect from "../TicketsQueueSelect";
-import { Button } from "@material-ui/core";
+import { Button, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, Checkbox, Typography } from "@material-ui/core";
+import { toast } from "react-toastify";
+import api from "../../services/api";
 
 const useStyles = makeStyles((theme) => ({
   ticketsWrapper: {
@@ -101,6 +103,13 @@ const TicketsManager = () => {
   const [groupsCount, setGroupsCount] = useState(0);
   const userQueueIds = user.queues.map((q) => q.id);
   const [selectedQueueIds, setSelectedQueueIds] = useState(userQueueIds || []);
+  const [closeAllModalOpen, setCloseAllModalOpen] = useState(false);
+  const [closeAllLoading, setCloseAllLoading] = useState(false);
+  const [closeAllOptions, setCloseAllOptions] = useState({
+    statusOpen: true,
+    statusPending: true,
+    includeGroups: false
+  });
 
   useEffect(() => {
     if (user.profile.toUpperCase() === "ADMIN") {
@@ -154,6 +163,19 @@ const TicketsManager = () => {
     if (tabOpen !== status) {
       return { width: 0, height: 0 };
     }
+  };
+
+  const handleCloseAllTickets = async () => {
+    setCloseAllLoading(true);
+    try {
+      const { data } = await api.put("/tickets/close-all", closeAllOptions);
+      toast.success(`${data.closedCount || 0} tickets fechados com sucesso!`);
+      setCloseAllModalOpen(false);
+    } catch (err) {
+      toast.error("Erro ao fechar tickets");
+      console.error(err);
+    }
+    setCloseAllLoading(false);
   };
 
   return (
@@ -213,6 +235,20 @@ const TicketsManager = () => {
             >
               {i18n.t("ticketsManager.buttons.newTicket")}
             </Button>
+            <Can
+              role={user.profile}
+              perform="tickets-manager:showall"
+              yes={() => (
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  style={{ marginLeft: 6 }}
+                  onClick={() => setCloseAllModalOpen(true)}
+                >
+                  Fechar Todos
+                </Button>
+              )}
+            />
             <Can
               role={user.profile}
               perform="tickets-manager:showall"
@@ -328,6 +364,68 @@ const TicketsManager = () => {
         />
       </TabPanel>
 
+      {/* Close All Tickets Confirmation Modal */}
+      <Dialog open={closeAllModalOpen} onClose={() => setCloseAllModalOpen(false)}>
+        <DialogTitle>Confirmar</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            Selecione quais tickets deseja encerrar:
+          </Typography>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={closeAllOptions.statusOpen}
+                  onChange={(e) => setCloseAllOptions({ ...closeAllOptions, statusOpen: e.target.checked })}
+                  color="primary"
+                />
+              }
+              label={i18n.t("ticketsList.assignedHeader") + " (Abertos)"}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={closeAllOptions.statusPending}
+                  onChange={(e) => setCloseAllOptions({ ...closeAllOptions, statusPending: e.target.checked })}
+                  color="primary"
+                />
+              }
+              label={i18n.t("ticketsList.pendingHeader") + " (Aguardando)"}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={closeAllOptions.includeGroups}
+                  onChange={(e) => setCloseAllOptions({ ...closeAllOptions, includeGroups: e.target.checked })}
+                  color="secondary"
+                />
+              }
+              label={i18n.t("tickets.tabs.group.title") || "Grupos"}
+            />
+          </div>
+          <Typography variant="caption" color="error" style={{ marginTop: 10, display: 'block' }}>
+            Isso não poderá ser desfeito.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setCloseAllModalOpen(false)}
+            color="secondary"
+            disabled={closeAllLoading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleCloseAllTickets}
+            color="primary"
+            variant="contained"
+            disabled={closeAllLoading}
+            startIcon={closeAllLoading ? <CircularProgress size={20} /> : null}
+          >
+            Fechar Todos
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };

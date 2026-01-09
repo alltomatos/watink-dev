@@ -4,14 +4,23 @@ import { isSameDay, parseISO, format } from "date-fns";
 import openSocket from "../../services/socket-io";
 import clsx from "clsx";
 
-import { green } from "@material-ui/core/colors";
+import { green, blue } from "@material-ui/core/colors";
 import {
   Button,
   CircularProgress,
   Divider,
   IconButton,
   makeStyles,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Tooltip,
 } from "@material-ui/core";
+import { Avatar } from "@material-ui/core";
+import { useTheme } from "@material-ui/core/styles";
+import { lighten, darken } from "@material-ui/core/styles/colorManipulator";
 import {
   AccessTime,
   Block,
@@ -19,6 +28,7 @@ import {
   DoneAll,
   ExpandMore,
   GetApp,
+  History as HistoryIcon,
 } from "@material-ui/icons";
 
 import MarkdownWrapper from "../MarkdownWrapper";
@@ -33,6 +43,8 @@ import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import { useThemeContext } from "../../context/DarkMode";
 import Audio from "../Audio";
+import { getBackendUrl } from "../../helpers/urlUtils";
+import { toast } from "react-toastify";
 
 const useStyles = makeStyles((theme) => ({
   messagesListWrapper: {
@@ -269,7 +281,7 @@ const useStyles = makeStyles((theme) => ({
   },
 
   ackDoneAllIcon: {
-    color: green[500],
+    color: blue[500],
     fontSize: 18,
     verticalAlign: "middle",
     marginLeft: 4,
@@ -334,6 +346,20 @@ const useStyles = makeStyles((theme) => ({
     "-webkit-box-orient": "vertical",
     overflow: "hidden"
   },
+  groupMessageRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 8
+  },
+  groupAvatar: {
+    width: 32,
+    height: 32,
+    marginTop: 2
+  },
+  senderSpacer: {
+    display: "block",
+    height: 15
+  }
 }));
 
 const reducer = (state, action) => {
@@ -390,6 +416,7 @@ const reducer = (state, action) => {
 
 const MessagesList = ({ ticketId, isGroup }) => {
   const classes = useStyles();
+  const muiTheme = useTheme();
   const { appTheme } = useThemeContext();
 
   const [messagesList, dispatch] = useReducer(reducer, []);
@@ -404,6 +431,11 @@ const MessagesList = ({ ticketId, isGroup }) => {
   const currentTicketId = useRef(ticketId);
   const shouldScrollRef = useRef();
   const messagesListRef = useRef();
+
+  // Estado para modal de busca de histórico
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyFromDate, setHistoryFromDate] = useState("");
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     dispatch({ type: "RESET" });
@@ -512,6 +544,28 @@ const MessagesList = ({ ticketId, isGroup }) => {
     setAnchorEl(null);
   };
 
+  // Handler para buscar histórico de mensagens
+  const handleSyncHistory = async () => {
+    if (!historyFromDate) {
+      toast.error("Selecione uma data de início");
+      return;
+    }
+
+    setHistoryLoading(true);
+    try {
+      await api.post(`/tickets/${ticketId}/history`, {
+        fromDate: historyFromDate
+      });
+      toast.success("Buscando histórico de mensagens...");
+      setHistoryModalOpen(false);
+      setHistoryFromDate("");
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   const checkMessageMedia = (message) => {
     if (message.mediaType === "location" && message.body.split('|').length >= 2) {
       let locationParts = message.body.split('|')
@@ -562,15 +616,15 @@ const MessagesList = ({ ticketId, isGroup }) => {
         )
       } else return (<></>)
     }*/
-    else if (/^.*\.(jpe?g|png|gif)?$/i.exec(message.mediaUrl) && message.mediaType === "image") {
-      return <ModalImageCors imageUrl={message.mediaUrl} />;
+    else if (message.mediaType === "image" || message.mediaType === "sticker") {
+      return <ModalImageCors imageUrl={getBackendUrl(message.mediaUrl)} />;
     } else if (message.mediaType === "audio") {
-      return <Audio url={message.mediaUrl} />
+      return <Audio url={getBackendUrl(message.mediaUrl)} />
     } else if (message.mediaType === "video") {
       return (
         <div style={{ position: 'relative', width: '100%', maxWidth: '300px', borderRadius: 8, overflow: 'hidden' }}>
           <video
-            src={message.mediaUrl}
+            src={getBackendUrl(message.mediaUrl)}
             controls
             style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain', backgroundColor: '#000' }}
           />
@@ -579,13 +633,18 @@ const MessagesList = ({ ticketId, isGroup }) => {
     } else {
       return (
         <>
-          <FilePreview mediaUrl={message.mediaUrl} filename={message.body} />
+          <FilePreview mediaUrl={getBackendUrl(message.mediaUrl)} filename={message.body} />
         </>
       );
     }
   };
 
   const renderMessageAck = (message) => {
+    // Hide read receipts in group chats - unnecessary
+    if (isGroup) {
+      return null;
+    }
+
     if (message.ack === 0) {
       return <AccessTime fontSize="small" className={classes.ackIcons} />;
     }
@@ -636,16 +695,47 @@ const MessagesList = ({ ticketId, isGroup }) => {
   };
 
   const renderMessageDivider = (message, index) => {
-    if (index < messagesList.length && index > 0) {
-      let messageUser = messagesList[index].fromMe;
-      let previousMessageUser = messagesList[index - 1].fromMe;
+    if (index <= 0 || index >= messagesList.length) return null;
+    const getSenderKey = (m) => {
+      if (!m) return "unknown";
+      if (m.fromMe) return "me";
+      if (isGroup) {
+        let data = m.dataJson;
+        if (typeof data === "string") {
+          try { data = JSON.parse(data); } catch (e) { data = {}; }
+        }
+        return m.participant || data?.participant || data?.senderLid || data?.pushName || "unknown";
+      }
+      return "other";
+    };
+    const currentKey = getSenderKey(messagesList[index]);
+    const previousKey = getSenderKey(messagesList[index - 1]);
+    if (currentKey !== previousKey) {
+      return <span className={classes.senderSpacer} key={`divider-${message.id}`} />;
+    }
+  };
 
-      if (messageUser !== previousMessageUser) {
-        return (
-          <span style={{ marginTop: 16 }} key={`divider-${message.id}`}></span>
-        );
+  const getMessageBody = (message) => {
+    if (!message) return null;
+    if (message.body && message.body.length > 0) return message.body;
+    if (message.dataJson) {
+      try {
+        const data = typeof message.dataJson === 'string' ? JSON.parse(message.dataJson) : message.dataJson;
+
+        // Extended text message with context
+        if (data?.message?.extendedTextMessage?.text) return data.message.extendedTextMessage.text;
+
+        // Simple conversation
+        if (data?.message?.conversation) return data.message.conversation;
+
+        // Direct properties (sometimes extracted top-level)
+        if (data?.conversation) return data.conversation;
+        if (data?.text) return data.text;
+      } catch (e) {
+        console.error("Error parsing message body from json", e);
       }
     }
+    return null;
   };
 
   const renderQuotedMessage = (message) => {
@@ -663,10 +753,30 @@ const MessagesList = ({ ticketId, isGroup }) => {
         <div className={classes.quotedMsg}>
           {!message.quotedMsg?.fromMe && (
             <span className={classes.messageContactName}>
-              {message.quotedMsg?.contact?.name}
+              {(() => {
+                const quoted = message.quotedMsg;
+                let pushName = null;
+                let participantNumber = null;
+
+                if (quoted.dataJson) {
+                  try {
+                    const data = typeof quoted.dataJson === 'string' ? JSON.parse(quoted.dataJson) : quoted.dataJson;
+                    pushName = data.pushName;
+                  } catch (e) { }
+                }
+
+                if (quoted.participant) {
+                  participantNumber = quoted.participant.replace(/\D/g, "");
+                }
+
+                if (pushName) return `~${pushName}`;
+                if (participantNumber) return `~${participantNumber}`;
+
+                return quoted.contact?.name;
+              })()}
             </span>
           )}
-          {message.quotedMsg?.body}
+          {getMessageBody(message.quotedMsg)}
         </div>
       </div>
     );
@@ -731,8 +841,97 @@ const MessagesList = ({ ticketId, isGroup }) => {
     return null;
   };
 
+  const groupColorCacheRef = useRef(new Map());
+  const getParticipantColor = (message) => {
+    if (!isGroup || message.fromMe) return "#6bcbef";
+    let key = "";
+    let data = message.dataJson;
+    if (typeof data === "string") {
+      try { data = JSON.parse(data); } catch (e) { data = {}; }
+    }
+    key = message.participant || data?.senderLid || data?.pushName || "";
+    if (!key) key = (message.participant || "").replace(/\D/g, "");
+    const cache = groupColorCacheRef.current;
+    const isDark = muiTheme?.palette?.type === "dark";
+    const primary = muiTheme?.palette?.primary?.main || "#1565C0";
+    const secondary = muiTheme?.palette?.secondary?.main || "#AD1457";
+    const palette = [
+      primary,
+      secondary,
+      isDark ? lighten(primary, 0.2) : darken(primary, 0.2),
+      isDark ? lighten(secondary, 0.2) : darken(secondary, 0.2),
+      isDark ? lighten(primary, 0.4) : darken(primary, 0.4),
+      isDark ? lighten(secondary, 0.4) : darken(secondary, 0.4),
+      isDark ? lighten(primary, 0.6) : darken(primary, 0.6),
+      isDark ? lighten(secondary, 0.6) : darken(secondary, 0.6),
+    ];
+    if (cache.has(key)) return cache.get(key);
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) { hash = (hash << 5) - hash + key.charCodeAt(i); hash |= 0; }
+    const color = palette[Math.abs(hash) % palette.length];
+    cache.set(key, color);
+    return color;
+  };
+
+  const [participants, setParticipants] = useState([]);
+
+  useEffect(() => {
+    const fetchParticipants = async () => {
+      try {
+        const { data } = await api.get(`/tickets/${ticketId}/participants`);
+        setParticipants(data);
+      } catch (err) {
+        // console.error(err);
+      }
+    }
+    if (isGroup) {
+      fetchParticipants();
+    }
+  }, [ticketId, isGroup]);
+
+  const mentionsMap = React.useMemo(() => {
+    const map = {};
+    if (messagesList && messagesList.length > 0) {
+      messagesList.forEach((msg) => {
+        let number = null;
+        let pushName = null;
+
+        if (msg.participant) {
+          number = msg.participant.replace(/\D/g, "");
+          try {
+            const data = typeof msg.dataJson === 'string' ? JSON.parse(msg.dataJson) : msg.dataJson;
+            pushName = data?.pushName;
+          } catch (e) { }
+        }
+
+        if (msg.contact) {
+          if (!number) number = msg.contact.number;
+          if (!pushName) pushName = msg.contact.name;
+        }
+
+        if (number && pushName) {
+          map[number] = pushName;
+        }
+      });
+    }
+
+    // Merge participants from API
+    participants.forEach(p => {
+      if (p.number && p.name) {
+        const number = p.number.replace(/\D/g, "");
+        // Prefer existing map (pushName from message might be more current?) or prefer contact name?
+        // Usually contact name is better if it exists.
+        if (!map[number]) {
+          map[number] = p.name;
+        }
+      }
+    });
+
+    return map;
+  }, [messagesList, participants]);
+
   const renderSenderName = (message) => {
-    if (!message.ticket?.isGroup) return null;
+    if (!isGroup) return null;
 
     // If it's my message, no need to show my name
     if (message.fromMe) return null;
@@ -765,59 +964,126 @@ const MessagesList = ({ ticketId, isGroup }) => {
     // If there is a pushName, show: ~PushName (Number)
     // If only number: ~Number
 
-    const color = "#128C7E"; // WhatsApp teal or random color generator based on participant
-
     return (
-      <div style={{ fontSize: 13, color: color, fontWeight: 'bold', marginBottom: 4 }}>
+      <span className={classes.messageContactName} style={{ color: getParticipantColor(message) }}>
         {`~${displayName} ${pushName && participantNumber ? displayNumber : ""}`}
-      </div>
+      </span>
     )
 
   };
 
   const renderMessages = () => {
     if (messagesList.length > 0) {
+      const getDeletedBy = (message) => {
+        let data = message.dataJson;
+        if (typeof data === "string") {
+          try { data = JSON.parse(data); } catch (e) { data = {}; }
+        }
+        return data?.deletedBy;
+      };
+
+      const renderDeletedMessage = (message) => {
+        if (!message.isDeleted) return null;
+        const deletedBy = getDeletedBy(message);
+        return (
+          <div style={{ fontSize: 13, color: "rgba(0, 0, 0, 0.5)", fontStyle: "italic", marginBottom: 5 }}>
+            <Block fontSize="small" style={{ fontSize: 16, marginRight: 5, verticalAlign: "bottom" }} />
+            {deletedBy ? `Mensagem apagada por: ${deletedBy}` : "Mensagem apagada"}
+          </div>
+        );
+      };
+
       const viewMessagesList = messagesList.map((message, index) => {
+        const currentSenderKey = (() => {
+          if (message.fromMe) return "me";
+          if (isGroup) {
+            return message.participant ||
+              (message.dataJson && (
+                (typeof message.dataJson === 'string' ? JSON.parse(message.dataJson) : message.dataJson)?.participant ||
+                (typeof message.dataJson === 'string' ? JSON.parse(message.dataJson) : message.dataJson)?.senderLid
+              )) ||
+              message.contact?.number ||
+              "unknown";
+          }
+          return "other";
+        })();
+
+        const previousSenderKey = index > 0 ? (() => {
+          const prev = messagesList[index - 1];
+          if (prev.fromMe) return "me";
+          if (isGroup) {
+            return prev.participant ||
+              (prev.dataJson && (
+                (typeof prev.dataJson === 'string' ? JSON.parse(prev.dataJson) : prev.dataJson)?.participant ||
+                (typeof prev.dataJson === 'string' ? JSON.parse(prev.dataJson) : prev.dataJson)?.senderLid
+              )) ||
+              prev.contact?.number ||
+              "unknown";
+          }
+          return "other";
+        })() : null;
+
+        const isSameSender = currentSenderKey === previousSenderKey;
+        const isSameDayMsg = index > 0 && isSameDay(parseISO(message.createdAt), parseISO(messagesList[index - 1].createdAt));
+        const showGroupInfo = !isSameSender || !isSameDayMsg;
+
         if (!message.fromMe) {
           return (
             <React.Fragment key={message.id}>
               {renderDailyTimestamps(message, index)}
               {renderMessageDivider(message, index)}
-              <div
-                className={clsx(classes.messageLeft, {
-                  [classes.messageLeftSaas]: appTheme === "saas",
-                })}
-              >
-                <IconButton
-                  variant="contained"
-                  size="small"
-                  id="messageActionsButton"
-                  disabled={message.isDeleted}
-                  className={classes.messageActionsButton}
-                  onClick={(e) => handleOpenMessageOptionsMenu(e, message)}
-                >
-                  <ExpandMore />
-                </IconButton>
+              <div className={isGroup ? classes.groupMessageRow : undefined}>
                 {isGroup && (
-                  <span className={classes.messageContactName}>
-                    {message.contact?.name}
-                  </span>
+                  showGroupInfo ? (
+                    <Avatar
+                      className={classes.groupAvatar}
+                      src={(function () {
+                        let data = message.dataJson;
+                        if (typeof data === "string") {
+                          try { data = JSON.parse(data); } catch (e) { data = {}; }
+                        }
+                        const url = data?.profilePicUrl || "";
+                        return getBackendUrl(url);
+                      })()}
+                    />
+                  ) : (
+                    <div className={classes.groupAvatar} />
+                  )
                 )}
-                {(message.mediaUrl || message.mediaType === "location" || message.mediaType === "vcard"
-                  //|| message.mediaType === "multi_vcard" 
-                ) && checkMessageMedia(message)}
-                <div className={classes.textContentItem}>
-                  {renderSenderName(message)}
-                  {message.quotedMsg && renderQuotedMessage(message)}
-                  {renderUrlPreview(message)}
-                  {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
-                    <MarkdownWrapper>{message.body}</MarkdownWrapper>
-                  }
-                  <span className={classes.timestamp}>
-                    {format(parseISO(message.createdAt), "HH:mm")}
-                  </span>
+                <div
+                  className={clsx(classes.messageLeft, {
+                    [classes.messageLeftSaas]: appTheme === "saas",
+                  })}
+                  style={{ marginTop: showGroupInfo ? 10 : 2 }}
+                >
+                  <IconButton
+                    variant="contained"
+                    size="small"
+                    id="messageActionsButton"
+                    disabled={message.isDeleted}
+                    className={classes.messageActionsButton}
+                    onClick={(e) => handleOpenMessageOptionsMenu(e, message)}
+                  >
+                    <ExpandMore />
+                  </IconButton>
+                  {showGroupInfo && renderSenderName(message)}
+                  {(message.mediaUrl || message.mediaType === "location" || message.mediaType === "vcard") && checkMessageMedia(message)}
+                  <div className={clsx(classes.textContentItem, {
+                    [classes.textContentItemDeleted]: message.isDeleted,
+                  })}>
+                    {renderDeletedMessage(message)}
+                    {message.quotedMsg && renderQuotedMessage(message)}
+                    {renderUrlPreview(message)}
+                    {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
+                      <MarkdownWrapper mentionsMap={mentionsMap}>{getMessageBody(message)}</MarkdownWrapper>
+                    }
+
+                    <span className={classes.timestamp}>
+                      {format(parseISO(message.createdAt), "HH:mm")}
+                    </span>
+                  </div>
+                  {renderMessageReactions(message)}
                 </div>
-                {renderMessageReactions(message)}
               </div>
             </React.Fragment>
           );
@@ -830,6 +1096,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                 className={clsx(classes.messageRight, {
                   [classes.messageRightSaas]: appTheme === "saas",
                 })}
+                style={{ marginTop: showGroupInfo ? 10 : 2 }}
               >
                 <IconButton
                   variant="contained"
@@ -849,17 +1116,11 @@ const MessagesList = ({ ticketId, isGroup }) => {
                     [classes.textContentItemDeleted]: message.isDeleted,
                   })}
                 >
-                  {message.isDeleted && (
-                    <Block
-                      color="disabled"
-                      fontSize="small"
-                      className={classes.deletedIcon}
-                    />
-                  )}
+                  {renderDeletedMessage(message)}
                   {message.quotedMsg && renderQuotedMessage(message)}
                   {renderUrlPreview(message)}
                   {(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) ? null :
-                    <MarkdownWrapper>{message.body}</MarkdownWrapper>
+                    <MarkdownWrapper mentionsMap={mentionsMap}>{getMessageBody(message)}</MarkdownWrapper>
                   }
                   <span className={classes.timestamp}>
                     {format(parseISO(message.createdAt), "HH:mm")}
@@ -886,6 +1147,47 @@ const MessagesList = ({ ticketId, isGroup }) => {
         menuOpen={messageOptionsMenuOpen}
         handleClose={handleCloseMessageOptionsMenu}
       />
+
+
+
+      {/* Modal de seleção de data para histórico */}
+      <Dialog
+        open={historyModalOpen}
+        onClose={() => setHistoryModalOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Buscar Histórico de Mensagens</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Data de início"
+            type="date"
+            value={historyFromDate}
+            onChange={(e) => setHistoryFromDate(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+            margin="dense"
+            helperText="Selecione a data a partir da qual deseja buscar as mensagens"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setHistoryModalOpen(false)}
+            color="secondary"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSyncHistory}
+            color="primary"
+            variant="contained"
+            disabled={historyLoading || !historyFromDate}
+          >
+            {historyLoading ? <CircularProgress size={20} /> : "Buscar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <div
         id="messagesList"
         className={classes.messagesList}

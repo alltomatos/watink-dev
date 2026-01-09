@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useHistory } from "react-router-dom";
 import {
     Container,
     Paper,
@@ -86,6 +87,7 @@ const priorityLabels = {
 
 const Helpdesk = () => {
     const classes = useStyles();
+    const history = useHistory();
     const { user } = useAuth();
     const [protocols, setProtocols] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -93,7 +95,6 @@ const Helpdesk = () => {
     const [statusFilter, setStatusFilter] = useState("");
     const [priorityFilter, setPriorityFilter] = useState("");
     const [modalOpen, setModalOpen] = useState(false);
-    const [selectedProtocol, setSelectedProtocol] = useState(null);
 
     const loadProtocols = useCallback(async () => {
         try {
@@ -117,15 +118,17 @@ const Helpdesk = () => {
         loadProtocols();
     }, [loadProtocols]);
 
-    const handleOpenModal = (protocol = null) => {
-        setSelectedProtocol(protocol);
+    const handleOpenModal = () => {
         setModalOpen(true);
     };
 
     const handleCloseModal = () => {
-        setSelectedProtocol(null);
         setModalOpen(false);
         loadProtocols();
+    };
+
+    const handleViewProtocol = (id) => {
+        history.push(`/helpdesk/${id}`);
     };
 
     const getStatusClass = (status) => {
@@ -286,7 +289,7 @@ const Helpdesk = () => {
                                                             yes={() => (
                                                                 <IconButton
                                                                     size="small"
-                                                                    onClick={() => handleOpenModal(protocol)}
+                                                                    onClick={() => handleViewProtocol(protocol.id)}
                                                                 >
                                                                     <VisibilityIcon />
                                                                 </IconButton>
@@ -305,7 +308,6 @@ const Helpdesk = () => {
                     <ProtocolModal
                         open={modalOpen}
                         onClose={handleCloseModal}
-                        protocol={selectedProtocol}
                     />
                 </Container>
             )}

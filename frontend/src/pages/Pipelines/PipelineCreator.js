@@ -144,10 +144,12 @@ const PipelineCreator = () => {
         const fetchSettings = async () => {
             try {
                 const { data } = await api.get("/settings");
+                // Verifica aiEnabled master E aiPipelineEnabled específico
                 const aiEnabledSetting = data.find(s => s.key === "aiEnabled");
-                if (aiEnabledSetting) {
-                    setAiEnabled(aiEnabledSetting.value === "true");
-                }
+                const aiPipelineSetting = data.find(s => s.key === "aiPipelineEnabled");
+                const masterEnabled = aiEnabledSetting?.value === "true";
+                const pipelineEnabled = aiPipelineSetting?.value === "true";
+                setAiEnabled(masterEnabled && pipelineEnabled);
             } catch (err) {
                 console.error("Erro ao carregar configurações:", err);
             }

@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: watink/backend:1.3.137
+    image: watink/backend:1.3.163
     build:
       context: ./backend
       dockerfile: ./Dockerfile
@@ -17,8 +17,8 @@ services:
       - JWT_SECRET=***REMOVED_JWT_SECRET***
       - JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***
       - FRONTEND_URL=http://localhost
-      - URL_BACKEND=http://localhost:8081
-      - ENGINE_VERSION=1.0.91
+      - URL_BACKEND=http://localhost
+      - ENGINE_VERSION=1.0.98
       - PORT=8080
       - NODE_OPTIONS=--max-old-space-size=800
 
@@ -27,9 +27,7 @@ services:
     networks:
       - watink_public
       - watink_private
-    dns:
-      - 192.168.26.253
-      - 8.8.8.8
+
     deploy:
       mode: replicated
       replicas: 1
@@ -54,7 +52,7 @@ services:
         - "traefik.docker.network=watink_watink_public"
 
   frontend:
-    image: watink/frontend:0.7.31
+    image: watink/frontend:0.7.63
     build:
       context: ./frontend
       dockerfile: ./Dockerfile
@@ -67,9 +65,7 @@ services:
     networks:
       - watink_public
       - watink_private
-    dns:
-      - 192.168.26.253
-      - 8.8.8.8
+
     deploy:
       mode: replicated
       replicas: 1
@@ -115,7 +111,7 @@ services:
         - "traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$8EVDtcp.$$J2A.0.1.0/0.1.0"
 
   whaileys-engine:
-    image: watink/engine:1.0.91
+    image: watink/engine:1.0.98
     environment:
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
     networks:
@@ -123,9 +119,7 @@ services:
       - watink_public
     volumes:
       - sessions_auth_data:/usr/src/app/.sessions_auth/
-    dns:
-      - 192.168.26.253
-      - 8.8.8.8
+
     deploy:
       mode: replicated
       replicas: 1
@@ -135,7 +129,7 @@ services:
           memory: 2048M
 
   flow-engine-worker:
-    image: watink/backend:1.3.137
+    image: watink/backend:1.3.163
     command: ["node", "dist/flow-worker.js"]
     environment:
       - DB_DIALECT=postgres
@@ -147,9 +141,7 @@ services:
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
     networks:
       - watink_private
-    dns:
-      - 192.168.26.253
-      - 8.8.8.8
+
     deploy:
       mode: replicated
       replicas: 1
@@ -162,16 +154,14 @@ services:
     image: watink/plugin-manager:1.0.19
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/watink?sslmode=disable
-      - PLUGIN_CDN_URL=http://localhost:3005
+      - PLUGIN_CDN_URL=http://localhost
       - PORT=3005
       - ENVIRONMENT=production
 
     networks:
       - watink_private
       - watink_public
-    dns:
-      - 192.168.26.253
-      - 8.8.8.8
+
     deploy:
       mode: replicated
       replicas: 1
@@ -194,9 +184,7 @@ services:
       - watink_private
     ports:
       - "15673:15672"
-    dns:
-      - 192.168.26.253
-      - 8.8.8.8
+
     deploy:
       mode: replicated
       replicas: 1
@@ -213,9 +201,7 @@ services:
       - db_data:/var/lib/postgresql/data
     networks:
       - watink_private
-    dns:
-      - 192.168.26.253
-      - 8.8.8.8
+
     deploy:
       mode: replicated
       replicas: 1

@@ -45,6 +45,7 @@ import { toast } from "react-toastify";
 import toastError from "../../errors/toastError";
 import { i18n } from "../../translate/i18n";
 import { WhatsAppsContext } from "../../context/WhatsApp/WhatsAppsContext";
+import { getBackendUrl } from "../../helpers/urlUtils";
 
 const useStyles = makeStyles(theme => ({
 	mainPaper: {
@@ -315,7 +316,7 @@ const Connections = () => {
 											icon={
 												whatsApp.status === "CONNECTED" && whatsApp.profilePicUrl ? (
 													<Avatar
-														src={whatsApp.profilePicUrl}
+														src={getBackendUrl(whatsApp.profilePicUrl)}
 														alt={whatsApp.name}
 														style={{ width: 56, height: 56 }}
 													/>
