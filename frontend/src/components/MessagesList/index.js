@@ -80,10 +80,12 @@ const useStyles = makeStyles((theme) => ({
   messageLeft: {
     marginRight: 20,
     marginTop: 2,
-    minWidth: 100,
+
     maxWidth: 600,
     height: "auto",
-    display: "block",
+    display: "flex",
+    flexDirection: "column",
+    width: "fit-content",
     position: "relative",
     "&:hover #messageActionsButton": {
       display: "flex",
@@ -145,10 +147,12 @@ const useStyles = makeStyles((theme) => ({
   messageRight: {
     marginLeft: 20,
     marginTop: 2,
-    minWidth: 100,
+
     maxWidth: 600,
     height: "auto",
-    display: "block",
+    display: "flex",
+    flexDirection: "column",
+    width: "fit-content",
     position: "relative",
     "&:hover #messageActionsButton": {
       display: "flex",
@@ -234,8 +238,8 @@ const useStyles = makeStyles((theme) => ({
 
   messageMedia: {
     objectFit: "cover",
-    width: 250,
-    height: 200,
+    width: 330,
+    height: "auto",
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
     borderBottomLeftRadius: 8,
@@ -1054,7 +1058,10 @@ const MessagesList = ({ ticketId, isGroup }) => {
                   className={clsx(classes.messageLeft, {
                     [classes.messageLeftSaas]: appTheme === "saas",
                   })}
-                  style={{ marginTop: showGroupInfo ? 10 : 2 }}
+                  style={{
+                    marginTop: showGroupInfo ? 10 : 2,
+                    maxWidth: (message.mediaUrl || message.mediaType === "image" || message.mediaType === "video" || message.mediaType === "location") ? 332 : 600
+                  }}
                 >
                   <IconButton
                     variant="contained"
@@ -1096,7 +1103,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                 className={clsx(classes.messageRight, {
                   [classes.messageRightSaas]: appTheme === "saas",
                 })}
-                style={{ marginTop: showGroupInfo ? 10 : 2 }}
+                style={{ marginTop: showGroupInfo ? 10 : 2, maxWidth: (message.mediaUrl || message.mediaType === "image" || message.mediaType === "video" || message.mediaType === "location") ? 332 : 600 }}
               >
                 <IconButton
                   variant="contained"

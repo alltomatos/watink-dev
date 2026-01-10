@@ -455,14 +455,62 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
     if (inputMessage.trim() === "") return;
     setLoading(true);
 
+    let mentionedIds = [];
+    if (inputMessage.includes("@")) {
+      try {
+        // Fetch participants and ticket to resolve mentions
+        const { data: participants } = await api.get(`/tickets/${ticketId}/participants`);
+        const { data: ticket } = await api.get(`/tickets/${ticketId}`);
+
+        const groupName = ticket.contact.name;
+
+        // 1. Ghost Mention Check (@GroupName)
+        if (groupName && inputMessage.includes(`@${groupName}`)) {
+          const allIds = participants.map(p => p.number + "@s.whatsapp.net");
+          mentionedIds.push(...allIds);
+        }
+
+        // 2. Regular Mention Check (@Name or @Number)
+        participants.forEach(p => {
+          const mentionName = `@${p.name}`;
+          const mentionNumber = `@${p.number}`;
+
+          if (inputMessage.includes(mentionName) || inputMessage.includes(mentionNumber)) {
+            mentionedIds.push(p.number + "@s.whatsapp.net");
+          }
+        });
+
+        // Deduplicate
+        mentionedIds = [...new Set(mentionedIds)];
+
+      } catch (err) {
+        console.error("Error resolving mentions", err);
+      }
+    }
+
+    // Prepare body: Remove @GroupName if it was a Ghost Mention
+    let finalBody = inputMessage;
+    if (inputMessage.includes("@")) {
+      try {
+        const { data: ticket } = await api.get(`/tickets/${ticketId}`);
+        const groupName = ticket.contact.name;
+        if (groupName && inputMessage.includes(`@${groupName}`)) {
+          finalBody = finalBody.replace(`@${groupName}`, "").trim();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
     const message = {
       read: 1,
       fromMe: true,
       mediaUrl: "",
       body: signMessage
-        ? `*${user?.name}:*\n${inputMessage.trim()}`
-        : inputMessage.trim(),
+        ? `*${user?.name}:*\n${finalBody}`
+        : finalBody,
       quotedMsg: replyingMessage,
+      mentionedIds
     };
     try {
       await api.post(`/messages/${ticketId}`, message);
@@ -512,7 +560,7 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
       } catch (err) {
         setTypeBar(false);
       }
-    } else if (value && value.indexOf("@") === value.length - 1) {
+    } else if (value && value.lastIndexOf("@") === value.length - 1) {
       // Trigger mention list
       try {
         const { data } = await api.get(`/tickets/${ticketId}/participants`);
@@ -536,8 +584,8 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
   };
 
   const handleMentionClick = (contact) => {
-    // Replace the last @ with @<number> 
-    const newValue = inputMessage.substring(0, inputMessage.lastIndexOf("@")) + `@${contact.number || contact.name} `;
+    // Replace the last @ with @<name> 
+    const newValue = inputMessage.substring(0, inputMessage.lastIndexOf("@")) + `@${contact.name || contact.number} `;
     setInputMessage(newValue);
     setMentionOpen(false);
     if (inputRef.current) inputRef.current.focus();
@@ -604,7 +652,26 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
           <div className={classes.replyginMsgBody}>
             {!message.fromMe && (
               <span className={classes.messageContactName}>
-                {message.contact?.name}
+                {(() => {
+                  let pushName = null;
+                  let participantNumber = null;
+
+                  if (message.dataJson) {
+                    try {
+                      const data = typeof message.dataJson === 'string' ? JSON.parse(message.dataJson) : message.dataJson;
+                      pushName = data.pushName;
+                    } catch (e) { }
+                  }
+
+                  if (message.participant) {
+                    participantNumber = message.participant.replace(/\D/g, "");
+                  }
+
+                  if (pushName) return `~${pushName}`;
+                  if (participantNumber) return `~${participantNumber}`;
+
+                  return message.contact?.name;
+                })()}
               </span>
             )}
             {message.body}

@@ -79,7 +79,9 @@ export class RabbitMQ {
           logger.info(`[RabbitMQ] Engine Received command on ${msg.fields.routingKey}`);
           const content: Envelope = JSON.parse(msg.content.toString());
           if (this.handler) {
+            logger.info(`[RabbitMQ] Invoking handler for ${content.type}`);
             await this.handler(content);
+            logger.info(`[RabbitMQ] Handler finished for ${content.type}`);
           }
           this.channel?.ack(msg);
         } catch (error) {

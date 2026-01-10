@@ -3,24 +3,27 @@ import {
   SendButtonsPayload, SendListPayload, SendPollPayload,
   SendTemplatePayload, SendInteractivePayload, SendCarouselPayload,
   CommandType, SyncContactPayload, MarkAsReadPayload, ImportContactPayload,
-  HistorySyncPayload
+  HistorySyncPayload, SendOptions
 } from "./contracts";
 import { logger } from "./logger";
 import { RabbitMQ } from "./rabbitmq";
 import { v4 as uuidv4 } from "uuid";
 import makeWASocket, {
   DisconnectReason,
-  useMultiFileAuthState,
   prepareWAMessageMedia,
   generateWAMessageFromContent,
   downloadMediaMessage,
   fetchLatestBaileysVersion,
   USyncQuery,
-  USyncUser
+  USyncUser,
+  jidNormalizedUser,
+  proto
 } from "whaileys";
 import { Boom } from "@hapi/boom";
 import path from "path";
 import fs from "fs";
+import Redis from "ioredis";
+import { useRedisAuthState } from "./helpers/useRedisAuthState";
 
 interface WhaileysSession {
   socket: ReturnType<typeof makeWASocket>;
@@ -34,8 +37,10 @@ class SessionManager {
   private manuallyDisconnected: Set<number> = new Set();
   private recentlySent: Set<string> = new Set();
   private avatarCache: Map<string, string> = new Map();
+  private lidCache: Map<string, string> = new Map();
   private rabbitmq: RabbitMQ;
   private sessionsDir: string;
+  private redis: Redis;
 
   constructor(rabbitmq: RabbitMQ) {
     this.rabbitmq = rabbitmq;
@@ -43,6 +48,9 @@ class SessionManager {
     if (!fs.existsSync(this.sessionsDir)) {
       fs.mkdirSync(this.sessionsDir, { recursive: true });
     }
+    this.redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
+    this.redis.on("error", (err) => logger.error("Redis Error:", err));
+    this.redis.on("connect", () => logger.info("Connected to Redis"));
   }
 
   async handleCommand(envelope: Envelope) {
@@ -247,9 +255,10 @@ class SessionManager {
 
 
   private async startSession(payload: StartSessionPayload, tenantId: string | number) {
-    logger.info(`Starting session ${payload.sessionId}`);
+    logger.info(`[SessionManager] startSession called for ${payload.sessionId}`);
 
     try {
+      logger.info(`[SessionManager] Checking existing sessions...`);
       if (this.sessions.has(payload.sessionId) && !payload.force) {
         logger.info(`Session ${payload.sessionId} already exists`);
 
@@ -305,9 +314,13 @@ class SessionManager {
         await this.cleanupSession(payload.sessionId);
       }
 
-      const { state, saveCreds } = await useMultiFileAuthState(
-        path.join(this.sessionsDir, `session-${payload.sessionId}`)
+      // [MODIFIED] Use Redis Auth State
+      logger.info(`[SessionManager] Initializing Redis Auth State for ${payload.sessionId}`);
+      const { state, saveCreds } = await useRedisAuthState(
+        this.redis,
+        payload.sessionId
       );
+      logger.info(`[SessionManager] Redis Auth State initialized for ${payload.sessionId}`);
 
       const { version, isLatest } = await fetchLatestBaileysVersion();
       logger.info(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
@@ -317,8 +330,6 @@ class SessionManager {
       const browserConfig = payload.usePairingCode ? ["Ubuntu", "Chrome", "20.0.04"] : ["Mac OS", "Chrome", "121.0.6167.85"];
 
       logger.info(`Session ${payload.sessionId} starting with browser config: ${JSON.stringify(browserConfig)} (usePairingCode: ${payload.usePairingCode})`);
-
-
 
       const sock = makeWASocket({
         version,
@@ -331,9 +342,37 @@ class SessionManager {
         keepAliveIntervalMs: 30000,
         retryRequestDelayMs: 2000,
         generateHighQualityLinkPreview: true,
+        getMessage: async (key) => {
+          if (!key.remoteJid || !key.id) return undefined;
+          try {
+            // Retrieve message from Redis
+            // Pattern: wbot:msg:{jid}:{id}
+            const data = await this.redis.get(`wbot:msg:${key.remoteJid}:${key.id}`);
+            if (data) {
+              return JSON.parse(data).message || undefined;
+            }
+          } catch (err) {
+            logger.error(`Error retrieving message from Redis for ${key.remoteJid}:${key.id}`, err);
+          }
+          return undefined;
+        }
       });
 
-
+      // Save incoming messages to Redis for retry mechanism
+      sock.ev.on("messages.upsert", async ({ messages, type }) => {
+        if (type === "notify" || type === "append") {
+          for (const msg of messages) {
+            if (!msg.key.id || !msg.key.remoteJid) continue;
+            try {
+              const key = `wbot:msg:${msg.key.remoteJid}:${msg.key.id}`;
+              // Save with 24h TTL (86400 seconds)
+              await this.redis.set(key, JSON.stringify(msg), "EX", 86400);
+            } catch (err) {
+              logger.error("Failed to save message to Redis", err);
+            }
+          }
+        }
+      });
 
       // Salva o socket e o status inicial
       this.sessions.set(payload.sessionId, { socket: sock, status: "OPENING", tenantId });
@@ -786,18 +825,22 @@ class SessionManager {
   }
 
   private async cleanupSession(sessionId: number) {
-    const sessionPath = path.join(this.sessionsDir, `session-${sessionId}`);
-    logger.info(`Attempting cleanup of session ${sessionId} at path: ${sessionPath}`);
+    logger.info(`Attempting cleanup of session ${sessionId} in Redis`);
+    try {
+      // Use SCAN in production for better performance, but KEYS is okay for now
+      // Pattern: wbot:auth:{sessionId}:*
+      const keys = await this.redis.keys(`wbot:auth:${sessionId}:*`);
 
-    if (fs.existsSync(sessionPath)) {
-      try {
-        fs.rmSync(sessionPath, { recursive: true, force: true });
-        logger.info(`Successfully cleaned up session files for ${sessionId}`);
-      } catch (err) {
-        logger.error(`Error cleaning up session ${sessionId}:`, err);
+      if (keys.length > 0) {
+        const pipeline = this.redis.pipeline();
+        keys.forEach(key => pipeline.del(key));
+        await pipeline.exec();
+        logger.info(`Successfully cleaned up ${keys.length} keys for session ${sessionId}`);
+      } else {
+        logger.info(`No Redis keys found for session ${sessionId}`);
       }
-    } else {
-      logger.info(`No existing session files to cleanup for session ${sessionId}`);
+    } catch (err) {
+      logger.error(`Error cleaning up session ${sessionId}:`, err);
     }
   }
 
@@ -848,6 +891,20 @@ class SessionManager {
     return "3EB0" + Math.random().toString(36).slice(2).toUpperCase() + Math.random().toString(36).slice(2).toUpperCase().substring(0, 12);
   }
 
+  private createQuoted(options?: SendOptions) {
+    if (!options) return undefined;
+    if (options.quoted) {
+      return {
+        key: options.quoted.key,
+        message: options.quoted.message
+      };
+    }
+    if (options.quotedMsgId) {
+      return { key: { id: options.quotedMsgId } };
+    }
+    return undefined;
+  }
+
   // Re-writing the entire method to better handle try-catch and ID availability
   private async sendText(payload: SendTextPayload) {
     const session = this.sessions.get(payload.sessionId);
@@ -883,10 +940,13 @@ class SessionManager {
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
+      const quotedMsg = this.createQuoted(payload.options);
+
       const msg = await session.socket.sendMessage(jid, {
-        text: payload.body
+        text: payload.body,
+        mentions: payload.mentions // Pass mentions array
       }, {
-        quoted: payload.options?.quotedMsgId ? { key: { id: payload.options.quotedMsgId } } as any : undefined,
+        quoted: quotedMsg,
         messageId: waMsgId
       });
 
@@ -1042,16 +1102,31 @@ class SessionManager {
       try {
         // If it's a standard JID (PN based), try to fetch the LID which is permanent
         // This answers the requirement: "todo contato tem LID mas podem haver casos de contatos antigos... sistema deve buscar o LID"
-        const results = await sock.onWhatsApp(senderJid);
-        const result = results?.[0];
-        if (result && result.lid) {
-          senderLid = result.lid;
+
+        // 1. Check Cache
+        const cachedLid = this.lidCache.get(senderJid);
+        if (cachedLid) {
+          senderLid = cachedLid;
+        } else {
+          // 2. Fetch from API
+          const results = await sock.onWhatsApp(senderJid);
+          const result = results?.[0];
+          if (result && result.lid) {
+            senderLid = result.lid;
+            this.lidCache.set(senderJid, senderLid);
+          }
         }
       } catch (err) {
         // Ignore errors during LID fetch to not block message processing
       }
     } else if (senderJid && senderJid.includes("@lid")) {
       senderLid = senderJid;
+    }
+
+    // Determine participant (especially for groups)
+    let participant = msg.key.participant || "";
+    if (msg.key.fromMe && !participant && sock.user?.id) {
+       participant = jidNormalizedUser(sock.user.id);
     }
 
     // --- Quoted Message & Link Preview Extraction ---
@@ -1140,7 +1215,7 @@ class SessionManager {
           selectedRowId,
           pollVotes,
           pushName: msg.pushName || "",
-          participant: msg.key.participant || "",
+          participant: participant,
           profilePicUrl,
           senderLid,
           originalId: originalMessageId,
@@ -1223,7 +1298,8 @@ class SessionManager {
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
-      const msg = await session.socket.sendMessage(jid, content, { messageId: waMsgId });
+      const quotedMsg = this.createQuoted(payload.options);
+      const msg = await session.socket.sendMessage(jid, content, { quoted: quotedMsg, messageId: waMsgId });
 
       if (msg) {
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
@@ -1385,7 +1461,8 @@ class SessionManager {
         text: payload.text,
         footer: payload.footer,
         buttons: buttons,
-        headerType: 1
+        headerType: 1,
+        mentions: payload.mentions
       };
 
       if (payload.imageUrl) {
@@ -1400,7 +1477,8 @@ class SessionManager {
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
-      const msg = await session.socket.sendMessage(jid, buttonMessage as any, { messageId: waMsgId });
+      const quotedMsg = this.createQuoted(payload.options);
+      const msg = await session.socket.sendMessage(jid, buttonMessage as any, { quoted: quotedMsg, messageId: waMsgId });
 
       if (msg) {
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
@@ -1463,7 +1541,8 @@ class SessionManager {
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
-      const msg = await session.socket.sendMessage(jid, listMessage as any, { messageId: waMsgId });
+      const quotedMsg = this.createQuoted(payload.options);
+      const msg = await session.socket.sendMessage(jid, listMessage as any, { quoted: quotedMsg, messageId: waMsgId });
 
       if (msg) {
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
@@ -1518,13 +1597,14 @@ class SessionManager {
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
+      const quotedMsg = this.createQuoted(payload.sendOptions);
       const msg = await session.socket.sendMessage(jid, {
         poll: {
           name: payload.name,
           values: payload.options,
           selectableCount: payload.selectableCount || 1
         }
-      } as any, { messageId: waMsgId });
+      } as any, { quoted: quotedMsg, messageId: waMsgId });
 
       if (msg) {
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
@@ -1601,7 +1681,8 @@ class SessionManager {
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
-      const msg = await session.socket.sendMessage(jid, message as any, { messageId: waMsgId });
+      const quotedMsg = this.createQuoted(payload.options);
+      const msg = await session.socket.sendMessage(jid, message as any, { quoted: quotedMsg, messageId: waMsgId });
 
       if (msg) {
         await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
@@ -1694,7 +1775,8 @@ class SessionManager {
       this.recentlySent.add(waMsgId);
       setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
 
-      const msg = await session.socket.sendMessage(jid, interactiveMessage as any, { messageId: waMsgId });
+      const quotedMsg = this.createQuoted(payload.options);
+      const msg = await session.socket.sendMessage(jid, interactiveMessage as any, { quoted: quotedMsg, messageId: waMsgId });
 
       if (msg) {
         // Force inject body text from payload if missing in return object
@@ -1814,8 +1896,10 @@ class SessionManager {
         }
       };
 
+      const quotedMsg = this.createQuoted(payload.options);
       const msg = generateWAMessageFromContent(jid, messageContent as any, {
         userJid: session.socket.user?.id || "",
+        quoted: quotedMsg
       });
 
       if (msg.key.id) {
