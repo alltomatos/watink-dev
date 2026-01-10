@@ -88,16 +88,25 @@ const CreateProtocolService = async (
                 messageId: uuidv4()
             };
 
+            // Fallback para Texto Simples para garantir entrega (Botões instáveis na API não-oficial)
+            // protocolUrl já existe no escopo
+            const textMessage = `${payload.text}\n\n${payload.footer}\n\n🔗 Acompanhe seu protocolo clicando aqui:\n${protocolUrl}`;
+
             const command: Envelope = {
                 id: uuidv4(),
                 timestamp: Date.now(),
                 tenantId: data.tenantId,
-                type: "message.send.interactive",
-                payload
+                type: "message.send.text",
+                payload: {
+                    sessionId: ticket.whatsappId,
+                    to: payload.to,
+                    body: textMessage, // Engine espera 'body' (vide contracts.ts e session.ts)
+                    ticketId: ticket.id
+                }
             };
 
             await RabbitMQService.publishCommand(
-                `wbot.${data.tenantId}.${ticket.whatsappId}.message.send.interactive`,
+                `wbot.${data.tenantId}.${ticket.whatsappId}.message.send.text`,
                 command
             );
         } catch (err) {
