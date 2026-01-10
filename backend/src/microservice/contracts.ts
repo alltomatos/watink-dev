@@ -44,6 +44,15 @@ export interface SendTextPayload {
   body: string;
   options?: {
     quotedMsgId?: string;
+    quoted?: {
+      key: {
+        id: string;
+        fromMe?: boolean;
+        participant?: string;
+        remoteJid?: string;
+      };
+      message?: any;
+    };
   };
 }
 

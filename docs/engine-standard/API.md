@@ -13,20 +13,58 @@ O Engine escuta na exchange `wbot.commands` com a routing key `wbot.*.*.#`.
   "sessionId": 1,
   "to": "5511999999999@s.whatsapp.net",
   "body": "Olá, mundo!",
-  "messageId": "uuid-v4"
+  "messageId": "uuid-v4",
+  "options": {
+     "quoted": { ... } // Opcional
+  }
 }
 ```
-**Processamento no Engine**:
-- Recebido por `RabbitMQ.consumeCommands`.
-- Despachado em `SessionManager.handleCommand`.
-- Executado por `SessionManager.sendText`.
-- Utiliza `session.socket.sendMessage` da lib `whaileys`.
 
-### 2. Iniciar Sessão
-**Routing Key**: `session.start`
-**Payload**: `StartSessionPayload` (sessionId, force, usePairingCode).
+### 2. Envio de Mídia
+**Routing Key**: `wbot.{tenantId}.{sessionId}.message.send.media`
+**Payload**:
+```json
+{
+  "sessionId": 1,
+  "to": "5511999999999@s.whatsapp.net",
+  "caption": "Legenda da foto",
+  "mentions": ["551188888888@s.whatsapp.net"], // Array de JIDs mencionados
+  "media": {
+    "mimetype": "image/jpeg",
+    "filename": "foto.jpg",
+    "data": "base64_string..."
+  },
+  "messageId": "uuid-v4",
+  "options": {
+     "quoted": { ... }
+  }
+}
+```
 
-### 3. Envio de Mensagem com Botão Interativo (URL)
+### 3. Envio de Botões (Template/Simple)
+**Routing Key**: `wbot.{tenantId}.{sessionId}.message.send.buttons`
+**Payload**:
+```json
+{
+  "sessionId": 1,
+  "to": "5511999999999@s.whatsapp.net",
+  "text": "Título",
+  "footer": "Rodapé",
+  "mentions": ["551188888888@s.whatsapp.net"],
+  "buttons": [
+    {
+      "buttonId": "id_1",
+      "buttonText": "Opção 1"
+    }
+  ],
+  "messageId": "uuid-v4",
+  "options": {
+     "quoted": { ... }
+  }
+}
+```
+
+### 4. Envio de Botão Interativo (URL)
 **Routing Key**: `wbot.{tenantId}.{sessionId}.message.send.interactive`
 **Payload**:
 ```json
@@ -49,13 +87,13 @@ O Engine escuta na exchange `wbot.commands` com a routing key `wbot.*.*.#`.
   "messageId": "uuid-v4"
 }
 ```
-**Processamento no Engine**:
-- Utiliza `session.socket.sendMessage` com payload `interactive` nativo do `whaileys`.
-- Ideal para notificações de protocolo e CTAs.
 
-### 4. Outros Comandos
+### 5. Iniciar Sessão
+**Routing Key**: `session.start`
+**Payload**: `StartSessionPayload` (sessionId, force, usePairingCode).
+
+### 6. Outros Comandos
 - `session.stop`: Desconectar.
-- `message.send.media`: Enviar arquivo.
 - `contact.sync`: Sincronizar contato/grupo.
 
 ## Eventos Publicados (Producers)

@@ -1,76 +1,110 @@
-### Projeto Watink
+# Estratégia e Arquitetura de Microserviços (Watink)
 
-Sempre responder e ou criar planos documentos em português do Brasil.
+Este documento é a referência oficial para a arquitetura de microserviços do projeto Watink. Ele define os padrões, protocolos e estratégias de escalabilidade adotados.
 
-Repositório: https://github.com/alltomatos/watink.git
+## 1. Visão Geral
+O Watink adota uma arquitetura orientada a eventos (Event-Driven Architecture), onde serviços desacoplados se comunicam assincronamente através de um Message Broker (RabbitMQ). O objetivo é garantir alta disponibilidade, escalabilidade horizontal e tolerância a falhas.
 
-O projeto deve sempre focar na stack Docker contida em `watink`.
+## 2. Arquitetura de Referência
 
-Repositorio Original: https://github.com/canove/whaticket-community.git
-
----
-
-## Roadmap: Transformação Microservices & SaaS
-
-Acompanhamento das etapas definidas em `docs/tasks_microservice/`.
-
-A cada finalização de etapa marcar como concluido.
-
-### Fase 1: Arquitetura de Dados SaaS
-- [x] **[DB-001] Design da Estrutura Multi-tenant** (Concluído: Planejamento em `docs/tasks_microservice/artifacts/DB-001_multitenancy_plan.md`)
-- [x] **[DB-002] Implementação de RLS (Row Level Security)** (Concluído: Migrations criadas em `backend/src/database/migrations` e `backend/dist/database/migrations`)
-- [x] **[DB-003] Estratégia de Backup e Recuperação (PITR)** (Concluído: Estratégia em `docs/tasks_microservice/artifacts/DB-003_backup_strategy.md` e scripts em `scripts/database/`)
-- [x] **[DB-004] Preparação para Escalabilidade Horizontal (Read Replicas)** (Concluído: Configuração de replication no `database.ts` e variável `DB_READ_HOST`)
-
-### Fase 2: Extração do WhatsApp Engine
-- [x] **[ENG-001] Configuração do Message Broker (RabbitMQ)** (Concluído: Adicionado ao `docker-compose.yaml` e documentado em `docs/tasks_microservice/artifacts/ENG-001_message_broker_setup.md`)
-- [x] **[ENG-002] Definição do Contrato de Interface (Protocolo)** (Concluído: Documentado em `docs/tasks_microservice/artifacts/ENG-002_protocol_definition.md` e Tipos TS em `backend/src/microservice/contracts.ts`)
-- [x] **[ENG-003] Criação do Engine "Standard" (Node.js - Baileys/Whaileys)** (Concluído: Código em `engine-standard/`, serviço renomeado para `whaileys-engine`)
-- [x] **[ENG-004] Implementação do Engine "High Performance" (Go - Whatsmeow)** (Concluído: Código em `engine-go/`, serviço preparado (comentado) no `docker-compose.yaml`)
-- [x] **[ENG-005] Adaptação do Core (Monolito) para Consumidor Agnostico** (Concluído: Backend desacoplado do wwebjs, envia comandos via RabbitMQ e consome eventos via EventListener)
-
-### Validação da Migração Whaileys & Microserviços (Dez 2025)
-
-#### 1. Arquitetura de Comunicação
-O projeto agora opera em arquitetura de microserviços orientada a eventos, substituindo a biblioteca local `whatsapp-web.js`.
-
-*   **Protocolo**: AMQP (RabbitMQ)
-*   **Serviços**:
-    *   `Backend` (Producer de Comandos / Consumer de Eventos)
-    *   `whaileys-engine` (Consumer de Comandos / Producer de Eventos) - Baseado em **Whaileys** (Baileys Wrapper)
-
-#### 2. Fluxos de Dados
-*   **Start Session**: `Backend` -> `wbot.commands` (session.start) -> `whaileys-engine` -> `wbot.events` (session.qrcode / session.status) -> `Backend`
-*   **Send Message**: `Backend` -> `wbot.commands` (message.send.text) -> `whaileys-engine` -> WhatsApp API
-*   **Receive Message**: WhatsApp API -> `whaileys-engine` -> `wbot.events` (message.received) -> `Backend`
-
-#### 3. Compatibilidade e Banco de Dados
-*   **Banco de Dados**: PostgreSQL com suporte a RLS (Row Level Security) para multi-tenancy.
-*   **Migrations**: Scripts de migração (`20251220...`) garantem a estrutura `tenantId` em todas as tabelas críticas.
-*   **Whaileys**: O serviço `whaileys-engine` implementa a interface compatível com o protocolo definido, utilizando `@hapi/boom` para tratamento de erros de desconexão.
-
-#### 4. Variáveis de Ambiente Críticas
-```bash
-# Backend & Engine
-AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
-DB_DIALECT=postgres
-DB_HOST=postgres
-POSTGRES_DB=watic
+### Diagrama Lógico
+```mermaid
+graph TD
+    Client[Frontend / API Clients] -->|HTTPS| Traefik[Traefik Edge Router]
+    Traefik -->|REST/Socket| Backend[Backend Core / Orchestrator]
+    Traefik -->|Static| Frontend[Frontend SPA]
+    
+    Backend -->|Comandos AMQP| RabbitMQ
+    RabbitMQ -->|Eventos AMQP| Backend
+    
+    RabbitMQ -->|Comandos| Engine[Whaileys Engine]
+    Engine -->|Eventos| RabbitMQ
+    
+    Engine -->|WhatsApp Protocol| WA[WhatsApp Servers]
+    
+    Backend -->|SQL| Postgres[(PostgreSQL DB)]
+    Engine -->|Transient Data| Redis[(Redis Cache/Store)]
+    
+    subgraph Data Layer
+    Postgres
+    Redis
+    end
+    
+    subgraph Compute Layer
+    Backend
+    Engine
+    FlowWorker[Flow Engine Worker]
+    end
 ```
 
-### Fase 3: Frontend & Dashboard SaaS
-- [x] **[FRONT-001] Design de Wireframes e Fluxos (Admin SaaS)** (Concluído: Documento de design criado em `docs/tasks_microservice/artifacts/FRONT-001_saas_frontend_design.md`)
-- [x] **[FRONT-002] Adaptação do Login e Autenticação** (Concluído: Backend suporta tenantId no JWT, Frontend redireciona Super Admin. Seed de Tenant Default criado.)
-- [x] **[FRONT-003] Desenvolvimento do Painel Super Admin** (Concluído: Backend CRUD Tenants, Frontend Página de Tenants e Modal de Edição.)
-- [x] **[FRONT-004] Dashboards Personalizáveis por Cliente** (Concluído: Widgets implementados e persistência de layout via tabela Users.)
+### Componentes e Responsabilidades
 
-### Fase 4: DevOps, Infraestrutura e Deploy
-- [x] **[OPS-001] Containerização e Orquestração (Docker Swarm/K8s)** (Concluído: Arquivo `docker-stack.yml` criado com definição de serviços e limites de recursos.)
-- [x] **[OPS-002] Configuração do API Gateway (Traefik/Nginx)** (Concluído: Traefik configurado no stack com roteamento dinâmico. Documentação em `docs/tasks_microservice/artifacts/OPS-002_api_gateway_config.md`.)
-- [ ] **[OPS-003] Pipelines de CI/CD**
-- [ ] **[OPS-004] Procedimentos de Rollback e Monitoramento**
+| Serviço | Tipo | Responsabilidade | Tecnologia |
+| :--- | :--- | :--- | :--- |
+| **Backend** | Orchestrator | Regras de Negócio, Gestão de Dados, API REST, WebSocket Gateway. | Node.js (Express) |
+| **Whaileys Engine** | Worker | Conexão com WhatsApp, Criptografia, Protocolo WA. | Node.js (Baileys) |
+| **RabbitMQ** | Broker | Bus de Eventos e Comandos. | Erlang/AMQP |
+| **Redis** | Store | Transient Store (Retentativas), Cache Distribuído, Lock. | Redis (Alpine) |
+| **PostgreSQL** | Database | Persistência Relacional, Vetorial e Geográfica. | Postgres 15+ |
+
+## 3. Padrões de Comunicação
+
+### Protocolo AMQP
+Utilizamos o RabbitMQ como espinha dorsal. A comunicação é dividida em dois tipos de mensagens:
+
+#### A. Comandos (Commands)
+*   **Origem**: Backend (Producer) -> Engine (Consumer)
+*   **Intenção**: "Faça isso" (ex: Enviar Mensagem, Iniciar Sessão).
+*   **Padrão**: Filas persistentes com *Ack* manual.
+*   **Filas**: `wbot.commands`
+
+#### B. Eventos (Events)
+*   **Origem**: Engine (Producer) -> Backend/Workers (Consumers)
+*   **Intenção**: "Isso aconteceu" (ex: Mensagem Recebida, QR Code Gerado).
+*   **Padrão**: Pub/Sub (Exchange `wbot.events` do tipo `topic`).
+*   **Roteamento**: `message.received`, `session.status`, etc.
+
+## 4. Estratégia de Escalabilidade
+
+### Stateless Engines
+O serviço `whaileys-engine` foi desenhado para ser "quase" stateless.
+*   **Sessão (Auth)**: As credenciais ficam em volume persistente (ou S3 no futuro), permitindo que qualquer container assuma a sessão se tiver acesso ao disco.
+*   **Transient Data**: Dados voláteis (mensagens aguardando processamento/retentativa) são armazenados no **Redis**, não na memória RAM do processo. Isso permite que, se um container falhar, outro possa recuperar o estado ou pelo menos não perder dados críticos.
+
+### Redis como Transient Store
+O Redis atua como um buffer de alta performance e persistência leve (AOF).
+*   **Função**: Armazenar mensagens recebidas e enviadas por 24h.
+*   **Benefício**: Garante que o mecanismo de retentativa do Baileys funcione mesmo entre reinicializações de container.
+*   **Padrão de Chave**: `wbot:msg:{jid}:{id}`
+
+## 5. Roadmap: Transformação Microservices & SaaS
+
+Acompanhamento das etapas de evolução da arquitetura.
+
+### Fase 1: Arquitetura de Dados SaaS
+- [x] **[DB-001] Design da Estrutura Multi-tenant**
+- [x] **[DB-002] Implementação de RLS (Row Level Security)**
+- [x] **[DB-003] Estratégia de Backup e Recuperação (PITR)**
+- [x] **[DB-004] Preparação para Escalabilidade Horizontal (Read Replicas)**
+
+### Fase 2: Extração do WhatsApp Engine
+- [x] **[ENG-001] Configuração do Message Broker (RabbitMQ)**
+- [x] **[ENG-002] Definição do Contrato de Interface (Protocolo)**
+- [x] **[ENG-003] Criação do Engine "Standard" (Node.js - Baileys/Whaileys)**
+- [x] **[ENG-004] Implementação do Engine "High Performance" (Go - Whatsmeow)**
+- [x] **[ENG-005] Adaptação do Core (Monolito) para Consumidor Agnostico**
+
+### Validação da Migração Whaileys & Microserviços (Dez 2025/Jan 2026)
+*   **Arquitetura Atual**: Event-Driven com RabbitMQ e Redis.
+*   **Status**: Redis implementado como Transient Store para garantir confiabilidade nas retentativas.
+
+### Fase 3: Frontend & Dashboard SaaS
+- [x] **[FRONT-001] Design de Wireframes e Fluxos (Admin SaaS)**
+- [x] **[FRONT-002] Adaptação do Login e Autenticação**
+- [x] **[FRONT-003] Desenvolvimento do Painel Super Admin**
+- [x] **[FRONT-004] Dashboards Personalizáveis por Cliente**
 
 ### Fase 5: Flow Engine Scalability
-- [x] **[FLOW-001] Event-Driven Architecture**: Refatorado `wbotMessageListener` para publicar eventos de fluxo no RabbitMQ. (Concluído)
-- [x] **[FLOW-002] Flow Worker Service**: Microserviço `flow-engine-worker` criado e operacional no Docker Swarm. (Concluído)
-- [ ] **[FLOW-003] Redis State Cache**: Implementar cache de sessões ativas no Redis para reduzir load no Postgres.
+- [x] **[FLOW-001] Event-Driven Architecture**
+- [x] **[FLOW-002] Flow Worker Service**
+- [x] **[FLOW-003] Redis Transient Store**: Implementado cache de mensagens e estrutura para store distribuído. (Jan 2026)

@@ -28,3 +28,21 @@ filesToCopy.forEach(file => {
         console.warn(`Source file not found: ${srcPath}`);
     }
 });
+
+// Update version.json
+const packageJsonPath = path.join(__dirname, 'package.json');
+const versionJsonPath = path.join(publicDir, 'version.json');
+
+try {
+    const packageJson = require(packageJsonPath);
+    const versionData = {
+        service: "frontend",
+        version: packageJson.version,
+        lastUpdated: new Date().toISOString()
+    };
+    
+    fs.writeFileSync(versionJsonPath, JSON.stringify(versionData, null, 2));
+    console.log(`Updated version.json to ${packageJson.version}`);
+} catch (error) {
+    console.error('Error updating version.json:', error);
+}

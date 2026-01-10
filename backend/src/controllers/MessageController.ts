@@ -37,7 +37,7 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
 
 export const store = async (req: Request, res: Response): Promise<Response> => {
   const { ticketId } = req.params;
-  const { body, quotedMsg }: MessageData = req.body;
+  const { body, quotedMsg, mentionedIds }: MessageData & { mentionedIds?: string[] } = req.body;
   const medias = req.files as Express.Multer.File[];
   const { logger } = require("../utils/logger");
   logger.info(`[MessageController] Store requested for ticket ${ticketId}. Body: ${body}`);
@@ -55,11 +55,11 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     await Promise.all(
       medias.map(async (media: Express.Multer.File, index: number) => {
         const caption = bodies[index] !== undefined ? bodies[index] : (bodies[0] || "");
-        await SendWhatsAppMedia({ media, ticket, body: caption });
+        await SendWhatsAppMedia({ media, ticket, body: caption, mentionedIds });
       })
     );
   } else {
-    await SendWhatsAppMessage({ body, ticket, quotedMsg });
+    await SendWhatsAppMessage({ body, ticket, quotedMsg, mentionedIds });
   }
 
   return res.send();
