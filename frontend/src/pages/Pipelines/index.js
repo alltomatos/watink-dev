@@ -128,6 +128,7 @@ const Pipelines = () => {
                                     <h3 style={{ margin: '0 0 8px 0' }}>{pipeline.name}</h3>
                                     <IconButton
                                         size="small"
+                                        color="primary"
                                         onClick={(e) => handleEditPipeline(e, pipeline.id)}
                                     >
                                         <EditIcon fontSize="small" />
