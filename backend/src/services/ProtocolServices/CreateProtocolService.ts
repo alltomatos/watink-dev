@@ -82,36 +82,36 @@ const CreateProtocolService = async (
                     sessionId: ticket.whatsappId,
                     to: `${contact.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
                     text: `*Olá! Seu protocolo de atendimento foi criado com sucesso.*\n\n*Protocolo:* #${protocol.protocolNumber}\n*Assunto:* ${protocol.subject}\n*Prioridade:* ${priorityMap[protocol.priority] || protocol.priority}\n\nAcompanhe o andamento clicando no botão abaixo.`,
-                    footer: `Protocolo: ${protocol.protocolNumber} - ${format(new Date(), "HH:mm")}`,
-                    buttons: [
-                        {
-                            type: "url",
-                            text: "👁️ Ver Protocolo",
-                            url: protocolUrl
-                        }
-                    ],
-                    messageId: uuidv4()
+                    footer: `Protocolo: ${protocol.protocolNumber} - ${format(new Date(), "HH:mm")}`
                 };
+
+                // Fallback para Texto Simples para garantir entrega (Botões instáveis na API não-oficial)
+                // protocolUrl já existe no escopo
+                const textMessage = `${payload.text}\n\n${payload.footer}\n\n🔗 Acompanhe seu protocolo clicando aqui:\n${protocolUrl}`;
 
                 const command: Envelope = {
                     id: uuidv4(),
                     timestamp: Date.now(),
                     tenantId: data.tenantId,
-                    type: "message.send.interactive",
-                    payload
+                    type: "message.send.text",
+                    payload: {
+                        sessionId: ticket.whatsappId,
+                        to: payload.to,
+                        body: textMessage, // Engine espera 'body' (vide contracts.ts e session.ts)
+                        ticketId: ticket.id
+                    }
                 };
 
                 await RabbitMQService.publishCommand(
-                    `wbot.${data.tenantId}.${ticket.whatsappId}.message.send.interactive`,
+                    `wbot.${data.tenantId}.${ticket.whatsappId}.message.send.text`,
                     command
                 );
+            } catch (err) {
+                console.error("Erro ao enviar mensagem de confirmação de protocolo:", err);
             }
-        } catch (error) {
-            console.error("Error sending protocol creation message:", error);
         }
-    }
 
     return fullProtocol!;
-};
+    };
 
-export default CreateProtocolService;
+    export default CreateProtocolService;

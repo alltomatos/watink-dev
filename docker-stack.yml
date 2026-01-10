@@ -1,7 +1,8 @@
+version: '3.8'
 
 services:
   backend:
-    image: watink/backend:1.3.174
+    image: watink/backend:1.3.176
     build:
       context: ./backend
       dockerfile: ./Dockerfile
@@ -15,8 +16,9 @@ services:
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
       - JWT_SECRET=***REMOVED_JWT_SECRET***
       - JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***
-      - FRONTEND_URL=http://localhost
-      - URL_BACKEND=http://localhost
+      - FRONTEND_URL=http://10.11.0.158
+      - URL_BACKEND=http://10.11.0.158
+      - ENGINE_VERSION=1.0.116
       - PORT=8080
       - NODE_OPTIONS=--max-old-space-size=800
       - DEFAULT_TENANT_UUID=550e8400-e29b-41d4-a716-446655440000
@@ -52,7 +54,7 @@ services:
         - "traefik.docker.network=watink_watink_public"
 
   frontend:
-    image: watink/frontend:0.7.86
+    image: watink/frontend:0.7.82
     build:
       context: ./frontend
       dockerfile: ./Dockerfile
@@ -111,15 +113,15 @@ services:
         - "traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$8EVDtcp.$$J2A.0.1.0/0.1.0"
 
   whaileys-engine:
-    image: watink/engine:1.0.114
+    image: watink/engine:1.0.116
     environment:
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
       - REDIS_URL=redis://redis:6379
     networks:
       - watink_private
       - watink_public
-    # volumes:
-    #   - sessions_auth_data:/usr/src/app/.sessions_auth/
+    volumes:
+      - sessions_auth_data:/usr/src/app/.sessions_auth/
 
     deploy:
       mode: replicated
@@ -130,7 +132,7 @@ services:
           memory: 2048M
 
   flow-engine-worker:
-    image: watink/backend:1.3.174
+    image: watink/backend:1.3.176
     command: ["node", "dist/flow-worker.js"]
     environment:
       - DB_DIALECT=postgres
@@ -140,6 +142,7 @@ services:
       - DB_PASS=postgres
       - DB_NAME=watink
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
       - DEFAULT_TENANT_UUID=550e8400-e29b-41d4-a716-446655440000
     networks:
       - watink_private
