@@ -16,6 +16,7 @@ import tenantRoutes from "./tenantRoutes";
 import versionRoutes from "./versionRoutes";
 import postgresVersionRoutes from "./postgresVersionRoutes";
 import rabbitmqVersionRoutes from "./rabbitmqVersionRoutes";
+import redisVersionRoutes from "./redisVersionRoutes";
 import engineVersionRoutes from "./engineVersionRoutes";
 import flowVersionRoutes from "./flowVersionRoutes";
 
@@ -50,6 +51,7 @@ routes.use(groupRoutes);
 routes.use("/version", versionRoutes);
 routes.use(postgresVersionRoutes);
 routes.use(rabbitmqVersionRoutes);
+routes.use(redisVersionRoutes);
 routes.use(engineVersionRoutes);
 routes.use(flowVersionRoutes);
 routes.use(pipelineRoutes);

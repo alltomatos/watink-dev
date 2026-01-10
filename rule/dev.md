@@ -179,7 +179,7 @@ Introduzido para resolver limitações de escalabilidade e confiabilidade do arm
 *   **Serviço**: `redis` (imagem `redis:alpine` com `--appendonly yes`).
 *   **Uso Atual**:
     *   Armazenamento de mensagens recebidas/enviadas por 24h (TTL) para suporte a retentativas.
-    *   Cache de metadados de sessão (futuro).
+    *   Cache de metadados de sessão e Sessão de Autenticação (Engine).
 
 ---
 

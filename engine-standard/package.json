@@ -1,6 +1,6 @@
 {
   "name": "whaileys-engine",
-  "version": "1.0.104",
+  "version": "1.0.114",
   "description": "WhatsApp Engine for Whaticket (Node.js/Whaileys)",
   "main": "dist/index.js",
   "scripts": {
@@ -12,7 +12,7 @@
   "author": "",
   "license": "AGPL-3.0",
   "dependencies": {
-    "whaileys": "github:alltomatos/whaileys",
+    "whaileys": "git+https://github.com/alltomatos/whaileys.git",
     "@hapi/boom": "^10.0.1",
     "amqplib": "^0.10.3",
     "dotenv": "^16.3.1",

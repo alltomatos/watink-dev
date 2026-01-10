@@ -69,7 +69,7 @@ cd ..
 
 # 2. Build
 echo "🏗️ Building Docker image (no-cache)..."
-docker compose build --no-cache $COMPOSE_SVC
+docker compose -f docker-stack.yml build --no-cache $COMPOSE_SVC
 
 # 3. Tagging
 echo "🏷️ Tagging images..."

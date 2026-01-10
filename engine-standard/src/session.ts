@@ -10,7 +10,6 @@ import { RabbitMQ } from "./rabbitmq";
 import { v4 as uuidv4 } from "uuid";
 import makeWASocket, {
   DisconnectReason,
-  useMultiFileAuthState,
   prepareWAMessageMedia,
   generateWAMessageFromContent,
   downloadMediaMessage,
@@ -24,6 +23,7 @@ import { Boom } from "@hapi/boom";
 import path from "path";
 import fs from "fs";
 import Redis from "ioredis";
+import { useRedisAuthState } from "./helpers/useRedisAuthState";
 
 interface WhaileysSession {
   socket: ReturnType<typeof makeWASocket>;
@@ -255,9 +255,10 @@ class SessionManager {
 
 
   private async startSession(payload: StartSessionPayload, tenantId: string | number) {
-    logger.info(`Starting session ${payload.sessionId}`);
+    logger.info(`[SessionManager] startSession called for ${payload.sessionId}`);
 
     try {
+      logger.info(`[SessionManager] Checking existing sessions...`);
       if (this.sessions.has(payload.sessionId) && !payload.force) {
         logger.info(`Session ${payload.sessionId} already exists`);
 
@@ -313,9 +314,13 @@ class SessionManager {
         await this.cleanupSession(payload.sessionId);
       }
 
-      const { state, saveCreds } = await useMultiFileAuthState(
-        path.join(this.sessionsDir, `session-${payload.sessionId}`)
+      // [MODIFIED] Use Redis Auth State
+      logger.info(`[SessionManager] Initializing Redis Auth State for ${payload.sessionId}`);
+      const { state, saveCreds } = await useRedisAuthState(
+        this.redis,
+        payload.sessionId
       );
+      logger.info(`[SessionManager] Redis Auth State initialized for ${payload.sessionId}`);
 
       const { version, isLatest } = await fetchLatestBaileysVersion();
       logger.info(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
@@ -820,18 +825,22 @@ class SessionManager {
   }
 
   private async cleanupSession(sessionId: number) {
-    const sessionPath = path.join(this.sessionsDir, `session-${sessionId}`);
-    logger.info(`Attempting cleanup of session ${sessionId} at path: ${sessionPath}`);
+    logger.info(`Attempting cleanup of session ${sessionId} in Redis`);
+    try {
+      // Use SCAN in production for better performance, but KEYS is okay for now
+      // Pattern: wbot:auth:{sessionId}:*
+      const keys = await this.redis.keys(`wbot:auth:${sessionId}:*`);
 
-    if (fs.existsSync(sessionPath)) {
-      try {
-        fs.rmSync(sessionPath, { recursive: true, force: true });
-        logger.info(`Successfully cleaned up session files for ${sessionId}`);
-      } catch (err) {
-        logger.error(`Error cleaning up session ${sessionId}:`, err);
+      if (keys.length > 0) {
+        const pipeline = this.redis.pipeline();
+        keys.forEach(key => pipeline.del(key));
+        await pipeline.exec();
+        logger.info(`Successfully cleaned up ${keys.length} keys for session ${sessionId}`);
+      } else {
+        logger.info(`No Redis keys found for session ${sessionId}`);
       }
-    } else {
-      logger.info(`No existing session files to cleanup for session ${sessionId}`);
+    } catch (err) {
+      logger.error(`Error cleaning up session ${sessionId}:`, err);
     }
   }
 
@@ -1093,7 +1102,7 @@ class SessionManager {
       try {
         // If it's a standard JID (PN based), try to fetch the LID which is permanent
         // This answers the requirement: "todo contato tem LID mas podem haver casos de contatos antigos... sistema deve buscar o LID"
-        
+
         // 1. Check Cache
         const cachedLid = this.lidCache.get(senderJid);
         if (cachedLid) {
@@ -1112,6 +1121,12 @@ class SessionManager {
       }
     } else if (senderJid && senderJid.includes("@lid")) {
       senderLid = senderJid;
+    }
+
+    // Determine participant (especially for groups)
+    let participant = msg.key.participant || "";
+    if (msg.key.fromMe && !participant && sock.user?.id) {
+       participant = jidNormalizedUser(sock.user.id);
     }
 
     // --- Quoted Message & Link Preview Extraction ---
@@ -1200,7 +1215,7 @@ class SessionManager {
           selectedRowId,
           pollVotes,
           pushName: msg.pushName || "",
-          participant: msg.key.participant || "",
+          participant: participant,
           profilePicUrl,
           senderLid,
           originalId: originalMessageId,

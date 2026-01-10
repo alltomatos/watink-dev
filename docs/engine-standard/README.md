@@ -23,5 +23,4 @@ Nossa versão inclui modificações críticas e funcionalidades que não estão 
 - **Pareamento via Código**: Suporte a Pairing Code além do QR Code.
 
 ## Estrutura
-- `.sessions_auth/`: Armazena as credenciais de autenticação (sessões).
 - `src/`: Código fonte TypeScript.
