@@ -1,12 +1,8 @@
 
 services:
   backend:
-    image: watink/backend:1.3.174
     build:
-      context: ./backend
-      dockerfile: ./Dockerfile
-    environment:
-      - DB_DIALECT=postgres
+   e. - DB_DIALECT=postgres
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=postgres
@@ -18,16 +14,10 @@ services:
       - FRONTEND_URL=http://localhost
       - URL_BACKEND=http://localhost
       - PORT=8080
-      - NODE_OPTIONS=--max-old-space-size=800
-      - REDIS_URL=redis://redis:6379
-
-    volumes:
-      - ./backend/public:/app/public
+      - NODE_OPTIONS=--max-old-space-s ./backend/public:/app/public
     networks:
       - watink_public
-      - watink_private
-
-    deploy:
+      - oy:
       mode: replicated
       replicas: 1
       update_config:
@@ -60,13 +50,9 @@ services:
       - VITE_BACKEND_URL=/
       - VITE_PLUGIN_MANAGER_URL=/plugins/
       - VITE_HOURS_CLOSE_TICKETS_AUTO=24
-
-    networks:
-      - watink_public
-      - watink_private
-
-    deploy:
-      mode: replicated
+:
+      - watink_public watink_private
+ mode: replicated
       replicas: 1
       labels:
         - "traefik.enable=true"
@@ -124,12 +110,8 @@ services:
       mode: replicated
       replicas: 1
       resources:
-        limits:
           cpus: '0.50'
-          memory: 2048M
-
-  flow-engine-worker:
-    image: watink/backend:1.3.174
+watink/backend:1.3.174
     command: ["node", "dist/flow-worker.js"]
     environment:
       - DB_DIALECT=postgres
@@ -147,11 +129,7 @@ services:
       replicas: 1
       resources:
         limits:
-          cpus: '0.50'
           memory: 512M
-
-  plugin-manager:
-    image: watink/plugin-manager:1.0.19
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/watink?sslmode=disable
       - PLUGIN_CDN_URL=http://localhost
