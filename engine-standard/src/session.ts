@@ -663,18 +663,21 @@ class SessionManager {
 
             const baileystatus = update.update?.status || update.status;
             let status = 0;
+            
+            // Ensure numeric comparison
+            const bStatus = Number(baileystatus);
 
-            if (baileystatus === 0) {
+            if (bStatus === 0) {
               status = 5; // Error
-            } else if (baileystatus === 1) {
+            } else if (bStatus === 1) {
               status = 0; // Pending
-            } else if (baileystatus === 2) {
+            } else if (bStatus === 2) {
               status = 1; // Sent (Server ACK)
-            } else if (baileystatus === 3) {
+            } else if (bStatus === 3) {
               status = 2; // Received (Delivery ACK)
-            } else if (baileystatus === 4) {
+            } else if (bStatus === 4) {
               status = 3; // Read
-            } else if (baileystatus === 5) {
+            } else if (bStatus === 5) {
               status = 4; // Played
             }
 
@@ -992,6 +995,58 @@ class SessionManager {
     }
     logger.info(`[handleMessage] Processing message ${msg.key.id} fromMe: ${msg.key.fromMe}`);
 
+    // --- Technical Message Handling (Revoke/Reactions) ---
+
+    // 1. Handle Protocol Messages (Revoke/Delete)
+    if (msg.message.protocolMessage) {
+      const protocolMsg = msg.message.protocolMessage;
+
+      // 0 = REVOKE (Delete for everyone)
+      if (protocolMsg.type === 0 && protocolMsg.key) {
+        logger.info(`[handleMessage] Detected Revoke for msg ${protocolMsg.key.id} by ${msg.key.participant || msg.key.remoteJid}`);
+
+        const revokeEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId,
+          type: "message.revoke",
+          payload: {
+            sessionId,
+            messageId: protocolMsg.key.id || "",
+            participant: msg.key.participant || msg.key.remoteJid || ""
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId}.message.revoke`, revokeEvent);
+        return; // Stop processing to prevent empty bubble
+      } else {
+        logger.info(`[handleMessage] Ignored other ProtocolMsg type: ${protocolMsg.type}`);
+        return; // Ignore other technical types
+      }
+    }
+
+    // 2. Handle Reaction Messages (via Upsert)
+    if (msg.message.reactionMessage) {
+      const reactionMsg = msg.message.reactionMessage;
+      logger.info(`[handleMessage] Detected Reaction via Upsert for ${reactionMsg.key?.id}`);
+      if (reactionMsg.key?.id) {
+        const reactionEvent: Envelope = {
+          id: uuidv4(),
+          timestamp: Date.now(),
+          tenantId,
+          type: "message.reaction",
+          payload: {
+            sessionId,
+            messageId: reactionMsg.key.id,
+            reaction: reactionMsg.text || "",
+            sender: msg.key.participant || msg.key.remoteJid || "",
+            timestamp: reactionMsg.senderTimestampMs || Date.now()
+          }
+        };
+        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId}.message.reaction`, reactionEvent);
+      }
+      return; // Stop processing to prevent empty bubble
+    }
+
     // Check for media types
     const hasMedia = !!(
       msg.message.imageMessage ||
@@ -1207,7 +1262,9 @@ class SessionManager {
           fromMe: msg.key.fromMe || false,
           isGroup: msg.key.remoteJid?.endsWith("@g.us") || false,
           type: msgType,
-          timestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : 0,
+          timestamp: typeof msg.messageTimestamp === "number"
+            ? msg.messageTimestamp
+            : (msg.messageTimestamp as any)?.low || (msg.messageTimestamp as any)?.toNumber?.() || Math.floor(Date.now() / 1000),
           hasMedia: hasMedia,
           mediaData,
           mimetype,
@@ -1845,7 +1902,7 @@ class SessionManager {
             return {
               name: "cta_url",
               buttonParamsJson: JSON.stringify({
-                display_text: btn.text,
+                display_text: btn.displayText,
                 url: btn.url,
                 merchant_url: btn.url
               })
@@ -1854,8 +1911,8 @@ class SessionManager {
             return {
               name: "quick_reply",
               buttonParamsJson: JSON.stringify({
-                display_text: btn.text,
-                id: btn.buttonId
+                display_text: btn.displayText,
+                id: btn.id
               })
             };
           }
@@ -1869,35 +1926,35 @@ class SessionManager {
           }
         };
 
-        if (card.headerUrl) {
+        if (card.header && card.header.imageUrl) {
           // Prepare media for card header
           const media = await prepareWAMessageMedia(
-            { image: { url: card.headerUrl } },
+            { image: { url: card.header.imageUrl } },
             { upload: session.socket.waUploadToServer }
           );
           cardObj.header = {
+            title: card.header.title || "",
+            subtitle: card.header.subtitle || "",
             hasMediaAttachment: true,
             ...media
           };
         } else {
-          cardObj.header = { hasMediaAttachment: false };
+          cardObj.header = {
+            title: card.header?.title || "",
+            subtitle: card.header?.subtitle || "",
+            hasMediaAttachment: false
+          };
         }
 
         return cardObj;
       }));
 
+      // UPDATED: Strictly match ichat-2 structure: No top-level body/footer/header for Carousel
       const messageContent = {
-        viewOnceMessage: {
-          message: {
-            interactiveMessage: {
-              body: { text: payload.text },
-              footer: { text: payload.footer || "" },
-              header: { hasMediaAttachment: false },
-              carouselMessage: {
-                cards: cards,
-                messageVersion: 1
-              }
-            }
+        interactiveMessage: {
+          carouselMessage: {
+            cards: cards,
+            messageVersion: 1
           }
         }
       };

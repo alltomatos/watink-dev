@@ -2,103 +2,74 @@
   <img src="images/logo.png" alt="Watink Logo" width="200" />
 </p>
 
-# 🌐 Watink: Open Source Distributed WhatsApp Platform
+# 👋 Bem-vindo ao Watink
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
-[![Architecture: Microservices](https://img.shields.io/badge/Architecture-Microservices-blueviolet)](docs/microservices/ARCHITECTURE.md)
-[![orchestration: swarm](https://img.shields.io/badge/Orchestration-Docker%20Swarm-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/engine/swarm/)
-[![stack: node+react](https://img.shields.io/badge/Stack-Node.js%20%7C%20React-green)](rule/dev.md)
+**A sua central definitiva de atendimento e vendas via WhatsApp.**
 
-**Watink** é uma plataforma de atendimento omnicanal **Open Source**, distribuída e altamente escalável. Projetada nativamente para **Docker Swarm**, ela permite que empresas de qualquer porte orquestrem milhares de conversas simultâneas com estabilidade, automação e inteligência.
-
-> *Do desenvolvedor para a comunidade. Livre, robusto e pronto para produção.*
+O Watink transforma a maneira como sua empresa se comunica. Esqueça a bagunça de celulares espalhados e mensagens perdidas. Centralize todo o seu time em um único número de WhatsApp, organize atendimentos e automatize processos com inteligência.
 
 ---
 
-## 🚀 Por que Watink?
+## 🚀 O Que Você Pode Fazer com o Watink?
 
-Diferente de soluções monolíticas tradicionais, o Watink foi construído sobre uma **Arquitetura Orientada a Eventos**. Isso significa que cada componente – do motor de conexão WhatsApp ao construtor de fluxos – escala independentemente, garantindo que sua operação nunca pare.
+### 👥 **Múltiplos Atendentes, Um Só Número**
+Chega de compartilhar um único aparelho celular. Com o Watink, toda a sua equipe acessa o mesmo WhatsApp simultaneamente através de nosso painel web.
+- **Distribuição Automática**: As mensagens chegam e são distribuídas para filas ou departamentos (Comercial, Suporte, Financeiro).
+- **Transferência Fácil**: Passe o cliente de um atendente para outro com um clique, mantendo todo o histórico da conversa.
 
-### Destaques do Ecossistema
+### 🤖 **Automatize com o Flow Builder (Chatbots)**
+Crie seus próprios robôs de atendimento sem precisar de programadores.
+- **Arraste e Solte**: Desenhe fluxos de conversa visualmente.
+- **Menus Interativos**: Crie menus de opções, faça triagem automática e colete dados antes de passar para um humano.
+- **24/7**: Seu atendimento nunca para. O robô trabalha enquanto sua equipe descansa.
 
-*   **🔓 100% Open Source**: Código transparente, sem lock-in. A comunidade constrói junto.
-*   **🐳 Native Swarm**: Deploy on-premise ou cloud com orquestração de containers profissional.
-*   **🔌 Drivers Modulares**: Suporte a múltiplos motores de conexão (Whaileys/WhatsMeow) via microserviços.
-*   **🧠 IA Integrada (RAG)**: Chatbots que leem seus documentos PDF/Web e respondem humanamente usando Vector Database (pgvector).
+### 💰 **Venda Mais com o CRM Kanban**
+Organize seus leads e oportunidades de venda visualmente.
+- **Pipelines Visuais**: Mova os clientes entre colunas (ex: "Novo Contato", "Em Negociação", "Aguardando Pagamento", "Fechado").
+- **Tags e Etiquetas**: Classifique clientes (ex: "VIP", "Inadimplente", "Quente") para encontrá-los facilmente.
 
----
-
-## 💥 Funcionalidades Poderosas
-
-O Watink não é apenas um "disparador". É um sistema operacional completo para atendimento ao cliente.
-
-### 🎨 Flow Builder Visual
-Crie automações complexas arrastando e soltando blocos.
-*   **No-Code**: Construa menus, capture dados e tome decisões.
-*   **Integração Total**: Dispare Webhooks ou mova cards no Kanban diretamente do fluxo.
-
-### 📊 CRM & Pipeline Kanban
-Transforme conversas em vendas organizadas.
-*   **Gestão Visual**: Mova leads entre etapas (Prospecção -> Negociação -> Fechamento).
-*   **Automação**: O fluxo pode qualificar e mover o lead automaticamente.
-
-### 🏢 Gestão de Filas e Departamentos
-Organize sua operação de atendimento.
-*   **Filas Avançadas**: Distribuição de carga Round-Robin ou balanceada entre agentes.
-
-### 📈 Campanhas Inteligentes
-Marketing de alto impacto.
-*   **Segmentação por Tags**: Envie a mensagem certa para o público certo.
-*   **Agendamento Preciso**: Prepare campanhas para datas especiais.
+### 🧠 **Inteligência Artificial (IA)**
+Leve seu atendimento para o próximo nível com nossa IA integrada.
+- **Respostas Inteligentes**: Treine a IA com seus documentos e manuais para que ela responda dúvidas dos clientes naturalmente.
+- **Resumos de Conversa**: Obtenha insights rápidos sobre o que foi discutido.
 
 ---
 
-## 🏗️ Engenharia Distribuída
+## ✨ Funcionalidades Essenciais
 
-Nossa stack é escolhida para performance e confiabilidade:
-
-| Camada | Tecnologia | Função |
-| :--- | :--- | :--- |
-| **Frontend** | React + Vite + MUI | Interface SPA reativa e leve. |
-| **Backend** | Node.js + Express | API Gateway e Regras de Negócio. |
-| **Messaging** | **RabbitMQ** | Backbone de eventos para garantir entrega de mensagens. |
-| **Database** | PostgreSQL + **PostGIS** | Dados relacionais e geográficos. |
-| **Vector DB** | **pgvector** | Busca semântica para Inteligência Artificial. |
-
-| **Engine** | Microserviços Isolados | Workers dedicados para cada conexão WhatsApp. |
+| Funcionalidade | Descrição |
+| :--- | :--- |
+| **Respostas Rápidas** | Crie atalhos (ex: `/pix`) para enviar mensagens frequentes em segundos. |
+| **Campanhas em Massa** | Envie promoções ou avisos para listas de clientes com agendamento. |
+| **Notas Internas** | Deixe recados na conversa que apenas sua equipe vê ("Cliente pediu desconto X"). |
+| **Agendamento** | Programe mensagens para serem enviadas em horários específicos. |
+| **Marketplace** | Instale plugins extras para funcionalidades sob medida (ex: Integração com sistemas externos). |
+| **Dashboard** | Acompanhe métricas de atendimento, tempo de resposta e volume de mensagens. |
 
 ---
 
-## � Documentação
+## 📚 Como Começar?
 
-Acreditamos que um bom software precisa de uma ótima documentação.
+Preparamos um **Manual do Usuário** detalhado para guiar você em cada passo:
 
-### 👤 Para Usuários e Gestores
-Acesse o **Manual Completo do Usuário (User Guide)** para aprender a operar a plataforma:
-*   [🚀 Primeiros Passos e Conexão](userguide/connections/CONNECTING.md)
-*   [💬 Gestão de Atendimentos](userguide/chats/USING_CHATS.md)
-*   [⚙️ Criando Fluxos no Flow Builder](userguide/flowbuilder/CREATING_FLOWS.md)
-*   [📚 Ver Manual Completo](userguide/README.md)
+1.  **[Conectando seu WhatsApp](userguide/connections/CONNECTING.md)**: O primeiro passo para colocar sua empresa online.
+2.  **[Atendendo no Dia a Dia](userguide/chats/USING_CHATS.md)**: Como gerenciar conversas e tickets.
+3.  **[Criando seu Primeiro Robô](userguide/flowbuilder/CREATING_FLOWS.md)**: Tutorial do Flow Builder.
+4.  **[Organizando Filas e Setores](userguide/queues/MANAGING_QUEUES.md)**: Dividindo o trabalho da equipe.
 
-### � Para Desenvolvedores
-Quer contribuir ou customizar? Mergulhe na nossa **Documentação Técnica**:
-*   [🛠️ Guia de Contribuição e Regras](rule/dev.md)
-*   [🏗️ Arquitetura de Microserviços](docs/microservices/ARCHITECTURE.md)
-*   [🔌 API Reference (Swagger)](docs/backend/API.md)
+👉 **[Acesse o Manual Completo Aqui](userguide/README.md)**
 
 ---
 
-## 🤝 Contribua
+## ❓ Precisa de Ajuda?
 
-O Watink é mantido pela comunidade. PRs são bem-vindos!
-1.  Faça um Fork do projeto.
-2.  Crie sua Feature Branch (`git checkout -b feature/AmazingFeature`).
-3.  Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`).
-4.  Push para a Branch (`git push origin feature/AmazingFeature`).
-5.  Abra um Pull Request.
+Se tiver dúvidas ou encontrar problemas, nossa comunidade e suporte estão prontos para ajudar.
+Acesse o menu **Helpdesk/Ajuda** dentro da plataforma para abrir um chamado ou consultar nossos tutoriais.
+
+💬 **[Entre no nosso Grupo de Apoio no WhatsApp](https://chat.whatsapp.com/J7HDHaTvVDr5JUOd0HE1Bj)**
 
 ---
 
 <p align="center">
-  <sub>Construído com 🤖 pela equipe Watink. Do Ceará para o mundo!</sub>
+  <sub>Potencialize seu atendimento com Watink. Simples, Poderoso e Eficiente.</sub>
 </p>

@@ -10,7 +10,7 @@ module.exports = {
     let tenantId;
 
     if (tenants[0].length === 0) {
-      tenantId = uuidv4();
+      tenantId = process.env.DEFAULT_TENANT_UUID || uuidv4();
       await queryInterface.bulkInsert("Tenants", [
         {
           id: tenantId,

@@ -4,6 +4,8 @@ import { makeStyles } from "@material-ui/core/styles";
 import Paper from "@material-ui/core/Paper";
 import Grid from "@material-ui/core/Grid";
 import Button from "@material-ui/core/Button";
+import IconButton from "@material-ui/core/IconButton";
+import EditIcon from "@material-ui/icons/Edit";
 import { toast } from "react-toastify";
 
 import MainContainer from "../../components/MainContainer";
@@ -56,6 +58,11 @@ const Pipelines = () => {
 
     const handleOpenPipeline = (id) => {
         history.push(`/pipelines/${id}`);
+    };
+
+    const handleEditPipeline = (e, id) => {
+        e.stopPropagation();
+        history.push(`/pipelines/${id}/edit`);
     };
 
     return (
@@ -115,8 +122,17 @@ const Pipelines = () => {
                                 className={classes.card}
                                 variant="outlined"
                                 onClick={() => handleOpenPipeline(pipeline.id)}
+                                style={{ position: 'relative' }}
                             >
-                                <h3>{pipeline.name}</h3>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <h3 style={{ margin: '0 0 8px 0' }}>{pipeline.name}</h3>
+                                    <IconButton
+                                        size="small"
+                                        onClick={(e) => handleEditPipeline(e, pipeline.id)}
+                                    >
+                                        <EditIcon fontSize="small" />
+                                    </IconButton>
+                                </div>
                                 <p>{pipeline.description}</p>
                                 <span style={{
                                     background: pipeline.type === 'kanban' ? '#e3f2fd' : '#fff3e0',

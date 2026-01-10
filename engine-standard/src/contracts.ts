@@ -175,15 +175,19 @@ export interface SendCarouselPayload {
   text: string;
   footer?: string;
   cards: Array<{
-    headerUrl?: string;
-    title: string;
+    header: {
+      title: string;
+      subtitle?: string;
+      imageUrl?: string;
+      hasMedia?: boolean;
+    };
     body: string;
     footer?: string;
     buttons: Array<{
       type: 'url' | 'reply';
-      text: string;
+      displayText: string;
       url?: string;
-      buttonId?: string;
+      id?: string;
     }>;
   }>;
   options?: SendOptions;

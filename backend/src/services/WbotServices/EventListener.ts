@@ -270,6 +270,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
         preservedBody = existingMsg.body;
         preservedMediaUrl = existingMsg.getDataValue("mediaUrl");
         preservedMediaType = existingMsg.mediaType;
+        preservedCreatedAt = existingMsg.createdAt;
       }
     } else {
       logger.info(`[EventListener] handleMessageReceived - Deduping: Found originalId ${message.originalId}. Processing replacement.`);
@@ -491,12 +492,13 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
 
   let creationDate = new Date(message.timestamp * 1000);
 
-  // FIX: If timestamp is 0 or invalid (resulting in 1970/1969), use preserved CreatedAt or NOW
-  if (creationDate.getFullYear() < 2020) {
-    if (preservedCreatedAt) {
-      creationDate = preservedCreatedAt;
-      logger.info(`[EventListener] Invalid timestamp ${message.timestamp}. Restoring preserved createdAt: ${creationDate}`);
-    } else {
+  // FIX: Prioritize preservedCreatedAt to avoid message jumping in Optimistic UI
+  if (preservedCreatedAt) {
+    creationDate = preservedCreatedAt;
+    logger.info(`[EventListener] Restoring preserved createdAt for message ${message.id}: ${creationDate}`);
+  } else {
+    // If no preserved timestamp, check for invalid dates (1970)
+    if (creationDate.getFullYear() < 2020) {
       creationDate = new Date();
       logger.info(`[EventListener] Invalid timestamp ${message.timestamp}. using NOW: ${creationDate}`);
     }
@@ -698,13 +700,16 @@ const handleMessageAck = async (payload: { messageId: string; ack: number; sessi
       return;
     }
 
-    await message.update({ ack });
+    // Only update if new ACK is higher than current to prevent regression
+    if (ack > message.ack) {
+      await message.update({ ack });
 
-    const io = getIO();
-    io.to(message.ticketId.toString()).emit(`appMessage`, {
-      action: "update",
-      message: message
-    });
+      const io = getIO();
+      io.to(message.ticketId.toString()).emit(`appMessage`, {
+        action: "update",
+        message: message
+      });
+    }
 
   } catch (err) {
     logger.error(`[EventListener] Error handling message ACK: ${err}`);

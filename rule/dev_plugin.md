@@ -1,4 +1,4 @@
-# 🧩 Guia de Desenvolvimento de Plugins - Watink
+![alt text](image.png)# 🧩 Guia de Desenvolvimento de Plugins - Watink
 
 Este documento é o manual oficial para a criação e integração de novos módulos (plugins) ao ecossistema Watink. Ele detalha o ciclo completo, desde a criação da estrutura até a proteção de rotas e integração ao sistema de permissões (RBAC).
 
