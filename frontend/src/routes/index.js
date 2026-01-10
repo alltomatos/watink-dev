@@ -46,6 +46,7 @@ const PrivateRoutes = () => {
             <Route exact path="/" component={Dashboard} isPrivate />
             <Route exact path="/pipelines" component={Pipelines} isPrivate />
             <Route exact path="/pipelines/new" component={PipelineCreator} isPrivate />
+            <Route exact path="/pipelines/:pipelineId/edit" component={PipelineCreator} isPrivate />
             <Route exact path="/pipelines/:pipelineId" component={PipelineBoard} isPrivate />
             <Route exact path="/tickets/:ticketId?" component={Tickets} isPrivate />
             <Route exact path="/flowbuilder" component={FlowManager} isPrivate />
