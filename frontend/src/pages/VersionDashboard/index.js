@@ -46,9 +46,10 @@ export default function VersionDashboard() {
     const fetchOne = async (key, url) => {
       const start = performance.now();
       try {
-        const res = await fetch(url, { headers: { "Cache-Control": "no-store" } });
+        const urlWithCacheBuster = `${url}?t=${Date.now()}`;
+        const res = await fetch(urlWithCacheBuster, { headers: { "Cache-Control": "no-store", "Pragma": "no-cache" } });
         const elapsed = performance.now() - start;
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status} `);
         const json = await res.json();
         results[key] = {
           service: json.service || key,

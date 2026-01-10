@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useHistory } from "react-router-dom";
+import { useHistory, useParams } from "react-router-dom";
 import { makeStyles } from "@material-ui/core/styles";
 import {
     Paper,
@@ -129,6 +129,7 @@ const getStageColor = (index) => stageColors[index % stageColors.length];
 const PipelineCreator = () => {
     const classes = useStyles();
     const history = useHistory();
+    const { pipelineId } = useParams();
     const messagesEndRef = useRef(null);
 
     const [data, setData] = useState({
@@ -154,7 +155,33 @@ const PipelineCreator = () => {
                 console.error("Erro ao carregar configurações:", err);
             }
         };
+
+
+        const fetchPipeline = async () => {
+            if (!pipelineId) return;
+            try {
+                const { data } = await api.get("/pipelines");
+                const pipeline = data.find(p => p.id === Number(pipelineId));
+                if (pipeline) {
+                    setData({
+                        name: pipeline.name,
+                        description: pipeline.description || "",
+                        type: pipeline.type || "kanban",
+                        stages: pipeline.stages.map(s => s.name)
+                    });
+                    // Inject AI Context about editing
+                    setMessages(prev => [
+                        ...prev,
+                        { role: "ai", content: `Estou pronto para ajudar a editar o pipeline "${pipeline.name}".` }
+                    ]);
+                }
+            } catch (err) {
+                toast.error("Erro ao carregar pipeline para edição");
+            }
+        };
+
         fetchSettings();
+        fetchPipeline();
     }, []);
 
     // Chat State
@@ -186,8 +213,14 @@ const PipelineCreator = () => {
                 ...data,
                 stages: data.stages.map(stage => ({ name: stage }))
             };
-            await api.post("/pipelines", payload);
-            toast.success("Pipeline criado com sucesso!");
+
+            if (pipelineId) {
+                await api.put(`/pipelines/${pipelineId}`, payload);
+                toast.success("Pipeline atualizado com sucesso!");
+            } else {
+                await api.post("/pipelines", payload);
+                toast.success("Pipeline criado com sucesso!");
+            }
             history.push("/pipelines");
         } catch (err) {
             toast.error("Erro ao criar pipeline");
@@ -281,7 +314,7 @@ const PipelineCreator = () => {
                     <IconButton onClick={() => history.push("/pipelines")}>
                         <ArrowBackIcon />
                     </IconButton>
-                    <Title>Novo Pipeline</Title>
+                    <Title>{pipelineId ? "Editar Pipeline" : "Novo Pipeline"}</Title>
                 </div>
             </MainHeader>
 

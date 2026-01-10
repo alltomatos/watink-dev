@@ -52,7 +52,7 @@ services:
         - "traefik.docker.network=watink_watink_public"
 
   frontend:
-    image: watink/frontend:0.7.81
+    image: watink/frontend:0.7.86
     build:
       context: ./frontend
       dockerfile: ./Dockerfile

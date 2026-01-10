@@ -67,16 +67,7 @@ fi
 echo "New version: $VERSION_NUM"
 cd ..
 
-# 2. Build
-echo "🏗️ Building Docker image (no-cache)..."
-docker compose -f docker-stack.yml build --no-cache $COMPOSE_SVC
-
-# 3. Tagging
-echo "🏷️ Tagging images..."
-docker tag $COMPOSE_IMAGE:latest $IMAGE_NAME:$VERSION_NUM
-docker tag $COMPOSE_IMAGE:latest $IMAGE_NAME:latest
-
-# 4. Update docker-stack.yml (Source of Truth)
+# 2. Update docker-stack.yml (Source of Truth)
 echo "📝 Updating docker-stack.yml version references..."
 
 if [ "$SERVICE" == "backend" ]; then
@@ -90,6 +81,15 @@ elif [ "$SERVICE" == "engine" ]; then
 elif [ "$SERVICE" == "plugin-manager" ]; then
   sed -i "s|image: watink/plugin-manager:.*|image: watink/plugin-manager:$VERSION_NUM|g" docker-stack.yml
 fi
+
+# 3. Build
+echo "🏗️ Building Docker image (no-cache)..."
+docker compose -f docker-stack.yml build --no-cache $COMPOSE_SVC
+
+# 4. Tagging
+echo "🏷️ Tagging images..."
+# Explicitly tag the newly built version as latest
+docker tag $IMAGE_NAME:$VERSION_NUM $IMAGE_NAME:latest
 
 # 5. Redeploy Stack
 echo "🔄 Redeploying Stack via docker stack deploy..."
