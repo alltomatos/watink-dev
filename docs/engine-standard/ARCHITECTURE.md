@@ -13,11 +13,17 @@ O cérebro do microsserviço.
 - Mantém um `Map<sessionId, WhaileysSession>` em memória.
 - Processa cada comando recebido do RabbitMQ via `handleCommand`.
 - Gerencia o ciclo de vida do socket da biblioteca `whaileys`.
+- Integração com **Redis** para armazenamento temporário de mensagens (`Transient Store`) garantindo persistência para mecanismos de retentativa.
 - Escuta eventos do socket (`connection.update`, `messages.upsert`) e os transforma em eventos AMQP.
 
 ### 3. Sistema de Arquivos
 - Credenciais de autenticação são salvas em `.sessions_auth/session-{id}/`.
 - É crucial que este diretório seja persistente (Volume Docker) para evitar desconexões ao reiniciar o container.
+
+### 4. Redis (Transient Store)
+- **Função**: Persistência de curto prazo para mensagens.
+- **Uso**: Quando uma mensagem chega (`messages.upsert`), ela é salva no Redis com TTL de 24h. Isso permite que o mecanismo de `retry` recupere o conteúdo da mensagem mesmo se o processo Node.js reiniciar.
+- **Chave**: `wbot:msg:{jid}:{id}`.
 
 ## Fluxo de Dados
 

@@ -86,6 +86,8 @@ const handlePairingCode = async (payload: PairingCodePayload) => {
   });
 };
 
+import { RedisService } from "../RedisService";
+
 const handleSessionStatus = async (payload: SessionStatusPayload) => {
   const io = getIO();
 
@@ -97,6 +99,24 @@ const handleSessionStatus = async (payload: SessionStatusPayload) => {
     updateData,
     { where: { id: getSessionId(payload.sessionId) } }
   );
+
+  // REDIS CACHE IMPLEMENTATION
+  try {
+    const redis = RedisService.getInstance();
+    const statusKey = `session:status:${getSessionId(payload.sessionId)}`;
+    // Cache the status payload for quick retrieval
+    // We store the full payload or just the status string? 
+    // Plan said "session:status:{id} exists and has correct value"
+    // Let's store a simple JSON object
+    await redis.setValue(statusKey, JSON.stringify({
+      status: payload.status,
+      number: payload.number,
+      profilePicUrl: payload.profilePicUrl,
+      updatedAt: Date.now()
+    }));
+  } catch (err) {
+    logger.error(`Failed to cache session status in Redis: ${err}`);
+  }
 
   io.emit(`whatsappSession`, {
     action: "update",

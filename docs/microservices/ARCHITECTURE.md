@@ -25,8 +25,8 @@ O Watink adota uma arquitetura distribuída, separando responsabilidades crític
 
 ### 4. Backing Services
 - **RabbitMQ**: Message Broker. Espinha dorsal da comunicação entre Backend e Engine.
-- **PostgreSQL**: Banco de dados relacional.
-- **Redis**: Gerenciamento de filas e cache.
+- **PostgreSQL**: Banco de dados relacional (Dados de Negócio).
+- **Redis**: Transient Store (Retentativa de mensagens) e Cache distribuído.
 - **MinIO/S3** (Opcional): Armazenamento de mídia.
 
 ## Diagrama de Comunicação

@@ -15,12 +15,14 @@ interface Request {
   media: Express.Multer.File;
   ticket: Ticket;
   body?: string;
+  mentionedIds?: string[];
 }
 
 const SendWhatsAppMedia = async ({
   media,
   ticket,
-  body
+  body,
+  mentionedIds
 }: Request): Promise<Message> => {
   try {
     const hasBody = body
@@ -77,6 +79,7 @@ const SendWhatsAppMedia = async ({
         to: `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
         lid: ticket.contact.lid || undefined,
         caption: hasBody,
+        mentions: mentionedIds,
         media: {
           mimetype: media.mimetype,
           filename: media.originalname,

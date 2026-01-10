@@ -117,6 +117,7 @@ const ConnectionConfig = () => {
     const [connectionStarted, setConnectionStarted] = useState(false);
     const [showQrCode, setShowQrCode] = useState(false);
     const [inputPairingModalOpen, setInputPairingModalOpen] = useState(false);
+    const [connecting, setConnecting] = useState(false);
 
     console.log("ConnectionConfig State:", {
         status: whatsapp?.status,
@@ -203,13 +204,18 @@ const ConnectionConfig = () => {
 
     const handleStartSessionQr = async () => {
         try {
-            setShowQrCode(true);
-            setShowPairingInput(false);
-            if (whatsapp.status !== "QRCODE") {
-                await api.post(`/whatsappsession/${whatsappId}`, { usePairingCode: false });
+            if (whatsapp.status === "QRCODE") {
+                setShowQrCode(true);
+                setShowPairingInput(false);
+                return;
             }
+
+            setConnecting(true);
+            setShowPairingInput(false);
+            await api.post(`/whatsappsession/${whatsappId}`, { usePairingCode: false });
         } catch (err) {
             toastError(err);
+            setConnecting(false);
         }
     };
 
@@ -403,9 +409,10 @@ const ConnectionConfig = () => {
                                         color="primary"
                                         className={classes.actionButton}
                                         onClick={handleStartSessionQr}
-                                        startIcon={<CropFree />}
+                                        disabled={connecting}
+                                        startIcon={connecting ? <CircularProgress size={20} color="inherit" /> : <CropFree />}
                                     >
-                                        QR CODE
+                                        {connecting ? "Iniciando Conexão..." : "QR CODE"}
                                     </Button>
                                     <Button
                                         variant="contained"
