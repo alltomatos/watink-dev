@@ -32,6 +32,7 @@ const endpoints = [
   { key: "flow-worker", url: "/api/flow/version" },
   { key: "pgvectorgis", url: "/api/postgres/version" },
   { key: "rabbitmq", url: "/api/rabbitmq/version" },
+  { key: "redis", url: "/api/redis/version" },
 ];
 
 export default function VersionDashboard() {

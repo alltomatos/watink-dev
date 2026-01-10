@@ -238,7 +238,6 @@ const useStyles = makeStyles((theme) => ({
 
   messageMedia: {
     objectFit: "cover",
-    objectFit: "cover",
     width: 330,
     height: "auto",
     borderTopLeftRadius: 8,
