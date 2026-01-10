@@ -32,11 +32,15 @@ const useStyles = makeStyles((theme) => ({
         padding: theme.spacing(2),
     },
     card: {
+        padding: theme.spacing(2),
         minWidth: 275,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        height: '100%'
+        height: '100%',
+        cursor: "pointer",
+        transition: "transform 0.2s",
+        "&:hover": {
+            transform: "scale(1.02)",
+            boxShadow: "0 4px 20px 0 rgba(0,0,0,0.12)"
+        }
     },
     cardContent: {
         flexGrow: 1
@@ -139,27 +143,36 @@ const FlowManager = () => {
             <Grid container spacing={3}>
                 {flows.map((flow) => (
                     <Grid item xs={12} sm={6} md={4} key={flow.id}>
-                        <Card className={classes.card}>
-                            <CardContent className={classes.cardContent}>
-                                <Typography variant="h5" component="h2">
-                                    {flow.name}
+                        <Paper
+                            className={classes.card}
+                            variant="outlined"
+                            onClick={() => handleEditFlow(flow.id)}
+                            style={{ position: 'relative' }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <h3 style={{ margin: '0 0 8px 0' }}>{flow.name}</h3>
+                                <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditFlow(flow.id);
+                                    }}
+                                >
+                                    <Edit fontSize="small" />
+                                </IconButton>
+                            </div>
+
+                            <Typography color="textSecondary" variant="body2" gutterBottom>
+                                Status: {flow.isActive ? 'Ativo' : 'Inativo'}
+                            </Typography>
+
+                            {flow.whatsapp && (
+                                <Typography variant="caption" display="block" color="textPrimary">
+                                    Conexão: <strong>{flow.whatsapp.name}</strong>
                                 </Typography>
-                                <Typography color="textSecondary" gutterBottom>
-                                    Status: {flow.isActive ? 'Ativo' : 'Inativo'}
-                                </Typography>
-                                {flow.whatsapp && (
-                                    <Typography variant="body2" component="p">
-                                        Conexão: <strong>{flow.whatsapp.name}</strong>
-                                    </Typography>
-                                )}
-                            </CardContent>
-                            <CardActions>
-                                <Button size="small" color="primary" onClick={() => handleEditFlow(flow.id)} startIcon={<Edit />}>
-                                    Editar
-                                </Button>
-                                {/* Add Delete button later */}
-                            </CardActions>
-                        </Card>
+                            )}
+                        </Paper>
                     </Grid>
                 ))}
             </Grid>
