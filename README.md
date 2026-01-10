@@ -66,6 +66,8 @@ Preparamos um **Manual do Usuário** detalhado para guiar você em cada passo:
 Se tiver dúvidas ou encontrar problemas, nossa comunidade e suporte estão prontos para ajudar.
 Acesse o menu **Helpdesk/Ajuda** dentro da plataforma para abrir um chamado ou consultar nossos tutoriais.
 
+💬 **[Entre no nosso Grupo de Apoio no WhatsApp](https://chat.whatsapp.com/J7HDHaTvVDr5JUOd0HE1Bj)**
+
 ---
 
 <p align="center">

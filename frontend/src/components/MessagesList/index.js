@@ -779,24 +779,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
     return groupColorCacheRef.current.get(participantId);
   };
 
-  const renderSenderName = (message) => {
-    if (!isGroup) return null;
-    let name = message.contact?.name || message.participant;
 
-    let data = message.dataJson;
-    if (typeof data === "string") {
-      try { data = JSON.parse(data); } catch (e) { data = {}; }
-    }
-    if (data?.pushName) name = data.pushName;
-
-    const color = getParticipantColor(message);
-
-    return (
-      <span className={classes.messageContactName} style={{ color }}>
-        {name || "Desconhecido"}
-      </span>
-    );
-  };
 
   const getMessageBody = (message) => {
     if (message.mediaType === "location") return "Localização";
@@ -909,6 +892,22 @@ const MessagesList = ({ ticketId, isGroup }) => {
       try { data = JSON.parse(data); } catch (e) { data = {}; }
     }
     if (!data?.preview) return null;
+
+    return (
+      <div className={classes.urlPreviewContainer} onClick={() => window.open(data.preview.url, '_blank')}>
+        {data.preview.image && (
+          <img src={data.preview.image} alt={data.preview.title} className={classes.urlPreviewImage} />
+        )}
+        <div className={classes.urlPreviewText}>
+          <a href={data.preview.url} target="_blank" rel="noopener noreferrer" className={classes.urlPreviewTitle}>
+            {data.preview.title}
+          </a>
+          <p className={classes.urlPreviewDescription}>
+            {data.preview.description}
+          </p>
+        </div>
+      </div>
+    );
   };
 
   const [participants, setParticipants] = useState([]);
@@ -957,8 +956,6 @@ const MessagesList = ({ ticketId, isGroup }) => {
     participants.forEach(p => {
       if (p.number && p.name) {
         const number = p.number.replace(/\D/g, "");
-        // Prefer existing map (pushName from message might be more current?) or prefer contact name?
-        // Usually contact name is better if it exists.
         if (!map[number]) {
           map[number] = p.name;
         }
@@ -970,53 +967,27 @@ const MessagesList = ({ ticketId, isGroup }) => {
 
   const renderSenderName = (message) => {
     if (!isGroup) return null;
-
-    // If it's my message, no need to show my name
     if (message.fromMe) return null;
 
     let pushName = null;
     let participantNumber = null;
 
-    // Try to get from dataJson (new way)
     if (message.dataJson) {
-      // If dataJson is string (legacy), parse it
       const data = typeof message.dataJson === 'string' ? JSON.parse(message.dataJson) : message.dataJson;
       pushName = data.pushName;
     }
-
-    // Fallback to participant column or contact name if it was linked to a saved contact
-    // Note: message.contact is usually the group itself if we decided not to link to participant contact
-    // If we linked to participant contact, message.contact.name is the name.
-
-    // If we rely on the new logic where we DON'T create contacts for participants:
-    // message.contact will be the GROUP contact.
-    // So we must use message.participant or dataJson.pushName to identify sender.
 
     if (message.participant) {
       participantNumber = message.participant.replace(/\D/g, "");
     }
 
     const displayName = pushName || participantNumber || "Unknown";
-    const displayNumber = participantNumber ? `(${participantNumber})` : "";
-
-    // If there is a pushName, show: ~PushName (Number)
-    // If only number: ~Number
->>>>>>> fix/chat-fixes
+    const color = getParticipantColor(message);
 
     return (
-      <div className={classes.urlPreviewContainer} onClick={() => window.open(data.preview.url, '_blank')}>
-        {data.preview.image && (
-          <img src={data.preview.image} alt={data.preview.title} className={classes.urlPreviewImage} />
-        )}
-        <div className={classes.urlPreviewText}>
-          <a href={data.preview.url} target="_blank" rel="noopener noreferrer" className={classes.urlPreviewTitle}>
-            {data.preview.title}
-          </a>
-          <p className={classes.urlPreviewDescription}>
-            {data.preview.description}
-          </p>
-        </div>
-      </div>
+      <span className={classes.messageContactName} style={{ color }}>
+        {displayName}
+      </span>
     );
   };
 
