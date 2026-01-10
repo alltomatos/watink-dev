@@ -18,6 +18,7 @@ interface CreateProtocolData {
     priority?: string;
     category?: string;
     dueDate?: Date;
+    carouselCards?: any[]; // Array of cards
 }
 
 const generateProtocolNumber = (): string => {
@@ -25,6 +26,9 @@ const generateProtocolNumber = (): string => {
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
     return `${date}-${random}`;
 };
+
+import SendWhatsAppCarousel from "../WbotServices/SendWhatsAppCarousel";
+import SendWhatsAppUrlButton from "../WbotServices/SendWhatsAppUrlButton";
 
 const CreateProtocolService = async (
     data: CreateProtocolData,
@@ -47,8 +51,6 @@ const CreateProtocolService = async (
         comment: `Protocolo ${protocolNumber} criado`
     });
 
-    // ... (imports e código anterior)
-
     const fullProtocol = await Protocol.findByPk(protocol.id, {
         include: [
             { model: Contact, as: "contact" },
@@ -58,50 +60,54 @@ const CreateProtocolService = async (
         ]
     });
 
-    // Enviar mensagem de confirmação se houver ticket e conexão
-    if (fullProtocol?.ticket && fullProtocol.ticket.whatsappId) {
+    // Send automatic message if ticketId is present
+    if (data.ticketId) {
         try {
-            const { contact, ticket } = fullProtocol;
-            const appUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-            // Supondo rota /helpdesk/:id ou similar. Ajuste conforme necessário.
-            const protocolUrl = `${appUrl}/helpdesk/${fullProtocol.id}`;
+            // TODO: Restore Carousel logic if needed. Currently using reliable RabbitMQ interactive message.
+            // if (data.carouselCards && data.carouselCards.length > 0) { ... }
 
-            const priorityMap: Record<string, string> = {
-                low: "Baixa",
-                medium: "Normal",
-                high: "Alta",
-                urgent: "Urgente"
-            };
+            if (fullProtocol?.ticket && fullProtocol.ticket.whatsappId) {
+                const { contact, ticket } = fullProtocol;
+                const appUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+                const protocolUrl = `${appUrl}/public/protocols/${protocol.token}`; // Use token URL from HEAD idea, it's better for public access
 
-            const payload = {
-                sessionId: ticket.whatsappId,
-                to: `${contact.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
-                text: `*Olá! Seu protocolo de atendimento foi criado com sucesso.*\n\n*Protocolo:* #${protocol.protocolNumber}\n*Assunto:* ${protocol.subject}\n*Prioridade:* ${priorityMap[protocol.priority] || protocol.priority}\n\nAcompanhe o andamento clicando no botão abaixo.`,
-                footer: `Protocolo: ${protocol.protocolNumber} - ${format(new Date(), "HH:mm")}`,
-                buttons: [
-                    {
-                        type: "url",
-                        text: "👁️ Ver Protocolo",
-                        url: protocolUrl
-                    }
-                ],
-                messageId: uuidv4()
-            };
+                const priorityMap: Record<string, string> = {
+                    low: "Baixa",
+                    medium: "Normal",
+                    high: "Alta",
+                    urgent: "Urgente"
+                };
 
-            const command: Envelope = {
-                id: uuidv4(),
-                timestamp: Date.now(),
-                tenantId: data.tenantId,
-                type: "message.send.interactive",
-                payload
-            };
+                const payload = {
+                    sessionId: ticket.whatsappId,
+                    to: `${contact.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
+                    text: `*Olá! Seu protocolo de atendimento foi criado com sucesso.*\n\n*Protocolo:* #${protocol.protocolNumber}\n*Assunto:* ${protocol.subject}\n*Prioridade:* ${priorityMap[protocol.priority] || protocol.priority}\n\nAcompanhe o andamento clicando no botão abaixo.`,
+                    footer: `Protocolo: ${protocol.protocolNumber} - ${format(new Date(), "HH:mm")}`,
+                    buttons: [
+                        {
+                            type: "url",
+                            text: "👁️ Ver Protocolo",
+                            url: protocolUrl
+                        }
+                    ],
+                    messageId: uuidv4()
+                };
 
-            await RabbitMQService.publishCommand(
-                `wbot.${data.tenantId}.${ticket.whatsappId}.message.send.interactive`,
-                command
-            );
-        } catch (err) {
-            console.error("Erro ao enviar mensagem de confirmação de protocolo:", err);
+                const command: Envelope = {
+                    id: uuidv4(),
+                    timestamp: Date.now(),
+                    tenantId: data.tenantId,
+                    type: "message.send.interactive",
+                    payload
+                };
+
+                await RabbitMQService.publishCommand(
+                    `wbot.${data.tenantId}.${ticket.whatsappId}.message.send.interactive`,
+                    command
+                );
+            }
+        } catch (error) {
+            console.error("Error sending protocol creation message:", error);
         }
     }
 

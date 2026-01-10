@@ -11,7 +11,7 @@ import Avatar from "@material-ui/core/Avatar";
 import Button from "@material-ui/core/Button";
 import Paper from "@material-ui/core/Paper";
 import DeleteOutlineIcon from "@material-ui/icons/DeleteOutline";
-import AddIcon from "@material-ui/icons/Add";
+// import AddIcon from "@material-ui/icons/Add";
 import AssignmentIcon from "@material-ui/icons/Assignment";
 import EditIcon from "@material-ui/icons/Edit";
 import RefreshIcon from "@material-ui/icons/Refresh";
@@ -254,6 +254,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 	}, []);
 
 
+
 	return (
 		<Drawer
 			className={classes.drawer}
@@ -410,7 +411,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 								<Button
 									variant="outlined"
 									color="primary"
-									startIcon={<AddIcon />}
+									// startIcon={<AddIcon />}
 									onClick={() => setPipelineModalOpen(true)}
 									style={{ marginTop: 8 }}
 									fullWidth
@@ -479,7 +480,6 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 								</DialogActions>
 							</Dialog>
 
-							{/* Protocol Creation Dialog */}
 							{/* Protocol Creation Drawer */}
 							<ProtocolDrawer
 								open={protocolDrawerOpen}

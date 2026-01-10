@@ -75,6 +75,8 @@ const PrivateRoutes = () => {
   );
 };
 
+import PublicProtocol from "../pages/PublicProtocol";
+
 const Routes = () => {
   return (
     <BrowserRouter>
@@ -83,6 +85,7 @@ const Routes = () => {
           <Switch>
             <Route exact path="/login" component={Login} />
             <Route exact path="/signup" component={Signup} />
+            <Route exact path="/public/protocols/:token" component={PublicProtocol} />
             <Route path="/" component={PrivateRoutes} isPrivate />
           </Switch>
           <ToastContainer autoClose={3000} />

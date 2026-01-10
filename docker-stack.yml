@@ -19,6 +19,7 @@ services:
       - URL_BACKEND=http://localhost
       - PORT=8080
       - NODE_OPTIONS=--max-old-space-size=800
+      - DEFAULT_TENANT_UUID=550e8400-e29b-41d4-a716-446655440000
       - REDIS_URL=redis://redis:6379
 
     volumes:
@@ -139,6 +140,7 @@ services:
       - DB_PASS=postgres
       - DB_NAME=watink
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+      - DEFAULT_TENANT_UUID=550e8400-e29b-41d4-a716-446655440000
     networks:
       - watink_private
 
