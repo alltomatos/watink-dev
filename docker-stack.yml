@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: watink/backend:1.3.196
+    image: watink/backend:1.3.197
     build:
       context: ./backend
       dockerfile: ./Dockerfile
@@ -53,7 +53,7 @@ services:
         - "traefik.docker.network=watink_watink_public"
 
   frontend:
-    image: watink/frontend:0.7.119
+    image: watink/frontend:0.7.120
     build:
       context: ./frontend
       dockerfile: ./Dockerfile
@@ -131,7 +131,7 @@ services:
           memory: 2048M
 
   flow-engine-worker:
-    image: watink/backend:1.3.196
+    image: watink/backend:1.3.197
     command: ["node", "dist/flow-worker.js"]
     environment:
       - DB_DIALECT=postgres
@@ -154,37 +154,7 @@ services:
           cpus: '0.50'
           memory: 512M
 
-  plugin-manager:
-    image: watink/plugin-manager:1.0.25
-    build:
-      context: ./plugin-manager
-      dockerfile: Dockerfile
-    environment:
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/watink?sslmode=disable
-      - PLUGIN_CDN_URL=http://localhost
-      - PORT=3005
-      - ENVIRONMENT=production
-      - MARKETPLACE_URL=https://uskylkkwbivdijhdozob.supabase.co
 
-    networks:
-      - watink_private
-      - watink_public
-
-    deploy:
-      mode: replicated
-      replicas: 1
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256M
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.plugins.rule=Host(`app.localhost`) && PathPrefix(`/plugins`)"
-        - "traefik.http.routers.plugins.entrypoints=web"
-        - "traefik.http.routers.plugins.middlewares=plugins-strip"
-        - "traefik.http.middlewares.plugins-strip.stripprefix.prefixes=/plugins"
-        - "traefik.http.services.plugins.loadbalancer.server.port=3005"
-        - "traefik.docker.network=watink_watink_public"
 
   rabbitmq:
     image: rabbitmq:3-management-alpine

@@ -18,3 +18,4 @@ engine-go
 # Legacy & Obsolete
 #docs/old/
 #rule/dev_micro.md
+plugin-manager/

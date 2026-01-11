@@ -22,25 +22,23 @@ module.exports = {
         );
 
         if (existingInstallation[0].length > 0) {
-            console.log("Clientes plugin already installed for default tenant.");
-            // Ensure it is active
-            await queryInterface.sequelize.query(
-                `UPDATE "PluginInstallations" SET status = 'active' WHERE "tenantId" = '${tenantId}' AND "pluginId" = '${clientsPluginId}';`
-            );
+            console.log("Clientes plugin already installed for default tenant. Keeping current status.");
+            // Do NOT force activation - respect user's choice
             return;
         }
 
-        // 3. Install/Activate Clientes Plugin
+        // 3. Install Clientes Plugin as INACTIVE by default
         await queryInterface.bulkInsert("PluginInstallations", [
             {
                 id: uuidv4(),
                 tenantId: tenantId,
                 pluginId: clientsPluginId,
-                status: "active",
+                status: "inactive", // Plugin comes disabled by default
                 installedAt: new Date(),
-                activatedAt: new Date()
+                activatedAt: null
             }
         ]);
+        console.log("Clientes plugin installed as INACTIVE for default tenant.");
     },
 
     down: async (queryInterface: QueryInterface) => {
