@@ -14,7 +14,7 @@ interface MessageData {
   mediaUrl?: string;
   tenantId?: number | string;
   ack?: number;
-  quotedMsgId?: string;
+  quotedMsgId?: string | null;
   dataJson?: object;
   participant?: string;
   createdAt?: Date;
@@ -26,6 +26,18 @@ interface Request {
 const CreateMessageService = async ({
   messageData
 }: Request): Promise<Message> => {
+  // Check if quotedMsgId refers to an existing message
+  if (messageData.quotedMsgId) {
+    const quotedMsg = await Message.findByPk(messageData.quotedMsgId);
+    if (!quotedMsg) {
+      // If quoted message does not exist, we cannot reference it in DB due to FK constraint.
+      // We log a warning and proceed without the quote reference.
+      const { logger } = require("../../utils/logger");
+      logger.warn(`[CreateMessageService] Quoted message ${messageData.quotedMsgId} not found. Removing reference to prevent FK error.`);
+      messageData.quotedMsgId = null;
+    }
+  }
+
   await Message.upsert(messageData);
 
   const message = await Message.findByPk(messageData.id, {

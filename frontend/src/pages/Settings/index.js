@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useContext } from "react";
 import openSocket from "../../services/socket-io";
 import MemoryIcon from "@material-ui/icons/Memory";
+
 import ExtensionIcon from "@material-ui/icons/Extension";
+import HeadsetMicIcon from "@material-ui/icons/HeadsetMic";
+import AddIcon from "@material-ui/icons/Add";
+import Chip from "@material-ui/core/Chip";
+import Grid from "@material-ui/core/Grid";
+import IconButton from "@material-ui/core/IconButton";
 import { useHistory } from "react-router-dom";
 
 import { makeStyles } from "@material-ui/core/styles";
@@ -136,8 +142,10 @@ const Settings = () => {
 	const history = useHistory();
 	const { user } = useContext(AuthContext);
 
+
 	const [activeSection, setActiveSection] = useState("general");
 	const [settings, setSettings] = useState([]);
+	const [activePlugins, setActivePlugins] = useState([]); // New state for plugins
 	const [systemTitle, setSystemTitle] = useState("");
 	const [logoPreview, setLogoPreview] = useState(null);
 	const [logoEnabled, setLogoEnabled] = useState(true);
@@ -157,12 +165,60 @@ const Settings = () => {
 	const [aiFlowBuilderEnabled, setAiFlowBuilderEnabled] = useState(false);
 	const [aiAssistantEnabled, setAiAssistantEnabled] = useState(false);
 
+	// Helpdesk Settings
+	const [helpdeskEnabled, setHelpdeskEnabled] = useState(false);
+	const [helpdeskSla, setHelpdeskSla] = useState({ low: 24, medium: 12, high: 4, urgent: 1 });
+	const [helpdeskCategories, setHelpdeskCategories] = useState([]);
+	const [newCategory, setNewCategory] = useState("");
+
+
+
+	useEffect(() => {
+		const fetchPlugins = async () => {
+			try {
+				const { data } = await api.get("/plugins/api/v1/plugins/installed");
+				setActivePlugins(data.active || []);
+			} catch (err) {
+				console.error("Failed to fetch plugins", err);
+			}
+		};
+		fetchPlugins();
+	}, []);
+
 	useEffect(() => {
 		const fetchSession = async () => {
 			try {
 				const { data } = await api.get("/settings");
 				const settingsData = Array.isArray(data) ? data : [];
 				setSettings(settingsData);
+
+				// ... existing checks ...
+
+				// Helpdesk Settings Load
+				const helpdeskEnabledSetting = settingsData.find(s => s.key === "helpdesk_settings_enabled");
+				if (helpdeskEnabledSetting) setHelpdeskEnabled(helpdeskEnabledSetting.value === "true");
+
+				const helpdeskSlaSetting = settingsData.find(s => s.key === "helpdesk_sla_config");
+				if (helpdeskSlaSetting) {
+					try {
+						setHelpdeskSla(JSON.parse(helpdeskSlaSetting.value));
+					} catch (e) {
+						console.error("Error parsing SLA config", e);
+					}
+				}
+
+				const helpdeskCategoriesSetting = settingsData.find(s => s.key === "helpdesk_categories");
+				if (helpdeskCategoriesSetting) {
+					try {
+						setHelpdeskCategories(JSON.parse(helpdeskCategoriesSetting.value));
+					} catch (e) {
+						// Default if new or error
+						setHelpdeskCategories(["Incidente", "Requisição de Serviço", "Problema", "Mudança"]);
+					}
+				} else {
+					setHelpdeskCategories(["Incidente", "Requisição de Serviço", "Problema", "Mudança"]);
+				}
+
 
 				const titleSetting = settingsData.find(s => s.key === "systemTitle");
 				if (titleSetting) setSystemTitle(titleSetting.value);
@@ -678,6 +734,169 @@ const Settings = () => {
 		</>
 	);
 
+	const handleAddCategory = () => {
+		if (newCategory.trim() && !helpdeskCategories.includes(newCategory.trim())) {
+			const updatedCategories = [...helpdeskCategories, newCategory.trim()];
+			setHelpdeskCategories(updatedCategories);
+			setNewCategory("");
+			saveHelpdeskCategories(updatedCategories);
+		}
+	};
+
+	const handleDeleteCategory = (categoryToDelete) => {
+		const updatedCategories = helpdeskCategories.filter((category) => category !== categoryToDelete);
+		setHelpdeskCategories(updatedCategories);
+		saveHelpdeskCategories(updatedCategories);
+	};
+
+	const saveHelpdeskCategories = async (categories) => {
+		try {
+			await api.put("/settings/helpdesk_categories", {
+				value: JSON.stringify(categories),
+			});
+			toast.success("Categorias atualizadas!");
+		} catch (err) {
+			toast.error("Erro ao salvar categorias.");
+		}
+	};
+
+	const handleSlaChange = (priority, value) => {
+		setHelpdeskSla(prev => ({ ...prev, [priority]: value }));
+	};
+
+	const saveSlaConfig = async () => {
+		try {
+			await api.put("/settings/helpdesk_sla_config", {
+				value: JSON.stringify(helpdeskSla),
+			});
+			toast.success("Configuração de SLA salva!");
+		} catch (err) {
+			toast.error("Erro ao salvar SLA.");
+		}
+	};
+
+	const renderHelpdeskSection = () => (
+		<>
+			<Typography variant="h5" className={classes.sectionTitle}>
+				Configurações de Helpdesk
+			</Typography>
+
+			{/* Enable Toggle */}
+			<Paper className={classes.paper} style={{ justifyContent: 'space-between' }}>
+				<div>
+					<Typography variant="body1">Habilitar Funcionalidades Avançadas</Typography>
+					<Typography variant="caption" color="textSecondary">
+						Ativa o gerenciamento automático de SLA e controle de categorias.
+					</Typography>
+				</div>
+				<Switch
+					checked={helpdeskEnabled}
+					onChange={async (e) => {
+						const newValue = e.target.checked;
+						setHelpdeskEnabled(newValue);
+						await api.put("/settings/helpdesk_settings_enabled", { value: newValue ? "true" : "false" });
+						toast.success(`Helpdesk ${newValue ? "ativado" : "desativado"}!`);
+					}}
+					color="primary"
+				/>
+			</Paper>
+
+			{/* Check if enabled to show other settings */}
+			{helpdeskEnabled && (
+				<Box style={{ transition: 'opacity 0.3s' }}>
+
+					{/* SLA Configuration */}
+					<Typography variant="h6" className={classes.sectionTitle} style={{ marginTop: 24, fontSize: '1.1rem' }}>
+						SLA (Acordo de Nível de Serviço) - Horas para Resolução
+					</Typography>
+					<Paper className={classes.paper} style={{ display: 'block' }}>
+						<Grid container spacing={2}>
+							<Grid item xs={12} sm={6} md={3}>
+								<TextField
+									label="Baixa Prioridade (Horas)"
+									type="number"
+									variant="outlined"
+									fullWidth
+									value={helpdeskSla.low}
+									onChange={(e) => handleSlaChange('low', e.target.value)}
+								/>
+							</Grid>
+							<Grid item xs={12} sm={6} md={3}>
+								<TextField
+									label="Média Prioridade (Horas)"
+									type="number"
+									variant="outlined"
+									fullWidth
+									value={helpdeskSla.medium}
+									onChange={(e) => handleSlaChange('medium', e.target.value)}
+								/>
+							</Grid>
+							<Grid item xs={12} sm={6} md={3}>
+								<TextField
+									label="Alta Prioridade (Horas)"
+									type="number"
+									variant="outlined"
+									fullWidth
+									value={helpdeskSla.high}
+									onChange={(e) => handleSlaChange('high', e.target.value)}
+								/>
+							</Grid>
+							<Grid item xs={12} sm={6} md={3}>
+								<TextField
+									label="Urgente (Horas)"
+									type="number"
+									variant="outlined"
+									fullWidth
+									value={helpdeskSla.urgent}
+									onChange={(e) => handleSlaChange('urgent', e.target.value)}
+								/>
+							</Grid>
+							<Grid item xs={12} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+								<Button variant="contained" color="primary" onClick={saveSlaConfig}>
+									Salvar SLA
+								</Button>
+							</Grid>
+						</Grid>
+					</Paper>
+
+					{/* Categories Management */}
+					<Typography variant="h6" className={classes.sectionTitle} style={{ marginTop: 24, fontSize: '1.1rem' }}>
+						Categorias de Protocolo (ITIL)
+					</Typography>
+					<Paper className={classes.paper} style={{ display: 'block' }}>
+						<Box display="flex" alignItems="center" mb={2}>
+							<TextField
+								label="Nova Categoria"
+								variant="outlined"
+								size="small"
+								value={newCategory}
+								onChange={(e) => setNewCategory(e.target.value)}
+								style={{ marginRight: 8 }}
+								onKeyPress={(e) => {
+									if (e.key === 'Enter') handleAddCategory();
+								}}
+							/>
+							<IconButton onClick={handleAddCategory} color="primary">
+								<AddIcon />
+							</IconButton>
+						</Box>
+						<Box display="flex" flexWrap="wrap" gap={1}>
+							{helpdeskCategories.map((data) => (
+								<Chip
+									key={data}
+									label={data}
+									onDelete={() => handleDeleteCategory(data)}
+									color="primary"
+									variant="outlined"
+								/>
+							))}
+						</Box>
+					</Paper>
+				</Box>
+			)}
+		</>
+	);
+
 	return (
 		<Box className={classes.root}>
 			<Box className={classes.sidebar}>
@@ -719,6 +938,21 @@ const Settings = () => {
 						</ListItemIcon>
 						<ListItemText primary="Inteligência Artificial" />
 					</ListItem>
+
+					{activePlugins.includes("helpdesk") && (
+						<ListItem
+							button
+							selected={activeSection === "helpdesk"}
+							onClick={() => setActiveSection("helpdesk")}
+							className={classes.menuItem}
+						>
+							<ListItemIcon>
+								<HeadsetMicIcon />
+							</ListItemIcon>
+							<ListItemText primary="Helpdesk" />
+						</ListItem>
+					)}
+
 					{["admin", "superadmin"].includes(user?.profile) && (
 						<ListItem
 							button
@@ -736,6 +970,7 @@ const Settings = () => {
 			<Box className={classes.content}>
 				{activeSection === "general" && renderGeneralSection()}
 				{activeSection === "customize" && renderCustomizeSection()}
+				{activeSection === "helpdesk" && activePlugins.includes("helpdesk") && renderHelpdeskSection()}
 				{activeSection === "ai" && (
 					<>
 						<Typography variant="h5" className={classes.sectionTitle}>

@@ -49,12 +49,14 @@ export const update = async (req: Request, res: Response): Promise<Response> => 
     const { tenantId: tenantId, id: userId } = req.user;
     const { protocolId } = req.params;
     const protocolData = req.body;
+    const files = req.files as Express.Multer.File[];
 
     const protocol = await UpdateProtocolService(
         {
             ...protocolData,
             id: Number(protocolId),
-            tenantId
+            tenantId,
+            files
         },
         Number(userId)
     );

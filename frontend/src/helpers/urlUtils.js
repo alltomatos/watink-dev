@@ -1,33 +1,25 @@
+import { getBackendUrl as getBackendUrlFromConfig } from "../config";
+
 export const getBackendUrl = (url) => {
     if (!url) return url;
 
-    // Use VITE_BACKEND_URL if available, otherwise default to relative path
-    // In Vite, it is import.meta.env.VITE_BACKEND_URL
-    // Note: Standard process.env might not be populated in Vite without plugin
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || '/';
+    // Use runtime config from window.ENV or build config
+    const backendUrl = getBackendUrlFromConfig() || '/';
 
-    // Check if URL contains '/public/'
+    // Check if URL contains '/public/' and fix it to be relative to root of backend
     if (url.includes('/public/')) {
-        // Regex to match protocol and domain (e.g. http://localhost:8081 or https://app.com)
-        // We want to remove it only if it is pointing to OUR backend public folder.
-        // To be safe and "fix dynamic links", we assume any /public/ link is ours 
-        // if we are cleaning up from legacy ports.
-        // However, we should be careful about external links containing /public/.
-        // But in this context (profilePic, media), it's overwhelmingly ours.
-
-        // Split by /public/ and take the path
         const parts = url.split('/public/');
         const relativePath = `public/${parts[1]}`;
+        const safeBackendUrl = backendUrl.endsWith('/') ? backendUrl : `${backendUrl}/`;
+        return `${safeBackendUrl}${relativePath}`;
+    }
 
-        // If backendUrl is just '/' or empty, return '/public/...'
-        if (backendUrl === '/' || backendUrl === '') {
-            return `/${relativePath}`;
-        }
-
-        // If backendUrl is absolute (e.g. http://api.watink.com)
-        // and relativePath starts with public/...
-        // Combine them.
-        return `${backendUrl}${relativePath}`;
+    // New Logic: If it's a relative path (starts with /), prepend backendUrl
+    if (url.startsWith('/') && !url.startsWith('http')) {
+        const safeBackendUrl = backendUrl.endsWith('/') ? backendUrl : `${backendUrl}/`;
+        // Remove leading slash to avoid double slash
+        const cleanUrl = url.substring(1);
+        return `${safeBackendUrl}${cleanUrl}`;
     }
 
     return url;

@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: watink/backend:1.3.176
+    image: watink/backend:1.3.193
     build:
       context: ./backend
       dockerfile: ./Dockerfile
@@ -16,9 +16,8 @@ services:
       - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
       - JWT_SECRET=***REMOVED_JWT_SECRET***
       - JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***
-      - FRONTEND_URL=http://10.11.0.158
-      - URL_BACKEND=http://10.11.0.158
-      - ENGINE_VERSION=1.0.116
+      - FRONTEND_URL=http://app.localhost
+      - URL_BACKEND=http://api.localhost
       - PORT=8080
       - NODE_OPTIONS=--max-old-space-size=800
       - DEFAULT_TENANT_UUID=550e8400-e29b-41d4-a716-446655440000
@@ -42,25 +41,25 @@ services:
           memory: 1024M
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.backend-api.rule=PathPrefix(`/api`)"
+        - "traefik.http.routers.backend-api.rule=Host(`api.localhost`) && PathPrefix(`/api`)"
         - "traefik.http.routers.backend-api.entrypoints=web"
         - "traefik.http.routers.backend-api.middlewares=backend-strip"
         - "traefik.http.middlewares.backend-strip.stripprefix.prefixes=/api"
         - "traefik.http.routers.backend-api.service=backend"
-        - "traefik.http.routers.backend-root.rule=PathPrefix(`/auth`) || PathPrefix(`/socket.io`) || PathPrefix(`/public`) || PathPrefix(`/docs`)"
+        - "traefik.http.routers.backend-root.rule=Host(`api.localhost`)"
         - "traefik.http.routers.backend-root.entrypoints=web"
         - "traefik.http.routers.backend-root.service=backend"
         - "traefik.http.services.backend.loadbalancer.server.port=8080"
         - "traefik.docker.network=watink_watink_public"
 
   frontend:
-    image: watink/frontend:0.7.84
+    image: watink/frontend:0.7.107
     build:
       context: ./frontend
       dockerfile: ./Dockerfile
     environment:
       - URL_BACKEND=backend:8080
-      - VITE_BACKEND_URL=/
+      - VITE_BACKEND_URL=http://api.localhost/
       - VITE_PLUGIN_MANAGER_URL=/plugins/
       - VITE_HOURS_CLOSE_TICKETS_AUTO=24
 
@@ -73,7 +72,7 @@ services:
       replicas: 1
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+        - "traefik.http.routers.frontend.rule=Host(`app.localhost`)"
         - "traefik.http.routers.frontend.entrypoints=web"
         - "traefik.http.routers.frontend.service=frontend"
         - "traefik.http.services.frontend.loadbalancer.server.port=80"
@@ -132,7 +131,7 @@ services:
           memory: 2048M
 
   flow-engine-worker:
-    image: watink/backend:1.3.176
+    image: watink/backend:1.3.193
     command: ["node", "dist/flow-worker.js"]
     environment:
       - DB_DIALECT=postgres
@@ -156,12 +155,16 @@ services:
           memory: 512M
 
   plugin-manager:
-    image: watink/plugin-manager:1.0.19
+    image: watink/plugin-manager:1.0.25
+    build:
+      context: ./plugin-manager
+      dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/watink?sslmode=disable
       - PLUGIN_CDN_URL=http://localhost
       - PORT=3005
       - ENVIRONMENT=production
+      - MARKETPLACE_URL=https://uskylkkwbivdijhdozob.supabase.co
 
     networks:
       - watink_private
@@ -176,7 +179,7 @@ services:
           memory: 256M
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.plugins.rule=PathPrefix(`/plugins`)"
+        - "traefik.http.routers.plugins.rule=Host(`app.localhost`) && PathPrefix(`/plugins`)"
         - "traefik.http.routers.plugins.entrypoints=web"
         - "traefik.http.routers.plugins.middlewares=plugins-strip"
         - "traefik.http.middlewares.plugins-strip.stripprefix.prefixes=/plugins"

@@ -37,8 +37,8 @@ const plugins = [
     {
         slug: 'helpdesk',
         name: 'Plugin de Helpdesk',
-        version: '1.0.0',
-        description: 'Sistema de protocolos de atendimento vinculados a tickets.',
+        version: '1.1.0',
+        description: 'Sistema de protocolos com SLA configurável, categorização (ITIL) e histórico completo.',
         files: {
             frontend: [
                 { src: 'pages/Helpdesk', dest: 'frontend/src/pages/Helpdesk' }
@@ -49,7 +49,8 @@ const plugins = [
                 { src: 'models/ProtocolHistory.ts', dest: 'backend/src/models/ProtocolHistory.ts' },
                 { src: 'services/ProtocolServices', dest: 'backend/src/services/ProtocolServices' },
                 { src: 'routes/protocolRoutes.ts', dest: 'backend/src/routes/protocolRoutes.ts' },
-                { src: 'database/migrations/20260102135000-create-protocols-tables.ts', dest: 'backend/migrations/20260102135000-create-protocols-tables.ts' }
+                { src: 'database/migrations/20260102135000-create-protocols-tables.ts', dest: 'backend/migrations/20260102135000-create-protocols-tables.ts' },
+                { src: 'database/migrations/20260111000001-seed-helpdesk-settings.ts', dest: 'backend/migrations/20260111000001-seed-helpdesk-settings.ts' }
             ]
         },
         permissions: [

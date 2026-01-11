@@ -24,15 +24,17 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
+import { getBackendUrl } from "../../helpers/urlUtils";
+
 const endpoints = [
   { key: "frontend", url: "/version.json" },
-  { key: "backend", url: "/api/version" },
+  { key: "backend", url: getBackendUrl("/api/version") },
   { key: "plugin-manager", url: "/plugins/version" },
-  { key: "whaileys-engine", url: "/api/engine/version" },
-  { key: "flow-worker", url: "/api/flow/version" },
-  { key: "pgvectorgis", url: "/api/postgres/version" },
-  { key: "rabbitmq", url: "/api/rabbitmq/version" },
-  { key: "redis", url: "/api/redis/version" },
+  { key: "whaileys-engine", url: getBackendUrl("/api/engine/version") },
+  { key: "flow-worker", url: getBackendUrl("/api/flow/version") },
+  { key: "pgvectorgis", url: getBackendUrl("/api/postgres/version") },
+  { key: "rabbitmq", url: getBackendUrl("/api/rabbitmq/version") },
+  { key: "redis", url: getBackendUrl("/api/redis/version") },
 ];
 
 export default function VersionDashboard() {

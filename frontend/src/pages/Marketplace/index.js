@@ -36,6 +36,7 @@ import { Can } from "../../components/Can";
 import pluginApi from "../../services/pluginApi";
 import { toast } from "react-toastify";
 import { ToggleButton, ToggleButtonGroup, Alert } from "@material-ui/lab";
+import { getBackendUrl } from "../../helpers/urlUtils";
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -139,7 +140,8 @@ const Marketplace = () => {
                 version: p.version,
                 type: p.type,
                 category: p.category,
-                iconUrl: p.iconUrl,
+                // Force use of local icons based on slug, as user is managing them manually in backend/public
+                iconUrl: `/public/plugins/${p.slug}.png`,
                 installed: activeSlugs.has(p.slug),
                 active: activeSlugs.has(p.slug),
             }));
@@ -174,7 +176,7 @@ const Marketplace = () => {
                     <Card className={classes.card} onClick={() => handlePluginClick(plugin)}>
                         <Box className={classes.cardMedia}>
                             {plugin.iconUrl ? (
-                                <img src={plugin.iconUrl} alt={plugin.name} style={{ height: 80 }} />
+                                <img src={getBackendUrl(plugin.iconUrl)} alt={plugin.name} style={{ height: 80 }} />
                             ) : (
                                 <ExtensionIcon className={classes.cardIcon} />
                             )}
@@ -237,7 +239,7 @@ const Marketplace = () => {
                             <TableCell>
                                 <Box display="flex" alignItems="center">
                                     {plugin.iconUrl ? (
-                                        <img src={plugin.iconUrl} alt={plugin.name} style={{ width: 24, height: 24, marginRight: 8 }} />
+                                        <img src={getBackendUrl(plugin.iconUrl)} alt={plugin.name} style={{ width: 24, height: 24, marginRight: 8 }} />
                                     ) : (
                                         <ExtensionIcon style={{ marginRight: 8 }} />
                                     )}

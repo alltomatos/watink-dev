@@ -27,6 +27,7 @@ import {
     Add as AddIcon,
     Search as SearchIcon,
     Visibility as VisibilityIcon,
+    ViewModule as ViewModuleIcon,
 } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
 import { toast } from "react-toastify";
@@ -161,20 +162,31 @@ const Helpdesk = () => {
                     <Paper elevation={0} style={{ padding: 24 }}>
                         <Box className={classes.header}>
                             <Typography variant="h4">🎫 Helpdesk - Protocolos</Typography>
-                            <Can
-                                role={user.profile}
-                                perform="edit_helpdesk"
-                                yes={() => (
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        startIcon={<AddIcon />}
-                                        onClick={() => handleOpenModal()}
-                                    >
-                                        Novo Protocolo
-                                    </Button>
-                                )}
-                            />
+                            <Box>
+                                <Button
+                                    variant="outlined"
+                                    color="primary"
+                                    startIcon={<ViewModuleIcon />}
+                                    onClick={() => history.push("/helpdesk/kanban")}
+                                    style={{ marginRight: 8 }}
+                                >
+                                    Ver Kanban
+                                </Button>
+                                <Can
+                                    role={user.profile}
+                                    perform="edit_helpdesk"
+                                    yes={() => (
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            startIcon={<AddIcon />}
+                                            onClick={() => handleOpenModal()}
+                                        >
+                                            Novo Protocolo
+                                        </Button>
+                                    )}
+                                />
+                            </Box>
                         </Box>
 
                         <Grid container spacing={2} className={classes.filters}>

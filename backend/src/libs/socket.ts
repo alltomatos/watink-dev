@@ -20,7 +20,7 @@ export const initIO = (httpServer: Server): SocketIO => {
   io.on("connection", socket => {
     const { token } = socket.handshake.query;
     logger.info(`[Socket Debug] Connection attempt. Token provided: ${token ? "YES" : "NO"}`);
-    
+
     let tokenData = null;
     try {
       tokenData = verify(token, authConfig.secret);
@@ -50,6 +50,11 @@ export const initIO = (httpServer: Server): SocketIO => {
     socket.on("joinTickets", (status: string) => {
       logger.info(`A client joined to ${status} tickets channel.`);
       socket.join(status);
+    });
+
+    socket.on("joinHelpdeskKanban", () => {
+      logger.info("A client joined helpdesk kanban channel");
+      socket.join("helpdesk-kanban");
     });
 
     socket.on("disconnect", () => {

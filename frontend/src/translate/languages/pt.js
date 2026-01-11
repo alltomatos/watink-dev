@@ -549,6 +549,53 @@ const messages = {
         ERR_WAPP_GREETING_REQUIRED:
           "A mensagem de saudação é obrigatório quando há mais de uma fila.",
       },
+      publicProtocol: {
+        header: {
+          number: "Protocolo #{{number}}",
+          createdAt: "Criado em {{date}}",
+        },
+        status: {
+          open: "Aberto",
+          in_progress: "Em Progresso",
+          resolved: "Resolvido",
+          closed: "Fechado",
+          pending: "Pendente",
+        },
+        priority: {
+          low: "Baixa",
+          medium: "Normal",
+          high: "Alta",
+          urgent: "Urgente",
+        },
+        details: {
+          title: "Detalhes da Solicitação",
+          subject: "Assunto",
+          description: "Descrição",
+          category: "Categoria",
+          noDescription: "Sem descrição.",
+          generalCategory: "Geral",
+          attachments: "Anexos",
+        },
+        history: {
+          title: "Histórico de Movimentações",
+          actions: {
+            created: "Criado",
+            status_changed: "Status alterado",
+            priority_changed: "Prioridade alterada",
+            attachment: "Anexo",
+            comment_added: "Comentário adicionado",
+            user_assigned: "Atribuído a usuário",
+            resolved: "Resolvido",
+            closed: "Fechado",
+            reopened: "Reaberto",
+          },
+        },
+        notFound: {
+          title: "Protocolo não encontrado",
+          message: "Verifique o link e tente novamente.",
+        },
+        defaultTenant: "Central de Atendimento",
+      },
     },
   },
 };

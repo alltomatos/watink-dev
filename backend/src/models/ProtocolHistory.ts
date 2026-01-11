@@ -45,6 +45,9 @@ class ProtocolHistory extends Model<ProtocolHistory> {
     @Column(DataType.TEXT)
     comment: string;
 
+    @Column(DataType.TEXT)
+    changes: string;
+
     @CreatedAt
     createdAt: Date;
 }
