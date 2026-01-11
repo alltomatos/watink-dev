@@ -225,7 +225,7 @@ const ProtocolModal = ({ open, onClose }) => {
                                 required
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={helpdeskEnabled ? 6 : 12}>
                             <FormControl variant="outlined" fullWidth size="small">
                                 <InputLabel>Prioridade</InputLabel>
                                 <Select
@@ -241,35 +241,37 @@ const ProtocolModal = ({ open, onClose }) => {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
-                            {helpdeskEnabled && categories.length > 0 ? (
-                                <FormControl variant="outlined" fullWidth size="small">
-                                    <InputLabel>Categoria</InputLabel>
-                                    <Select
+                        {helpdeskEnabled && (
+                            <Grid item xs={12} sm={6}>
+                                {categories.length > 0 ? (
+                                    <FormControl variant="outlined" fullWidth size="small">
+                                        <InputLabel>Categoria</InputLabel>
+                                        <Select
+                                            name="category"
+                                            value={formData.category}
+                                            onChange={handleChange}
+                                            label="Categoria"
+                                        >
+                                            {categories.map((cat) => (
+                                                <MenuItem key={cat} value={cat}>
+                                                    {cat}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                ) : (
+                                    <TextField
                                         name="category"
+                                        label="Categoria"
                                         value={formData.category}
                                         onChange={handleChange}
-                                        label="Categoria"
-                                    >
-                                        {categories.map((cat) => (
-                                            <MenuItem key={cat} value={cat}>
-                                                {cat}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            ) : (
-                                <TextField
-                                    name="category"
-                                    label="Categoria"
-                                    value={formData.category}
-                                    onChange={handleChange}
-                                    variant="outlined"
-                                    size="small"
-                                    fullWidth
-                                />
-                            )}
-                        </Grid>
+                                        variant="outlined"
+                                        size="small"
+                                        fullWidth
+                                    />
+                                )}
+                            </Grid>
+                        )}
                         <Grid item xs={12}>
                             <TextField
                                 name="description"

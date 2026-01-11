@@ -11,6 +11,7 @@ const protocolRoutes = express.Router();
 const upload = multer(uploadConfig);
 
 protocolRoutes.get("/protocols/kanban", isAuth, ProtocolKanbanController.index);
+protocolRoutes.get("/protocols/dashboard", isAuth, ProtocolController.dashboard);
 protocolRoutes.get("/protocols", isAuth, ProtocolController.index);
 protocolRoutes.post("/protocols", isAuth, ProtocolController.store);
 protocolRoutes.get("/protocols/:protocolId", isAuth, ProtocolController.show);
