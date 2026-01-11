@@ -3,6 +3,13 @@ import CreateProtocolService from "../services/ProtocolServices/CreateProtocolSe
 import ListProtocolsService from "../services/ProtocolServices/ListProtocolsService";
 import ShowProtocolService from "../services/ProtocolServices/ShowProtocolService";
 import UpdateProtocolService from "../services/ProtocolServices/UpdateProtocolService";
+import GetProtocolDashboardService from "../services/ProtocolServices/GetProtocolDashboardService";
+
+export const dashboard = async (req: Request, res: Response): Promise<Response> => {
+    const { tenantId } = req.user;
+    const dashboardData = await GetProtocolDashboardService(tenantId);
+    return res.json(dashboardData);
+};
 
 export const index = async (req: Request, res: Response): Promise<Response> => {
     const { tenantId: tenantId, id: userId } = req.user;
