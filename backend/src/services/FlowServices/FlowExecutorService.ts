@@ -5,6 +5,11 @@ import AppError from "../../errors/AppError";
 import { logger } from "../../utils/logger";
 import SendWhatsAppMessage from "../WbotServices/SendWhatsAppMessage";
 import SendWhatsAppInteractive from "../WbotServices/SendWhatsAppInteractive";
+import SendWhatsAppMedia from "../WbotServices/SendWhatsAppMedia";
+import fs from "fs";
+import path from "path";
+import uploadConfig from "../../config/upload";
+import { v4 as uuidv4 } from "uuid";
 import ShowTicketService from "../TicketServices/ShowTicketService";
 import UpdateTicketService from "../TicketServices/UpdateTicketService";
 
@@ -19,6 +24,8 @@ import QuickAnswer from "../../models/QuickAnswer";
 import Pipeline from "../../models/Pipeline";
 import Deal from "../../models/Deal";
 import PipelineStage from "../../models/PipelineStage";
+import Protocol from "../../models/Protocol";
+import VectorService from "../VectorService";
 import { Op } from "sequelize";
 
 interface FlowContext {
@@ -155,7 +162,8 @@ class FlowExecutorService {
         case "default": // "Mensagem"
         case "message":
         case "textUpdater": // "Pergunta"
-          await this.sendMessage(session, node.data.label);
+          // Passar node.data para sendMessage processar contentType e variáveis
+          await this.sendMessage(session, node.data.content || node.data.label || '', node.data);
 
           if (node.type === "textUpdater" || node.data.waitForInput) {
             return session; // Stop and wait for user reply
@@ -168,13 +176,9 @@ class FlowExecutorService {
           return session; // Stop and wait for user reply
 
         case "knowledge":
-          // Placeholder for AI/RAG
-          const query = (session.context as any).lastInput || "";
-          await this.sendMessage(session, `[IA] Consultando base de conhecimento sobre: "${query}"... (Simulação)`);
-          // In real implementation: Call OpenAI/Gemini -> Get Answer -> Send Message
-          if (node.data.answer) {
-            await this.sendMessage(session, node.data.answer);
-          }
+          // Integração com RAG (VectorService)
+          const knowledgeQuery = (session.context as any).lastInput || "";
+          await this.processKnowledgeNode(session, node.data, knowledgeQuery);
           return this.proceedToNext(session, flow, node);
 
         // Integração Kanban/CRM
@@ -201,6 +205,10 @@ class FlowExecutorService {
 
         case "api":
           await this.processAPINode(session, node.data);
+          return this.proceedToNext(session, flow, node);
+
+        case "helpdesk":
+          await this.processHelpdeskNode(session, node.data);
           return this.proceedToNext(session, flow, node);
 
         default:
@@ -237,18 +245,102 @@ class FlowExecutorService {
     return this.runNode(session, flow, nextNode);
   }
 
-  private async sendMessage(session: FlowSession, text: string) {
+  private async sendMessage(session: FlowSession, text: string, nodeData?: any) {
     const context = session.context as FlowContext;
-    if (context.ticketId) {
-      const ticket = await ShowTicketService(context.ticketId);
-      if (ticket) {
-        await SendWhatsAppMessage({
-          body: text,
-          ticket: ticket,
-          quotedMsg: null
-        });
+    if (!context.ticketId) return;
+
+    const ticket = await ShowTicketService(context.ticketId);
+    if (!ticket) return;
+
+    // Se não houver nodeData ou o tipo for texto, usar lógica simples
+    const contentType = nodeData?.contentType || 'text';
+
+    if (contentType === 'text') {
+      // Substituir variáveis no texto
+      const processedText = this.replaceVariables(text, context);
+      await SendWhatsAppMessage({
+        body: processedText,
+        ticket: ticket,
+        quotedMsg: null
+      });
+    } else {
+      // Processar mídia (image, video, audio, file)
+      const mediaUrl = nodeData?.mediaUrl;
+      if (!mediaUrl) {
+        logger.warn(`FlowExecutor: Media node without mediaUrl`);
+        return;
+      }
+
+      const processedUrl = this.replaceVariables(mediaUrl, context);
+      const caption = nodeData?.content ? this.replaceVariables(nodeData.content, context) : undefined;
+
+      try {
+        // Baixar mídia da URL e criar arquivo temporário
+        const mediaFile = await this.downloadMedia(processedUrl, Number(ticket.tenantId));
+        if (mediaFile) {
+          await SendWhatsAppMedia({
+            media: mediaFile,
+            ticket: ticket,
+            body: caption
+          });
+        }
+      } catch (err) {
+        logger.error(`FlowExecutor: Error sending media: ${err}`);
       }
     }
+  }
+
+  private async downloadMedia(url: string, tenantId: number): Promise<Express.Multer.File | null> {
+    try {
+      const response = await axios.get(url, { responseType: 'arraybuffer' });
+      const contentType = response.headers['content-type'] || 'application/octet-stream';
+      const extension = this.getExtensionFromMimetype(contentType);
+      const filename = `${uuidv4()}.${extension}`;
+
+      // Criar diretório temporário se não existir
+      const tempDir = path.join(uploadConfig.directory, 'temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      const filePath = path.join(tempDir, filename);
+      fs.writeFileSync(filePath, response.data);
+
+      // Retornar objeto compatível com Multer
+      return {
+        fieldname: 'medias',
+        originalname: filename,
+        encoding: '7bit',
+        mimetype: contentType,
+        destination: tempDir,
+        filename: filename,
+        path: filePath,
+        size: response.data.length,
+        buffer: response.data,
+        stream: null as any
+      };
+    } catch (err) {
+      logger.error(`FlowExecutor: Failed to download media from ${url}: ${err}`);
+      return null;
+    }
+  }
+
+  private getExtensionFromMimetype(mimetype: string): string {
+    const mimeMap: { [key: string]: string } = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'video/mp4': 'mp4',
+      'video/webm': 'webm',
+      'audio/mpeg': 'mp3',
+      'audio/ogg': 'ogg',
+      'audio/wav': 'wav',
+      'application/pdf': 'pdf',
+      'application/msword': 'doc',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx'
+    };
+    return mimeMap[mimetype] || 'bin';
   }
 
   private async sendMenu(session: FlowSession, nodeData: any) {
@@ -1081,6 +1173,7 @@ class FlowExecutorService {
     const nodes = flow.nodes as unknown as FlowNode[];
     const edges = flow.edges as unknown as FlowEdge[];
     const simulationLog: any[] = [];
+    const responses: any[] = []; // Mensagens para exibir no chat
     const simulatedContext: FlowContext = {
       ticketId: 9999,
       contactId: 1234,
@@ -1090,21 +1183,41 @@ class FlowExecutorService {
       messageBody: testMessage
     };
 
-    logger.info(`FlowExecutor: Starting simulation for flow ${flow.id}`);
+    // Encontrar nó inicial para detectar tipo de fluxo
+    const startNode = nodes.find(n => n.type === "input" || n.type === "start" || n.type === "trigger");
+    const triggerType = startNode?.data?.triggerType || "message";
+
+    // Detectar tipo de fluxo baseado no gatilho
+    const chatTriggers = ["message", "keyword", "firstContact"];
+    const flowType = chatTriggers.includes(triggerType) ? "chat" : "automation";
+
+    logger.info(`FlowExecutor: Starting simulation for flow ${flow.id} (type: ${flowType})`);
+
+    // Adicionar mensagem do usuário simulado
+    if (flowType === "chat") {
+      responses.push({
+        type: "user",
+        content: testMessage,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     simulationLog.push({
       step: 0,
       type: "start",
-      message: "Iniciando simulação do fluxo",
-      context: { ...simulatedContext }
+      status: "success",
+      nodeLabel: "Gatilho",
+      message: `Tipo: ${triggerType}`,
+      timestamp: new Date().toISOString()
     });
 
-    // Encontrar nó inicial
-    const startNode = nodes.find(n => n.type === "input" || n.type === "start" || n.type === "trigger");
     if (!startNode) {
       return {
         success: false,
+        flowType,
         error: "Nenhum nó inicial encontrado no fluxo",
-        log: simulationLog
+        log: simulationLog,
+        responses
       };
     }
 
@@ -1119,7 +1232,10 @@ class FlowExecutorService {
         simulationLog.push({
           step,
           type: "error",
-          message: `Nó ${currentNodeId} não encontrado`
+          status: "error",
+          nodeLabel: "Desconhecido",
+          message: `Nó ${currentNodeId} não encontrado`,
+          timestamp: new Date().toISOString()
         });
         break;
       }
@@ -1129,7 +1245,10 @@ class FlowExecutorService {
         simulationLog.push({
           step,
           type: "warning",
-          message: `Possível loop detectado no nó ${node.type}`
+          status: "warning",
+          nodeLabel: node.data?.label || node.type,
+          message: `Possível loop detectado`,
+          timestamp: new Date().toISOString()
         });
         break;
       }
@@ -1137,13 +1256,28 @@ class FlowExecutorService {
 
       // Simular execução do nó
       const nodeResult = this.simulateNode(node, simulatedContext);
+
       simulationLog.push({
         step,
         type: node.type,
+        status: nodeResult.error ? "error" : "success",
         nodeId: node.id,
-        label: node.data?.label || node.type,
-        ...nodeResult
+        nodeLabel: node.data?.label || node.type,
+        action: nodeResult.action,
+        message: nodeResult.message,
+        timestamp: new Date().toISOString()
       });
+
+      // Adicionar resposta ao chat se houver
+      if (nodeResult.wouldSend && flowType === "chat") {
+        responses.push({
+          type: "bot",
+          content: nodeResult.message,
+          nodeType: node.type,
+          options: nodeResult.options,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       // Atualizar contexto simulado
       if (nodeResult.contextUpdate) {
@@ -1163,7 +1297,10 @@ class FlowExecutorService {
         simulationLog.push({
           step: step + 1,
           type: "end",
-          message: "Fim do fluxo - nenhuma conexão de saída"
+          status: "success",
+          nodeLabel: "Fim",
+          message: "Fluxo concluído",
+          timestamp: new Date().toISOString()
         });
         break;
       }
@@ -1176,7 +1313,10 @@ class FlowExecutorService {
       simulationLog.push({
         step,
         type: "error",
-        message: "Limite de passos atingido (possível loop infinito)"
+        status: "error",
+        nodeLabel: "Sistema",
+        message: "Limite de passos atingido (possível loop infinito)",
+        timestamp: new Date().toISOString()
       });
     }
 
@@ -1184,9 +1324,12 @@ class FlowExecutorService {
       success: true,
       flowId: flow.id,
       flowName: flow.name,
+      flowType,
+      triggerType,
       totalSteps: step,
       testMessage,
       log: simulationLog,
+      responses,
       finalContext: simulatedContext
     };
   }
@@ -1272,6 +1415,131 @@ class FlowExecutorService {
           action: `Nó desconhecido: ${node.type}`,
           message: "Não simulado"
         };
+    }
+  }
+
+  // Processamento do Nó de Conhecimento (RAG)
+  private async processKnowledgeNode(session: FlowSession, nodeData: any, query: string) {
+    const context = session.context as FlowContext;
+    if (!context.ticketId) return;
+
+    const ticket = await ShowTicketService(context.ticketId);
+    if (!ticket) return;
+
+    const tenantId = String(ticket.tenantId);
+    const knowledgeBaseId = nodeData.knowledgeBaseId;
+    const responseMode = nodeData.responseMode || 'auto';
+
+    try {
+      if (!query || query.trim().length === 0) {
+        await this.sendMessage(session, "Desculpe, não recebi sua pergunta. Poderia reformular?");
+        return;
+      }
+
+      // Buscar chunks relevantes via VectorService
+      const results = await VectorService.similaritySearch(query, tenantId, 5);
+
+      if (results.length === 0) {
+        await this.sendMessage(session, "Não encontrei informações relevantes sobre sua pergunta. Gostaria de falar com um atendente?");
+        return;
+      }
+
+      // Montar contexto a partir dos chunks encontrados
+      const contextText = results.map(r => r.content).join("\n\n---\n\n");
+
+      if (responseMode === 'search') {
+        // Apenas retornar os trechos encontrados (sem LLM)
+        await this.sendMessage(session, `📚 *Informações encontradas:*\n\n${contextText.substring(0, 1000)}...`);
+      } else {
+        // Modo 'auto' ou 'suggest': Enviar resposta baseada no contexto
+        // Em produção, chamaria um LLM aqui para gerar uma resposta humanizada
+        // Por agora, enviar o contexto diretamente
+        await this.sendMessage(session, `Com base nas informações disponíveis:\n\n${contextText.substring(0, 1500)}`);
+      }
+
+      // Atualizar contexto com resultado
+      const newContext = { ...context, knowledgeResult: contextText.substring(0, 500) };
+      await session.update({ context: newContext });
+
+    } catch (err) {
+      logger.error(`FlowExecutor: Error in Knowledge Node: ${err}`);
+      await this.sendMessage(session, "Houve um erro ao consultar a base de conhecimento. Tente novamente.");
+    }
+  }
+
+  // Processamento do Nó de Helpdesk (Criar/Consultar Protocolo)
+  private async processHelpdeskNode(session: FlowSession, nodeData: any) {
+    const context = session.context as FlowContext;
+    if (!context.ticketId) return;
+
+    const ticket = await ShowTicketService(context.ticketId);
+    if (!ticket) return;
+
+    const action = nodeData.helpdeskAction || 'createProtocol';
+    const tenantId = ticket.tenantId;
+
+    try {
+      if (action === 'createProtocol') {
+        // Gerar número de protocolo único
+        const timestamp = Date.now();
+        const random = Math.floor(Math.random() * 1000);
+        const protocolNumber = `${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${timestamp.toString().slice(-6)}${random}`;
+
+        // Criar protocolo
+        const protocol = await Protocol.create({
+          tenantId: tenantId,
+          protocolNumber: protocolNumber,
+          ticketId: context.ticketId,
+          contactId: ticket.contactId,
+          subject: this.replaceVariables(nodeData.subject || "Protocolo via Fluxo", context),
+          description: this.replaceVariables(nodeData.description || context.lastInput || "", context),
+          status: "open",
+          priority: nodeData.priority || "medium",
+          category: nodeData.category || "Fluxo Automatizado"
+        });
+
+        logger.info(`FlowExecutor: Protocol ${protocolNumber} created for ticket ${context.ticketId}`);
+
+        // Atualizar contexto com número do protocolo
+        const newContext = {
+          ...context,
+          protocol: protocolNumber,
+          protocolId: protocol.id
+        };
+        await session.update({ context: newContext });
+
+        // Mensagem de confirmação (se configurado)
+        if (nodeData.sendConfirmation !== false) {
+          await this.sendMessage(session, `✅ Protocolo criado com sucesso!\n\n📋 *Número:* ${protocolNumber}`);
+        }
+
+      } else if (action === 'checkStatus') {
+        // Buscar protocolo mais recente do contato
+        const existingProtocol = await Protocol.findOne({
+          where: {
+            contactId: ticket.contactId,
+            tenantId: tenantId
+          },
+          order: [['createdAt', 'DESC']]
+        });
+
+        if (existingProtocol) {
+          const statusMap: { [key: string]: string } = {
+            'open': 'Aberto',
+            'in_progress': 'Em Andamento',
+            'pending': 'Pendente',
+            'resolved': 'Resolvido',
+            'closed': 'Fechado'
+          };
+          await this.sendMessage(session, `📋 *Protocolo:* ${existingProtocol.protocolNumber}\n📊 *Status:* ${statusMap[existingProtocol.status] || existingProtocol.status}`);
+        } else {
+          await this.sendMessage(session, "Não encontrei protocolos anteriores associados ao seu contato.");
+        }
+      }
+
+    } catch (err) {
+      logger.error(`FlowExecutor: Error in Helpdesk Node: ${err}`);
+      await this.sendMessage(session, "Houve um erro ao processar sua solicitação de protocolo.");
     }
   }
 }

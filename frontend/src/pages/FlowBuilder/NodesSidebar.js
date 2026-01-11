@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import { Typography, Tooltip } from '@material-ui/core';
 import {
@@ -15,8 +15,10 @@ import {
     Explicit as EndIcon,
     Http as HttpIcon,
     LibraryBooks as KnowledgeIcon,
-    Language as ApiIcon
+    Language as ApiIcon,
+    Assignment as HelpdeskIcon
 } from '@material-ui/icons';
+import api from '../../services/api';
 
 const useStyles = makeStyles((theme) => ({
     sidebar: {
@@ -96,7 +98,8 @@ const useStyles = makeStyles((theme) => ({
     colorKnowledge: { background: 'linear-gradient(135deg, #e91e63 0%, #ad1457 100%)' },
     colorEnd: { background: 'linear-gradient(135deg, #f44336 0%, #c62828 100%)' },
     colorDefault: { background: 'linear-gradient(135deg, #607d8b 0%, #455a64 100%)' },
-    colorTicket: { background: 'linear-gradient(135deg, #f06292 0%, #c2185b 100%)' }
+    colorTicket: { background: 'linear-gradient(135deg, #f06292 0%, #c2185b 100%)' },
+    colorHelpdesk: { background: 'linear-gradient(135deg, #009688 0%, #00695c 100%)' }
 }));
 
 const onDragStart = (event, nodeType, label) => {
@@ -123,6 +126,25 @@ const DraggableNode = ({ type, label, icon: Icon, colorClass }) => {
 
 const NodesSidebar = () => {
     const classes = useStyles();
+    const [helpdeskEnabled, setHelpdeskEnabled] = useState(false);
+
+    useEffect(() => {
+        const checkHelpdeskPlugin = async () => {
+            try {
+                // Verificar plugins instalados/ativos
+                const { data } = await api.get('/plugins/api/v1/plugins/installed');
+                // API retorna { active: ["slug1", "slug2"] } - array de strings
+                const activePlugins = data.active || [];
+                // Verificar se 'helpdesk' está na lista de plugins ativos
+                if (activePlugins.includes('helpdesk')) {
+                    setHelpdeskEnabled(true);
+                }
+            } catch (err) {
+                console.error('Error checking helpdesk plugin status', err);
+            }
+        };
+        checkHelpdeskPlugin();
+    }, []);
 
     return (
         <aside className={classes.sidebar}>
@@ -157,6 +179,16 @@ const NodesSidebar = () => {
                 <DraggableNode type="webhook" label="Webhook" icon={HttpIcon} colorClass="colorWebhook" />
                 <DraggableNode type="api" label="API" icon={ApiIcon} colorClass="colorApi" />
             </div>
+
+            {/* Categoria: Helpdesk (Condicional) */}
+            {helpdeskEnabled && (
+                <>
+                    <div className={classes.categoryTitle}>Helpdesk</div>
+                    <div className={classes.gridContainer}>
+                        <DraggableNode type="helpdesk" label="Protocolo" icon={HelpdeskIcon} colorClass="colorHelpdesk" />
+                    </div>
+                </>
+            )}
 
             <div style={{ marginTop: 'auto', fontSize: '11px', color: '#999', textAlign: 'center', padding: '10px' }}>
                 Arraste os ícones para o painel
