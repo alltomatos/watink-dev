@@ -46,6 +46,7 @@ import FilterNode from './CustomNodes/FilterNode';
 import TicketNode from './CustomNodes/TicketNode';
 import WebhookNode from './CustomNodes/WebhookNode';
 import APINode from './CustomNodes/APINode';
+import HelpdeskNode from './CustomNodes/HelpdeskNode';
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -198,7 +199,8 @@ const FlowBuilder = () => {
         menu: MenuNode,
         database: DatabaseNode,
         filter: FilterNode,
-        api: APINode
+        api: APINode,
+        helpdesk: HelpdeskNode
     }), []);
 
     useEffect(() => {
