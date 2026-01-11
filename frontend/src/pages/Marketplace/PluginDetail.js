@@ -27,6 +27,7 @@ import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
 import pluginApi from "../../services/pluginApi";
 import { toast } from "react-toastify";
+import { getBackendUrl } from "../../helpers/urlUtils";
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -105,6 +106,8 @@ const PluginDetail = () => {
                     ...p,
                     installed: p.status !== 'not_installed' && p.status !== null && p.status !== undefined,
                     active: p.status === 'active',
+                    // Force use of local icons based on slug
+                    iconUrl: `/public/plugins/${p.slug}.png`,
                     longDescription:
                         p.slug === "clientes"
                             ? `O Plugin de Clientes adiciona ao Watink uma gestão completa de clientes, permitindo:\n\n• Cadastro detalhado de clientes (pessoa física e jurídica)\n• Múltiplos contatos vinculados ao mesmo cliente\n• Múltiplos endereços por cliente\n• Integração automática com API ViaCEP para autocompletar endereços\n• Vinculação de contatos do WhatsApp a clientes cadastrados\n• Histórico de interações por cliente`
@@ -208,7 +211,11 @@ const PluginDetail = () => {
                     <Paper elevation={0} style={{ padding: 24 }}>
                         <Box className={classes.header}>
                             <Box className={classes.iconBox}>
-                                <ExtensionIcon className={classes.icon} />
+                                {plugin.iconUrl ? (
+                                    <img src={getBackendUrl(plugin.iconUrl)} alt={plugin.name} style={{ width: 80, height: 80 }} />
+                                ) : (
+                                    <ExtensionIcon className={classes.icon} />
+                                )}
                             </Box>
                             <Box flex={1}>
                                 <Box display="flex" alignItems="center" gap={2}>

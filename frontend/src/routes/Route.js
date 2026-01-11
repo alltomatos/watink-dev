@@ -4,7 +4,7 @@ import { Route as RouterRoute, Redirect } from "react-router-dom";
 import { AuthContext } from "../context/Auth/AuthContext";
 import BackdropLoading from "../components/BackdropLoading";
 
-const Route = ({ component: Component, isPrivate = false, ...rest }) => {
+const Route = ({ component: Component, isPrivate = false, isPublic = false, ...rest }) => {
   const { isAuth, loading } = useContext(AuthContext);
 
   if (loading) {
@@ -17,7 +17,7 @@ const Route = ({ component: Component, isPrivate = false, ...rest }) => {
     );
   }
 
-  if (isAuth && !isPrivate) {
+  if (isAuth && !isPrivate && !isPublic) {
     return (
       <Redirect to={{ pathname: "/", state: { from: rest.location } }} />
     );

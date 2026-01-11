@@ -3,7 +3,8 @@ import ProtocolHistory from "../../models/ProtocolHistory";
 import Contact from "../../models/Contact";
 import User from "../../models/User";
 import Ticket from "../../models/Ticket";
-import { format } from "date-fns";
+import Setting from "../../models/Setting";
+import { format, addHours } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import RabbitMQService from "../RabbitMQService";
 import { Envelope } from "../../microservice/contracts";
@@ -36,8 +37,29 @@ const CreateProtocolService = async (
 ): Promise<Protocol> => {
     const protocolNumber = generateProtocolNumber();
 
+    let dueDate = data.dueDate;
+
+    // SLA Logic
+    try {
+        const enabledSetting = await Setting.findOne({ where: { key: "helpdesk_settings_enabled", tenantId: data.tenantId } });
+        if (enabledSetting && enabledSetting.value === "true") {
+            const slaSetting = await Setting.findOne({ where: { key: "helpdesk_sla_config", tenantId: data.tenantId } });
+            if (slaSetting) {
+                const slaConfig = JSON.parse(slaSetting.value);
+                const priority = data.priority || "medium";
+                const hours = slaConfig[priority];
+                if (hours) {
+                    dueDate = addHours(new Date(), parseInt(hours));
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Error calculating SLA due date", err);
+    }
+
     const protocol = await Protocol.create({
         ...data,
+        dueDate,
         protocolNumber,
         status: "open"
     });
@@ -60,6 +82,18 @@ const CreateProtocolService = async (
         ]
     });
 
+    // Emit socket event for real-time Kanban updates
+    try {
+        const { getIO } = await import("../../libs/socket");
+        const io = getIO();
+        io.to("helpdesk-kanban").emit("protocol", {
+            action: "create",
+            protocol: fullProtocol
+        });
+    } catch (err) {
+        console.error("Error emitting protocol socket event:", err);
+    }
+
     // Send automatic message if ticketId is present
     if (data.ticketId) {
         try {
@@ -81,13 +115,12 @@ const CreateProtocolService = async (
                 const payload = {
                     sessionId: ticket.whatsappId,
                     to: `${contact.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
-                    text: `*Olá! Seu protocolo de atendimento foi criado com sucesso.*\n\n*Protocolo:* #${protocol.protocolNumber}\n*Assunto:* ${protocol.subject}\n*Prioridade:* ${priorityMap[protocol.priority] || protocol.priority}\n\nAcompanhe o andamento clicando no botão abaixo.`,
-                    footer: `Protocolo: ${protocol.protocolNumber} - ${format(new Date(), "HH:mm")}`
+                    text: `*Olá! Seu protocolo de atendimento foi criado com sucesso.*\n\n*Protocolo:* #${protocol.protocolNumber}\n*Assunto:* ${protocol.subject}\n*Prioridade:* ${priorityMap[protocol.priority] || protocol.priority}\n`,
                 };
 
                 // Fallback para Texto Simples para garantir entrega (Botões instáveis na API não-oficial)
                 // protocolUrl já existe no escopo
-                const textMessage = `${payload.text}\n\n${payload.footer}\n\n🔗 Acompanhe seu protocolo clicando aqui:\n${protocolUrl}`;
+                const textMessage = `${payload.text}\n🔗 Acompanhe seu protocolo clicando aqui:\n${protocolUrl}`;
 
                 const command: Envelope = {
                     id: uuidv4(),
@@ -106,12 +139,13 @@ const CreateProtocolService = async (
                     `wbot.${data.tenantId}.${ticket.whatsappId}.message.send.text`,
                     command
                 );
-            } catch (err) {
-                console.error("Erro ao enviar mensagem de confirmação de protocolo:", err);
             }
+        } catch (err) {
+            console.error("Erro ao enviar mensagem de confirmação de protocolo:", err);
         }
+    }
 
     return fullProtocol!;
-    };
+};
 
-    export default CreateProtocolService;
+export default CreateProtocolService;

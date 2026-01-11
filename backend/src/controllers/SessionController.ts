@@ -45,7 +45,7 @@ export const remove = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  res.clearCookie("jrt");
+  res.clearCookie("jrt", { httpOnly: true, sameSite: "none", secure: true });
 
   return res.send();
 };

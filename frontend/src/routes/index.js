@@ -29,6 +29,8 @@ import PluginDetail from "../pages/Marketplace/PluginDetail";
 import Clients from "../pages/Clients/";
 import Helpdesk from "../pages/Helpdesk/";
 import ProtocolDetails from "../pages/Helpdesk/ProtocolDetails";
+import HelpdeskKanban from "../pages/Helpdesk/HelpdeskKanban";
+import HelpdeskTvMode from "../pages/Helpdesk/HelpdeskTvMode";
 import Swagger from "../pages/Swagger/";
 import VersionDashboard from "../pages/VersionDashboard/";
 import { AuthProvider } from "../context/Auth/AuthContext";
@@ -67,6 +69,8 @@ const PrivateRoutes = () => {
             <Route exact path="/admin/settings/marketplace/:slug" component={PluginDetail} isPrivate />
             <Route exact path="/clients" component={Clients} isPrivate />
             <Route exact path="/helpdesk" component={Helpdesk} isPrivate />
+            <Route exact path="/helpdesk/kanban" component={HelpdeskKanban} isPrivate />
+            <Route exact path="/helpdesk/tv" component={HelpdeskTvMode} isPrivate />
             <Route exact path="/helpdesk/:protocolId" component={ProtocolDetails} isPrivate />
             <Route exact path="/versions" component={VersionDashboard} isPrivate />
           </Switch>
@@ -86,7 +90,7 @@ const Routes = () => {
           <Switch>
             <Route exact path="/login" component={Login} />
             <Route exact path="/signup" component={Signup} />
-            <Route exact path="/public/protocols/:token" component={PublicProtocol} />
+            <Route exact path="/public/protocols/:token" component={PublicProtocol} isPublic />
             <Route path="/" component={PrivateRoutes} isPrivate />
           </Switch>
           <ToastContainer autoClose={3000} />

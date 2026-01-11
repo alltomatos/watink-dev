@@ -17,6 +17,7 @@ import Ticket from "./Ticket";
 import Contact from "./Contact";
 import User from "./User";
 import ProtocolHistory from "./ProtocolHistory";
+import ProtocolAttachment from "./ProtocolAttachment";
 
 @Table({ tableName: "Protocols" })
 class Protocol extends Model<Protocol> {
@@ -88,6 +89,9 @@ class Protocol extends Model<Protocol> {
 
     @HasMany(() => ProtocolHistory)
     history: ProtocolHistory[];
+
+    @HasMany(() => ProtocolAttachment)
+    attachments: ProtocolAttachment[];
 
     @CreatedAt
     createdAt: Date;

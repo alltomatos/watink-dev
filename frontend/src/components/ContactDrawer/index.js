@@ -39,6 +39,7 @@ import ContactDrawerSkeleton from "../ContactDrawerSkeleton";
 import MarkdownWrapper from "../MarkdownWrapper";
 import ContactAIInsights from "../ContactAIInsights";
 import ProtocolDrawer from "../../pages/Helpdesk/ProtocolDrawer";
+import { getBackendUrl } from "../../helpers/urlUtils";
 
 const drawerWidth = 320;
 
@@ -302,9 +303,10 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 					{activeTab === 0 && (
 						<div className={classes.content}>
 							<Paper square variant="outlined" className={classes.contactHeader}>
+
 								<Avatar
 									alt={contact.name}
-									src={contact.profilePicUrl}
+									src={getBackendUrl(contact.profilePicUrl)}
 									className={classes.contactAvatar}
 								></Avatar>
 

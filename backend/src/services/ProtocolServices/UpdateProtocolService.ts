@@ -4,6 +4,7 @@ import Contact from "../../models/Contact";
 import User from "../../models/User";
 import Ticket from "../../models/Ticket";
 import AppError from "../../errors/AppError";
+import CreateProtocolAttachmentService from "./CreateProtocolAttachmentService";
 
 interface UpdateProtocolData {
     id: number;
@@ -18,13 +19,14 @@ interface UpdateProtocolData {
     resolvedAt?: Date;
     closedAt?: Date;
     comment?: string;
+    files?: Express.Multer.File[];
 }
 
 const UpdateProtocolService = async (
     data: UpdateProtocolData,
     updatedByUserId?: number
 ): Promise<Protocol> => {
-    const { id, tenantId, comment, ...updateData } = data;
+    const { id, tenantId, comment, files, ...updateData } = data;
 
     const protocol = await Protocol.findOne({ where: { id, tenantId } });
 
@@ -78,6 +80,16 @@ const UpdateProtocolService = async (
         });
     }
 
+    // Handle file attachments if present
+    if (files && files.length > 0) {
+        await CreateProtocolAttachmentService({
+            protocolId: id,
+            tenantId,
+            userId: updatedByUserId!,
+            files
+        });
+    }
+
     const fullProtocol = await Protocol.findByPk(id, {
         include: [
             { model: Contact, as: "contact" },
@@ -86,6 +98,20 @@ const UpdateProtocolService = async (
             { model: ProtocolHistory, as: "history", include: [{ model: User, as: "user" }] }
         ]
     });
+
+    // Emit socket event for real-time Kanban updates
+    try {
+        const { getIO } = await import("../../libs/socket");
+        const io = getIO();
+        io.to("helpdesk-kanban").emit("protocol", {
+            action: "update",
+            protocol: fullProtocol,
+            previousStatus,
+            newStatus: updateData.status || previousStatus
+        });
+    } catch (err) {
+        console.error("Error emitting protocol socket event:", err);
+    }
 
     return fullProtocol!;
 };

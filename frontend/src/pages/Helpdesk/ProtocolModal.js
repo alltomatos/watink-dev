@@ -74,6 +74,39 @@ const ProtocolModal = ({ open, onClose }) => {
     const [contactLoading, setContactLoading] = useState(false);
     const [contactSearch, setContactSearch] = useState("");
 
+    // Helpdesk Settings
+    const [helpdeskEnabled, setHelpdeskEnabled] = useState(false);
+    const [categories, setCategories] = useState([]);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const { data } = await api.get("/settings");
+                const settingsData = Array.isArray(data) ? data : [];
+
+                const enabledSetting = settingsData.find(s => s.key === "helpdesk_settings_enabled");
+                const isEnabled = enabledSetting?.value === "true";
+                setHelpdeskEnabled(isEnabled);
+
+                if (isEnabled) {
+                    const categoriesSetting = settingsData.find(s => s.key === "helpdesk_categories");
+                    if (categoriesSetting) {
+                        try {
+                            setCategories(JSON.parse(categoriesSetting.value));
+                        } catch (e) {
+                            setCategories(["Incidente", "Requisição de Serviço", "Problema", "Mudança"]);
+                        }
+                    } else {
+                        setCategories(["Incidente", "Requisição de Serviço", "Problema", "Mudança"]);
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching settings", err);
+            }
+        };
+        fetchSettings();
+    }, [open]);
+
     useEffect(() => {
         if (!open) {
             setFormData({
@@ -192,7 +225,7 @@ const ProtocolModal = ({ open, onClose }) => {
                                 required
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12} sm={helpdeskEnabled ? 6 : 12}>
                             <FormControl variant="outlined" fullWidth size="small">
                                 <InputLabel>Prioridade</InputLabel>
                                 <Select
@@ -208,17 +241,37 @@ const ProtocolModal = ({ open, onClose }) => {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                name="category"
-                                label="Categoria"
-                                value={formData.category}
-                                onChange={handleChange}
-                                variant="outlined"
-                                size="small"
-                                fullWidth
-                            />
-                        </Grid>
+                        {helpdeskEnabled && (
+                            <Grid item xs={12} sm={6}>
+                                {categories.length > 0 ? (
+                                    <FormControl variant="outlined" fullWidth size="small">
+                                        <InputLabel>Categoria</InputLabel>
+                                        <Select
+                                            name="category"
+                                            value={formData.category}
+                                            onChange={handleChange}
+                                            label="Categoria"
+                                        >
+                                            {categories.map((cat) => (
+                                                <MenuItem key={cat} value={cat}>
+                                                    {cat}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                ) : (
+                                    <TextField
+                                        name="category"
+                                        label="Categoria"
+                                        value={formData.category}
+                                        onChange={handleChange}
+                                        variant="outlined"
+                                        size="small"
+                                        fullWidth
+                                    />
+                                )}
+                            </Grid>
+                        )}
                         <Grid item xs={12}>
                             <TextField
                                 name="description"

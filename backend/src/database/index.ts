@@ -29,6 +29,7 @@ import ClientAddress from "../models/ClientAddress";
 import ClientContact from "../models/ClientContact";
 import Protocol from "../models/Protocol";
 import ProtocolHistory from "../models/ProtocolHistory";
+import ProtocolAttachment from "../models/ProtocolAttachment";
 import ConversationEmbedding from "../models/ConversationEmbedding";
 
 // eslint-disable-next-line
@@ -67,6 +68,7 @@ const models = [
   ClientContact,
   Protocol,
   ProtocolHistory,
+  ProtocolAttachment,
   ConversationEmbedding
 ];
 
