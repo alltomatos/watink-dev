@@ -166,7 +166,7 @@ const PublicProtocol = () => {
                                 {i18n.t("publicProtocol.header.number", { number: protocol.protocolNumber })}
                             </Typography>
                         }
-                        subheader={i18n.t("publicProtocol.header.createdAt", { date: format(new Date(protocol.createdAt), "dd/MM/yyyy 'às' HH:mm") })}
+                        subheader={i18n.t("publicProtocol.header.createdAt", { date: format(new Date(protocol.createdAt), "dd/MM/yyyy 'às' HH:mm"), interpolation: { escapeValue: false } })}
                         action={
                             <Box display="flex" gap={1}>
                                 <Chip
