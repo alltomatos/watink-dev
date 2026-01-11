@@ -93,6 +93,7 @@ const nodeTitles = {
     'database': 'Configurar Database',
     'filter': 'Configurar Filtro de Dados',
     'api': 'Configurar Requisição API',
+    'helpdesk': 'Configurar Helpdesk',
     'end': 'Configurar Fim',
     'output': 'Configurar Fim'
 };
@@ -187,6 +188,8 @@ const NodeEditorSidebar = ({ open, node, onClose, onSave, onDelete }) => {
                 return renderFilterForm();
             case 'api':
                 return renderAPIForm();
+            case 'helpdesk':
+                return renderHelpdeskForm();
             case 'end':
             case 'output':
                 return renderEndForm();
@@ -207,6 +210,7 @@ const NodeEditorSidebar = ({ open, node, onClose, onSave, onDelete }) => {
                     <MenuItem value="time">Tempo/Agendamento</MenuItem>
                     <MenuItem value="action">Ação do Sistema</MenuItem>
                     <MenuItem value="message">Mensagem Recebida</MenuItem>
+                    <MenuItem value="webhook">Webhook Externo</MenuItem>
                 </Select>
             </FormControl>
 
@@ -238,6 +242,36 @@ const NodeEditorSidebar = ({ open, node, onClose, onSave, onDelete }) => {
                         {/* Idealmente carregar da API */}
                     </Select>
                 </FormControl>
+            )}
+
+            {formData.triggerType === 'webhook' && (
+                <>
+                    <Box className={classes.section}>
+                        <Typography variant="caption" color="textSecondary">
+                            URL do Webhook (use este endpoint para disparar o fluxo):
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            variant="outlined"
+                            size="small"
+                            className={classes.field}
+                            value={`${window.location.origin}/api/v1/flows/webhook/${formData.webhookToken || 'SEU_TOKEN_AQUI'}`}
+                            InputProps={{ readOnly: true }}
+                            helperText="Copie esta URL completa para usar em integrações externas"
+                        />
+                    </Box>
+                    <TextField
+                        fullWidth
+                        label="Token do Webhook"
+                        variant="outlined"
+                        size="small"
+                        className={classes.field}
+                        value={formData.webhookToken || ''}
+                        onChange={(e) => handleChange('webhookToken', e.target.value)}
+                        placeholder="meu-token-unico"
+                        helperText="Token único para identificar este fluxo (letras, números e hífens)"
+                    />
+                </>
             )}
         </>
     );
@@ -835,6 +869,76 @@ const NodeEditorSidebar = ({ open, node, onClose, onSave, onDelete }) => {
                     ))}
                 </Select>
             </FormControl>
+        </>
+    );
+
+    const renderHelpdeskForm = () => (
+        <>
+            <FormControl fullWidth className={classes.field} variant="outlined" size="small">
+                <InputLabel>Ação do Helpdesk</InputLabel>
+                <Select
+                    value={formData.helpdeskAction || 'createProtocol'}
+                    onChange={(e) => handleChange('helpdeskAction', e.target.value)}
+                    label="Ação do Helpdesk"
+                >
+                    <MenuItem value="createProtocol">Criar Protocolo</MenuItem>
+                    <MenuItem value="checkStatus">Verificar Status</MenuItem>
+                </Select>
+            </FormControl>
+
+            {formData.helpdeskAction === 'createProtocol' && (
+                <>
+                    <TextField
+                        fullWidth
+                        label="Assunto"
+                        variant="outlined"
+                        size="small"
+                        className={classes.field}
+                        value={formData.subject || ''}
+                        onChange={(e) => handleChange('subject', e.target.value)}
+                        placeholder="Protocolo via Fluxo"
+                        helperText="Use variáveis como {{contactName}}"
+                    />
+
+                    <TextField
+                        fullWidth
+                        label="Descrição"
+                        variant="outlined"
+                        size="small"
+                        className={classes.field}
+                        multiline
+                        rows={3}
+                        value={formData.description || ''}
+                        onChange={(e) => handleChange('description', e.target.value)}
+                        placeholder="Detalhes do protocolo..."
+                    />
+
+                    <FormControl fullWidth className={classes.field} variant="outlined" size="small">
+                        <InputLabel>Prioridade</InputLabel>
+                        <Select
+                            value={formData.priority || 'medium'}
+                            onChange={(e) => handleChange('priority', e.target.value)}
+                            label="Prioridade"
+                        >
+                            <MenuItem value="low">Baixa</MenuItem>
+                            <MenuItem value="medium">Média</MenuItem>
+                            <MenuItem value="high">Alta</MenuItem>
+                            <MenuItem value="urgent">Urgente</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    <TextField
+                        fullWidth
+                        label="Categoria"
+                        variant="outlined"
+                        size="small"
+                        className={classes.field}
+                        value={formData.category || ''}
+                        onChange={(e) => handleChange('category', e.target.value)}
+                        placeholder="Fluxo Automatizado"
+                    />
+                </>
+            )}
         </>
     );
 

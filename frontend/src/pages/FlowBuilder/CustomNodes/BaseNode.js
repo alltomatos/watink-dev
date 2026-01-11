@@ -108,6 +108,9 @@ const useStyles = makeStyles((theme) => ({
     colorApi: {
         background: 'linear-gradient(135deg, #3f51b5 0%, #283593 100%)' // Indigo
     },
+    colorHelpdesk: {
+        background: 'linear-gradient(135deg, #009688 0%, #00695c 100%)' // Teal
+    },
     // Badge para indicadores
     badge: {
         position: 'absolute',
