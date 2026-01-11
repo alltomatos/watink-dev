@@ -142,6 +142,52 @@ const Settings = () => {
 	const history = useHistory();
 	const { user } = useContext(AuthContext);
 
+	// Check if Plugin Manager is online to show/hide Marketplace
+	const [marketplaceVisible, setMarketplaceVisible] = useState(false);
+
+	useEffect(() => {
+		const checkMarketplace = async () => {
+			const pluginUrl = process.env.REACT_APP_PLUGIN_MANAGER_URL || (import.meta.env && import.meta.env.VITE_PLUGIN_MANAGER_URL);
+
+			// If no URL configured, hide it
+			if (!pluginUrl) {
+				setMarketplaceVisible(false);
+				return;
+			}
+
+			// If URL is just a path (like /plugins/), construct full URL based on current location
+			const targetUrl = pluginUrl.startsWith('http')
+				? pluginUrl
+				: `${window.location.origin}${pluginUrl}`;
+
+			try {
+				// Simple timeout for the check
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+				const response = await fetch(targetUrl, {
+					method: 'HEAD',
+					signal: controller.signal
+				});
+
+				clearTimeout(timeoutId);
+
+				// Assuming if we get a response, the service is reachable or routed
+				// Checking specifically for success or 404 (service might be there but index missing)
+				// But specifically avoiding 5xx which usually means Bad Gateway (Down)
+				if (response.status < 500) {
+					setMarketplaceVisible(true);
+				} else {
+					setMarketplaceVisible(false);
+				}
+			} catch (err) {
+				setMarketplaceVisible(false);
+			}
+		};
+
+		checkMarketplace();
+	}, []);
+
 
 	const [activeSection, setActiveSection] = useState("general");
 	const [settings, setSettings] = useState([]);
@@ -953,7 +999,7 @@ const Settings = () => {
 						</ListItem>
 					)}
 
-					{["admin", "superadmin"].includes(user?.profile) && (
+					{["admin", "superadmin"].includes(user?.profile) && marketplaceVisible && (
 						<ListItem
 							button
 							onClick={() => history.push("/admin/settings/marketplace")}
