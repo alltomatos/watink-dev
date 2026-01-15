@@ -57,6 +57,20 @@ class RabbitMQService {
     );
   }
 
+  async publishEvent(routingKey: string, message: Envelope): Promise<void> {
+    if (!this.channel) {
+      logger.warn("Cannot publish event, channel is closed");
+      return;
+    }
+
+    logger.info(`[RabbitMQ] Publishing event to ${routingKey}`);
+    this.channel.publish(
+      "wbot.events",
+      routingKey,
+      Buffer.from(JSON.stringify(message))
+    );
+  }
+
   async consumeEvents(queueName: string, routingKeys: string[], handler: (msg: Envelope) => Promise<void>): Promise<void> {
     if (!this.channel) return;
 

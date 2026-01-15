@@ -18,6 +18,8 @@ interface WhatsappData {
   syncHistory?: boolean;
   syncPeriod?: string;
   keepAlive?: boolean;
+  type?: string;
+  chatConfig?: any;
 }
 
 export const index = async (req: Request, res: Response): Promise<Response> => {
@@ -37,7 +39,9 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     queueIds,
     syncHistory,
     syncPeriod,
-    keepAlive
+    keepAlive,
+    type,
+    chatConfig
   }: WhatsappData = req.body;
 
   const { tenantId } = (req as any).user;
@@ -52,7 +56,9 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     syncHistory,
     syncPeriod,
     keepAlive,
-    tenantId
+    tenantId,
+    type,
+    chatConfig
   });
 
   // StartWhatsAppSession(whatsapp); // [REMOVED] Manual connect only

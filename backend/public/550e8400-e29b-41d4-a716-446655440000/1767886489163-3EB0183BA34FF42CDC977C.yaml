@@ -1,0 +1,57 @@
+services:
+  multivozes:
+    container_name: multivozes_br_engine
+    image: hammebsb/multivozes_br_engine:latest
+
+    networks:
+      - traefik_public
+
+    environment:
+      - PORT=5050
+      - API_KEY=Crie uma chave com numeros e letras aleatorais ex-GymR3QaU6addRG4444kRVGee45 #Comando para Gerar a chave: echo "API_KEY=sk-$(openssl rand -hex 32)"
+      - REQUIRE_API_KEY=true
+      - DEFAULT_VOICE=pt-BR-ThalitaMultilingualNeural
+      - DEFAULT_RESPONSE_FORMAT=mp3
+      - DEFAULT_SPEED=1.0
+      - DEFAULT_LANGUAGE=pt-BR
+      - REMOVE_FILTER=false
+      - DETAILED_ERROR_LOGGING=true
+      - EXPAND_API=true  
+
+    volumes:
+      - voices_data:/app
+    command: ["python", "/app/main.py"]  
+
+    labels:
+      - "traefik.enable=true"
+
+      # HTTPS Router
+      - "traefik.http.routers.multivozes.rule=Host(`api.domain.com`)"
+      - "traefik.http.routers.multivozes.entrypoints=websecure"
+      - "traefik.http.routers.multivozes.tls=true"
+      - "traefik.http.routers.multivozes.tls.certresolver=le"
+      - "traefik.http.services.multivozes.loadbalancer.server.port=5050"
+
+      # HTTP Router → Redirect to HTTPS
+      - "traefik.http.routers.multivozes-http.rule=Host(`api.domain.com`)"
+      - "traefik.http.routers.multivozes-http.entrypoints=web"
+      - "traefik.http.routers.multivozes-http.middlewares=redirect-to-https"
+
+      # Middleware de redirecionamento
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+      
+
+      
+
+    restart: unless-stopped
+
+    
+
+networks:
+  traefik_public:
+    external: true
+
+volumes:
+  voices_data:
+    external: true

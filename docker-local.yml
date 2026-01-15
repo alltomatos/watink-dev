@@ -1,0 +1,158 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: sh -c "npm install && npm run dev"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - DB_DIALECT=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - DB_NAME=watink
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
+      - JWT_SECRET=3123123213123
+      - JWT_REFRESH_SECRET=75756756756
+      - FRONTEND_URL=http://app.localhost
+      - URL_BACKEND=http://api.localhost
+      - PORT=8080
+      - REDIS_URL=redis://redis:6379
+      - NODE_OPTIONS=--max-old-space-size=800
+      - DEFAULT_TENANT_UUID=550e8400-e29b-41d4-a716-446655440000
+    networks:
+      - watink_public
+      - watink_private
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend-api.rule=Host(`api.localhost`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend-api.entrypoints=web"
+      - "traefik.http.routers.backend-api.middlewares=backend-strip"
+      - "traefik.http.middlewares.backend-strip.stripprefix.prefixes=/api"
+      - "traefik.http.routers.backend-api.service=backend"
+      - "traefik.http.routers.backend-root.rule=Host(`api.localhost`)"
+      - "traefik.http.routers.backend-root.entrypoints=web"
+      - "traefik.http.routers.backend-root.service=backend"
+      - "traefik.http.services.backend.loadbalancer.server.port=8080"
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_BACKEND_URL=http://api.localhost/
+      - VITE_PLUGIN_MANAGER_URL=/plugins/
+      - VITE_HOURS_CLOSE_TICKETS_AUTO=24
+    networks:
+      - watink_public
+      - watink_private
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`app.localhost`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.routers.frontend.service=frontend"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+    depends_on:
+      - backend
+
+  whaileys-engine:
+    image: watink/engine:1.0.116
+    environment:
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
+    networks:
+      - watink_private
+      - watink_public
+    volumes:
+      - sessions_auth_data:/usr/src/app/.sessions_auth/
+    depends_on:
+      - rabbitmq
+      - redis
+
+  flow-engine-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: sh -c "npm install && npx ts-node-dev --respawn --transpile-only --ignore node_modules src/flow-worker.ts"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - DB_DIALECT=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - DB_NAME=watink
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
+      - DEFAULT_TENANT_UUID=550e8400-e29b-41d4-a716-446655440000
+    networks:
+      - watink_private
+    depends_on:
+      - backend
+
+  postgres:
+    image: ronaldodavi/pgvectorgis:latest
+    environment:
+      - POSTGRES_DB=watink
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data_local:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - watink_private
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - watink_private
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_local:/data
+    networks:
+      - watink_private
+
+  traefik:
+    image: traefik:v3.4.0
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - watink_public
+
+networks:
+  watink_public:
+  watink_private:
+
+volumes:
+  postgres_data_local:
+  redis_data_local:
+  sessions_auth_data:

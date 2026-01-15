@@ -39,6 +39,7 @@ import Title from "../../components/Title";
 import BaseCard from "../../components/BaseCard";
 
 import WhatsAppModal from "../../components/WhatsAppModal";
+import WebchatModal from "../../components/WebchatModal";
 import ConfirmationModal from "../../components/ConfirmationModal";
 import api from "../../services/api";
 import { toast } from "react-toastify";
@@ -109,6 +110,7 @@ const Connections = () => {
 
 	const { whatsApps, loading } = useContext(WhatsAppsContext);
 	const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
+	const [webchatModalOpen, setWebchatModalOpen] = useState(false);
 	const [confirmationOpen, setConfirmationOpen] = useState(false);
 	const [selectedWhatsApp, setSelectedWhatsApp] = useState(null);
 	const [anchorEl, setAnchorEl] = useState(null);
@@ -119,10 +121,20 @@ const Connections = () => {
 		setWhatsAppModalOpen(true);
 	};
 
+	const handleOpenWebchatModal = () => {
+		setSelectedWhatsApp(null);
+		setWebchatModalOpen(true);
+	};
+
 	const handleCloseWhatsAppModal = useCallback(() => {
 		setWhatsAppModalOpen(false);
 		setSelectedWhatsApp(null);
 	}, [setSelectedWhatsApp, setWhatsAppModalOpen]);
+
+	const handleCloseWebchatModal = useCallback(() => {
+		setWebchatModalOpen(false);
+		setSelectedWhatsApp(null);
+	}, [setSelectedWhatsApp, setWebchatModalOpen]);
 
 	const handleOpenConfirmationModal = () => {
 		setConfirmationOpen(true);
@@ -214,7 +226,11 @@ const Connections = () => {
 		const whatsapp = whatsApps.find(w => w.id === menuTargetId);
 		if (whatsapp) {
 			setSelectedWhatsApp(whatsapp);
-			setWhatsAppModalOpen(true);
+			if (whatsapp.type === 'webchat') {
+				setWebchatModalOpen(true);
+			} else {
+				setWhatsAppModalOpen(true);
+			}
 		}
 		handleMenuClose();
 	};
@@ -256,6 +272,11 @@ const Connections = () => {
 				onClose={handleCloseWhatsAppModal}
 				whatsAppId={selectedWhatsApp?.id}
 			/>
+			<WebchatModal
+				open={webchatModalOpen}
+				onClose={handleCloseWebchatModal}
+				whatsAppId={selectedWhatsApp?.id}
+			/>
 
 			<MainHeader>
 				<Title>{i18n.t("connections.title")}</Title>
@@ -267,6 +288,15 @@ const Connections = () => {
 						startIcon={<Add />}
 					>
 						{i18n.t("connections.buttons.add")}
+					</Button>
+					<Button
+						variant="contained"
+						color="primary"
+						onClick={handleOpenWebchatModal}
+						startIcon={<Add />}
+						style={{ marginLeft: 8 }}
+					>
+						Adicionar Webchat
 					</Button>
 					<Button
 						variant="contained"

@@ -1,0 +1,45 @@
+{
+    "name": "@types/factory-girl",
+    "version": "5.0.12",
+    "description": "TypeScript definitions for factory-girl",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/factory-girl",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Stack Builders",
+            "githubUsername": "stackbuilders",
+            "url": "https://github.com/stackbuilders"
+        },
+        {
+            "name": "Sebastián Estrella",
+            "githubUsername": "sestrella",
+            "url": "https://github.com/sestrella"
+        },
+        {
+            "name": "Luis Fernando Alvarez",
+            "githubUsername": "elcuy",
+            "url": "https://github.com/elcuy"
+        },
+        {
+            "name": "Olivier Kamers",
+            "githubUsername": "OlivierKamers",
+            "url": "https://github.com/OlivierKamers"
+        },
+        {
+            "name": "Dan McNamara",
+            "githubUsername": "DMcNamara",
+            "url": "https://github.com/DMcNamara"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/factory-girl"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "01437168b931ba4fa63be6cd059f1780d2af305b6c696680c47e128066dd63d8",
+    "typeScriptVersion": "4.5"
+}
