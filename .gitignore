@@ -1,4 +1,6 @@
-#.docker/
+.docker/
+dist_plugins/
+logs.txt
 ssl/
 .env
 .wwebjs_auth
@@ -18,4 +20,4 @@ engine-go
 # Legacy & Obsolete
 #docs/old/
 #rule/dev_micro.md
-plugin-manager/
+## plugin-manager/
