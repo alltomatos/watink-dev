@@ -135,6 +135,9 @@ const PluginDetail = () => {
             });
             toast.success(`Plugin ${plugin.name} ativado com sucesso!`);
             setPlugin({ ...plugin, installed: true, active: true });
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } catch (err) {
             toast.error("Erro ao ativar plugin");
         } finally {
@@ -148,6 +151,9 @@ const PluginDetail = () => {
             await pluginApi.post(`/api/v1/plugins/${plugin.slug}/deactivate`);
             toast.success(`Plugin ${plugin.name} desativado.`);
             setPlugin({ ...plugin, active: false });
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } catch (err) {
             toast.error("Erro ao desativar plugin");
         } finally {
@@ -167,6 +173,9 @@ const PluginDetail = () => {
             await pluginApi.post(`/api/v1/plugins/${plugin.slug}/activate`, { licenseKey });
             toast.success(`Plugin ${plugin.name} ativado com sucesso!`);
             setPlugin({ ...plugin, installed: true, active: true });
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
             setLicenseDialogOpen(false);
             setLicenseKey("");
         } catch (err) {

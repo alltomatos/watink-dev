@@ -1,0 +1,175 @@
+services:
+  backend:
+    image: watink/backend:latest
+    environment:
+      - DB_DIALECT=postgres
+      - DB_HOST=watink_postgres # garantir que conecte no banco local desta stack
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - DB_NAME=watink
+      - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+      - JWT_SECRET=***REMOVED_JWT_SECRET***
+      - JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***
+      - FRONTEND_URL=http://app.watink.com # Alterar para o dominio do frontend
+      - URL_BACKEND=http://api.watink.com # Alterar para o dominio do backend
+      - PORT=8080
+      - NODE_OPTIONS=--max-old-space-size=800
+      - DEFAULT_TENANT_UUID=550e8400-e29b-41d4-a716-446655440000
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - backend_public_data:/app/public
+    networks:
+      - watink_public
+      - watink_network
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.backend-api.rule=Host(`api.watink.com`) && PathPrefix(`/api`)" # Alterar para o dominio do backend
+        - "traefik.http.routers.backend-api.entrypoints=websecure"
+        - "traefik.http.routers.backend-api.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.backend-api.middlewares=backend-strip"
+        - "traefik.http.middlewares.backend-strip.stripprefix.prefixes=/api"
+        - "traefik.http.routers.backend-api.service=backend"
+        - "traefik.http.routers.backend-root.rule=Host(`api.watink.com`)"
+        - "traefik.http.routers.backend-root.entrypoints=websecure"
+        - "traefik.http.routers.backend-root.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.backend-root.service=backend"
+        - "traefik.http.services.backend.loadbalancer.server.port=8080"
+        - "traefik.docker.network=watink_public"
+
+  frontend:
+    image: watink/frontend:latest
+    environment:
+      - URL_BACKEND=backend:8080
+      - VITE_BACKEND_URL=https://api.watink.com/ # Alterar para o dominio do backend
+      - VITE_PLUGIN_MANAGER_URL=/plugins/
+      - VITE_HOURS_CLOSE_TICKETS_AUTO=24
+    networks:
+      - watink_public
+      - watink_network
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.frontend.rule=Host(`app.watink.com`)" # Alterar para o dominio do frontend
+        - "traefik.http.routers.frontend.entrypoints=websecure"
+        - "traefik.http.routers.frontend.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.frontend.service=frontend"
+        - "traefik.http.services.frontend.loadbalancer.server.port=80"
+        - "traefik.docker.network=watink_public"
+  whaileys-engine:
+    image: watink/engine:latest
+    environment:
+      - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
+    networks:
+      - watink_network
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  flow-worker:
+    image: watink/backend:latest
+    command: [ "node", "dist/flow-worker.js" ]
+    environment:
+      - DB_DIALECT=postgres
+      - DB_HOST=watink_postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - DB_NAME=watink
+      - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
+      - DEFAULT_TENANT_UUID=550e8400-e29b-41d4-a716-446655440000
+    networks:
+      - watink_network
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  dispatcher-service:
+    image: watink/dispatcher:latest
+    environment:
+      - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
+    networks:
+      - watink_network
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    networks:
+      - watink_network
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  redis:
+    image: redis:alpine
+    command: [ "redis-server", "--appendonly", "yes" ]
+    networks:
+      - watink_network
+    volumes:
+      - redis_data:/data
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  # PostgreSQL
+  watink_postgres:
+    # Renomeei o serviço para evitar conflito de nome na rede onde um setup orion roda
+    image: ronaldodavi/pgvectorgis:latest
+    environment:
+      - POSTGRES_DB=watink
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - watink_network # Apenas na rede privada, sem conflito com o 'postgres' do ORION na rede 'proxy'
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+networks:
+  watink_public:
+    external: true
+    name: proxy # nome da rede do traefik
+  watink_network:
+    external: true
+    name: watink_network
+
+volumes:
+  db_data: # Este volume deve ser limpo se a senha 'postgres' não funcionar
+  redis_data:
+  backend_public_data:

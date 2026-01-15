@@ -1,0 +1,41 @@
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.index = void 0;
+const Protocol_1 = __importDefault(require("../models/Protocol"));
+const Contact_1 = __importDefault(require("../models/Contact"));
+const COLUMNS_CONFIG = [
+    { status: "open", label: "Aberto", color: "#2196F3", bgColor: "#E3F2FD" },
+    { status: "in_progress", label: "Em Andamento", color: "#FF9800", bgColor: "#FFF3E0" },
+    { status: "pending", label: "Pendente", color: "#9E9E9E", bgColor: "#F5F5F5" },
+    { status: "resolved", label: "Resolvido", color: "#4CAF50", bgColor: "#E8F5E9" },
+    { status: "closed", label: "Fechado", color: "#616161", bgColor: "#EEEEEE" }
+];
+const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { tenantId } = req.user;
+    const protocols = yield Protocol_1.default.findAll({
+        where: { tenantId },
+        include: [
+            {
+                model: Contact_1.default,
+                as: "contact",
+                attributes: ["id", "name", "number", "profilePicUrl"]
+            }
+        ],
+        order: [["createdAt", "DESC"]]
+    });
+    const columns = COLUMNS_CONFIG.map(col => (Object.assign(Object.assign({}, col), { protocols: protocols.filter(p => p.status === col.status) })));
+    return res.json({ columns });
+});
+exports.index = index;

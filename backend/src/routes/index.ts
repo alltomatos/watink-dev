@@ -31,6 +31,7 @@ import protocolRoutes from "./protocolRoutes";
 
 import pluginRoutes from "./pluginRoutes";
 import aiRoutes from "./aiRoutes";
+import webchatRoutes from "./WebchatRoutes";
 
 const routes = Router();
 

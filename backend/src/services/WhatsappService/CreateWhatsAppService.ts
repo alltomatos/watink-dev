@@ -15,6 +15,8 @@ interface Request {
   syncPeriod?: string;
   keepAlive?: boolean;
   tenantId?: number | string;
+  type?: string;
+  chatConfig?: any;
 }
 
 interface Response {
@@ -32,7 +34,9 @@ const CreateWhatsAppService = async ({
   syncHistory = false,
   syncPeriod,
   keepAlive,
-  tenantId
+  tenantId,
+  type = "whatsapp",
+  chatConfig = {}
 }: Request): Promise<Response> => {
   const schema = Yup.object().shape({
     name: Yup.string()
@@ -87,7 +91,9 @@ const CreateWhatsAppService = async ({
       syncHistory,
       syncPeriod,
       keepAlive,
-      tenantId
+      tenantId,
+      type,
+      chatConfig
     },
     { include: ["queues"] }
   );

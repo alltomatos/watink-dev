@@ -19,6 +19,8 @@ interface WhatsappData {
   syncHistory?: boolean; // [NEW]
   syncPeriod?: string;   // [NEW]
   keepAlive?: boolean;   // [NEW]
+  type?: string;
+  chatConfig?: any;
 }
 
 interface Request {
@@ -51,7 +53,9 @@ const UpdateWhatsAppService = async ({
     queueIds = [],
     syncHistory,
     syncPeriod,
-    keepAlive
+    keepAlive,
+    type,
+    chatConfig
   } = whatsappData;
 
   logger.info(`UpdateWhatsAppService - ID: ${whatsappId}, Data: ${JSON.stringify(whatsappData)} `); // [DEBUG]
@@ -89,7 +93,9 @@ const UpdateWhatsAppService = async ({
     isDefault,
     syncHistory,
     syncPeriod,
-    keepAlive
+    keepAlive,
+    type,
+    chatConfig
   });
 
   // [NEW] If critical settings changed, stop session to force reconnection with new settings

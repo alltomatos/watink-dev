@@ -1,0 +1,43 @@
+services:
+  plugin-manager:
+    image: watink/plugin-manager:1.0.32
+    build: ./plugin-manager
+    environment:
+      - PORT=8081
+      - DATABASE_URL=postgres://postgres:postgres@watink_postgres:5432/watink?sslmode=disable
+    networks:
+      - proxy
+      - watink_network
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.plugin-manager.rule=Host(`api.localhost`) && PathPrefix(`/plugins`)"
+        - "traefik.http.routers.plugin-manager.entrypoints=websecure"
+        - "traefik.http.routers.plugin-manager.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.plugin-manager.priority=100"
+        - "traefik.http.routers.plugin-manager.service=plugin-manager"
+        - "traefik.http.services.plugin-manager.loadbalancer.server.port=8081"
+        - "traefik.http.routers.plugin-manager.middlewares=plugin-strip"
+        - "traefik.http.middlewares.plugin-strip.stripprefix.prefixes=/plugins"
+        - "traefik.docker.network=proxy"
+
+  plugin-smtp:
+    image: watink/plugin-smtp:1.0.0
+    build: ./plugins/watink-smtp-go
+    environment:
+      - RABBITMQ_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+    networks:
+      - watink_network
+    deploy:
+      mode: replicated
+      replicas: 1
+
+networks:
+  proxy:
+    external: true
+    name: watink_watink_public
+  watink_network:
+    external: true
+    name: watink_watink_private
