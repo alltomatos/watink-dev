@@ -13,7 +13,8 @@ const webchatCors = cors({
 });
 
 // Aplica CORS permissivo a todas as rotas do webchat
-webchatRoutes.use(webchatCors);
+// Aplica CORS permissivo a todas as rotas do webchat
+webchatRoutes.use("/webchat", webchatCors);
 
 webchatRoutes.get("/webchat/:whatsappId", WebchatController.getConfig);
 webchatRoutes.post("/webchat/:whatsappId/tickets", WebchatController.createTicket);
