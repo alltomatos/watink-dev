@@ -32,6 +32,8 @@ import Protocol from "../models/Protocol";
 import ProtocolHistory from "../models/ProtocolHistory";
 import ProtocolAttachment from "../models/ProtocolAttachment";
 import ConversationEmbedding from "../models/ConversationEmbedding";
+import Plugin from "../models/Plugin";
+import PluginInstallation from "../models/PluginInstallation";
 import TenantSmtpSettings from "../models/TenantSmtpSettings";
 
 // eslint-disable-next-line
@@ -73,7 +75,9 @@ const models = [
   ProtocolHistory,
   ProtocolAttachment,
   ConversationEmbedding,
-  TenantSmtpSettings
+  TenantSmtpSettings,
+  Plugin,
+  PluginInstallation
 ];
 
 sequelize.addModels(models);

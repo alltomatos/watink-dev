@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useContext } from "react";
+import React, { useState, useCallback, useContext, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { useHistory } from "react-router-dom";
 
@@ -117,6 +117,21 @@ const Connections = () => {
 	const [selectedWhatsApp, setSelectedWhatsApp] = useState(null);
 	const [anchorEl, setAnchorEl] = useState(null);
 	const [menuTargetId, setMenuTargetId] = useState(null);
+	const [activePlugins, setActivePlugins] = useState([]);
+
+	useEffect(() => {
+		const fetchPlugins = async () => {
+			try {
+				const { data } = await api.get("/plugins/api/v1/plugins/installed");
+				setActivePlugins(data.active || []);
+			} catch (err) {
+				if (err?.response?.status !== 502 && err?.code !== "ERR_NETWORK") {
+					console.warn("Failed to fetch plugins", err);
+				}
+			}
+		};
+		fetchPlugins();
+	}, []);
 
 	const handleOpenWhatsAppModal = () => {
 		setSelectedWhatsApp(null);
@@ -302,15 +317,17 @@ const Connections = () => {
 					>
 						{i18n.t("connections.buttons.add")}
 					</Button>
-					<Button
-						variant="contained"
-						color="primary"
-						onClick={handleOpenWebchatModal}
-						startIcon={<Add />}
-						style={{ marginLeft: 8 }}
-					>
-						Adicionar Webchat
-					</Button>
+					{activePlugins.includes("webchat") && (
+						<Button
+							variant="contained"
+							color="primary"
+							onClick={handleOpenWebchatModal}
+							startIcon={<Add />}
+							style={{ marginLeft: 8 }}
+						>
+							Adicionar Webchat
+						</Button>
+					)}
 					<Button
 						variant="contained"
 						color="primary"
@@ -331,112 +348,117 @@ const Connections = () => {
 				) : (
 					<Grid container spacing={3}>
 						{whatsApps?.length > 0 &&
-							whatsApps.map(whatsApp => {
-								const statusColor = getStatusColor(whatsApp.status, whatsApp.type);
-								const bgColor = getStatusBackgroundColor(whatsApp.status, whatsApp.type);
+							whatsApps
+								.filter(whats => {
+									if (whats.type === 'webchat' && !activePlugins.includes("webchat")) return false;
+									return true;
+								})
+								.map(whatsApp => {
+									const statusColor = getStatusColor(whatsApp.status, whatsApp.type);
+									const bgColor = getStatusBackgroundColor(whatsApp.status, whatsApp.type);
 
-								return (
-									<Grid item xs={12} sm={6} md={4} lg={3} key={whatsApp.id}>
-										<BaseCard
-											className={classes.customCard}
-											title={whatsApp.name}
-											subtitle={
-												<Box>
-													<span style={{ fontSize: 13, fontWeight: 400, color: '#8e8e8e', display: 'flex', gap: 4 }}>
-														Atualizado em {whatsApp.updatedAt
-															? format(parseISO(whatsApp.updatedAt), "dd/MM")
-															: "N/A"
-														}
-													</span>
-													{whatsApp.type === 'whatsapp' && (
-														<Typography variant="body2" color="textSecondary" style={{ marginTop: 4, display: 'flex', alignItems: 'center' }}>
-															<WhatsApp style={{ fontSize: 16, marginRight: 4, color: "#25D366" }} /> WhatsApp
-														</Typography>
-													)}
-													{whatsApp.type === 'webchat' && (
-														<Typography variant="body2" color="textSecondary" style={{ marginTop: 4, display: 'flex', alignItems: 'center' }}>
-															<Chat style={{ fontSize: 16, marginRight: 4, color: "#9c27b0" }} /> Webchat
-														</Typography>
-													)}
-													{whatsApp.status === "CONNECTED" && whatsApp.number && (
-														<Typography variant="body2" color="textSecondary" style={{ marginTop: 4 }}>
-															+{whatsApp.number}
-														</Typography>
-													)}
-												</Box>
-											}
-											iconColor={bgColor}
-											icon={
-												whatsApp.status === "CONNECTED" && whatsApp.profilePicUrl ? (
-													<Avatar
-														src={getBackendUrl(whatsApp.profilePicUrl)}
-														alt={whatsApp.name}
-														style={{ width: 56, height: 56 }}
-													/>
-												) : (
-													React.cloneElement(renderStatusIcon(whatsApp.status), { style: { color: statusColor, fontSize: 24 } })
-												)
-											}
-
-											actions={
-												<>
-													<Tooltip title={i18n.t("connections.buttons.restart")}>
-														<span>
-															<IconButton
-																size="small"
-																onClick={() => handleRestartWhatsApp(whatsApp.id)}
-																disabled={whatsApp.status === "CONNECTED" || whatsApp.type === 'webchat'}
-															>
-																<Autorenew fontSize="small" style={{ color: whatsApp.status === "CONNECTED" ? '#bdbdbd' : '#94a3b8' }} />
-															</IconButton>
+									return (
+										<Grid item xs={12} sm={6} md={4} lg={3} key={whatsApp.id}>
+											<BaseCard
+												className={classes.customCard}
+												title={whatsApp.name}
+												subtitle={
+													<Box>
+														<span style={{ fontSize: 13, fontWeight: 400, color: '#8e8e8e', display: 'flex', gap: 4 }}>
+															Atualizado em {whatsApp.updatedAt
+																? format(parseISO(whatsApp.updatedAt), "dd/MM")
+																: "N/A"
+															}
 														</span>
-													</Tooltip>
-													<IconButton
-														size="small"
-														onClick={(e) => handleMenuOpen(e, whatsApp.id)}
-													>
-														<MoreVert fontSize="small" style={{ color: '#94a3b8' }} />
-													</IconButton>
-												</>
-											}
-											hoverEffect={true}
-											onClick={() => handleCardClick(whatsApp.id)}
-										>
-
-											<Box mt={2} display="flex" alignItems="center">
-												<Chip
-													classes={{ root: classes.chipRoot }}
-													style={{
-														backgroundColor: bgColor,
-														color: statusColor,
-														width: "100%",
-													}}
-													label={
-														<Box display="flex" alignItems="center" width="100%">
-															<Box
-																className={classes.pulsingDot}
-																style={{
-																	backgroundColor: statusColor,
-																	color: statusColor
-																}}
-															/>
-															<Typography variant="body2" style={{ fontWeight: 600, fontSize: '0.8125rem' }}>
-																{renderStatusLabel(whatsApp.status, whatsApp.type)}
+														{whatsApp.type === 'whatsapp' && (
+															<Typography variant="body2" color="textSecondary" style={{ marginTop: 4, display: 'flex', alignItems: 'center' }}>
+																<WhatsApp style={{ fontSize: 16, marginRight: 4, color: "#25D366" }} /> WhatsApp
 															</Typography>
+														)}
+														{whatsApp.type === 'webchat' && (
+															<Typography variant="body2" color="textSecondary" style={{ marginTop: 4, display: 'flex', alignItems: 'center' }}>
+																<Chat style={{ fontSize: 16, marginRight: 4, color: "#9c27b0" }} /> Webchat
+															</Typography>
+														)}
+														{whatsApp.status === "CONNECTED" && whatsApp.number && (
+															<Typography variant="body2" color="textSecondary" style={{ marginTop: 4 }}>
+																+{whatsApp.number}
+															</Typography>
+														)}
+													</Box>
+												}
+												iconColor={bgColor}
+												icon={
+													whatsApp.status === "CONNECTED" && whatsApp.profilePicUrl ? (
+														<Avatar
+															src={getBackendUrl(whatsApp.profilePicUrl)}
+															alt={whatsApp.name}
+															style={{ width: 56, height: 56 }}
+														/>
+													) : (
+														React.cloneElement(renderStatusIcon(whatsApp.status), { style: { color: statusColor, fontSize: 24 } })
+													)
+												}
 
-															{whatsApp.isDefault && (
-																<Box ml="auto">
-																	<CheckCircle style={{ fontSize: 16 }} />
-																</Box>
-															)}
-														</Box>
-													}
-												/>
-											</Box>
-										</BaseCard>
-									</Grid>
-								)
-							})}
+												actions={
+													<>
+														<Tooltip title={i18n.t("connections.buttons.restart")}>
+															<span>
+																<IconButton
+																	size="small"
+																	onClick={() => handleRestartWhatsApp(whatsApp.id)}
+																	disabled={whatsApp.status === "CONNECTED" || whatsApp.type === 'webchat'}
+																>
+																	<Autorenew fontSize="small" style={{ color: whatsApp.status === "CONNECTED" ? '#bdbdbd' : '#94a3b8' }} />
+																</IconButton>
+															</span>
+														</Tooltip>
+														<IconButton
+															size="small"
+															onClick={(e) => handleMenuOpen(e, whatsApp.id)}
+														>
+															<MoreVert fontSize="small" style={{ color: '#94a3b8' }} />
+														</IconButton>
+													</>
+												}
+												hoverEffect={true}
+												onClick={() => handleCardClick(whatsApp.id)}
+											>
+
+												<Box mt={2} display="flex" alignItems="center">
+													<Chip
+														classes={{ root: classes.chipRoot }}
+														style={{
+															backgroundColor: bgColor,
+															color: statusColor,
+															width: "100%",
+														}}
+														label={
+															<Box display="flex" alignItems="center" width="100%">
+																<Box
+																	className={classes.pulsingDot}
+																	style={{
+																		backgroundColor: statusColor,
+																		color: statusColor
+																	}}
+																/>
+																<Typography variant="body2" style={{ fontWeight: 600, fontSize: '0.8125rem' }}>
+																	{renderStatusLabel(whatsApp.status, whatsApp.type)}
+																</Typography>
+
+																{whatsApp.isDefault && (
+																	<Box ml="auto">
+																		<CheckCircle style={{ fontSize: 16 }} />
+																	</Box>
+																)}
+															</Box>
+														}
+													/>
+												</Box>
+											</BaseCard>
+										</Grid>
+									)
+								})}
 					</Grid>
 				)}
 			</Box>

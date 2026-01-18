@@ -168,6 +168,7 @@ const Ticket = () => {
           <MessagesList
             ticketId={ticketId}
             isGroup={ticket.isGroup}
+            isWebchat={ticket.whatsapp?.type === "webchat"}
           ></MessagesList>
           <MessageInput
             ticketStatus={ticket.status}

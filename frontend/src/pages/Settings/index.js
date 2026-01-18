@@ -939,17 +939,19 @@ const Settings = () => {
 						</ListItemIcon>
 						<ListItemText primary="Geral" />
 					</ListItem>
-					<ListItem
-						button
-						selected={activeSection === "smtp"}
-						onClick={() => setActiveSection("smtp")}
-						className={classes.menuItem}
-					>
-						<ListItemIcon>
-							<SettingsIcon />
-						</ListItemIcon>
-						<ListItemText primary="SMTP" />
-					</ListItem>
+					{activePlugins.includes("smtp") && (
+						<ListItem
+							button
+							selected={activeSection === "smtp"}
+							onClick={() => setActiveSection("smtp")}
+							className={classes.menuItem}
+						>
+							<ListItemIcon>
+								<SettingsIcon />
+							</ListItemIcon>
+							<ListItemText primary="SMTP" />
+						</ListItem>
+					)}
 					<ListItem
 						button
 						selected={activeSection === "customize"}
@@ -1187,7 +1189,7 @@ const Settings = () => {
 						</Paper>
 					</>
 				)}
-				{activeSection === "smtp" && (
+				{activeSection === "smtp" && activePlugins.includes("smtp") && (
 					<>
 						<Typography variant="h5" className={classes.sectionTitle}>
 							{i18n.t("smtp.settingsTitle")}

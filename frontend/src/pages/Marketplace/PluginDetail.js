@@ -105,7 +105,7 @@ const PluginDetail = () => {
             const all = Array.isArray(catalogRes?.plugins) ? catalogRes.plugins : [];
             const activeSlugs = Array.isArray(installedRes?.active) ? installedRes.active : [];
 
-            const p = all.find(x => x.slug === slug && ["clientes", "helpdesk", "smtp"].includes(x.slug));
+            const p = all.find(x => x.slug === slug);
             const isActive = activeSlugs.includes(slug);
 
             if (p) {
@@ -120,7 +120,9 @@ const PluginDetail = () => {
                             ? `O Plugin de Clientes adiciona ao Watink uma gestão completa de clientes, permitindo:\n\n• Cadastro detalhado de clientes (pessoa física e jurídica)\n• Múltiplos contatos vinculados ao mesmo cliente\n• Múltiplos endereços por cliente\n• Integração automática com API ViaCEP para autocompletar endereços\n• Vinculação de contatos do WhatsApp a clientes cadastrados\n• Histórico de interações por cliente`
                             : p.slug === "smtp"
                                 ? `O Plugin de SMTP permite configurar seu próprio servidor de e-mail para envio de notificações e mensagens do sistema.\n\n• Configuração personalizada de Host, Porta e Autenticação\n• Suporte a SSL/TLS\n• Definição de remetente padrão`
-                                : `O Plugin de Helpdesk transforma seu atendimento em um sistema de suporte profissional:\n\n• Criação de protocolos de atendimento\n• Vinculação de protocolos a tickets\n• Gestão de status, prioridade e SLA\n• Histórico completo de interações no protocolo\n• Relatórios de atendimento`,
+                                : p.slug === "webchat"
+                                    ? `O Webchat oferece um widget de chat em tempo real para seu site:\n\n• Converse com visitantes do seu site diretamente pelo sistema\n• Personalize a aparência do widget\n• Histórico de conversas integrado\n• Suporte a múltiplos atendentes`
+                                    : `O Plugin de Helpdesk transforma seu atendimento em um sistema de suporte profissional:\n\n• Criação de protocolos de atendimento\n• Vinculação de protocolos a tickets\n• Gestão de status, prioridade e SLA\n• Histórico completo de interações no protocolo\n• Relatórios de atendimento`,
                 });
             }
         } catch (err) {

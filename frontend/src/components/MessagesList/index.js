@@ -420,7 +420,7 @@ const reducer = (state, action) => {
   }
 };
 
-const MessagesList = ({ ticketId, isGroup }) => {
+const MessagesList = ({ ticketId, isGroup, isWebchat }) => {
   const classes = useStyles();
   const muiTheme = useTheme();
   const { appTheme } = useThemeContext();
@@ -684,8 +684,18 @@ const MessagesList = ({ ticketId, isGroup }) => {
       return null;
     }
 
+    // Hide icons for Webchat
+    if (isWebchat) {
+      return null;
+    }
+
+    // Hide icons for received messages
+    if (!message.fromMe) {
+      return null;
+    }
+
     if (message.ack === 0) {
-      return <AccessTime fontSize="small" className={classes.ackIcons} />;
+      return <Done fontSize="small" className={classes.ackIcons} />;
     }
     if (message.ack === 1) {
       return <Done fontSize="small" className={classes.ackIcons} />;

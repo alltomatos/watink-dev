@@ -3,6 +3,18 @@ import * as Yup from "yup";
 import AppError from "../errors/AppError";
 import TenantSmtpSettings from "../models/TenantSmtpSettings";
 import RabbitMQService from "../services/RabbitMQService";
+import axios from "axios";
+
+// Helper to check if marketplace is online
+const checkMarketplaceOnline = async (): Promise<boolean> => {
+    try {
+        const pluginManagerUrl = process.env.PLUGIN_MANAGER_URL || "http://plugin-manager:3005";
+        await axios.get(`${pluginManagerUrl}/version`, { timeout: 2000 });
+        return true;
+    } catch (error) {
+        return false;
+    }
+};
 
 
 interface SmtpSettingsData {
@@ -16,6 +28,12 @@ interface SmtpSettingsData {
 
 export const show = async (req: Request, res: Response): Promise<Response> => {
     const { tenantId } = req.user;
+
+    const isMarketplaceOnline = await checkMarketplaceOnline();
+    if (!isMarketplaceOnline) {
+        throw new AppError("Marketplace is offline. SMTP settings are unavailable.", 503);
+    }
+
     try {
         const { tenantId } = req.user;
 
@@ -31,6 +49,12 @@ export const show = async (req: Request, res: Response): Promise<Response> => {
 
 export const test = async (req: Request, res: Response): Promise<Response> => {
     const { tenantId } = req.user;
+
+    const isMarketplaceOnline = await checkMarketplaceOnline();
+    if (!isMarketplaceOnline) {
+        throw new AppError("Marketplace is offline. SMTP testing is unavailable.", 503);
+    }
+
     const { host, port, user, password, secure, emailFrom, testEmail } = req.body;
 
     if (!testEmail) {
@@ -103,6 +127,12 @@ export const test = async (req: Request, res: Response): Promise<Response> => {
 
 export const update = async (req: Request, res: Response): Promise<Response> => {
     const { tenantId } = req.user;
+
+    const isMarketplaceOnline = await checkMarketplaceOnline();
+    if (!isMarketplaceOnline) {
+        throw new AppError("Marketplace is offline. SMTP updates are unavailable.", 503);
+    }
+
     const data: SmtpSettingsData = req.body;
 
     const schema = Yup.object().shape({
