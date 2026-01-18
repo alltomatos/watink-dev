@@ -71,14 +71,16 @@ export const update = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
+  if (req.user.profile !== "admin" && req.user.profile !== "superadmin" && req.user.id.toString() !== req.params.userId) {
     throw new AppError("ERR_NO_PERMISSION", 403);
   }
 
   const { userId } = req.params;
   const userData = req.body;
 
-  const user = await UpdateUserService({ userData, userId, requestUser: req.user });
+  const profileImage = req.file?.filename;
+
+  const user = await UpdateUserService({ userData: { ...userData, profileImage }, userId, requestUser: req.user });
 
   const io = getIO();
   io.emit("user", {

@@ -27,7 +27,7 @@ const ShowTicketService = async (id: string | number): Promise<Ticket> => {
       {
         model: Whatsapp,
         as: "whatsapp",
-        attributes: ["name", "status"]
+        attributes: ["name", "status", "type"]
       }
     ]
   });

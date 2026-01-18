@@ -47,9 +47,37 @@ export const test = async (req: Request, res: Response): Promise<Response> => {
             secure,
             emailFrom: emailFrom || user,
             to: testEmail,
-            subject: "Watink - Teste de SMTP",
-            text: "Se você recebeu este e-mail, sua configuração de SMTP no Watink está funcionando corretamente!",
-            html: "<b>Se você recebeu este e-mail, sua configuração de SMTP no Watink está funcionando corretamente!</b>",
+            subject: "Teste de Configuração SMTP - Watink",
+            text: `
+              Parabéns! 🎉
+
+              Se você está vendo esta mensagem, significa que você configurou corretamente o envio de e-mails do seu Watink.
+
+              🚀 Agora o sistema pode enviar notificações e e-mails automaticamente.
+              (Processado pelo Plugin Watink SMTP)
+
+              Enviado via ${host}:${port} • ${secure ? 'Seguro (SSL/TLS)' : 'Inseguro (Texto Plano)'}
+            `,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #ffffff;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                  <h2 style="color: #4CAF50; margin: 0;">Parabéns! 🎉</h2>
+                </div>
+                
+                <div style="text-align: center; color: #333333; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
+                  <p style="margin: 0 0 10px 0;">Se você está vendo esta mensagem, significa que você configurou corretamente o envio de e-mails do seu <strong>Watink</strong>.</p>
+                </div>
+
+                <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; text-align: center; margin-bottom: 30px;">
+                  <p style="margin: 0; color: #555; font-size: 14px;">🚀 Agora o sistema pode enviar notificações e e-mails automaticamente.</p>
+                  <p style="margin: 5px 0 0 0; color: #888; font-size: 12px;">(Processado pelo Plugin Watink SMTP)</p>
+                </div>
+
+                <div style="text-align: center; border-top: 1px solid #eee; padding-top: 20px; color: #999; font-size: 12px;">
+                  Enviado via <strong>${host}:${port}</strong> • ${secure ? 'Seguro (SSL/TLS)' : 'Inseguro (Texto Plano)'}
+                </div>
+              </div>
+            `,
         };
 
         const envelope = {

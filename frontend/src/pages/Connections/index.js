@@ -29,7 +29,9 @@ import {
 	Edit,
 	FiberManualRecord,
 	DeleteOutline,
-	Autorenew
+	Autorenew,
+	WhatsApp,
+	Chat
 } from "@material-ui/icons";
 
 import MainContainer from "../../components/MainContainer";
@@ -181,7 +183,8 @@ const Connections = () => {
 		setMenuTargetId(null);
 	};
 
-	const getStatusColor = (status) => {
+	const getStatusColor = (status, type) => {
+		if (type === 'webchat') return green[600]; // Webchat sempre online
 		switch (status) {
 			case "CONNECTED": return green[600];
 			case "DISCONNECTED": return red[600];
@@ -191,7 +194,8 @@ const Connections = () => {
 		}
 	};
 
-	const getStatusBackgroundColor = (status) => {
+	const getStatusBackgroundColor = (status, type) => {
+		if (type === 'webchat') return "#E8F5E9"; // Webchat sempre verde
 		switch (status) {
 			case "CONNECTED": return "#E8F5E9";
 			case "DISCONNECTED": return "#FFEBEE";
@@ -204,7 +208,8 @@ const Connections = () => {
 		return <SignalCellular4Bar fontSize="default" />;
 	};
 
-	const renderStatusLabel = status => {
+	const renderStatusLabel = (status, type) => {
+		if (type === 'webchat') return "Online"; // Webchat sempre disponível
 		switch (status) {
 			case "DISCONNECTED": return "Desconectado";
 			case "OPENING": return "Iniciando...";
@@ -217,18 +222,26 @@ const Connections = () => {
 	}
 
 	const handleCardClick = (whatsappId) => {
+		const whatsapp = whatsApps.find(w => w.id === whatsappId);
 		if (!anchorEl) {
-			history.push(`/connections/${whatsappId}`);
+			if (whatsapp?.type === 'webchat') {
+				// Para webchat, abrir página de configuração dedicada
+				history.push(`/connections/webchat/${whatsappId}`);
+			} else {
+				// Para WhatsApp, redirecionar para página de detalhes
+				history.push(`/connections/${whatsappId}`);
+			}
 		}
 	};
 
 	const handleEditWhatsApp = () => {
 		const whatsapp = whatsApps.find(w => w.id === menuTargetId);
 		if (whatsapp) {
-			setSelectedWhatsApp(whatsapp);
 			if (whatsapp.type === 'webchat') {
-				setWebchatModalOpen(true);
+				// Redirect to config page instead of opening modal
+				history.push(`/connections/webchat/${whatsapp.id}`);
 			} else {
+				setSelectedWhatsApp(whatsapp);
 				setWhatsAppModalOpen(true);
 			}
 		}
@@ -319,8 +332,8 @@ const Connections = () => {
 					<Grid container spacing={3}>
 						{whatsApps?.length > 0 &&
 							whatsApps.map(whatsApp => {
-								const statusColor = getStatusColor(whatsApp.status);
-								const bgColor = getStatusBackgroundColor(whatsApp.status);
+								const statusColor = getStatusColor(whatsApp.status, whatsApp.type);
+								const bgColor = getStatusBackgroundColor(whatsApp.status, whatsApp.type);
 
 								return (
 									<Grid item xs={12} sm={6} md={4} lg={3} key={whatsApp.id}>
@@ -335,6 +348,16 @@ const Connections = () => {
 															: "N/A"
 														}
 													</span>
+													{whatsApp.type === 'whatsapp' && (
+														<Typography variant="body2" color="textSecondary" style={{ marginTop: 4, display: 'flex', alignItems: 'center' }}>
+															<WhatsApp style={{ fontSize: 16, marginRight: 4, color: "#25D366" }} /> WhatsApp
+														</Typography>
+													)}
+													{whatsApp.type === 'webchat' && (
+														<Typography variant="body2" color="textSecondary" style={{ marginTop: 4, display: 'flex', alignItems: 'center' }}>
+															<Chat style={{ fontSize: 16, marginRight: 4, color: "#9c27b0" }} /> Webchat
+														</Typography>
+													)}
 													{whatsApp.status === "CONNECTED" && whatsApp.number && (
 														<Typography variant="body2" color="textSecondary" style={{ marginTop: 4 }}>
 															+{whatsApp.number}
@@ -362,7 +385,7 @@ const Connections = () => {
 															<IconButton
 																size="small"
 																onClick={() => handleRestartWhatsApp(whatsApp.id)}
-																disabled={whatsApp.status === "CONNECTED"}
+																disabled={whatsApp.status === "CONNECTED" || whatsApp.type === 'webchat'}
 															>
 																<Autorenew fontSize="small" style={{ color: whatsApp.status === "CONNECTED" ? '#bdbdbd' : '#94a3b8' }} />
 															</IconButton>
@@ -398,7 +421,7 @@ const Connections = () => {
 																}}
 															/>
 															<Typography variant="body2" style={{ fontWeight: 600, fontSize: '0.8125rem' }}>
-																{renderStatusLabel(whatsApp.status)}
+																{renderStatusLabel(whatsApp.status, whatsApp.type)}
 															</Typography>
 
 															{whatsApp.isDefault && (

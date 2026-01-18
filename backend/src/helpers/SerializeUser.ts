@@ -7,6 +7,7 @@ interface SerializedUser {
   name: string;
   email: string;
   profile: string;
+  profileImage?: string;
   queues: Queue[];
   whatsapp: Whatsapp;
   permissions: string[];
@@ -23,6 +24,7 @@ export const SerializeUser = (user: User): SerializedUser => {
     name: user.name,
     email: user.email,
     profile: user.profile,
+    profileImage: user.profileImage,
     queues: user.queues,
     whatsapp: user.whatsapp,
     permissions: allPermissions,

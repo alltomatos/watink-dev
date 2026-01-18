@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
+import axios from "axios";
 import openSocket from "../../services/socket-io";
 import MemoryIcon from "@material-ui/icons/Memory";
 
@@ -34,7 +35,7 @@ import api from "../../services/api";
 import { i18n } from "../../translate/i18n.js";
 import toastError from "../../errors/toastError";
 import { useThemeContext } from "../../context/DarkMode";
-import { getBackendUrl } from "../../config";
+import { getBackendUrl } from "../../helpers/urlUtils";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import SmtpSettingsForm from "../Marketplace/SmtpSettingsForm";
 
@@ -149,15 +150,14 @@ const Settings = () => {
 	useEffect(() => {
 		const checkMarketplace = async () => {
 			try {
-				const { data } = await api.get("/plugins/version");
-				// Se retornou dados válidos com version, o marketplace está online
+				// Use direct URL to verify availability, bypassing /api prefix from default instance
+				const { data } = await axios.get(getBackendUrl("/plugins/version"));
 				if (data && data.version) {
 					setMarketplaceVisible(true);
 				} else {
 					setMarketplaceVisible(false);
 				}
 			} catch (err) {
-				// 502, Network Error, ou qualquer falha = offline
 				setMarketplaceVisible(false);
 			}
 		};

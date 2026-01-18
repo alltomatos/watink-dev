@@ -95,7 +95,7 @@ const UpdateWhatsAppService = async ({
     syncPeriod,
     keepAlive,
     type,
-    chatConfig
+    chatConfig: chatConfig !== undefined ? JSON.stringify(chatConfig) : undefined
   });
 
   // [NEW] If critical settings changed, stop session to force reconnection with new settings

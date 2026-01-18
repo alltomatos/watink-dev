@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+
 
 import * as Yup from "yup";
 import { Formik, Form, Field } from "formik";
@@ -17,8 +17,10 @@ import {
 	FormControl,
 	TextField,
 	InputAdornment,
-	IconButton
-  } from '@material-ui/core';
+	IconButton,
+	Checkbox,
+	ListItemText
+} from '@material-ui/core';
 
 import { Visibility, VisibilityOff } from '@material-ui/icons';
 
@@ -80,7 +82,8 @@ const UserModal = ({ open, onClose, userId }) => {
 		name: "",
 		email: "",
 		password: "",
-		profile: "user"
+		profile: "user",
+		groupIds: []
 	};
 
 	const { user: loggedInUser } = useContext(AuthContext);
@@ -89,15 +92,29 @@ const UserModal = ({ open, onClose, userId }) => {
 	const [selectedQueueIds, setSelectedQueueIds] = useState([]);
 	const [showPassword, setShowPassword] = useState(false);
 	const [whatsappId, setWhatsappId] = useState(false);
-	const {loading, whatsApps} = useWhatsApps();
+	const [groups, setGroups] = useState([]);
+	const { loading, whatsApps } = useWhatsApps();
+
+	useEffect(() => {
+		const fetchGroups = async () => {
+			try {
+				const { data } = await api.get("/groups");
+				setGroups(data);
+			} catch (err) {
+				toastError(err);
+			}
+		};
+		fetchGroups();
+	}, []);
 
 	useEffect(() => {
 		const fetchUser = async () => {
 			if (!userId) return;
 			try {
 				const { data } = await api.get(`/users/${userId}`);
+				const userGroupIds = data.groups?.map(group => group.id) || [];
 				setUser(prevState => {
-					return { ...prevState, ...data };
+					return { ...prevState, ...data, groupIds: userGroupIds };
 				});
 				const userQueueIds = data.queues?.map(queue => queue.id);
 				setSelectedQueueIds(userQueueIds);
@@ -180,16 +197,16 @@ const UserModal = ({ open, onClose, userId }) => {
 										helperText={touched.password && errors.password}
 										type={showPassword ? 'text' : 'password'}
 										InputProps={{
-										endAdornment: (
-											<InputAdornment position="end">
-											<IconButton
-												aria-label="toggle password visibility"
-												onClick={() => setShowPassword((e) => !e)}
-											>
-												{showPassword ? <VisibilityOff /> : <Visibility />}
-											</IconButton>
-											</InputAdornment>
-										)
+											endAdornment: (
+												<InputAdornment position="end">
+													<IconButton
+														aria-label="toggle password visibility"
+														onClick={() => setShowPassword((e) => !e)}
+													>
+														{showPassword ? <VisibilityOff /> : <Visibility />}
+													</IconButton>
+												</InputAdornment>
+											)
 										}}
 										fullWidth
 									/>

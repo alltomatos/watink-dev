@@ -18,20 +18,29 @@ Sentry.init({ dsn: process.env.SENTRY_DSN });
 
 const app = express();
 
-app.use(
-  cors({
-    credentials: true,
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Cache-Control",
-      "Pragma",
-      "x-tenant-id",
-      "x-user-profile"
-    ],
-  })
-);
+const protectedRoutesCors = cors({
+  credentials: true,
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Cache-Control",
+    "Pragma",
+    "x-tenant-id",
+    "x-user-profile"
+  ],
+});
+
+app.use((req, res, next) => {
+  // Configurações de CORS permissivas para webchat e versionamento
+  if (req.url.startsWith("/webchat") || req.url.startsWith("/api/webchat") || req.url.includes("/version")) {
+    if (req.url.includes("/version")) {
+      return cors({ origin: "*" })(req, res, next);
+    }
+    return next();
+  }
+  protectedRoutesCors(req, res, next);
+});
 app.use(cookieParser());
 app.use(express.json());
 app.use(Sentry.Handlers.requestHandler());

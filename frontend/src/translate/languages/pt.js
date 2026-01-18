@@ -121,6 +121,8 @@ const messages = {
         form: {
           name: "Nome",
           default: "Padrão",
+          isDefault: "Padrão",
+          greetingMessage: "Mensagem de saudação",
           farewellMessage: "Mensagem de despedida",
           syncHistory: "Sincronizar Histórico",
           syncPeriod: "Período (ex: 30 dias)"
@@ -131,6 +133,24 @@ const messages = {
           cancel: "Cancelar",
         },
         success: "WhatsApp salvo com sucesso.",
+      },
+      webchatModal: {
+        title: {
+          add: "Adicionar Webchat",
+          edit: "Editar Webchat",
+        },
+        form: {
+          name: "Nome",
+          isDefault: "Padrão",
+          greetingMessage: "Mensagem de saudação",
+          farewellMessage: "Mensagem de despedida",
+        },
+        buttons: {
+          okAdd: "Adicionar",
+          okEdit: "Salvar",
+          cancel: "Cancelar",
+        },
+        success: "Webchat salvo com sucesso.",
       },
       qrCode: {
         message: "Leia o QrCode para iniciar a sessão",

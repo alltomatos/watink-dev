@@ -36,6 +36,7 @@ const endpoints = [
   { key: "backend", url: getBackendUrl("/api/version"), displayName: "backend" },
   { key: "plugin-manager", url: getBackendUrl("/plugins/version"), displayName: "marketplace" },
   { key: "whaileys-engine", url: getBackendUrl("/api/engine/version"), displayName: "whaileys-engine" },
+  { key: "webchat-engine", url: getBackendUrl("/api/webchat/version"), displayName: "webchat-engine" },
   { key: "postgres", url: getBackendUrl("/api/postgres/version"), displayName: "pgvectorgis" },
   { key: "rabbitmq", url: getBackendUrl("/api/rabbitmq/version"), displayName: "rabbitmq" },
   { key: "redis", url: getBackendUrl("/api/redis/version"), displayName: "redis" },

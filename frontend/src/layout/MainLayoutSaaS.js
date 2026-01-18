@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
+import { useHistory } from "react-router-dom";
 import clsx from "clsx";
 import {
     makeStyles,
@@ -12,6 +13,7 @@ import {
     Menu,
     IconButton,
     Box,
+    Avatar,
 } from "@material-ui/core";
 import AccountCircle from "@material-ui/icons/AccountCircle";
 import MenuIcon from "@material-ui/icons/Menu";
@@ -131,7 +133,8 @@ const useStyles = makeStyles((theme) => ({
 
 const MainLayoutSaaS = ({ children }) => {
     const classes = useStyles();
-    const [userModalOpen, setUserModalOpen] = useState(false);
+    const history = useHistory();
+    // const [userModalOpen, setUserModalOpen] = useState(false);
     const [anchorEl, setAnchorEl] = useState(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const { handleLogout, loading, user } = useContext(AuthContext);
@@ -259,11 +262,13 @@ const MainLayoutSaaS = ({ children }) => {
                 <VersionFooter collapsed={!drawerOpen} />
             </Drawer>
 
+            {/*
             <UserModal
                 open={userModalOpen}
                 onClose={() => setUserModalOpen(false)}
                 userId={user?.id}
             />
+            */}
 
             <AppBar
                 position="absolute"
@@ -298,7 +303,16 @@ const MainLayoutSaaS = ({ children }) => {
                             onClick={handleMenu}
                             color="inherit"
                         >
-                            <AccountCircle />
+                            {user.profileImage ? (
+                                <Avatar
+                                    alt={user.name}
+                                    src={`${getBackendUrl()}/public/${user.profileImage}`}
+                                    className={classes.avatar}
+                                    style={{ width: 32, height: 32 }}
+                                />
+                            ) : (
+                                <AccountCircle />
+                            )}
                         </IconButton>
                         <Menu
                             id="menu-appbar"
@@ -315,7 +329,11 @@ const MainLayoutSaaS = ({ children }) => {
                             open={menuOpen}
                             onClose={handleCloseMenu}
                         >
-                            <MenuItem onClick={handleOpenUserModal}>
+                            <MenuItem onClick={() => {
+                                console.log("Profile menu clicked SaaS - Redirecting to /profile");
+                                handleCloseMenu();
+                                history.push("/profile");
+                            }}>
                                 {i18n.t("mainDrawer.appBar.user.profile")}
                             </MenuItem>
                             <MenuItem onClick={handleClickLogout}>

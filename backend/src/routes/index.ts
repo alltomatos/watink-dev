@@ -65,6 +65,7 @@ routes.use(protocolRoutes);
 routes.use(pluginRoutes);
 routes.use(aiRoutes);
 routes.use(tenantSmtpSettingsRoutes);
+routes.use(webchatRoutes);
 routes.use("/users", userRoutes);
 
 export default routes;

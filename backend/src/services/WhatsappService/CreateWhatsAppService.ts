@@ -93,7 +93,7 @@ const CreateWhatsAppService = async ({
       keepAlive,
       tenantId,
       type,
-      chatConfig
+      chatConfig: chatConfig ? JSON.stringify(chatConfig) : null
     },
     { include: ["queues"] }
   );

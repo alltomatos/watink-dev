@@ -1,0 +1,21 @@
+{
+    "name": "webchat-engine",
+    "version": "1.0.0",
+    "description": "Webchat Engine - Motor do webchat com endpoint de versão",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "dev": "ts-node src/index.ts"
+    },
+    "dependencies": {
+        "amqplib": "^0.10.3",
+        "dotenv": "^16.0.3"
+    },
+    "devDependencies": {
+        "@types/amqplib": "^0.10.1",
+        "@types/node": "^20.0.0",
+        "typescript": "^5.0.0",
+        "ts-node": "^10.9.2"
+    }
+}

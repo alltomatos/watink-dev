@@ -16,8 +16,10 @@ import Login from "../pages/Login/";
 import Connections from "../pages/Connections/";
 import ConnectionConfig from "../pages/Connections/ConnectionConfig";
 import Settings from "../pages/Settings/";
+import WebchatConfig from "../pages/WebchatConfig/";
 import Users from "../pages/Users";
 import UserEdit from "../pages/UserEdit";
+import UserProfile from "../pages/UserProfile";
 import Contacts from "../pages/Contacts/";
 import QuickAnswers from "../pages/QuickAnswers/";
 import Groups from "../pages/Groups";
@@ -53,11 +55,13 @@ const PrivateRoutes = () => {
             <Route exact path="/tickets/:ticketId?" component={Tickets} isPrivate />
             <Route exact path="/flowbuilder" component={FlowManager} isPrivate />
             <Route exact path="/flowbuilder/:flowId" component={FlowBuilder} isPrivate />
+            <Route exact path="/connections/webchat/:webchatId" component={WebchatConfig} isPrivate />
             <Route exact path="/connections" component={Connections} isPrivate />
             <Route exact path="/connections/:whatsappId" component={ConnectionConfig} isPrivate />
             <Route exact path="/contacts" component={Contacts} isPrivate />
             <Route exact path="/users" component={Users} isPrivate />
             <Route exact path="/users/:userId" component={UserEdit} isPrivate />
+            <Route exact path="/profile" component={UserProfile} isPrivate />
             <Route exact path="/quickAnswers" component={QuickAnswers} isPrivate />
             <Route exact path="/Settings" component={Settings} isPrivate />
             <Route exact path="/groups" component={Groups} isPrivate />

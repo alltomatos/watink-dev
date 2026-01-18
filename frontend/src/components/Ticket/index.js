@@ -169,7 +169,10 @@ const Ticket = () => {
             ticketId={ticketId}
             isGroup={ticket.isGroup}
           ></MessagesList>
-          <MessageInput ticketStatus={ticket.status} whatsappStatus={ticket.whatsapp?.status} />
+          <MessageInput
+            ticketStatus={ticket.status}
+            whatsappStatus={ticket.whatsapp?.type === "webchat" ? "CONNECTED" : ticket.whatsapp?.status}
+          />
         </ReplyMessageProvider>
       </Paper>
       <ContactDrawer

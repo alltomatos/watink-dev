@@ -29,6 +29,7 @@ import {
   ExpandMore,
   GetApp,
   History as HistoryIcon,
+  ErrorOutline,
 } from "@material-ui/icons";
 
 import MarkdownWrapper from "../MarkdownWrapper";
