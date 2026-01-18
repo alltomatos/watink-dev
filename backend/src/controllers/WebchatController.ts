@@ -127,8 +127,9 @@ export const createTicket = async (req: Request, res: Response): Promise<Respons
     }
 
     // Send initial message directly via Service to ensure persistence and socket emit
+    let messageId = null;
     if (message) {
-        const messageId = uuidv4();
+        messageId = uuidv4();
         const messageData = {
             id: messageId,
             ticketId: ticket.id,
@@ -147,7 +148,7 @@ export const createTicket = async (req: Request, res: Response): Promise<Respons
         await CreateMessageService({ messageData });
     }
 
-    return res.json({ ticketId: ticket.id, contactId: contact.id });
+    return res.json({ ticketId: ticket.id, contactId: contact.id, messageId });
 };
 
 import ListMessagesService from "../services/MessageServices/ListMessagesService";

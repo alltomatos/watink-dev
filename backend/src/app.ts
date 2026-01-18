@@ -20,7 +20,14 @@ const app = express();
 
 const protectedRoutesCors = cors({
   credentials: true,
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  origin: (origin, callback) => {
+    const allowedOrigins = [process.env.FRONTEND_URL, "http://localhost:3000", "http://app.localhost"];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   allowedHeaders: [
     "Content-Type",
     "Authorization",

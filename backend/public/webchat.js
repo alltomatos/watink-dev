@@ -588,6 +588,14 @@
             localStorage.setItem("watink_ticket_" + webchatId, STATE.ticketId);
             localStorage.setItem("watink_contact_" + webchatId, STATE.contactId);
 
+            // ID Swap for Initial Message
+            if (json.messageId && STATE.lastOptimisticId) {
+                var local = STATE.messages.find(m => m.id === STATE.lastOptimisticId);
+                if (local) {
+                    local.id = json.messageId;
+                }
+            }
+
             loading.style.display = 'none';
             showChat();
 
@@ -602,6 +610,8 @@
                     timestamp: new Date().getTime() / 1000,
                     _optimistic: true
                 };
+                // Store optimistic message for ID swapping
+                STATE.lastOptimisticId = tempId;
                 STATE.messages.push(initialMsg);
             }
 
