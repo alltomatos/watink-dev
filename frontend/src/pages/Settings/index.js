@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext } from "react";
-import axios from "axios";
 import openSocket from "../../services/socket-io";
 import MemoryIcon from "@material-ui/icons/Memory";
 
@@ -150,8 +149,9 @@ const Settings = () => {
 	useEffect(() => {
 		const checkMarketplace = async () => {
 			try {
-				// Use direct URL to verify availability, bypassing /api prefix from default instance
-				const { data } = await axios.get(getBackendUrl("/plugins/version"));
+				// Use authenticated 'api' instance that includes session cookies
+				// The route /plugins/version requires authentication via isAuth middleware
+				const { data } = await api.get("/plugins/version");
 				if (data && data.version) {
 					setMarketplaceVisible(true);
 				} else {

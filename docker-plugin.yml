@@ -13,15 +13,6 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.plugin-manager.rule=Host(`${DOMAIN_BACKEND:-api.localhost}`) && PathPrefix(`/plugins`)"
-        - "traefik.http.routers.plugin-manager.entrypoints=web"
-        - "traefik.http.routers.plugin-manager.middlewares=plugin-manager-strip"
-        - "traefik.http.middlewares.plugin-manager-strip.stripprefix.prefixes=/plugins"
-        - "traefik.http.routers.plugin-manager.service=plugin-manager"
-        - "traefik.http.services.plugin-manager.loadbalancer.server.port=3005"
-        - "traefik.docker.network=watink_proxy"
 
 
   plugin-smtp:
