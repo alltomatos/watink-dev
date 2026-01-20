@@ -1,20 +1,25 @@
 import { Op } from "sequelize";
 import * as Yup from "yup";
 import AppError from "../../errors/AppError";
-import Queue from "../../models/Queue";
+import Queue, { DISTRIBUTION_STRATEGIES, DistributionStrategy } from "../../models/Queue";
 import ShowQueueService from "./ShowQueueService";
 
 interface QueueData {
   name?: string;
   color?: string;
   greetingMessage?: string;
+  distributionStrategy?: DistributionStrategy;
+  prioritizeWallet?: boolean;
 }
+
+// Valid distribution strategies for validation
+const validStrategies = Object.values(DISTRIBUTION_STRATEGIES);
 
 const UpdateQueueService = async (
   queueId: number | string,
   queueData: QueueData
 ): Promise<Queue> => {
-  const { color, name } = queueData;
+  const { color, name, distributionStrategy, prioritizeWallet } = queueData;
 
   const queueSchema = Yup.object().shape({
     name: Yup.string()
@@ -54,12 +59,16 @@ const UpdateQueueService = async (
           }
           return true;
         }
-      )
+      ),
+    distributionStrategy: Yup.string()
+      .oneOf(validStrategies, "ERR_QUEUE_INVALID_DISTRIBUTION_STRATEGY")
+      .nullable(),
+    prioritizeWallet: Yup.boolean().nullable()
   });
 
   try {
-    await queueSchema.validate({ color, name });
-  } catch (err) {
+    await queueSchema.validate({ color, name, distributionStrategy, prioritizeWallet });
+  } catch (err: any) {
     throw new AppError(err.message);
   }
 
@@ -71,3 +80,4 @@ const UpdateQueueService = async (
 };
 
 export default UpdateQueueService;
+

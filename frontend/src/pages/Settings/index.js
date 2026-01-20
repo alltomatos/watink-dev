@@ -298,6 +298,8 @@ const Settings = () => {
 	useEffect(() => {
 		const socket = openSocket();
 
+		if (!socket) return;
+
 		socket.on("settings", (data) => {
 			if (data.action === "update") {
 				setSettings((prevState) => {

@@ -138,6 +138,8 @@ const Users = () => {
   useEffect(() => {
     const socket = openSocket();
 
+    if (!socket) return;
+
     socket.on("user", (data) => {
       if (data.action === "update" || data.action === "create") {
         dispatch({ type: "UPDATE_USERS", payload: data.user });

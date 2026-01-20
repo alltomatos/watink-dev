@@ -1,15 +1,20 @@
 import * as Yup from "yup";
 import AppError from "../../errors/AppError";
-import Queue from "../../models/Queue";
+import Queue, { DISTRIBUTION_STRATEGIES, DistributionStrategy } from "../../models/Queue";
 
 interface QueueData {
   name: string;
   color: string;
   greetingMessage?: string;
+  distributionStrategy?: DistributionStrategy;
+  prioritizeWallet?: boolean;
 }
 
+// Valid distribution strategies for validation
+const validStrategies = Object.values(DISTRIBUTION_STRATEGIES);
+
 const CreateQueueService = async (queueData: QueueData): Promise<Queue> => {
-  const { color, name } = queueData;
+  const { color, name, distributionStrategy, prioritizeWallet } = queueData;
 
   const queueSchema = Yup.object().shape({
     name: Yup.string()
@@ -50,12 +55,16 @@ const CreateQueueService = async (queueData: QueueData): Promise<Queue> => {
           }
           return false;
         }
-      )
+      ),
+    distributionStrategy: Yup.string()
+      .oneOf(validStrategies, "ERR_QUEUE_INVALID_DISTRIBUTION_STRATEGY")
+      .default("MANUAL"),
+    prioritizeWallet: Yup.boolean().default(false)
   });
 
   try {
-    await queueSchema.validate({ color, name });
-  } catch (err) {
+    await queueSchema.validate({ color, name, distributionStrategy, prioritizeWallet });
+  } catch (err: any) {
     throw new AppError(err.message);
   }
 
@@ -65,3 +74,4 @@ const CreateQueueService = async (queueData: QueueData): Promise<Queue> => {
 };
 
 export default CreateQueueService;
+

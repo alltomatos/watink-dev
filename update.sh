@@ -77,12 +77,16 @@ echo "📝 Updating docker-stack.yml version references..."
 
 if [ "$SERVICE" == "plugin-manager" ]; then
   sed "s|image: watink/plugin-manager:.*|image: watink/plugin-manager:$VERSION_NUM|g" docker-plugin.yml > docker-plugin.yml.tmp && mv docker-plugin.yml.tmp docker-plugin.yml
+  sed "s|image: watink/plugin-manager:.*|image: watink/plugin-manager:$VERSION_NUM|g" docker-plugin.prod.yml > docker-plugin.prod.yml.tmp && mv docker-plugin.prod.yml.tmp docker-plugin.prod.yml
 elif [ "$SERVICE" == "plugin-smtp" ]; then
   sed "s|image: watink/plugin-smtp:.*|image: watink/plugin-smtp:$VERSION_NUM|g" docker-plugin.yml > docker-plugin.yml.tmp && mv docker-plugin.yml.tmp docker-plugin.yml
+  sed "s|image: watink/plugin-smtp:.*|image: watink/plugin-smtp:$VERSION_NUM|g" docker-plugin.prod.yml > docker-plugin.prod.yml.tmp && mv docker-plugin.prod.yml.tmp docker-plugin.prod.yml
 elif [ "$SERVICE" == "engine" ]; then
   sed -e "s|image: watink/engine:.*|image: watink/engine:$VERSION_NUM|g" -e "s|ENGINE_VERSION=.*|ENGINE_VERSION=$VERSION_NUM|g" docker-stack.yml > docker-stack.yml.tmp && mv docker-stack.yml.tmp docker-stack.yml
+  sed -e "s|image: watink/engine:.*|image: watink/engine:$VERSION_NUM|g" -e "s|ENGINE_VERSION=.*|ENGINE_VERSION=$VERSION_NUM|g" docker-compose.prod.yml > docker-compose.prod.yml.tmp && mv docker-compose.prod.yml.tmp docker-compose.prod.yml
 else
   sed "s|image: watink/$SERVICE:.*|image: watink/$SERVICE:$VERSION_NUM|g" docker-stack.yml > docker-stack.yml.tmp && mv docker-stack.yml.tmp docker-stack.yml
+  sed "s|image: watink/$SERVICE:.*|image: watink/$SERVICE:$VERSION_NUM|g" docker-compose.prod.yml > docker-compose.prod.yml.tmp && mv docker-compose.prod.yml.tmp docker-compose.prod.yml
 fi
 
 # 3. Build

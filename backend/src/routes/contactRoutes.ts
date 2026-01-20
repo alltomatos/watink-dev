@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer";
 import isAuth from "../middleware/isAuth";
 import checkPermission from "../middleware/checkPermission";
 
@@ -7,13 +8,49 @@ import * as ImportPhoneContactsController from "../controllers/ImportPhoneContac
 
 const contactRoutes = express.Router();
 
-// ... (Swagger docs omitted for brevity, keeping only route logic updates)
+// Multer config for CSV file upload (memory storage for buffer processing)
+const csvUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept CSV and text files
+    if (
+      file.mimetype === "text/csv" ||
+      file.mimetype === "application/csv" ||
+      file.mimetype === "text/plain" ||
+      file.originalname.endsWith(".csv")
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only CSV files are allowed"));
+    }
+  }
+});
 
+// Phone contacts import (legacy)
 contactRoutes.post(
   "/contacts/import",
   isAuth,
   checkPermission("create_contacts"),
   ImportPhoneContactsController.store
+);
+
+// CSV import - new endpoint
+contactRoutes.post(
+  "/contacts/import-csv",
+  isAuth,
+  checkPermission("create_contacts"),
+  csvUpload.single("file"),
+  ContactController.importCsv
+);
+
+// CSV sample download
+contactRoutes.get(
+  "/contacts/import-csv/sample",
+  isAuth,
+  ContactController.getSampleCsv
 );
 
 contactRoutes.get("/contacts", isAuth, ContactController.index);
@@ -54,9 +91,8 @@ contactRoutes.post(
   "/contacts/enrich",
   isAuth,
   checkPermission("create_contacts"),
-  // 'create_contacts' or 'edit_contacts' - enrichment feels like cleanup/maintenance.
-  // Using 'create_contacts' as it can essentially "create" new data for contacts.
   ContactController.batchEnrich
 );
 
 export default contactRoutes;
+

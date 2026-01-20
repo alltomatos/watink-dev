@@ -184,6 +184,7 @@ const TicketsList = (props) => {
 
 	useEffect(() => {
 		const socket = openSocket();
+		if (!socket) return;
 
 		const shouldUpdateTicket = ticket => {
 			// Check if ticket is group based on contact or root prop

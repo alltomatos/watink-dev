@@ -2,6 +2,8 @@ import CheckContactOpenTickets from "../../helpers/CheckContactOpenTickets";
 import SetTicketMessagesAsRead from "../../helpers/SetTicketMessagesAsRead";
 import { getIO } from "../../libs/socket";
 import Ticket from "../../models/Ticket";
+import Contact from "../../models/Contact";
+import Step from "../../models/Step";
 import Setting from "../../models/Setting";
 import SendWhatsAppMessage from "../WbotServices/SendWhatsAppMessage";
 import ShowWhatsAppService from "../WhatsappService/ShowWhatsAppService";
@@ -14,6 +16,7 @@ interface TicketData {
   userId?: number;
   queueId?: number;
   whatsappId?: number;
+  stepId?: number;
 }
 
 interface Request {
@@ -31,7 +34,7 @@ const UpdateTicketService = async ({
   ticketData,
   ticketId
 }: Request): Promise<Response> => {
-  const { status, userId, queueId, whatsappId } = ticketData;
+  const { status, userId, queueId, whatsappId, stepId } = ticketData;
 
   const ticket = await ShowTicketService(ticketId);
   await SetTicketMessagesAsRead(ticket);
@@ -42,16 +45,20 @@ const UpdateTicketService = async ({
 
   const oldStatus = ticket.status;
   const oldUserId = ticket.user?.id;
+  const oldStepId = ticket.stepId;
 
   if (oldStatus === "closed") {
     await CheckContactOpenTickets(ticket.contact.id, ticket.whatsappId);
   }
 
-  await ticket.update({
-    status,
-    queueId,
-    userId
-  });
+  // Build update object
+  const updateData: Partial<Ticket> = {};
+  if (status !== undefined) updateData.status = status;
+  if (queueId !== undefined) updateData.queueId = queueId;
+  if (userId !== undefined) updateData.userId = userId;
+  if (stepId !== undefined) updateData.stepId = stepId;
+
+  await ticket.update(updateData);
 
   if (whatsappId) {
     await ticket.update({
@@ -77,6 +84,31 @@ const UpdateTicketService = async ({
       action: "update",
       ticket
     });
+
+  // TRIGGER: Wallet binding when moving to a binding step
+  if (stepId !== undefined && stepId !== oldStepId && userId) {
+    (async () => {
+      try {
+        const newStep = await Step.findByPk(stepId);
+
+        if (newStep?.isBindingStep) {
+          // Check if contact already has a wallet owner
+          const contact = await Contact.findByPk(ticket.contactId);
+
+          if (contact && !contact.walletUserId) {
+            // Bind contact to the user who moved the ticket
+            await contact.update({ walletUserId: userId });
+
+            logger.info(
+              `[WalletBinding] Contact ${contact.id} bound to user ${userId} via step "${newStep.name}"`
+            );
+          }
+        }
+      } catch (error) {
+        logger.error(`Error in wallet binding trigger for ticket #${ticket.id}:`, error);
+      }
+    })();
+  }
 
   // TRIGGER: Process embeddings when ticket is closed (async, non-blocking)
   if (status === "closed" && oldStatus !== "closed" && !ticket.isGroup) {
@@ -104,3 +136,4 @@ const UpdateTicketService = async ({
 };
 
 export default UpdateTicketService;
+

@@ -1,12 +1,15 @@
 import { Request, Response } from "express";
 import { getIO } from "../libs/socket";
 import { StartWhatsAppSession } from "../services/WbotServices/StartWhatsAppSession";
+import AppError from "../errors/AppError";
 
 import CreateWhatsAppService from "../services/WhatsappService/CreateWhatsAppService";
 import DeleteWhatsAppService from "../services/WhatsappService/DeleteWhatsAppService";
 import ListWhatsAppsService from "../services/WhatsappService/ListWhatsAppsService";
 import ShowWhatsAppService from "../services/WhatsappService/ShowWhatsAppService";
 import UpdateWhatsAppService from "../services/WhatsappService/UpdateWhatsAppService";
+import Plugin from "../models/Plugin";
+import PluginInstallation from "../models/PluginInstallation";
 
 interface WhatsappData {
   name: string;
@@ -46,6 +49,23 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
 
   const { tenantId } = (req as any).user;
 
+  if (type === "webchat") {
+    const plugin = await Plugin.findOne({ where: { slug: "webchat" } });
+    if (plugin) {
+      const installation = await PluginInstallation.findOne({
+        where: {
+          pluginId: plugin.id,
+          tenantId,
+          status: "active"
+        }
+      });
+
+      if (!installation) {
+        throw new AppError("Webchat plugin is not active for this tenant.");
+      }
+    }
+  }
+
   const { whatsapp, oldDefaultWhatsapp } = await CreateWhatsAppService({
     name,
     status,
@@ -60,24 +80,6 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     type,
     chatConfig
   });
-
-  if (type === "webchat") {
-    const { Plugin, PluginInstallation } = require("../models");
-    const plugin = await Plugin.findOne({ where: { slug: "webchat" } });
-    if (plugin) {
-      const installation = await PluginInstallation.findOne({
-        where: {
-          pluginId: plugin.id,
-          tenantId,
-          status: "active"
-        }
-      });
-
-      if (!installation) {
-        throw new Error("Webchat plugin is not active for this tenant.");
-      }
-    }
-  }
 
   // StartWhatsAppSession(whatsapp); // [REMOVED] Manual connect only
 
@@ -111,17 +113,11 @@ export const update = async (
 ): Promise<Response> => {
   const { whatsappId } = req.params;
   const whatsappData = req.body;
+  const { tenantId } = (req as any).user;
 
-  const { whatsapp, oldDefaultWhatsapp } = await UpdateWhatsAppService({
-    whatsappData,
-    whatsappId
-  });
-
-  if (whatsappData.type === "webchat" || (whatsapp && whatsapp.type === "webchat")) {
-    const { Plugin, PluginInstallation } = require("../models");
+  if (whatsappData.type === "webchat") {
     const plugin = await Plugin.findOne({ where: { slug: "webchat" } });
     if (plugin) {
-      const { tenantId } = (req as any).user;
       const installation = await PluginInstallation.findOne({
         where: {
           pluginId: plugin.id,
@@ -131,10 +127,15 @@ export const update = async (
       });
 
       if (!installation) {
-        throw new Error("Webchat plugin is not active for this tenant.");
+        throw new AppError("Webchat plugin is not active for this tenant.");
       }
     }
   }
+
+  const { whatsapp, oldDefaultWhatsapp } = await UpdateWhatsAppService({
+    whatsappData,
+    whatsappId
+  });
 
   const io = getIO();
   io.emit("whatsapp", {

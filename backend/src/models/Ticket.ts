@@ -10,7 +10,8 @@ import {
   HasMany,
   AutoIncrement,
   Default,
-  DataType
+  DataType,
+  AllowNull
 } from "sequelize-typescript";
 
 import Contact from "./Contact";
@@ -19,6 +20,7 @@ import Queue from "./Queue";
 import User from "./User";
 import Whatsapp from "./Whatsapp";
 import Tenant from "./Tenant";
+import Step from "./Step";
 
 @Table
 class Ticket extends Model<Ticket> {
@@ -74,6 +76,14 @@ class Ticket extends Model<Ticket> {
   @BelongsTo(() => Queue)
   queue: Queue;
 
+  @ForeignKey(() => Step)
+  @AllowNull(true)
+  @Column
+  stepId: number;
+
+  @BelongsTo(() => Step)
+  step: Step;
+
   @HasMany(() => Message)
   messages: Message[];
 
@@ -86,3 +96,4 @@ class Ticket extends Model<Ticket> {
 }
 
 export default Ticket;
+

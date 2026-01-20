@@ -16,6 +16,7 @@ import Login from "../pages/Login/";
 import Connections from "../pages/Connections/";
 import ConnectionConfig from "../pages/Connections/ConnectionConfig";
 import Settings from "../pages/Settings/";
+import KanbanSettings from "../pages/Settings/KanbanSettings";
 import WebchatConfig from "../pages/WebchatConfig/";
 import Users from "../pages/Users";
 import UserEdit from "../pages/UserEdit";
@@ -68,6 +69,7 @@ const PrivateRoutes = () => {
             <Route exact path="/groups" component={Groups} isPrivate />
             <Route exact path="/groups/:groupId" component={GroupEdit} isPrivate />
             <Route exact path="/queues" component={Queues} isPrivate />
+            <Route exact path="/settings/kanban" component={KanbanSettings} isPrivate />
             <Route exact path="/knowledge-bases" component={KnowledgeBase} isPrivate />
             <Route exact path="/knowledge-bases/:knowledgeBaseId" component={KnowledgeBaseConfig} isPrivate />
             <Route exact path="/swagger" component={Swagger} isPrivate />

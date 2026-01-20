@@ -105,6 +105,7 @@ const Ticket = () => {
 
   useEffect(() => {
     const socket = openSocket();
+    if (!socket) return;
 
     socket.on("connect", () => socket.emit("joinChatBox", ticketId));
 

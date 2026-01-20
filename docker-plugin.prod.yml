@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  plugin-manager:
+    image: watink/plugin-manager:1.0.51
+    environment:
+      - PORT=3005
+      - DATABASE_URL=postgres://postgres:postgres@watink_postgres:5432/watink?sslmode=disable
+      - JWT_SECRET=3123123213123
+      - FRONTEND_URL=${FRONTEND_URL:-https://app.watink.com}
+    networks:
+      - proxy
+      - watink_network
+    deploy:
+      mode: replicated
+      replicas: 1
+      # Labels removed to force traffic through Backend Proxy
+      
+  plugin-smtp:
+    image: watink/plugin-smtp:1.0.4
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+    networks:
+      - watink_network
+    deploy:
+      mode: replicated
+      replicas: 1
+
+  engine-webchat:
+    image: watink/engine-webchat:1.0.0
+    environment:
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
+      - PORT=3335
+    networks:
+      - watink_network
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+networks:
+  proxy:
+    external: true
+  watink_network:
+    external: true

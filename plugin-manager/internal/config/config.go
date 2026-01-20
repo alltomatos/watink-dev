@@ -6,6 +6,7 @@ type Config struct {
 	Port        string
 	DatabaseURL string
 	JWTSecret   string
+	FrontendURL string
 }
 
 func Load() *Config {
@@ -25,9 +26,15 @@ func Load() *Config {
 		jwtSecret = "mysecret"
 	}
 
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://app.localhost"
+	}
+
 	return &Config{
 		Port:        port,
 		DatabaseURL: dbURL,
 		JWTSecret:   jwtSecret,
+		FrontendURL: frontendURL,
 	}
 }

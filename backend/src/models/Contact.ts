@@ -20,6 +20,7 @@ import Ticket from "./Ticket";
 import Tenant from "./Tenant";
 import Client from "./Client";
 import ClientContact from "./ClientContact";
+import User from "./User";
 
 @Table
 class Contact extends Model<Contact> {
@@ -53,6 +54,14 @@ class Contact extends Model<Contact> {
   @Default(false)
   @Column
   isGroup: boolean;
+
+  @ForeignKey(() => User)
+  @AllowNull(true)
+  @Column
+  walletUserId: number;
+
+  @BelongsTo(() => User, "walletUserId")
+  walletUser: User;
 
   @ForeignKey(() => Tenant)
   @Column(DataType.UUID)

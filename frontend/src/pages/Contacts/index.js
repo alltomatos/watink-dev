@@ -37,6 +37,7 @@ import ListItemCard from "../../components/ListItemCard";
 import api from "../../services/api";
 import { i18n } from "../../translate/i18n";
 import ContactModal from "../../components/ContactModal";
+import ContactImportModal from "../../components/ContactImportModal";
 import ConfirmationModal from "../../components/ConfirmationModal/";
 import toastError from "../../errors/toastError";
 import { AuthContext } from "../../context/Auth/AuthContext";
@@ -131,6 +132,9 @@ const Contacts = () => {
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [selectedInitialContact, setSelectedInitialContact] = useState(null);
 
+  // Import Modal State
+  const [importModalOpen, setImportModalOpen] = useState(false);
+
   useEffect(() => {
     dispatch({ type: "RESET" });
     setPageNumber(1);
@@ -158,6 +162,8 @@ const Contacts = () => {
 
   useEffect(() => {
     const socket = openSocket();
+
+    if (!socket) return;
 
     socket.on("contact", (data) => {
       if (data.action === "update" || data.action === "create") {
@@ -231,13 +237,10 @@ const Contacts = () => {
     setPageNumber(1);
   };
 
-  const handleimportContact = async () => {
-    try {
-      await api.post("/contacts/import");
-      history.go(0);
-    } catch (err) {
-      toastError(err);
-    }
+  const handleImportSuccess = () => {
+    // Reload contacts after successful import
+    dispatch({ type: "RESET" });
+    setPageNumber(1);
   };
 
   const loadMore = () => {
@@ -266,6 +269,11 @@ const Contacts = () => {
         client={null}
         initialContact={selectedInitialContact}
       />
+      <ContactImportModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onSuccess={handleImportSuccess}
+      />
       <ConfirmationModal
         title={
           deletingContact
@@ -275,15 +283,9 @@ const Contacts = () => {
         }
         open={confirmOpen}
         onClose={setConfirmOpen}
-        onConfirm={(e) =>
-          deletingContact
-            ? handleDeleteContact(deletingContact.id)
-            : handleimportContact()
-        }
+        onConfirm={(e) => handleDeleteContact(deletingContact.id)}
       >
-        {deletingContact
-          ? `${i18n.t("contacts.confirmationModal.deleteMessage")}`
-          : `${i18n.t("contacts.confirmationModal.importMessage")}`}
+        {`${i18n.t("contacts.confirmationModal.deleteMessage")}`}
       </ConfirmationModal>
       <MainHeader>
         <Title>{i18n.t("contacts.title")}</Title>
@@ -304,7 +306,7 @@ const Contacts = () => {
           <Button
             variant="contained"
             color="primary"
-            onClick={(e) => setConfirmOpen(true)}
+            onClick={() => setImportModalOpen(true)}
           >
             {i18n.t("contacts.buttons.import")}
           </Button>

@@ -13,7 +13,8 @@ import {
   HasMany,
   BelongsToMany,
   ForeignKey,
-  BelongsTo
+  BelongsTo,
+  AllowNull
 } from "sequelize-typescript";
 import { hash, compare } from "bcryptjs";
 import Ticket from "./Ticket";
@@ -25,6 +26,7 @@ import Group from "./Group";
 import Permission from "./Permission";
 import UserPermission from "./UserPermission";
 import UserGroup from "./UserGroup";
+import Contact from "./Contact";
 
 @Table
 class User extends Model<User> {
@@ -56,6 +58,10 @@ class User extends Model<User> {
   @Column
   profile: string;
 
+  @AllowNull(true)
+  @Column
+  lastAssignmentAt: Date;
+
   @ForeignKey(() => Whatsapp)
   @Column
   whatsappId: number;
@@ -71,6 +77,9 @@ class User extends Model<User> {
 
   @HasMany(() => Ticket)
   tickets: Ticket[];
+
+  @HasMany(() => Contact, "walletUserId")
+  walletContacts: Contact[];
 
   @BelongsToMany(() => Queue, () => UserQueue)
   queues: Queue[];

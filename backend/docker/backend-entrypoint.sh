@@ -9,7 +9,10 @@ SERVER_PATH=$(find dist -name "server.js")
 echo "Found server at: $SERVER_PATH"
 
 echo "Waiting for database..."
-sleep 10
+if [ -n "$DB_HOST" ]; then
+  echo "Waiting for database at $DB_HOST:${DB_PORT:-5432}..."
+  dockerize -wait tcp://$DB_HOST:${DB_PORT:-5432} -timeout 60s
+fi
 
 echo "Running migrations..."
 npx sequelize db:migrate

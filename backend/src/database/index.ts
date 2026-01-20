@@ -35,6 +35,7 @@ import ConversationEmbedding from "../models/ConversationEmbedding";
 import Plugin from "../models/Plugin";
 import PluginInstallation from "../models/PluginInstallation";
 import TenantSmtpSettings from "../models/TenantSmtpSettings";
+import Step from "../models/Step";
 
 // eslint-disable-next-line
 const dbConfig = require("../config/database");
@@ -77,7 +78,8 @@ const models = [
   ConversationEmbedding,
   TenantSmtpSettings,
   Plugin,
-  PluginInstallation
+  PluginInstallation,
+  Step
 ];
 
 sequelize.addModels(models);

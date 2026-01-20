@@ -17,7 +17,7 @@ func main() {
 	database.InitDB(cfg.DatabaseURL)
 
 	r := mux.NewRouter()
-	r.Use(handlers.CORSMiddleware)
+	r.Use(handlers.CORSMiddleware(cfg))
 
 	// Health Check
 	r.HandleFunc("/health", handlers.HealthHandler).Methods("GET")

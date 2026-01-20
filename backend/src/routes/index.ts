@@ -33,6 +33,7 @@ import protocolRoutes from "./protocolRoutes";
 import pluginRoutes from "./pluginRoutes";
 import aiRoutes from "./aiRoutes";
 import webchatRoutes from "./WebchatRoutes";
+import stepRoutes from "./stepRoutes";
 
 const routes = Router();
 
@@ -66,6 +67,8 @@ routes.use(pluginRoutes);
 routes.use(aiRoutes);
 routes.use(tenantSmtpSettingsRoutes);
 routes.use(webchatRoutes);
+routes.use(stepRoutes);
 routes.use("/users", userRoutes);
 
 export default routes;
+

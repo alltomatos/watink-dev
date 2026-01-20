@@ -113,6 +113,8 @@ const Queues = () => {
   useEffect(() => {
     const socket = openSocket();
 
+    if (!socket) return;
+
     socket.on("queue", (data) => {
       if (data.action === "update" || data.action === "create") {
         dispatch({ type: "UPDATE_QUEUES", payload: data.queue });

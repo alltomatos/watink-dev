@@ -18,11 +18,13 @@ const startServer = async () => {
   initIO(server);
   await EventListener();
   await CommandListener();
-  
+
   // Initialize Flow Engine Worker (Consumer)
   await FlowWorkerService.start();
 
-  StartAllWhatsAppsSessions();
+  StartAllWhatsAppsSessions().catch(err => {
+    logger.error(`Error starting WhatsApp sessions: ${err}`);
+  });
   gracefulShutdown(server);
 };
 

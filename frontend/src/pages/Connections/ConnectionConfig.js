@@ -144,6 +144,8 @@ const ConnectionConfig = () => {
     useEffect(() => {
         const socket = openSocket();
 
+        if (!socket) return;
+
         socket.on("whatsappSession", (data) => {
             if (data.action === "update" && data.session.id === parseInt(whatsappId)) {
                 setWhatsapp(prev => ({ ...prev, ...data.session }));

@@ -23,8 +23,16 @@ import {
   Extension as ExtensionIcon // Kept only for section header if needed, or can remove
 } from "@material-ui/icons";
 
-import { getBackendUrl } from "../../helpers/urlUtils";
+import { getBackendUrl as getBackendConfigUrl } from "../../config";
 import api from "../../services/api";
+
+const getServiceUrl = (path) => {
+  const backendUrl = getBackendConfigUrl() || "";
+  const rootUrl = backendUrl.replace(/\/api\/?$/, "");
+  const safeRootUrl = rootUrl.endsWith('/') ? rootUrl : `${rootUrl}/`;
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return `${safeRootUrl}${cleanPath}`;
+};
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -136,13 +144,12 @@ const useStyles = makeStyles((theme) => ({
 
 const endpoints = [
   { key: "frontend", url: "/version.json", displayName: "Frontend" },
-  { key: "backend", url: getBackendUrl("/api/version"), displayName: "Backend API" },
-  { key: "plugin-manager", url: getBackendUrl("/plugins/version"), displayName: "Marketplace" },
-  { key: "whaileys-engine", url: getBackendUrl("/api/engine/version"), displayName: "Whaileys Engine" },
-  { key: "webchat-engine", url: getBackendUrl("/api/webchat/version"), displayName: "Webchat Engine" },
-  { key: "postgres", url: getBackendUrl("/api/postgres/version"), displayName: "Database (Postgres)" },
-  { key: "rabbitmq", url: getBackendUrl("/api/rabbitmq/version"), displayName: "Queue (RabbitMQ)" },
-  { key: "redis", url: getBackendUrl("/api/redis/version"), displayName: "Cache (Redis)" },
+  { key: "backend", url: getServiceUrl("/version"), displayName: "Backend API" },
+  { key: "plugin-manager", url: getServiceUrl("/plugins/version"), displayName: "Marketplace" },
+  { key: "whaileys-engine", url: getServiceUrl("/engine/version"), displayName: "Whaileys Engine" },
+  { key: "postgres", url: getServiceUrl("/postgres/version"), displayName: "Database (Postgres)" },
+  { key: "rabbitmq", url: getServiceUrl("/rabbitmq/version"), displayName: "Queue (RabbitMQ)" },
+  { key: "redis", url: getServiceUrl("/redis/version"), displayName: "Cache (Redis)" },
 ];
 
 const extractPostgresVersion = (version) => {
@@ -166,12 +173,22 @@ export default function VersionDashboard() {
       const { key, url, displayName } = endpoint;
       const start = performance.now();
       try {
-        const urlWithCacheBuster = `${url}?t=${Date.now()}`;
-        const res = await fetch(urlWithCacheBuster);
+        const urlWithCacheBuster = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+
+        let res;
+        // For frontend static file, use fetch (public)
+        if (key === 'frontend') {
+          const response = await fetch(urlWithCacheBuster);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          res = await response.json();
+        } else {
+          // For all other services (proxied via backend or direct backend), use authenticated api instance
+          const response = await api.get(urlWithCacheBuster);
+          res = response.data;
+        }
+
         const elapsed = performance.now() - start;
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        let version = json.version || "-";
+        let version = res.version || "-";
 
         if (key === "postgres") {
           version = extractPostgresVersion(version);
@@ -184,6 +201,8 @@ export default function VersionDashboard() {
           isOnline: true,
         };
       } catch (e) {
+        // If 401/403, and it's plugin-manager, it implies it's reachable but we might have auth issue?
+        // But generally any error assumes offline/unreachable for dashboard purposes
         const elapsed = performance.now() - start;
         results[key] = {
           service: displayName,
@@ -213,7 +232,7 @@ export default function VersionDashboard() {
         const activePlugins = installed.active || [];
 
         const pluginsList = allPlugins.map(p => ({
-          name: p.name,
+          name: p.slug === 'webchat' ? 'Webchat engine' : p.name,
           version: p.version,
           active: activePlugins.includes(p.slug),
           slug: p.slug
@@ -252,6 +271,14 @@ export default function VersionDashboard() {
 
   return (
     <Container maxWidth="md" className={classes.root}>
+      <Paper className={classes.paper} style={{ marginBottom: 16, padding: 16, backgroundColor: '#f8f9fa' }}>
+        <Typography variant="body2" color="textSecondary" align="center" style={{ fontSize: '0.9rem' }}>
+          Hospedagem Indicada: <a href="https://painelcliente.com.br/aff.php?aff=87&gid=32" target="_blank" rel="noopener noreferrer" style={{ color: theme.palette.primary.main, textDecoration: 'none', fontWeight: 600 }}>HOSTEG</a>
+          <span style={{ margin: '0 12px', color: '#e0e0e0' }}>|</span>
+          Github: <a href="https://github.com/alltomatos/watink" target="_blank" rel="noopener noreferrer" style={{ color: theme.palette.primary.main, textDecoration: 'none', fontWeight: 600 }}>WATINK</a>
+        </Typography>
+      </Paper>
+
       <Box className={classes.headerContainer}>
         <div>
           <Typography variant="h4" className={classes.title}>
@@ -275,7 +302,7 @@ export default function VersionDashboard() {
         <Table className={classes.table} size="small">
           <TableHead className={classes.tableHeader}>
             <TableRow>
-              <TableCell className={classes.tableHeaderCell}>Serviço / Plugin</TableCell>
+              <TableCell className={classes.tableHeaderCell}>Serviços</TableCell>
               <TableCell className={classes.tableHeaderCell} align="center">Versão</TableCell>
               <TableCell className={classes.tableHeaderCell} align="center">Latência</TableCell>
               <TableCell className={classes.tableHeaderCell} align="right">Status</TableCell>
@@ -322,7 +349,7 @@ export default function VersionDashboard() {
                 <TableRow>
                   <TableCell colSpan={4} className={classes.sectionHeader}>
                     <div className={classes.sectionTitle}>
-                      Plugins Instalados no Marketplace
+                      Plugins Disponíveis no Marketplace
                     </div>
                   </TableCell>
                 </TableRow>

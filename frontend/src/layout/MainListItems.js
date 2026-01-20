@@ -30,7 +30,7 @@ import { WhatsAppsContext } from "../context/WhatsApp/WhatsAppsContext";
 import { AuthContext } from "../context/Auth/AuthContext";
 import { Can } from "../components/Can";
 import { useThemeContext } from "../context/DarkMode";
-import api from "../services/api"; // Import API
+import pluginApi from "../services/pluginApi"; // Import pluginApi with JWT interceptor
 
 // Cores do Google para ícones (MD3)
 const googleColors = {
@@ -91,16 +91,13 @@ const MainListItems = (props) => {
   const [activePlugins, setActivePlugins] = useState([]);
 
   useEffect(() => {
-    // Fetch active plugins
+    // Fetch active plugins using pluginApi (has JWT interceptor)
     const fetchPlugins = async () => {
       try {
-        const { data } = await api.get("/plugins/api/v1/plugins/installed");
+        const { data } = await pluginApi.get("/api/v1/plugins/installed");
         setActivePlugins(data.active || []);
       } catch (err) {
-        // Silent error for offline/502 to avoid console spam
-        if (err?.response?.status !== 502 && err?.code !== "ERR_NETWORK") {
-          console.warn("Failed to fetch plugins", err);
-        }
+        // Silent error for offline/502/CORS to avoid user disruption
       }
     };
     fetchPlugins();

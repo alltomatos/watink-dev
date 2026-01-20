@@ -1,27 +1,28 @@
 services:
   plugin-manager:
-    image: watink/plugin-manager:1.0.47
+    image: watink/plugin-manager:1.0.51
     build: ./plugin-manager
     environment:
       - PORT=3005
       - DATABASE_URL=postgres://postgres:postgres@watink_postgres:5432/watink?sslmode=disable
       - JWT_SECRET=3123123213123
+      - FRONTEND_URL=${FRONTEND_URL:-http://app.localhost}
     networks:
-      - watink_public
-      - watink_private
+      - proxy
+      - watink_network
     deploy:
       mode: replicated
       replicas: 1
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.plugin-manager.rule=Host(`api.localhost`) && PathPrefix(`/plugins`)"
+        - "traefik.http.routers.plugin-manager.rule=Host(`${DOMAIN_BACKEND:-api.localhost}`) && PathPrefix(`/plugins`)"
         - "traefik.http.routers.plugin-manager.entrypoints=web"
-        - "traefik.http.routers.plugin-manager.priority=100"
+        - "traefik.http.routers.plugin-manager.middlewares=plugin-manager-strip"
+        - "traefik.http.middlewares.plugin-manager-strip.stripprefix.prefixes=/plugins"
         - "traefik.http.routers.plugin-manager.service=plugin-manager"
         - "traefik.http.services.plugin-manager.loadbalancer.server.port=3005"
-        - "traefik.http.routers.plugin-manager.middlewares=plugin-strip"
-        - "traefik.http.middlewares.plugin-strip.stripprefix.prefixes=/plugins"
-        - "traefik.docker.network=watink_watink_public"
+        - "traefik.docker.network=watink_proxy"
+
 
   plugin-smtp:
     image: watink/plugin-smtp:1.0.4
@@ -29,15 +30,34 @@ services:
     environment:
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
     networks:
-      - watink_private
+      - watink_network
     deploy:
       mode: replicated
       replicas: 1
 
+  engine-webchat:
+    image: watink/engine-webchat:1.0.0
+    build:
+      context: ./engine-webchat
+      dockerfile: ./Dockerfile
+    environment:
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
+      - PORT=3335
+    networks:
+      - watink_network
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
 networks:
-  watink_public:
+  proxy:
     external: true
-    name: watink_watink_public
-  watink_private:
+    name: watink_proxy
+  watink_network:
     external: true
-    name: watink_watink_private
+    name: watink_network
