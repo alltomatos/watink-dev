@@ -1,72 +1,68 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Starting build and push process..."
+echo "🚀 Starting build and push process (Dynamic Versions)..."
+
+get_version() {
+  local dir=$1
+  if [ -f "$dir/package.json" ]; then
+    # Use node to extract version from package.json. 
+    # We use a subshell and change directory to avoid path issues with require, 
+    # or just require the absolute/relative path string.
+    # Simpler: read content and parse with node.
+    node -p "require('./$dir/package.json').version"
+  elif [ -f "$dir/VERSION" ]; then
+    cat "$dir/VERSION"
+  else
+    echo "Error: No version file found in $dir"
+    exit 1
+  fi
+}
+
+deploy_service() {
+  local service_name=$1
+  local dir=$2
+  local image_name=$3
+  local compose_file=$4
+  local build_svc_name=$5
+
+  echo "--------------------------------------"
+  echo "📦 Processing $service_name..."
+  # Trim whitespace just in case
+  local version=$(get_version "$dir" | xargs)
+  echo "   Found Version: $version"
+  echo "--------------------------------------"
+
+  echo "Building $build_svc_name..."
+  docker compose -f $compose_file build $build_svc_name
+  
+  echo "Tagging $image_name:$version as latest..."
+  docker tag $image_name:$version $image_name:latest
+
+  echo "Pushing $image_name:$version..."
+  docker push $image_name:$version
+  
+  echo "Pushing $image_name:latest..."
+  docker push $image_name:latest
+  echo "--------------------------------------"
+}
 
 # Backend
-echo "--------------------------------------"
-echo "📦 Processing Backend (v1.3.263)..."
-echo "--------------------------------------"
-docker compose -f docker-stack.yml build backend
-docker tag watink/backend:1.3.263 watink/backend:latest
-echo "Pushing version 1.3.263..."
-docker push watink/backend:1.3.263
-echo "Pushing latest..."
-docker push watink/backend:latest
+deploy_service "Backend" "backend" "watink/backend" "docker-stack.yml" "backend"
 
 # Frontend
-echo "--------------------------------------"
-echo "📦 Processing Frontend (v0.7.231)..."
-echo "--------------------------------------"
-docker compose -f docker-stack.yml build frontend
-docker tag watink/frontend:0.7.231 watink/frontend:latest
-echo "Pushing version 0.7.231..."
-docker push watink/frontend:0.7.231
-echo "Pushing latest..."
-docker push watink/frontend:latest
+deploy_service "Frontend" "frontend" "watink/frontend" "docker-stack.yml" "frontend"
 
-# Engine (whaileys-engine)
-echo "--------------------------------------"
-echo "📦 Processing Engine (v1.0.116)..."
-echo "--------------------------------------"
-docker compose -f docker-stack.yml build whaileys-engine
-docker tag watink/engine:1.0.116 watink/engine:latest
-echo "Pushing version 1.0.116..."
-docker push watink/engine:1.0.116
-echo "Pushing latest..."
-docker push watink/engine:latest
+# Engine (Standard)
+deploy_service "Engine (Standard)" "engine-standard" "watink/engine" "docker-stack.yml" "whaileys-engine"
 
 # Plugin Manager
-echo "--------------------------------------"
-echo "📦 Processing Plugin Manager (v1.0.51)..."
-echo "--------------------------------------"
-docker compose -f docker-plugin.yml build plugin-manager
-docker tag watink/plugin-manager:1.0.51 watink/plugin-manager:latest
-echo "Pushing version 1.0.51..."
-docker push watink/plugin-manager:1.0.51
-echo "Pushing latest..."
-docker push watink/plugin-manager:latest
+deploy_service "Plugin Manager" "plugin-manager" "watink/plugin-manager" "docker-plugin.yml" "plugin-manager"
 
 # Plugin SMTP
-echo "--------------------------------------"
-echo "📦 Processing Plugin SMTP (v1.0.4)..."
-echo "--------------------------------------"
-docker compose -f docker-plugin.yml build plugin-smtp
-docker tag watink/plugin-smtp:1.0.4 watink/plugin-smtp:latest
-echo "Pushing version 1.0.4..."
-docker push watink/plugin-smtp:1.0.4
-echo "Pushing latest..."
-docker push watink/plugin-smtp:latest
+deploy_service "Plugin SMTP" "plugins/watink-smtp-go" "watink/plugin-smtp" "docker-plugin.yml" "plugin-smtp"
 
 # Engine Webchat
-echo "--------------------------------------"
-echo "📦 Processing Engine Webchat (v1.0.0)..."
-echo "--------------------------------------"
-docker compose -f docker-plugin.yml build engine-webchat
-docker tag watink/engine-webchat:1.0.0 watink/engine-webchat:latest
-echo "Pushing version 1.0.0..."
-docker push watink/engine-webchat:1.0.0
-echo "Pushing latest..."
-docker push watink/engine-webchat:latest
+deploy_service "Engine Webchat" "engine-webchat" "watink/engine-webchat" "docker-plugin.yml" "engine-webchat"
 
 echo "✅ All containers pushed successfully!"
