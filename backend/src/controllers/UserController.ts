@@ -3,6 +3,7 @@ import { getIO } from "../libs/socket";
 
 import CheckSettingsHelper from "../helpers/CheckSettings";
 import AppError from "../errors/AppError";
+import User from "../models/User";
 
 import CreateUserService from "../services/UserServices/CreateUserService";
 import ListUsersService from "../services/UserServices/ListUsersService";
@@ -14,6 +15,7 @@ import ResendWelcomeEmailService from "../services/UserServices/ResendWelcomeEma
 import SendPasswordResetEmailService from "../services/UserServices/SendPasswordResetEmailService";
 import ResetPasswordService from "../services/UserServices/ResetPasswordService";
 import VerifyEmailService from "../services/UserServices/VerifyEmailService";
+import CompleteRegistrationService from "../services/UserServices/CompleteRegistrationService";
 
 type IndexQuery = {
   searchParam: string;
@@ -34,26 +36,25 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
 };
 
 export const store = async (req: Request, res: Response): Promise<Response> => {
-  const { email, password, name, profile, queueIds, whatsappId, groupIds, permissions } = req.body;
+  const { email, password, name, queueIds, whatsappId, groupIds, groupId } = req.body;
 
   if (
     req.url === "/signup" &&
     (await CheckSettingsHelper("userCreation")) === "disabled"
   ) {
     throw new AppError("ERR_USER_CREATION_DISABLED", 403);
-  } else if (req.url !== "/signup" && req.user.profile !== "admin" && req.user.profile !== "superadmin") {
-    throw new AppError("ERR_NO_PERMISSION", 403);
   }
 
   const user = await CreateUserService({
     email,
     password,
     name,
-    profile,
+
     queueIds,
     whatsappId,
     groupIds,
-    permissions,
+    groupId,
+
     tenantId: req.user?.tenantId || undefined
   });
 
@@ -78,16 +79,15 @@ export const update = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  if (req.user.profile !== "admin" && req.user.profile !== "superadmin" && req.user.id.toString() !== req.params.userId) {
-    throw new AppError("ERR_NO_PERMISSION", 403);
-  }
+
 
   const { userId } = req.params;
   const userData = req.body;
 
   const profileImage = req.file?.filename;
 
-  const user = await UpdateUserService({ userData: { ...userData, profileImage }, userId, requestUser: req.user });
+  const { permissions: _, ...cleanUserData } = userData;
+  const user = await UpdateUserService({ userData: { ...cleanUserData, profileImage }, userId, requestUser: req.user });
 
   const io = getIO();
   io.emit("user", {
@@ -104,9 +104,7 @@ export const remove = async (
 ): Promise<Response> => {
   const { userId } = req.params;
 
-  if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
-    throw new AppError("ERR_NO_PERMISSION", 403);
-  }
+
 
   await DeleteUserService(userId, req.user);
 
@@ -125,9 +123,7 @@ export const toggleStatus = async (
 ): Promise<Response> => {
   const { userId } = req.params;
 
-  if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
-    throw new AppError("ERR_NO_PERMISSION", 403);
-  }
+
 
   const user = await ToggleUserStatusService(userId);
 
@@ -146,9 +142,7 @@ export const resendWelcomeEmail = async (
 ): Promise<Response> => {
   const { userId } = req.params;
 
-  if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
-    throw new AppError("ERR_NO_PERMISSION", 403);
-  }
+
 
   // Use the new service to send a password reset link instead of credentials
   const user = await ShowUserService(userId);
@@ -182,14 +176,22 @@ export const verifyEmail = async (req: Request, res: Response): Promise<Response
   return res.status(200).json(user);
 };
 
+export const completeRegistration = async (req: Request, res: Response): Promise<Response> => {
+  const { token, password } = req.body;
+  const user = await CompleteRegistrationService({ token, password });
+  return res.status(200).json(user);
+};
+
 export const manualVerify = async (req: Request, res: Response): Promise<Response> => {
   const { userId } = req.params;
 
-  if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
-    throw new AppError("ERR_NO_PERMISSION", 403);
+
+
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new AppError("ERR_NO_USER_FOUND", 404);
   }
 
-  const user = await ShowUserService(userId);
   await user.update({ emailVerified: true });
 
   const io = getIO();

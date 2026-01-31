@@ -11,19 +11,23 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 module.exports = {
     up: (queryInterface) => __awaiter(void 0, void 0, void 0, function* () {
+        const passwordHash = "$2a$08$DyqWApJJvtEaonPwbHEzS.lfiJFkh7qDZzzsgrDi8r9gyzBgIqD0O"; // devadmin
         const existing = yield queryInterface.sequelize.query(`SELECT * FROM "Users" WHERE email = 'admin@admin.com'`);
         if (existing[0].length === 0) {
             return queryInterface.bulkInsert("Users", [
                 {
                     name: "Super Admin",
                     email: "admin@admin.com",
-                    passwordHash: "$2a$08$3DhljWiasvNJHe4PZi0ODe5q1B1SbPAJg7NMhPk6T3H9RmK7gLlO6",
-                    profile: "superadmin",
+                    passwordHash,
                     tokenVersion: 0,
+                    emailVerified: true,
                     createdAt: new Date(),
                     updatedAt: new Date()
                 }
             ], {});
+        }
+        else {
+            return queryInterface.sequelize.query(`UPDATE "Users" SET "emailVerified" = true, "passwordHash" = '${passwordHash}' WHERE email = 'admin@admin.com'`);
         }
     }),
     down: (queryInterface) => {

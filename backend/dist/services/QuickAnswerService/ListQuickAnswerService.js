@@ -14,8 +14,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 const QuickAnswer_1 = __importDefault(require("../../models/QuickAnswer"));
-const ListQuickAnswerService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ searchParam = "", pageNumber = "1" }) {
+const ListQuickAnswerService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ searchParam = "", pageNumber = "1", tenantId }) {
     const whereCondition = {
+        tenantId,
         message: sequelize_1.Sequelize.where(sequelize_1.Sequelize.fn("LOWER", sequelize_1.Sequelize.col("message")), "LIKE", `%${searchParam.toLowerCase().trim()}%`)
     };
     const limit = 20;

@@ -14,6 +14,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StartWhatsAppSession = void 0;
 const uuid_1 = require("uuid");
+const Plugin_1 = __importDefault(require("../../models/Plugin"));
+const PluginInstallation_1 = __importDefault(require("../../models/PluginInstallation"));
+const Setting_1 = __importDefault(require("../../models/Setting"));
 const socket_1 = require("../../libs/socket");
 const logger_1 = require("../../utils/logger");
 const RabbitMQService_1 = __importDefault(require("../RabbitMQService"));
@@ -40,9 +43,43 @@ const StartWhatsAppSession = (whatsapp, usePairingCode, phoneNumber, force // Ne
             session: whatsapp
         });
         const sessionInstanceId = Date.now(); // Unique ID for this session instance
+        // PAPI ENGINE PLUGIN CHECK
+        let papiUrl;
+        let papiKey;
+        if (whatsapp.engineType === "papi") {
+            logger_1.logger.info(`StartWhatsAppSession: Checking PAPI plugin status for tenant ${whatsapp.tenantId}`);
+            const plugin = yield Plugin_1.default.findOne({ where: { slug: "engine-papi" } });
+            if (plugin) {
+                const installation = yield PluginInstallation_1.default.findOne({
+                    where: {
+                        pluginId: plugin.id,
+                        tenantId: whatsapp.tenantId,
+                        status: "active"
+                    }
+                });
+                if (!installation) {
+                    logger_1.logger.warn(`StartWhatsAppSession: PAPI plugin found but not active for tenant ${whatsapp.tenantId}`);
+                    throw new AppError_1.default("ERR_PLUGIN_NOT_ACTIVE_PAPI", 403);
+                }
+                logger_1.logger.info(`StartWhatsAppSession: PAPI plugin active. Fetching settings.`);
+                // Fetch settings for PAPI
+                const urlSetting = yield Setting_1.default.findOne({ where: { key: "papiUrl", tenantId: whatsapp.tenantId } });
+                const keySetting = yield Setting_1.default.findOne({ where: { key: "papiKey", tenantId: whatsapp.tenantId } });
+                papiUrl = urlSetting === null || urlSetting === void 0 ? void 0 : urlSetting.value;
+                papiKey = keySetting === null || keySetting === void 0 ? void 0 : keySetting.value;
+                if (!papiUrl) {
+                    logger_1.logger.error(`StartWhatsAppSession: papiUrl setting missing for tenant ${whatsapp.tenantId}`);
+                    throw new AppError_1.default("ERR_PAPI_URL_NOT_CONFIGURED", 400);
+                }
+                logger_1.logger.info(`StartWhatsAppSession: PAPI settings loaded. URL provided: ${!!papiUrl}, Key provided: ${!!papiKey}`);
+            }
+            else {
+                logger_1.logger.warn(`StartWhatsAppSession: PAPI engine selected but 'engine-papi' plugin not found in DB.`);
+            }
+        }
         let commandType = "session.start";
         let exchange = "wbot.commands";
-        let routingKey = `wbot.${whatsapp.tenantId}.${whatsapp.id}.session.start`;
+        let routingKey = `wbot.${whatsapp.tenantId}.${whatsapp.id}.${whatsapp.engineType || "whaileys"}.session.start`;
         // WEBCHAT ROUTING LOGIC
         if (whatsapp.type === "webchat") {
             commandType = "webchat.session.start";
@@ -65,7 +102,9 @@ const StartWhatsAppSession = (whatsapp, usePairingCode, phoneNumber, force // Ne
                 syncPeriod: whatsapp.syncPeriod,
                 keepAlive: whatsapp.keepAlive,
                 webchatId: whatsapp.id, // For webchat handler compatibility
-                force
+                force,
+                papiUrl,
+                papiKey
             }
         };
         yield RabbitMQService_1.default.publishCommand(routingKey, command, exchange);

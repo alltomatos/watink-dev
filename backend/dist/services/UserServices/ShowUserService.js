@@ -17,16 +17,18 @@ const AppError_1 = __importDefault(require("../../errors/AppError"));
 const Queue_1 = __importDefault(require("../../models/Queue"));
 const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
 const Group_1 = __importDefault(require("../../models/Group"));
+const Role_1 = __importDefault(require("../../models/Role"));
 const Permission_1 = __importDefault(require("../../models/Permission"));
 const ShowUserService = (id) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     const user = yield User_1.default.findByPk(id, {
         attributes: [
             "name",
             "id",
             "email",
-            "profile",
             "tokenVersion",
             "whatsappId",
+            "emailVerified",
             "profileImage"
         ],
         include: [
@@ -35,15 +37,53 @@ const ShowUserService = (id) => __awaiter(void 0, void 0, void 0, function* () {
             {
                 model: Group_1.default,
                 as: "groups",
-                include: [{ model: Permission_1.default, as: "permissions", attributes: ["id", "name"] }]
+                include: [
+                    {
+                        model: Role_1.default,
+                        as: "roles",
+                        include: [{ model: Permission_1.default, as: "permissions", attributes: ["id", "resource", "action"] }]
+                    }
+                ]
             },
-            { model: Permission_1.default, as: "permissions", attributes: ["id", "name"] }
+            {
+                model: Role_1.default,
+                as: "roles",
+                include: [{ model: Permission_1.default, as: "permissions", attributes: ["id", "resource", "action"] }]
+            },
         ],
         order: [[{ model: Queue_1.default, as: "queues" }, "name", "asc"]]
     });
     if (!user) {
         throw new AppError_1.default("ERR_NO_USER_FOUND", 404);
     }
-    return user;
+    const userJson = user.toJSON();
+    if (user.groups && user.groups.length > 0) {
+        userJson.groupId = user.groups[0].id;
+    }
+    // Flatten permissions for the frontend/mobile app
+    const permissions = new Set();
+    // 2. Role Permissions
+    (_a = user.roles) === null || _a === void 0 ? void 0 : _a.forEach(role => {
+        var _a;
+        (_a = role.permissions) === null || _a === void 0 ? void 0 : _a.forEach(p => {
+            if (p.resource && p.action) {
+                permissions.add(`${p.resource}:${p.action}`);
+            }
+        });
+    });
+    // 3. Group Role Permissions
+    (_b = user.groups) === null || _b === void 0 ? void 0 : _b.forEach(group => {
+        var _a;
+        (_a = group.roles) === null || _a === void 0 ? void 0 : _a.forEach(role => {
+            var _a;
+            (_a = role.permissions) === null || _a === void 0 ? void 0 : _a.forEach(p => {
+                if (p.resource && p.action) {
+                    permissions.add(`${p.resource}:${p.action}`);
+                }
+            });
+        });
+    });
+    userJson.permissions = Array.from(permissions);
+    return userJson;
 });
 exports.default = ShowUserService;

@@ -18,6 +18,8 @@ const Ticket_1 = __importDefault(require("./Ticket"));
 const Pipeline_1 = __importDefault(require("./Pipeline"));
 const PipelineStage_1 = __importDefault(require("./PipelineStage"));
 const Tenant_1 = __importDefault(require("./Tenant"));
+const Tag_1 = __importDefault(require("./Tag"));
+const EntityTag_1 = __importDefault(require("./EntityTag"));
 let Deal = class Deal extends sequelize_typescript_1.Model {
 };
 __decorate([
@@ -85,6 +87,10 @@ __decorate([
     (0, sequelize_typescript_1.BelongsTo)(() => Tenant_1.default),
     __metadata("design:type", Tenant_1.default)
 ], Deal.prototype, "tenant", void 0);
+__decorate([
+    (0, sequelize_typescript_1.BelongsToMany)(() => Tag_1.default, () => EntityTag_1.default, "entityId", "tagId"),
+    __metadata("design:type", Array)
+], Deal.prototype, "tags", void 0);
 __decorate([
     sequelize_typescript_1.CreatedAt,
     __metadata("design:type", Date)

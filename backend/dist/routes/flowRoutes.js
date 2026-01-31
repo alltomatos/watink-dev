@@ -42,11 +42,11 @@ const checkPermission_1 = __importDefault(require("../middleware/checkPermission
 const FlowController = __importStar(require("../controllers/FlowController"));
 const flowRoutes = (0, express_1.Router)();
 // ... (Swagger docs omitted)
-flowRoutes.get("/flows", isAuth_1.default, (0, checkPermission_1.default)("view_flows"), FlowController.index);
-flowRoutes.get("/flows/:flowId", isAuth_1.default, (0, checkPermission_1.default)("view_flows"), FlowController.show);
-flowRoutes.post("/flows", isAuth_1.default, (0, checkPermission_1.default)("manage_flows"), FlowController.store);
-flowRoutes.put("/flows/:flowId", isAuth_1.default, (0, checkPermission_1.default)("manage_flows"), FlowController.update);
-flowRoutes.post("/flows/:flowId/toggle", isAuth_1.default, (0, checkPermission_1.default)("manage_flows"), FlowController.toggle);
-flowRoutes.post("/flows/:flowId/simulate", isAuth_1.default, (0, checkPermission_1.default)("view_flows"), FlowController.simulate);
-flowRoutes.post("/flows/ai", isAuth_1.default, (0, checkPermission_1.default)("manage_flows"), FlowController.generateFlowAI);
+flowRoutes.get("/flows", isAuth_1.default, (0, checkPermission_1.default)("flows:read"), FlowController.index);
+flowRoutes.get("/flows/:flowId", isAuth_1.default, (0, checkPermission_1.default)("flows:read"), FlowController.show);
+flowRoutes.post("/flows", isAuth_1.default, (0, checkPermission_1.default)("flows:write"), FlowController.store);
+flowRoutes.put("/flows/:flowId", isAuth_1.default, (0, checkPermission_1.default)("flows:write"), FlowController.update);
+flowRoutes.post("/flows/:flowId/toggle", isAuth_1.default, (0, checkPermission_1.default)("flows:write"), FlowController.toggle);
+flowRoutes.post("/flows/:flowId/simulate", isAuth_1.default, (0, checkPermission_1.default)("flows:read"), FlowController.simulate);
+flowRoutes.post("/flows/ai", isAuth_1.default, (0, checkPermission_1.default)("flows:write"), FlowController.generateFlowAI);
 exports.default = flowRoutes;

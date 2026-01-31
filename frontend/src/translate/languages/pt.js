@@ -1,6 +1,13 @@
 const messages = {
   pt: {
     translations: {
+      role: {
+        permissions: {
+          available: "Permissões Disponíveis",
+          assigned: "Permissões Atribuídas",
+          noPermissions: "Nenhuma permissão encontrada",
+        },
+      },
       signup: {
         title: "Cadastre-se",
         toasts: {
@@ -98,7 +105,8 @@ const messages = {
             "Tem certeza? Você precisará ler o QR Code novamente.",
         },
         buttons: {
-          add: "Adicionar WhatsApp",
+          add: "Adicionar Whaileys",
+          addWhatsmeow: "Adicionar WhatsMeow",
           disconnect: "desconectar",
           tryAgain: "Tentar novamente",
           qrcode: "QR CODE",
@@ -258,6 +266,8 @@ const messages = {
           name: "Nome",
           color: "Cor",
           greetingMessage: "Mensagem de saudação",
+          connection: "Conexões",
+          selectConnection: "Selecione uma conexão",
           distributionSection: "Distribuição de Tickets",
           distributionStrategy: "Estratégia de Distribuição",
           prioritizeWallet: "Priorizar Carteira",
@@ -866,6 +876,9 @@ const messages = {
           import: "Importar Contatos",
           uploading: "Importando...",
         },
+      },
+      ticketsTagFilter: {
+        placeholder: "Tags",
       },
       kanbanSettings: {
         title: "Configuração do Kanban",

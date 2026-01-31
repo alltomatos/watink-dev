@@ -20,6 +20,7 @@ import UserGroup from "./UserGroup";
 import Permission from "./Permission";
 import GroupPermission from "./GroupPermission";
 
+
 @Table
 class Group extends Model<Group> {
     @PrimaryKey
@@ -46,6 +47,8 @@ class Group extends Model<Group> {
 
     @BelongsToMany(() => Permission, () => GroupPermission)
     permissions: Permission[];
+
+
 
     @CreatedAt
     createdAt: Date;

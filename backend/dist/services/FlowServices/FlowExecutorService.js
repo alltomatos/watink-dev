@@ -374,6 +374,50 @@ class FlowExecutorService {
             }
         });
     }
+    processTagNode(session, nodeData) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const context = session.context;
+            if (!context.ticketId)
+                return;
+            const { tagAction, tagId } = nodeData;
+            if (!tagId) {
+                logger_1.logger.warn("FlowExecutor: Tag Node missing tagId");
+                return;
+            }
+            try {
+                const ticket = yield (0, ShowTicketService_1.default)(context.ticketId);
+                if (!ticket)
+                    return;
+                // Import dinâmico ou estático do EntityTagService?
+                // Como estou no arquivo, vou adicionar import no topo se não tiver, ou usar require se necessário pra evitar circular?
+                // Vou assumir que EntityTagService pode ser importado.
+                const EntityTagService = require("../TagServices/EntityTagService").default;
+                if (tagAction === 'remove') {
+                    yield EntityTagService.RemoveTagFromEntity({
+                        tagId: parseInt(tagId),
+                        entityType: 'ticket', // Por padrão aplica no ticket. Opcional: permitir selecionar 'contact'
+                        entityId: ticket.id,
+                        tenantId: ticket.tenantId
+                    });
+                    // Opcional: remover do contato também? Por enquanto manter só ticket.
+                    // Se fosse para o contato:
+                    // await EntityTagService.RemoveTagFromEntity({ tagId, entityType: 'contact', ...});
+                }
+                else {
+                    yield EntityTagService.ApplyTagToEntity({
+                        tagId: parseInt(tagId),
+                        entityType: 'ticket',
+                        entityId: ticket.id,
+                        tenantId: ticket.tenantId
+                    });
+                }
+                logger_1.logger.info(`FlowExecutor: Tag ${tagAction} tagId:${tagId} on ticket:${ticket.id}`);
+            }
+            catch (err) {
+                logger_1.logger.error(`FlowExecutor: Error processing Tag Node: ${err}`);
+            }
+        });
+    }
     processAPINode(session, nodeData) {
         return __awaiter(this, void 0, void 0, function* () {
             var _a;

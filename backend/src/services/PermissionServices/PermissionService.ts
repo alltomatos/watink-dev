@@ -29,30 +29,38 @@ class PermissionService {
         let permissions: any[] = [];
 
         const user = await User.findByPk(userId, {
-            include: [{
-                model: Role,
-                through: {
-                    where: { tenantId }
-                },
-                include: [{
-                    model: Permission,
-                    as: "permissions"
-                }]
-            }]
+            include: [
+                {
+                    model: Role,
+                    through: {
+                        where: { tenantId }
+                    },
+                    include: [{
+                        model: Permission,
+                        as: "permissions"
+                    }]
+                }
+            ]
         });
 
-        if (user && user.roles) {
-            const isAdmin = user.roles.some(r => r.name === "Admin");
+        if (user) {
+            // Get permissions from Roles
+            if (user.roles) {
+                const isAdmin = user.roles.some(r => r.name === "Admin");
 
-            if (isAdmin) {
-                const allPermissions = await Permission.findAll();
-                permissions = allPermissions.map(p => ({
-                    resource: p.resource,
-                    action: p.action,
-                    scope: null,
-                    conditions: null
-                }));
-            } else {
+                if (isAdmin) {
+                    const allPermissions = await Permission.findAll();
+                    permissions = allPermissions.map(p => ({
+                        resource: p.resource,
+                        action: p.action,
+                        scope: null,
+                        conditions: null
+                    }));
+                    // Admin has all permissions, return immediately
+                    await redis.setValue(cacheKey, JSON.stringify(permissions), "EX", this.CACHE_TTL);
+                    return permissions;
+                }
+
                 user.roles.forEach(role => {
                     if (role.permissions) {
                         role.permissions.forEach(permission => {

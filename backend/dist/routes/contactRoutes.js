@@ -63,17 +63,17 @@ const csvUpload = (0, multer_1.default)({
     }
 });
 // Phone contacts import (legacy)
-contactRoutes.post("/contacts/import", isAuth_1.default, (0, checkPermission_1.default)("create_contacts"), ImportPhoneContactsController.store);
+contactRoutes.post("/contacts/import", isAuth_1.default, (0, checkPermission_1.default)("contacts:write"), ImportPhoneContactsController.store);
 // CSV import - new endpoint
-contactRoutes.post("/contacts/import-csv", isAuth_1.default, (0, checkPermission_1.default)("create_contacts"), csvUpload.single("file"), ContactController.importCsv);
+contactRoutes.post("/contacts/import-csv", isAuth_1.default, (0, checkPermission_1.default)("contacts:write"), csvUpload.single("file"), ContactController.importCsv);
 // CSV sample download
-contactRoutes.get("/contacts/import-csv/sample", isAuth_1.default, ContactController.getSampleCsv);
-contactRoutes.get("/contacts", isAuth_1.default, ContactController.index);
-contactRoutes.get("/contacts/:contactId", isAuth_1.default, ContactController.show);
-contactRoutes.post("/contacts", isAuth_1.default, (0, checkPermission_1.default)("create_contacts"), ContactController.store);
-contactRoutes.post("/contact", isAuth_1.default, ContactController.getContact);
-contactRoutes.put("/contacts/:contactId", isAuth_1.default, (0, checkPermission_1.default)("edit_contacts"), ContactController.update);
-contactRoutes.delete("/contacts/:contactId", isAuth_1.default, (0, checkPermission_1.default)("delete_contacts"), ContactController.remove);
-contactRoutes.post("/contacts/:contactId/sync", isAuth_1.default, (0, checkPermission_1.default)("edit_contacts"), ContactController.sync);
-contactRoutes.post("/contacts/enrich", isAuth_1.default, (0, checkPermission_1.default)("create_contacts"), ContactController.batchEnrich);
+contactRoutes.get("/contacts/import-csv/sample", isAuth_1.default, (0, checkPermission_1.default)("contacts:write"), ContactController.getSampleCsv);
+contactRoutes.get("/contacts", isAuth_1.default, (0, checkPermission_1.default)("contacts:read"), ContactController.index);
+contactRoutes.get("/contacts/:contactId", isAuth_1.default, (0, checkPermission_1.default)("contacts:read"), ContactController.show);
+contactRoutes.post("/contacts", isAuth_1.default, (0, checkPermission_1.default)("contacts:write"), ContactController.store);
+contactRoutes.post("/contact", isAuth_1.default, (0, checkPermission_1.default)("contacts:read"), ContactController.getContact);
+contactRoutes.put("/contacts/:contactId", isAuth_1.default, (0, checkPermission_1.default)("contacts:write"), ContactController.update);
+contactRoutes.delete("/contacts/:contactId", isAuth_1.default, (0, checkPermission_1.default)("contacts:delete"), ContactController.remove);
+contactRoutes.post("/contacts/:contactId/sync", isAuth_1.default, (0, checkPermission_1.default)("contacts:write"), ContactController.sync);
+contactRoutes.post("/contacts/enrich", isAuth_1.default, (0, checkPermission_1.default)("contacts:write"), ContactController.batchEnrich);
 exports.default = contactRoutes;

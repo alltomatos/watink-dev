@@ -15,6 +15,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const Queue_1 = __importDefault(require("../../models/Queue"));
+const Tag_1 = __importDefault(require("../../models/Tag"));
+const Message_1 = __importDefault(require("../../models/Message"));
+const Ticket_1 = __importDefault(require("../../models/Ticket"));
 const ShowWhatsAppService = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const whatsapp = yield Whatsapp_1.default.findByPk(id, {
         include: [
@@ -22,6 +25,11 @@ const ShowWhatsAppService = (id) => __awaiter(void 0, void 0, void 0, function* 
                 model: Queue_1.default,
                 as: "queues",
                 attributes: ["id", "name", "color", "greetingMessage"]
+            },
+            {
+                model: Tag_1.default,
+                as: "tags",
+                attributes: ["id", "name", "color"]
             }
         ],
         order: [["queues", "name", "ASC"]]
@@ -29,6 +37,28 @@ const ShowWhatsAppService = (id) => __awaiter(void 0, void 0, void 0, function* 
     if (!whatsapp) {
         throw new AppError_1.default("ERR_NO_WAPP_FOUND", 404);
     }
-    return whatsapp;
+    // Calculate message counts
+    // We need to join with Tickets to filter by whatsappId
+    const sentCount = yield Message_1.default.count({
+        include: [{
+                model: Ticket_1.default,
+                where: { whatsappId: id },
+                attributes: []
+            }],
+        where: { fromMe: true }
+    });
+    const receivedCount = yield Message_1.default.count({
+        include: [{
+                model: Ticket_1.default,
+                where: { whatsappId: id },
+                attributes: []
+            }],
+        where: { fromMe: false }
+    });
+    // Convert to JSON and append counts
+    const whatsappData = whatsapp.toJSON();
+    whatsappData.messagesSent = sentCount;
+    whatsappData.messagesReceived = receivedCount;
+    return whatsappData;
 });
 exports.default = ShowWhatsAppService;

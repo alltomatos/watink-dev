@@ -88,8 +88,20 @@ const SendWhatsAppMessage = async ({
       }
     };
 
+    // Determine Routing Key based on Engine Type
+    let engineType = ticket.whatsapp?.engineType;
+    if (!engineType) {
+      const whatsapp = await ticket.$get("whatsapp");
+      engineType = whatsapp?.engineType;
+    }
+
+    let routingKey = `wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.text`;
+    if (engineType === "whatsmeow") {
+      routingKey = `wbot.${ticket.tenantId}.${ticket.whatsappId}.whatsmeow.message.send.text`;
+    }
+
     await RabbitMQService.publishCommand(
-      `wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.text`,
+      routingKey,
       command
     );
 

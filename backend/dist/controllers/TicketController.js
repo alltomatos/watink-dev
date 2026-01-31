@@ -46,7 +46,8 @@ const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         queueIds,
         withUnreadMessages,
         isGroup,
-        tenantId: req.user.tenantId
+        tenantId: req.user.tenantId,
+        profile: req.user.profile
     });
     return res.status(200).json({ tickets, count, hasMore });
 });

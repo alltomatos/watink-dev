@@ -51,7 +51,7 @@ const Queue_1 = __importStar(require("../../models/Queue"));
 // Valid distribution strategies for validation
 const validStrategies = Object.values(Queue_1.DISTRIBUTION_STRATEGIES);
 const CreateQueueService = (queueData) => __awaiter(void 0, void 0, void 0, function* () {
-    const { color, name, distributionStrategy, prioritizeWallet } = queueData;
+    const { color, name, distributionStrategy, prioritizeWallet, whatsappIds } = queueData;
     const queueSchema = Yup.object().shape({
         name: Yup.string()
             .min(2, "ERR_QUEUE_INVALID_NAME")
@@ -95,6 +95,9 @@ const CreateQueueService = (queueData) => __awaiter(void 0, void 0, void 0, func
         throw new AppError_1.default(err.message);
     }
     const queue = yield Queue_1.default.create(queueData);
+    if (whatsappIds) {
+        yield queue.$set("whatsapps", whatsappIds);
+    }
     return queue;
 });
 exports.default = CreateQueueService;

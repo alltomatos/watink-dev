@@ -22,9 +22,6 @@ const DeleteUserService = (id, requestUser) => __awaiter(void 0, void 0, void 0,
     if (!user) {
         throw new AppError_1.default("ERR_NO_USER_FOUND", 404);
     }
-    if (user.profile === "superadmin" && user.id.toString() !== requestUser.id.toString()) {
-        throw new AppError_1.default("ERR_NO_PERMISSION", 403);
-    }
     const userOpenTickets = yield user.$get("tickets", {
         where: { status: "open" }
     });

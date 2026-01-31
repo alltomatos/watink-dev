@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const multer_1 = __importDefault(require("multer"));
 const isAuth_1 = __importDefault(require("../middleware/isAuth"));
+const checkPermission_1 = __importDefault(require("../middleware/checkPermission"));
 const upload_1 = __importDefault(require("../config/upload"));
 const ProtocolController = __importStar(require("../controllers/ProtocolController"));
 const ProtocolPublicController = __importStar(require("../controllers/ProtocolPublicController"));
@@ -46,16 +47,16 @@ const ProtocolKanbanController = __importStar(require("../controllers/ProtocolKa
 const ProtocolAttachmentController = __importStar(require("../controllers/ProtocolAttachmentController"));
 const protocolRoutes = express_1.default.Router();
 const upload = (0, multer_1.default)(upload_1.default);
-protocolRoutes.get("/protocols/kanban", isAuth_1.default, ProtocolKanbanController.index);
-protocolRoutes.get("/protocols/dashboard", isAuth_1.default, ProtocolController.dashboard);
-protocolRoutes.get("/protocols", isAuth_1.default, ProtocolController.index);
-protocolRoutes.post("/protocols", isAuth_1.default, ProtocolController.store);
-protocolRoutes.get("/protocols/:protocolId", isAuth_1.default, ProtocolController.show);
-protocolRoutes.put("/protocols/:protocolId", isAuth_1.default, upload.array("files", 10), ProtocolController.update);
+protocolRoutes.get("/protocols/kanban", isAuth_1.default, (0, checkPermission_1.default)("helpdesk:read"), ProtocolKanbanController.index);
+protocolRoutes.get("/protocols/dashboard", isAuth_1.default, (0, checkPermission_1.default)("helpdesk:read"), ProtocolController.dashboard);
+protocolRoutes.get("/protocols", isAuth_1.default, (0, checkPermission_1.default)("helpdesk:read"), ProtocolController.index);
+protocolRoutes.post("/protocols", isAuth_1.default, (0, checkPermission_1.default)("helpdesk:write"), ProtocolController.store);
+protocolRoutes.get("/protocols/:protocolId", isAuth_1.default, (0, checkPermission_1.default)("helpdesk:read"), ProtocolController.show);
+protocolRoutes.put("/protocols/:protocolId", isAuth_1.default, upload.array("files", 10), (0, checkPermission_1.default)("helpdesk:write"), ProtocolController.update);
 // Attachment routes
-protocolRoutes.get("/protocols/:protocolId/attachments", isAuth_1.default, ProtocolAttachmentController.index);
-protocolRoutes.post("/protocols/:protocolId/attachments", isAuth_1.default, upload.array("files", 10), ProtocolAttachmentController.store);
-protocolRoutes.delete("/protocols/:protocolId/attachments/:attachmentId", isAuth_1.default, ProtocolAttachmentController.destroy);
+protocolRoutes.get("/protocols/:protocolId/attachments", isAuth_1.default, (0, checkPermission_1.default)("helpdesk:read"), ProtocolAttachmentController.index);
+protocolRoutes.post("/protocols/:protocolId/attachments", isAuth_1.default, upload.array("files", 10), (0, checkPermission_1.default)("helpdesk:write"), ProtocolAttachmentController.store);
+protocolRoutes.delete("/protocols/:protocolId/attachments/:attachmentId", isAuth_1.default, (0, checkPermission_1.default)("helpdesk:write"), ProtocolAttachmentController.destroy);
 // Public route for protocol checking
 protocolRoutes.get("/public/protocols/:token", ProtocolPublicController.show);
 protocolRoutes.get("/public/protocols/:token/attachments", ProtocolAttachmentController.publicIndex);

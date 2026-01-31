@@ -67,7 +67,8 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
     queueIds,
     withUnreadMessages,
     isGroup,
-    tenantId: req.user.tenantId
+    tenantId: req.user.tenantId,
+    profile: req.user.profile
   });
 
   return res.status(200).json({ tickets, count, hasMore });

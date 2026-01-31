@@ -78,6 +78,11 @@ class RabbitMQService {
                 return;
             yield this.channel.assertExchange("wbot.commands", "topic", { durable: true });
             yield this.channel.assertExchange("wbot.events", "topic", { durable: true });
+            // Setup Engine Queues
+            const standardQueue = yield this.channel.assertQueue("wbot_standard_commands", { durable: true });
+            yield this.channel.bindQueue(standardQueue.queue, "wbot.commands", "wbot.*.*.whaileys.#");
+            const goQueue = yield this.channel.assertQueue("wbot_go_commands", { durable: true });
+            yield this.channel.bindQueue(goQueue.queue, "wbot.commands", "wbot.*.*.whatsmeow.#");
         });
     }
     publishCommand(routingKey_1, message_1) {

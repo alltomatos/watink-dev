@@ -2,12 +2,12 @@ version: '3.8'
 
 services:
   plugin-manager:
-    image: watink/plugin-manager:latest
+    image: watink/plugin-manager:1.0.55
     environment:
       - PORT=3005
-      - DATABASE_URL=postgres://postgres:postgres@watink_postgres:5432/watink?sslmode=disable
+      - DATABASE_URL=postgres://postgres:cdbf98d818e1f96847b8ce7f@watink_postgres:5432/watink?sslmode=disable
       - JWT_SECRET=3123123213123
-      - FRONTEND_URL=${FRONTEND_URL:-https://app.watink.com}
+      - FRONTEND_URL=${FRONTEND_URL:-https://app.protectit.com.br}
     networks:
       - proxy
       - watink_network
@@ -15,9 +15,28 @@ services:
       mode: replicated
       replicas: 1
 
-      
+  engine-papi:
+    image: watink/engine-papi:1.0.5
+    environment:
+      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672}
+    networks:
+      - proxy
+      - watink_network
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=watink_proxy"
+        - "traefik.http.routers.papi-webhook.rule=Host(`${FRONTEND_URL_HOST:-app.protectit.com.br}`) && PathPrefix(`/plugins/papi`)"
+        - "traefik.http.routers.papi-webhook.entrypoints=web,websecure"
+        - "traefik.http.routers.papi-webhook.tls.certresolver=letsencrypt"
+        - "traefik.http.services.papi-webhook.loadbalancer.server.port=3000"
+        - "traefik.http.routers.papi-webhook.middlewares=papi-strip"
+        - "traefik.http.middlewares.papi-strip.stripPrefix.prefixes=/plugins/papi"
+
   plugin-smtp:
-    image: watink/plugin-smtp:1.0.7
+    image: watink/plugin-smtp:1.0.8
     environment:
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
       - SMTP_CONCURRENCY=50
@@ -28,7 +47,7 @@ services:
       replicas: 1
 
   engine-webchat:
-    image: watink/engine-webchat:latest
+    image: watink/engine-webchat:1.0.1
     environment:
       - AMQP_URL=amqp://guest:guest@rabbitmq:5672
       - REDIS_URL=redis://redis:6379

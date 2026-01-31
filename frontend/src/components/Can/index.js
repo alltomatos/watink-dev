@@ -1,25 +1,25 @@
-const check = (user, action, data) => {
-	const userPermissions = user?.permissions || [];
-	const profile = user?.profile || user?.role; // Fallback for legacy calls passing role directly in user prop? No, user prop is object. 
+import rules from "../../rules";
 
-	// If the component received 'role' prop instead of 'user', we might need to handle it in the component props, not here inside check.
-	// But let's check check's first arg.
+const check = (role, action, permissions) => {
+	const permissionsToCheck = permissions || [];
 
-	// Standardize profile check
-	if (["admin", "superadmin"].includes(user?.profile)) return true;
+	if (permissionsToCheck.includes(action)) {
+		return true;
+	}
 
-	if (userPermissions.includes(action)) {
+	const staticPermissions = rules[role]?.static || [];
+	if (staticPermissions.includes(action)) {
 		return true;
 	}
 
 	return false;
 };
 
-const Can = ({ user, role, perform, data, yes, no }) => {
-	// Adapter: if 'role' is passed but 'user' is missing or doesn't have profile, try to construct a partial user
-	const effectiveUser = user || { profile: role, permissions: [] };
+const Can = ({ role, perform, data, yes, no, user }) => {
+	const permissions = user?.permissions || [];
+	const userRole = role || user?.profile;
 
-	return check(effectiveUser, perform, data) ? yes() : no();
+	return check(userRole, perform, permissions) ? yes() : no();
 };
 
 Can.defaultProps = {

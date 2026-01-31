@@ -20,9 +20,6 @@ const AppError_1 = __importDefault(require("../errors/AppError"));
 const UpdateSettingService_1 = __importDefault(require("../services/SettingServices/UpdateSettingService"));
 const ListSettingsService_1 = __importDefault(require("../services/SettingServices/ListSettingsService"));
 const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
-        throw new AppError_1.default("ERR_NO_PERMISSION", 403);
-    }
     const { tenantId } = req.user;
     const settings = yield (0, ListSettingsService_1.default)({ tenantId });
     // Convert to plain object to inject virtual settings
@@ -47,9 +44,6 @@ const getPublicSettings = (req, res) => __awaiter(void 0, void 0, void 0, functi
 });
 exports.getPublicSettings = getPublicSettings;
 const update = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
-        throw new AppError_1.default("ERR_NO_PERMISSION", 403);
-    }
     const { settingKey: key } = req.params;
     const { value } = req.body;
     const { tenantId } = req.user;
@@ -67,9 +61,6 @@ const update = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.update = update;
 const uploadLogo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
-        throw new AppError_1.default("ERR_NO_PERMISSION", 403);
-    }
     if (!req.file) {
         throw new AppError_1.default("ERR_NO_FILE_UPLOADED", 400);
     }
@@ -103,9 +94,6 @@ const uploadLogo = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 });
 exports.uploadLogo = uploadLogo;
 const uploadFavicon = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
-        throw new AppError_1.default("ERR_NO_PERMISSION", 403);
-    }
     if (!req.file) {
         throw new AppError_1.default("ERR_NO_FILE_UPLOADED", 400);
     }
@@ -134,9 +122,6 @@ const uploadFavicon = (req, res) => __awaiter(void 0, void 0, void 0, function* 
 });
 exports.uploadFavicon = uploadFavicon;
 const uploadMobileLogo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
-        throw new AppError_1.default("ERR_NO_PERMISSION", 403);
-    }
     if (!req.file) {
         throw new AppError_1.default("ERR_NO_FILE_UPLOADED", 400);
     }
@@ -165,9 +150,6 @@ const uploadMobileLogo = (req, res) => __awaiter(void 0, void 0, void 0, functio
 });
 exports.uploadMobileLogo = uploadMobileLogo;
 const uploadLoginImage = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
-        throw new AppError_1.default("ERR_NO_PERMISSION", 403);
-    }
     if (!req.file) {
         throw new AppError_1.default("ERR_NO_FILE_UPLOADED", 400);
     }

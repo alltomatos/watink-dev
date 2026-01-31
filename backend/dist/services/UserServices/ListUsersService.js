@@ -34,7 +34,7 @@ const ListUsersService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ se
     const offset = limit * (+pageNumber - 1);
     const { count, rows: users } = yield User_1.default.findAndCountAll({
         where: whereCondition,
-        attributes: ["name", "id", "email", "profile", "createdAt"],
+        attributes: ["name", "id", "email", "createdAt", "emailVerified"],
         limit,
         offset,
         order: [["createdAt", "DESC"]],

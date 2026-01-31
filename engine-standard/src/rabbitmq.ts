@@ -66,12 +66,12 @@ export class RabbitMQ {
     if (!this.channel || !this.handler) return;
 
     // Create a durable queue for this engine instance to prevent message loss during startup
-    const q = await this.channel.assertQueue("wbot_engine_commands", { durable: true });
+    const q = await this.channel.assertQueue("wbot_standard_commands", { durable: true });
 
     await this.channel.bindQueue(q.queue, "wbot.commands", "command.general");
-    // Bind all session and message commands using wildcard
-    // Pattern: wbot.<tenantId>.<sessionId>.<commandType>
-    await this.channel.bindQueue(q.queue, "wbot.commands", "wbot.*.*.#");
+    // Bind only whaileys commands
+    // Pattern: wbot.<tenantId>.<sessionId>.<engineType>.<commandType>
+    await this.channel.bindQueue(q.queue, "wbot.commands", "wbot.*.*.whaileys.#");
 
     this.channel.consume(q.queue, async (msg: ConsumeMessage | null) => {
       if (msg) {

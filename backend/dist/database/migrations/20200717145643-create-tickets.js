@@ -16,7 +16,21 @@ module.exports = {
                 allowNull: false
             },
             lastMessage: {
-                type: sequelize_1.DataTypes.STRING
+                type: sequelize_1.DataTypes.TEXT
+            },
+            isGroup: {
+                type: sequelize_1.DataTypes.BOOLEAN,
+                allowNull: false,
+                defaultValue: false
+            },
+            unreadMessages: {
+                type: sequelize_1.DataTypes.INTEGER,
+                defaultValue: 0
+            },
+            uuid: {
+                type: sequelize_1.DataTypes.UUID,
+                defaultValue: sequelize_1.DataTypes.UUIDV4,
+                allowNull: true
             },
             contactId: {
                 type: sequelize_1.DataTypes.INTEGER,

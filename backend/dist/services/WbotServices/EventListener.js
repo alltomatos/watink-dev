@@ -37,7 +37,19 @@ const EventListener = () => __awaiter(void 0, void 0, void 0, function* () {
         "wbot.*.*.message.reaction",
         "wbot.*.*.contact.update",
         "wbot.*.*.message.ack",
-        "wbot.*.*.message.revoke"
+        "wbot.*.*.message.revoke",
+        "wbot.*.*.*.session.qrcode",
+        "wbot.*.*.*.session.pairingcode",
+        "wbot.*.*.*.session.status",
+        "wbot.*.*.*.message.received",
+        "wbot.*.*.*.message.reaction",
+        "wbot.*.*.*.contact.update",
+        "wbot.*.*.*.message.ack",
+        "wbot.*.*.*.message.revoke",
+        // Wildcard fallback for engines that append extra segments or use different naming
+        "wbot.*.*.*.event",
+        "wbot.*.*.event",
+        "wbot.#"
     ];
     yield RabbitMQService_1.default.consumeEvents("api.events.process", routingKeys, (msg) => __awaiter(void 0, void 0, void 0, function* () {
         logger_1.logger.info(`Event received: ${msg.type}`);

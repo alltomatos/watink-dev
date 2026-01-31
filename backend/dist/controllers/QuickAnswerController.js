@@ -56,9 +56,11 @@ const DeleteQuickAnswerService_1 = __importDefault(require("../services/QuickAns
 const AppError_1 = __importDefault(require("../errors/AppError"));
 const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { searchParam, pageNumber } = req.query;
+    const { tenantId } = req.user;
     const { quickAnswers, count, hasMore } = yield (0, ListQuickAnswerService_1.default)({
         searchParam,
-        pageNumber
+        pageNumber,
+        tenantId
     });
     return res.json({ quickAnswers, count, hasMore });
 });

@@ -49,13 +49,17 @@ const Yup = __importStar(require("yup"));
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const SerializeUser_1 = require("../../helpers/SerializeUser");
 const User_1 = __importDefault(require("../../models/User"));
-const Permission_1 = __importDefault(require("../../models/Permission"));
+const ShowUserService_1 = __importDefault(require("./ShowUserService"));
 const Tenant_1 = __importDefault(require("../../models/Tenant"));
 const PluginInstallation_1 = __importDefault(require("../../models/PluginInstallation"));
 const Plugin_1 = __importDefault(require("../../models/Plugin"));
 const sequelize_1 = require("sequelize");
-const SendPasswordResetEmailService_1 = __importDefault(require("./SendPasswordResetEmailService"));
-const CreateUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ email, password, name, queueIds = [], profile = "admin", whatsappId, groupIds = [], tenantId }) {
+const SendVerificationEmailService_1 = __importDefault(require("./SendVerificationEmailService"));
+const CreateUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ email, password, name, queueIds = [], whatsappId, groupIds = [], groupId, tenantId }) {
+    let finalGroupIds = [...groupIds];
+    if (groupId && !finalGroupIds.includes(groupId)) {
+        finalGroupIds.push(groupId);
+    }
     const schema = Yup.object().shape({
         name: Yup.string().required().min(2),
         email: Yup.string()
@@ -80,7 +84,6 @@ const CreateUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ e
     /*
      * Check if SMTP Plugin is active.
      * If NOT active, we simply create the user as verified and don't send the email.
-     * "if the smtp plugin is not active the system must behave as if they do not exist"
      */
     let emailVerified = false;
     if (tenantId) {
@@ -108,10 +111,6 @@ const CreateUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ e
         }
     }
     else {
-        // If no tenant (e.g. superadmin creation?), default behavior?
-        // Usually superadmin is created seeded.
-        // Use default false or true? If no SMTP context, maybe true?
-        // Let's assume true for safety if no tenant context exists for SMTP.
         emailVerified = true;
     }
     if (process.env.TENANTS === "true" && tenantId) {
@@ -127,33 +126,24 @@ const CreateUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ e
         email,
         password,
         name,
-        profile,
         whatsappId: whatsappId ? whatsappId : null,
         tenantId,
         emailVerified
     }, { include: ["queues", "whatsapp"] });
-    if (profile === "superadmin") {
-        const allPermissions = yield Permission_1.default.findAll();
-        yield user.$set("permissions", allPermissions);
-    }
-    else {
-        yield user.$set("queues", queueIds);
-        yield user.$set("groups", groupIds);
-    }
-    // Send Welcome Email (Async) via Password Reset Link
-    // Send Welcome Email (Async) via Password Reset Link ONLY if verify is needed
+    yield user.$set("queues", queueIds);
+    yield user.$set("groups", finalGroupIds, { through: { tenantId } });
+    // Send Verification Email (Async)
     if (tenantId && !emailVerified) {
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-        // We don't await here to not block the response, or we can await if we want to ensure email is sent.
-        // Given it uses RabbitMQ inside service, it should be fast.
         try {
-            yield (0, SendPasswordResetEmailService_1.default)(email, frontendUrl);
+            yield (0, SendVerificationEmailService_1.default)(email, frontendUrl);
         }
         catch (err) {
-            console.error("Failed to send welcome/reset email", err);
+            console.error("Failed to send verification email", err);
         }
     }
-    yield user.reload();
-    return (0, SerializeUser_1.SerializeUser)(user);
+    // await user.reload();
+    const createdUser = yield (0, ShowUserService_1.default)(user.id);
+    return (0, SerializeUser_1.SerializeUser)(createdUser);
 });
 exports.default = CreateUserService;

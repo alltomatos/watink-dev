@@ -20,6 +20,8 @@ interface Request {
   type?: string;
   chatConfig?: any;
   tags?: number[];
+  engineType?: string;
+  importOldMessages?: string;
 }
 
 interface Response {
@@ -40,7 +42,9 @@ const CreateWhatsAppService = async ({
   tenantId,
   type = "whatsapp",
   chatConfig = {},
-  tags
+  tags,
+  engineType,
+  importOldMessages
 }: Request): Promise<Response> => {
   const schema = Yup.object().shape({
     name: Yup.string()
@@ -107,7 +111,8 @@ const CreateWhatsAppService = async ({
       keepAlive,
       tenantId,
       type,
-      chatConfig: chatConfig ? JSON.stringify(chatConfig) : null
+      chatConfig: chatConfig ? JSON.stringify(chatConfig) : null,
+      engineType
     },
     { include: ["queues"] }
   );

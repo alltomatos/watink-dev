@@ -20,12 +20,17 @@ const Message_1 = __importDefault(require("../../models/Message"));
 const Queue_1 = __importDefault(require("../../models/Queue"));
 const ShowUserService_1 = __importDefault(require("../UserServices/ShowUserService"));
 const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
-const ListTicketsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ searchParam = "", pageNumber = "1", queueIds, status, date, showAll, userId, withUnreadMessages, isGroup, tenantId }) {
+const Tag_1 = __importDefault(require("../../models/Tag"));
+const ListTicketsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ searchParam = "", pageNumber = "1", queueIds, status, date, showAll, userId, withUnreadMessages, isGroup, tags, tenantId, profile }) {
     let whereCondition = {
         [sequelize_1.Op.or]: [{ userId }, { status: "pending" }],
-        queueId: { [sequelize_1.Op.or]: [queueIds, null] },
         tenantId
     };
+    // Only filter by queueId if filtering, or if user is NOT admin
+    // Admins with empty queueIds should see tickets from all queues (or no queue)
+    if (profile !== "admin" || (queueIds && queueIds.length > 0)) {
+        whereCondition.queueId = { [sequelize_1.Op.or]: [queueIds, null] };
+    }
     let includeCondition;
     includeCondition = [
         {
@@ -42,8 +47,29 @@ const ListTicketsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ 
             model: Whatsapp_1.default,
             as: "whatsapp",
             attributes: ["name"]
+        },
+        {
+            model: Tag_1.default,
+            as: "tags",
+            attributes: ["id", "name", "color", "icon"],
+            required: false
         }
     ];
+    if (tags && tags.length > 0) {
+        includeCondition.push({
+            model: Tag_1.default,
+            as: "tags",
+            attributes: ["id", "name", "color", "icon"],
+            required: true,
+            where: {
+                id: {
+                    [sequelize_1.Op.in]: tags
+                }
+            }
+        });
+        // Remove o include duplicado de tags (o default required: false) se houver filtro
+        includeCondition = includeCondition.filter(i => !i.model || i.model.name !== "Tag" || i.required === true);
+    }
     if (showAll === "true") {
         whereCondition = { queueId: { [sequelize_1.Op.or]: [queueIds, null] } };
     }
@@ -71,7 +97,7 @@ const ListTicketsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ 
                 },
                 { "$contact.number$": { [sequelize_1.Op.iLike]: `%${sanitizedSearchParam}%` } },
                 {
-                    "$message.body$": (0, sequelize_1.where)((0, sequelize_1.fn)("LOWER", (0, sequelize_1.col)("body")), "LIKE", `%${sanitizedSearchParam}%`)
+                    "$messages.body$": (0, sequelize_1.where)((0, sequelize_1.fn)("LOWER", (0, sequelize_1.col)("messages.body")), "LIKE", `%${sanitizedSearchParam}%`)
                 }
             ] });
     }
@@ -112,7 +138,8 @@ const ListTicketsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ 
         distinct: true,
         limit,
         offset,
-        order: [["updatedAt", "DESC"]]
+        order: [["updatedAt", "DESC"]],
+        subQuery: false
     });
     const hasMore = count > offset + tickets.length;
     return {

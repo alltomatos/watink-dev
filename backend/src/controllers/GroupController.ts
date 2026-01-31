@@ -28,7 +28,7 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
         include: [
             { model: Role, as: "roles", attributes: ["id", "name"] },
             { model: User, as: "users", attributes: ["id", "name"] },
-            { model: Permission, as: "permissions", attributes: ["id", "resource"] }
+            { model: Permission, as: "permissions", attributes: ["id", "resource", "action"] }
         ]
     });
 
@@ -65,9 +65,7 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     }
 
     if (data.permissions && data.permissions.length > 0) {
-        const permissions = await Permission.findAll({
-            where: { id: data.permissions }
-        });
+        const permissions = await Permission.findAll({ where: { id: data.permissions } });
         await group.$set("permissions", permissions, { through: { tenantId } });
     }
 
@@ -138,9 +136,7 @@ export const update = async (req: Request, res: Response): Promise<Response> => 
     }
 
     if (data.permissions) {
-        const permissions = await Permission.findAll({
-            where: { id: data.permissions }
-        });
+        const permissions = await Permission.findAll({ where: { id: data.permissions } });
         await group.$set("permissions", permissions, { through: { tenantId } });
     }
 

@@ -88,8 +88,27 @@ const SendWhatsAppMedia = async ({
       }
     };
 
+    // Determine Routing Key based on Engine Type
+    // If ticket.whatsapp is not loaded, we might need to fetch or rely on caller? 
+    // Ideally caller should load it. If not, we fetch.
+    let engineType = ticket.whatsapp?.engineType;
+    if (!engineType) {
+      // Try safe load if needed, or default to whaileys
+      // const whatsapp = await Whatsapp.findByPk(ticket.whatsappId);
+      // engineType = whatsapp?.engineType;
+      // Assuming default if missing for now to avoid perf hit if not strictly needed
+      // But for reliability:
+      const whatsapp = await ticket.$get("whatsapp");
+      engineType = whatsapp?.engineType;
+    }
+
+    let routingKey = `wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.media`;
+    if (engineType === "whatsmeow") {
+      routingKey = `wbot.${ticket.tenantId}.${ticket.whatsappId}.whatsmeow.message.send.media`;
+    }
+
     await RabbitMQService.publishCommand(
-      `wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.media`,
+      routingKey,
       command
     );
 

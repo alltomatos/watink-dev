@@ -20,6 +20,7 @@ const Step_1 = __importDefault(require("../../models/Step"));
 const Setting_1 = __importDefault(require("../../models/Setting"));
 const ShowTicketService_1 = __importDefault(require("./ShowTicketService"));
 const EmbeddingService_1 = __importDefault(require("../AIServices/EmbeddingService"));
+const EntityTagService_1 = __importDefault(require("../TagServices/EntityTagService"));
 const logger_1 = require("../../utils/logger");
 const UpdateTicketService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ ticketData, ticketId }) {
     var _b, _c;
@@ -46,12 +47,20 @@ const UpdateTicketService = (_a) => __awaiter(void 0, [_a], void 0, function* ({
     if (stepId !== undefined)
         updateData.stepId = stepId;
     yield ticket.update(updateData);
+    if (ticketData.tags) {
+        yield EntityTagService_1.default.SyncEntityTags({
+            tagIds: ticketData.tags,
+            entityType: "ticket",
+            entityId: ticket.id,
+            tenantId: ticket.tenantId
+        });
+    }
     if (whatsappId) {
         yield ticket.update({
             whatsappId
         });
     }
-    yield ticket.reload();
+    const ticketUpdated = yield (0, ShowTicketService_1.default)(ticket.id);
     const io = (0, socket_1.getIO)();
     if (ticket.status !== oldStatus || ((_c = ticket.user) === null || _c === void 0 ? void 0 : _c.id) !== oldUserId) {
         io.to(oldStatus).emit("ticket", {
@@ -64,7 +73,7 @@ const UpdateTicketService = (_a) => __awaiter(void 0, [_a], void 0, function* ({
         .to(ticketId.toString())
         .emit("ticket", {
         action: "update",
-        ticket
+        ticket: ticketUpdated
     });
     // TRIGGER: Wallet binding when moving to a binding step
     if (stepId !== undefined && stepId !== oldStepId && userId) {

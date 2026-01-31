@@ -53,13 +53,14 @@ const ShowWhatsAppService_1 = __importDefault(require("./ShowWhatsAppService"));
 const AssociateWhatsappQueue_1 = __importDefault(require("./AssociateWhatsappQueue"));
 const StopWhatsAppSession_1 = __importDefault(require("../WbotServices/StopWhatsAppSession"));
 const logger_1 = require("../../utils/logger");
+const EntityTagService_1 = __importDefault(require("../TagServices/EntityTagService"));
 const UpdateWhatsAppService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ whatsappData, whatsappId }) {
     const schema = Yup.object().shape({
         name: Yup.string().min(2),
         status: Yup.string(),
         isDefault: Yup.boolean()
     });
-    const { name, status, isDefault, session, greetingMessage, farewellMessage, queueIds = [], syncHistory, syncPeriod, keepAlive, type, chatConfig } = whatsappData;
+    const { name, status, isDefault, session, greetingMessage, farewellMessage, queueIds = [], syncHistory, syncPeriod, keepAlive, type, chatConfig, tags } = whatsappData;
     logger_1.logger.info(`UpdateWhatsAppService - ID: ${whatsappId}, Data: ${JSON.stringify(whatsappData)} `); // [DEBUG]
     try {
         yield schema.validate({ name, status, isDefault });
@@ -100,6 +101,18 @@ const UpdateWhatsAppService = (_a) => __awaiter(void 0, [_a], void 0, function* 
         // Let's assume standard import at top.
     }
     yield (0, AssociateWhatsappQueue_1.default)(whatsapp, queueIds);
+    if (tags) {
+        yield EntityTagService_1.default.SyncEntityTags({
+            tagIds: tags,
+            entityType: "whatsapp",
+            entityId: whatsapp.id,
+            tenantId: whatsapp.tenantId
+        });
+        // Reload to include tags in returned object if needed, or frontend will refetch/update
+        yield whatsapp.reload({
+            include: ["queues", "tags"]
+        });
+    }
     // Checks if sync settings were updated and connection is active/opening
     if (syncHistory !== undefined || syncPeriod !== undefined || keepAlive !== undefined) {
         yield (0, StopWhatsAppSession_1.default)(whatsapp.id);

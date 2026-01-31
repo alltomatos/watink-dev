@@ -20,6 +20,8 @@ const User_1 = __importDefault(require("./User"));
 const Whatsapp_1 = __importDefault(require("./Whatsapp"));
 const Tenant_1 = __importDefault(require("./Tenant"));
 const Step_1 = __importDefault(require("./Step"));
+const Tag_1 = __importDefault(require("./Tag"));
+const EntityTag_1 = __importDefault(require("./EntityTag"));
 let Ticket = class Ticket extends sequelize_typescript_1.Model {
 };
 __decorate([
@@ -119,6 +121,20 @@ __decorate([
     (0, sequelize_typescript_1.BelongsTo)(() => Tenant_1.default),
     __metadata("design:type", Tenant_1.default)
 ], Ticket.prototype, "tenant", void 0);
+__decorate([
+    (0, sequelize_typescript_1.BelongsToMany)(() => Tag_1.default, {
+        through: {
+            model: () => EntityTag_1.default,
+            scope: {
+                entityType: "ticket"
+            }
+        },
+        foreignKey: "entityId",
+        otherKey: "tagId",
+        constraints: false
+    }),
+    __metadata("design:type", Array)
+], Ticket.prototype, "tags", void 0);
 Ticket = __decorate([
     sequelize_typescript_1.Table
 ], Ticket);

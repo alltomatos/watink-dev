@@ -50,8 +50,9 @@ const AppError_1 = __importDefault(require("../../errors/AppError"));
 const Deal_1 = __importDefault(require("../../models/Deal"));
 const Contact_1 = __importDefault(require("../../models/Contact"));
 const Ticket_1 = __importDefault(require("../../models/Ticket"));
+const EntityTagService_1 = __importDefault(require("../TagServices/EntityTagService"));
 const CreateDealService = (dealData) => __awaiter(void 0, void 0, void 0, function* () {
-    const { title, value, priority, contactId, ticketId, pipelineId, stageId, tenantId } = dealData;
+    const { title, value, priority, contactId, ticketId, pipelineId, stageId, tenantId, tags } = dealData;
     const schema = Yup.object().shape({
         title: Yup.string().required(),
         contactId: Yup.number().required(),
@@ -84,6 +85,17 @@ const CreateDealService = (dealData) => __awaiter(void 0, void 0, void 0, functi
         pipelineId,
         stageId,
         tenantId
+    });
+    if (tags && tags.length > 0) {
+        yield EntityTagService_1.default.SyncEntityTags({
+            tagIds: tags,
+            entityType: 'deal',
+            entityId: deal.id,
+            tenantId: tenantId
+        });
+    }
+    yield deal.reload({
+        include: ["contact", "ticket", "pipeline", "stage", "tags"]
     });
     return deal;
 });

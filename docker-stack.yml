@@ -1,8 +1,7 @@
-version: '3.8'
 
 services:
   backend:
-    image: watink/backend:1.3.375
+    image: watink/backend:1.3.435
     build:
       context: ./backend
       dockerfile: ./Dockerfile
@@ -54,7 +53,7 @@ services:
         - "traefik.docker.network=watink_watink_proxy"
 
   frontend:
-    image: watink/frontend:0.7.271
+    image: watink/frontend:0.7.319
     build:
       context: ./frontend
       dockerfile: ./Dockerfile
@@ -113,7 +112,7 @@ services:
         - "traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$8EVDtcp.$$J2A.0.1.0/0.1.0"
 
   whaileys-engine:
-    image: watink/engine:1.0.118
+    image: watink/engine:1.0.121
     build:
       context: ./engine-standard
       dockerfile: ./Dockerfile
@@ -132,8 +131,28 @@ services:
           cpus: '0.50'
           memory: 2048M
 
+  engine-go:
+    image: watink/engine-go:1.0.10
+    build:
+      context: ./engine-go
+      dockerfile: ./Dockerfile
+    environment:
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
+      - DB_URL=postgres://postgres:postgres@watink_postgres:5432/watink?sslmode=disable
+    networks:
+      - watink_network
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+
   flow-worker:
-    image: watink/backend:1.3.375
+    image: watink/backend:1.3.435
     command: ["node", "dist/flow-worker.js"]
     environment:
       - DB_DIALECT=postgres
@@ -157,7 +176,7 @@ services:
           memory: 512M
 
   watink-guard:
-    image: watink/guard:1.0.2
+    image: watink/guard:1.0.3
     build:
       context: ./watink-guard
       dockerfile: ./Dockerfile
@@ -206,7 +225,7 @@ services:
           memory: 512M
 
   watink_postgres:
-    image: ronaldodavi/pgvectorgis:latest
+    image: watink/postgres-postgis-pgvector:16-optimized
     labels:
       - com.docker.compose.project=${STACK_NAME:-watinkdev}
       - com.docker.compose.service=watink_postgres

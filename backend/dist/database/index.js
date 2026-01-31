@@ -16,9 +16,12 @@ const sequelize_typescript_1 = require("sequelize-typescript");
 const User_1 = __importDefault(require("../models/User"));
 const Setting_1 = __importDefault(require("../models/Setting"));
 const Contact_1 = __importDefault(require("../models/Contact"));
+const ContactCustomField_1 = __importDefault(require("../models/ContactCustomField"));
 const Ticket_1 = __importDefault(require("../models/Ticket"));
 const Whatsapp_1 = __importDefault(require("../models/Whatsapp"));
-const ContactCustomField_1 = __importDefault(require("../models/ContactCustomField"));
+const TagGroup_1 = __importDefault(require("../models/TagGroup"));
+const Tag_1 = __importDefault(require("../models/Tag"));
+const EntityTag_1 = __importDefault(require("../models/EntityTag"));
 const Message_1 = __importDefault(require("../models/Message"));
 const Queue_1 = __importDefault(require("../models/Queue"));
 const WhatsappQueue_1 = __importDefault(require("../models/WhatsappQueue"));
@@ -36,9 +39,7 @@ const KnowledgeBase_1 = __importDefault(require("../models/KnowledgeBase"));
 const KnowledgeSource_1 = __importDefault(require("../models/KnowledgeSource"));
 const KnowledgeVector_1 = __importDefault(require("../models/KnowledgeVector"));
 const Group_1 = __importDefault(require("../models/Group"));
-const GroupPermission_1 = __importDefault(require("../models/GroupPermission"));
 const Permission_1 = __importDefault(require("../models/Permission"));
-const UserPermission_1 = __importDefault(require("../models/UserPermission"));
 const Client_1 = __importDefault(require("../models/Client"));
 const ClientAddress_1 = __importDefault(require("../models/ClientAddress"));
 const ClientContact_1 = __importDefault(require("../models/ClientContact"));
@@ -49,6 +50,11 @@ const ConversationEmbedding_1 = __importDefault(require("../models/ConversationE
 const Plugin_1 = __importDefault(require("../models/Plugin"));
 const PluginInstallation_1 = __importDefault(require("../models/PluginInstallation"));
 const TenantSmtpSettings_1 = __importDefault(require("../models/TenantSmtpSettings"));
+const Role_1 = __importDefault(require("../models/Role"));
+const RolePermission_1 = __importDefault(require("../models/RolePermission"));
+const UserRole_1 = __importDefault(require("../models/UserRole"));
+const GroupRole_1 = __importDefault(require("../models/GroupRole"));
+const GroupPermission_1 = __importDefault(require("../models/GroupPermission"));
 const Step_1 = __importDefault(require("../models/Step"));
 const EmailTemplate_1 = __importDefault(require("../models/EmailTemplate"));
 // eslint-disable-next-line
@@ -57,10 +63,13 @@ const sequelize = new sequelize_typescript_1.Sequelize(dbConfig);
 const models = [
     User_1.default,
     Contact_1.default,
+    ContactCustomField_1.default,
     Ticket_1.default,
     Message_1.default,
     Whatsapp_1.default,
-    ContactCustomField_1.default,
+    TagGroup_1.default,
+    Tag_1.default,
+    EntityTag_1.default,
     Setting_1.default,
     Queue_1.default,
     WhatsappQueue_1.default,
@@ -78,9 +87,7 @@ const models = [
     KnowledgeSource_1.default,
     KnowledgeVector_1.default,
     Group_1.default,
-    GroupPermission_1.default,
     Permission_1.default,
-    UserPermission_1.default,
     Client_1.default,
     ClientAddress_1.default,
     ClientContact_1.default,
@@ -91,6 +98,11 @@ const models = [
     TenantSmtpSettings_1.default,
     Plugin_1.default,
     PluginInstallation_1.default,
+    Role_1.default,
+    RolePermission_1.default,
+    UserRole_1.default,
+    GroupRole_1.default,
+    GroupPermission_1.default,
     Step_1.default,
     EmailTemplate_1.default
 ];

@@ -1,6 +1,6 @@
 {
     "name": "webchat-engine",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Webchat Engine - Motor do webchat com endpoint de versão",
     "main": "dist/index.js",
     "scripts": {

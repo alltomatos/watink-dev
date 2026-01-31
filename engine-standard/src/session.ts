@@ -229,7 +229,12 @@ class SessionManager {
       this.manuallyDisconnected.add(sessionId);
 
       if (session) {
-        await session.socket.end(undefined);
+        // Force close connection
+        try {
+            session.socket.end(undefined);
+            session.socket.ws.close(); // Ensure underlying WS is closed
+            session.socket.ev.removeAllListeners("connection.update"); // Prevent further events
+        } catch(e) {}
         this.sessions.delete(sessionId);
       }
 
@@ -503,7 +508,8 @@ class SessionManager {
           const noRetryCodes = [
             DisconnectReason.loggedOut,      // 401 - User logged out
             DisconnectReason.forbidden,      // 403 - Banned
-            DisconnectReason.badSession      // 500 - Auth file corrupted
+            DisconnectReason.badSession,     // 500 - Auth file corrupted
+            428                              // Precondition Required (often follows Sync Error)
           ];
 
           const shouldReconnect = statusCode === undefined || !noRetryCodes.includes(statusCode);
@@ -519,10 +525,25 @@ class SessionManager {
             return;
           }
 
-          // Cleanup auth on badSession to allow fresh start
-          if (statusCode === DisconnectReason.badSession) {
-            logger.warn(`Bad session detected for session ${payload.sessionId}, cleaning up auth files.`);
+          // Cleanup auth on badSession or Precondition Required to allow fresh start
+          if (statusCode === DisconnectReason.badSession || statusCode === 428) {
+            logger.warn(`Bad session/Precondition Required (${statusCode}) detected for session ${payload.sessionId}, cleaning up auth files.`);
+            try {
+               // Force kill socket to avoid zombie loops
+               sock.end(undefined);
+               sock.ws?.close();
+               sock.ev.removeAllListeners("connection.update");
+            } catch (e) {}
+            
             await this.cleanupSession(payload.sessionId);
+            
+            // For 428, we might want to try a fresh start after cleanup if it wasn't a logout
+            if (statusCode === 428 && currentRetries < 5) {
+                 logger.info(`Retrying fresh session start after 428 cleanup...`);
+                 this.retries.set(payload.sessionId, currentRetries + 1);
+                 setTimeout(() => this.startSession(payload, tenantId), 3000);
+                 return;
+            }
           }
 
 
@@ -573,17 +594,44 @@ class SessionManager {
             this.retries.delete(payload.sessionId);
             this.sessions.delete(payload.sessionId);
 
-            const statusEvent: Envelope = {
-              id: uuidv4(),
-              timestamp: Date.now(),
-              tenantId,
-              type: "session.status",
-              payload: {
-                sessionId: payload.sessionId,
-                status: "DISCONNECTED"
-              }
-            };
-            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
+            // Check for critical sync error or 401 logged out
+            const isSyncError = lastDisconnect?.error?.message?.includes("Incomplete app state key sync");
+            const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+            const isPreconditionRequired = statusCode === 428;
+
+            if (isSyncError || isLoggedOut || isPreconditionRequired) {
+              logger.warn(`Critical Session Error Detected (Sync: ${isSyncError}, LoggedOut: ${isLoggedOut}, 428: ${isPreconditionRequired}). Cleaning up and requiring new QR.`);
+              
+              // Ensure session is removed from memory
+              this.sessions.delete(payload.sessionId);
+              
+              // Force full cleanup
+              await this.cleanupSession(payload.sessionId);
+
+              const statusEvent: Envelope = {
+                id: uuidv4(),
+                timestamp: Date.now(),
+                tenantId,
+                type: "session.status",
+                payload: {
+                  sessionId: payload.sessionId,
+                  status: "SESSION_EXPIRED" as any
+                }
+              };
+              await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
+            } else {
+              const statusEvent: Envelope = {
+                id: uuidv4(),
+                timestamp: Date.now(),
+                tenantId,
+                type: "session.status",
+                payload: {
+                  sessionId: payload.sessionId,
+                  status: "DISCONNECTED"
+                }
+              };
+              await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
+            }
           }
         } else if (connection === "open") {
           logger.info(`Session ${payload.sessionId} opened`);
@@ -830,18 +878,46 @@ class SessionManager {
   private async cleanupSession(sessionId: number) {
     logger.info(`Attempting cleanup of session ${sessionId} in Redis`);
     try {
-      // Use SCAN in production for better performance, but KEYS is okay for now
-      // Pattern: wbot:auth:{sessionId}:*
-      const keys = await this.redis.keys(`wbot:auth:${sessionId}:*`);
+      // Use SCAN for better performance and reliability than KEYS
+      const pattern = `wbot:auth:${sessionId}:*`;
+      let cursor = '0';
+      let keysToDelete: string[] = [];
+      
+      // Safety limit to prevent infinite loops if something is wrong
+      let scanLoops = 0;
+      const MAX_SCAN_LOOPS = 1000;
 
-      if (keys.length > 0) {
-        const pipeline = this.redis.pipeline();
-        keys.forEach(key => pipeline.del(key));
-        await pipeline.exec();
-        logger.info(`Successfully cleaned up ${keys.length} keys for session ${sessionId}`);
+      do {
+        // Scan for keys
+        const result = await this.redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+        cursor = result[0];
+        const foundKeys = result[1];
+        if (foundKeys.length > 0) {
+            keysToDelete.push(...foundKeys);
+        }
+        scanLoops++;
+      } while (cursor !== '0' && scanLoops < MAX_SCAN_LOOPS);
+
+      if (keysToDelete.length > 0) {
+        logger.info(`Found ${keysToDelete.length} keys to delete for session ${sessionId}`);
+        
+        // Delete in batches of 100 to avoid pipeline overflow if massive
+        const BATCH_SIZE = 100;
+        for (let i = 0; i < keysToDelete.length; i += BATCH_SIZE) {
+            const batch = keysToDelete.slice(i, i + BATCH_SIZE);
+            const pipeline = this.redis.pipeline();
+            batch.forEach(key => pipeline.del(key));
+            await pipeline.exec();
+        }
+        
+        logger.info(`Successfully cleaned up ${keysToDelete.length} keys for session ${sessionId}`);
       } else {
         logger.info(`No Redis keys found for session ${sessionId}`);
       }
+      
+      // Double check specifically for creds key as it's critical
+      await this.redis.del(`wbot:auth:${sessionId}:creds`);
+      
     } catch (err) {
       logger.error(`Error cleaning up session ${sessionId}:`, err);
     }

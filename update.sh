@@ -41,6 +41,21 @@ elif [ "$SERVICE" == "watink-guard" ]; then
   COMPOSE_SVC="watink-guard"
   IMAGE_NAME="watink/guard"
   COMPOSE_IMAGE="watink/guard"
+elif [ "$SERVICE" == "engine-webchat" ]; then
+  DIR="engine-webchat"
+  COMPOSE_SVC="engine-webchat"
+  IMAGE_NAME="watink/engine-webchat"
+  COMPOSE_IMAGE="watink/engine-webchat"
+elif [ "$SERVICE" == "engine-papi" ]; then
+  DIR="plugins/engine-papi"
+  COMPOSE_SVC="engine-papi"
+  IMAGE_NAME="watink/engine-papi"
+  COMPOSE_IMAGE="watink/engine-papi"
+elif [ "$SERVICE" == "engine-go" ]; then
+  DIR="engine-go"
+  COMPOSE_SVC="engine-go"
+  IMAGE_NAME="watink/engine-go"
+  COMPOSE_IMAGE="watink/engine-go"
 else
   echo "Invalid service. Use: backend, engine, frontend, plugin-manager, or plugin-smtp"
   exit 1
@@ -92,6 +107,15 @@ elif [ "$SERVICE" == "engine" ]; then
 elif [ "$SERVICE" == "watink-guard" ]; then
   sed "s|image: watink/guard:.*|image: watink/guard:$VERSION_NUM|g" docker-stack.yml > docker-stack.yml.tmp && mv docker-stack.yml.tmp docker-stack.yml
   sed "s|image: watink/guard:.*|image: watink/guard:$VERSION_NUM|g" docker-compose.prod.yml > docker-compose.prod.yml.tmp && mv docker-compose.prod.yml.tmp docker-compose.prod.yml
+elif [ "$SERVICE" == "engine-webchat" ]; then
+  sed "s|image: watink/engine-webchat:.*|image: watink/engine-webchat:$VERSION_NUM|g" docker-plugin.yml > docker-plugin.yml.tmp && mv docker-plugin.yml.tmp docker-plugin.yml
+  sed "s|image: watink/engine-webchat:.*|image: watink/engine-webchat:$VERSION_NUM|g" docker-plugin.prod.yml > docker-plugin.prod.yml.tmp && mv docker-plugin.prod.yml.tmp docker-plugin.prod.yml
+elif [ "$SERVICE" == "engine-papi" ]; then
+  sed "s|image: watink/engine-papi:.*|image: watink/engine-papi:$VERSION_NUM|g" docker-plugin.yml > docker-plugin.yml.tmp && mv docker-plugin.yml.tmp docker-plugin.yml
+  sed "s|image: watink/engine-papi:.*|image: watink/engine-papi:$VERSION_NUM|g" docker-plugin.prod.yml > docker-plugin.prod.yml.tmp && mv docker-plugin.prod.yml.tmp docker-plugin.prod.yml
+elif [ "$SERVICE" == "engine-go" ]; then
+  sed "s|image: watink/engine-go:.*|image: watink/engine-go:$VERSION_NUM|g" docker-stack.yml > docker-stack.yml.tmp && mv docker-stack.yml.tmp docker-stack.yml
+  sed "s|image: watink/engine-go:.*|image: watink/engine-go:$VERSION_NUM|g" docker-compose.prod.yml > docker-compose.prod.yml.tmp && mv docker-compose.prod.yml.tmp docker-compose.prod.yml
 else
   sed "s|image: watink/$SERVICE:.*|image: watink/$SERVICE:$VERSION_NUM|g" docker-stack.yml > docker-stack.yml.tmp && mv docker-stack.yml.tmp docker-stack.yml
   sed "s|image: watink/$SERVICE:.*|image: watink/$SERVICE:$VERSION_NUM|g" docker-compose.prod.yml > docker-compose.prod.yml.tmp && mv docker-compose.prod.yml.tmp docker-compose.prod.yml
@@ -99,10 +123,11 @@ fi
 
 # 3. Build
 echo "🏗️ Building Docker image (no-cache)..."
-if [ "$SERVICE" == "plugin-manager" ] || [ "$SERVICE" == "plugin-smtp" ]; then
+if [ "$SERVICE" == "plugin-manager" ] || [ "$SERVICE" == "plugin-smtp" ] || [ "$SERVICE" == "engine-webchat" ] || [ "$SERVICE" == "engine-papi" ]; then
   docker compose -f docker-plugin.yml build --no-cache $COMPOSE_SVC
 else
-  docker compose -f docker-stack.yml build --no-cache $COMPOSE_SVC
+  docker compose -f docker-stack.yml build $COMPOSE_SVC
+# docker compose -f docker-stack.yml build --no-cache $COMPOSE_SVC
 fi
 
 # 4. Tagging
@@ -110,9 +135,14 @@ echo "🏷️ Tagging images..."
 # Explicitly tag the newly built version as latest
 docker tag $IMAGE_NAME:$VERSION_NUM $IMAGE_NAME:latest
 
-# 5. Redeploy Stack
+# 5. Push
+echo "🚀 Pushing images to registry..."
+# docker push $IMAGE_NAME:$VERSION_NUM
+# docker push $IMAGE_NAME:latest
+
+# 6. Redeploy Stack
 echo "🔄 Redeploying Stack via docker stack deploy..."
-if [ "$SERVICE" == "plugin-manager" ] || [ "$SERVICE" == "plugin-smtp" ]; then
+if [ "$SERVICE" == "plugin-manager" ] || [ "$SERVICE" == "plugin-smtp" ] || [ "$SERVICE" == "engine-webchat" ] || [ "$SERVICE" == "engine-papi" ]; then
   docker stack deploy -c docker-plugin.yml watink-plugins
 else
   # This ensures the running service matches the docker-stack.yml definition exactly

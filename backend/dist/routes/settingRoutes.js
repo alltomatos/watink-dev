@@ -39,21 +39,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const multer_1 = __importDefault(require("multer"));
 const isAuth_1 = __importDefault(require("../middleware/isAuth"));
+const checkPermission_1 = __importDefault(require("../middleware/checkPermission"));
 const SettingController = __importStar(require("../controllers/SettingController"));
 const settingRoutes = (0, express_1.Router)();
 // Configure multer for memory storage
 const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
-settingRoutes.get("/settings", isAuth_1.default, SettingController.index);
+settingRoutes.get("/settings", isAuth_1.default, (0, checkPermission_1.default)("settings:read"), SettingController.index);
 settingRoutes.get("/public-settings", SettingController.getPublicSettings); // [NEW] Public route
 // routes.get("/settings/:settingKey", isAuth, SettingsController.show);
 // change setting key to key in future
-settingRoutes.put("/settings/:settingKey", isAuth_1.default, SettingController.update);
+settingRoutes.put("/settings/:settingKey", isAuth_1.default, (0, checkPermission_1.default)("settings:write"), SettingController.update);
 // Logo upload route
-settingRoutes.post("/settings/logo", isAuth_1.default, upload.single("logo"), SettingController.uploadLogo);
+settingRoutes.post("/settings/logo", isAuth_1.default, (0, checkPermission_1.default)("settings:write"), upload.single("logo"), SettingController.uploadLogo);
 // Favicon upload route
-settingRoutes.post("/settings/favicon", isAuth_1.default, upload.single("favicon"), SettingController.uploadFavicon);
+settingRoutes.post("/settings/favicon", isAuth_1.default, (0, checkPermission_1.default)("settings:write"), upload.single("favicon"), SettingController.uploadFavicon);
 // Login Image upload route
-settingRoutes.post("/settings/loginImage", isAuth_1.default, upload.single("loginImage"), SettingController.uploadLoginImage);
+settingRoutes.post("/settings/loginImage", isAuth_1.default, (0, checkPermission_1.default)("settings:write"), upload.single("loginImage"), SettingController.uploadLoginImage);
 // Mobile Logo upload route
-settingRoutes.post("/settings/mobileLogo", isAuth_1.default, upload.single("mobileLogo"), SettingController.uploadMobileLogo);
+settingRoutes.post("/settings/mobileLogo", isAuth_1.default, (0, checkPermission_1.default)("settings:write"), upload.single("mobileLogo"), SettingController.uploadMobileLogo);
 exports.default = settingRoutes;

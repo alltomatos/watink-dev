@@ -21,6 +21,42 @@ module.exports = {
                     defaultValue: 'active',
                     allowNull: false
                 },
+                plan: {
+                    type: sequelize_1.DataTypes.STRING,
+                    defaultValue: 'free',
+                    allowNull: true
+                },
+                externalId: {
+                    type: sequelize_1.DataTypes.STRING,
+                    unique: true,
+                    allowNull: true
+                },
+                maxUsers: {
+                    type: sequelize_1.DataTypes.INTEGER,
+                    defaultValue: 1,
+                    allowNull: true
+                },
+                maxConnections: {
+                    type: sequelize_1.DataTypes.INTEGER,
+                    defaultValue: 1,
+                    allowNull: true
+                },
+                logo: {
+                    type: sequelize_1.DataTypes.STRING,
+                    allowNull: true
+                },
+                document: {
+                    type: sequelize_1.DataTypes.STRING,
+                    allowNull: true
+                },
+                businessHours: {
+                    type: sequelize_1.DataTypes.JSON,
+                    allowNull: true
+                },
+                message: {
+                    type: sequelize_1.DataTypes.STRING,
+                    allowNull: true
+                },
                 ownerId: {
                     type: sequelize_1.DataTypes.INTEGER,
                     allowNull: true,

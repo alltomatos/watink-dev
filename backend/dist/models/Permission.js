@@ -13,10 +13,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_typescript_1 = require("sequelize-typescript");
-const Group_1 = __importDefault(require("./Group"));
-const GroupPermission_1 = __importDefault(require("./GroupPermission"));
-const User_1 = __importDefault(require("./User"));
-const UserPermission_1 = __importDefault(require("./UserPermission"));
+const Role_1 = __importDefault(require("./Role"));
+const RolePermission_1 = __importDefault(require("./RolePermission"));
 let Permission = class Permission extends sequelize_typescript_1.Model {
 };
 __decorate([
@@ -28,19 +26,23 @@ __decorate([
 __decorate([
     (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.STRING),
     __metadata("design:type", String)
-], Permission.prototype, "name", void 0);
+], Permission.prototype, "resource", void 0);
+__decorate([
+    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.STRING),
+    __metadata("design:type", String)
+], Permission.prototype, "action", void 0);
 __decorate([
     (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.STRING),
     __metadata("design:type", String)
 ], Permission.prototype, "description", void 0);
 __decorate([
-    (0, sequelize_typescript_1.BelongsToMany)(() => Group_1.default, () => GroupPermission_1.default),
-    __metadata("design:type", Array)
-], Permission.prototype, "groups", void 0);
+    (0, sequelize_typescript_1.Column)({ defaultValue: true }),
+    __metadata("design:type", Boolean)
+], Permission.prototype, "isSystem", void 0);
 __decorate([
-    (0, sequelize_typescript_1.BelongsToMany)(() => User_1.default, () => UserPermission_1.default),
+    (0, sequelize_typescript_1.BelongsToMany)(() => Role_1.default, () => RolePermission_1.default),
     __metadata("design:type", Array)
-], Permission.prototype, "users", void 0);
+], Permission.prototype, "roles", void 0);
 __decorate([
     sequelize_typescript_1.CreatedAt,
     __metadata("design:type", Date)

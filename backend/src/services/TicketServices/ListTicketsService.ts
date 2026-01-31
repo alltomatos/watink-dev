@@ -21,6 +21,7 @@ interface Request {
   isGroup?: string;
   tenantId: string | number;
   tags?: number[];
+  profile?: string;
 }
 
 interface Response {
@@ -41,13 +42,19 @@ const ListTicketsService = async ({
   isGroup,
 
   tags,
-  tenantId
+  tenantId,
+  profile
 }: Request): Promise<Response> => {
   let whereCondition: Filterable["where"] = {
     [Op.or]: [{ userId }, { status: "pending" }],
-    queueId: { [Op.or]: [queueIds, null] },
     tenantId
   };
+
+  // Only filter by queueId if filtering, or if user is NOT admin
+  // Admins with empty queueIds should see tickets from all queues (or no queue)
+  if (profile !== "admin" || (queueIds && queueIds.length > 0)) {
+    whereCondition.queueId = { [Op.or]: [queueIds, null] };
+  }
 
   let includeCondition: Includeable[];
 

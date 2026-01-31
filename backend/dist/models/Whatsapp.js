@@ -17,6 +17,8 @@ const Tenant_1 = __importDefault(require("./Tenant"));
 const Queue_1 = __importDefault(require("./Queue"));
 const Ticket_1 = __importDefault(require("./Ticket"));
 const WhatsappQueue_1 = __importDefault(require("./WhatsappQueue"));
+const Tag_1 = __importDefault(require("./Tag"));
+const EntityTag_1 = __importDefault(require("./EntityTag"));
 let Whatsapp = class Whatsapp extends sequelize_typescript_1.Model {
 };
 __decorate([
@@ -80,6 +82,11 @@ __decorate([
     __metadata("design:type", String)
 ], Whatsapp.prototype, "type", void 0);
 __decorate([
+    (0, sequelize_typescript_1.Default)('whaileys'),
+    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.ENUM('whaileys', 'whatsmeow', 'papi')),
+    __metadata("design:type", String)
+], Whatsapp.prototype, "engineType", void 0);
+__decorate([
     (0, sequelize_typescript_1.Default)(false),
     sequelize_typescript_1.AllowNull,
     sequelize_typescript_1.Column,
@@ -119,6 +126,20 @@ __decorate([
     (0, sequelize_typescript_1.HasMany)(() => WhatsappQueue_1.default),
     __metadata("design:type", Array)
 ], Whatsapp.prototype, "whatsappQueues", void 0);
+__decorate([
+    (0, sequelize_typescript_1.BelongsToMany)(() => Tag_1.default, {
+        through: {
+            model: () => EntityTag_1.default,
+            scope: {
+                entityType: "whatsapp"
+            }
+        },
+        foreignKey: "entityId",
+        otherKey: "tagId",
+        constraints: false
+    }),
+    __metadata("design:type", Array)
+], Whatsapp.prototype, "tags", void 0);
 __decorate([
     (0, sequelize_typescript_1.ForeignKey)(() => Tenant_1.default),
     (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.UUID),

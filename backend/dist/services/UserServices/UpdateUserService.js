@@ -49,42 +49,58 @@ const Yup = __importStar(require("yup"));
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const SerializeUser_1 = require("../../helpers/SerializeUser");
 const ShowUserService_1 = __importDefault(require("./ShowUserService"));
-const Permission_1 = __importDefault(require("../../models/Permission"));
+const RedisService_1 = require("../../services/RedisService");
+const User_1 = __importDefault(require("../../models/User"));
 const UpdateUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ userData, userId, requestUser }) {
-    const user = yield (0, ShowUserService_1.default)(userId);
+    const user = yield User_1.default.findByPk(userId);
+    if (!user) {
+        throw new AppError_1.default("ERR_NO_USER_FOUND", 404);
+    }
     const schema = Yup.object().shape({
         name: Yup.string().min(2),
         email: Yup.string().email(),
-        profile: Yup.string(),
         password: Yup.string()
     });
-    const { email, password, profile, name, queueIds = [], whatsappId, groupIds = [], profileImage } = userData;
+    const { email, password, name, queueIds = [], whatsappId, groupIds = [], groupId, profileImage } = userData;
+    console.log("UpdateUserService: Payload received", { userId, groupId, groupIds });
+    // Compatibility: Frontend sends groupId (singular) but backend expects groupIds (plural)
+    const finalGroupIds = [...groupIds];
+    if (groupId) {
+        const gid = Number(groupId);
+        if (!isNaN(gid) && !finalGroupIds.includes(gid)) {
+            finalGroupIds.push(gid);
+        }
+    }
+    console.log("UpdateUserService: Processing", { finalGroupIds });
     try {
-        yield schema.validate({ email, password, profile, name });
+        yield schema.validate({ email, password, name });
     }
     catch (err) {
         throw new AppError_1.default(err.message);
     }
-    // Protection: prevent editing superadmin if not self
-    if (user.profile === "superadmin" && user.id.toString() !== requestUser.id.toString()) {
-        throw new AppError_1.default("ERR_NO_PERMISSION", 403);
-    }
     yield user.update({
         email,
         password,
-        profile,
         name,
         whatsappId: whatsappId ? whatsappId : null,
         profileImage
     });
-    yield user.$set("queues", queueIds);
-    yield user.$set("groups", groupIds);
-    // Ensure superadmin has all permissions if profile is being updated to superadmin
-    if (profile === "superadmin" || (user.profile === "superadmin" && profile === undefined)) {
-        const allPermissions = yield Permission_1.default.findAll();
-        yield user.$set("permissions", allPermissions);
+    try {
+        console.log("UpdateUserService: Setting queues...");
+        yield user.$set("queues", queueIds);
+        console.log("UpdateUserService: Setting groups...", finalGroupIds);
+        yield user.$set("groups", finalGroupIds, { through: { tenantId: requestUser.tenantId } });
+        // Invalidate Permission Cache
+        console.log("UpdateUserService: Invalidating cache...");
+        const redis = RedisService_1.RedisService.getInstance();
+        yield redis.delValue(`perms:${requestUser.tenantId}:${userId}`);
     }
-    yield user.reload();
-    return (0, SerializeUser_1.SerializeUser)(user);
+    catch (error) {
+        console.error("UpdateUserService: Error during associations/cache", error);
+        throw new AppError_1.default("INTERNAL_ERROR_UPDATE_USER_RELATIONS", 500);
+    }
+    // await user.reload();
+    const updatedUser = yield (0, ShowUserService_1.default)(userId);
+    return (0, SerializeUser_1.SerializeUser)(updatedUser);
 });
 exports.default = UpdateUserService;

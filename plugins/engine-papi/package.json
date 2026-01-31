@@ -1,0 +1,31 @@
+{
+  "name": "engine-papi",
+  "version": "1.0.5",
+  "description": "WhatsApp Engine for Whatink using Pastorini API (PAPI)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "@types/express": "^5.0.6",
+    "amqplib": "^0.10.3",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "express": "^5.2.1",
+    "pino": "^8.16.1",
+    "pino-pretty": "^10.2.3",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.4",
+    "@types/node": "^20.8.10",
+    "@types/uuid": "^8.3.4",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.2.2"
+  }
+}

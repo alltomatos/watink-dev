@@ -29,8 +29,8 @@ const UserQueue_1 = __importDefault(require("./UserQueue"));
 const Whatsapp_1 = __importDefault(require("./Whatsapp"));
 const Tenant_1 = __importDefault(require("./Tenant"));
 const Group_1 = __importDefault(require("./Group"));
-const Permission_1 = __importDefault(require("./Permission"));
-const UserPermission_1 = __importDefault(require("./UserPermission"));
+const Role_1 = __importDefault(require("./Role"));
+const UserRole_1 = __importDefault(require("./UserRole"));
 const UserGroup_1 = __importDefault(require("./UserGroup"));
 const Contact_1 = __importDefault(require("./Contact"));
 let User = class User extends sequelize_typescript_1.Model {
@@ -77,11 +77,6 @@ __decorate([
     sequelize_typescript_1.Column,
     __metadata("design:type", Number)
 ], User.prototype, "tokenVersion", void 0);
-__decorate([
-    (0, sequelize_typescript_1.Default)("admin"),
-    sequelize_typescript_1.Column,
-    __metadata("design:type", String)
-], User.prototype, "profile", void 0);
 __decorate([
     (0, sequelize_typescript_1.Default)(true),
     sequelize_typescript_1.Column,
@@ -155,9 +150,9 @@ __decorate([
     __metadata("design:type", Array)
 ], User.prototype, "groups", void 0);
 __decorate([
-    (0, sequelize_typescript_1.BelongsToMany)(() => Permission_1.default, () => UserPermission_1.default),
+    (0, sequelize_typescript_1.BelongsToMany)(() => Role_1.default, () => UserRole_1.default),
     __metadata("design:type", Array)
-], User.prototype, "permissions", void 0);
+], User.prototype, "roles", void 0);
 __decorate([
     sequelize_typescript_1.BeforeUpdate,
     sequelize_typescript_1.BeforeCreate,

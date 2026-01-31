@@ -49,23 +49,20 @@ exports.listPermissions = exports.remove = exports.update = exports.show = expor
 const Yup = __importStar(require("yup"));
 const AppError_1 = __importDefault(require("../errors/AppError"));
 const Group_1 = __importDefault(require("../models/Group"));
-const Permission_1 = __importDefault(require("../models/Permission"));
+const Role_1 = __importDefault(require("../models/Role"));
 const User_1 = __importDefault(require("../models/User"));
+const Permission_1 = __importDefault(require("../models/Permission")); // Keep for listPermissions
 const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const { tenantId } = req.user;
-        const groups = yield Group_1.default.findAll({
-            where: { tenantId },
-            include: [
-                { model: Permission_1.default, as: "permissions", attributes: ["id", "name"] },
-                { model: User_1.default, as: "users", attributes: ["id", "name"] }
-            ]
-        });
-        return res.json(groups);
-    }
-    catch (err) {
-        throw new AppError_1.default("INTERNAL_SERVER_ERROR", 500);
-    }
+    const { tenantId } = req.user;
+    const groups = yield Group_1.default.findAll({
+        where: { tenantId },
+        include: [
+            { model: Role_1.default, as: "roles", attributes: ["id", "name"] },
+            { model: User_1.default, as: "users", attributes: ["id", "name"] },
+            { model: Permission_1.default, as: "permissions", attributes: ["id", "resource", "action"] }
+        ]
+    });
+    return res.json(groups);
 });
 exports.index = index;
 const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -84,18 +81,23 @@ const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         name: data.name,
         tenantId
     });
-    if (data.permissions && data.permissions.length > 0) {
-        const permissions = yield Permission_1.default.findAll({ where: { id: data.permissions } });
-        yield group.$set("permissions", permissions, { through: { tenantId } });
+    if (data.roleIds && data.roleIds.length > 0) {
+        const roles = yield Role_1.default.findAll({ where: { id: data.roleIds } });
+        yield group.$set("roles", roles, { through: { tenantId } });
     }
     if (data.userIds && data.userIds.length > 0) {
         const users = yield User_1.default.findAll({ where: { id: data.userIds, tenantId } });
         yield group.$set("users", users);
     }
+    if (data.permissions && data.permissions.length > 0) {
+        const permissions = yield Permission_1.default.findAll({ where: { id: data.permissions } });
+        yield group.$set("permissions", permissions, { through: { tenantId } });
+    }
     yield group.reload({
         include: [
-            { model: Permission_1.default, as: "permissions" },
-            { model: User_1.default, as: "users" }
+            { model: Role_1.default, as: "roles" },
+            { model: User_1.default, as: "users" },
+            { model: Permission_1.default, as: "permissions" }
         ]
     });
     return res.status(200).json(group);
@@ -107,8 +109,9 @@ const show = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const group = yield Group_1.default.findOne({
         where: { id: groupId, tenantId },
         include: [
-            { model: Permission_1.default, as: "permissions" },
-            { model: User_1.default, as: "users", attributes: ["id", "name", "email"] }
+            { model: Role_1.default, as: "roles" },
+            { model: User_1.default, as: "users", attributes: ["id", "name", "email"] },
+            { model: Permission_1.default, as: "permissions" }
         ]
     });
     if (!group) {
@@ -137,19 +140,23 @@ const update = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         throw new AppError_1.default("ERR_NO_GROUP_FOUND", 404);
     }
     yield group.update({ name: data.name });
-    if (data.permissions) {
-        // Atualiza permissões garantindo tenantId na pivot
-        const permissions = yield Permission_1.default.findAll({ where: { id: data.permissions } });
-        yield group.$set("permissions", permissions, { through: { tenantId } });
+    if (data.roleIds) {
+        const roles = yield Role_1.default.findAll({ where: { id: data.roleIds } });
+        yield group.$set("roles", roles, { through: { tenantId } });
     }
     if (data.userIds) {
         const users = yield User_1.default.findAll({ where: { id: data.userIds, tenantId } });
         yield group.$set("users", users);
     }
+    if (data.permissions) {
+        const permissions = yield Permission_1.default.findAll({ where: { id: data.permissions } });
+        yield group.$set("permissions", permissions, { through: { tenantId } });
+    }
     yield group.reload({
         include: [
-            { model: Permission_1.default, as: "permissions" },
-            { model: User_1.default, as: "users" }
+            { model: Role_1.default, as: "roles" },
+            { model: User_1.default, as: "users" },
+            { model: Permission_1.default, as: "permissions" }
         ]
     });
     return res.json(group);
@@ -169,7 +176,8 @@ const remove = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.remove = remove;
 const listPermissions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    // Listar todas as permissões disponíveis (Seeds globais ou custom)
+    // Mantém listagem de Permissões (Capabilities) para UI de criação de Roles (se houver)
+    // Se o frontend esperar Roles aqui, devemos ajustar. Mas o nome é listPermissions.
     const permissions = yield Permission_1.default.findAll();
     return res.json(permissions);
 });

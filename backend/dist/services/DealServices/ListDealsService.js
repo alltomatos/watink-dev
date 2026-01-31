@@ -18,6 +18,7 @@ const Contact_1 = __importDefault(require("../../models/Contact"));
 const Ticket_1 = __importDefault(require("../../models/Ticket"));
 const Pipeline_1 = __importDefault(require("../../models/Pipeline"));
 const PipelineStage_1 = __importDefault(require("../../models/PipelineStage"));
+const Tag_1 = __importDefault(require("../../models/Tag"));
 const ListDealsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ tenantId, searchParam = "", pageNumber = "1", pipelineId, stageId, ticketId }) {
     const whereCondition = {
         tenantId
@@ -49,7 +50,8 @@ const ListDealsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ te
             { model: Contact_1.default, as: "contact", attributes: ["id", "name", "number", "profilePicUrl"] },
             { model: Ticket_1.default, as: "ticket", attributes: ["id", "status"] },
             { model: Pipeline_1.default, as: "pipeline", attributes: ["id", "name", "color"] },
-            { model: PipelineStage_1.default, as: "stage", attributes: ["id", "name"] }
+            { model: PipelineStage_1.default, as: "stage", attributes: ["id", "name"] },
+            { model: Tag_1.default, as: "tags", attributes: ["id", "name", "color", "icon"] }
         ],
         order: [["updatedAt", "DESC"]]
     });

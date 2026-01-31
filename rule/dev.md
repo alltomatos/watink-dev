@@ -192,6 +192,12 @@ Workers independentes que se conectam ao WhatsApp.
 *   **Lib Core**: **Whaileys**
 *   **Função**: Processamento padrão.
 
+#### Engine Go (`engine-go`)
+*   **Tecnologia**: Go 1.21+
+*   **Lib Core**: **WhatsMeow** (High Performance)
+*   **Escudo**: `wbot_go_commands` (RabbitMQ)
+*   **Verificação**: Idempotência nativa via PostgreSQL e Memória.
+
 #### Recursos de Mensagem (Botões Interativos)
 O Engine Standard suporta o envio de mensagens interativas nativas (Bubbles com botões de URL).
 
@@ -239,9 +245,10 @@ Sintaxe: `./update.sh <service> [type]`
 3.  **Atualiza o `docker-stack.yml`**.
 4.  Executa `docker stack deploy`.
 
-Exemplos:
+exemplos:
 ```bash
 ./update.sh backend
+./update.sh engine-go
 ```
 
 #### 2.1 Atualização de Variáveis e Stack

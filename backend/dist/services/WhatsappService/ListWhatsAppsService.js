@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const Queue_1 = __importDefault(require("../../models/Queue"));
 const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
+const Tag_1 = __importDefault(require("../../models/Tag"));
 const ListWhatsAppsService = (tenantId) => __awaiter(void 0, void 0, void 0, function* () {
     const whereCondition = {};
     if (tenantId) {
@@ -26,6 +27,11 @@ const ListWhatsAppsService = (tenantId) => __awaiter(void 0, void 0, void 0, fun
                 model: Queue_1.default,
                 as: "queues",
                 attributes: ["id", "name", "color", "greetingMessage"]
+            },
+            {
+                model: Tag_1.default,
+                as: "tags",
+                attributes: ["id", "name", "color"]
             }
         ]
     });

@@ -29,7 +29,7 @@ const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.index = index;
 const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, status, isDefault, greetingMessage, farewellMessage, queueIds, syncHistory, syncPeriod, keepAlive, type, chatConfig } = req.body;
+    const { name, status, isDefault, greetingMessage, farewellMessage, queueIds, syncHistory, syncPeriod, keepAlive, type, chatConfig, tags, engineType, importOldMessages } = req.body;
     const { tenantId } = req.user;
     if (type === "webchat") {
         const plugin = yield Plugin_1.default.findOne({ where: { slug: "webchat" } });
@@ -46,6 +46,36 @@ const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             }
         }
     }
+    if (engineType === "whatsmeow") {
+        const plugin = yield Plugin_1.default.findOne({ where: { slug: "whatsmeow" } });
+        if (plugin) {
+            const installation = yield PluginInstallation_1.default.findOne({
+                where: {
+                    pluginId: plugin.id,
+                    tenantId,
+                    status: "active"
+                }
+            });
+            if (!installation) {
+                throw new AppError_1.default("WhatsMeow plugin is not active for this tenant.");
+            }
+        }
+    }
+    if (engineType === "papi") {
+        const plugin = yield Plugin_1.default.findOne({ where: { slug: "engine-papi" } });
+        if (plugin) {
+            const installation = yield PluginInstallation_1.default.findOne({
+                where: {
+                    pluginId: plugin.id,
+                    tenantId,
+                    status: "active"
+                }
+            });
+            if (!installation) {
+                throw new AppError_1.default("Engine PAPI plugin is not active for this tenant.");
+            }
+        }
+    }
     const { whatsapp, oldDefaultWhatsapp } = yield (0, CreateWhatsAppService_1.default)({
         name,
         status,
@@ -58,7 +88,10 @@ const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         keepAlive,
         tenantId,
         type,
-        chatConfig
+        chatConfig,
+        tags,
+        engineType,
+        importOldMessages
     });
     // StartWhatsAppSession(whatsapp); // [REMOVED] Manual connect only
     const io = (0, socket_1.getIO)();

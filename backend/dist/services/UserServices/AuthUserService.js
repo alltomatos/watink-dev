@@ -23,6 +23,7 @@ const Permission_1 = __importDefault(require("../../models/Permission"));
 const Plugin_1 = __importDefault(require("../../models/Plugin"));
 const PluginInstallation_1 = __importDefault(require("../../models/PluginInstallation"));
 const Tenant_1 = __importDefault(require("../../models/Tenant"));
+const Role_1 = __importDefault(require("../../models/Role"));
 const sequelize_1 = require("sequelize");
 const AuthUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ email, password }) {
     var _b;
@@ -35,9 +36,19 @@ const AuthUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ ema
             {
                 model: Group_1.default,
                 as: "groups",
-                include: [{ model: Permission_1.default, as: "permissions", attributes: ["id", "name"] }]
+                include: [
+                    {
+                        model: Role_1.default,
+                        as: "roles",
+                        include: [{ model: Permission_1.default, as: "permissions", attributes: ["id", "resource", "action"] }]
+                    }
+                ]
             },
-            { model: Permission_1.default, as: "permissions", attributes: ["id", "name"] }
+            {
+                model: Role_1.default,
+                as: "roles",
+                include: [{ model: Permission_1.default, as: "permissions", attributes: ["id", "resource", "action"] }]
+            }
         ]
     });
     if (!user) {

@@ -1,8 +1,8 @@
 import { QueryInterface, DataTypes } from "sequelize";
 
 module.exports = {
-    up: (queryInterface: QueryInterface) => {
-        return queryInterface.createTable("GroupPermissions", {
+    up: async (queryInterface: QueryInterface) => {
+        await queryInterface.createTable("GroupPermissions", {
             id: {
                 type: DataTypes.INTEGER,
                 autoIncrement: true,
@@ -28,8 +28,7 @@ module.exports = {
                 references: { model: "Tenants", key: "id" },
                 onUpdate: "CASCADE",
                 onDelete: "CASCADE",
-                allowNull: true,
-                defaultValue: null
+                allowNull: false
             },
             createdAt: {
                 type: DataTypes.DATE,
@@ -40,9 +39,14 @@ module.exports = {
                 allowNull: false
             }
         });
+
+        await queryInterface.addIndex("GroupPermissions", ["groupId", "permissionId"], {
+            unique: true,
+            name: "group_permissions_unique"
+        });
     },
 
-    down: (queryInterface: QueryInterface) => {
-        return queryInterface.dropTable("GroupPermissions");
+    down: async (queryInterface: QueryInterface) => {
+        await queryInterface.dropTable("GroupPermissions");
     }
 };

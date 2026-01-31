@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const Deal_1 = __importDefault(require("../../models/Deal"));
+const EntityTagService_1 = __importDefault(require("../TagServices/EntityTagService"));
 const UpdateDealService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ dealData, dealId, tenantId }) {
     const deal = yield Deal_1.default.findOne({
         where: { id: dealId, tenantId },
@@ -32,7 +33,17 @@ const UpdateDealService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ d
         pipelineId,
         stageId
     });
-    yield deal.reload();
+    if (dealData.tags) {
+        yield EntityTagService_1.default.SyncEntityTags({
+            tagIds: dealData.tags,
+            entityType: 'deal',
+            entityId: deal.id,
+            tenantId: tenantId
+        });
+    }
+    yield deal.reload({
+        include: ["contact", "ticket", "tags"]
+    });
     return deal;
 });
 exports.default = UpdateDealService;

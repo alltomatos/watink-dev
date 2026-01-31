@@ -18,6 +18,7 @@ const Contact_1 = __importDefault(require("../../models/Contact"));
 const User_1 = __importDefault(require("../../models/User"));
 const Queue_1 = __importDefault(require("../../models/Queue"));
 const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
+const Tag_1 = __importDefault(require("../../models/Tag"));
 const ShowTicketService = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const ticket = yield Ticket_1.default.findByPk(id, {
         include: [
@@ -40,7 +41,12 @@ const ShowTicketService = (id) => __awaiter(void 0, void 0, void 0, function* ()
             {
                 model: Whatsapp_1.default,
                 as: "whatsapp",
-                attributes: ["name", "status", "type"]
+                attributes: ["name"]
+            },
+            {
+                model: Tag_1.default,
+                as: "tags",
+                attributes: ["id", "name", "color", "icon"]
             }
         ]
     });

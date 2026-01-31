@@ -53,7 +53,7 @@ const ShowQueueService_1 = __importDefault(require("./ShowQueueService"));
 // Valid distribution strategies for validation
 const validStrategies = Object.values(Queue_1.DISTRIBUTION_STRATEGIES);
 const UpdateQueueService = (queueId, queueData) => __awaiter(void 0, void 0, void 0, function* () {
-    const { color, name, distributionStrategy, prioritizeWallet } = queueData;
+    const { color, name, distributionStrategy, prioritizeWallet, whatsappIds } = queueData;
     const queueSchema = Yup.object().shape({
         name: Yup.string()
             .min(2, "ERR_QUEUE_INVALID_NAME")
@@ -97,6 +97,9 @@ const UpdateQueueService = (queueId, queueData) => __awaiter(void 0, void 0, voi
     }
     const queue = yield (0, ShowQueueService_1.default)(queueId);
     yield queue.update(queueData);
+    if (whatsappIds) {
+        yield queue.$set("whatsapps", whatsappIds);
+    }
     return queue;
 });
 exports.default = UpdateQueueService;

@@ -23,6 +23,7 @@ const Message_1 = __importDefault(require("../../models/Message"));
 const socket_1 = require("../../libs/socket");
 const GenerateWAMessageId_1 = __importDefault(require("../../helpers/GenerateWAMessageId"));
 const SendWhatsAppMedia = (_a) => __awaiter(void 0, [_a], void 0, function* ({ media, ticket, body, mentionedIds }) {
+    var _b;
     try {
         const hasBody = body
             ? (0, Mustache_1.default)(body, ticket.contact)
@@ -79,7 +80,24 @@ const SendWhatsAppMedia = (_a) => __awaiter(void 0, [_a], void 0, function* ({ m
                 }
             }
         };
-        yield RabbitMQService_1.default.publishCommand(`wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.media`, command);
+        // Determine Routing Key based on Engine Type
+        // If ticket.whatsapp is not loaded, we might need to fetch or rely on caller? 
+        // Ideally caller should load it. If not, we fetch.
+        let engineType = (_b = ticket.whatsapp) === null || _b === void 0 ? void 0 : _b.engineType;
+        if (!engineType) {
+            // Try safe load if needed, or default to whaileys
+            // const whatsapp = await Whatsapp.findByPk(ticket.whatsappId);
+            // engineType = whatsapp?.engineType;
+            // Assuming default if missing for now to avoid perf hit if not strictly needed
+            // But for reliability:
+            const whatsapp = yield ticket.$get("whatsapp");
+            engineType = whatsapp === null || whatsapp === void 0 ? void 0 : whatsapp.engineType;
+        }
+        let routingKey = `wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.media`;
+        if (engineType === "whatsmeow") {
+            routingKey = `wbot.${ticket.tenantId}.${ticket.whatsappId}.whatsmeow.message.send.media`;
+        }
+        yield RabbitMQService_1.default.publishCommand(routingKey, command);
         yield ticket.update({ lastMessage: body || media.originalname });
         return message;
     }

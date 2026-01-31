@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Contact_1 = __importDefault(require("../../models/Contact"));
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const ShowContactService = (id) => __awaiter(void 0, void 0, void 0, function* () {
-    const contact = yield Contact_1.default.findByPk(id, { include: ["extraInfo", "clients"] });
+    const contact = yield Contact_1.default.findByPk(id, { include: ["extraInfo", "clients", "tags"] });
     if (!contact) {
         throw new AppError_1.default("ERR_NO_CONTACT_FOUND", 404);
     }

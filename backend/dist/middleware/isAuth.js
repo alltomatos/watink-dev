@@ -24,15 +24,15 @@ const isAuth = (req, res, next) => __awaiter(void 0, void 0, void 0, function* (
     const [, token] = authHeader.split(" ");
     try {
         const decoded = (0, jsonwebtoken_1.verify)(token, auth_1.default.secret);
-        const { id, profile, tenantId } = decoded;
+        const { id, tenantId, profile } = decoded;
         const user = yield User_1.default.findByPk(id);
         if (!user) {
             throw new AppError_1.default("ERR_INVALID_TOKEN", 401);
         }
         req.user = {
             id,
-            profile,
-            tenantId: user.tenantId.toString()
+            tenantId: user.tenantId.toString(),
+            profile
         };
     }
     catch (err) {

@@ -20,6 +20,8 @@ import KanbanSettings from "../pages/Settings/KanbanSettings";
 import WebchatConfig from "../pages/WebchatConfig/";
 import Users from "../pages/Users";
 import UserEdit from "../pages/UserEdit";
+import Roles from "../pages/Roles";
+import RoleEdit from "../pages/RoleEdit";
 import UserProfile from "../pages/UserProfile";
 import Contacts from "../pages/Contacts/";
 import QuickAnswers from "../pages/QuickAnswers/";
@@ -64,6 +66,8 @@ const PrivateRoutes = () => {
             <Route exact path="/contacts" component={Contacts} isPrivate />
             <Route exact path="/users" component={Users} isPrivate />
             <Route exact path="/users/:userId" component={UserEdit} isPrivate />
+            <Route exact path="/roles" component={Roles} isPrivate />
+            <Route exact path="/roles/:roleId" component={RoleEdit} isPrivate />
             <Route exact path="/profile" component={UserProfile} isPrivate />
             <Route exact path="/quickAnswers" component={QuickAnswers} isPrivate />
             <Route exact path="/Settings" component={Settings} isPrivate />
@@ -92,6 +96,7 @@ const PrivateRoutes = () => {
 
 import PublicProtocol from "../pages/PublicProtocol";
 import ResetPassword from "../pages/ResetPassword/";
+import CompleteRegistration from "../pages/CompleteRegistration/";
 
 const Routes = () => {
   return (
@@ -103,6 +108,7 @@ const Routes = () => {
             <Route exact path="/signup" component={Signup} />
             <Route exact path="/public/protocols/:token" component={PublicProtocol} isPublic />
             <Route exact path="/reset-password/:token" component={ResetPassword} isPublic />
+            <Route exact path="/verify-email/:token" component={CompleteRegistration} isPublic />
             <Route path="/" component={PrivateRoutes} isPrivate />
           </Switch>
           <ToastContainer autoClose={3000} />

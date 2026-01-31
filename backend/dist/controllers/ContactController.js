@@ -60,10 +60,23 @@ const ImportContactsService_1 = __importStar(require("../services/ContactService
 const AppError_1 = __importDefault(require("../errors/AppError"));
 const GetContactService_1 = __importDefault(require("../services/ContactServices/GetContactService"));
 const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { searchParam, pageNumber } = req.query;
+    const { searchParam, pageNumber, tags } = req.query;
+    const { tenantId } = req.user;
+    // Converter tags para array de números se vier como string ou array
+    let tagIds = [];
+    if (tags) {
+        if (Array.isArray(tags)) {
+            tagIds = tags.map((t) => +t);
+        }
+        else {
+            tagIds = [+tags];
+        }
+    }
     const { contacts, count, hasMore } = yield (0, ListContactsService_1.default)({
         searchParam,
-        pageNumber
+        pageNumber,
+        tags: tagIds.length > 0 ? tagIds : undefined,
+        tenantId
     });
     return res.json({ contacts, count, hasMore });
 });
@@ -101,6 +114,7 @@ const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     let email = newContact.email;
     let walletUserId = newContact.walletUserId;
     let extraInfo = newContact.extraInfo;
+    let tags = newContact.tags;
     try {
         const contact = yield (0, CreateContactService_1.default)({
             name,
@@ -110,7 +124,8 @@ const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             profilePicUrl,
             walletUserId,
             tenantId,
-            waitEnrichment: true
+            waitEnrichment: true,
+            tags
         });
         const io = (0, socket_1.getIO)();
         io.emit("contact", {

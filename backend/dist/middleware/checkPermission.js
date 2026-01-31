@@ -13,41 +13,33 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const AppError_1 = __importDefault(require("../errors/AppError"));
-const User_1 = __importDefault(require("../models/User"));
-const Group_1 = __importDefault(require("../models/Group"));
-const Permission_1 = __importDefault(require("../models/Permission"));
-const checkPermission = (permission) => {
+const PermissionService_1 = __importDefault(require("../services/PermissionServices/PermissionService"));
+/**
+ * Enterprise Middleware for RBAC
+ * Usage: checkPermission("tickets:read") or checkPermission("contacts:process")
+ */
+const checkPermission = (resourceAction) => {
     return (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a, _b;
-        const { id } = req.user;
-        const user = yield User_1.default.findByPk(id, {
-            include: [
-                {
-                    model: Group_1.default,
-                    as: "groups",
-                    include: [{ model: Permission_1.default, as: "permissions" }]
-                },
-                {
-                    model: Permission_1.default,
-                    as: "permissions"
-                }
-            ]
-        });
-        if (!user) {
-            throw new AppError_1.default("User not found", 401);
+        const { id, tenantId } = req.user;
+        const [resource, action] = resourceAction.split(":");
+        if (!resource || !action) {
+            throw new Error("Invalid permission format. Expected 'resource:action'");
         }
-        // Super Admin by profile fallback
-        if (user.profile === "admin" || user.profile === "superadmin") {
+        try {
+            const result = yield PermissionService_1.default.check(parseInt(id.toString()), tenantId, resource, action);
+            if (!result.authorized) {
+                throw new AppError_1.default("ERR_NO_PERMISSION", 403);
+            }
+            // Inject scope for controllers
+            req.permissionScope = result.scope;
             return next();
         }
-        const groupPermissions = ((_a = user.groups) === null || _a === void 0 ? void 0 : _a.flatMap(g => { var _a; return (_a = g.permissions) === null || _a === void 0 ? void 0 : _a.map(p => p.name); })) || [];
-        const individualPermissions = ((_b = user.permissions) === null || _b === void 0 ? void 0 : _b.map(p => p.name)) || [];
-        // Merge permissions
-        const allPermissions = [...new Set([...groupPermissions, ...individualPermissions])];
-        if (!allPermissions.includes(permission)) {
-            throw new AppError_1.default("ERR_NO_PERMISSION", 403);
+        catch (err) {
+            console.error(err);
+            if (err instanceof AppError_1.default)
+                throw err;
+            throw new AppError_1.default("ERR_PERMISSION_CHECK_FAILED", 500);
         }
-        return next();
     });
 };
 exports.default = checkPermission;

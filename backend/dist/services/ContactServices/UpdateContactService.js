@@ -19,6 +19,7 @@ const RabbitMQService_1 = __importDefault(require("../../services/RabbitMQServic
 const uuid_1 = require("uuid");
 const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
 const logger_1 = require("../../utils/logger");
+const EntityTagService_1 = __importDefault(require("../TagServices/EntityTagService"));
 const UpdateContactService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ contactData, contactId }) {
     const { email, name, number, extraInfo } = contactData;
     const contact = yield Contact_1.default.findOne({
@@ -48,14 +49,22 @@ const UpdateContactService = (_a) => __awaiter(void 0, [_a], void 0, function* (
         walletUserId: newWalletUserId,
         lid
     });
+    if (contactData.tags) {
+        yield EntityTagService_1.default.SyncEntityTags({
+            tagIds: contactData.tags,
+            entityType: "contact",
+            entityId: contact.id,
+            tenantId: contact.tenantId
+        });
+    }
     yield contact.reload({
         attributes: ["id", "name", "number", "email", "profilePicUrl", "tenantId"],
-        include: ["extraInfo"]
+        include: ["extraInfo", "tags"]
     });
     try {
         const tenantId = contact.tenantId || 1;
         const whatsapp = yield Whatsapp_1.default.findOne({
-            where: { status: "CONNECTED", tenantId }
+            where: { status: "CONNECTED", tenantId: tenantId.toString() }
         });
         if (whatsapp) {
             yield RabbitMQService_1.default.publishCommand("wbot.global.contact.sync", {

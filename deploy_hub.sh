@@ -87,4 +87,14 @@ if [ "$SERVICE" == "engine-webchat" ] || [ "$SERVICE" == "all" ]; then
   deploy_service "Engine Webchat" "engine-webchat" "watink/engine-webchat" "docker-plugin.yml" "engine-webchat"
 fi
 
+# Engine PAPI
+if [ "$SERVICE" == "engine-papi" ] || [ "$SERVICE" == "all" ]; then
+  deploy_service "Engine PAPI" "plugins/engine-papi" "watink/engine-papi" "docker-plugin.yml" "engine-papi"
+fi
+
+# Engine Go
+if [ "$SERVICE" == "engine-go" ] || [ "$SERVICE" == "all" ]; then
+  deploy_service "Engine Go" "engine-go" "watink/engine-go" "docker-stack.yml" "engine-go"
+fi
+
 echo "✅ Selected containers pushed successfully!"

@@ -36,13 +36,9 @@ __decorate([
 ], UserPermission.prototype, "permissionId", void 0);
 __decorate([
     (0, sequelize_typescript_1.ForeignKey)(() => Tenant_1.default),
-    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.UUID),
-    __metadata("design:type", Object)
+    sequelize_typescript_1.Column,
+    __metadata("design:type", Number)
 ], UserPermission.prototype, "tenantId", void 0);
-__decorate([
-    (0, sequelize_typescript_1.BelongsTo)(() => Tenant_1.default),
-    __metadata("design:type", Tenant_1.default)
-], UserPermission.prototype, "tenant", void 0);
 __decorate([
     sequelize_typescript_1.CreatedAt,
     __metadata("design:type", Date)

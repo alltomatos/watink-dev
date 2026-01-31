@@ -19,6 +19,8 @@ const Tenant_1 = __importDefault(require("./Tenant"));
 const Client_1 = __importDefault(require("./Client"));
 const ClientContact_1 = __importDefault(require("./ClientContact"));
 const User_1 = __importDefault(require("./User"));
+const Tag_1 = __importDefault(require("./Tag"));
+const EntityTag_1 = __importDefault(require("./EntityTag"));
 let Contact = class Contact extends sequelize_typescript_1.Model {
 };
 __decorate([
@@ -98,6 +100,20 @@ __decorate([
     (0, sequelize_typescript_1.BelongsToMany)(() => Client_1.default, () => ClientContact_1.default),
     __metadata("design:type", Array)
 ], Contact.prototype, "clients", void 0);
+__decorate([
+    (0, sequelize_typescript_1.BelongsToMany)(() => Tag_1.default, {
+        through: {
+            model: () => EntityTag_1.default,
+            scope: {
+                entityType: "contact"
+            }
+        },
+        foreignKey: "entityId",
+        otherKey: "tagId",
+        constraints: false
+    }),
+    __metadata("design:type", Array)
+], Contact.prototype, "tags", void 0);
 Contact = __decorate([
     sequelize_typescript_1.Table
 ], Contact);

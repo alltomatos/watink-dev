@@ -143,6 +143,59 @@ Para montar os contadores do dashboard (Aguardando vs Atendendo), o app deve rea
 
 > **Nota:** A resposta inclui a lista de tickets (`tickets[]`) e o total (`count`). Para fins de KPI, utilize apenas o `count`.
 
+### 2.8 Listar Tickets (Inbox) e Estrutura do Objeto 📋
+
+Endpoint principal para carregar as listas da Inbox.
+
+```http
+GET /tickets
+Query:
+  ?pageNumber=1
+  &status=open (ou pending)
+  &searchParam= (busca)
+  &showAll= (true/false)
+  &withUnreadMessages= (true/false)
+  &isGroup= (true/false)
+```
+
+**Response (Exemplo Completo):**
+```json
+{
+  "tickets": [
+    {
+      "id": 1024,
+      "status": "open",
+      "unreadMessages": 2,
+      "lastMessage": "Olá, tudo bem?",
+      "updatedAt": "2026-01-27T10:00:00Z",
+      "contact": {
+        "id": 1,
+        "name": "Cliente Exemplo",
+        "number": "5511999999999",
+        "profilePicUrl": "http://...",
+        "isGroup": false
+      },
+      "queue": {
+        "id": 1,
+        "name": "Suporte",
+        "color": "#0000FF"
+      },
+      "whatsapp": {
+         "name": "Conexão Oficial 1"
+      },
+      "tags": [
+         { "id": 1, "name": "VIP", "color": "#FF0000" }
+      ]
+    }
+  ],
+  "count": 50,
+  "hasMore": true
+}
+```
+
+> **Nota Importante:** O objeto `whatsapp` dentro do ticket contém o campo `name`, que representa o nome da conexão (instância) pela qual o ticket foi recebido.
+> O App deve utilizar este valor para renderizar a **Tag de Conexão** no card do ticket (geralmente com destaque visual, ex: gradiente roxo/azul), permitindo que o atendente saiba rapidamente a origem do atendimento.
+
 ---
 
 ## 3. Integração Helpdesk (Protocolos) 🎫
@@ -353,9 +406,16 @@ Headers: Authorization: Bearer <token>
   "email": "admin@watink.com",
   "profile": "admin",
   "profileImage": "filename.jpg",
-  "super": false
+  "super": false,
+  "permissions": [
+    "ticket:read",
+    "ticket:update",
+    "contact:read"
+  ]
 }
 ```
+
+> **Nota:** O campo `permissions` retorna a lista combinada de permissões (Diretas + Grupos) no formato `resource:action`. Utilize para controle de acesso na UI.
 
 ### 6.2 Atualizar Perfil
 Permite alterar nome, email, senha e foto de perfil.
@@ -443,10 +503,23 @@ PUT /contacts/{contactId}
 Content-Type: application/json
 
 {
-  "tagIds": [1, 3]
+  "tags": [1, 3]
 }
 ```
-*Este endpoint **sincroniza** as tags: adiciona as novas e remove as ausentes.*
+*Este endpoint **sincroniza** as tags: adiciona as novas e remove as ausentes. O payload deve conter o array `tags` com os IDs.*
+
+### 7.6 Aplicar/Remover Tags (Tickets)
+As tags de um ticket específico também podem ser gerenciadas diretamente.
+
+```http
+PUT /tickets/{ticketId}
+Content-Type: application/json
+
+{
+  "tags": [2, 4]
+}
+```
+*Similar aos contatos, este endpoint **sincroniza** as tags do ticket.*
 
 ---
 
@@ -454,6 +527,8 @@ Content-Type: application/json
 
 | Versão | Data       | Mudança                                                                 |
 |--------|------------|-------------------------------------------------------------------------|
+| 2.11   | 2026-01-27 | Adicionado documentação da estrutura completa de Ticket (campo `whatsapp`) |
+| 2.10   | 2026-01-27 | Correção de payload de Tags (tagIds -> tags) e inclusão de Tags em Tickets e Permissions no User Profile |
 | 2.9    | 2026-01-26 | Adicionado documentação do Sistema de Tags (Listagem, Filtros, UI)      |
 | 2.8    | 2026-01-25 | Adicionado documentação de KPIs de Tickets (Contagem por Status)        |
 | 2.7    | 2026-01-25 | Adicionado Módulo de Gestão de Perfil (User Profile)                    |

@@ -50,7 +50,8 @@ const AppError_1 = __importDefault(require("../../errors/AppError"));
 const Tenant_1 = __importDefault(require("../../models/Tenant"));
 const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
 const AssociateWhatsappQueue_1 = __importDefault(require("./AssociateWhatsappQueue"));
-const CreateWhatsAppService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ name, status = "DISCONNECTED", queueIds = [], greetingMessage, farewellMessage, isDefault = false, syncHistory = false, syncPeriod, keepAlive, tenantId, type = "whatsapp", chatConfig = {} }) {
+const EntityTagService_1 = __importDefault(require("../TagServices/EntityTagService"));
+const CreateWhatsAppService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ name, status = "DISCONNECTED", queueIds = [], greetingMessage, farewellMessage, isDefault = false, syncHistory = false, syncPeriod, keepAlive, tenantId, type = "whatsapp", chatConfig = {}, tags, engineType, importOldMessages }) {
     const schema = Yup.object().shape({
         name: Yup.string()
             .required()
@@ -105,9 +106,18 @@ const CreateWhatsAppService = (_a) => __awaiter(void 0, [_a], void 0, function* 
         keepAlive,
         tenantId,
         type,
-        chatConfig: chatConfig ? JSON.stringify(chatConfig) : null
+        chatConfig: chatConfig ? JSON.stringify(chatConfig) : null,
+        engineType
     }, { include: ["queues"] });
     yield (0, AssociateWhatsappQueue_1.default)(whatsapp, queueIds);
+    if (tags && tags.length > 0) {
+        yield EntityTagService_1.default.BulkApplyTags({
+            tagIds: tags,
+            entityType: "whatsapp",
+            entityId: whatsapp.id,
+            tenantId: tenantId ? tenantId.toString() : "1" // Fallback usually not needed if auth middleware works
+        });
+    }
     return { whatsapp, oldDefaultWhatsapp };
 });
 exports.default = CreateWhatsAppService;

@@ -21,7 +21,7 @@ const Message_1 = __importDefault(require("../../models/Message"));
 const socket_1 = require("../../libs/socket");
 const GenerateWAMessageId_1 = __importDefault(require("../../helpers/GenerateWAMessageId"));
 const SendWhatsAppMessage = (_a) => __awaiter(void 0, [_a], void 0, function* ({ body, ticket, quotedMsg, mentionedIds }) {
-    var _b;
+    var _b, _c;
     try {
         const formattedBody = (0, Mustache_1.default)(body, ticket.contact);
         if (!ticket.whatsappId) {
@@ -81,7 +81,17 @@ const SendWhatsAppMessage = (_a) => __awaiter(void 0, [_a], void 0, function* ({
                 }
             }
         };
-        yield RabbitMQService_1.default.publishCommand(`wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.text`, command);
+        // Determine Routing Key based on Engine Type
+        let engineType = (_c = ticket.whatsapp) === null || _c === void 0 ? void 0 : _c.engineType;
+        if (!engineType) {
+            const whatsapp = yield ticket.$get("whatsapp");
+            engineType = whatsapp === null || whatsapp === void 0 ? void 0 : whatsapp.engineType;
+        }
+        let routingKey = `wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.text`;
+        if (engineType === "whatsmeow") {
+            routingKey = `wbot.${ticket.tenantId}.${ticket.whatsappId}.whatsmeow.message.send.text`;
+        }
+        yield RabbitMQService_1.default.publishCommand(routingKey, command);
         yield ticket.update({ lastMessage: body });
         return message;
     }

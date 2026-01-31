@@ -14,10 +14,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_typescript_1 = require("sequelize-typescript");
 const User_1 = __importDefault(require("./User"));
-const Permission_1 = __importDefault(require("./Permission"));
-const GroupPermission_1 = __importDefault(require("./GroupPermission"));
+const Role_1 = __importDefault(require("./Role"));
+const GroupRole_1 = __importDefault(require("./GroupRole"));
 const Tenant_1 = __importDefault(require("./Tenant"));
 const UserGroup_1 = __importDefault(require("./UserGroup"));
+const Permission_1 = __importDefault(require("./Permission"));
+const GroupPermission_1 = __importDefault(require("./GroupPermission"));
 let Group = class Group extends sequelize_typescript_1.Model {
 };
 __decorate([
@@ -43,6 +45,10 @@ __decorate([
     (0, sequelize_typescript_1.BelongsToMany)(() => User_1.default, () => UserGroup_1.default),
     __metadata("design:type", Array)
 ], Group.prototype, "users", void 0);
+__decorate([
+    (0, sequelize_typescript_1.BelongsToMany)(() => Role_1.default, () => GroupRole_1.default),
+    __metadata("design:type", Array)
+], Group.prototype, "roles", void 0);
 __decorate([
     (0, sequelize_typescript_1.BelongsToMany)(() => Permission_1.default, () => GroupPermission_1.default),
     __metadata("design:type", Array)
