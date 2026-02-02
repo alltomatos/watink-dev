@@ -44,7 +44,7 @@ services:
         - "traefik.docker.network=proxy"
 
   frontend:
-    image: watink/frontend:0.7.346
+    image: watink/frontend:0.7.347
     environment:
       - URL_BACKEND=backend:8080
       - VITE_BACKEND_URL=${BACKEND_API_URL:-https://api.watink.com/}

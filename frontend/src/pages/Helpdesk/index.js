@@ -183,6 +183,7 @@ const Helpdesk = () => {
                                 >
                                     <Tab label="Protocolos" />
                                     <Tab label="Relatórios" />
+                                    <Tab label="Templates" />
                                 </Tabs>
                                 {tab === 0 && (
                                     <>
