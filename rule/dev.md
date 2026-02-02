@@ -143,6 +143,7 @@ Containerizado e servido via Nginx interno, exposto via Traefik.
 *   **Comunicação**: Axios (HTTP) e Socket.IO Client (WebSocket)
 
 #### ⚠️ Regras para Frontend:
+*   **Autenticação e Contexto (Anti-Pattern useAuth)**: **NUNCA** instancie o hook `useAuth` diretamente em páginas ou componentes filhos para obter dados do usuário. O `useAuth` registra interceptors no Axios a cada chamada, causando duplicação e *Race Conditions* (logout involuntário em 401). Sempre consuma o estado via `useContext(AuthContext)`.
 *   **NÃO** rode `npm run dev` localmente. O ambiente deve ser 100% Docker Swarm.
 *   **Traefik Routing**: O frontend é acessível na raiz (`/`). O Traefik roteia chamadas de API (`/api/*`) e sockets (`/socket.io/*`) para o backend automaticamente.
 *   **URLs Backend**: Use sempre o helper `getBackendUrl` (em `src/helpers/urlUtils.js`).
@@ -165,7 +166,8 @@ O backend orquestra o sistema e roda isolado em container.
 *   **NUNCA** adicione lógica de conexão com WhatsApp (WWebJS/Baileys) diretamente no Backend.
 *   Use o **Service Layer Pattern**: Controllers chamam Services.
 *   Para ações no WhatsApp, publique mensagens no RabbitMQ.
-*   Logs devem ser direcionados para `stdout`/`stderr`.
+*   **Logs devem ser direcionados para `stdout`/`stderr`.
+*   **Cookies em Desenvolvimento**: Em ambiente `localhost`, assegure que cookies de autenticação (`jrt`) tenham flags `SameSite: 'Lax'` e `Secure: false` para garantir persistência e renovação de tokens.
 
 ### 3.5 Cache e Transient Store (Redis)
 

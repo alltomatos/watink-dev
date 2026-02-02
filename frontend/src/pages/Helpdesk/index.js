@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import { useHistory } from "react-router-dom";
 import {
     Container,
@@ -37,7 +37,7 @@ import api from "../../services/api";
 import ProtocolModal from "./ProtocolModal";
 import HelpdeskReports from "./HelpdeskReports";
 import { Can } from "../../components/Can";
-import useAuth from "../../hooks/useAuth";
+import { AuthContext } from "../../context/Auth/AuthContext";
 import { Tabs, Tab } from "@material-ui/core";
 
 
@@ -91,7 +91,7 @@ const priorityLabels = {
 const Helpdesk = () => {
     const classes = useStyles();
     const history = useHistory();
-    const { user } = useAuth();
+    const { user } = useContext(AuthContext);
     const [protocols, setProtocols] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchParam, setSearchParam] = useState("");

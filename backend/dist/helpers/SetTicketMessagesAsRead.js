@@ -16,8 +16,10 @@ const uuid_1 = require("uuid");
 const RabbitMQService_1 = __importDefault(require("../services/RabbitMQService"));
 const socket_1 = require("../libs/socket");
 const Message_1 = __importDefault(require("../models/Message"));
+const Whatsapp_1 = __importDefault(require("../models/Whatsapp"));
 const logger_1 = require("../utils/logger");
 const SetTicketMessagesAsRead = (ticket) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
         // 1. Find unread messages (received only, since we don't mark our own messages as read for ourselves)
         const unreadMessages = yield Message_1.default.findAll({
@@ -50,7 +52,12 @@ const SetTicketMessagesAsRead = (ticket) => __awaiter(void 0, void 0, void 0, fu
                 type: "message.markAsRead",
                 payload: markReadPayload
             };
-            yield RabbitMQService_1.default.publishCommand(`wbot.${ticket.tenantId}.${ticket.whatsappId}.message.markAsRead`, command);
+            let engineType = (_a = ticket.whatsapp) === null || _a === void 0 ? void 0 : _a.engineType;
+            if (!engineType) {
+                const whatsapp = yield Whatsapp_1.default.findByPk(ticket.whatsappId);
+                engineType = whatsapp === null || whatsapp === void 0 ? void 0 : whatsapp.engineType;
+            }
+            yield RabbitMQService_1.default.publishCommand(`wbot.${ticket.tenantId}.${ticket.whatsappId}.${engineType || "whaileys"}.message.markAsRead`, command);
         }
         // 4. Update ticket unread count
         yield ticket.update({ unreadMessages: 0 });

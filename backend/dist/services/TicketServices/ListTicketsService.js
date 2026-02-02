@@ -22,15 +22,45 @@ const ShowUserService_1 = __importDefault(require("../UserServices/ShowUserServi
 const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
 const Tag_1 = __importDefault(require("../../models/Tag"));
 const ListTicketsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ searchParam = "", pageNumber = "1", queueIds, status, date, showAll, userId, withUnreadMessages, isGroup, tags, tenantId, profile }) {
+    var _b;
     let whereCondition = {
         [sequelize_1.Op.or]: [{ userId }, { status: "pending" }],
         tenantId
     };
-    // Only filter by queueId if filtering, or if user is NOT admin
-    // Admins with empty queueIds should see tickets from all queues (or no queue)
-    if (profile !== "admin" || (queueIds && queueIds.length > 0)) {
-        whereCondition.queueId = { [sequelize_1.Op.or]: [queueIds, null] };
+    // --- Strict Queue Filtering Fix ---
+    // Fetch user to check roles and assigned queues securely
+    const user = yield (0, ShowUserService_1.default)(userId);
+    const userQueueIds = user.queues.map(queue => queue.id);
+    const isAdmin = ((_b = user.roles) === null || _b === void 0 ? void 0 : _b.some(r => r.name === "admin")) || profile === "admin"; // Check both role and profile (legacy)
+    if (isAdmin) {
+        // Admins can see everything based on request params
+        if (queueIds && queueIds.length > 0) {
+            whereCondition.queueId = { [sequelize_1.Op.or]: [queueIds, null] };
+        }
+        // If no queueIds, admin sees all (standard behavior)
     }
+    else {
+        // Non-admin users are strictly limited to their assigned queues
+        let effectiveQueueIds = [];
+        if (queueIds && queueIds.length > 0) {
+            // Intersection: Only allow requested queues that the user actually belongs to
+            effectiveQueueIds = queueIds.filter(qId => userQueueIds.includes(+qId));
+        }
+        else {
+            // Default: All user's queues
+            effectiveQueueIds = userQueueIds;
+        }
+        // If effective queues is empty (user has no queues or requested invalid ones), 
+        // they should see nothing (or only their own tickets explicitly). 
+        // Existing logic implies queueId match OR null. 
+        // We'll enforce the effective list. 
+        // Note: [Op.or]: [effectiveQueueIds, null] allows unassigned tickets if standard behavior desires it.
+        // Usually "null" means 'no queue', often handled by admins or initial flow.
+        // If regular users shouldn't see 'null' queue tickets unless assigned, we might remove null.
+        // However, preserving existing logic pattern:
+        whereCondition.queueId = { [sequelize_1.Op.or]: [effectiveQueueIds.length > 0 ? effectiveQueueIds : [-1], null] };
+    }
+    // ----------------------------------
     let includeCondition;
     includeCondition = [
         {
@@ -71,7 +101,13 @@ const ListTicketsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ 
         includeCondition = includeCondition.filter(i => !i.model || i.model.name !== "Tag" || i.required === true);
     }
     if (showAll === "true") {
-        whereCondition = { queueId: { [sequelize_1.Op.or]: [queueIds, null] } };
+        // Maintain strict filter even when showAll is true
+        if (!isAdmin) {
+            whereCondition.queueId = { [sequelize_1.Op.or]: [userQueueIds.length > 0 ? userQueueIds : [-1], null] };
+        }
+        else {
+            whereCondition = { queueId: { [sequelize_1.Op.or]: [queueIds, null] } };
+        }
     }
     if (status) {
         whereCondition = Object.assign(Object.assign({}, whereCondition), { status });
@@ -107,8 +143,7 @@ const ListTicketsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ 
             } });
     }
     if (withUnreadMessages === "true") {
-        const user = yield (0, ShowUserService_1.default)(userId);
-        const userQueueIds = user.queues.map(queue => queue.id);
+        // User already fetched above
         whereCondition = {
             [sequelize_1.Op.or]: [{ userId }, { status: "pending" }],
             queueId: { [sequelize_1.Op.or]: [userQueueIds, null] },
@@ -121,8 +156,11 @@ const ListTicketsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ 
         }
         else {
             // Para grupos, ignorar filtros de status/userId e buscar todos os tickets de grupo
+            // AND maintain strict queue filter
             whereCondition = {
-                queueId: { [sequelize_1.Op.or]: [queueIds, null] },
+                queueId: isAdmin
+                    ? { [sequelize_1.Op.or]: [queueIds, null] }
+                    : { [sequelize_1.Op.or]: [userQueueIds, null] },
                 [sequelize_1.Op.or]: [
                     { isGroup: true },
                     { "$contact.isGroup$": true }

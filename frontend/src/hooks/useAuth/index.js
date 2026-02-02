@@ -14,38 +14,49 @@ const useAuth = () => {
 	const [loading, setLoading] = useState(true);
 	const [user, setUser] = useState({});
 
-	api.interceptors.request.use(
-		config => {
-			const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-			if (token) {
-				config.headers["Authorization"] = `Bearer ${token}`; // JSON.parse removed
-				setIsAuth(true);
+	useEffect(() => {
+		const requestInterceptor = api.interceptors.request.use(
+			config => {
+				const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+				if (token) {
+					config.headers["Authorization"] = `Bearer ${token}`;
+					setIsAuth(true);
+				}
+				return config;
+			},
+			error => {
+				Promise.reject(error);
 			}
-			return config;
-		},
-		error => {
-			Promise.reject(error);
-		}
-	);
+		);
 
-	api.interceptors.response.use(
-		response => {
-			return response;
-		},
-		async error => {
-			const originalRequest = error.config;
+		const responseInterceptor = api.interceptors.response.use(
+			response => {
+				return response;
+			},
+			async error => {
+				const originalRequest = error.config;
 
-			// 403 logic removed: Forbidden != Expired. Do not refresh.
+				if (error?.response?.status === 403) {
+					toast.error("Você não tem permissão para acessar este recurso.", {
+						autoClose: 7000,
+					});
+				}
 
-			if (error?.response?.status === 401) {
-				localStorage.removeItem("token");
-				sessionStorage.removeItem("token");
-				api.defaults.headers.Authorization = undefined;
-				setIsAuth(false);
+				if (error?.response?.status === 401) {
+					localStorage.removeItem("token");
+					sessionStorage.removeItem("token");
+					api.defaults.headers.Authorization = undefined;
+					setIsAuth(false);
+				}
+				return Promise.reject(error);
 			}
-			return Promise.reject(error);
-		}
-	);
+		);
+
+		return () => {
+			api.interceptors.request.eject(requestInterceptor);
+			api.interceptors.response.eject(responseInterceptor);
+		};
+	}, [history]);
 
 	useEffect(() => {
 		const token = localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -53,6 +64,14 @@ const useAuth = () => {
 			if (token) {
 				try {
 					const { data } = await api.post("/auth/refresh_token");
+
+					const tokenStr = data.token;
+					if (localStorage.getItem("token")) {
+						localStorage.setItem("token", tokenStr);
+					} else {
+						sessionStorage.setItem("token", tokenStr);
+					}
+
 					api.defaults.headers.Authorization = `Bearer ${data.token}`;
 					setIsAuth(true);
 					setUser(data.user);

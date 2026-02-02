@@ -46,7 +46,7 @@ const RestartWhatsAppSession = (whatsapp) => __awaiter(void 0, void 0, void 0, f
                 keepAlive: whatsapp.keepAlive
             }
         };
-        yield RabbitMQService_1.default.publishCommand(`wbot.${whatsapp.tenantId}.${whatsapp.id}.session.restart`, command);
+        yield RabbitMQService_1.default.publishCommand(`wbot.${whatsapp.tenantId}.${whatsapp.id}.${whatsapp.engineType || "whaileys"}.session.restart`, command);
         logger_1.logger.info(`Session restart command published for session ${whatsapp.id}`);
     }
     catch (err) {

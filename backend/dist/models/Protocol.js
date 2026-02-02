@@ -19,6 +19,7 @@ const Contact_1 = __importDefault(require("./Contact"));
 const User_1 = __importDefault(require("./User"));
 const ProtocolHistory_1 = __importDefault(require("./ProtocolHistory"));
 const ProtocolAttachment_1 = __importDefault(require("./ProtocolAttachment"));
+const Activity_1 = __importDefault(require("./Activity"));
 let Protocol = class Protocol extends sequelize_typescript_1.Model {
 };
 __decorate([
@@ -114,6 +115,10 @@ __decorate([
     (0, sequelize_typescript_1.HasMany)(() => ProtocolAttachment_1.default),
     __metadata("design:type", Array)
 ], Protocol.prototype, "attachments", void 0);
+__decorate([
+    (0, sequelize_typescript_1.HasMany)(() => Activity_1.default),
+    __metadata("design:type", Array)
+], Protocol.prototype, "activities", void 0);
 __decorate([
     sequelize_typescript_1.CreatedAt,
     __metadata("design:type", Date)

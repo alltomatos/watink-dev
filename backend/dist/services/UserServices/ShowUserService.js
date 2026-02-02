@@ -42,7 +42,8 @@ const ShowUserService = (id) => __awaiter(void 0, void 0, void 0, function* () {
                         model: Role_1.default,
                         as: "roles",
                         include: [{ model: Permission_1.default, as: "permissions", attributes: ["id", "resource", "action"] }]
-                    }
+                    },
+                    { model: Permission_1.default, as: "permissions", attributes: ["id", "resource", "action"] }
                 ]
             },
             {
@@ -71,9 +72,10 @@ const ShowUserService = (id) => __awaiter(void 0, void 0, void 0, function* () {
             }
         });
     });
-    // 3. Group Role Permissions
+    // 3. Group Permissions (Direct & via Roles)
     (_b = user.groups) === null || _b === void 0 ? void 0 : _b.forEach(group => {
-        var _a;
+        var _a, _b;
+        // Group -> Roles -> Permissions
         (_a = group.roles) === null || _a === void 0 ? void 0 : _a.forEach(role => {
             var _a;
             (_a = role.permissions) === null || _a === void 0 ? void 0 : _a.forEach(p => {
@@ -81,6 +83,12 @@ const ShowUserService = (id) => __awaiter(void 0, void 0, void 0, function* () {
                     permissions.add(`${p.resource}:${p.action}`);
                 }
             });
+        });
+        // Group -> Permissions (Direct)
+        (_b = group.permissions) === null || _b === void 0 ? void 0 : _b.forEach(p => {
+            if (p.resource && p.action) {
+                permissions.add(`${p.resource}:${p.action}`);
+            }
         });
     });
     userJson.permissions = Array.from(permissions);

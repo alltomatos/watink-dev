@@ -22,11 +22,16 @@ export const SerializeUser = (user: User): SerializedUser => {
   const groupDirect = user.groups?.flatMap(g => g.permissions?.map(p => `${p.resource}:${p.action}`)) || [];
   const directRoles = user.roles?.flatMap(r => r.permissions?.map(p => `${p.resource}:${p.action}`)) || [];
 
-  const allPermissions = [...new Set([...groupRoles, ...groupDirect, ...directRoles])];
-
   // Determine profile based on roles for legacy compatibility
   const isAdmin = user.roles?.some(role => role.name === "Admin") || user.email === "admin@admin.com";
   const profile = isAdmin ? "admin" : "user";
+
+  let allPermissions = [...new Set([...groupRoles, ...groupDirect, ...directRoles])];
+
+  // System Admin/Tenant Admin: Grant all if profile is admin
+  if (isAdmin && !allPermissions.includes("*:*")) {
+    allPermissions.push("*:*");
+  }
 
   return {
     id: user.id,

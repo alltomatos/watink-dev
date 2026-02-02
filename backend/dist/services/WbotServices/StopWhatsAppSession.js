@@ -42,8 +42,8 @@ const StopWhatsAppSession = (whatsappId) => __awaiter(void 0, void 0, void 0, fu
                 sessionId: whatsappId
             }
         };
-        // Use the routing key pattern wbot.tenantId.sessionId.command
-        yield RabbitMQService_1.default.publishCommand(`wbot.${(whatsapp === null || whatsapp === void 0 ? void 0 : whatsapp.tenantId) || 1}.${whatsappId}.session.stop`, envelope);
+        // Use the routing key pattern wbot.tenantId.sessionId.engine.command
+        yield RabbitMQService_1.default.publishCommand(`wbot.${(whatsapp === null || whatsapp === void 0 ? void 0 : whatsapp.tenantId) || 1}.${whatsappId}.${(whatsapp === null || whatsapp === void 0 ? void 0 : whatsapp.engineType) || "whaileys"}.session.stop`, envelope);
         logger_1.logger.info(`Session stop command published for WhatsApp ID ${whatsappId}`);
     }
     catch (err) {

@@ -31,6 +31,7 @@ const groupRoutes_1 = __importDefault(require("./groupRoutes"));
 const knowledgeRoutes_1 = __importDefault(require("./knowledgeRoutes"));
 const clientRoutes_1 = __importDefault(require("./clientRoutes"));
 const protocolRoutes_1 = __importDefault(require("./protocolRoutes"));
+const activityRoutes_1 = __importDefault(require("./activityRoutes"));
 const roleRoutes_1 = __importDefault(require("./roleRoutes"));
 const aiRoutes_1 = __importDefault(require("./aiRoutes"));
 const WebchatRoutes_1 = __importDefault(require("./WebchatRoutes"));
@@ -67,6 +68,7 @@ routes.use(flowRoutes_1.default);
 routes.use(knowledgeRoutes_1.default);
 routes.use(clientRoutes_1.default);
 routes.use(protocolRoutes_1.default);
+routes.use(activityRoutes_1.default);
 routes.use(roleRoutes_1.default);
 // routes.use(pluginRoutes); // Moved to app.ts to bypass body parser
 routes.use(aiRoutes_1.default);

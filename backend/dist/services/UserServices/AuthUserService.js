@@ -41,6 +41,11 @@ const AuthUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ ema
                         model: Role_1.default,
                         as: "roles",
                         include: [{ model: Permission_1.default, as: "permissions", attributes: ["id", "resource", "action"] }]
+                    },
+                    {
+                        model: Permission_1.default,
+                        as: "permissions",
+                        attributes: ["id", "resource", "action"]
                     }
                 ]
             },

@@ -57,6 +57,11 @@ const GroupRole_1 = __importDefault(require("../models/GroupRole"));
 const GroupPermission_1 = __importDefault(require("../models/GroupPermission"));
 const Step_1 = __importDefault(require("../models/Step"));
 const EmailTemplate_1 = __importDefault(require("../models/EmailTemplate"));
+const ActivityTemplate_1 = __importDefault(require("../models/ActivityTemplate"));
+const ActivityTemplateItem_1 = __importDefault(require("../models/ActivityTemplateItem"));
+const Activity_1 = __importDefault(require("../models/Activity"));
+const ActivityItem_1 = __importDefault(require("../models/ActivityItem"));
+const ActivityMaterial_1 = __importDefault(require("../models/ActivityMaterial"));
 // eslint-disable-next-line
 const dbConfig = require("../config/database");
 const sequelize = new sequelize_typescript_1.Sequelize(dbConfig);
@@ -104,7 +109,12 @@ const models = [
     GroupRole_1.default,
     GroupPermission_1.default,
     Step_1.default,
-    EmailTemplate_1.default
+    EmailTemplate_1.default,
+    ActivityTemplate_1.default,
+    ActivityTemplateItem_1.default,
+    Activity_1.default,
+    ActivityItem_1.default,
+    ActivityMaterial_1.default
 ];
 sequelize.addModels(models);
 sequelize.addHook("beforeFind", (options) => __awaiter(void 0, void 0, void 0, function* () {

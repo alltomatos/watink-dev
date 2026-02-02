@@ -51,7 +51,7 @@ const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 exports.index = index;
 const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const { email, password, name, queueIds, whatsappId, groupIds, groupId } = req.body;
+    const { email, password, name, queueIds, whatsappId, groupIds, groupId, roleIds } = req.body;
     if (req.url === "/signup" &&
         (yield (0, CheckSettings_1.default)("userCreation")) === "disabled") {
         throw new AppError_1.default("ERR_USER_CREATION_DISABLED", 403);
@@ -64,6 +64,7 @@ const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         whatsappId,
         groupIds,
         groupId,
+        roleIds,
         tenantId: ((_a = req.user) === null || _a === void 0 ? void 0 : _a.tenantId) || undefined
     });
     const io = (0, socket_1.getIO)();

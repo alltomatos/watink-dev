@@ -12,5 +12,11 @@ export const SendRefreshToken = (res: Response, token: string): void => {
     secure: isHttps,
   };
 
+  if (!isHttps && frontendUrl.includes("localhost")) {
+      // Allow sharing cookies across localhost subdomains if needed
+      // cookieOptions.domain = "localhost"; 
+  }
+
+
   res.cookie("jrt", token, cookieOptions);
 };
