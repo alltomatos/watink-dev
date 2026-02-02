@@ -8,56 +8,71 @@ module.exports = {
         await queryInterface.bulkInsert("Permissions", [
             // Activity Templates (Configuração)
             {
-                name: "activity-template:read",
+                resource: "activity-template",
+                action: "read",
                 description: "Visualizar templates de atividades",
+                isSystem: true,
                 createdAt: new Date(),
                 updatedAt: new Date()
             },
             {
-                name: "activity-template:write",
+                resource: "activity-template",
+                action: "write",
                 description: "Criar/editar templates de atividades",
+                isSystem: true,
                 createdAt: new Date(),
                 updatedAt: new Date()
             },
             {
-                name: "activity-template:delete",
+                resource: "activity-template",
+                action: "delete",
                 description: "Excluir templates de atividades",
+                isSystem: true,
                 createdAt: new Date(),
                 updatedAt: new Date()
             },
             // Activities (Execução)
             {
-                name: "activity:read",
+                resource: "activity",
+                action: "read",
                 description: "Visualizar atividades e RAT",
+                isSystem: true,
                 createdAt: new Date(),
                 updatedAt: new Date()
             },
             {
-                name: "activity:write",
+                resource: "activity",
+                action: "write",
                 description: "Criar/editar atividades e checklist",
+                isSystem: true,
                 createdAt: new Date(),
                 updatedAt: new Date()
             },
             {
-                name: "activity:finalize",
+                resource: "activity",
+                action: "finalize",
                 description: "Finalizar atividade e gerar RAT",
+                isSystem: true,
                 createdAt: new Date(),
                 updatedAt: new Date()
             },
             {
-                name: "activity:delete",
+                resource: "activity",
+                action: "delete",
                 description: "Excluir atividades",
+                isSystem: true,
                 createdAt: new Date(),
                 updatedAt: new Date()
             }
         ]);
 
-        // Adicionar permissões ao Role "Admin" automaticamente
+        // Adicionar permissões ao Role "Admin" automaticamente em todos os Tenants
         await queryInterface.sequelize.query(`
-            INSERT INTO "RolePermissions" ("roleId", "permissionId", "createdAt", "updatedAt")
-            SELECT r.id, p.id, NOW(), NOW()
+            INSERT INTO "RolePermissions" ("roleId", "permissionId", "tenantId", "createdAt", "updatedAt")
+            SELECT r.id, p.id, r."tenantId", NOW(), NOW()
             FROM "Roles" r, "Permissions" p
-            WHERE r.name = 'Admin' AND p.name LIKE 'activity%'
+            WHERE r.name = 'Admin' 
+            AND (p.resource = 'activity' OR p.resource = 'activity-template')
             ON CONFLICT DO NOTHING;
         `);
     },
@@ -67,21 +82,14 @@ module.exports = {
         await queryInterface.sequelize.query(`
             DELETE FROM "RolePermissions"
             WHERE "permissionId" IN (
-                SELECT id FROM "Permissions" WHERE name LIKE 'activity%'
+                SELECT id FROM "Permissions" 
+                WHERE resource IN ('activity', 'activity-template')
             );
         `);
 
         // Remover permissões
         await queryInterface.bulkDelete("Permissions", {
-            name: [
-                "activity-template:read",
-                "activity-template:write",
-                "activity-template:delete",
-                "activity:read",
-                "activity:write",
-                "activity:finalize",
-                "activity:delete"
-            ]
+            resource: ["activity", "activity-template"]
         });
     }
 };
