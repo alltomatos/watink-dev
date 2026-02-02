@@ -43,6 +43,11 @@ import GroupRole from "../models/GroupRole";
 import GroupPermission from "../models/GroupPermission";
 import Step from "../models/Step";
 import EmailTemplate from "../models/EmailTemplate";
+import ActivityTemplate from "../models/ActivityTemplate";
+import ActivityTemplateItem from "../models/ActivityTemplateItem";
+import Activity from "../models/Activity";
+import ActivityItem from "../models/ActivityItem";
+import ActivityMaterial from "../models/ActivityMaterial";
 
 
 // eslint-disable-next-line
@@ -94,7 +99,12 @@ const models = [
   GroupRole,
   GroupPermission,
   Step,
-  EmailTemplate
+  EmailTemplate,
+  ActivityTemplate,
+  ActivityTemplateItem,
+  Activity,
+  ActivityItem,
+  ActivityMaterial
 ];
 
 sequelize.addModels(models);
