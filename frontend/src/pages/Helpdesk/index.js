@@ -36,6 +36,7 @@ import { ptBR } from "date-fns/locale";
 import api from "../../services/api";
 import ProtocolModal from "./ProtocolModal";
 import HelpdeskReports from "./HelpdeskReports";
+import TemplateList from "./components/TemplateList";
 import { Can } from "../../components/Can";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Tabs, Tab } from "@material-ui/core";
@@ -342,8 +343,10 @@ const Helpdesk = () => {
                                     </TableContainer>
                                 )}
                             </>
-                        ) : (
+                        ) : tab === 1 ? (
                             <HelpdeskReports />
+                        ) : (
+                            <TemplateList />
                         )}
                     </Paper>
 

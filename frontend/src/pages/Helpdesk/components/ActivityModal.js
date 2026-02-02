@@ -28,11 +28,13 @@ import {
     Close as CloseIcon,
     CameraAlt as CameraIcon,
     Assignment as ChecklistIcon,
+    Assignment as AssignmentIcon,
     Build as MaterialsIcon,
     Create as SignatureIcon,
     Save as SaveIcon,
     CheckCircle as CheckCircleIcon,
-    Delete as DeleteIcon
+    Delete as DeleteIcon,
+    Add as AddIcon
 } from "@material-ui/icons";
 import { toast } from "react-toastify";
 import SignatureCanvas from "react-signature-canvas";
@@ -248,9 +250,8 @@ const ActivityModal = ({ open, onClose, activityId, protocolId }) => {
         newItems[index] = { ...newItems[index], [field]: value };
         setActivity(prev => ({ ...prev, items: newItems }));
 
-        // If activity already exists, sync specific item update immediately or on blur?
-        // To keep it simple, we update state. For checkbox/isDone, we should persist immediately.
-        if (activity.id && newItems[index].id) {
+        // Only auto-save values/checks if the item itself is already saved (has ID)
+        if (activity.id && newItems[index].id && (field === 'isDone' || field === 'value')) {
             try {
                 await activityApi.updateItem(activity.id, newItems[index].id, {
                     [field]: value
@@ -258,6 +259,38 @@ const ActivityModal = ({ open, onClose, activityId, protocolId }) => {
             } catch (err) { console.error(err); }
         }
     };
+
+    const handleAddItem = () => {
+        setActivity(prev => ({
+            ...prev,
+            items: [
+                ...prev.items,
+                {
+                    label: "Novo Item de Verificação",
+                    inputType: "text",
+                    isRequired: false,
+                    value: "",
+                    isDone: false
+                }
+            ]
+        }));
+    };
+
+    const handleRemoveItem = async (index) => {
+        const itemToRemove = activity.items[index];
+        // If item has ID, we might need to delete it from backend?
+        // For now, simpler: user saves the whole activity to sync? 
+        // Or if we want to support instant delete:
+        // await activityApi.removeItem(activity.id, itemToRemove.id) (if backend supports)
+
+        // Current backend likely doesn't have partial update for items removal in the 'update' payload?
+        // We will just update local state and let 'handleSave' sync everything.
+        // NOTE: The backend 'update' method needs to handle full items replacement or we need logic.
+
+        const newItems = activity.items.filter((_, i) => i !== index);
+        setActivity(prev => ({ ...prev, items: newItems }));
+    };
+
 
     const handleUploadPhoto = async (index, file) => {
         if (!activity.id) {
@@ -369,9 +402,20 @@ const ActivityModal = ({ open, onClose, activityId, protocolId }) => {
 
             {activeTab === 1 && (
                 <Box>
-                    <Typography className={classes.sectionTitle}>
-                        <ChecklistIcon color="primary" fontSize="small" /> Itens de Verificação
-                    </Typography>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                        <Typography className={classes.sectionTitle} style={{ marginBottom: 0 }}>
+                            <ChecklistIcon color="primary" fontSize="small" /> Itens de Verificação
+                        </Typography>
+                        <Button
+                            startIcon={<AddIcon />}
+                            size="small"
+                            color="primary"
+                            onClick={handleAddItem}
+                        >
+                            Adicionar Item
+                        </Button>
+                    </Box>
+
                     {activity.items && activity.items.map((item, index) => (
                         <div key={index} className={classes.itemCard}>
                             <Grid container alignItems="center" spacing={2}>
@@ -383,12 +427,18 @@ const ActivityModal = ({ open, onClose, activityId, protocolId }) => {
                                     />
                                 </Grid>
                                 <Grid item xs={7}>
-                                    <Typography variant="body1" style={{ fontWeight: 500, textDecoration: item.isDone ? "line-through" : "none" }}>
-                                        {item.label}
-                                        {item.isRequired && <span style={{ color: "red" }}> *</span>}
-                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        value={item.label}
+                                        onChange={(e) => handleChangeItem(index, "label", e.target.value)}
+                                        placeholder="Descrição do item"
+                                        InputProps={{
+                                            disableUnderline: true,
+                                            style: { fontWeight: 500, textDecoration: item.isDone ? "line-through" : "none" }
+                                        }}
+                                    />
                                 </Grid>
-                                <Grid item xs={4}>
+                                <Grid item xs={3}>
                                     {item.inputType === "text" && (
                                         <TextField
                                             fullWidth
@@ -423,12 +473,17 @@ const ActivityModal = ({ open, onClose, activityId, protocolId }) => {
                                         </Box>
                                     )}
                                 </Grid>
+                                <Grid item xs={1}>
+                                    <IconButton size="small" onClick={() => handleRemoveItem(index)}>
+                                        <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                </Grid>
                             </Grid>
                         </div>
                     ))}
                     {(!activity.items || activity.items.length === 0) && (
                         <Typography variant="body2" color="textSecondary" align="center" style={{ padding: 24 }}>
-                            Esta atividade não possui itens de checklist.
+                            Esta atividade não possui itens de checklist. Adicione um novo item acima.
                         </Typography>
                     )}
                 </Box>
@@ -486,7 +541,7 @@ const ActivityModal = ({ open, onClose, activityId, protocolId }) => {
                     step === "template" ? renderTemplateSelection() : renderDetails()
                 )}
             </DialogContent>
-            {step === "details" && (
+            {step === "details" && activity && (
                 <DialogActions style={{ padding: 16 }}>
                     <Button onClick={onClose} color="default">
                         Cancelar

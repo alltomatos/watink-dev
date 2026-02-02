@@ -65,7 +65,11 @@ const activityApi = {
     finalize,
     remove,
     generatePdf,
-    listTemplates
+    listTemplates,
+    showTemplate: (id) => api.get(`/activity-templates/${id}`),
+    createTemplate: (data) => api.post("/activity-templates", data),
+    updateTemplate: (id, data) => api.put(`/activity-templates/${id}`, data),
+    deleteTemplate: (id) => api.delete(`/activity-templates/${id}`)
 };
 
 export default activityApi;
