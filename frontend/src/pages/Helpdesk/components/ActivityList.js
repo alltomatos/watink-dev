@@ -183,18 +183,14 @@ const ActivityList = ({ protocolId }) => {
 
     const handleDownloadPdf = async () => {
         if (!menuActivity) return;
-        try {
-            const blob = await activityApi.generatePdf(menuActivity.id);
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.setAttribute("download", `RAT-${menuActivity.id}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.parentNode.removeChild(link);
-        } catch (err) {
-            toast.error("Erro ao gerar PDF");
-        }
+        
+        // Open the report in a new tab
+        const url = `${process.env.REACT_APP_BACKEND_URL || ""}/helpdesk/report/${menuActivity.id}`;
+        // Since we are using HashRouter or similar in SPA, the path is relative to root.
+        // Assuming browser router:
+        const reportPath = `/helpdesk/report/${menuActivity.id}`;
+        window.open(reportPath, '_blank');
+        
         handleCloseMenu();
     };
 

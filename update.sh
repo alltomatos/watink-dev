@@ -1,152 +1,76 @@
 #!/bin/bash
-
-set -e
+# update.sh - Automates version bump, build, tag, and deploy for Docker Swarm
+# Usage: ./update.sh <service> [version_type]
 
 SERVICE=$1
-TYPE=${2:-patch}
+TYPE=${2:-patch} # Default to patch if not specified
 
 if [ -z "$SERVICE" ]; then
-  echo "Usage: ./update.sh <backend|engine|frontend>"
+  echo "Usage: ./update.sh <service> [patch|minor|major]"
+  echo "Services: backend, frontend, engine-standard, etc."
   exit 1
 fi
 
-# Configuration Mapping
-if [ "$SERVICE" == "backend" ]; then
-  DIR="backend"
-  COMPOSE_SVC="backend"
-  IMAGE_NAME="watink/backend"
-  COMPOSE_IMAGE="watink/backend"
-elif [ "$SERVICE" == "engine" ]; then
-  DIR="engine-standard"
-  COMPOSE_SVC="whaileys-engine"
-  IMAGE_NAME="watink/engine"
-  COMPOSE_IMAGE="watink/engine"
-elif [ "$SERVICE" == "frontend" ]; then
-  DIR="frontend"
-  COMPOSE_SVC="frontend"
-  IMAGE_NAME="watink/frontend"
-  COMPOSE_IMAGE="watink/frontend"
-elif [ "$SERVICE" == "plugin-manager" ]; then
-  DIR="plugin-manager"
-  COMPOSE_SVC="plugin-manager"
-  IMAGE_NAME="watink/plugin-manager"
-  COMPOSE_IMAGE="watink/plugin-manager"
-elif [ "$SERVICE" == "plugin-smtp" ]; then
-  DIR="plugins/watink-smtp-go"
-  COMPOSE_SVC="plugin-smtp"
-  IMAGE_NAME="watink/plugin-smtp"
-  COMPOSE_IMAGE="watink/plugin-smtp"
-elif [ "$SERVICE" == "watink-guard" ]; then
-  DIR="watink-guard"
-  COMPOSE_SVC="watink-guard"
-  IMAGE_NAME="watink/guard"
-  COMPOSE_IMAGE="watink/guard"
-elif [ "$SERVICE" == "engine-webchat" ]; then
-  DIR="engine-webchat"
-  COMPOSE_SVC="engine-webchat"
-  IMAGE_NAME="watink/engine-webchat"
-  COMPOSE_IMAGE="watink/engine-webchat"
-elif [ "$SERVICE" == "engine-papi" ]; then
-  DIR="plugins/engine-papi"
-  COMPOSE_SVC="engine-papi"
-  IMAGE_NAME="watink/engine-papi"
-  COMPOSE_IMAGE="watink/engine-papi"
-elif [ "$SERVICE" == "engine-go" ]; then
-  DIR="engine-go"
-  COMPOSE_SVC="engine-go"
-  IMAGE_NAME="watink/engine-go"
-  COMPOSE_IMAGE="watink/engine-go"
-else
-  echo "Invalid service. Use: backend, engine, frontend, plugin-manager, or plugin-smtp"
+echo "🚀 Starting update process for $SERVICE ($TYPE)..."
+
+# Map service name to directory
+case $SERVICE in
+  "backend")
+    DIR="backend"
+    IMAGE="watink/backend"
+    STACK_SERVICE="backend"
+    ;;
+  "frontend")
+    DIR="frontend"
+    IMAGE="watink/frontend"
+    STACK_SERVICE="frontend"
+    ;;
+  "engine-standard" | "whaileys-engine")
+    DIR="engine-standard"
+    IMAGE="watink/engine"
+    STACK_SERVICE="whaileys-engine"
+    ;;
+  *)
+    echo "⚠️ Unknown service mapping for '$SERVICE'. Assuming directory=$SERVICE and image=watink/$SERVICE"
+    DIR=$SERVICE
+    IMAGE="watink/$SERVICE"
+    STACK_SERVICE=$SERVICE
+    ;;
+esac
+
+if [ ! -d "$DIR" ]; then
+  echo "❌ Directory '$DIR' not found!"
   exit 1
 fi
 
-echo "🚀 Updating $SERVICE..."
-
-# 1. Version Bump
-pushd $DIR
-echo "incrementing version ($TYPE)..."
+# 1. Increment Version
+echo "📦 bumping version in $DIR..."
+cd $DIR
+# Check if package.json exists
 if [ -f "package.json" ]; then
-  # Node.js projects
-  NEW_VERSION=$(npm version $TYPE --no-git-tag-version)
-  VERSION_NUM=${NEW_VERSION#v}
-elif [ -f "VERSION" ]; then
-  # Go/Other projects (Simple Patch Bump)
-  CURRENT_VERSION=$(cat VERSION)
-  # Simple logic to increment patch version X.Y.Z -> X.Y.(Z+1)
-  # Assuming standard SemVer and only patch bumps for now for simplicity in bash
-  IFS='.' read -r -a parts <<< "$CURRENT_VERSION"
-  if [ "$TYPE" == "major" ]; then
-    parts[0]=$((parts[0] + 1)); parts[1]=0; parts[2]=0
-  elif [ "$TYPE" == "minor" ]; then
-    parts[1]=$((parts[1] + 1)); parts[2]=0
-  else
-    parts[2]=$((parts[2] + 1))
-  fi
-  VERSION_NUM="${parts[0]}.${parts[1]}.${parts[2]}"
-  echo $VERSION_NUM > VERSION
+  npm version $TYPE --no-git-tag-version
+  VERSION=$(node -p "require('./package.json').version")
 else
-  echo "Error: No version file (package.json or VERSION) found in $DIR"
+  echo "❌ No package.json found in $DIR"
   exit 1
 fi
-echo "New version: $VERSION_NUM"
-popd
+cd ..
 
-# 2. Update docker-stack.yml (Source of Truth)
-echo "📝 Updating docker-stack.yml version references..."
+echo "✅ New version: $VERSION"
 
-if [ "$SERVICE" == "plugin-manager" ]; then
-  sed "s|image: watink/plugin-manager:.*|image: watink/plugin-manager:$VERSION_NUM|g" docker-plugin.yml > docker-plugin.yml.tmp && mv docker-plugin.yml.tmp docker-plugin.yml
-  sed "s|image: watink/plugin-manager:.*|image: watink/plugin-manager:$VERSION_NUM|g" docker-plugin.prod.yml > docker-plugin.prod.yml.tmp && mv docker-plugin.prod.yml.tmp docker-plugin.prod.yml
-elif [ "$SERVICE" == "plugin-smtp" ]; then
-  sed "s|image: watink/plugin-smtp:.*|image: watink/plugin-smtp:$VERSION_NUM|g" docker-plugin.yml > docker-plugin.yml.tmp && mv docker-plugin.yml.tmp docker-plugin.yml
-  sed "s|image: watink/plugin-smtp:.*|image: watink/plugin-smtp:$VERSION_NUM|g" docker-plugin.prod.yml > docker-plugin.prod.yml.tmp && mv docker-plugin.prod.yml.tmp docker-plugin.prod.yml
-elif [ "$SERVICE" == "engine" ]; then
-  sed -e "s|image: watink/engine:.*|image: watink/engine:$VERSION_NUM|g" -e "s|ENGINE_VERSION=.*|ENGINE_VERSION=$VERSION_NUM|g" docker-stack.yml > docker-stack.yml.tmp && mv docker-stack.yml.tmp docker-stack.yml
-  sed -e "s|image: watink/engine:.*|image: watink/engine:$VERSION_NUM|g" -e "s|ENGINE_VERSION=.*|ENGINE_VERSION=$VERSION_NUM|g" docker-compose.prod.yml > docker-compose.prod.yml.tmp && mv docker-compose.prod.yml.tmp docker-compose.prod.yml
-elif [ "$SERVICE" == "watink-guard" ]; then
-  sed "s|image: watink/guard:.*|image: watink/guard:$VERSION_NUM|g" docker-stack.yml > docker-stack.yml.tmp && mv docker-stack.yml.tmp docker-stack.yml
-  sed "s|image: watink/guard:.*|image: watink/guard:$VERSION_NUM|g" docker-compose.prod.yml > docker-compose.prod.yml.tmp && mv docker-compose.prod.yml.tmp docker-compose.prod.yml
-elif [ "$SERVICE" == "engine-webchat" ]; then
-  sed "s|image: watink/engine-webchat:.*|image: watink/engine-webchat:$VERSION_NUM|g" docker-plugin.yml > docker-plugin.yml.tmp && mv docker-plugin.yml.tmp docker-plugin.yml
-  sed "s|image: watink/engine-webchat:.*|image: watink/engine-webchat:$VERSION_NUM|g" docker-plugin.prod.yml > docker-plugin.prod.yml.tmp && mv docker-plugin.prod.yml.tmp docker-plugin.prod.yml
-elif [ "$SERVICE" == "engine-papi" ]; then
-  sed "s|image: watink/engine-papi:.*|image: watink/engine-papi:$VERSION_NUM|g" docker-plugin.yml > docker-plugin.yml.tmp && mv docker-plugin.yml.tmp docker-plugin.yml
-  sed "s|image: watink/engine-papi:.*|image: watink/engine-papi:$VERSION_NUM|g" docker-plugin.prod.yml > docker-plugin.prod.yml.tmp && mv docker-plugin.prod.yml.tmp docker-plugin.prod.yml
-elif [ "$SERVICE" == "engine-go" ]; then
-  sed "s|image: watink/engine-go:.*|image: watink/engine-go:$VERSION_NUM|g" docker-stack.yml > docker-stack.yml.tmp && mv docker-stack.yml.tmp docker-stack.yml
-  sed "s|image: watink/engine-go:.*|image: watink/engine-go:$VERSION_NUM|g" docker-compose.prod.yml > docker-compose.prod.yml.tmp && mv docker-compose.prod.yml.tmp docker-compose.prod.yml
-else
-  sed "s|image: watink/$SERVICE:.*|image: watink/$SERVICE:$VERSION_NUM|g" docker-stack.yml > docker-stack.yml.tmp && mv docker-stack.yml.tmp docker-stack.yml
-  sed "s|image: watink/$SERVICE:.*|image: watink/$SERVICE:$VERSION_NUM|g" docker-compose.prod.yml > docker-compose.prod.yml.tmp && mv docker-compose.prod.yml.tmp docker-compose.prod.yml
-fi
+# 2. Build and Tag
+echo "🔨 Building Docker image..."
+docker build -t $IMAGE:$VERSION ./$DIR
+docker tag $IMAGE:$VERSION $IMAGE:latest
 
-# 3. Build
-echo "🏗️ Building Docker image (no-cache)..."
-if [ "$SERVICE" == "plugin-manager" ] || [ "$SERVICE" == "plugin-smtp" ] || [ "$SERVICE" == "engine-webchat" ] || [ "$SERVICE" == "engine-papi" ]; then
-  docker compose -f docker-plugin.yml build --no-cache $COMPOSE_SVC
-else
-  docker compose -f docker-stack.yml build $COMPOSE_SVC
-# docker compose -f docker-stack.yml build --no-cache $COMPOSE_SVC
-fi
+# 3. Update docker-stack.yml
+echo "📝 Updating docker-stack.yml..."
+# This sed regex looks for "image: <image_name>:.*" and replaces it with "image: <image_name>:<new_version>"
+# We use a temporary file to avoid issues with sed in-place on some systems, then move it back.
+sed "s|image: $IMAGE:.*|image: $IMAGE:$VERSION|g" docker-stack.yml > docker-stack.yml.tmp && mv docker-stack.yml.tmp docker-stack.yml
 
-# 4. Tagging
-echo "🏷️ Tagging images..."
-# Explicitly tag the newly built version as latest
-docker tag $IMAGE_NAME:$VERSION_NUM $IMAGE_NAME:latest
+# 4. Deploy
+echo "🚀 Deploying to Swarm..."
+docker stack deploy -c docker-stack.yml watink
 
-# 5. Push
-echo "🚀 Pushing images to registry..."
-docker push $IMAGE_NAME:$VERSION_NUM
-docker push $IMAGE_NAME:latest
-
-# 6. Redeploy Stack
-echo "🔄 Redeploying Stack via docker stack deploy..."
-if [ "$SERVICE" == "plugin-manager" ] || [ "$SERVICE" == "plugin-smtp" ] || [ "$SERVICE" == "engine-webchat" ] || [ "$SERVICE" == "engine-papi" ]; then
-  docker stack deploy -c docker-plugin.yml watink-plugins
-else
-  # This ensures the running service matches the docker-stack.yml definition exactly
-  docker stack deploy -c docker-stack.yml watink
-fi
-
-echo "✅ $SERVICE updated to v$VERSION_NUM, recorded in docker-stack.yml, and deployed!"
+echo "✅ Update complete! Service $SERVICE is now at version $VERSION"

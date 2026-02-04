@@ -1,6 +1,6 @@
 import { Response } from "express";
 
-export const SendRefreshToken = (res: Response, token: string): void => {
+export const SendRefreshToken = (res: Response, token: string, expires?: Date): void => {
   const frontendUrl = process.env.FRONTEND_URL || "";
   const isHttps = frontendUrl.startsWith("https://");
 
@@ -12,10 +12,13 @@ export const SendRefreshToken = (res: Response, token: string): void => {
     const url = new URL(frontendUrl);
     const hostParts = url.hostname.split(".");
     if (hostParts.length >= 2) {
-      // For localhost subdomains (app.localhost), use ".localhost"
-      // For real domains (app.example.com), use ".example.com"
+      // For localhost subdomains (app.localhost), we should NOT set domain
+      // Setting domain to ".localhost" is invalid in most browsers (Chrome)
+      // and causes the cookie to be rejected/dropped.
+      // By leaving it undefined, it defaults to host-only (api.localhost),
+      // which should work if app.localhost and api.localhost are considered SameSite.
       if (hostParts[hostParts.length - 1] === "localhost") {
-        domain = ".localhost";
+        domain = undefined;
       } else {
         domain = "." + hostParts.slice(-2).join(".");
       }
@@ -33,6 +36,10 @@ export const SendRefreshToken = (res: Response, token: string): void => {
     secure: isHttps,
     path: "/",
   };
+
+  if (expires) {
+    cookieOptions.expires = expires;
+  }
 
   // Set domain for subdomain sharing (e.g., app.localhost <-> api.localhost)
   if (domain) {

@@ -14,8 +14,10 @@ import {
 import Activity from "./Activity";
 import Tenant from "./Tenant";
 
-@Table({ tableName: "ActivityMaterials" })
-class ActivityMaterial extends Model<ActivityMaterial> {
+export type OccurrenceType = "info" | "impediment" | "delay";
+
+@Table({ tableName: "ActivityOccurrences" })
+class ActivityOccurrence extends Model<ActivityOccurrence> {
   @PrimaryKey
   @AutoIncrement
   @Column
@@ -35,22 +37,15 @@ class ActivityMaterial extends Model<ActivityMaterial> {
   @BelongsTo(() => Tenant)
   tenant: Tenant;
 
-  @Column(DataType.STRING)
-  materialName: string;
-
-  @Column(DataType.FLOAT)
-  quantity: number;
-
-  @Default("un")
-  @Column(DataType.STRING)
-  unit: string;
-
-  @Default(false)
-  @Column(DataType.BOOLEAN)
-  isBillable: boolean;
-
   @Column(DataType.TEXT)
-  notes: string;
+  description: string;
+
+  @Default("info")
+  @Column(DataType.ENUM("info", "impediment", "delay"))
+  type: OccurrenceType;
+
+  @Column(DataType.INTEGER)
+  timeImpact: number;
 
   @CreatedAt
   createdAt: Date;
@@ -59,4 +54,4 @@ class ActivityMaterial extends Model<ActivityMaterial> {
   updatedAt: Date;
 }
 
-export default ActivityMaterial;
+export default ActivityOccurrence;

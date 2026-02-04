@@ -1,7 +1,7 @@
 
 services:
   backend:
-    image: watink/backend:1.3.463
+    image: watink/backend:1.3.479
     build:
       context: ./backend
       dockerfile: ./Dockerfile
@@ -41,6 +41,10 @@ services:
           memory: 1024M
       labels:
         - "traefik.enable=true"
+        - "traefik.http.routers.backend-same-origin.rule=(Host(`${DOMAIN_FRONTEND:-app.localhost}`) && PathPrefix(`/api`)) || (Host(`${DOMAIN_FRONTEND:-app.localhost}`) && PathPrefix(`/socket.io`))"
+        - "traefik.http.routers.backend-same-origin.entrypoints=web"
+        - "traefik.http.routers.backend-same-origin.middlewares=backend-strip"
+        - "traefik.http.routers.backend-same-origin.service=backend"
         - "traefik.http.routers.backend-api.rule=Host(`${DOMAIN_BACKEND:-api.localhost}`) && PathPrefix(`/api`)"
         - "traefik.http.routers.backend-api.entrypoints=web"
         - "traefik.http.routers.backend-api.middlewares=backend-strip"
@@ -53,13 +57,13 @@ services:
         - "traefik.docker.network=watink_watink_proxy"
 
   frontend:
-    image: watink/frontend:0.7.348
+    image: watink/frontend:0.7.367
     build:
       context: ./frontend
       dockerfile: ./Dockerfile
     environment:
       - URL_BACKEND=backend:8080
-      - VITE_BACKEND_URL=${BACKEND_API_URL:-http://api.localhost/}
+      - VITE_BACKEND_URL=http://${DOMAIN_FRONTEND:-app.localhost}/api/
       - VITE_PLUGIN_MANAGER_URL=/plugins/
       - VITE_HOURS_CLOSE_TICKETS_AUTO=24
 
@@ -152,7 +156,7 @@ services:
           memory: 256M
 
   flow-worker:
-    image: watink/backend:1.3.463
+    image: watink/backend:1.3.479
     command: ["node", "dist/flow-worker.js"]
     environment:
       - DB_DIALECT=postgres

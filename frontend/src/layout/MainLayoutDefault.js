@@ -295,7 +295,7 @@ const MainLayoutDefault = ({ children }) => {
                         {systemTitle}
                     </Typography>
 
-                    {user.id && <NotificationsPopOver />}
+                    {user?.id && <NotificationsPopOver />}
 
                     <div>
                         <IconButton
@@ -305,9 +305,9 @@ const MainLayoutDefault = ({ children }) => {
                             onClick={handleMenu}
                             color="inherit"
                         >
-                            {user.profileImage ? (
+                            {user?.profileImage ? (
                                 <Avatar
-                                    alt={user.name}
+                                    alt={user?.name}
                                     src={getBackendUrl(user.profileImage)}
                                     className={classes.avatar}
                                     style={{ width: 32, height: 32 }}

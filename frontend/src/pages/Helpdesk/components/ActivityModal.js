@@ -538,7 +538,7 @@ const ActivityModal = ({ open, onClose, activityId, protocolId }) => {
                         <CircularProgress />
                     </Box>
                 ) : (
-                    step === "template" ? renderTemplateSelection() : renderDetails()
+                    step === "template" ? renderTemplateSelection() : (activity && renderDetails())
                 )}
             </DialogContent>
             {step === "details" && activity && (

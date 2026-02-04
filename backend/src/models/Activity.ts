@@ -18,6 +18,7 @@ import ActivityTemplate from "./ActivityTemplate";
 import User from "./User";
 import ActivityItem from "./ActivityItem";
 import ActivityMaterial from "./ActivityMaterial";
+import ActivityOccurrence from "./ActivityOccurrence";
 
 export type ActivityStatus = "pending" | "in_progress" | "done" | "cancelled";
 
@@ -83,6 +84,9 @@ class Activity extends Model<Activity> {
 
     @HasMany(() => ActivityMaterial)
     materials: ActivityMaterial[];
+
+    @HasMany(() => ActivityOccurrence)
+    occurrences: ActivityOccurrence[];
 
     @CreatedAt
     createdAt: Date;

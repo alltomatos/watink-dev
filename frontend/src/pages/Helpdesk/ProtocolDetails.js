@@ -320,44 +320,24 @@ const ProtocolDetails = () => {
 
                         {tab === 1 && (
                             <>
-
                                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                                     <Typography variant="h6">
                                         <AttachFileIcon style={{ marginRight: 8, verticalAlign: "middle" }} />
-                                        Anexos ({attachments.length})
+                                        Galeria de Anexos ({attachments.length})
                                     </Typography>
                                 </Box>
 
                                 <AttachmentsList
                                     attachments={attachments}
                                     onDelete={handleDeleteAttachment}
-                                    canDelete={true}
-                                    showEmpty={false}
+                                    canDelete={false}
+                                    showEmpty={true}
                                 />
-
+                                
                                 <Box mt={2}>
-                                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                                        Adicionar novos anexos
+                                    <Typography variant="caption" color="textSecondary">
+                                        * Para adicionar novos anexos, utilize a seção "Atualizar" abaixo.
                                     </Typography>
-                                    <FileUploader
-                                        files={newFiles}
-                                        onFilesChange={setNewFiles}
-                                        maxFiles={10}
-                                        disabled={uploadingFiles}
-                                    />
-                                    {newFiles.length > 0 && (
-                                        <Box mt={2} display="flex" justifyContent="flex-end">
-                                            <Button
-                                                variant="contained"
-                                                color="primary"
-                                                startIcon={uploadingFiles ? <CircularProgress size={16} /> : <CloudUploadIcon />}
-                                                onClick={handleUploadFiles}
-                                                disabled={uploadingFiles}
-                                            >
-                                                {uploadingFiles ? "Enviando..." : "Enviar Arquivos"}
-                                            </Button>
-                                        </Box>
-                                    )}
                                 </Box>
                             </>
                         )}

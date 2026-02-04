@@ -149,6 +149,51 @@ Containerizado e servido via Nginx interno, exposto via Traefik.
 *   **URLs Backend**: Use sempre o helper `getBackendUrl` (em `src/helpers/urlUtils.js`).
 *   Para aplicar alterações, reconstrua a imagem e atualize o serviço no Swarm.
 
+#### 📦 Biblioteca de Componentes Reutilizáveis
+
+> [!IMPORTANT]
+> **Regra de Ouro**: Antes de criar um novo componente, **SEMPRE** verifique se já existe um componente similar em `frontend/src/components/`. Reutilize e estenda ao invés de duplicar.
+
+##### Componentes Disponíveis
+
+| Componente | Descrição | Uso |
+|------------|-----------|-----|
+| `BaseCard` | Card base com hover effect, ícone, título, subtítulo e ações | Wrapper genérico |
+| `MetricCard` | Card de métricas com ícone, valor grande e trend | Dashboards |
+| `InfoCard` | Card com header colorido, body e footer | Formulários, detalhes |
+| `ListItemCard` | Card para itens de lista com avatar, status e ações | Listas |
+| `ButtonWithSpinner` | Botão com loading spinner integrado | Forms assíncronos |
+| `BackdropLoading` | Overlay de carregamento fullscreen | Loading states |
+| `ConfirmationModal` | Modal de confirmação padronizado | Ações destrutivas |
+| `TabPanel` | Container para conteúdo de abas | Tabs |
+| `MainContainer` | Container principal de páginas | Layout de páginas |
+| `MainHeader` | Header padrão para páginas | Layout de páginas |
+| `Can` | Componente de permissão (RBAC) | Proteção de UI |
+
+##### Regras de Criação de Componentes
+
+1. **Verificar antes de criar**: Execute `ls frontend/src/components/` ou busque por componentes similares.
+2. **Nome descritivo**: Use PascalCase e nomes que descrevam a função (`MetricCard`, não `Card2`).
+3. **Documentação inline**: Todo componente deve ter JSDoc com descrição de props.
+4. **Documentar aqui**: Após criar um componente reutilizável, adicione-o à tabela acima.
+5. **Props consistentes**: Siga o padrão de props existentes (`className`, `onClick`, `...rest`).
+
+##### Exemplo de Uso
+
+```jsx
+import BaseCard from "../../components/BaseCard";
+import MetricCard from "../../components/MetricCard";
+import { Assignment } from "@material-ui/icons";
+
+<MetricCard
+    label="Total de Tickets"
+    value="1,234"
+    icon={<Assignment />}
+    color="primary"
+    trend={{ value: "+12%", positive: true }}
+/>
+```
+
 ### 3.4 Tecnologias Backend
 
 O backend orquestra o sistema e roda isolado em container.

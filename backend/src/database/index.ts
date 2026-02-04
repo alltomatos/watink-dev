@@ -48,6 +48,7 @@ import ActivityTemplateItem from "../models/ActivityTemplateItem";
 import Activity from "../models/Activity";
 import ActivityItem from "../models/ActivityItem";
 import ActivityMaterial from "../models/ActivityMaterial";
+import ActivityOccurrence from "../models/ActivityOccurrence";
 
 
 // eslint-disable-next-line
@@ -104,7 +105,8 @@ const models = [
   ActivityTemplateItem,
   Activity,
   ActivityItem,
-  ActivityMaterial
+  ActivityMaterial,
+  ActivityOccurrence
 ];
 
 sequelize.addModels(models);

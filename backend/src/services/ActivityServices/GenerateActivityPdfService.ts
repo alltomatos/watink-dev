@@ -40,7 +40,7 @@ const getFonts = () => {
     };
 };
 
-interface GeneratePdfData {
+export interface GeneratePdfData {
     activityId: number;
     tenantId: string;
 }
@@ -350,9 +350,20 @@ const GenerateActivityPdfService = async (
         const pdfDoc = printer.createPdfKitDocument(docDefinition);
         const chunks: Buffer[] = [];
 
-        pdfDoc.on("data", (chunk: Buffer) => chunks.push(chunk));
-        pdfDoc.on("end", () => resolve(Buffer.concat(chunks)));
-        pdfDoc.on("error", reject);
+        // pdfDoc é um stream legível (Node.js Readable Stream)
+        // Precisamos coletar os chunks de dados
+        pdfDoc.on("data", (chunk: any) => {
+            chunks.push(chunk);
+        });
+
+        pdfDoc.on("end", () => {
+            const result = Buffer.concat(chunks);
+            resolve(result);
+        });
+
+        pdfDoc.on("error", (err: any) => {
+            reject(err);
+        });
 
         pdfDoc.end();
     });

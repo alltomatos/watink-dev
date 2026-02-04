@@ -357,17 +357,99 @@ Retorna lista de arquivos anexados ao protocolo.
 
 ---
 
-## 5. Real-time (Socket.io) 🔌
+## 5. Gestão de Atividades (RDO) 🏗️
+
+Módulo para execução e registro de atividades de campo (Relatório Diário de Obra).
+
+### 5.1 Listar Atividades do Protocolo
+Obtém todas as atividades vinculadas a um protocolo específico.
+
+```http
+GET /protocols/:protocolId/activities
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 10,
+    "title": "Instalação de Fibra",
+    "status": "pending", // pending, in_progress, done, cancelled
+    "description": "Realizar passagem de cabo...",
+    "createdAt": "2026-02-04T10:00:00Z"
+  }
+]
+```
+
+### 5.2 Detalhar Atividade
+Carrega os dados completos de uma atividade, incluindo checklist, materiais e ocorrências já registrados.
+
+```http
+GET /activities/:activityId
+```
+
+**Response:**
+```json
+{
+  "id": 10,
+  "title": "Instalação de Fibra",
+  "status": "in_progress",
+  "items": [
+    { "id": 1, "label": "Verificar poste", "isDone": true, "inputType": "checkbox" }
+  ],
+  "materials": [],
+  "occurrences": []
+}
+```
+
+### 5.3 Atualizar Execução (RDO)
+Endpoint principal para salvar o progresso, registrar materiais gastos e apontar ocorrências.
+
+```http
+PUT /activities/:activityId
+Content-Type: application/json
+```
+
+**Body (JSON):**
+```json
+{
+  "status": "done", // ou "in_progress"
+  "items": [ // Atualização do checklist (opcional)
+    { "id": 1, "isDone": true, "value": "OK" }
+  ],
+  "materials": [ // Lista de materiais gastos
+    {
+      "materialName": "Cabo UTP",
+      "quantity": 30,
+      "unit": "m", // m, kg, un, etc.
+      "isBillable": true // Se deve ser cobrado do cliente
+    }
+  ],
+  "occurrences": [ // Diário de Ocorrências/Impedimentos
+    {
+      "type": "impediment", // 'info', 'impediment', 'delay'
+      "description": "Cliente sem senha do Wi-Fi",
+      "timeImpact": 45 // Inteiro (Minutos)
+    }
+  ]
+}
+```
+
+> **Nota:** O campo `timeImpact` deve ser enviado sempre como **inteiro (minutos)**. O App deve converter inputs visuais (ex: "01:30") para minutos (90) antes de enviar.
+
+---
+
+## 6. Real-time (Socket.io) 🔌
 
 Eventos necessários para manter o chat vivo.
 
-### 4.1 Conexão
+### 6.1 Conexão
 ```javascript
 const socket = io(URL, { query: { token } });
 socket.emit("joinChatBox", ticketId); // Entrar na sala do ticket
 ```
 
-### 4.2 Ouvir Eventos
+### 6.2 Ouvir Eventos
 | Evento | Ação no App |
 |--------|-------------|
 | `appMessage` (action: create) | Adicionar mensagem nova na lista (scroll to bottom). |
@@ -376,7 +458,7 @@ socket.emit("joinChatBox", ticketId); // Entrar na sala do ticket
 
 ---
 
-## 5. Notificações (Push) 🔔
+## 7. Notificações (Push) 🔔
 
 Para mensagens recebidas com o app em background.
 
@@ -385,11 +467,11 @@ Para mensagens recebidas com o app em background.
 
 ---
 
-## 6. Gestão de Perfil (User Profile) 👤
+## 8. Gestão de Perfil (User Profile) 👤
 
 Funcionalidades para o usuário visualizar e editar seus próprios dados.
 
-### 6.1 Visualizar Dados
+### 8.1 Visualizar Dados
 Carrega os dados atuais do usuário logado.
 
 ```http
@@ -417,7 +499,7 @@ Headers: Authorization: Bearer <token>
 
 > **Nota:** O campo `permissions` retorna a lista combinada de permissões (Diretas + Grupos) no formato `resource:action`. Utilize para controle de acesso na UI.
 
-### 6.2 Atualizar Perfil
+### 8.2 Atualizar Perfil
 Permite alterar nome, email, senha e foto de perfil.
 
 ```http
@@ -439,11 +521,11 @@ profileImage: [FILE] (Opcional - Imagem para avatar)
 
 ---
 
-## 7. Sistema de Tags 🏷️
+## 9. Sistema de Tags 🏷️
 
 O sistema de tags permite categorizar contatos e tickets para organização e filtragem avançada.
 
-### 7.1 Listar Tags Disponíveis
+### 9.1 Listar Tags Disponíveis
 Obtém todas as tags configuradas para uso em filtros e seleção.
 
 ```http
@@ -469,7 +551,7 @@ Headers: Authorization: Bearer <token>
 ]
 ```
 
-### 7.2 Filtrar Contatos por Tags
+### 9.2 Filtrar Contatos por Tags
 Utilize o parâmetro `tags` na listagem de contatos para filtrar por uma ou mais tags.
 
 ```http
@@ -477,14 +559,14 @@ GET /contacts?tags=1,2&pageNumber=1
 ```
 *Filtra contatos que possuem a tag de ID 1 **OU** ID 2.*
 
-### 7.3 Filtrar Tickets por Tags
+### 9.3 Filtrar Tickets por Tags
 Utilize o parâmetro `tags` na listagem de tickets.
 
 ```http
 GET /tickets?status=open&tags=1&pageNumber=1
 ```
 
-### 7.4 Exibição de Tags na UI
+### 9.4 Exibição de Tags na UI
 
 *   **Contatos/Tickets (Listas):** Renderize as tags como "bolinhas" (dots) coloridas. Use `Tooltip` para exibir o nome ao passar o mouse/toque longo.
     ```jsx
@@ -495,7 +577,7 @@ GET /tickets?status=open&tags=1&pageNumber=1
     ```
 *   **Drawer de Contato/Ticket:** Exiba as tags como `Chips` completos com nome e cor.
 
-### 7.5 Aplicar/Remover Tags (Contatos)
+### 9.5 Aplicar/Remover Tags (Contatos)
 As tags de um contato são gerenciadas via atualização do contato.
 
 ```http
@@ -508,7 +590,7 @@ Content-Type: application/json
 ```
 *Este endpoint **sincroniza** as tags: adiciona as novas e remove as ausentes. O payload deve conter o array `tags` com os IDs.*
 
-### 7.6 Aplicar/Remover Tags (Tickets)
+### 9.6 Aplicar/Remover Tags (Tickets)
 As tags de um ticket específico também podem ser gerenciadas diretamente.
 
 ```http
@@ -523,10 +605,11 @@ Content-Type: application/json
 
 ---
 
-## 8. Status de Implementação (Changelog)
+## 10. Status de Implementação (Changelog)
 
 | Versão | Data       | Mudança                                                                 |
 |--------|------------|-------------------------------------------------------------------------|
+| 2.12   | 2026-02-04 | Inclusão de endpoints de Atividades e Estrutura de RDO (Materiais/Ocorrências) |
 | 2.11   | 2026-01-27 | Adicionado documentação da estrutura completa de Ticket (campo `whatsapp`) |
 | 2.10   | 2026-01-27 | Correção de payload de Tags (tagIds -> tags) e inclusão de Tags em Tickets e Permissions no User Profile |
 | 2.9    | 2026-01-26 | Adicionado documentação do Sistema de Tags (Listagem, Filtros, UI)      |

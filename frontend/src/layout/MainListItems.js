@@ -23,6 +23,7 @@ import LibraryBooksIcon from "@material-ui/icons/LibraryBooks";
 import PersonOutlineIcon from "@material-ui/icons/PersonOutline";
 import HeadsetMicIcon from "@material-ui/icons/HeadsetMic";
 import LocalOfferIcon from "@material-ui/icons/LocalOffer";
+import AssignmentIcon from "@material-ui/icons/Assignment";
 
 import { i18n } from "../translate/i18n";
 import { WhatsAppsContext } from "../context/WhatsApp/WhatsAppsContext";
@@ -165,6 +166,16 @@ const MainListItems = (props) => {
           />
         )}
       />
+
+      {activePlugins.includes("helpdesk") && (
+        <ListItemLink
+          to="/my-activities"
+          primary={i18n.t("mainDrawer.listItems.myActivities")}
+          icon={<AssignmentIcon />}
+          iconColor={googleColors.blue}
+          collapsed={collapsed}
+        />
+      )}
 
       <Can
         user={user}

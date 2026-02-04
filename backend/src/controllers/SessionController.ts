@@ -6,14 +6,18 @@ import { SendRefreshToken } from "../helpers/SendRefreshToken";
 import { RefreshTokenService } from "../services/AuthServices/RefreshTokenService";
 
 export const store = async (req: Request, res: Response): Promise<Response> => {
-  const { email, password } = req.body;
+  const { email, password, rememberMe } = req.body;
 
   const { token, serializedUser, refreshToken } = await AuthUserService({
     email,
     password
   });
 
-  SendRefreshToken(res, refreshToken);
+  const expires = rememberMe
+    ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    : undefined;
+
+  SendRefreshToken(res, refreshToken, expires);
 
   return res.status(200).json({
     token,
@@ -25,9 +29,14 @@ export const update = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
+  // DEBUG: Log all cookies received
+  console.log("[DEBUG refresh_token] Cookies received:", JSON.stringify(req.cookies));
+  console.log("[DEBUG refresh_token] Cookie header:", req.headers.cookie);
+
   const token: string = req.cookies.jrt;
 
   if (!token) {
+    console.log("[DEBUG refresh_token] No jrt cookie found!");
     throw new AppError("ERR_SESSION_EXPIRED", 401);
   }
 
@@ -55,7 +64,7 @@ export const remove = async (
     const hostParts = url.hostname.split(".");
     if (hostParts.length >= 2) {
       if (hostParts[hostParts.length - 1] === "localhost") {
-        domain = ".localhost";
+        domain = undefined;
       } else {
         domain = "." + hostParts.slice(-2).join(".");
       }

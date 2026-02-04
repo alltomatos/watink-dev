@@ -60,6 +60,7 @@ routes.use(microserviceRoutes);
 routes.use(tenantRoutes);
 routes.use(groupRoutes);
 routes.use("/version", versionRoutes);
+
 routes.use(postgresVersionRoutes);
 routes.use(rabbitmqVersionRoutes);
 routes.use(redisVersionRoutes);

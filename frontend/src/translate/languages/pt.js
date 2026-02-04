@@ -413,6 +413,7 @@ const messages = {
           pipelines: "Pipelines",
           connections: "Conexões",
           tickets: "Chats",
+          myActivities: "Minhas Atividades",
           contacts: "Contatos",
           quickAnswers: "Respostas Rápidas",
           flowBuilder: "Flow Builder",

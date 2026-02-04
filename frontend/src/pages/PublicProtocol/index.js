@@ -279,6 +279,26 @@ const PublicProtocol = () => {
         }
     };
 
+    const formatActionFallback = (action) => {
+        const translationKey = `publicProtocol.history.actions.${action}`;
+        const translation = i18n.t(translationKey);
+        
+        // Se a tradução for igual à chave (falha), aplica fallback
+        if (translation === translationKey) {
+            const fallbackMap = {
+                "activity_created": "Atividade Criada",
+                "activity_completed": "Atividade Concluída",
+                "activity_cancelled": "Atividade Cancelada",
+                "status_changed": "Alteração de Status",
+                "priority_changed": "Alteração de Prioridade",
+                "commented": "Comentário Adicionado",
+                "resolved": "Resolvido"
+            };
+            return fallbackMap[action] || action.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+        }
+        return translation;
+    };
+
     if (loading) {
         return (
             <Box className={classes.root} display="flex" justifyContent="center" alignItems="center">
@@ -469,7 +489,7 @@ const PublicProtocol = () => {
                                                 </span>
                                                 <Paper elevation={0} className={classes.timelinePaper}>
                                                     <Typography variant="subtitle2" style={{ fontWeight: 700, color: theme.palette.text.primary }}>
-                                                        {i18n.t(`publicProtocol.history.actions.${hist.action}`) || hist.action}
+                                                        {formatActionFallback(hist.action)}
                                                     </Typography>
                                                     {hist.comment && (
                                                         <Typography variant="body2" style={{ marginTop: 4, color: theme.palette.text.secondary }}>
