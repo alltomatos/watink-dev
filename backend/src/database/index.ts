@@ -29,9 +29,6 @@ import Permission from "../models/Permission";
 import Client from "../models/Client";
 import ClientAddress from "../models/ClientAddress";
 import ClientContact from "../models/ClientContact";
-import Protocol from "../models/Protocol";
-import ProtocolHistory from "../models/ProtocolHistory";
-import ProtocolAttachment from "../models/ProtocolAttachment";
 import ConversationEmbedding from "../models/ConversationEmbedding";
 import Plugin from "../models/Plugin";
 import PluginInstallation from "../models/PluginInstallation";
@@ -43,12 +40,6 @@ import GroupRole from "../models/GroupRole";
 import GroupPermission from "../models/GroupPermission";
 import Step from "../models/Step";
 import EmailTemplate from "../models/EmailTemplate";
-import ActivityTemplate from "../models/ActivityTemplate";
-import ActivityTemplateItem from "../models/ActivityTemplateItem";
-import Activity from "../models/Activity";
-import ActivityItem from "../models/ActivityItem";
-import ActivityMaterial from "../models/ActivityMaterial";
-import ActivityOccurrence from "../models/ActivityOccurrence";
 
 
 // eslint-disable-next-line
@@ -87,9 +78,6 @@ const models = [
   Client,
   ClientAddress,
   ClientContact,
-  Protocol,
-  ProtocolHistory,
-  ProtocolAttachment,
   ConversationEmbedding,
   TenantSmtpSettings,
   Plugin,
@@ -101,12 +89,7 @@ const models = [
   GroupPermission,
   Step,
   EmailTemplate,
-  ActivityTemplate,
-  ActivityTemplateItem,
-  Activity,
-  ActivityItem,
-  ActivityMaterial,
-  ActivityOccurrence
+
 ];
 
 sequelize.addModels(models);
