@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as Yup from "yup";
 import { v4 as uuidv4 } from "uuid";
+import { readFile } from "fs/promises";
 import AppError from "../errors/AppError";
 import GetDefaultWhatsApp from "../helpers/GetDefaultWhatsApp";
 import SetTicketMessagesAsRead from "../helpers/SetTicketMessagesAsRead";
@@ -91,10 +92,13 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
 
   const contactAndTicket = await createContact(whatsappId, newContact.number);
 
-  if (medias) {
+  if (medias?.length) {
     await Promise.all(
       medias.map(async (media: Express.Multer.File) => {
-        // Send via RabbitMQ
+        const mediaBuffer = await readFile(media.path);
+        const mediaBase64 = mediaBuffer.toString("base64");
+
+        // Send via RabbitMQ (engine contract expects media.data em base64)
         await RabbitMQService.publishCommand(`wbot.${contactAndTicket.tenantId}.${contactAndTicket.whatsappId}.message.send.media`, {
           id: uuidv4(),
           timestamp: Date.now(),
@@ -103,13 +107,12 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
           payload: {
             sessionId: contactAndTicket.whatsappId,
             to: `${contactAndTicket.contact.number}@${contactAndTicket.isGroup ? "g.us" : "s.whatsapp.net"}`,
-            body: body,
+            caption: body,
             media: {
               mimetype: media.mimetype,
               filename: media.originalname,
-              path: media.path
-            },
-            ticketId: contactAndTicket.id
+              data: mediaBase64
+            }
           }
         });
       })
@@ -124,9 +127,8 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
       payload: {
         sessionId: contactAndTicket.whatsappId,
         to: `${contactAndTicket.contact.number}@${contactAndTicket.isGroup ? "g.us" : "s.whatsapp.net"}`,
-        text: body,
-        quotedMsg,
-        ticketId: contactAndTicket.id
+        body: body,
+        options: quotedMsg?.id ? { quotedMsgId: quotedMsg.id } : undefined
       }
     });
   }
