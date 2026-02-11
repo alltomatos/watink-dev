@@ -507,8 +507,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   // Publica evento para processamento assíncrono de gatilhos de Flow Worker
   // Falhas aqui não devem bloquear o fluxo principal de mensagem.
   try {
-    await FlowQueueService.add(
-      "whatsapp_message",
+    await FlowTriggerDispatcherService.dispatchWhatsAppMessage(
       {
         ticketId: ticket.id,
         contactId: msgContact.id,

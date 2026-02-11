@@ -14,7 +14,7 @@ export interface WhatsAppFlowEvent {
 export interface TagAddedFlowEvent {
   tagId: number;
   entityId: number;
-  entityType: "contact" | "ticket" | "deal";
+  entityType: "contact" | "ticket" | "deal" | "whatsapp";
 }
 
 class FlowRuntimeService {
@@ -86,6 +86,9 @@ class FlowRuntimeService {
       context.ticketId = entityId;
     } else if (entityType === "contact") {
       context.contactId = entityId;
+    } else if (entityType === "whatsapp") {
+      logger.info("[FlowRuntime] tagAdded for entityType=whatsapp is ignored by runtime.");
+      return;
     }
 
     context.tenantId = tenantId;

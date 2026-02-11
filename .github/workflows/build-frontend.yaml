@@ -2,6 +2,8 @@ name: Test build frontend
 
 on:
   pull_request:
+    branches:
+      - master
     paths:
       - "frontend/**"
 
@@ -17,7 +19,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [14.x]
+        node-version: [20.x]
 
     steps:
       - name: Checkout repository
@@ -30,7 +32,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm install
+        run: npm ci
 
       - run: CI=false npm run build
         working-directory: frontend
