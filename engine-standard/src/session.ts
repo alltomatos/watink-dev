@@ -264,7 +264,7 @@ class SessionManager {
         }
       };
 
-      await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
+      await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId ?? -1}.contact.update`, updateEvent);
     } catch (error) {
       logger.error(`Error syncing contact ${payload.number}:`, error);
     }
@@ -874,7 +874,7 @@ class SessionManager {
                 isGroup: jid.endsWith("@g.us")
               }
             };
-            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
+            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId ?? -1}.contact.update`, updateEvent);
           }
         }
       });
@@ -905,7 +905,7 @@ class SessionManager {
               isGroup: true
             }
           };
-          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
+          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId ?? -1}.contact.update`, updateEvent);
         }
       });
 
@@ -974,7 +974,7 @@ class SessionManager {
     }
   }
 
-  private async validateAndCorrectJid(session: WhaileysSession, jid: string, lid: string | undefined, tenantId: string | number): Promise<string> {
+  private async validateAndCorrectJid(session: WhaileysSession, jid: string, lid: string | undefined, tenantId: string | number, sessionId?: number): Promise<string> {
     if (jid.endsWith("@g.us")) return jid;
 
     try {
@@ -999,7 +999,7 @@ class SessionManager {
                 number: correctJid.split("@")[0]
               }
             };
-            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
+            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId ?? -1}.contact.update`, updateEvent);
           }
 
           return correctJid;
@@ -1059,7 +1059,7 @@ class SessionManager {
     }
 
     try {
-      const jid = await this.validateAndCorrectJid(session, payload.to, payload.lid, session.tenantId);
+      const jid = await this.validateAndCorrectJid(session, payload.to, payload.lid, session.tenantId, payload.sessionId);
 
       logger.info(`[sendText] Sending text to ${jid}: ${payload.body} (Ref Message ID: ${payload.messageId})`);
 
@@ -1435,7 +1435,7 @@ class SessionManager {
     }
 
     try {
-      const jid = await this.validateAndCorrectJid(session, payload.to, payload.lid, session.tenantId);
+      const jid = await this.validateAndCorrectJid(session, payload.to, payload.lid, session.tenantId, payload.sessionId);
 
       logger.info(`Sending media to ${jid}: ${payload.media.filename}`);
 
@@ -1633,7 +1633,7 @@ class SessionManager {
     }
 
     try {
-      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId, payload.sessionId);
 
       const buttons = payload.buttons.map(btn => ({
         buttonId: btn.buttonId,
@@ -1708,7 +1708,7 @@ class SessionManager {
     }
 
     try {
-      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId, payload.sessionId);
 
       const listMessage = {
         text: payload.text,
@@ -1772,7 +1772,7 @@ class SessionManager {
     }
 
     try {
-      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId, payload.sessionId);
 
       const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0"))
         ? payload.messageId
@@ -1834,7 +1834,7 @@ class SessionManager {
     }
 
     try {
-      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId, payload.sessionId);
 
       const templateButtons = payload.buttons.map((btn: any, index: number) => {
         const base = { index: index + 1 };
@@ -1912,7 +1912,7 @@ class SessionManager {
     }
 
     try {
-      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId, payload.sessionId);
 
       // Native Flow implementation for Interactive Message (Robust for URL buttons)
       const buttons = payload.buttons.map((btn: any) => {
@@ -2021,7 +2021,7 @@ class SessionManager {
     }
 
     try {
-      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+      const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId, payload.sessionId);
 
       const cards = await Promise.all(payload.cards.map(async (card) => {
         const buttons = card.buttons.map(btn => {
