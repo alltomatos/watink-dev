@@ -264,7 +264,7 @@ class SessionManager {
         }
       };
 
-      await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId ?? -1}.contact.update`, updateEvent);
+      await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
     } catch (error) {
       logger.error(`Error syncing contact ${payload.number}:`, error);
     }
@@ -874,7 +874,7 @@ class SessionManager {
                 isGroup: jid.endsWith("@g.us")
               }
             };
-            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId ?? -1}.contact.update`, updateEvent);
+            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
           }
         }
       });
@@ -905,7 +905,7 @@ class SessionManager {
               isGroup: true
             }
           };
-          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId ?? -1}.contact.update`, updateEvent);
+          await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
         }
       });
 
