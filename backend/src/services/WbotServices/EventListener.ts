@@ -12,6 +12,7 @@ import CreateOrUpdateContactService from "../ContactServices/CreateOrUpdateConta
 import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
 import Ticket from "../../models/Ticket";
 import Setting from "../../models/Setting";
+import FlowQueueService from "../FlowServices/FlowQueueService";
 
 const getSessionId = (sessionId: string | number): number => {
   return parseInt(String(sessionId).split("-")[0], 10);
@@ -502,6 +503,24 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     tenantId,
     groupContact
   );
+
+  // Publica evento para processamento assíncrono de gatilhos de Flow Worker
+  // Falhas aqui não devem bloquear o fluxo principal de mensagem.
+  try {
+    await FlowQueueService.add(
+      "whatsapp_message",
+      {
+        ticketId: ticket.id,
+        contactId: msgContact.id,
+        messageBody: preservedBody || message.body || "",
+        fromMe: !!message.fromMe,
+        isGroup: !!message.isGroup
+      },
+      tenantId
+    );
+  } catch (flowQueueErr) {
+    logger.error(`[EventListener] Failed to enqueue flow trigger for message ${message.id}: ${flowQueueErr}`);
+  }
 
   let creationDate = new Date(message.timestamp * 1000);
 
