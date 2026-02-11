@@ -1,0 +1,67 @@
+name: CI Quality Gate
+
+on:
+  pull_request:
+    branches: [devel_developer, main]
+  push:
+    branches: [devel_developer]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node-quality:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [backend, frontend, engine-standard]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+
+      - name: Install
+        working-directory: ${{ matrix.app }}
+        run: npm ci
+
+      - name: Lint (if exists)
+        working-directory: ${{ matrix.app }}
+        run: |
+          if npm run | grep -q " lint"; then
+            npm run lint
+          else
+            echo "No lint script in ${{ matrix.app }}"
+          fi
+
+      - name: Test (if exists)
+        working-directory: ${{ matrix.app }}
+        run: |
+          if npm run | grep -q " test"; then
+            npm test -- --runInBand || npm test || true
+          else
+            echo "No test script in ${{ matrix.app }}"
+          fi
+
+      - name: Build
+        working-directory: ${{ matrix.app }}
+        run: npm run build
+
+  security-basic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

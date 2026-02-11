@@ -1,0 +1,140 @@
+name: CD Homolog
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [devel_developer]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "docker-stack.yml"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: cd-homolog
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      backend_image: ${{ steps.meta_backend.outputs.tags }}
+      frontend_image: ${{ steps.meta_frontend.outputs.tags }}
+      backend_image_primary: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend:homol-${{ github.sha }}
+      frontend_image_primary: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:homol-${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata backend
+        id: meta_backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend
+          tags: |
+            type=raw,value=homol-${{ github.sha }}
+            type=raw,value=homol-latest
+
+      - name: Docker metadata frontend
+        id: meta_frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend
+          tags: |
+            type=raw,value=homol-${{ github.sha }}
+            type=raw,value=homol-latest
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta_backend.outputs.tags }}
+          labels: ${{ steps.meta_backend.outputs.labels }}
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta_frontend.outputs.tags }}
+          labels: ${{ steps.meta_frontend.outputs.labels }}
+
+  deploy-homolog:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOMOL_SSH_HOST }}
+          username: ${{ secrets.HOMOL_SSH_USER }}
+          key: ${{ secrets.HOMOL_SSH_KEY }}
+          port: ${{ secrets.HOMOL_SSH_PORT || '22' }}
+          script: |
+            set -e
+            STACK_NAME=${{ secrets.HOMOL_STACK_NAME || 'watink' }}
+            BACKEND_SERVICE=${{ secrets.HOMOL_BACKEND_SERVICE || 'watink_backend' }}
+            FRONTEND_SERVICE=${{ secrets.HOMOL_FRONTEND_SERVICE || 'watink_frontend' }}
+
+            echo "Logging in GHCR on target host..."
+            echo "${{ secrets.HOMOL_GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.HOMOL_GHCR_USER }}" --password-stdin
+
+            echo "Updating backend image..."
+            docker service update --with-registry-auth \
+              --image "${{ needs.build-and-push.outputs.backend_image_primary }}" \
+              "$BACKEND_SERVICE"
+
+            echo "Updating frontend image..."
+            docker service update --with-registry-auth \
+              --image "${{ needs.build-and-push.outputs.frontend_image_primary }}" \
+              "$FRONTEND_SERVICE"
+
+            echo "Services updated in stack: $STACK_NAME"
+
+  smoke-tests:
+    needs: deploy-homolog
+    runs-on: ubuntu-latest
+    steps:
+      - name: API Health
+        run: |
+          for i in {1..20}; do
+            if curl -fsS "https://apihomol.watink.com/version" >/dev/null; then
+              echo "API OK"
+              exit 0
+            fi
+            echo "Aguardando API... tentativa $i"
+            sleep 10
+          done
+          echo "API healthcheck falhou"
+          exit 1
+
+      - name: Frontend Health
+        run: |
+          for i in {1..20}; do
+            if curl -fsS "https://homol.watink.com" >/dev/null; then
+              echo "Frontend OK"
+              exit 0
+            fi
+            echo "Aguardando Frontend... tentativa $i"
+            sleep 10
+          done
+          echo "Frontend healthcheck falhou"
+          exit 1
