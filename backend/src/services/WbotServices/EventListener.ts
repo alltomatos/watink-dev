@@ -12,7 +12,7 @@ import CreateOrUpdateContactService from "../ContactServices/CreateOrUpdateConta
 import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
 import Ticket from "../../models/Ticket";
 import Setting from "../../models/Setting";
-import FlowQueueService from "../FlowServices/FlowQueueService";
+import FlowTriggerDispatcherService from "../FlowServices/FlowTriggerDispatcherService";
 
 const getSessionId = (sessionId: string | number): number => {
   return parseInt(String(sessionId).split("-")[0], 10);
@@ -601,6 +601,21 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
   }
 
   await CreateMessageService({ messageData: msgData as any });
+
+  try {
+    await FlowTriggerDispatcherService.dispatchWhatsAppMessage(
+      {
+        ticketId: ticket.id,
+        contactId: msgContact.id,
+        messageBody: msgData.body || "",
+        fromMe: !!message.fromMe,
+        isGroup: !!message.isGroup
+      },
+      tenantId
+    );
+  } catch (err) {
+    logger.error(`[EventListener] Error dispatching flow trigger for message ${message.id}: ${err}`);
+  }
 };
 
 // Helper function for Poll Barrier

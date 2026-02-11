@@ -3,8 +3,7 @@ import EntityTag, { EntityType } from "../../models/EntityTag";
 import AppError from "../../errors/AppError";
 import sequelize from "../../database";
 import { logger } from "../../utils/logger";
-import FlowTriggerService from "../FlowServices/FlowTriggerService";
-import FlowExecutorService from "../FlowServices/FlowExecutorService";
+import FlowTriggerDispatcherService from "../FlowServices/FlowTriggerDispatcherService";
 
 interface ApplyTagRequest {
     tagId: number;
@@ -80,35 +79,14 @@ export const ApplyTagToEntity = async ({
 
     // TRIGGER FLOW: Tag Applied
     try {
-        const trigger = await FlowTriggerService.findTrigger(
-            'tagAdded', // Deve bater com o valor do StartNodeModal
-            { tagId },
-            tenantId
-        );
-
-        if (trigger) {
-            // Iniciar fluxo
-            // Precisamos do ticketId se a entidade for ticket, ou buscar ultimo ticket se for contato?
-            // O FlowExecutor espera um context com ticketId.
-            // Se entityType == 'ticket', temos ticketId.
-            // Se entityType == 'contact', precisamos achar um ticket aberto ou criar contexto sem ticket (pode falhar se o fluxo exigir ticket)
-
-            let context: any = {
+        await FlowTriggerDispatcherService.dispatchTagAdded(
+            {
                 tagId,
                 entityId,
                 entityType
-            };
-
-            if (entityType === 'ticket') {
-                context.ticketId = entityId;
-            } else if (entityType === 'contact') {
-                context.contactId = entityId;
-                // Opcional: tentar achar ticket
-            }
-
-            await FlowExecutorService.start(trigger.flowId, context);
-            logger.info(`Flow Triggered by Tag Applied: Flow ${trigger.flowId} on ${entityType} ${entityId}`);
-        }
+            },
+            tenantId
+        );
     } catch (e) {
         logger.error(`Error triggering flow on tag applied: ${e}`);
     }
