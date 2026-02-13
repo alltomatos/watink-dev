@@ -5,9 +5,9 @@ services:
     image: watink/postgres-postgis-pgvector:16-optimized
     environment:
       - POSTGRES_DB=watink
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - db_data_dev:/var/lib/postgresql/data
     networks:
