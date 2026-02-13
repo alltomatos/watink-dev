@@ -637,14 +637,15 @@ class SessionManager {
             return;
           }
 
-          // 428 / sync error can happen transiently; cleanup auth and retry with backoff.
+          // 428 / sync error can happen transiently.
+          // IMPORTANT: do NOT wipe Redis auth on recoverable closes, otherwise we force QR re-pairing.
           if (isPreconditionRequired || isSyncError) {
             const streak = (this.recoverableCloseStreak.get(payload.sessionId) || 0) + 1;
             this.recoverableCloseStreak.set(payload.sessionId, streak);
 
             logger.warn(
-              `[SessionLifecycle] recoverable auth inconsistency detected session=${payload.sessionId} ` +
-              `reason=${isPreconditionRequired ? "428" : "sync_error"} streak=${streak}. Cleanup and retry.`
+              `[SessionLifecycle] recoverable inconsistency detected session=${payload.sessionId} ` +
+              `reason=${isPreconditionRequired ? "428" : "sync_error"} streak=${streak}. Retrying WITHOUT auth cleanup.`
             );
 
             try {
@@ -652,8 +653,6 @@ class SessionManager {
               sock.ws?.close();
               sock.ev.removeAllListeners("connection.update");
             } catch (e) { }
-
-            await this.cleanupSession(payload.sessionId);
           }
 
 

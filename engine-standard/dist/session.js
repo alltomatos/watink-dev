@@ -579,19 +579,19 @@ class SessionManager {
                         logger_1.logger.info(`Session ${payload.sessionId} was manually disconnected, skipping reconnection.`);
                         return;
                     }
-                    // 428 / sync error can happen transiently; cleanup auth and retry with backoff.
+                    // 428 / sync error can happen transiently.
+                    // IMPORTANT: do NOT wipe Redis auth on recoverable closes, otherwise we force QR re-pairing.
                     if (isPreconditionRequired || isSyncError) {
                         const streak = (this.recoverableCloseStreak.get(payload.sessionId) || 0) + 1;
                         this.recoverableCloseStreak.set(payload.sessionId, streak);
-                        logger_1.logger.warn(`[SessionLifecycle] recoverable auth inconsistency detected session=${payload.sessionId} ` +
-                            `reason=${isPreconditionRequired ? "428" : "sync_error"} streak=${streak}. Cleanup and retry.`);
+                        logger_1.logger.warn(`[SessionLifecycle] recoverable inconsistency detected session=${payload.sessionId} ` +
+                            `reason=${isPreconditionRequired ? "428" : "sync_error"} streak=${streak}. Retrying WITHOUT auth cleanup.`);
                         try {
                             sock.end(undefined);
                             sock.ws?.close();
                             sock.ev.removeAllListeners("connection.update");
                         }
                         catch (e) { }
-                        await this.cleanupSession(payload.sessionId);
                     }
                     // Special handling for Pairing Code flow: Treat 401 as retryable if using pairing code and not registered
                     if (isPairingFlow401Retryable) {
