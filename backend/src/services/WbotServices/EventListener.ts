@@ -9,7 +9,6 @@ import CreateMessageService from "../MessageServices/CreateMessageService";
 import Contact from "../../models/Contact";
 import Message from "../../models/Message";
 import CreateOrUpdateContactService from "../ContactServices/CreateOrUpdateContactService";
-import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
 import Ticket from "../../models/Ticket";
 import Setting from "../../models/Setting";
 import FlowTriggerDispatcherService from "../FlowServices/FlowTriggerDispatcherService";
@@ -151,107 +150,28 @@ const handleSessionStatus = async (payload: SessionStatusPayload) => {
   });
 };
 
-import MergeContactsService from "../ContactServices/MergeContactsService";
-import { Op } from "sequelize";
-
-// ... previous imports
-
 const handleContactUpdate = async (payload: ContactUpdatePayload, tenantId: string | number) => {
   logger.info(`[EventListener] Received contact.update for ${payload.number} (ID: ${payload.contactId})`);
-  const { contactId, number, profilePicUrl, pushName, lid, isGroup, sessionId } = payload;
+  const { number, profilePicUrl, pushName, lid, isGroup, sessionId } = payload;
 
   if (!tenantId && sessionId) {
     const whatsapp = await Whatsapp.findByPk(getSessionId(sessionId));
-    if (whatsapp) {
-      tenantId = whatsapp.tenantId;
-    }
+    if (whatsapp) tenantId = whatsapp.tenantId;
   }
 
-  const backendUrl = process.env.URL_BACKEND || process.env.BACKEND_URL || "http://localhost:8080";
+  if (!tenantId) return;
 
-  let contact: Contact | null = null;
-
-  if (contactId) {
-    contact = await Contact.findByPk(contactId);
-  }
-
-  // If no contact found by ID (or no ID provided), try to find by LID or Number
-  if (!contact) {
-    if (lid) {
-      contact = await Contact.findOne({ where: { lid, tenantId } });
-    }
-    if (!contact && number) {
-      // Try finding by basic number or remoteJid equivalent
-      contact = await Contact.findOne({
-        where: {
-          [Op.or]: [
-            { number: number }
-          ],
-          tenantId
-        }
-      });
-    }
-  }
-
-  if (contact) {
-    // 1. Check for LID Duplication/Collision
-    if (lid && contact.lid && lid !== contact.lid) {
-      const duplicate = await Contact.findOne({
-        where: {
-          lid: lid,
-          tenantId: contact.tenantId, // Use contact's tenant to be safe
-          id: { [Op.ne]: contact.id } // exclude self
-        }
-      });
-
-      if (duplicate) {
-        logger.info(`[EventListener] LID collision detected: ${lid}. Merging ${contact.id} into ${duplicate.id}`);
-
-        await MergeContactsService({
-          contactIdOrigin: contact.id,
-          contactIdTarget: duplicate.id,
-          tenantId: contact.tenantId
-        });
-
-        // After merge, the origin contact is destroyed. We stop here.
-        return;
-      }
-    }
-
-    // 2. Normal Update
-    const updates: any = {};
-
-    if (profilePicUrl) {
-      const filename = await DownloadProfileImage({
-        profilePicUrl,
-        tenantId,
-        contactId: contact.id
-      });
-      if (filename) {
-        // Cache busting
-        updates.profilePicUrl = `${backendUrl}/public/${tenantId}/contacts/${filename}?v=${new Date().getTime()}`;
-      } else {
-        updates.profilePicUrl = profilePicUrl;
-      }
-    }
-    if (lid) updates.lid = lid;
-    if (pushName) updates.name = pushName; // Optionally update name if available
-
-    if (Object.keys(updates).length > 0) {
-      await contact.update(updates);
-
-      const io = getIO();
-      io.emit("contact", {
-        action: "update",
-        contact
-      });
-    }
-  } else {
-    // Optional: Create contact if it doesn't exist? 
-    // For now, we only update existing contacts to avoid polluting DB with random group updates if the user isn't interacting with them.
-    // However, for groups we are part of, we probably want them? 
-    // Let's stick to updating existing ones for now to be safe.
-  }
+  const isLidAddress = !!number && number.includes("@lid");
+  await CreateOrUpdateContactService({
+    name: pushName || number || "unknown",
+    number: isLidAddress ? undefined : number,
+    lid: lid || (isLidAddress ? number : undefined),
+    profilePicUrl,
+    isGroup: !!isGroup,
+    tenantId,
+    waitEnrichment: false,
+    sessionId: sessionId ? getSessionId(sessionId) : undefined
+  });
 };
 
 const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: string | number) => {

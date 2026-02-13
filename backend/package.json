@@ -13,7 +13,8 @@
     "posttest": "NODE_ENV=test sequelize db:migrate:undo:all",
     "db:migrate": "sequelize db:migrate",
     "db:seed": "sequelize db:seed:all",
-    "format": "prettier --write \"src/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\"",
+    "contacts:dedupe": "ts-node src/scripts/deduplicateWhatsAppContacts.ts"
   },
   "author": "",
   "license": "AGPL-3.0",
