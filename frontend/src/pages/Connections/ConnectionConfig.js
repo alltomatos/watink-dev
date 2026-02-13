@@ -18,22 +18,15 @@ import {
 } from "@material-ui/core";
 import {
     ArrowBack,
-    SignalCellular4Bar,
-    CropFree,
-    PowerSettingsNew,
     Edit,
     CheckCircle,
     ErrorOutline,
-    EventAvailable,
-    AccessTime
 } from "@material-ui/icons";
 import { green, red, orange, blue } from "@material-ui/core/colors";
 import QRCode from "qrcode.react";
 import { format, parseISO } from "date-fns";
 import ptBR from "date-fns/locale/pt-BR";
 
-import MainContainer from "../../components/MainContainer";
-import Title from "../../components/Title";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import WhatsAppModal from "../../components/WhatsAppModal";
@@ -43,71 +36,101 @@ import { i18n } from "../../translate/i18n";
 
 const useStyles = makeStyles(theme => ({
     root: {
-        padding: theme.spacing(3),
-        background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+        padding: theme.spacing(0),
+        background: "linear-gradient(180deg, #F5F5F7 0%, #FFFFFF 100%)",
         minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+    },
+    mainContainer: {
+        padding: theme.spacing(3),
+        maxWidth: 1200,
+        margin: "0 auto",
+        width: "100%",
     },
     header: {
-        marginBottom: theme.spacing(3),
+        padding: theme.spacing(2, 4),
+        background: "rgba(255, 255, 255, 0.8)",
+        backdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        position: "sticky",
+        top: 0,
+        zIndex: 1000,
     },
-    // Glassmorphism Card Style
+    title: {
+        fontWeight: 700,
+        fontSize: "1.25rem",
+        color: "#1d1d1f",
+        letterSpacing: "-0.02em",
+    },
+    // Apple Glassmorphism Card Style
     glassCard: {
         background: "rgba(255, 255, 255, 0.7)",
-        backdropFilter: "blur(10px)",
-        borderRadius: "20px",
-        border: "1px solid rgba(255, 255, 255, 0.3)",
-        boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.15)",
+        backdropFilter: "blur(20px)",
+        borderRadius: "24px",
+        border: "1px solid rgba(0, 0, 0, 0.05)",
+        boxShadow: "0 10px 40px rgba(0, 0, 0, 0.04)",
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        transition: "transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out",
-        "&:hover": {
-            transform: "translateY(-5px)",
-            boxShadow: "0 12px 40px 0 rgba(31, 38, 135, 0.25)",
-        },
-        padding: theme.spacing(3),
+        overflow: "hidden",
+        padding: theme.spacing(4),
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
     },
     statusContainer: {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        marginBottom: theme.spacing(3),
+        gap: theme.spacing(2),
+        [theme.breakpoints.down('sm')]: {
+            flexDirection: "column",
+            alignItems: "flex-start",
+        }
     },
     statusBadge: {
-        padding: "8px 16px",
-        borderRadius: "50px",
-        fontWeight: "bold",
-        fontSize: "0.9rem",
-        display: "flex",
+        padding: "6px 14px",
+        borderRadius: "100px",
+        fontWeight: 600,
+        fontSize: "0.85rem",
+        display: "inline-flex",
         alignItems: "center",
-        gap: "8px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+        gap: "6px",
     },
     actionButton: {
         borderRadius: "12px",
-        padding: "10px 24px",
+        padding: "10px 20px",
         fontWeight: 600,
         textTransform: "none",
-        boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-        transition: "all 0.2s",
+        fontSize: "0.95rem",
+        boxShadow: "none",
+        transition: "all 0.2s ease",
         "&:hover": {
-            transform: "scale(1.02)",
-            boxShadow: "0 6px 12px rgba(0,0,0,0.15)",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
         }
     },
-    disconnectButton: {
-        background: "linear-gradient(45deg, #FF512F 30%, #DD2476 90%)",
-        color: "white",
+    primaryButton: {
+        backgroundColor: "#007AFF",
+        color: "#fff",
+        "&:hover": {
+            backgroundColor: "#0062CC",
+        }
     },
-    connectButton: {
-        background: "linear-gradient(45deg, #2193b0 30%, #6dd5ed 90%)",
-        color: "white",
+    secondaryButton: {
+        backgroundColor: "rgba(0, 0, 0, 0.05)",
+        color: "#1d1d1f",
+        "&:hover": {
+            backgroundColor: "rgba(0, 0, 0, 0.1)",
+        }
     },
-    gridContainer: {
-        marginTop: theme.spacing(2),
+    dangerButton: {
+        backgroundColor: "#FF3B30",
+        color: "#fff",
+        "&:hover": {
+            backgroundColor: "#E03126",
+        }
     },
     qrCodeContainer: {
         display: "flex",
@@ -115,21 +138,62 @@ const useStyles = makeStyles(theme => ({
         alignItems: "center",
         justifyContent: "center",
         padding: theme.spacing(4),
-        background: "rgba(255,255,255,0.5)",
-        borderRadius: "16px",
+        background: "#fff",
+        borderRadius: "24px",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
         marginTop: theme.spacing(2),
     },
     detailItem: {
         display: "flex",
         alignItems: "center",
-        marginBottom: theme.spacing(2),
-        padding: theme.spacing(1.5),
-        borderRadius: "12px",
-        background: "rgba(255,255,255,0.4)",
+        padding: theme.spacing(2),
+        borderRadius: "16px",
+        background: "rgba(0, 0, 0, 0.02)",
+        marginBottom: theme.spacing(1.5),
+        border: "1px solid rgba(0, 0, 0, 0.03)",
+        "& svg": {
+            color: "#8e8e93",
+            marginRight: theme.spacing(2),
+        }
     },
-    detailIcon: {
-        marginRight: theme.spacing(2),
-        color: theme.palette.text.secondary,
+    statsValue: {
+        fontWeight: 600,
+        color: "#1d1d1f",
+    },
+    statsLabel: {
+        color: "#8e8e93",
+        fontSize: "0.75rem",
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+        fontWeight: 600,
+    },
+    avatarGlow: {
+        position: 'relative',
+        '&::after': {
+            content: '""',
+            position: 'absolute',
+            top: -4,
+            left: -4,
+            right: -4,
+            bottom: -4,
+            borderRadius: '50%',
+            border: '2px solid transparent',
+            animation: '$pulse 2s infinite',
+        }
+    },
+    '@keyframes pulse': {
+        '0%': { transform: 'scale(1)', opacity: 1 },
+        '70%': { transform: 'scale(1.1)', opacity: 0 },
+        '100%': { transform: 'scale(1.1)', opacity: 0 },
+    },
+    connectedPulse: {
+        '&::after': { borderColor: '#34C759' }
+    },
+    disconnectedPulse: {
+        '&::after': { borderColor: '#FF3B30' }
+    },
+    waitingPulse: {
+        '&::after': { borderColor: '#007AFF' }
     }
 }));
 
@@ -168,7 +232,7 @@ const ConnectionConfig = () => {
 
         socket.on("whatsappSession", (data) => {
             if (data.action === "update" && data.session.id === parseInt(whatsappId)) {
-                setWhatsapp(prev => ({ ...prev, ...data.session }));
+                setWhatsapp(prev => ({ ...(prev || {}), ...data.session }));
 
                 if (data.session.status === "CONNECTED") {
                     setShowQrCode(false);
@@ -184,7 +248,7 @@ const ConnectionConfig = () => {
 
         socket.on("whatsapp", (data) => {
             if (data.action === "update" && data.whatsapp.id === parseInt(whatsappId)) {
-                setWhatsapp(prev => ({ ...prev, ...data.whatsapp }));
+                setWhatsapp(prev => ({ ...(prev || {}), ...data.whatsapp }));
             }
         });
 
@@ -234,12 +298,13 @@ const ConnectionConfig = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case "CONNECTED": return green[600];
-            case "DISCONNECTED": return red[600];
-            case "SESSION_EXPIRED": return red[600]; // Vermelho para chamar atenção
-            case "QRCODE": return blue[600];
-            case "OPENING": return blue[600];
-            default: return orange[600];
+            case "CONNECTED": return "#34C759"; // Apple Green
+            case "DISCONNECTED": return "#FF3B30"; // Apple Red
+            case "SESSION_EXPIRED": return "#FF3B30"; 
+            case "QRCODE": return "#007AFF"; // Apple Blue
+            case "OPENING": return "#007AFF";
+            case "TIMEOUT": return "#FF9500"; // Apple Orange
+            default: return "#8E8E93"; // Apple Gray
         }
     };
 
@@ -263,8 +328,18 @@ const ConnectionConfig = () => {
         );
     }
 
+    if (!whatsapp) {
+        return (
+            <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+                <Typography variant="body1" style={{ color: "#8e8e93" }}>
+                    Conexão não encontrada.
+                </Typography>
+            </Box>
+        );
+    }
+
     return (
-        <MainContainer>
+        <div className={classes.root}>
             <ConfirmationModal
                 title={confirmationAction === "disconnect" ? i18n.t("connections.confirmationModal.disconnectTitle") : i18n.t("connections.confirmationModal.deleteTitle")}
                 open={confirmationOpen}
@@ -280,208 +355,232 @@ const ConnectionConfig = () => {
                 whatsAppId={whatsappId}
             />
 
-            <div className={classes.header}>
+            <header className={classes.header}>
                 <Box display="flex" alignItems="center">
-                    <IconButton onClick={() => history.push("/connections")} style={{ marginRight: 10 }}>
-                        <ArrowBack />
+                    <IconButton onClick={() => history.push("/connections")} style={{ marginRight: 16 }}>
+                        <ArrowBack style={{ color: "#1d1d1f" }} />
                     </IconButton>
-                    <Title>{whatsapp.name}</Title>
-                    <Tooltip title="Editar Nome/Fila">
-                        <IconButton size="small" onClick={() => setWhatsAppModalOpen(true)} style={{ marginLeft: 10 }}>
-                            <Edit />
+                    <Typography className={classes.title}>
+                        {whatsapp.name}
+                    </Typography>
+                    <Tooltip title="Ajustes de Conexão">
+                        <IconButton size="small" onClick={() => setWhatsAppModalOpen(true)} style={{ marginLeft: 12, backgroundColor: "rgba(0,0,0,0.05)" }}>
+                            <Edit fontSize="small" style={{ color: "#1d1d1f" }} />
                         </IconButton>
                     </Tooltip>
                 </Box>
-            </div>
+                <Box display="flex" gap={1}>
+                    {whatsapp.status === "CONNECTED" && (
+                        <Button
+                            variant="contained"
+                            className={`${classes.actionButton} ${classes.dangerButton}`}
+                            onClick={() => { setConfirmationAction("disconnect"); setConfirmationOpen(true); }}
+                        >
+                            Desconectar
+                        </Button>
+                    )}
+                </Box>
+            </header>
 
-            <Grid container spacing={4} className={classes.gridContainer}>
-                {/* Visual Status Card */}
-                <Grid item xs={12} md={8}>
-                    <Paper className={classes.glassCard} elevation={0}>
-                        <Box className={classes.statusContainer}>
-                            <Box display="flex" alignItems="center">
-                                <Avatar
-                                    src={whatsapp.profilePicUrl}
-                                    style={{ width: 80, height: 80, marginRight: 20, border: `2px solid ${getStatusColor(whatsapp.status)}` }}
-                                />
-                                <Box>
-                                    <Typography variant="h5" style={{ fontWeight: 700 }}>
-                                        {whatsapp.name}
-                                    </Typography>
-                                    <Typography variant="body1" color="textSecondary">
-                                        {whatsapp.number ? `+${whatsapp.number}` : "Sem número vinculado"}
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                            <Box className={classes.statusBadge} style={{ backgroundColor: getStatusColor(whatsapp.status), color: "#fff" }}>
-                                {whatsapp.status === "CONNECTED" ? <CheckCircle /> : <ErrorOutline />}
-                                {getStatusText(whatsapp.status)}
-                            </Box>
-                        </Box>
-
-                        <Divider style={{ margin: "20px 0" }} />
-
-                        <Box flexGrow={1} display="flex" flexDirection="column" justifyContent="center">
-                            {whatsapp.status === "CONNECTED" ? (
-                                <Box textAlign="center" py={5}>
-                                    <SignalCellular4Bar style={{ fontSize: 80, color: green[500], marginBottom: 20 }} />
-                                    <Typography variant="h6" color="primary">
-                                        Tudo pronto! Sua conexão está ativa e funcionando perfeitamente.
-                                    </Typography>
-                                </Box>
-                            ) : whatsapp.status === "QRCODE" && showQrCode ? (
-                                <Box className={classes.qrCodeContainer}>
-                                    <Typography variant="h6" gutterBottom style={{ fontWeight: 600 }}>
-                                        Abra o WhatsApp e escaneie o código
-                                    </Typography>
-                                    <Box my={2}>
-                                        {whatsapp.qrcode ? (
-                                            <QRCode value={whatsapp.qrcode} size={280} />
-                                        ) : (
-                                            <CircularProgress />
-                                        )}
-                                    </Box>
-                                    <Typography variant="body2" color="textSecondary">
-                                        Aguardando leitura...
-                                    </Typography>
-                                </Box>
-                            ) : (
-                                <Box textAlign="center" py={5}>
-
-                                    {whatsapp.status === "SESSION_EXPIRED" && (
-                                        <Typography variant="h6" color="error" gutterBottom style={{ fontWeight: bold => 600, marginBottom: 20 }}>
-                                            Sua sessão expirou por segurança. Por favor, conecte-se novamente.
+            <div className={classes.mainContainer}>
+                <Grid container spacing={4}>
+                    {/* Main Status Area */}
+                    <Grid item xs={12} md={7}>
+                        <Paper className={classes.glassCard} elevation={0}>
+                            <Box className={classes.statusContainer}>
+                                <Box display="flex" alignItems="center">
+                                    <div className={`${classes.avatarGlow} ${whatsapp.status === 'CONNECTED' ? classes.connectedPulse : (whatsapp.status === 'QRCODE' ? classes.waitingPulse : classes.disconnectedPulse)}`}>
+                                        <Avatar
+                                            src={whatsapp.profilePicUrl}
+                                            style={{ width: 80, height: 80, border: '4px solid #fff', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                        />
+                                    </div>
+                                    <Box ml={3}>
+                                        <Typography variant="h5" style={{ fontWeight: 700, color: "#1d1d1f" }}>
+                                            {whatsapp.name}
                                         </Typography>
-                                    )}
-
-                                    <Typography variant="body1" color="textSecondary" paragraph>
-                                        Para começar a enviar e receber mensagens, precisamos estabelecer uma conexão segura com seu WhatsApp.
-                                    </Typography>
+                                        <Typography variant="body2" style={{ color: "#8e8e93", marginTop: 4 }}>
+                                            {whatsapp.number ? `+${whatsapp.number}` : "Aguardando vinculação..."}
+                                        </Typography>
+                                        <Box mt={1.5}>
+                                            <span 
+                                                className={classes.statusBadge} 
+                                                style={{ 
+                                                    backgroundColor: getStatusColor(whatsapp.status) + '15', 
+                                                    color: getStatusColor(whatsapp.status) 
+                                                }}
+                                            >
+                                                {whatsapp.status === "CONNECTED" ? <CheckCircle style={{ fontSize: 16 }} /> : <ErrorOutline style={{ fontSize: 16 }} />}
+                                                {getStatusText(whatsapp.status)}
+                                            </span>
+                                        </Box>
+                                    </Box>
                                 </Box>
-                            )}
-                        </Box>
+                            </Box>
 
-                        <Box mt={3} display="flex" justifyContent="flex-end">
-                            {(whatsapp.status === "CONNECTED") ? (
-                                <Button
-                                    variant="contained"
-                                    className={`${classes.actionButton} ${classes.disconnectButton}`}
-                                    onClick={() => { setConfirmationAction("disconnect"); setConfirmationOpen(true); }}
-                                >
-                                    Desconectar
-                                </Button>
-                            ) : (
-                                <>
+                            <Box mt={6} flexGrow={1} display="flex" flexDirection="column" alignItems="center" justifyContent="center">
+                                {whatsapp.status === "CONNECTED" ? (
+                                    <Box textAlign="center">
+                                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                                            <CheckCircle style={{ fontSize: 100, color: '#34C759' }} />
+                                            <div style={{ 
+                                                position: 'absolute', 
+                                                top: 0, 
+                                                left: 0, 
+                                                right: 0, 
+                                                bottom: 0, 
+                                                borderRadius: '50%', 
+                                                boxShadow: '0 0 40px rgba(52, 199, 89, 0.3)',
+                                                zIndex: -1 
+                                            }} />
+                                        </div>
+                                        <Typography variant="h6" style={{ fontWeight: 700, marginTop: 32, color: "#1d1d1f" }}>
+                                            Conexão Ativa
+                                        </Typography>
+                                        <Typography variant="body1" style={{ color: "#8e8e93", maxWidth: 400, margin: '12px auto' }}>
+                                            Sua instância está operacional e pronta para enviar/receber mensagens.
+                                        </Typography>
+                                    </Box>
+                                ) : whatsapp.status === "QRCODE" && showQrCode ? (
+                                    <Box className={classes.qrCodeContainer}>
+                                        <Typography variant="body1" style={{ fontWeight: 600, color: "#1d1d1f", marginBottom: 20 }}>
+                                            Escaneie o QR Code abaixo
+                                        </Typography>
+                                        <Box p={2} style={{ background: '#fff', borderRadius: 16 }}>
+                                            {whatsapp.qrcode ? (
+                                                <QRCode value={whatsapp.qrcode} size={240} renderAs="svg" />
+                                            ) : (
+                                                <CircularProgress size={40} />
+                                            )}
+                                        </Box>
+                                        <Box mt={3} textAlign="center">
+                                            <Typography variant="caption" style={{ color: "#8e8e93" }}>
+                                                {"Abra o WhatsApp > Configurações > Dispositivos Conectados"}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                ) : (
+                                    <Box textAlign="center">
+                                        <ErrorOutline style={{ fontSize: 80, color: '#FF3B30', opacity: 0.5 }} />
+                                        {whatsapp.status === "SESSION_EXPIRED" && (
+                                            <Typography variant="h6" style={{ fontWeight: 600, color: "#FF3B30", marginTop: 24 }}>
+                                                Sessão Expirada
+                                            </Typography>
+                                        )}
+                                        <Typography variant="body1" style={{ color: "#8e8e93", marginTop: 12, maxWidth: 300 }}>
+                                            Clique no botão abaixo para iniciar uma nova conexão segura.
+                                        </Typography>
+                                        
+                                        <Box mt={4}>
+                                            <Button
+                                                variant="contained"
+                                                className={`${classes.actionButton} ${classes.primaryButton}`}
+                                                onClick={handleStartSession}
+                                                disabled={connecting}
+                                                startIcon={connecting ? <CircularProgress size={16} color="inherit" /> : null}
+                                            >
+                                                {connecting ? "Iniciando..." : "Conectar WhatsApp"}
+                                            </Button>
+                                        </Box>
+                                    </Box>
+                                )}
+                            </Box>
+
+                            {whatsapp.status !== "CONNECTED" && !connecting && (
+                                <Box mt={4} display="flex" justifyContent="center">
                                     <Button
-                                        variant="outlined"
-                                        color="secondary"
-                                        className={classes.actionButton}
+                                        variant="text"
+                                        style={{ color: "#FF3B30", fontWeight: 600 }}
                                         onClick={() => { setConfirmationAction("delete"); setConfirmationOpen(true); }}
-                                        style={{ marginRight: 15 }}
                                     >
-                                        Excluir
+                                        Remover Instância
                                     </Button>
-
-                                    {!showQrCode && (
-                                        <Button
-                                            variant="contained"
-                                            className={`${classes.actionButton} ${classes.connectButton}`}
-                                            onClick={handleStartSession}
-                                            disabled={connecting}
-                                        >
-                                            {connecting ? <CircularProgress size={24} color="inherit" /> : "Gerar QR Code"}
-                                        </Button>
-                                    )}
-
-                                    {showQrCode && (
-                                        <Button
-                                            variant="text"
-                                            color="primary"
-                                            onClick={() => { setConfirmationAction("disconnect"); setConfirmationOpen(true); }}
-                                        >
-                                            Cancelar
-                                        </Button>
-                                    )}
-                                </>
+                                </Box>
                             )}
+                        </Paper>
+                    </Grid>
+
+                    {/* Info & Stats Sidebar */}
+                    <Grid item xs={12} md={5}>
+                        <Box display="flex" flexDirection="column" gap={3}>
+                            <Paper className={classes.glassCard} elevation={0} style={{ padding: '24px' }}>
+                                <Typography variant="subtitle2" className={classes.statsLabel} gutterBottom>
+                                    Estatísticas de Uso
+                                </Typography>
+                                
+                                <Grid container spacing={2} style={{ marginTop: 8 }}>
+                                    <Grid item xs={6}>
+                                        <Box className={classes.detailItem} style={{ marginBottom: 0, flexDirection: 'column', alignItems: 'flex-start' }}>
+                                            <Typography className={classes.statsLabel}>Enviadas</Typography>
+                                            <Typography variant="h6" className={classes.statsValue}>
+                                                {whatsapp.messagesSent || 0}
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                        <Box className={classes.detailItem} style={{ marginBottom: 0, flexDirection: 'column', alignItems: 'flex-start' }}>
+                                            <Typography className={classes.statsLabel}>Recebidas</Typography>
+                                            <Typography variant="h6" className={classes.statsValue}>
+                                                {whatsapp.messagesReceived || 0}
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                </Grid>
+                            </Paper>
+
+                            <Paper className={classes.glassCard} elevation={0} style={{ padding: '24px' }}>
+                                <Typography variant="subtitle2" className={classes.statsLabel} gutterBottom>
+                                    Configurações Ativas
+                                </Typography>
+                                
+                                <Box mt={2}>
+                                    <Box className={classes.detailItem}>
+                                        <Box flexGrow={1}>
+                                            <Typography variant="body2" style={{ fontWeight: 600 }}>Padrão do Sistema</Typography>
+                                            <Typography variant="caption" style={{ color: '#8e8e93' }}>Usar para envios automáticos</Typography>
+                                        </Box>
+                                        <Typography variant="body2" className={classes.statsValue}>
+                                            {whatsapp.isDefault ? "Sim" : "Não"}
+                                        </Typography>
+                                    </Box>
+
+                                    <Box className={classes.detailItem}>
+                                        <Box flexGrow={1}>
+                                            <Typography variant="body2" style={{ fontWeight: 600 }}>Keep Alive</Typography>
+                                            <Typography variant="caption" style={{ color: '#8e8e93' }}>Reconexão automática</Typography>
+                                        </Box>
+                                        <Typography variant="body2" className={classes.statsValue}>
+                                            {whatsapp.keepAlive ? "Ativo" : "Inativo"}
+                                        </Typography>
+                                    </Box>
+
+                                    <Box className={classes.detailItem}>
+                                        <Box flexGrow={1}>
+                                            <Typography variant="body2" style={{ fontWeight: 600 }}>Último Check-in</Typography>
+                                            <Typography variant="caption" style={{ color: '#8e8e93' }}>Sincronização</Typography>
+                                        </Box>
+                                        <Typography variant="body2" className={classes.statsValue}>
+                                            {whatsapp.updatedAt ? format(parseISO(whatsapp.updatedAt), "HH:mm", { locale: ptBR }) : "--:--"}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+
+                                <Box mt={2}>
+                                    <Button 
+                                        fullWidth 
+                                        className={classes.secondaryButton} 
+                                        style={{ borderRadius: 12, textTransform: 'none', fontWeight: 600 }}
+                                        onClick={() => setWhatsAppModalOpen(true)}
+                                    >
+                                        Ver todas as configurações
+                                    </Button>
+                                </Box>
+                            </Paper>
                         </Box>
-                    </Paper>
+                    </Grid>
                 </Grid>
-
-                {/* Details Card */}
-                <Grid item xs={12} md={4}>
-                    <Paper className={classes.glassCard} elevation={0}>
-                        <Typography variant="h6" gutterBottom style={{ fontWeight: 600, display: "flex", alignItems: "center" }}>
-                            <Box component="span" mr={1} role="img" aria-label="info">ℹ️</Box> Detalhes da Sessão
-                        </Typography>
-
-                        <Box mt={3}>
-                            <Box className={classes.detailItem}>
-                                <AccessTime className={classes.detailIcon} />
-                                <Box>
-                                    <Typography variant="caption" color="textSecondary">Última Atualização</Typography>
-                                    <Typography variant="body2" style={{ fontWeight: 500 }}>
-                                        {whatsapp.updatedAt ? format(parseISO(whatsapp.updatedAt), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "N/A"}
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                            <Box className={classes.detailItem}>
-                                <EventAvailable className={classes.detailIcon} />
-                                <Box>
-                                    <Typography variant="caption" color="textSecondary">Data da 1ª Conexão</Typography>
-                                    <Typography variant="body2" style={{ fontWeight: 500 }}>
-                                        {whatsapp.createdAt ? format(parseISO(whatsapp.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "N/A"}
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                            <Box className={classes.detailItem}>
-                                <Box style={{ marginRight: 16 }}>📤</Box>
-                                <Box>
-                                    <Typography variant="caption" color="textSecondary">Mensagens Enviadas</Typography>
-                                    <Typography variant="body2" style={{ fontWeight: 500 }}>
-                                        {whatsapp.messagesSent || 0}
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                            <Box className={classes.detailItem}>
-                                <Box style={{ marginRight: 16 }}>📥</Box>
-                                <Box>
-                                    <Typography variant="caption" color="textSecondary">Mensagens Recebidas</Typography>
-                                    <Typography variant="body2" style={{ fontWeight: 500 }}>
-                                        {whatsapp.messagesReceived || 0}
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                            <Box className={classes.detailItem}>
-                                <Box style={{ marginRight: 16 }}>🔄</Box>
-                                <Box>
-                                    <Typography variant="caption" color="textSecondary">Padrão do Sistema</Typography>
-                                    <Typography variant="body2" style={{ fontWeight: 500 }}>
-                                        {whatsapp.isDefault ? "Sim" : "Não"}
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                            <Box className={classes.detailItem}>
-                                <Box style={{ marginRight: 16 }}>☁️</Box>
-                                <Box>
-                                    <Typography variant="caption" color="textSecondary">Sincronização de Histórico</Typography>
-                                    <Typography variant="body2" style={{ fontWeight: 500 }}>
-                                        {whatsapp.syncHistory ? "Ativado" : "Desativado"}
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                        </Box>
-                    </Paper>
-                </Grid>
-            </Grid>
-        </MainContainer>
+            </div>
+        </div>
     );
 };
 
