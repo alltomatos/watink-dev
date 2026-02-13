@@ -17,6 +17,11 @@ interface MessageData {
   quotedMsgId?: string | null;
   dataJson?: object;
   participant?: string;
+  isGroup?: boolean;
+  groupJid?: string;
+  participantJid?: string;
+  participantName?: string;
+  waMessageId?: string;
   createdAt?: Date;
 }
 interface Request {

@@ -44,8 +44,11 @@ const SendWhatsAppMedia = async ({
     // Sanitize number to ensure only digits
     const contactNumber = ticket.contact.number.replace(/\D/g, "");
 
+    const groupJid = ticket.isGroup ? `${contactNumber}@g.us` : null;
+
     const messageData = {
       id: GenerateWAMessageId(),
+      waMessageId: null,
       ticketId: ticket.id,
       contactId: undefined,
       body: body || media.originalname,
@@ -55,6 +58,10 @@ const SendWhatsAppMedia = async ({
       quotedMsgId: undefined,
       ack: 0, // Pending
       timestamp: new Date().getTime(),
+      isGroup: !!ticket.isGroup,
+      groupJid,
+      participantJid: null,
+      participantName: null,
       mediaUrl: `${ticket.tenantId}/${media.filename}`,
       tenantId: ticket.tenantId
     };

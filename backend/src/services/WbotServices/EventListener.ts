@@ -13,6 +13,7 @@ import { DownloadProfileImage } from "../../helpers/DownloadProfileImage";
 import Ticket from "../../models/Ticket";
 import Setting from "../../models/Setting";
 import FlowTriggerDispatcherService from "../FlowServices/FlowTriggerDispatcherService";
+import UpsertWhatsAppGroupService from "./UpsertWhatsAppGroupService";
 
 const getSessionId = (sessionId: string | number): number => {
   return parseInt(String(sessionId).split("-")[0], 10);
@@ -453,6 +454,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
 
       const msgDataVal = {
         id: message.id,
+        waMessageId: message.id,
         ticketId: ticketForMessage.id,
         contactId: msgContact.id,
         body: preservedBody || message.body,
@@ -463,6 +465,10 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
         timestamp: hasValidTimestamp ? message.timestamp * 1000 : new Date().getTime(), // Fallback to now if invalid just for DB constaint, but logic handled it
         createdAt: hasValidTimestamp ? new Date(message.timestamp * 1000) : new Date(),
         participant: message.participant,
+        isGroup: !!message.isGroup,
+        groupJid: message.isGroup ? message.from : null,
+        participantJid: message.participant,
+        participantName: message.pushName || null,
         dataJson: message,
         quotedMsgId: message.quotedMsgId,
         ack: 3, // Mensagens antigas assumem ACK = read
@@ -495,6 +501,18 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
         } catch (err) {
           logger.error(`Error saving media for old message ${message.id}: ${err}`);
         }
+      }
+
+      if (message.isGroup && message.from) {
+        await UpsertWhatsAppGroupService({
+          tenantId,
+          whatsappId: whatsapp.id,
+          groupJid: message.from,
+          subject: message.pushName || message.from,
+          contactId: groupContact?.id,
+          participantJid: message.participant,
+          participantName: message.pushName
+        });
       }
 
       await CreateMessageService({ messageData: msgDataVal as any });
@@ -545,6 +563,7 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
 
   const msgData = {
     id: message.id,
+    waMessageId: message.id,
     ticketId: ticket.id,
     contactId: msgContact.id,
     body: preservedBody || message.body,
@@ -555,6 +574,10 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
     timestamp: creationDate.getTime(), // Use sanitized timestamp
     createdAt: creationDate, // Fix Timestamp
     participant: message.participant,
+    isGroup: !!message.isGroup,
+    groupJid: message.isGroup ? message.from : null,
+    participantJid: message.participant,
+    participantName: message.pushName || null,
     dataJson: message, // Store full payload including urlPreview and pushName
     quotedMsgId: message.quotedMsgId,
     ack: message.status || message.ack || 0,
@@ -605,6 +628,18 @@ const handleMessageReceived = async (payload: MessageReceivedPayload, tenantId: 
       logger.error(`Error saving media for message ${message.id}: ${err}`);
       // Fallback: Don't block message creation, but it will lack media
     }
+  }
+
+  if (message.isGroup && message.from) {
+    await UpsertWhatsAppGroupService({
+      tenantId,
+      whatsappId: whatsapp.id,
+      groupJid: message.from,
+      subject: message.pushName || message.from,
+      contactId: groupContact?.id,
+      participantJid: message.participant,
+      participantName: message.pushName
+    });
   }
 
   await CreateMessageService({ messageData: msgData as any });

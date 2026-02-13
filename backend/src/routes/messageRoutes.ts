@@ -46,6 +46,21 @@ const upload = multer(uploadConfig);
  *           type: integer
  *         contactId:
  *           type: integer
+ *         isGroup:
+ *           type: boolean
+ *           description: Indica se mensagem pertence a grupo
+ *         groupJid:
+ *           type: string
+ *           description: JID do grupo (ex. 1203630...@g.us)
+ *         participantJid:
+ *           type: string
+ *           description: Remetente no grupo
+ *         participantName:
+ *           type: string
+ *           description: Nome resolvido do remetente no grupo
+ *         waMessageId:
+ *           type: string
+ *           description: ID da mensagem no provedor WhatsApp
  *         createdAt:
  *           type: string
  *           format: date-time

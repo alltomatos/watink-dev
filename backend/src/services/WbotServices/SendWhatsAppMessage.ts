@@ -32,8 +32,11 @@ const SendWhatsAppMessage = async ({
     // Sanitize number to ensure only digits
     const contactNumber = ticket.contact.number.replace(/\D/g, "");
 
+    const groupJid = ticket.isGroup ? `${contactNumber}@g.us` : null;
+
     const messageData = {
       id: GenerateWAMessageId(),
+      waMessageId: null,
       ticketId: ticket.id,
       contactId: undefined,
       body: formattedBody,
@@ -43,6 +46,10 @@ const SendWhatsAppMessage = async ({
       quotedMsgId: quotedMsg?.id,
       ack: 0, // Pending
       timestamp: new Date().getTime(),
+      isGroup: !!ticket.isGroup,
+      groupJid,
+      participantJid: null,
+      participantName: null,
       tenantId: ticket.tenantId
     };
 

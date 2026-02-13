@@ -62,6 +62,22 @@ class Message extends Model<Message> {
   @Column(DataType.STRING)
   participant: string;
 
+  @Default(false)
+  @Column
+  isGroup: boolean;
+
+  @Column(DataType.STRING)
+  groupJid: string;
+
+  @Column(DataType.STRING)
+  participantJid: string;
+
+  @Column(DataType.STRING)
+  participantName: string;
+
+  @Column(DataType.STRING)
+  waMessageId: string;
+
   @CreatedAt
   @Column(DataType.DATE(6))
   createdAt: Date;

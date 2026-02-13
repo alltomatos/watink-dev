@@ -41,6 +41,7 @@ import saasRoutes from "./saasRoutes";
 
 import mobileRoutes from "./mobileRoutes";
 import tagRoutes from "./tagRoutes";
+import waGroupRoutes from "./whatsAppGroupRoutes";
 
 const routes = Router();
 
@@ -82,6 +83,7 @@ routes.use(webchatRoutes);
 routes.use(stepRoutes);
 routes.use(saasRoutes);
 routes.use(tagRoutes);
+routes.use(waGroupRoutes);
 routes.use("/users", userRoutes);
 
 export default routes;

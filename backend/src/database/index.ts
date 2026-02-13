@@ -41,6 +41,8 @@ import GroupPermission from "../models/GroupPermission";
 import Step from "../models/Step";
 import EmailTemplate from "../models/EmailTemplate";
 import ContactAudit from "../models/ContactAudit";
+import WhatsAppGroup from "../models/WhatsAppGroup";
+import WhatsAppGroupParticipant from "../models/WhatsAppGroupParticipant";
 
 
 // eslint-disable-next-line
@@ -91,6 +93,8 @@ const models = [
   Step,
   EmailTemplate,
   ContactAudit,
+  WhatsAppGroup,
+  WhatsAppGroupParticipant,
 ];
 
 sequelize.addModels(models);
