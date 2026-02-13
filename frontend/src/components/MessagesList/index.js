@@ -399,6 +399,9 @@ const useStyles = makeStyles((theme) => ({
   },
   waBubbleSpacingGroup: {
     marginTop: "10px !important",
+  },
+  waBubbleWithReaction: {
+    marginBottom: "16px !important",
   }
 }));
 
@@ -1195,6 +1198,7 @@ const MessagesList = ({ ticketId, isGroup, isWebchat }) => {
                     "wa-bubble-left-tail": appTheme === "whatsapp" && showGroupInfo,
                     [classes.waBubbleSpacing]: appTheme === "whatsapp",
                     [classes.waBubbleSpacingGroup]: appTheme === "whatsapp" && showGroupInfo,
+                    [classes.waBubbleWithReaction]: appTheme === "whatsapp" && message?.reactions?.length > 0,
                   })}
                   style={{
                     maxWidth: (message.mediaUrl || message.mediaType === "image" || message.mediaType === "video" || message.mediaType === "location") ? 332 : 600,
@@ -1242,6 +1246,7 @@ const MessagesList = ({ ticketId, isGroup, isWebchat }) => {
                   "wa-bubble-right-tail": appTheme === "whatsapp" && showGroupInfo,
                   [classes.waBubbleSpacing]: appTheme === "whatsapp",
                   [classes.waBubbleSpacingGroup]: appTheme === "whatsapp" && showGroupInfo,
+                  [classes.waBubbleWithReaction]: appTheme === "whatsapp" && message?.reactions?.length > 0,
                 })}
                   style={{ 
                   maxWidth: (message.mediaUrl || message.mediaType === "image" || message.mediaType === "video" || message.mediaType === "location") ? 332 : 600,
