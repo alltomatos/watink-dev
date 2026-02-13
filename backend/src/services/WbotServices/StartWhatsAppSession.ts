@@ -78,7 +78,7 @@ export const StartWhatsAppSession = async (
       }
       logger.info(`StartWhatsAppSession: PAPI settings loaded. URL provided: ${!!papiUrl}, Key provided: ${!!papiKey}`);
     } else {
-      logger.warn(`StartWhatsAppSession: PAPI engine selected but 'engine-papi' plugin not found in DB.`);
+      logger.info(`StartWhatsAppSession: Engine '${whatsapp.engineType}' selected; skipping PAPI plugin checks.`);
     }
 
     // [NEW] Auto-configure Webhook URL based on Frontend/App Domain
