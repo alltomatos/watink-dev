@@ -9,7 +9,32 @@ const settingRoutes = Router();
 // Configure multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() });
 
+/**
+ * @swagger
+ * /settings:
+ *   get:
+ *     summary: Lista configurações do tenant
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de configurações
+ *       401:
+ *         description: Não autenticado
+ */
 settingRoutes.get("/settings", isAuth, checkPermission("settings:read"), SettingController.index);
+
+/**
+ * @swagger
+ * /public-settings:
+ *   get:
+ *     summary: Lista configurações públicas
+ *     tags: [Settings]
+ *     responses:
+ *       200:
+ *         description: Lista de configurações públicas
+ */
 settingRoutes.get("/public-settings", SettingController.getPublicSettings); // [NEW] Public route
 
 // routes.get("/settings/:settingKey", isAuth, SettingsController.show);

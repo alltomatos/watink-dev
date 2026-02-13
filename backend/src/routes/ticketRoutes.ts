@@ -6,8 +6,20 @@ import * as TicketController from "../controllers/TicketController";
 
 const ticketRoutes = express.Router();
 
-// ... (Swagger docs omitted for brevity)
-
+/**
+ * @swagger
+ * /tickets:
+ *   get:
+ *     summary: Lista tickets
+ *     tags: [Tickets]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista paginada de tickets
+ *       401:
+ *         description: Não autenticado
+ */
 ticketRoutes.get("/tickets", isAuth, TicketController.index);
 
 ticketRoutes.get("/tickets/:ticketId", isAuth, TicketController.show);
