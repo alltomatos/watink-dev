@@ -36,27 +36,130 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SessionManager = void 0;
+exports.SessionManager = exports.classifyDisconnect = void 0;
 const logger_1 = require("./logger");
 const uuid_1 = require("uuid");
 const whaileys_1 = __importStar(require("whaileys"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
+const ioredis_1 = __importDefault(require("ioredis"));
+const useRedisAuthState_1 = require("./helpers/useRedisAuthState");
+const classifyDisconnect = (args) => {
+    const { statusCode, usePairingCode, registered } = args;
+    const isLoggedOut = statusCode === whaileys_1.DisconnectReason.loggedOut;
+    const isForbidden = statusCode === whaileys_1.DisconnectReason.forbidden;
+    const isBadSession = statusCode === whaileys_1.DisconnectReason.badSession;
+    const isPairingFlow401Retryable = !!usePairingCode && !registered && isLoggedOut;
+    const isNonRecoverable = isForbidden ||
+        isBadSession ||
+        (isLoggedOut && !isPairingFlow401Retryable);
+    return {
+        isLoggedOut,
+        isForbidden,
+        isBadSession,
+        isPairingFlow401Retryable,
+        isNonRecoverable,
+        shouldReconnect: !isNonRecoverable
+    };
+};
+exports.classifyDisconnect = classifyDisconnect;
 class SessionManager {
+    isValidEnvelope(envelope) {
+        return !!envelope
+            && typeof envelope === "object"
+            && typeof envelope.id === "string"
+            && typeof envelope.type === "string"
+            && typeof envelope.timestamp === "number"
+            && (typeof envelope.tenantId === "string" || typeof envelope.tenantId === "number")
+            && Object.prototype.hasOwnProperty.call(envelope, "payload");
+    }
+    validateCommandPayload(type, payload) {
+        if (!payload || typeof payload !== "object")
+            return false;
+        switch (type) {
+            case "message.send.text":
+                return typeof payload.sessionId === "number"
+                    && typeof payload.to === "string"
+                    && typeof payload.body === "string";
+            case "message.send.media":
+                return typeof payload.sessionId === "number"
+                    && typeof payload.to === "string"
+                    && !!payload.media
+                    && typeof payload.media.mimetype === "string"
+                    && typeof payload.media.filename === "string"
+                    && typeof payload.media.data === "string";
+            case "session.start":
+            case "session.stop":
+            case "message.send.buttons":
+            case "message.send.list":
+            case "message.send.poll":
+            case "message.send.template":
+            case "message.send.interactive":
+            case "message.send.carousel":
+            case "contact.sync":
+            case "message.markAsRead":
+            case "contact.import":
+            case "history.sync":
+                return true;
+            default:
+                return false;
+        }
+    }
     constructor(rabbitmq) {
         this.sessions = new Map();
         this.retries = new Map();
         this.manuallyDisconnected = new Set();
+        this.recoverableCloseStreak = new Map();
         this.recentlySent = new Set();
         this.avatarCache = new Map();
+        this.lidCache = new Map();
         this.rabbitmq = rabbitmq;
         this.sessionsDir = path_1.default.resolve(__dirname, "..", ".sessions_auth");
         if (!fs_1.default.existsSync(this.sessionsDir)) {
             fs_1.default.mkdirSync(this.sessionsDir, { recursive: true });
         }
+        this.redis = new ioredis_1.default(process.env.REDIS_URL || "redis://localhost:6379");
+        this.redis.on("error", (err) => logger_1.logger.error("Redis Error:", err));
+        this.redis.on("connect", () => logger_1.logger.info("Connected to Redis"));
+    }
+    getDisconnectReason(statusCode, errorMessage) {
+        if (!statusCode)
+            return errorMessage || "unknown";
+        if (statusCode === whaileys_1.DisconnectReason.loggedOut)
+            return "logged_out";
+        if (statusCode === whaileys_1.DisconnectReason.forbidden)
+            return "forbidden";
+        if (statusCode === whaileys_1.DisconnectReason.badSession)
+            return "bad_session";
+        if (statusCode === 428)
+            return "precondition_required";
+        return errorMessage || `status_${statusCode}`;
+    }
+    getReconnectDelayMs(retryAttempt) {
+        const exp = Math.min(retryAttempt, 6); // cap exponential growth
+        const baseDelay = Math.min(5000 * Math.pow(2, Math.max(0, exp - 1)), 180000); // 5s..180s
+        const jitter = Math.floor(Math.random() * 1000);
+        return baseDelay + jitter;
     }
     async handleCommand(envelope) {
-        logger_1.logger.info(`Received command: ${envelope.type}`);
+        if (!this.isValidEnvelope(envelope)) {
+            logger_1.logger.error(`[ContractValidation] Invalid command envelope received: ${JSON.stringify(envelope)}`);
+            return;
+        }
+        if (!this.validateCommandPayload(envelope.type, envelope.payload)) {
+            logger_1.logger.error(`[ContractValidation] Invalid payload for command type=${envelope.type}`);
+            return;
+        }
+        logger_1.logger.info(`Received command: ${envelope.type} for tenant ${envelope.tenantId}`);
+        // Security Check: If session exists, verify tenant ownership
+        const sessionId = envelope.payload.sessionId;
+        if (sessionId) {
+            const existingSession = this.sessions.get(sessionId);
+            if (existingSession && String(existingSession.tenantId) !== String(envelope.tenantId)) {
+                logger_1.logger.error(`[Security] Tenant ${envelope.tenantId} attempted to access session ${sessionId} belonging to tenant ${existingSession.tenantId}`);
+                return;
+            }
+        }
         switch (envelope.type) {
             case "session.start":
                 await this.startSession(envelope.payload, envelope.tenantId);
@@ -65,28 +168,28 @@ class SessionManager {
                 await this.stopSession(envelope.payload.sessionId, envelope.tenantId);
                 break;
             case "message.send.text":
-                await this.sendText(envelope.payload);
+                await this.sendText(envelope.payload, envelope.tenantId);
                 break;
             case "message.send.media":
                 await this.sendMedia(envelope.payload, envelope.tenantId);
                 break;
             case "message.send.buttons":
-                await this.sendButtons(envelope.payload);
+                await this.sendButtons(envelope.payload, envelope.tenantId);
                 break;
             case "message.send.list":
-                await this.sendList(envelope.payload);
+                await this.sendList(envelope.payload, envelope.tenantId);
                 break;
             case "message.send.poll":
-                await this.sendPoll(envelope.payload);
+                await this.sendPoll(envelope.payload, envelope.tenantId);
                 break;
             case "message.send.template":
-                await this.sendTemplate(envelope.payload);
+                await this.sendTemplate(envelope.payload, envelope.tenantId);
                 break;
             case "message.send.interactive":
-                await this.sendInteractive(envelope.payload);
+                await this.sendInteractive(envelope.payload, envelope.tenantId);
                 break;
             case "message.send.carousel":
-                await this.sendCarousel(envelope.payload);
+                await this.sendCarousel(envelope.payload, envelope.tenantId);
                 break;
             case "contact.sync":
                 await this.syncContact(envelope.payload, envelope.tenantId);
@@ -205,7 +308,7 @@ class SessionManager {
                     pushName: pushName
                 }
             };
-            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
+            await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "contact.update"), updateEvent);
         }
         catch (error) {
             logger_1.logger.error(`Error syncing contact ${payload.number}:`, error);
@@ -219,7 +322,13 @@ class SessionManager {
             // Mark as manually disconnected to prevent auto-reconnect
             this.manuallyDisconnected.add(sessionId);
             if (session) {
-                await session.socket.end(undefined);
+                // Force close connection
+                try {
+                    session.socket.end(undefined);
+                    session.socket.ws.close(); // Ensure underlying WS is closed
+                    session.socket.ev.removeAllListeners("connection.update"); // Prevent further events
+                }
+                catch (e) { }
                 this.sessions.delete(sessionId);
             }
             // Cleanup auth files is critical to ensure clean state
@@ -238,11 +347,12 @@ class SessionManager {
                 status: "DISCONNECTED"
             }
         };
-        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId}.session.status`, statusEvent);
+        await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", sessionId, "session.status"), statusEvent);
     }
     async startSession(payload, tenantId) {
-        logger_1.logger.info(`Starting session ${payload.sessionId}`);
+        logger_1.logger.info(`[SessionManager] startSession called for ${payload.sessionId} (Instance: ${payload.sessionInstanceId})`);
         try {
+            logger_1.logger.info(`[SessionManager] Checking existing sessions...`);
             if (this.sessions.has(payload.sessionId) && !payload.force) {
                 logger_1.logger.info(`Session ${payload.sessionId} already exists`);
                 const session = this.sessions.get(payload.sessionId);
@@ -258,7 +368,7 @@ class SessionManager {
                         status: currentStatus
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "session.status"), statusEvent);
                 return;
             }
             // Notify backend that session is opening (only if we are actually starting a new one)
@@ -272,7 +382,7 @@ class SessionManager {
                     status: "OPENING"
                 }
             };
-            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, openingEvent);
+            await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "session.status"), openingEvent);
             // If force is true, we need to stop the existing session first if it exists
             if (this.sessions.has(payload.sessionId) && payload.force) {
                 logger_1.logger.info(`Forcing session start for ${payload.sessionId}, stopping existing session...`);
@@ -289,7 +399,10 @@ class SessionManager {
                 logger_1.logger.info(`Pairing code requested for session ${payload.sessionId}, cleaning up old auth files...`);
                 await this.cleanupSession(payload.sessionId);
             }
-            const { state, saveCreds } = await (0, whaileys_1.useMultiFileAuthState)(path_1.default.join(this.sessionsDir, `session-${payload.sessionId}`));
+            // [MODIFIED] Use Redis Auth State
+            logger_1.logger.info(`[SessionManager] Initializing Redis Auth State for ${payload.sessionId}`);
+            const { state, saveCreds } = await (0, useRedisAuthState_1.useRedisAuthState)(this.redis, payload.sessionId);
+            logger_1.logger.info(`[SessionManager] Redis Auth State initialized for ${payload.sessionId}`);
             const { version, isLatest } = await (0, whaileys_1.fetchLatestBaileysVersion)();
             logger_1.logger.info(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
             // Adjust browser config for pairing code to avoid 401 and "Unable to connect"
@@ -307,6 +420,39 @@ class SessionManager {
                 keepAliveIntervalMs: 30000,
                 retryRequestDelayMs: 2000,
                 generateHighQualityLinkPreview: true,
+                getMessage: async (key) => {
+                    if (!key.remoteJid || !key.id)
+                        return undefined;
+                    try {
+                        // Retrieve message from Redis
+                        // Pattern: wbot:msg:{jid}:{id}
+                        const data = await this.redis.get(`wbot:msg:${key.remoteJid}:${key.id}`);
+                        if (data) {
+                            return JSON.parse(data).message || undefined;
+                        }
+                    }
+                    catch (err) {
+                        logger_1.logger.error(`Error retrieving message from Redis for ${key.remoteJid}:${key.id}`, err);
+                    }
+                    return undefined;
+                }
+            });
+            // Save incoming messages to Redis for retry mechanism
+            sock.ev.on("messages.upsert", async ({ messages, type }) => {
+                if (type === "notify" || type === "append") {
+                    for (const msg of messages) {
+                        if (!msg.key.id || !msg.key.remoteJid)
+                            continue;
+                        try {
+                            const key = `wbot:msg:${msg.key.remoteJid}:${msg.key.id}`;
+                            // Save with 24h TTL (86400 seconds)
+                            await this.redis.set(key, JSON.stringify(msg), "EX", 86400);
+                        }
+                        catch (err) {
+                            logger_1.logger.error("Failed to save message to Redis", err);
+                        }
+                    }
+                }
             });
             // Salva o socket e o status inicial
             this.sessions.set(payload.sessionId, { socket: sock, status: "OPENING", tenantId });
@@ -344,7 +490,7 @@ class SessionManager {
                             }
                         };
                         logger_1.logger.info(`Publishing pairing code event for session ${payload.sessionId} code ${formattedCode}`);
-                        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.pairingcode`, pairingEvent);
+                        await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "session.pairingcode"), pairingEvent);
                         return; // Success, exit function
                     }
                     catch (error) {
@@ -399,7 +545,7 @@ class SessionManager {
                             attempt: 1 // Logic to track attempts could be added
                         }
                     };
-                    await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.qrcode`, qrEvent);
+                    await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "session.qrcode"), qrEvent);
                 }
                 else if (qr && payload.usePairingCode) {
                     logger_1.logger.info(`QR Code received for session ${payload.sessionId}, triggering pairing code flow...`);
@@ -410,31 +556,45 @@ class SessionManager {
                 }
                 if (connection === "close") {
                     const statusCode = lastDisconnect?.error?.output?.statusCode;
+                    const errorMessage = lastDisconnect?.error?.message || "";
+                    const disconnectReason = this.getDisconnectReason(statusCode, errorMessage);
                     const currentRetries = this.retries.get(payload.sessionId) || 0;
                     const wasManuallyDisconnected = this.manuallyDisconnected.has(payload.sessionId);
-                    // Status codes that should NOT trigger auto-reconnect
-                    const noRetryCodes = [
-                        whaileys_1.DisconnectReason.loggedOut, // 401 - User logged out
-                        whaileys_1.DisconnectReason.forbidden, // 403 - Banned
-                        whaileys_1.DisconnectReason.badSession // 500 - Auth file corrupted
-                    ];
-                    const shouldReconnect = statusCode === undefined || !noRetryCodes.includes(statusCode);
-                    logger_1.logger.warn(`Connection closed for session ${payload.sessionId}, statusCode: ${statusCode}, reconnecting: ${shouldReconnect}, manual: ${wasManuallyDisconnected}, attempt: ${currentRetries}`);
+                    const isSyncError = errorMessage.includes("Incomplete app state key sync");
+                    const isPreconditionRequired = statusCode === 428;
+                    const { isPairingFlow401Retryable, isNonRecoverable, shouldReconnect } = (0, exports.classifyDisconnect)({
+                        statusCode,
+                        usePairingCode: payload.usePairingCode,
+                        registered: sock.authState.creds.registered
+                    });
+                    logger_1.logger.warn(`[SessionLifecycle] connection.close session=${payload.sessionId} ` +
+                        `code=${statusCode} reason=${disconnectReason} manual=${wasManuallyDisconnected} ` +
+                        `retry=${currentRetries} keepAlive=${!!payload.keepAlive} recoverable=${shouldReconnect}`);
                     // Skip reconnection if manually disconnected
                     if (wasManuallyDisconnected) {
                         this.manuallyDisconnected.delete(payload.sessionId);
                         this.retries.delete(payload.sessionId);
                         this.sessions.delete(payload.sessionId);
+                        this.recoverableCloseStreak.delete(payload.sessionId);
                         logger_1.logger.info(`Session ${payload.sessionId} was manually disconnected, skipping reconnection.`);
                         return;
                     }
-                    // Cleanup auth on badSession to allow fresh start
-                    if (statusCode === whaileys_1.DisconnectReason.badSession) {
-                        logger_1.logger.warn(`Bad session detected for session ${payload.sessionId}, cleaning up auth files.`);
+                    // 428 / sync error can happen transiently; cleanup auth and retry with backoff.
+                    if (isPreconditionRequired || isSyncError) {
+                        const streak = (this.recoverableCloseStreak.get(payload.sessionId) || 0) + 1;
+                        this.recoverableCloseStreak.set(payload.sessionId, streak);
+                        logger_1.logger.warn(`[SessionLifecycle] recoverable auth inconsistency detected session=${payload.sessionId} ` +
+                            `reason=${isPreconditionRequired ? "428" : "sync_error"} streak=${streak}. Cleanup and retry.`);
+                        try {
+                            sock.end(undefined);
+                            sock.ws?.close();
+                            sock.ev.removeAllListeners("connection.update");
+                        }
+                        catch (e) { }
                         await this.cleanupSession(payload.sessionId);
                     }
                     // Special handling for Pairing Code flow: Treat 401 as retryable if using pairing code and not registered
-                    if (payload.usePairingCode && !sock.authState.creds.registered && statusCode === whaileys_1.DisconnectReason.loggedOut) {
+                    if (isPairingFlow401Retryable) {
                         logger_1.logger.warn(`401 Logged Out during Pairing Code flow for session ${payload.sessionId} - Cleaning up and Retrying`);
                         // ... (cleanup logic same as before) ...
                         try {
@@ -452,7 +612,9 @@ class SessionManager {
                         const maxRetries = payload.keepAlive ? 999999 : 10;
                         if (currentRetries < maxRetries) {
                             this.retries.set(payload.sessionId, currentRetries + 1);
-                            setTimeout(() => this.startSession(payload, tenantId), 2000);
+                            const delay = this.getReconnectDelayMs(currentRetries + 1);
+                            logger_1.logger.info(`[SessionLifecycle] pairing flow retry session=${payload.sessionId} in=${delay}ms attempt=${currentRetries + 1}/${payload.keepAlive ? "∞" : maxRetries}`);
+                            setTimeout(() => this.startSession(payload, tenantId), delay);
                             return;
                         }
                     }
@@ -461,33 +623,56 @@ class SessionManager {
                     if (shouldReconnect && currentRetries < maxRetries) {
                         this.retries.set(payload.sessionId, currentRetries + 1);
                         this.sessions.delete(payload.sessionId);
-                        // Calculate delay: Exponential backoff with cap
-                        // If keepAlive is true, we might want a capped delay to avoid waiting too long
-                        const delay = Math.min(3000 * (currentRetries + 1), 60000); // Max 60s
-                        logger_1.logger.info(`Session ${payload.sessionId} reconnecting in ${delay}ms... (Attempt ${currentRetries + 1}/${payload.keepAlive ? "∞" : maxRetries})`);
+                        const delay = this.getReconnectDelayMs(currentRetries + 1);
+                        logger_1.logger.info(`[SessionLifecycle] reconnect scheduled session=${payload.sessionId} in=${delay}ms ` +
+                            `attempt=${currentRetries + 1}/${payload.keepAlive ? "∞" : maxRetries} reason=${disconnectReason}`);
                         setTimeout(() => this.startSession(payload, tenantId), delay);
                     }
                     else {
                         // Max retries reached or permanent error
-                        logger_1.logger.error(`Session ${payload.sessionId} failed to connect after ${currentRetries} attempts or permanent error (code: ${statusCode}). KeepAlive: ${payload.keepAlive}`);
+                        logger_1.logger.error(`[SessionLifecycle] reconnect aborted session=${payload.sessionId} attempts=${currentRetries} ` +
+                            `code=${statusCode} reason=${disconnectReason} keepAlive=${!!payload.keepAlive}`);
                         this.retries.delete(payload.sessionId);
                         this.sessions.delete(payload.sessionId);
-                        const statusEvent = {
-                            id: (0, uuid_1.v4)(),
-                            timestamp: Date.now(),
-                            tenantId,
-                            type: "session.status",
-                            payload: {
-                                sessionId: payload.sessionId,
-                                status: "DISCONNECTED"
-                            }
-                        };
-                        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
+                        if (isNonRecoverable) {
+                            logger_1.logger.warn(`[SessionLifecycle] non-recoverable disconnect session=${payload.sessionId} ` +
+                                `reason=${disconnectReason}. Requiring fresh pairing (QR).`);
+                            // Ensure session is removed from memory
+                            this.sessions.delete(payload.sessionId);
+                            // Force full cleanup
+                            await this.cleanupSession(payload.sessionId);
+                            const statusEvent = {
+                                id: (0, uuid_1.v4)(),
+                                timestamp: Date.now(),
+                                tenantId,
+                                type: "session.status",
+                                payload: {
+                                    sessionId: payload.sessionId,
+                                    status: "SESSION_EXPIRED"
+                                }
+                            };
+                            await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "session.status"), statusEvent);
+                        }
+                        else {
+                            this.recoverableCloseStreak.delete(payload.sessionId);
+                            const statusEvent = {
+                                id: (0, uuid_1.v4)(),
+                                timestamp: Date.now(),
+                                tenantId,
+                                type: "session.status",
+                                payload: {
+                                    sessionId: payload.sessionId,
+                                    status: "DISCONNECTED"
+                                }
+                            };
+                            await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "session.status"), statusEvent);
+                        }
                     }
                 }
                 else if (connection === "open") {
                     logger_1.logger.info(`Session ${payload.sessionId} opened`);
                     this.retries.delete(payload.sessionId);
+                    this.recoverableCloseStreak.delete(payload.sessionId);
                     const session = this.sessions.get(payload.sessionId);
                     if (session)
                         session.status = "CONNECTED";
@@ -515,7 +700,7 @@ class SessionManager {
                             profilePicUrl
                         }
                     };
-                    await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
+                    await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "session.status"), statusEvent);
                     // [HYDRATION] Disabled per user instruction.
                     // Groups/Contacts should only be created/updated when a message arrives.
                     logger_1.logger.info(`[HYDRATION] Group hydration disabled for session ${payload.sessionId}`);
@@ -554,22 +739,24 @@ class SessionManager {
                         // Our UI: 0=Clock, 1=Sent, 2=Received, 3=Read, 4=Played, 5=Error
                         const baileystatus = update.update?.status || update.status;
                         let status = 0;
-                        if (baileystatus === 0) {
+                        // Ensure numeric comparison
+                        const bStatus = Number(baileystatus);
+                        if (bStatus === 0) {
                             status = 5; // Error
                         }
-                        else if (baileystatus === 1) {
+                        else if (bStatus === 1) {
                             status = 0; // Pending
                         }
-                        else if (baileystatus === 2) {
+                        else if (bStatus === 2) {
                             status = 1; // Sent (Server ACK)
                         }
-                        else if (baileystatus === 3) {
+                        else if (bStatus === 3) {
                             status = 2; // Received (Delivery ACK)
                         }
-                        else if (baileystatus === 4) {
+                        else if (bStatus === 4) {
                             status = 3; // Read
                         }
-                        else if (baileystatus === 5) {
+                        else if (bStatus === 5) {
                             status = 4; // Played
                         }
                         // Only emit if status changed to meaningful value
@@ -587,7 +774,7 @@ class SessionManager {
                                     ack: status
                                 }
                             };
-                            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+                            await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
                         }
                     }
                     else if (update.status) {
@@ -612,7 +799,7 @@ class SessionManager {
                                 ack: status
                             }
                         };
-                        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+                        await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
                     }
                 }
             });
@@ -633,7 +820,7 @@ class SessionManager {
                             timestamp: reaction.reaction.key?.timestamp || Date.now()
                         }
                     };
-                    await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.reaction`, reactionEvent);
+                    await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "message.reaction"), reactionEvent);
                 }
             });
             // Listen for Contacts Update (Profile Pics, etc)
@@ -662,7 +849,7 @@ class SessionManager {
                                 isGroup: jid.endsWith("@g.us")
                             }
                         };
-                        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
+                        await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "contact.update"), updateEvent);
                     }
                 }
             });
@@ -691,7 +878,7 @@ class SessionManager {
                             isGroup: true
                         }
                     };
-                    await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.contact.update`, updateEvent);
+                    await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "contact.update"), updateEvent);
                 }
             });
         }
@@ -707,27 +894,53 @@ class SessionManager {
                     status: "DISCONNECTED"
                 }
             };
-            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.session.status`, statusEvent);
+            await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "session.status"), statusEvent);
             this.sessions.delete(payload.sessionId);
         }
     }
     async cleanupSession(sessionId) {
-        const sessionPath = path_1.default.join(this.sessionsDir, `session-${sessionId}`);
-        logger_1.logger.info(`Attempting cleanup of session ${sessionId} at path: ${sessionPath}`);
-        if (fs_1.default.existsSync(sessionPath)) {
-            try {
-                fs_1.default.rmSync(sessionPath, { recursive: true, force: true });
-                logger_1.logger.info(`Successfully cleaned up session files for ${sessionId}`);
+        logger_1.logger.info(`Attempting cleanup of session ${sessionId} in Redis`);
+        try {
+            // Use SCAN for better performance and reliability than KEYS
+            const pattern = `wbot:auth:${sessionId}:*`;
+            let cursor = '0';
+            let keysToDelete = [];
+            // Safety limit to prevent infinite loops if something is wrong
+            let scanLoops = 0;
+            const MAX_SCAN_LOOPS = 1000;
+            do {
+                // Scan for keys
+                const result = await this.redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+                cursor = result[0];
+                const foundKeys = result[1];
+                if (foundKeys.length > 0) {
+                    keysToDelete.push(...foundKeys);
+                }
+                scanLoops++;
+            } while (cursor !== '0' && scanLoops < MAX_SCAN_LOOPS);
+            if (keysToDelete.length > 0) {
+                logger_1.logger.info(`Found ${keysToDelete.length} keys to delete for session ${sessionId}`);
+                // Delete in batches of 100 to avoid pipeline overflow if massive
+                const BATCH_SIZE = 100;
+                for (let i = 0; i < keysToDelete.length; i += BATCH_SIZE) {
+                    const batch = keysToDelete.slice(i, i + BATCH_SIZE);
+                    const pipeline = this.redis.pipeline();
+                    batch.forEach(key => pipeline.del(key));
+                    await pipeline.exec();
+                }
+                logger_1.logger.info(`Successfully cleaned up ${keysToDelete.length} keys for session ${sessionId}`);
             }
-            catch (err) {
-                logger_1.logger.error(`Error cleaning up session ${sessionId}:`, err);
+            else {
+                logger_1.logger.info(`No Redis keys found for session ${sessionId}`);
             }
+            // Double check specifically for creds key as it's critical
+            await this.redis.del(`wbot:auth:${sessionId}:creds`);
         }
-        else {
-            logger_1.logger.info(`No existing session files to cleanup for session ${sessionId}`);
+        catch (err) {
+            logger_1.logger.error(`Error cleaning up session ${sessionId}:`, err);
         }
     }
-    async validateAndCorrectJid(session, jid, lid, tenantId) {
+    async validateAndCorrectJid(session, jid, lid, tenantId, sessionId) {
         if (jid.endsWith("@g.us"))
             return jid;
         try {
@@ -750,7 +963,7 @@ class SessionManager {
                                 number: correctJid.split("@")[0]
                             }
                         };
-                        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${tenantId}.contact.update`, updateEvent);
+                        await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", sessionId ?? -1, "contact.update"), updateEvent);
                     }
                     return correctJid;
                 }
@@ -772,8 +985,22 @@ class SessionManager {
     generateWAMessageId() {
         return "3EB0" + Math.random().toString(36).slice(2).toUpperCase() + Math.random().toString(36).slice(2).toUpperCase().substring(0, 12);
     }
+    createQuoted(options) {
+        if (!options)
+            return undefined;
+        if (options.quoted) {
+            return {
+                key: options.quoted.key,
+                message: options.quoted.message
+            };
+        }
+        if (options.quotedMsgId) {
+            return { key: { id: options.quotedMsgId } };
+        }
+        return undefined;
+    }
     // Re-writing the entire method to better handle try-catch and ID availability
-    async sendText(payload) {
+    async sendText(payload, tenantId) {
         const session = this.sessions.get(payload.sessionId);
         if (!session) {
             // If session not found, try to emit error if we have messageId
@@ -781,7 +1008,7 @@ class SessionManager {
                 const ackEvent = {
                     id: (0, uuid_1.v4)(),
                     timestamp: Date.now(),
-                    tenantId: "1", // Fallback if session missing
+                    tenantId,
                     type: "message.ack",
                     payload: {
                         sessionId: payload.sessionId,
@@ -789,23 +1016,25 @@ class SessionManager {
                         ack: 5 // Error - Session not found
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
             logger_1.logger.error(`Session ${payload.sessionId} not found for sending message`);
             return;
         }
         try {
-            const jid = await this.validateAndCorrectJid(session, payload.to, payload.lid, session.tenantId);
+            const jid = await this.validateAndCorrectJid(session, payload.to, payload.lid, session.tenantId, payload.sessionId);
             logger_1.logger.info(`[sendText] Sending text to ${jid}: ${payload.body} (Ref Message ID: ${payload.messageId})`);
             const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0"))
                 ? payload.messageId
                 : this.generateWAMessageId();
             this.recentlySent.add(waMsgId);
             setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
+            const quotedMsg = this.createQuoted(payload.options);
             const msg = await session.socket.sendMessage(jid, {
-                text: payload.body
+                text: payload.body,
+                mentions: payload.mentions // Pass mentions array
             }, {
-                quoted: payload.options?.quotedMsgId ? { key: { id: payload.options.quotedMsgId } } : undefined,
+                quoted: quotedMsg,
                 messageId: waMsgId
             });
             if (msg) {
@@ -834,7 +1063,7 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(session.tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
                 logger_1.logger.info(`[sendText] Emitted ACK 5 (Error) for Message ID: ${payload.messageId}`);
             }
             else {
@@ -849,6 +1078,54 @@ class SessionManager {
             return;
         }
         logger_1.logger.info(`[handleMessage] Processing message ${msg.key.id} fromMe: ${msg.key.fromMe}`);
+        // --- Technical Message Handling (Revoke/Reactions) ---
+        // 1. Handle Protocol Messages (Revoke/Delete)
+        if (msg.message.protocolMessage) {
+            const protocolMsg = msg.message.protocolMessage;
+            // 0 = REVOKE (Delete for everyone)
+            if (protocolMsg.type === 0 && protocolMsg.key) {
+                logger_1.logger.info(`[handleMessage] Detected Revoke for msg ${protocolMsg.key.id} by ${msg.key.participant || msg.key.remoteJid}`);
+                const revokeEvent = {
+                    id: (0, uuid_1.v4)(),
+                    timestamp: Date.now(),
+                    tenantId,
+                    type: "message.revoke",
+                    payload: {
+                        sessionId,
+                        messageId: protocolMsg.key.id || "",
+                        participant: msg.key.participant || msg.key.remoteJid || ""
+                    }
+                };
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", sessionId, "message.revoke"), revokeEvent);
+                return; // Stop processing to prevent empty bubble
+            }
+            else {
+                logger_1.logger.info(`[handleMessage] Ignored other ProtocolMsg type: ${protocolMsg.type}`);
+                return; // Ignore other technical types
+            }
+        }
+        // 2. Handle Reaction Messages (via Upsert)
+        if (msg.message.reactionMessage) {
+            const reactionMsg = msg.message.reactionMessage;
+            logger_1.logger.info(`[handleMessage] Detected Reaction via Upsert for ${reactionMsg.key?.id}`);
+            if (reactionMsg.key?.id) {
+                const reactionEvent = {
+                    id: (0, uuid_1.v4)(),
+                    timestamp: Date.now(),
+                    tenantId,
+                    type: "message.reaction",
+                    payload: {
+                        sessionId,
+                        messageId: reactionMsg.key.id,
+                        reaction: reactionMsg.text || "",
+                        sender: msg.key.participant || msg.key.remoteJid || "",
+                        timestamp: reactionMsg.senderTimestampMs || Date.now()
+                    }
+                };
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", sessionId, "message.reaction"), reactionEvent);
+            }
+            return; // Stop processing to prevent empty bubble
+        }
         // Check for media types
         const hasMedia = !!(msg.message.imageMessage ||
             msg.message.videoMessage ||
@@ -902,7 +1179,7 @@ class SessionManager {
             body = msg.message.listResponseMessage.title || "";
             msgType = "list_response";
         }
-        // 3.1 Interactive Response (Native Flow / Carousel)
+        // 3.1 Interactive Response (Native Flow / Carousel - Received Response)
         else if (msg.message.interactiveResponseMessage) {
             const interactiveResp = msg.message.interactiveResponseMessage;
             if (interactiveResp.nativeFlowResponseMessage) {
@@ -911,6 +1188,16 @@ class SessionManager {
             }
             body = interactiveResp.body?.text || "";
             msgType = "interactive_response";
+        }
+        // 3.2 Interactive Message (Native Flow - Sent Message)
+        else if (msg.message.interactiveMessage) {
+            body = msg.message.interactiveMessage.body?.text || "";
+            msgType = "interactive";
+        }
+        // 3.3 ViewOnce with Interactive (Carousel)
+        else if (msg.message.viewOnceMessage?.message?.interactiveMessage) {
+            body = msg.message.viewOnceMessage.message.interactiveMessage.body?.text || "";
+            msgType = "interactive";
         }
         // 4. Poll Response
         else if (msg.message.pollUpdateMessage) {
@@ -942,10 +1229,19 @@ class SessionManager {
             try {
                 // If it's a standard JID (PN based), try to fetch the LID which is permanent
                 // This answers the requirement: "todo contato tem LID mas podem haver casos de contatos antigos... sistema deve buscar o LID"
-                const results = await sock.onWhatsApp(senderJid);
-                const result = results?.[0];
-                if (result && result.lid) {
-                    senderLid = result.lid;
+                // 1. Check Cache
+                const cachedLid = this.lidCache.get(senderJid);
+                if (cachedLid) {
+                    senderLid = cachedLid;
+                }
+                else {
+                    // 2. Fetch from API
+                    const results = await sock.onWhatsApp(senderJid);
+                    const result = results?.[0];
+                    if (result && result.lid) {
+                        senderLid = result.lid;
+                        this.lidCache.set(senderJid, senderLid);
+                    }
                 }
             }
             catch (err) {
@@ -954,6 +1250,11 @@ class SessionManager {
         }
         else if (senderJid && senderJid.includes("@lid")) {
             senderLid = senderJid;
+        }
+        // Determine participant (especially for groups)
+        let participant = msg.key.participant || "";
+        if (msg.key.fromMe && !participant && sock.user?.id) {
+            participant = (0, whaileys_1.jidNormalizedUser)(sock.user.id);
         }
         // --- Quoted Message & Link Preview Extraction ---
         let quotedMsgId = undefined;
@@ -1025,7 +1326,9 @@ class SessionManager {
                     fromMe: msg.key.fromMe || false,
                     isGroup: msg.key.remoteJid?.endsWith("@g.us") || false,
                     type: msgType,
-                    timestamp: typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : 0,
+                    timestamp: typeof msg.messageTimestamp === "number"
+                        ? msg.messageTimestamp
+                        : msg.messageTimestamp?.low || msg.messageTimestamp?.toNumber?.() || Math.floor(Date.now() / 1000),
                     hasMedia: hasMedia,
                     mediaData,
                     mimetype,
@@ -1033,7 +1336,7 @@ class SessionManager {
                     selectedRowId,
                     pollVotes,
                     pushName: msg.pushName || "",
-                    participant: msg.key.participant || "",
+                    participant: participant,
                     profilePicUrl,
                     senderLid,
                     originalId: originalMessageId,
@@ -1044,7 +1347,7 @@ class SessionManager {
             }
         };
         logger_1.logger.info(`[handleMessage] Publishing received event for ${msg.key.id} (fromMe: ${msgEvent.payload.message.fromMe})`);
-        await this.rabbitmq.publishEvent(`wbot.${tenantId}.${sessionId}.message.received`, msgEvent);
+        await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", sessionId, "message.received"), msgEvent);
     }
     async sendMedia(payload, tenantId) {
         const session = this.sessions.get(payload.sessionId);
@@ -1061,13 +1364,13 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
             logger_1.logger.error(`Session ${payload.sessionId} not found for sending media`);
             return;
         }
         try {
-            const jid = await this.validateAndCorrectJid(session, payload.to, payload.lid, session.tenantId);
+            const jid = await this.validateAndCorrectJid(session, payload.to, payload.lid, session.tenantId, payload.sessionId);
             logger_1.logger.info(`Sending media to ${jid}: ${payload.media.filename}`);
             // Convert base64 to buffer
             const mediaBuffer = Buffer.from(payload.media.data, 'base64');
@@ -1110,7 +1413,8 @@ class SessionManager {
                 : this.generateWAMessageId();
             this.recentlySent.add(waMsgId);
             setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
-            const msg = await session.socket.sendMessage(jid, content, { messageId: waMsgId });
+            const quotedMsg = this.createQuoted(payload.options);
+            const msg = await session.socket.sendMessage(jid, content, { quoted: quotedMsg, messageId: waMsgId });
             if (msg) {
                 await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
             }
@@ -1129,7 +1433,7 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(session.tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
         }
     }
@@ -1202,7 +1506,7 @@ class SessionManager {
                     message: "Busca de histórico solicitada. Mensagens serão sincronizadas conforme disponíveis."
                 }
             };
-            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.history.status`, statusEvent);
+            await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "history.status"), statusEvent);
         }
         catch (error) {
             logger_1.logger.error(`[HistorySync] Error syncing history for ${payload.contactNumber}:`, error);
@@ -1218,17 +1522,17 @@ class SessionManager {
                     message: `Erro ao buscar histórico: ${error}`
                 }
             };
-            await this.rabbitmq.publishEvent(`wbot.${tenantId}.${payload.sessionId}.history.status`, errorEvent);
+            await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "history.status"), errorEvent);
         }
     }
-    async sendButtons(payload) {
+    async sendButtons(payload, tenantId) {
         const session = this.sessions.get(payload.sessionId);
         if (!session) {
             if (payload.messageId) {
                 const ackEvent = {
                     id: (0, uuid_1.v4)(),
                     timestamp: Date.now(),
-                    tenantId: "1",
+                    tenantId,
                     type: "message.ack",
                     payload: {
                         sessionId: payload.sessionId,
@@ -1236,13 +1540,13 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
             logger_1.logger.error(`Session ${payload.sessionId} not found for sending buttons`);
             return;
         }
         try {
-            const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+            const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId, payload.sessionId);
             const buttons = payload.buttons.map(btn => ({
                 buttonId: btn.buttonId,
                 buttonText: { displayText: btn.buttonText },
@@ -1252,7 +1556,8 @@ class SessionManager {
                 text: payload.text,
                 footer: payload.footer,
                 buttons: buttons,
-                headerType: 1
+                headerType: 1,
+                mentions: payload.mentions
             };
             if (payload.imageUrl) {
                 buttonMessage.image = { url: payload.imageUrl };
@@ -1263,7 +1568,8 @@ class SessionManager {
                 : this.generateWAMessageId();
             this.recentlySent.add(waMsgId);
             setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
-            const msg = await session.socket.sendMessage(jid, buttonMessage, { messageId: waMsgId });
+            const quotedMsg = this.createQuoted(payload.options);
+            const msg = await session.socket.sendMessage(jid, buttonMessage, { quoted: quotedMsg, messageId: waMsgId });
             if (msg) {
                 await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
             }
@@ -1282,18 +1588,18 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(session.tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
         }
     }
-    async sendList(payload) {
+    async sendList(payload, tenantId) {
         const session = this.sessions.get(payload.sessionId);
         if (!session) {
             if (payload.messageId) {
                 const ackEvent = {
                     id: (0, uuid_1.v4)(),
                     timestamp: Date.now(),
-                    tenantId: "1",
+                    tenantId,
                     type: "message.ack",
                     payload: {
                         sessionId: payload.sessionId,
@@ -1301,13 +1607,13 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
             logger_1.logger.error(`Session ${payload.sessionId} not found for sending list`);
             return;
         }
         try {
-            const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+            const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId, payload.sessionId);
             const listMessage = {
                 text: payload.text,
                 footer: payload.footer,
@@ -1320,7 +1626,8 @@ class SessionManager {
                 : this.generateWAMessageId();
             this.recentlySent.add(waMsgId);
             setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
-            const msg = await session.socket.sendMessage(jid, listMessage, { messageId: waMsgId });
+            const quotedMsg = this.createQuoted(payload.options);
+            const msg = await session.socket.sendMessage(jid, listMessage, { quoted: quotedMsg, messageId: waMsgId });
             if (msg) {
                 await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
             }
@@ -1339,18 +1646,18 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(session.tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
         }
     }
-    async sendPoll(payload) {
+    async sendPoll(payload, tenantId) {
         const session = this.sessions.get(payload.sessionId);
         if (!session) {
             if (payload.messageId) {
                 const ackEvent = {
                     id: (0, uuid_1.v4)(),
                     timestamp: Date.now(),
-                    tenantId: "1",
+                    tenantId,
                     type: "message.ack",
                     payload: {
                         sessionId: payload.sessionId,
@@ -1358,25 +1665,26 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
             logger_1.logger.error(`Session ${payload.sessionId} not found for sending poll`);
             return;
         }
         try {
-            const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+            const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId, payload.sessionId);
             const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0"))
                 ? payload.messageId
                 : this.generateWAMessageId();
             this.recentlySent.add(waMsgId);
             setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
+            const quotedMsg = this.createQuoted(payload.sendOptions);
             const msg = await session.socket.sendMessage(jid, {
                 poll: {
                     name: payload.name,
                     values: payload.options,
                     selectableCount: payload.selectableCount || 1
                 }
-            }, { messageId: waMsgId });
+            }, { quoted: quotedMsg, messageId: waMsgId });
             if (msg) {
                 await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
             }
@@ -1395,18 +1703,18 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(session.tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
         }
     }
-    async sendTemplate(payload) {
+    async sendTemplate(payload, tenantId) {
         const session = this.sessions.get(payload.sessionId);
         if (!session) {
             if (payload.messageId) {
                 const ackEvent = {
                     id: (0, uuid_1.v4)(),
                     timestamp: Date.now(),
-                    tenantId: "1",
+                    tenantId,
                     type: "message.ack",
                     payload: {
                         sessionId: payload.sessionId,
@@ -1414,13 +1722,13 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
             logger_1.logger.error(`Session ${payload.sessionId} not found for sending template`);
             return;
         }
         try {
-            const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+            const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId, payload.sessionId);
             const templateButtons = payload.buttons.map((btn, index) => {
                 const base = { index: index + 1 };
                 if (btn.type === 'url') {
@@ -1447,7 +1755,8 @@ class SessionManager {
                 : this.generateWAMessageId();
             this.recentlySent.add(waMsgId);
             setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
-            const msg = await session.socket.sendMessage(jid, message, { messageId: waMsgId });
+            const quotedMsg = this.createQuoted(payload.options);
+            const msg = await session.socket.sendMessage(jid, message, { quoted: quotedMsg, messageId: waMsgId });
             if (msg) {
                 await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
             }
@@ -1466,18 +1775,18 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(session.tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
         }
     }
-    async sendInteractive(payload) {
+    async sendInteractive(payload, tenantId) {
         const session = this.sessions.get(payload.sessionId);
         if (!session) {
             if (payload.messageId) {
                 const ackEvent = {
                     id: (0, uuid_1.v4)(),
                     timestamp: Date.now(),
-                    tenantId: "1",
+                    tenantId,
                     type: "message.ack",
                     payload: {
                         sessionId: payload.sessionId,
@@ -1485,13 +1794,14 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
             logger_1.logger.error(`Session ${payload.sessionId} not found for sending interactive message`);
             return;
         }
         try {
-            const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+            const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId, payload.sessionId);
+            // Native Flow implementation for Interactive Message (Robust for URL buttons)
             const buttons = payload.buttons.map((btn) => {
                 if (btn.type === 'url') {
                     return {
@@ -1508,34 +1818,52 @@ class SessionManager {
                         name: "quick_reply",
                         buttonParamsJson: JSON.stringify({
                             display_text: btn.text,
-                            id: btn.buttonId
+                            id: btn.buttonId || `btn_${Math.random().toString(36).substring(7)}`
                         })
                     };
                 }
             });
             const interactiveMessage = {
-                interactiveMessage: {
-                    body: { text: payload.text },
-                    footer: { text: payload.footer },
-                    header: payload.mediaUrl ? {
-                        title: "",
-                        subtitle: "",
-                        hasMediaAttachment: true,
-                        imageMessage: { url: payload.mediaUrl } // Simplified
-                    } : { hasMediaAttachment: false },
-                    nativeFlowMessage: {
-                        buttons: buttons
+                viewOnceMessage: {
+                    message: {
+                        interactiveMessage: {
+                            body: { text: payload.text },
+                            footer: { text: payload.footer },
+                            header: payload.mediaUrl ? {
+                                title: "",
+                                subtitle: "",
+                                hasMediaAttachment: true,
+                                imageMessage: { url: payload.mediaUrl }
+                            } : { hasMediaAttachment: false },
+                            nativeFlowMessage: {
+                                buttons: buttons,
+                                messageParamsJson: "",
+                                messageVersion: 1
+                            }
+                        }
                     }
                 }
             };
-            // Relay message is often safer for complex interactive messages
             const waMsgId = (payload.messageId && payload.messageId.startsWith("3EB0"))
                 ? payload.messageId
                 : this.generateWAMessageId();
             this.recentlySent.add(waMsgId);
             setTimeout(() => this.recentlySent.delete(waMsgId), 10000);
-            const msg = await session.socket.sendMessage(jid, interactiveMessage, { messageId: waMsgId });
+            const quotedMsg = this.createQuoted(payload.options);
+            const msg = await session.socket.sendMessage(jid, interactiveMessage, { quoted: quotedMsg, messageId: waMsgId });
             if (msg) {
+                if (!msg.message)
+                    msg.message = {};
+                // Ensure structure for correct parsing in handleMessage or frontend display
+                if (!msg.message.viewOnceMessage)
+                    msg.message.viewOnceMessage = { message: {} };
+                if (!msg.message.viewOnceMessage.message)
+                    msg.message.viewOnceMessage.message = {};
+                if (!msg.message.viewOnceMessage.message.interactiveMessage)
+                    msg.message.viewOnceMessage.message.interactiveMessage = {};
+                if (!msg.message.viewOnceMessage.message.interactiveMessage.body)
+                    msg.message.viewOnceMessage.message.interactiveMessage.body = {};
+                msg.message.viewOnceMessage.message.interactiveMessage.body.text = payload.text;
                 await this.handleMessage(msg, session.socket, payload.sessionId, session.tenantId, payload.messageId);
             }
         }
@@ -1553,18 +1881,18 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(session.tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
         }
     }
-    async sendCarousel(payload) {
+    async sendCarousel(payload, tenantId) {
         const session = this.sessions.get(payload.sessionId);
         if (!session) {
             if (payload.messageId) {
                 const ackEvent = {
                     id: (0, uuid_1.v4)(),
                     timestamp: Date.now(),
-                    tenantId: "1",
+                    tenantId,
                     type: "message.ack",
                     payload: {
                         sessionId: payload.sessionId,
@@ -1572,20 +1900,20 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.*.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
             logger_1.logger.error(`Session ${payload.sessionId} not found for sending carousel`);
             return;
         }
         try {
-            const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId);
+            const jid = await this.validateAndCorrectJid(session, payload.to, undefined, session.tenantId, payload.sessionId);
             const cards = await Promise.all(payload.cards.map(async (card) => {
                 const buttons = card.buttons.map(btn => {
                     if (btn.type === 'url') {
                         return {
                             name: "cta_url",
                             buttonParamsJson: JSON.stringify({
-                                display_text: btn.text,
+                                display_text: btn.displayText,
                                 url: btn.url,
                                 merchant_url: btn.url
                             })
@@ -1595,8 +1923,8 @@ class SessionManager {
                         return {
                             name: "quick_reply",
                             buttonParamsJson: JSON.stringify({
-                                display_text: btn.text,
-                                id: btn.buttonId
+                                display_text: btn.displayText,
+                                id: btn.id
                             })
                         };
                     }
@@ -1608,36 +1936,38 @@ class SessionManager {
                         buttons: buttons
                     }
                 };
-                if (card.headerUrl) {
+                if (card.header && card.header.imageUrl) {
                     // Prepare media for card header
-                    const media = await (0, whaileys_1.prepareWAMessageMedia)({ image: { url: card.headerUrl } }, { upload: session.socket.waUploadToServer });
+                    const media = await (0, whaileys_1.prepareWAMessageMedia)({ image: { url: card.header.imageUrl } }, { upload: session.socket.waUploadToServer });
                     cardObj.header = {
+                        title: card.header.title || "",
+                        subtitle: card.header.subtitle || "",
                         hasMediaAttachment: true,
                         ...media
                     };
                 }
                 else {
-                    cardObj.header = { hasMediaAttachment: false };
+                    cardObj.header = {
+                        title: card.header?.title || "",
+                        subtitle: card.header?.subtitle || "",
+                        hasMediaAttachment: false
+                    };
                 }
                 return cardObj;
             }));
+            // UPDATED: Strictly match ichat-2 structure: No top-level body/footer/header for Carousel
             const messageContent = {
-                viewOnceMessage: {
-                    message: {
-                        interactiveMessage: {
-                            body: { text: payload.text },
-                            footer: { text: payload.footer || "" },
-                            header: { hasMediaAttachment: false },
-                            carouselMessage: {
-                                cards: cards,
-                                messageVersion: 1
-                            }
-                        }
+                interactiveMessage: {
+                    carouselMessage: {
+                        cards: cards,
+                        messageVersion: 1
                     }
                 }
             };
+            const quotedMsg = this.createQuoted(payload.options);
             const msg = (0, whaileys_1.generateWAMessageFromContent)(jid, messageContent, {
                 userJid: session.socket.user?.id || "",
+                quoted: quotedMsg
             });
             if (msg.key.id) {
                 this.recentlySent.add(msg.key.id);
@@ -1672,7 +2002,7 @@ class SessionManager {
                         ack: 5 // Error
                     }
                 };
-                await this.rabbitmq.publishEvent(`wbot.${session.tenantId}.${payload.sessionId}.message.ack`, ackEvent);
+                await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(session.tenantId, "whaileys", payload.sessionId, "message.ack"), ackEvent);
             }
         }
     }

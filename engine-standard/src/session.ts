@@ -31,6 +31,33 @@ interface WhaileysSession {
   tenantId: string | number;
 }
 
+export const classifyDisconnect = (args: {
+  statusCode?: number;
+  usePairingCode?: boolean;
+  registered?: boolean;
+}) => {
+  const { statusCode, usePairingCode, registered } = args;
+  const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+  const isForbidden = statusCode === DisconnectReason.forbidden;
+  const isBadSession = statusCode === DisconnectReason.badSession;
+
+  const isPairingFlow401Retryable = !!usePairingCode && !registered && isLoggedOut;
+
+  const isNonRecoverable =
+    isForbidden ||
+    isBadSession ||
+    (isLoggedOut && !isPairingFlow401Retryable);
+
+  return {
+    isLoggedOut,
+    isForbidden,
+    isBadSession,
+    isPairingFlow401Retryable,
+    isNonRecoverable,
+    shouldReconnect: !isNonRecoverable
+  };
+};
+
 class SessionManager {
   private isValidEnvelope(envelope: any): envelope is Envelope {
     return !!envelope
@@ -77,6 +104,7 @@ class SessionManager {
   private sessions: Map<number, WhaileysSession> = new Map();
   private retries: Map<number, number> = new Map();
   private manuallyDisconnected: Set<number> = new Set();
+  private recoverableCloseStreak: Map<number, number> = new Map();
   private recentlySent: Set<string> = new Set();
   private avatarCache: Map<string, string> = new Map();
   private lidCache: Map<string, string> = new Map();
@@ -93,6 +121,24 @@ class SessionManager {
     this.redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
     this.redis.on("error", (err) => logger.error("Redis Error:", err));
     this.redis.on("connect", () => logger.info("Connected to Redis"));
+  }
+
+  private getDisconnectReason(statusCode?: number, errorMessage?: string): string {
+    if (!statusCode) return errorMessage || "unknown";
+
+    if (statusCode === DisconnectReason.loggedOut) return "logged_out";
+    if (statusCode === DisconnectReason.forbidden) return "forbidden";
+    if (statusCode === DisconnectReason.badSession) return "bad_session";
+    if (statusCode === 428) return "precondition_required";
+
+    return errorMessage || `status_${statusCode}`;
+  }
+
+  private getReconnectDelayMs(retryAttempt: number): number {
+    const exp = Math.min(retryAttempt, 6); // cap exponential growth
+    const baseDelay = Math.min(5000 * Math.pow(2, Math.max(0, exp - 1)), 180000); // 5s..180s
+    const jitter = Math.floor(Math.random() * 1000);
+    return baseDelay + jitter;
   }
 
   async handleCommand(envelope: Envelope) {
@@ -117,6 +163,8 @@ class SessionManager {
         return;
       }
     }
+
+    switch (envelope.type) {
       case "session.start":
         await this.startSession(envelope.payload as StartSessionPayload, envelope.tenantId);
         break;
@@ -561,54 +609,56 @@ class SessionManager {
 
         if (connection === "close") {
           const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+          const errorMessage = (lastDisconnect?.error as Error)?.message || "";
+          const disconnectReason = this.getDisconnectReason(statusCode, errorMessage);
           const currentRetries = this.retries.get(payload.sessionId) || 0;
           const wasManuallyDisconnected = this.manuallyDisconnected.has(payload.sessionId);
+          const isSyncError = errorMessage.includes("Incomplete app state key sync");
+          const isPreconditionRequired = statusCode === 428;
+          const { isPairingFlow401Retryable, isNonRecoverable, shouldReconnect } = classifyDisconnect({
+            statusCode,
+            usePairingCode: payload.usePairingCode,
+            registered: sock.authState.creds.registered
+          });
 
-          // Status codes that should NOT trigger auto-reconnect
-          const noRetryCodes = [
-            DisconnectReason.loggedOut,      // 401 - User logged out
-            DisconnectReason.forbidden,      // 403 - Banned
-            DisconnectReason.badSession,     // 500 - Auth file corrupted
-            428                              // Precondition Required (often follows Sync Error)
-          ];
-
-          const shouldReconnect = statusCode === undefined || !noRetryCodes.includes(statusCode);
-
-          logger.warn(`Connection closed for session ${payload.sessionId}, statusCode: ${statusCode}, reconnecting: ${shouldReconnect}, manual: ${wasManuallyDisconnected}, attempt: ${currentRetries}`);
+          logger.warn(
+            `[SessionLifecycle] connection.close session=${payload.sessionId} ` +
+            `code=${statusCode} reason=${disconnectReason} manual=${wasManuallyDisconnected} ` +
+            `retry=${currentRetries} keepAlive=${!!payload.keepAlive} recoverable=${shouldReconnect}`
+          );
 
           // Skip reconnection if manually disconnected
           if (wasManuallyDisconnected) {
             this.manuallyDisconnected.delete(payload.sessionId);
             this.retries.delete(payload.sessionId);
             this.sessions.delete(payload.sessionId);
+            this.recoverableCloseStreak.delete(payload.sessionId);
             logger.info(`Session ${payload.sessionId} was manually disconnected, skipping reconnection.`);
             return;
           }
 
-          // Cleanup auth on badSession or Precondition Required to allow fresh start
-          if (statusCode === DisconnectReason.badSession || statusCode === 428) {
-            logger.warn(`Bad session/Precondition Required (${statusCode}) detected for session ${payload.sessionId}, cleaning up auth files.`);
+          // 428 / sync error can happen transiently; cleanup auth and retry with backoff.
+          if (isPreconditionRequired || isSyncError) {
+            const streak = (this.recoverableCloseStreak.get(payload.sessionId) || 0) + 1;
+            this.recoverableCloseStreak.set(payload.sessionId, streak);
+
+            logger.warn(
+              `[SessionLifecycle] recoverable auth inconsistency detected session=${payload.sessionId} ` +
+              `reason=${isPreconditionRequired ? "428" : "sync_error"} streak=${streak}. Cleanup and retry.`
+            );
+
             try {
-               // Force kill socket to avoid zombie loops
-               sock.end(undefined);
-               sock.ws?.close();
-               sock.ev.removeAllListeners("connection.update");
-            } catch (e) {}
-            
+              sock.end(undefined);
+              sock.ws?.close();
+              sock.ev.removeAllListeners("connection.update");
+            } catch (e) { }
+
             await this.cleanupSession(payload.sessionId);
-            
-            // For 428, we might want to try a fresh start after cleanup if it wasn't a logout
-            if (statusCode === 428 && currentRetries < 5) {
-                 logger.info(`Retrying fresh session start after 428 cleanup...`);
-                 this.retries.set(payload.sessionId, currentRetries + 1);
-                 setTimeout(() => this.startSession(payload, tenantId), 3000);
-                 return;
-            }
           }
 
 
           // Special handling for Pairing Code flow: Treat 401 as retryable if using pairing code and not registered
-          if (payload.usePairingCode && !sock.authState.creds.registered && statusCode === DisconnectReason.loggedOut) {
+          if (isPairingFlow401Retryable) {
             logger.warn(`401 Logged Out during Pairing Code flow for session ${payload.sessionId} - Cleaning up and Retrying`);
 
             // ... (cleanup logic same as before) ...
@@ -629,7 +679,9 @@ class SessionManager {
             const maxRetries = payload.keepAlive ? 999999 : 10;
             if (currentRetries < maxRetries) {
               this.retries.set(payload.sessionId, currentRetries + 1);
-              setTimeout(() => this.startSession(payload, tenantId), 2000);
+              const delay = this.getReconnectDelayMs(currentRetries + 1);
+              logger.info(`[SessionLifecycle] pairing flow retry session=${payload.sessionId} in=${delay}ms attempt=${currentRetries + 1}/${payload.keepAlive ? "∞" : maxRetries}`);
+              setTimeout(() => this.startSession(payload, tenantId), delay);
               return;
             }
           }
@@ -641,30 +693,32 @@ class SessionManager {
             this.retries.set(payload.sessionId, currentRetries + 1);
             this.sessions.delete(payload.sessionId);
 
-            // Calculate delay: Exponential backoff with cap
-            // If keepAlive is true, we might want a capped delay to avoid waiting too long
-            const delay = Math.min(3000 * (currentRetries + 1), 60000); // Max 60s
+            const delay = this.getReconnectDelayMs(currentRetries + 1);
 
-            logger.info(`Session ${payload.sessionId} reconnecting in ${delay}ms... (Attempt ${currentRetries + 1}/${payload.keepAlive ? "∞" : maxRetries})`);
+            logger.info(
+              `[SessionLifecycle] reconnect scheduled session=${payload.sessionId} in=${delay}ms ` +
+              `attempt=${currentRetries + 1}/${payload.keepAlive ? "∞" : maxRetries} reason=${disconnectReason}`
+            );
 
             setTimeout(() => this.startSession(payload, tenantId), delay);
           } else {
             // Max retries reached or permanent error
-            logger.error(`Session ${payload.sessionId} failed to connect after ${currentRetries} attempts or permanent error (code: ${statusCode}). KeepAlive: ${payload.keepAlive}`);
+            logger.error(
+              `[SessionLifecycle] reconnect aborted session=${payload.sessionId} attempts=${currentRetries} ` +
+              `code=${statusCode} reason=${disconnectReason} keepAlive=${!!payload.keepAlive}`
+            );
             this.retries.delete(payload.sessionId);
             this.sessions.delete(payload.sessionId);
 
-            // Check for critical sync error or 401 logged out
-            const isSyncError = lastDisconnect?.error?.message?.includes("Incomplete app state key sync");
-            const isLoggedOut = statusCode === DisconnectReason.loggedOut;
-            const isPreconditionRequired = statusCode === 428;
+            if (isNonRecoverable) {
+              logger.warn(
+                `[SessionLifecycle] non-recoverable disconnect session=${payload.sessionId} ` +
+                `reason=${disconnectReason}. Requiring fresh pairing (QR).`
+              );
 
-            if (isSyncError || isLoggedOut || isPreconditionRequired) {
-              logger.warn(`Critical Session Error Detected (Sync: ${isSyncError}, LoggedOut: ${isLoggedOut}, 428: ${isPreconditionRequired}). Cleaning up and requiring new QR.`);
-              
               // Ensure session is removed from memory
               this.sessions.delete(payload.sessionId);
-              
+
               // Force full cleanup
               await this.cleanupSession(payload.sessionId);
 
@@ -680,6 +734,7 @@ class SessionManager {
               };
               await this.rabbitmq.publishEvent(this.rabbitmq.generateRoutingKey(tenantId, "whaileys", payload.sessionId, "session.status"), statusEvent);
             } else {
+              this.recoverableCloseStreak.delete(payload.sessionId);
               const statusEvent: Envelope = {
                 id: uuidv4(),
                 timestamp: Date.now(),
@@ -696,6 +751,7 @@ class SessionManager {
         } else if (connection === "open") {
           logger.info(`Session ${payload.sessionId} opened`);
           this.retries.delete(payload.sessionId);
+          this.recoverableCloseStreak.delete(payload.sessionId);
           const session = this.sessions.get(payload.sessionId);
           if (session) session.status = "CONNECTED";
 
