@@ -4,6 +4,7 @@ import { CreateFlowService, ListFlowsService, UpdateFlowService, ShowFlowService
 import FlowExecutorService from "../services/FlowServices/FlowExecutorService";
 import AppError from "../errors/AppError";
 import { logger } from "../utils/logger";
+import ShowTicketService from "../services/TicketServices/ShowTicketService";
 
 export const generateFlowAI = async (req: Request, res: Response): Promise<Response> => {
     const { prompt } = req.body;
@@ -104,4 +105,43 @@ export const simulate = async (req: Request, res: Response): Promise<Response> =
     const result = await FlowExecutorService.simulateFlow(flow, message || "Olá, teste de simulação");
 
     return res.json(result);
+};
+
+export const startForTicket = async (req: Request, res: Response): Promise<Response> => {
+    const { flowId, ticketId } = req.params;
+    const { tenantId } = req.user;
+
+    const flow = await ShowFlowService({
+        id: Number(flowId),
+        tenantId
+    });
+
+    if (!flow.isActive) {
+        throw new AppError("Fluxo inativo", 400);
+    }
+
+    const ticket = await ShowTicketService(ticketId, tenantId);
+
+    if (flow.whatsappId && ticket.whatsappId && Number(flow.whatsappId) !== Number(ticket.whatsappId)) {
+        throw new AppError("Fluxo não está vinculado à conexão do ticket", 400);
+    }
+
+    const session = await FlowExecutorService.start(
+        Number(flowId),
+        {
+            ticketId: ticket.id,
+            contactId: ticket.contactId,
+            tenantId
+        },
+        tenantId
+    );
+
+    logger.info(`[FlowController] Manual flow start flowId=${flow.id} ticketId=${ticket.id} sessionId=${session.id}`);
+
+    return res.status(200).json({
+        ok: true,
+        flowId: flow.id,
+        ticketId: ticket.id,
+        sessionId: session.id
+    });
 };

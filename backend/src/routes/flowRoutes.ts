@@ -50,6 +50,13 @@ flowRoutes.post(
 );
 
 flowRoutes.post(
+    "/tickets/:ticketId/flows/:flowId/start",
+    isAuth,
+    checkPermission("flows:write"),
+    FlowController.startForTicket
+);
+
+flowRoutes.post(
     "/flows/ai",
     isAuth,
     checkPermission("flows:write"),
