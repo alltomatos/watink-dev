@@ -58,6 +58,7 @@ const useStyles = makeStyles((theme) => ({
 
   messagesList: {
     backgroundImage: `url(${whatsBackground})`,
+    backgroundColor: theme.palette.type === 'dark' ? "rgba(26, 22, 37, 0.4)" : "rgba(248, 247, 255, 0.4)", // Translucence for gradient
     display: "flex",
     flexDirection: "column",
     flexGrow: 1,
@@ -95,8 +96,8 @@ const useStyles = makeStyles((theme) => ({
     },
 
     whiteSpace: "pre-wrap",
-    backgroundColor: "#ffffff",
-    color: "#303030",
+    backgroundColor: theme.palette.type === 'dark' ? "#202C33" : "#ffffff",
+    color: theme.palette.text.primary,
     alignSelf: "flex-start",
     borderRadius: "0px 12px 12px 12px",
     padding: "8px 10px",
@@ -109,6 +110,15 @@ const useStyles = makeStyles((theme) => ({
     borderRadius: "12px 12px 12px 0px",
     boxShadow: "none",
     border: "1px solid #e5e7eb",
+  },
+
+  messageLeftApple: {
+    backgroundColor: theme.palette.type === 'dark' ? "rgba(255, 255, 255, 0.15)" : "#E9E9EB",
+    color: theme.palette.type === 'dark' ? "#FFFFFF" : "#000000",
+    borderRadius: "20px 20px 20px 5px",
+    boxShadow: "none",
+    border: "none",
+    padding: "10px 16px",
   },
 
   quotedContainerLeft: {
@@ -154,12 +164,12 @@ const useStyles = makeStyles((theme) => ({
     },
 
     whiteSpace: "pre-wrap",
-    backgroundColor: "#5061db", // Premium Blue
-    color: "#ffffff",
+    backgroundColor: theme.palette.type === 'dark' ? "#005C4B" : "#D9FDD3",
+    color: theme.palette.text.primary,
     alignSelf: "flex-end",
     borderRadius: "12px 12px 0px 12px",
     padding: "8px 10px",
-    boxShadow: "0 2px 5px rgba(80, 97, 219, 0.3)",
+    boxShadow: "0 1px 1px rgba(0, 0, 0, 0.1)",
   },
 
   messageRightSaas: {
@@ -170,6 +180,15 @@ const useStyles = makeStyles((theme) => ({
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 0, // Tail on bottom right
     boxShadow: "none",
+  },
+
+  messageRightApple: {
+    backgroundColor: "#007AFF",
+    color: "#ffffff",
+    borderRadius: "20px 20px 5px 20px",
+    boxShadow: "none",
+    border: "none",
+    padding: "10px 16px",
   },
 
   quotedContainerRight: {
@@ -352,6 +371,12 @@ const useStyles = makeStyles((theme) => ({
     display: "block",
     height: 28,
     clear: "both"
+  },
+  waBubbleSpacing: {
+    margin: "2px 0 !important",
+  },
+  waBubbleSpacingGroup: {
+    marginTop: "10px !important",
   }
 }));
 
@@ -1093,10 +1118,14 @@ const MessagesList = ({ ticketId, isGroup, isWebchat }) => {
                 <div
                   className={clsx(classes.messageLeft, {
                     [classes.messageLeftSaas]: appTheme === "saas",
+                    [classes.messageLeftApple]: appTheme === "apple",
+                    "wa-bubble-left": appTheme === "whatsapp",
+                    "wa-bubble-left-tail": appTheme === "whatsapp" && showGroupInfo,
+                    [classes.waBubbleSpacing]: appTheme === "whatsapp",
+                    [classes.waBubbleSpacingGroup]: appTheme === "whatsapp" && showGroupInfo,
                   })}
                   style={{
-                    marginTop: showGroupInfo ? 10 : 2,
-                    maxWidth: (message.mediaUrl || message.mediaType === "image" || message.mediaType === "video" || message.mediaType === "location") ? 332 : 600
+                    maxWidth: (message.mediaUrl || message.mediaType === "image" || message.mediaType === "video" || message.mediaType === "location") ? 332 : 600,
                   }}
                 >
                   <IconButton
@@ -1136,8 +1165,15 @@ const MessagesList = ({ ticketId, isGroup, isWebchat }) => {
               <div
                 className={clsx(classes.messageRight, {
                   [classes.messageRightSaas]: appTheme === "saas",
+                  [classes.messageRightApple]: appTheme === "apple",
+                  "wa-bubble-right": appTheme === "whatsapp",
+                  "wa-bubble-right-tail": appTheme === "whatsapp" && showGroupInfo,
+                  [classes.waBubbleSpacing]: appTheme === "whatsapp",
+                  [classes.waBubbleSpacingGroup]: appTheme === "whatsapp" && showGroupInfo,
                 })}
-                style={{ marginTop: showGroupInfo ? 10 : 2, maxWidth: (message.mediaUrl || message.mediaType === "image" || message.mediaType === "video" || message.mediaType === "location") ? 332 : 600 }}
+                  style={{ 
+                  maxWidth: (message.mediaUrl || message.mediaType === "image" || message.mediaType === "video" || message.mediaType === "location") ? 332 : 600,
+                }}
               >
                 <IconButton
                   variant="contained"
