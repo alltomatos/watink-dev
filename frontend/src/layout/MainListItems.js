@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useLocation } from "react-router-dom";
 
 import ListItem from "@material-ui/core/ListItem";
 import ListItemIcon from "@material-ui/core/ListItemIcon";
@@ -44,16 +44,20 @@ const googleColors = {
   pink: "#D01884",
 };
 
+import { motion } from "framer-motion";
+
 function ListItemLink(props) {
   const { icon, primary, to, className, collapsed, iconColor } = props;
+  const location = useLocation();
+  const isSelected = to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
   const { appTheme } = useThemeContext();
   const isGoogleTheme = appTheme === "google";
 
   const renderLink = React.useMemo(
     () =>
-      React.forwardRef((itemProps, ref) => (
-        <RouterLink to={to} ref={ref} {...itemProps} />
-      )),
+      React.forwardRef(function RouterLinkItem(itemProps, ref) {
+        return <RouterLink to={to} ref={ref} {...itemProps} />;
+      }),
     [to]
   );
 
@@ -63,10 +67,45 @@ function ListItemLink(props) {
     : icon;
 
   const listItem = (
-    <ListItem button component={renderLink} className={className}>
-      {coloredIcon ? <ListItemIcon>{coloredIcon}</ListItemIcon> : null}
-      {!collapsed && <ListItemText primary={primary} />}
-    </ListItem>
+    <motion.div
+      whileHover={{ x: 4 }}
+      whileTap={{ scale: 0.98 }}
+    >
+      <ListItem 
+        button
+        selected={isSelected}
+        component={renderLink} 
+        className={className}
+        style={{
+          justifyContent: collapsed ? "center" : "flex-start",
+          padding: collapsed ? "12px 0" : "12px 18px",
+        }}
+      >
+        {coloredIcon ? (
+          <ListItemIcon 
+            style={{ 
+              minWidth: collapsed ? 0 : 38,
+              justifyContent: "center",
+              marginRight: collapsed ? 0 : 12,
+            }}
+          >
+            {coloredIcon}
+          </ListItemIcon>
+        ) : null}
+        {!collapsed && (
+          <ListItemText 
+            primary={primary} 
+            primaryTypographyProps={{ 
+              style: { 
+                fontWeight: appTheme === "apple" ? 600 : 500,
+                fontSize: "0.9rem",
+                letterSpacing: "-0.01em"
+              } 
+            }} 
+          />
+        )}
+      </ListItem>
+    </motion.div>
   );
 
   // Mostrar tooltip quando colapsado
@@ -85,6 +124,7 @@ function ListItemLink(props) {
 
 const MainListItems = (props) => {
   const { drawerClose, collapsed = false } = props;
+  const { appTheme } = useThemeContext();
   const { whatsApps } = useContext(WhatsAppsContext);
   const { user } = useContext(AuthContext);
   const [connectionWarning, setConnectionWarning] = useState(false);
@@ -251,8 +291,8 @@ const MainListItems = (props) => {
         />
       )}
 
-      <Divider />
-      {!collapsed && (
+      {appTheme !== "apple" && appTheme !== "whatsapp" && <Divider />}
+      {!collapsed && appTheme !== "apple" && appTheme !== "whatsapp" && (
         <ListSubheader inset>
           {i18n.t("mainDrawer.listItems.administration")}
         </ListSubheader>

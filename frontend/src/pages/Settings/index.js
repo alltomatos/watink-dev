@@ -61,54 +61,76 @@ const useStyles = makeStyles((theme) => ({
 		display: "flex",
 		height: "calc(100vh - 64px)",
 		backgroundColor: theme.palette.background.default,
+		[theme.breakpoints.down("sm")]: {
+			flexDirection: "column",
+			height: "auto",
+			minHeight: "calc(100vh - 64px)",
+		},
 	},
 	sidebar: {
-		width: 240,
-		minWidth: 240,
+		width: 250,
+		minWidth: 250,
 		backgroundColor: theme.palette.background.paper,
 		borderRight: `1px solid ${theme.palette.divider}`,
-		padding: theme.spacing(2, 0),
+		padding: theme.spacing(2, 1),
+		overflowY: "auto",
+		[theme.breakpoints.down("sm")]: {
+			width: "100%",
+			minWidth: "100%",
+			borderRight: "none",
+			borderBottom: `1px solid ${theme.palette.divider}`,
+		},
 	},
 	sidebarTitle: {
-		padding: theme.spacing(0, 2, 2, 2),
-		fontWeight: 600,
+		padding: theme.spacing(0, 2, 1.5, 2),
+		fontWeight: 700,
+		letterSpacing: "-0.01em",
 	},
 	menuItem: {
-		borderRadius: 8,
-		margin: theme.spacing(0.5, 1),
+		borderRadius: 10,
+		margin: theme.spacing(0.5, 0.5),
 		color: theme.palette.text.primary,
 		"& .MuiListItemIcon-root": {
 			color: theme.palette.text.secondary,
+			minWidth: 36,
 		},
 		"&:hover": {
 			backgroundColor: theme.palette.action.hover,
 		},
 		"&.Mui-selected": {
-			backgroundColor: theme.palette.primary.main,
-			color: "#ffffff",
+			backgroundColor: theme.palette.action.selected,
+			color: theme.palette.text.primary,
 			"& .MuiListItemIcon-root": {
-				color: "#ffffff",
+				color: theme.palette.primary.main,
 			},
 			"&:hover": {
-				backgroundColor: theme.palette.primary.dark,
+				backgroundColor: theme.palette.action.selected,
 			},
+		},
+		"&.Mui-focusVisible": {
+			boxShadow: `0 0 0 2px ${theme.palette.primary.main}`,
 		},
 	},
 	content: {
 		flex: 1,
-		padding: theme.spacing(4),
+		padding: theme.spacing(3),
 		overflow: "auto",
+		[theme.breakpoints.down("sm")]: {
+			padding: theme.spacing(2),
+		},
 	},
 	sectionTitle: {
 		marginBottom: theme.spacing(3),
 		fontWeight: 600,
 	},
 	paper: {
-		padding: theme.spacing(2),
+		padding: theme.spacing(2.25),
 		display: "flex",
 		alignItems: "center",
 		marginBottom: theme.spacing(2),
-		borderRadius: 12,
+		borderRadius: 14,
+		border: `1px solid ${theme.palette.divider}`,
+		backgroundColor: theme.palette.background.paper,
 	},
 	settingOption: {
 		marginLeft: "auto",
@@ -127,6 +149,10 @@ const useStyles = makeStyles((theme) => ({
 		"&:hover": {
 			borderColor: theme.palette.primary.main,
 			backgroundColor: theme.palette.action.hover,
+		},
+		"&:focus-within": {
+			borderColor: theme.palette.primary.main,
+			boxShadow: `0 0 0 3px ${theme.palette.action.focus}`,
 		},
 	},
 	logoPreview: {
@@ -548,11 +574,9 @@ const Settings = () => {
 					onChange={(e) => setAppTheme(e.target.value)}
 				>
 					<option value="whaticket">Whaticket (Padrão)</option>
-					<option value="saas">SaaS Premium</option>
-					<option value="corporate">Corporate Theme</option>
 					<option value="whatsapp">WhatsApp Theme</option>
 					<option value="google">Google Like Theme</option>
-					<option value="dark">Dark Mode Theme</option>
+					<option value="apple">Apple Premium (Novo)</option>
 				</Select>
 			</Paper>
 
