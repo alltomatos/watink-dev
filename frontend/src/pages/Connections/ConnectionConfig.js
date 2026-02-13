@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useContext, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useHistory } from "react-router-dom";
 import { makeStyles } from "@material-ui/core/styles";
 import {
@@ -8,10 +8,7 @@ import {
     Grid,
     CircularProgress,
     Box,
-    Divider,
     IconButton,
-    Card,
-    CardContent,
     Avatar,
     Tooltip,
     LinearProgress
@@ -22,7 +19,6 @@ import {
     CheckCircle,
     ErrorOutline,
 } from "@material-ui/icons";
-import { green, red, orange, blue } from "@material-ui/core/colors";
 import QRCode from "qrcode.react";
 import { format, parseISO } from "date-fns";
 import ptBR from "date-fns/locale/pt-BR";
@@ -33,6 +29,7 @@ import WhatsAppModal from "../../components/WhatsAppModal";
 import openSocket from "../../services/socket-io";
 import ConfirmationModal from "../../components/ConfirmationModal";
 import { i18n } from "../../translate/i18n";
+import { toast } from "react-toastify";
 
 const useStyles = makeStyles(theme => ({
     root: {
@@ -197,6 +194,9 @@ const useStyles = makeStyles(theme => ({
     }
 }));
 
+const QR_AUTO_REFRESH_INTERVAL_MS = 18000;
+const QR_AUTO_REFRESH_MAX_WINDOW_MS = 2 * 60 * 1000;
+
 const ConnectionConfig = () => {
     const classes = useStyles();
     const history = useHistory();
@@ -209,6 +209,14 @@ const ConnectionConfig = () => {
     const [confirmationAction, setConfirmationAction] = useState(null);
     const [connecting, setConnecting] = useState(false);
     const [showQrCode, setShowQrCode] = useState(false);
+    const [autoRefreshActive, setAutoRefreshActive] = useState(false);
+    const [autoRefreshAttempts, setAutoRefreshAttempts] = useState(0);
+    const [autoRefreshError, setAutoRefreshError] = useState("");
+
+    const autoRefreshTimerRef = useRef(null);
+    const autoRefreshDeadlineRef = useRef(null);
+    const requestInFlightRef = useRef(false);
+    const statusRef = useRef("");
 
     const fetchWhatsapp = useCallback(async () => {
         try {
@@ -218,6 +226,44 @@ const ConnectionConfig = () => {
         } catch (err) {
             toastError(err);
             setLoading(false);
+        }
+    }, [whatsappId]);
+
+    const normalizedStatus = (whatsapp?.status || "").toUpperCase();
+    const isWaitingForQr = normalizedStatus === "QRCODE" || normalizedStatus === "OPENING";
+
+    const clearAutoRefreshCycle = useCallback(() => {
+        if (autoRefreshTimerRef.current) {
+            clearTimeout(autoRefreshTimerRef.current);
+            autoRefreshTimerRef.current = null;
+        }
+        autoRefreshDeadlineRef.current = null;
+        setAutoRefreshActive(false);
+    }, []);
+
+    const requestQrRestart = useCallback(async ({ silent = false } = {}) => {
+        if (requestInFlightRef.current) return false;
+
+        requestInFlightRef.current = true;
+        if (!silent) {
+            setConnecting(true);
+        }
+
+        try {
+            await api.post(`/whatsappsession/${whatsappId}`, { usePairingCode: false });
+            setAutoRefreshError("");
+            return true;
+        } catch (err) {
+            setAutoRefreshError("Não foi possível renovar o QR agora. Vamos tentar novamente em instantes.");
+            if (!silent) {
+                toast.warning("Não foi possível reiniciar o QR Code agora. Tente novamente em alguns segundos.");
+            }
+            return false;
+        } finally {
+            requestInFlightRef.current = false;
+            if (!silent) {
+                setConnecting(false);
+            }
         }
     }, [whatsappId]);
 
@@ -258,23 +304,70 @@ const ConnectionConfig = () => {
     }, [whatsappId]);
 
     useEffect(() => {
-        if (whatsapp?.status === "QRCODE") {
+        statusRef.current = normalizedStatus;
+
+        if (isWaitingForQr) {
             setShowQrCode(true);
         }
-    }, [whatsapp?.status]);
 
-    const handleStartSession = async () => {
-        try {
-            if (whatsapp.status === "QRCODE") {
-                setShowQrCode(true);
+        if (normalizedStatus === "CONNECTED") {
+            clearAutoRefreshCycle();
+            setConnecting(false);
+            setAutoRefreshAttempts(0);
+            setAutoRefreshError("");
+        }
+    }, [normalizedStatus, isWaitingForQr, clearAutoRefreshCycle]);
+
+    useEffect(() => {
+        if (!isWaitingForQr) {
+            clearAutoRefreshCycle();
+            return;
+        }
+
+        if (!autoRefreshDeadlineRef.current) {
+            autoRefreshDeadlineRef.current = Date.now() + QR_AUTO_REFRESH_MAX_WINDOW_MS;
+            setAutoRefreshActive(true);
+            setAutoRefreshAttempts(0);
+            setAutoRefreshError("");
+        }
+
+        const scheduleNext = () => {
+            const deadline = autoRefreshDeadlineRef.current;
+            if (!deadline) return;
+
+            const remaining = deadline - Date.now();
+            if (remaining <= 0) {
+                clearAutoRefreshCycle();
                 return;
             }
-            setConnecting(true);
-            await api.post(`/whatsappsession/${whatsappId}`, { usePairingCode: false });
-        } catch (err) {
-            toastError(err);
-            setConnecting(false);
+
+            autoRefreshTimerRef.current = setTimeout(async () => {
+                if (statusRef.current !== "QRCODE" && statusRef.current !== "OPENING") {
+                    clearAutoRefreshCycle();
+                    return;
+                }
+
+                await requestQrRestart({ silent: true });
+                setAutoRefreshAttempts(prev => prev + 1);
+                scheduleNext();
+            }, Math.min(QR_AUTO_REFRESH_INTERVAL_MS, remaining));
+        };
+
+        if (!autoRefreshTimerRef.current) {
+            scheduleNext();
         }
+
+        return () => {
+            if (autoRefreshTimerRef.current) {
+                clearTimeout(autoRefreshTimerRef.current);
+                autoRefreshTimerRef.current = null;
+            }
+        };
+    }, [isWaitingForQr, clearAutoRefreshCycle, requestQrRestart]);
+
+    const handleStartSession = async () => {
+        setShowQrCode(true);
+        await requestQrRestart({ silent: false });
     };
 
     const handleDisconnect = async () => {
@@ -295,6 +388,10 @@ const ConnectionConfig = () => {
         }
         setConfirmationOpen(false);
     };
+
+    useEffect(() => {
+        return () => clearAutoRefreshCycle();
+    }, [clearAutoRefreshCycle]);
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -389,7 +486,7 @@ const ConnectionConfig = () => {
                         <Paper className={classes.glassCard} elevation={0}>
                             <Box className={classes.statusContainer}>
                                 <Box display="flex" alignItems="center">
-                                    <div className={`${classes.avatarGlow} ${whatsapp.status === 'CONNECTED' ? classes.connectedPulse : (whatsapp.status === 'QRCODE' ? classes.waitingPulse : classes.disconnectedPulse)}`}>
+                                    <div className={`${classes.avatarGlow} ${normalizedStatus === 'CONNECTED' ? classes.connectedPulse : (isWaitingForQr ? classes.waitingPulse : classes.disconnectedPulse)}`}>
                                         <Avatar
                                             src={whatsapp.profilePicUrl}
                                             style={{ width: 80, height: 80, border: '4px solid #fff', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
@@ -441,7 +538,7 @@ const ConnectionConfig = () => {
                                             Sua instância está operacional e pronta para enviar/receber mensagens.
                                         </Typography>
                                     </Box>
-                                ) : whatsapp.status === "QRCODE" && showQrCode ? (
+                                ) : isWaitingForQr && showQrCode ? (
                                     <Box className={classes.qrCodeContainer}>
                                         <Typography variant="body1" style={{ fontWeight: 600, color: "#1d1d1f", marginBottom: 20 }}>
                                             Escaneie o QR Code abaixo
@@ -458,6 +555,32 @@ const ConnectionConfig = () => {
                                                 {"Abra o WhatsApp > Configurações > Dispositivos Conectados"}
                                             </Typography>
                                         </Box>
+
+                                        <Box mt={2} width="100%" textAlign="center">
+                                            <Button
+                                                variant="outlined"
+                                                className={classes.actionButton}
+                                                onClick={handleStartSession}
+                                                disabled={connecting}
+                                            >
+                                                {connecting ? "Reiniciando..." : "Reiniciar QR Code"}
+                                            </Button>
+                                        </Box>
+
+                                        {autoRefreshActive && (
+                                            <Box mt={2} width="100%" maxWidth={340}>
+                                                <LinearProgress />
+                                                <Typography variant="caption" style={{ color: "#8e8e93", display: "block", marginTop: 8 }}>
+                                                    Atualização automática ativa por até 2 minutos ({autoRefreshAttempts} tentativa{autoRefreshAttempts === 1 ? "" : "s"}).
+                                                </Typography>
+                                            </Box>
+                                        )}
+
+                                        {autoRefreshError && (
+                                            <Typography variant="caption" style={{ color: "#FF3B30", marginTop: 10, textAlign: "center" }}>
+                                                {autoRefreshError}
+                                            </Typography>
+                                        )}
                                     </Box>
                                 ) : (
                                     <Box textAlign="center">
