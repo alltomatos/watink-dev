@@ -1,0 +1,22 @@
+http:
+  routers:
+    app-router:
+      rule: "Host(`app.docker`)"
+      service: app-service
+      entryPoints:
+        - web
+    api-router:
+      rule: "Host(`api.docker`)"
+      service: api-service
+      entryPoints:
+        - web
+
+  services:
+    app-service:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:3001"
+    api-service:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8080"

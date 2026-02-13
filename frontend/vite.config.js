@@ -9,34 +9,30 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
-    open: true,
-  },
-  build: {
-    outDir: "build",
-    sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          "material-ui": [
-            "@material-ui/core",
-            "@material-ui/icons",
-            "@material-ui/lab",
-          ],
-        },
+    open: false,
+    host: true,
+    allowedHosts: ["app.docker", "api.docker", "100.123.62.90"],
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+      "/plugins": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/socket.io": {
+        target: "http://localhost:8080",
+        ws: true,
+        changeOrigin: true,
       },
     },
   },
-  envPrefix: "VITE_",
   esbuild: {
     loader: "jsx",
-    include: /src\/.*\.[jt]sx?$/,
+    include: /src\/.*\.js$/,
     exclude: [],
-  },
-  define: {
-    global: "globalThis",
-    "process.env.npm_package_version": JSON.stringify(
-      process.env.npm_package_version
-    ),
   },
   optimizeDeps: {
     include: [
@@ -44,8 +40,19 @@ export default defineConfig({
       "@material-ui/core",
       "@material-ui/icons",
       "@material-ui/lab",
+      "howler",
     ],
-    exclude: [],
+    esbuildOptions: {
+      loader: {
+        ".js": "jsx",
+      },
+    },
+  },
+  define: {
+    global: "globalThis",
+    "process.env.npm_package_version": JSON.stringify(
+      process.env.npm_package_version
+    ),
   },
   resolve: {
     alias: {

@@ -1,0 +1,15 @@
+version: '3.7'
+
+services:
+  traefik_dev:
+    image: traefik:v3.1
+    network_mode: host
+    command:
+      - --entrypoints.web.address=:8088
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --providers.file.watch=true
+      - --api.dashboard=false
+      - --log.level=INFO
+    volumes:
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+    restart: unless-stopped

@@ -17,7 +17,7 @@ services:
     image: redis:alpine
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data_dev:/data
     networks:
@@ -26,8 +26,8 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     ports:
-      - "5672:5672"
-      - "15673:15672" # Admin interface on 15673 to avoid conflicts if needed, or stick to standard
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15673:15672" # Admin interface on 15673 to avoid conflicts if needed, or stick to standard
     networks:
       - watink_dev_network
 
