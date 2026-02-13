@@ -77,14 +77,24 @@ export const EventListener = async () => {
 
 const handleQrCode = async (payload: QrCodePayload) => {
   const io = getIO();
+  const sessionId = getSessionId(payload.sessionId);
+
+  const current = await Whatsapp.findByPk(sessionId);
+  // Guard against out-of-order events: if session is already connected,
+  // ignore late QR events to avoid UI regressing back to "scan QR".
+  if (current?.status === "CONNECTED") {
+    logger.info(`[EventListener] Ignoring late QR event for connected session ${sessionId}`);
+    return;
+  }
+
   await Whatsapp.update(
     { qrcode: payload.qrcode, status: "QRCODE" },
-    { where: { id: getSessionId(payload.sessionId) } }
+    { where: { id: sessionId } }
   );
 
   io.emit(`whatsappSession`, {
     action: "update",
-    session: { id: getSessionId(payload.sessionId), qrcode: payload.qrcode, status: "QRCODE" }
+    session: { id: sessionId, qrcode: payload.qrcode, status: "QRCODE" }
   });
 };
 
