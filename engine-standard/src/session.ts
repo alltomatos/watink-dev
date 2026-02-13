@@ -41,7 +41,9 @@ export const classifyDisconnect = (args: {
   const isForbidden = statusCode === DisconnectReason.forbidden;
   const isBadSession = statusCode === DisconnectReason.badSession;
 
-  const isPairingFlow401Retryable = !!usePairingCode && !registered && isLoggedOut;
+  // During QR/pairing bootstrap, 401 can happen before creds become fully registered.
+  // Treat any logged_out with !registered as retryable (not only pairing-code flow).
+  const isPairingFlow401Retryable = !registered && isLoggedOut;
 
   const isNonRecoverable =
     isForbidden ||
