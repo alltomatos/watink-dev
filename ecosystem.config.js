@@ -18,8 +18,8 @@ module.exports = {
         PORT: "8080",
         JWT_SECRET: "watink_secret_key_2026",
         JWT_REFRESH_SECRET: "75756756756",
-        FRONTEND_URL: "http://100.123.62.90:3001",
-        URL_BACKEND: "http://100.123.62.90:8080",
+        FRONTEND_URL: "http://app.docker",
+        URL_BACKEND: "http://api.docker",
         ENGINE_STANDARD_URL: "http://localhost:3334",
         RABBITMQ_MGMT_URL: "http://localhost:15673/api/overview",
         FLOW_ENGINE_URL: "http://localhost:8080" // In Dev, backend handles flows internally
