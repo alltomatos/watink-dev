@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es6",
+    "target": "es2020",
+    "lib": ["es2020"],
     "module": "commonjs",
     "outDir": "./dist",
-    "strict": true,
+    "strict": false,
     "strictPropertyInitialization": false,
     "esModuleInterop": true,
     "experimentalDecorators": true,
