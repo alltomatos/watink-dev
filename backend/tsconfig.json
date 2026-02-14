@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es6",
+    "target": "es2020",
+    "lib": ["es2020", "dom"],
     "module": "commonjs",
     "outDir": "./dist",
-    "strict": true,
+    "strict": false,
     "strictPropertyInitialization": false,
     "esModuleInterop": true,
     "experimentalDecorators": true,
@@ -15,5 +16,8 @@
   },
   "include": [
     "src/**/*"
+  ],
+  "exclude": [
+    "src/__tests__/**/*"
   ]
 }

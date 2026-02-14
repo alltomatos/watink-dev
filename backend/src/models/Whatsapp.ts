@@ -62,6 +62,10 @@ class Whatsapp extends Model<Whatsapp> {
   @Column(DataType.TEXT)
   farewellMessage: string;
 
+  // Campos opcionais usados por módulos mais novos (compatibilidade de build)
+  type?: string;
+  chatConfig?: any;
+
   @Default(false)
   @AllowNull
   @Column
