@@ -12,7 +12,8 @@ export const getConfig = async (req: Request, res: Response): Promise<Response> 
   const { whatsappId } = req.params;
 
   const whatsapp = await Whatsapp.findByPk(whatsappId);
-  if (!whatsapp || whatsapp.type !== "webchat") {
+  const channelType = (whatsapp as any)?.type;
+  if (!whatsapp || channelType !== "webchat") {
     return res.status(404).json({ error: "Webchat not found" });
   }
 
@@ -20,7 +21,7 @@ export const getConfig = async (req: Request, res: Response): Promise<Response> 
     name: whatsapp.name,
     greetingMessage: whatsapp.greetingMessage,
     farewellMessage: whatsapp.farewellMessage,
-    chatConfig: whatsapp.chatConfig
+    chatConfig: (whatsapp as any)?.chatConfig
   });
 };
 
@@ -29,7 +30,8 @@ export const createTicket = async (req: Request, res: Response): Promise<Respons
   const { name, email, phone, message } = req.body;
 
   const whatsapp = await Whatsapp.findByPk(whatsappId);
-  if (!whatsapp || whatsapp.type !== "webchat") {
+  const channelType = (whatsapp as any)?.type;
+  if (!whatsapp || channelType !== "webchat") {
     return res.status(404).json({ error: "Webchat not found" });
   }
 
