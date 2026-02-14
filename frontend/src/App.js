@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import Routes from "./routes";
-
+import api from "./services/api";
+import SplashScreen from "./components/SplashScreen";
 
 import { createTheme, ThemeProvider } from "@material-ui/core/styles";
 import { ptBR } from "@material-ui/core/locale";
 
 const App = () => {
   const [locale, setLocale] = useState();
+  const [isBackendReady, setIsBackendReady] = useState(false);
 
   const theme = createTheme(
     {
@@ -28,7 +30,7 @@ const App = () => {
   );
 
   useEffect(() => {
-    const i18nlocale = localStorage.getItem("i18nextLng");
+    const i18nlocale = localStorage.getItem("i18nextLng") || "pt-BR";
     const browserLocale =
       i18nlocale.substring(0, 2) + i18nlocale.substring(3, 5);
 
@@ -37,9 +39,27 @@ const App = () => {
     }
   }, []);
 
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        // Agora aguardamos as configurações públicas.
+        // Só liberamos a tela quando recebermos um 200 OK do backend.
+        await api.get("/public-settings");
+        setIsBackendReady(true);
+      } catch (err) {
+        // Se não houver resposta (erro de rede) ou erro do servidor (500, etc),
+        // continuamos tentando até que o backend esteja estável.
+        console.log("Backend not stable or reachable, retrying in 2s...");
+        setTimeout(checkBackend, 2000);
+      }
+    };
+
+    checkBackend();
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
-      <Routes />
+      {isBackendReady ? <Routes /> : <SplashScreen />}
     </ThemeProvider>
   );
 };

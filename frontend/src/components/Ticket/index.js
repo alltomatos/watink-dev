@@ -15,6 +15,7 @@ import TicketActionButtons from "../TicketActionButtons";
 import MessagesList from "../MessagesList";
 import api from "../../services/api";
 import { ReplyMessageProvider } from "../../context/ReplyingMessage/ReplyingMessageContext";
+import { useThemeContext } from "../../context/DarkMode";
 import toastError from "../../errors/toastError";
 
 const drawerWidth = 320;
@@ -25,6 +26,7 @@ const useStyles = makeStyles((theme) => ({
     height: "100%",
     position: "relative",
     overflow: "hidden",
+    backgroundColor: "transparent",
   },
 
   ticketInfo: {
@@ -60,6 +62,11 @@ const useStyles = makeStyles((theme) => ({
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen,
     }),
+    backgroundColor: theme.palette.background.paper,
+  },
+
+  mainWrapperApple: {
+    backgroundColor: "transparent",
   },
 
   mainWrapperShift: {
@@ -77,6 +84,7 @@ const Ticket = () => {
   const { ticketId } = useParams();
   const history = useHistory();
   const classes = useStyles();
+  const { appTheme } = useThemeContext();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -151,6 +159,7 @@ const Ticket = () => {
         elevation={0}
         className={clsx(classes.mainWrapper, {
           [classes.mainWrapperShift]: drawerOpen,
+          [classes.mainWrapperApple]: appTheme === "apple",
         })}
       >
         <TicketHeader loading={loading}>

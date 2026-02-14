@@ -116,7 +116,7 @@ const MyActivities = () => {
       </div>
 
       {loading ? (
-        <Grid container justify="center">
+        <Grid container justifyContent="center">
           <CircularProgress />
         </Grid>
       ) : activities.length === 0 ? (

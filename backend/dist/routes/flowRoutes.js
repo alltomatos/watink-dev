@@ -48,5 +48,6 @@ flowRoutes.post("/flows", isAuth_1.default, (0, checkPermission_1.default)("flow
 flowRoutes.put("/flows/:flowId", isAuth_1.default, (0, checkPermission_1.default)("flows:write"), FlowController.update);
 flowRoutes.post("/flows/:flowId/toggle", isAuth_1.default, (0, checkPermission_1.default)("flows:write"), FlowController.toggle);
 flowRoutes.post("/flows/:flowId/simulate", isAuth_1.default, (0, checkPermission_1.default)("flows:read"), FlowController.simulate);
+flowRoutes.post("/tickets/:ticketId/flows/:flowId/start", isAuth_1.default, (0, checkPermission_1.default)("flows:write"), FlowController.startForTicket);
 flowRoutes.post("/flows/ai", isAuth_1.default, (0, checkPermission_1.default)("flows:write"), FlowController.generateFlowAI);
 exports.default = flowRoutes;

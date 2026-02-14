@@ -9,15 +9,14 @@ const logger_1 = require("../../utils/logger");
 const axios_1 = __importDefault(require("axios"));
 class FlowAIService {
     async generateFlowFromPrompt(prompt, tenantId) {
-        var _a, _b, _c;
         // 1. Buscar Configurações
         const apiKeySetting = await Setting_1.default.findOne({ where: { key: "aiApiKey", tenantId } });
         const providerSetting = await Setting_1.default.findOne({ where: { key: "aiProvider", tenantId } });
         const modelSetting = await Setting_1.default.findOne({ where: { key: "aiModel", tenantId } });
         const guidePromptSetting = await Setting_1.default.findOne({ where: { key: "aiGuidePrompt", tenantId } });
-        let apiKey = apiKeySetting === null || apiKeySetting === void 0 ? void 0 : apiKeySetting.value;
-        let provider = (providerSetting === null || providerSetting === void 0 ? void 0 : providerSetting.value) || "openai";
-        let model = (modelSetting === null || modelSetting === void 0 ? void 0 : modelSetting.value) || "gpt-4o-mini";
+        let apiKey = apiKeySetting?.value;
+        let provider = providerSetting?.value || "openai";
+        let model = modelSetting?.value || "gpt-4o-mini";
         // Fallback env
         if (!apiKey && process.env.OPENAI_API_KEY) {
             apiKey = process.env.OPENAI_API_KEY;
@@ -34,7 +33,7 @@ class FlowAIService {
             model = model || "grok-beta";
         }
         // 3. Montar Prompt
-        const businessContext = (guidePromptSetting === null || guidePromptSetting === void 0 ? void 0 : guidePromptSetting.value)
+        const businessContext = guidePromptSetting?.value
             ? `CONTEXTO DO NEGÓCIO:\n${guidePromptSetting.value}\n---\n`
             : "";
         const systemPrompt = `
@@ -228,7 +227,7 @@ Agora, converta a solicitação do usuário em um fluxo seguindo estas diretrize
                 },
                 timeout: 30000 // 30 segundos
             });
-            const content = (_c = (_b = (_a = data === null || data === void 0 ? void 0 : data.choices) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.message) === null || _c === void 0 ? void 0 : _c.content;
+            const content = data?.choices?.[0]?.message?.content;
             if (!content) {
                 logger_1.logger.error("FlowAIService Error - Estrutura de resposta inválida:", JSON.stringify(data));
                 throw new AppError_1.default("A IA retornou uma resposta vazia ou inválida. Verifique sua quota/configurações.", 500);

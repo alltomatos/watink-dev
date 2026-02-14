@@ -29,7 +29,7 @@ let Contact = class Contact extends sequelize_typescript_1.Model {
         await ContactAudit_1.default.create({
             tenantId: instance.tenantId,
             contactId: instance.id,
-            userId: ctx === null || ctx === void 0 ? void 0 : ctx.userId,
+            userId: ctx?.userId,
             action: "create",
             nextData: instance.toJSON()
         }, { transaction: options.transaction });
@@ -46,7 +46,7 @@ let Contact = class Contact extends sequelize_typescript_1.Model {
         await ContactAudit_1.default.create({
             tenantId: instance.tenantId,
             contactId: instance.id,
-            userId: ctx === null || ctx === void 0 ? void 0 : ctx.userId,
+            userId: ctx?.userId,
             action: "update",
             previousData,
             nextData: instance.toJSON()
@@ -57,7 +57,7 @@ let Contact = class Contact extends sequelize_typescript_1.Model {
         await ContactAudit_1.default.create({
             tenantId: instance.tenantId,
             contactId: instance.id,
-            userId: ctx === null || ctx === void 0 ? void 0 : ctx.userId,
+            userId: ctx?.userId,
             action: "delete",
             previousData: instance.toJSON()
         }, { transaction: options.transaction });

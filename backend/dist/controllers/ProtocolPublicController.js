@@ -64,8 +64,8 @@ const show = async (req, res) => {
     const response = {
         ...protocol.toJSON(),
         tenantConfig: {
-            systemTitle: systemTitle === null || systemTitle === void 0 ? void 0 : systemTitle.value,
-            systemLogo: systemLogo === null || systemLogo === void 0 ? void 0 : systemLogo.value
+            systemTitle: systemTitle?.value,
+            systemLogo: systemLogo?.value
         }
     };
     return res.json(response);

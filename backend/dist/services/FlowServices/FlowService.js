@@ -8,6 +8,34 @@ const Flow_1 = __importDefault(require("../../models/Flow"));
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const FlowTrigger_1 = __importDefault(require("../../models/FlowTrigger"));
 const sequelize_1 = require("sequelize");
+const MESSAGE_NODE_TYPES = new Set(["message", "menu", "default", "textupdater"]);
+const hasOutboundMessageNodes = (nodes = []) => {
+    return nodes.some((node) => MESSAGE_NODE_TYPES.has(String(node?.type || "").toLowerCase()));
+};
+const buildTriggerFromNodes = (nodes = []) => {
+    const triggerNode = nodes.find((n) => ["trigger", "input", "start"].includes(String(n?.type || "").toLowerCase()));
+    const data = triggerNode?.data || {};
+    // Novo formato (UI atual)
+    if (data.triggerType === "keyword") {
+        const keyword = data.conditions?.[0]?.value || data.keyword || "";
+        return { type: "whatsapp_message", condition: keyword ? { body: keyword } : {} };
+    }
+    if (data.triggerType === "any" || data.triggerType === "firstContact" || data.triggerType === "message") {
+        return { type: "whatsapp_message", condition: {} };
+    }
+    if (data.triggerType === "tagAdded") {
+        const tagId = Number(data.tagId);
+        return { type: "tagAdded", condition: Number.isFinite(tagId) ? { tagId } : {} };
+    }
+    // Formato legado
+    if (data.trigger?.type) {
+        return {
+            type: data.trigger.type,
+            condition: data.trigger.condition || {}
+        };
+    }
+    return null;
+};
 const CreateFlowService = async ({ name, nodes, edges, tenantId, userId, whatsappId }) => {
     // Check if whatsappId is already in use
     if (whatsappId) {
@@ -49,11 +77,17 @@ const UpdateFlowService = async ({ id, flowData, tenantId }) => {
     if (!flow) {
         throw new AppError_1.default("Flow not found", 404);
     }
+    const nextNodes = Array.isArray(flowData.nodes) ? flowData.nodes : (Array.isArray(flow.nodes) ? flow.nodes : []);
+    const nextWhatsappId = flowData.whatsappId !== undefined ? flowData.whatsappId : flow.whatsappId;
+    // Backend guard: fluxo ativo com nós de envio exige conexão vinculada mesmo em updates diretos via API
+    if (flow.isActive && hasOutboundMessageNodes(nextNodes) && !nextWhatsappId) {
+        throw new AppError_1.default("Este fluxo possui nós de envio de mensagem. Vincule uma conexão WhatsApp antes de salvar.", 400);
+    }
     // Check if whatsappId is already in use (excluding current flow)
-    if (flowData.whatsappId) {
+    if (nextWhatsappId) {
         const flowExists = await Flow_1.default.findOne({
             where: {
-                whatsappId: flowData.whatsappId,
+                whatsappId: nextWhatsappId,
                 tenantId,
                 isActive: true,
                 id: { [sequelize_1.Op.ne]: id }
@@ -64,25 +98,31 @@ const UpdateFlowService = async ({ id, flowData, tenantId }) => {
         }
     }
     await flow.update(flowData);
-    // Sync Triggers based on Start Node
+    // Sync trigger based on flow nodes (current + legacy formats)
     if (flowData.nodes) {
-        const startNode = flowData.nodes.find((n) => n.type === "input");
-        if (startNode && startNode.data && startNode.data.trigger) {
-            const { type, condition } = startNode.data.trigger;
-            // Upsert Trigger
-            const existingTrigger = await FlowTrigger_1.default.findOne({ where: { flowId: id } });
+        const triggerConfig = buildTriggerFromNodes(flowData.nodes);
+        const existingTrigger = await FlowTrigger_1.default.findOne({ where: { flowId: id } });
+        if (triggerConfig) {
             if (existingTrigger) {
-                await existingTrigger.update({ type, condition, isActive: true });
+                await existingTrigger.update({
+                    type: triggerConfig.type,
+                    condition: triggerConfig.condition,
+                    isActive: true
+                });
             }
             else {
                 await FlowTrigger_1.default.create({
                     flowId: id,
-                    type,
-                    condition,
+                    type: triggerConfig.type,
+                    condition: triggerConfig.condition,
                     tenantId,
                     isActive: true
                 });
             }
+        }
+        else if (existingTrigger) {
+            // Se removeu gatilho, desativa o registro para evitar disparos inesperados
+            await existingTrigger.update({ isActive: false, condition: {} });
         }
     }
     return flow;
@@ -108,6 +148,14 @@ const ToggleFlowService = async ({ id, tenantId }) => {
     }
     // Toggle isActive
     const newStatus = !flow.isActive;
+    // Se ativando e o fluxo tiver nós de envio, conexão WhatsApp é obrigatória
+    if (newStatus) {
+        const flowNodes = Array.isArray(flow.nodes) ? flow.nodes : [];
+        const requiresConnection = hasOutboundMessageNodes(flowNodes);
+        if (requiresConnection && !flow.whatsappId) {
+            throw new AppError_1.default("Este fluxo possui nós de envio de mensagem. Vincule uma conexão WhatsApp antes de ativar.", 400);
+        }
+    }
     // Se ativando, verificar se whatsappId já está em uso por outro fluxo ativo
     if (newStatus && flow.whatsappId) {
         const conflictFlow = await Flow_1.default.findOne({

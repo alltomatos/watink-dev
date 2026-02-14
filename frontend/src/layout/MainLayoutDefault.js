@@ -182,8 +182,13 @@ const MainLayoutDefault = ({ children }) => {
                 }
                 // Update browser favicon dynamically
                 if (faviconSetting && faviconSetting.value) {
+                    let link = document.querySelector("link[rel~='icon']");
+                    if (!link) {
+                        link = document.createElement('link');
+                        link.rel = 'icon';
+                        document.head.appendChild(link);
+                    }
                     link.href = getBackendUrl(faviconSetting.value);
-                    document.head.appendChild(link);
                 }
             } catch (err) {
                 console.error("Error fetching settings:", err);

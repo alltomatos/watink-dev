@@ -11,6 +11,7 @@ const logger_1 = require("../../utils/logger");
 const SendWhatsAppMessage_1 = __importDefault(require("../WbotServices/SendWhatsAppMessage"));
 const SendWhatsAppInteractive_1 = __importDefault(require("../WbotServices/SendWhatsAppInteractive"));
 const SendWhatsAppMedia_1 = __importDefault(require("../WbotServices/SendWhatsAppMedia"));
+const SendWhatsAppCarousel_1 = __importDefault(require("../WbotServices/SendWhatsAppCarousel"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const upload_1 = __importDefault(require("../../config/upload"));
@@ -36,6 +37,7 @@ class FlowExecutorService {
         const flow = await Flow_1.default.findByPk(flowId);
         if (!flow)
             throw new AppError_1.default("Flow not found", 404);
+        logger_1.logger.info(`[FlowExecutor] start flowId=${flow.id} whatsappId=${flow.whatsappId || "none"}`);
         const resolvedTenantId = tenantId || context.tenantId || flow.tenantId;
         if (!resolvedTenantId || String(flow.tenantId) !== String(resolvedTenantId)) {
             throw new AppError_1.default("ERR_FLOW_FORBIDDEN", 403);
@@ -120,7 +122,7 @@ class FlowExecutorService {
         return this.runNode(session, flow, nextNode);
     }
     async runNode(session, flow, node) {
-        logger_1.logger.info(`FlowExecutor: Running node ${node.id} (${node.type}) for Session ${session.id}`);
+        logger_1.logger.info(`FlowExecutor: Running node ${node.id} (${node.type}) for Session ${session.id} flowId=${flow.id} whatsappId=${flow.whatsappId || "none"}`);
         // Update Session Pointer
         await session.update({ currentStepId: node.id });
         // Execute Logic based on Type
@@ -137,9 +139,10 @@ class FlowExecutorService {
                 case "default": // "Mensagem"
                 case "message":
                 case "textUpdater": // "Pergunta"
+                case "textupdater": // alias legado
                     // Passar node.data para sendMessage processar contentType e variáveis
                     await this.sendMessage(session, node.data.content || node.data.label || '', node.data);
-                    if (node.type === "textUpdater" || node.data.waitForInput) {
+                    if (node.type === "textUpdater" || node.type === "textupdater" || node.data.waitForInput) {
                         return session; // Stop and wait for user reply
                     }
                     else {
@@ -148,6 +151,9 @@ class FlowExecutorService {
                 case "menu":
                     await this.sendMenu(session, node.data);
                     return session; // Stop and wait for user reply
+                case "carousel":
+                    await this.sendCarouselNode(session, node.data);
+                    return this.proceedToNext(session, flow, node);
                 case "knowledge":
                     // Integração com RAG (VectorService)
                     const knowledgeQuery = session.context.lastInput || "";
@@ -174,6 +180,9 @@ class FlowExecutorService {
                     return this.proceedToNext(session, flow, node);
                 case "helpdesk":
                     await this.processHelpdeskNode(session, node.data);
+                    return this.proceedToNext(session, flow, node);
+                case "tag":
+                    await this.processTagNode(session, node.data);
                     return this.proceedToNext(session, flow, node);
                 default:
                     logger_1.logger.warn(`Unknown node type: ${node.type}`);
@@ -213,8 +222,10 @@ class FlowExecutorService {
         const ticket = await (0, ShowTicketService_1.default)(context.ticketId);
         if (!ticket)
             return;
+        const flow = await Flow_1.default.findByPk(session.flowId);
+        logger_1.logger.info(`FlowExecutor: sendMessage flowId=${session.flowId} whatsappId=${flow?.whatsappId || "none"} ticketId=${ticket.id}`);
         // Se não houver nodeData ou o tipo for texto, usar lógica simples
-        const contentType = (nodeData === null || nodeData === void 0 ? void 0 : nodeData.contentType) || 'text';
+        const contentType = nodeData?.contentType || 'text';
         if (contentType === 'text') {
             // Substituir variáveis no texto
             const processedText = this.replaceVariables(text, context);
@@ -226,13 +237,13 @@ class FlowExecutorService {
         }
         else {
             // Processar mídia (image, video, audio, file)
-            const mediaUrl = nodeData === null || nodeData === void 0 ? void 0 : nodeData.mediaUrl;
+            const mediaUrl = nodeData?.mediaUrl;
             if (!mediaUrl) {
                 logger_1.logger.warn(`FlowExecutor: Media node without mediaUrl`);
                 return;
             }
             const processedUrl = this.replaceVariables(mediaUrl, context);
-            const caption = (nodeData === null || nodeData === void 0 ? void 0 : nodeData.content) ? this.replaceVariables(nodeData.content, context) : undefined;
+            const caption = nodeData?.content ? this.replaceVariables(nodeData.content, context) : undefined;
             try {
                 // Baixar mídia da URL e criar arquivo temporário
                 const mediaFile = await this.downloadMedia(processedUrl, Number(ticket.tenantId));
@@ -305,52 +316,110 @@ class FlowExecutorService {
         const ticket = await (0, ShowTicketService_1.default)(context.ticketId);
         if (!ticket)
             return;
-        const options = nodeData.options || [];
-        const text = nodeData.label || "Escolha uma opção:";
-        if (options.length === 0) {
-            await this.sendMessage(session, text);
-            return;
-        }
-        // Determine Buttons vs List
-        if (options.length <= 3) {
-            await (0, SendWhatsAppInteractive_1.default)({
-                body: text,
-                ticket,
-                buttons: options.map((o) => ({ label: o.label, id: o.id }))
-            });
-        }
-        else {
+        const text = nodeData.menuTitle || nodeData.label || "Escolha uma opção:";
+        const menuType = nodeData.menuType || (nodeData.options?.length > 3 ? "list" : "buttons");
+        if (menuType === "list") {
+            const listConfig = nodeData.listConfig || {};
+            const sections = (listConfig.sections || []).map((section, sectionIndex) => ({
+                title: section?.title || `Seção ${sectionIndex + 1}`,
+                rows: (section?.rows || []).map((row, rowIndex) => ({
+                    id: row?.id || `item_${sectionIndex + 1}_${rowIndex + 1}`,
+                    title: row?.title || row?.label || `Item ${rowIndex + 1}`,
+                    description: row?.description || ""
+                }))
+            })).filter((section) => section.rows.length > 0);
+            if (sections.length === 0) {
+                await this.sendMessage(session, text);
+                return;
+            }
             await (0, SendWhatsAppInteractive_1.default)({
                 body: text,
                 ticket,
                 list: {
-                    title: "Opções",
-                    buttonText: "Abrir Menu",
-                    sections: [
-                        {
-                            title: "Escolha uma opção",
-                            rows: options.map((o) => ({
-                                id: o.id,
-                                title: o.label,
-                                description: ""
-                            }))
-                        }
-                    ]
+                    title: listConfig.title || "Opções",
+                    buttonText: listConfig.buttonText || "Abrir Menu",
+                    sections
                 }
             });
+            return;
         }
+        const options = (nodeData.options || []).slice(0, 3);
+        if (options.length === 0) {
+            await this.sendMessage(session, text);
+            return;
+        }
+        await (0, SendWhatsAppInteractive_1.default)({
+            body: text,
+            ticket,
+            buttons: options.map((o, index) => ({
+                label: o.label,
+                id: o.id || `btn_${index + 1}`
+            }))
+        });
+    }
+    async sendCarouselNode(session, nodeData) {
+        const context = session.context;
+        if (!context.ticketId)
+            return;
+        const ticket = await (0, ShowTicketService_1.default)(context.ticketId);
+        if (!ticket)
+            return;
+        const cards = (nodeData.cards || [])
+            .map((c, index) => ({
+            title: c?.title || c?.header?.title || `Card ${index + 1}`,
+            subtitle: c?.subtitle || c?.header?.subtitle || "",
+            headerUrl: c?.headerUrl || c?.header?.imageUrl || "",
+            body: c?.body || "",
+            footer: c?.footer || "",
+            buttons: (c?.buttons || []).map((b, idx) => ({
+                type: b?.type === "url" ? "url" : "reply",
+                text: b?.text || b?.displayText || `Opção ${idx + 1}`,
+                url: b?.url,
+                buttonId: b?.buttonId || b?.id || `card_${index + 1}_btn_${idx + 1}`
+            }))
+        }))
+            .filter((c) => c.body || c.title);
+        if (cards.length === 0) {
+            await this.sendMessage(session, nodeData.text || "Carrossel sem conteúdo configurado.");
+            return;
+        }
+        await (0, SendWhatsAppCarousel_1.default)({
+            ticket,
+            body: nodeData.text || "Carrossel",
+            cards
+        });
     }
     async updateTicket(session, nodeData) {
         const context = session.context;
         if (!context.ticketId)
             return;
         const updateData = {};
-        // Map nodeData fields to Ticket fields
-        if (nodeData.queueId)
-            updateData.queueId = nodeData.queueId;
-        if (nodeData.status)
-            updateData.status = nodeData.status; // open, pending, closed
-        // if (nodeData.userId) updateData.userId = nodeData.userId; 
+        const ticketAction = nodeData.ticketAction;
+        // Compatibilidade com formato novo da UI (ticketAction) e legado (queueId/status/userId diretos)
+        if (ticketAction === 'moveToQueue') {
+            if (nodeData.queueId)
+                updateData.queueId = nodeData.queueId;
+        }
+        else if (ticketAction === 'assignUser') {
+            if (nodeData.userId)
+                updateData.userId = nodeData.userId;
+        }
+        else if (ticketAction === 'changeStatus') {
+            if (nodeData.newStatus)
+                updateData.status = nodeData.newStatus;
+            else if (nodeData.status)
+                updateData.status = nodeData.status;
+        }
+        else {
+            if (nodeData.queueId)
+                updateData.queueId = nodeData.queueId;
+            if (nodeData.userId)
+                updateData.userId = nodeData.userId;
+            if (nodeData.newStatus)
+                updateData.status = nodeData.newStatus;
+            else if (nodeData.status)
+                updateData.status = nodeData.status;
+        }
         if (Object.keys(updateData).length > 0) {
             await (0, UpdateTicketService_1.default)({
                 ticketData: updateData,
@@ -402,7 +471,6 @@ class FlowExecutorService {
         }
     }
     async processAPINode(session, nodeData) {
-        var _a;
         const context = session.context;
         let { url, method, headers, body, resultVariable } = nodeData;
         try {
@@ -455,7 +523,7 @@ class FlowExecutorService {
             if (resultVariable) {
                 const newContext = {
                     ...context,
-                    [resultVariable]: { error: true, message: err.message, status: (_a = err.response) === null || _a === void 0 ? void 0 : _a.status }
+                    [resultVariable]: { error: true, message: err.message, status: err.response?.status }
                 };
                 await session.update({ context: newContext });
             }
@@ -1096,7 +1164,6 @@ class FlowExecutorService {
     }
     // Simulador de fluxo - executa sem enviar mensagens reais
     async simulateFlow(flow, testMessage) {
-        var _a, _b, _c;
         const nodes = flow.nodes;
         const edges = flow.edges;
         const simulationLog = [];
@@ -1111,7 +1178,7 @@ class FlowExecutorService {
         };
         // Encontrar nó inicial para detectar tipo de fluxo
         const startNode = nodes.find(n => n.type === "input" || n.type === "start" || n.type === "trigger");
-        const triggerType = ((_a = startNode === null || startNode === void 0 ? void 0 : startNode.data) === null || _a === void 0 ? void 0 : _a.triggerType) || "message";
+        const triggerType = startNode?.data?.triggerType || "message";
         // Detectar tipo de fluxo baseado no gatilho
         const chatTriggers = ["message", "keyword", "firstContact"];
         const flowType = chatTriggers.includes(triggerType) ? "chat" : "automation";
@@ -1164,7 +1231,7 @@ class FlowExecutorService {
                     step,
                     type: "warning",
                     status: "warning",
-                    nodeLabel: ((_b = node.data) === null || _b === void 0 ? void 0 : _b.label) || node.type,
+                    nodeLabel: node.data?.label || node.type,
                     message: `Possível loop detectado`,
                     timestamp: new Date().toISOString()
                 });
@@ -1178,7 +1245,7 @@ class FlowExecutorService {
                 type: node.type,
                 status: nodeResult.error ? "error" : "success",
                 nodeId: node.id,
-                nodeLabel: ((_c = node.data) === null || _c === void 0 ? void 0 : _c.label) || node.type,
+                nodeLabel: node.data?.label || node.type,
                 action: nodeResult.action,
                 message: nodeResult.message,
                 timestamp: new Date().toISOString()
@@ -1244,33 +1311,32 @@ class FlowExecutorService {
     }
     // Simula execução de um nó individual
     simulateNode(node, context) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
         switch (node.type) {
             case "start":
             case "input":
             case "trigger":
                 return {
                     action: "Gatilho disparado",
-                    message: `Tipo: ${((_a = node.data) === null || _a === void 0 ? void 0 : _a.triggerType) || 'message'}`,
+                    message: `Tipo: ${node.data?.triggerType || 'message'}`,
                     contextUpdate: {}
                 };
             case "message":
-                const msgContent = this.replaceVariables(((_b = node.data) === null || _b === void 0 ? void 0 : _b.content) || "Mensagem", context);
+                const msgContent = this.replaceVariables(node.data?.content || "Mensagem", context);
                 return {
                     action: "Enviar mensagem",
                     message: msgContent,
                     wouldSend: true
                 };
             case "menu":
-                const menuOptions = ((_c = node.data) === null || _c === void 0 ? void 0 : _c.options) || [];
+                const menuOptions = node.data?.options || [];
                 return {
                     action: "Exibir menu",
-                    message: ((_d = node.data) === null || _d === void 0 ? void 0 : _d.menuTitle) || "Menu",
+                    message: node.data?.menuTitle || "Menu",
                     options: menuOptions.map((o) => o.label),
                     wouldSend: true
                 };
             case "switch":
-                const conditionsA = ((_e = node.data) === null || _e === void 0 ? void 0 : _e.conditionsA) || [];
+                const conditionsA = node.data?.conditionsA || [];
                 const result = this.evaluateNoCodeConditions(conditionsA, context);
                 return {
                     action: "Avaliar condição",
@@ -1279,14 +1345,14 @@ class FlowExecutorService {
                 };
             case "database":
                 return {
-                    action: `Database ${((_f = node.data) === null || _f === void 0 ? void 0 : _f.operation) || 'read'}`,
-                    message: `Tabela: ${((_g = node.data) === null || _g === void 0 ? void 0 : _g.tableName) || 'N/A'}`,
-                    contextUpdate: ((_h = node.data) === null || _h === void 0 ? void 0 : _h.outputVariable) ? { [node.data.outputVariable]: "[Dados simulados]" } : {}
+                    action: `Database ${node.data?.operation || 'read'}`,
+                    message: `Tabela: ${node.data?.tableName || 'N/A'}`,
+                    contextUpdate: node.data?.outputVariable ? { [node.data.outputVariable]: "[Dados simulados]" } : {}
                 };
             case "filter":
-                const inputVar = ((_j = node.data) === null || _j === void 0 ? void 0 : _j.inputVariable) || 'dados';
-                const outputVar = ((_k = node.data) === null || _k === void 0 ? void 0 : _k.outputVariable) || 'filtrado';
-                const filterCount = (((_l = node.data) === null || _l === void 0 ? void 0 : _l.filterConditions) || []).length;
+                const inputVar = node.data?.inputVariable || 'dados';
+                const outputVar = node.data?.outputVariable || 'filtrado';
+                const filterCount = (node.data?.filterConditions || []).length;
                 return {
                     action: "Filtrar dados",
                     message: `Entrada: ${inputVar}, Saída: ${outputVar}, Filtros: ${filterCount}`,
@@ -1294,21 +1360,44 @@ class FlowExecutorService {
                 };
             case "pipeline":
                 return {
-                    action: `Pipeline: ${((_m = node.data) === null || _m === void 0 ? void 0 : _m.pipelineAction) || 'ação'}`,
-                    message: `Status: ${((_o = node.data) === null || _o === void 0 ? void 0 : _o.newStatus) || 'N/A'}`,
+                    action: `Pipeline: ${node.data?.pipelineAction || 'ação'}`,
+                    message: `Status: ${node.data?.newStatus || 'N/A'}`,
                     wouldUpdate: true
                 };
             case "knowledge":
                 return {
                     action: "Consultar conhecimento (IA)",
-                    message: `Modo: ${((_p = node.data) === null || _p === void 0 ? void 0 : _p.responseMode) || 'auto'}`,
+                    message: `Modo: ${node.data?.responseMode || 'auto'}`,
                     wouldSend: true
+                };
+            case "ticket":
+                return {
+                    action: `Atualizar ticket (${node.data?.ticketAction || 'legacy'})`,
+                    message: `queueId=${node.data?.queueId || '-'} userId=${node.data?.userId || '-'} status=${node.data?.newStatus || node.data?.status || '-'}`,
+                    wouldUpdate: true
+                };
+            case "webhook":
+                return {
+                    action: `Enviar webhook ${node.data?.method || 'POST'}`,
+                    message: node.data?.url || 'URL não configurada'
+                };
+            case "api":
+                return {
+                    action: `Executar API ${node.data?.method || 'GET'}`,
+                    message: node.data?.url || 'URL não configurada',
+                    contextUpdate: node.data?.resultVariable ? { [node.data.resultVariable]: "[Resposta simulada API]" } : {}
+                };
+            case "tag":
+                return {
+                    action: `${node.data?.tagAction === 'remove' ? 'Remover' : 'Adicionar'} tag`,
+                    message: `tagId=${node.data?.tagId || 'não configurada'}`,
+                    wouldUpdate: true
                 };
             case "end":
             case "output":
                 return {
                     action: "Finalizar fluxo",
-                    message: `Ação: ${((_q = node.data) === null || _q === void 0 ? void 0 : _q.endAction) || 'none'}`
+                    message: `Ação: ${node.data?.endAction || 'none'}`
                 };
             default:
                 return {

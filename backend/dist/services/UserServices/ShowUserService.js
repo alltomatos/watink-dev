@@ -11,7 +11,6 @@ const Group_1 = __importDefault(require("../../models/Group"));
 const Role_1 = __importDefault(require("../../models/Role"));
 const Permission_1 = __importDefault(require("../../models/Permission"));
 const ShowUserService = async (id) => {
-    var _a, _b;
     const user = await User_1.default.findByPk(id, {
         attributes: [
             "name",
@@ -55,28 +54,25 @@ const ShowUserService = async (id) => {
     // Flatten permissions for the frontend/mobile app
     const permissions = new Set();
     // 2. Role Permissions
-    (_a = user.roles) === null || _a === void 0 ? void 0 : _a.forEach(role => {
-        var _a;
-        (_a = role.permissions) === null || _a === void 0 ? void 0 : _a.forEach(p => {
+    user.roles?.forEach(role => {
+        role.permissions?.forEach(p => {
             if (p.resource && p.action) {
                 permissions.add(`${p.resource}:${p.action}`);
             }
         });
     });
     // 3. Group Permissions (Direct & via Roles)
-    (_b = user.groups) === null || _b === void 0 ? void 0 : _b.forEach(group => {
-        var _a, _b;
+    user.groups?.forEach(group => {
         // Group -> Roles -> Permissions
-        (_a = group.roles) === null || _a === void 0 ? void 0 : _a.forEach(role => {
-            var _a;
-            (_a = role.permissions) === null || _a === void 0 ? void 0 : _a.forEach(p => {
+        group.roles?.forEach(role => {
+            role.permissions?.forEach(p => {
                 if (p.resource && p.action) {
                     permissions.add(`${p.resource}:${p.action}`);
                 }
             });
         });
         // Group -> Permissions (Direct)
-        (_b = group.permissions) === null || _b === void 0 ? void 0 : _b.forEach(p => {
+        group.permissions?.forEach(p => {
             if (p.resource && p.action) {
                 permissions.add(`${p.resource}:${p.action}`);
             }

@@ -22,14 +22,14 @@ class EmbeddingService {
             Setting_1.default.findOne({ where: { key: "aiProvider", tenantId } }),
             Setting_1.default.findOne({ where: { key: "aiModel", tenantId } })
         ]);
-        const apiKey = (apiKeySetting === null || apiKeySetting === void 0 ? void 0 : apiKeySetting.value) || process.env.OPENAI_API_KEY;
+        const apiKey = apiKeySetting?.value || process.env.OPENAI_API_KEY;
         if (!apiKey) {
             throw new Error("AI API Key not configured for tenant");
         }
         return {
             apiKey,
-            provider: (providerSetting === null || providerSetting === void 0 ? void 0 : providerSetting.value) || "openai",
-            model: (modelSetting === null || modelSetting === void 0 ? void 0 : modelSetting.value) || "gpt-4o-mini"
+            provider: providerSetting?.value || "openai",
+            model: modelSetting?.value || "gpt-4o-mini"
         };
     }
     /**

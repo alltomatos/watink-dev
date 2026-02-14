@@ -74,6 +74,11 @@ class RabbitMQ {
         logger_1.logger.info(`[RabbitMQ] Publishing event to ${routingKey}: ${message.type}`);
         this.channel.publish("wbot.events", routingKey, Buffer.from(JSON.stringify(message)));
     }
+    generateRoutingKey(tenantId, engine, sessionId, type) {
+        if (!tenantId)
+            throw new Error("tenantId is mandatory for routing keys");
+        return `wbot.tenant.${tenantId}.${engine}.${sessionId}.${type}`;
+    }
     async consumeCommands(handler) {
         this.handler = handler;
         if (this.channel) {
@@ -83,19 +88,21 @@ class RabbitMQ {
     async setupConsumer() {
         if (!this.channel || !this.handler)
             return;
-        // Create a temporary queue for this engine instance
-        const q = await this.channel.assertQueue("", { exclusive: true });
+        // Create a durable queue for this engine instance to prevent message loss during startup
+        const q = await this.channel.assertQueue("wbot_standard_commands", { durable: true });
         await this.channel.bindQueue(q.queue, "wbot.commands", "command.general");
-        // Bind all session and message commands using wildcard
-        // Pattern: wbot.<tenantId>.<sessionId>.<commandType>
-        await this.channel.bindQueue(q.queue, "wbot.commands", "wbot.*.*.#");
+        // Bind only whaileys commands
+        // Pattern: wbot.tenant.<tenantId>.<engineType>.<sessionId>.<commandType>
+        await this.channel.bindQueue(q.queue, "wbot.commands", "wbot.tenant.*.whaileys.#");
         this.channel.consume(q.queue, async (msg) => {
             if (msg) {
                 try {
                     logger_1.logger.info(`[RabbitMQ] Engine Received command on ${msg.fields.routingKey}`);
                     const content = JSON.parse(msg.content.toString());
                     if (this.handler) {
+                        logger_1.logger.info(`[RabbitMQ] Invoking handler for ${content.type}`);
                         await this.handler(content);
+                        logger_1.logger.info(`[RabbitMQ] Handler finished for ${content.type}`);
                     }
                     this.channel?.ack(msg);
                 }

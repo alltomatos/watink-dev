@@ -30,7 +30,6 @@ const index = async (req, res) => {
 };
 exports.index = index;
 const store = async (req, res) => {
-    var _a;
     const { email, password, name, queueIds, whatsappId, groupIds, groupId, roleIds } = req.body;
     if (req.url === "/signup" &&
         (await (0, CheckSettings_1.default)("userCreation")) === "disabled") {
@@ -45,7 +44,7 @@ const store = async (req, res) => {
         groupIds,
         groupId,
         roleIds,
-        tenantId: ((_a = req.user) === null || _a === void 0 ? void 0 : _a.tenantId) || undefined
+        tenantId: req.user?.tenantId || undefined
     });
     const io = (0, socket_1.getIO)();
     io.emit("user", {
@@ -62,10 +61,9 @@ const show = async (req, res) => {
 };
 exports.show = show;
 const update = async (req, res) => {
-    var _a;
     const { userId } = req.params;
     const userData = req.body;
-    const profileImage = (_a = req.file) === null || _a === void 0 ? void 0 : _a.filename;
+    const profileImage = req.file?.filename;
     const { permissions: _, ...cleanUserData } = userData;
     const user = await (0, UpdateUserService_1.default)({ userData: { ...cleanUserData, profileImage }, userId, requestUser: req.user });
     const io = (0, socket_1.getIO)();

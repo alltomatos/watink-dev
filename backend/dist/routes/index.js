@@ -40,6 +40,7 @@ const emailTemplateRoutes_1 = __importDefault(require("./emailTemplateRoutes"));
 const saasRoutes_1 = __importDefault(require("./saasRoutes"));
 const mobileRoutes_1 = __importDefault(require("./mobileRoutes"));
 const tagRoutes_1 = __importDefault(require("./tagRoutes"));
+const whatsAppGroupRoutes_1 = __importDefault(require("./whatsAppGroupRoutes"));
 const routes = (0, express_1.Router)();
 // routes.use(userRoutes); // Moved to bottom
 routes.use("/auth", authRoutes_1.default);
@@ -78,5 +79,6 @@ routes.use(WebchatRoutes_1.default);
 routes.use(stepRoutes_1.default);
 routes.use(saasRoutes_1.default);
 routes.use(tagRoutes_1.default);
+routes.use(whatsAppGroupRoutes_1.default);
 routes.use("/users", userRoutes_1.default);
 exports.default = routes;

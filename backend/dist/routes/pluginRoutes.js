@@ -64,10 +64,9 @@ pluginRoutes.get("/plugins/api/v1/plugins/installed", isAuth_1.default, async (r
         });
         console.log(`[PluginRoutes] Found ${installations.length} active installations`);
         installations.forEach(inst => {
-            var _a;
-            console.log(`[PluginRoutes] - Plugin: ${(_a = inst.plugin) === null || _a === void 0 ? void 0 : _a.slug}, Status: ${inst.status}`);
+            console.log(`[PluginRoutes] - Plugin: ${inst.plugin?.slug}, Status: ${inst.status}`);
         });
-        const activeSlugs = installations.map(inst => { var _a; return (_a = inst.plugin) === null || _a === void 0 ? void 0 : _a.slug; }).filter(Boolean);
+        const activeSlugs = installations.map(inst => inst.plugin?.slug).filter(Boolean);
         console.log(`[PluginRoutes] Returning active slugs: ${JSON.stringify(activeSlugs)}`);
         // Also check if engine-papi is active via legacy check or other means if needed
         // For now, trust the DB.
@@ -86,10 +85,9 @@ pluginRoutes.use("/plugins", isAuth_1.default, (0, checkPermission_1.default)("m
         "^/plugins": "", // remove /plugins prefix when forwarding
     },
     onProxyReq: (proxyReq, req) => {
-        var _a, _b;
         try {
-            const tenantId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.tenantId;
-            const profile = (_b = req.user) === null || _b === void 0 ? void 0 : _b.profile;
+            const tenantId = req.user?.tenantId;
+            const profile = req.user?.profile;
             if (tenantId) {
                 proxyReq.setHeader("x-tenant-id", tenantId.toString());
             }

@@ -8,6 +8,11 @@ const getPluginApiBaseUrl = () => {
   const backendUrl = getBackendUrl();
 
   if (backendUrl) {
+    // If it's already a relative path, just return the equivalent plugins path
+    if (backendUrl.startsWith("/")) {
+      return backendUrl.replace(/\/api$/, '') + "/plugins";
+    }
+
     try {
       const url = new URL(backendUrl);
       // Append /plugins to the backend URL path

@@ -21,6 +21,7 @@ const useStyles = makeStyles(theme => ({
 		overflow: "hidden",
 		borderTopRightRadius: 0,
 		borderBottomRightRadius: 0,
+		backgroundColor: "transparent",
 	},
 
 	ticketsList: {
@@ -28,6 +29,7 @@ const useStyles = makeStyles(theme => ({
 		overflowY: "scroll",
 		...theme.scrollbarStyles,
 		borderTop: "none",
+		backgroundColor: "transparent",
 	},
 
 	ticketsListHeader: {

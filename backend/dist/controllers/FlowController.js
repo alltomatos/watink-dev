@@ -3,12 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.simulate = exports.toggle = exports.update = exports.show = exports.index = exports.store = exports.generateFlowAI = void 0;
+exports.startForTicket = exports.simulate = exports.toggle = exports.update = exports.show = exports.index = exports.store = exports.generateFlowAI = void 0;
 const FlowAIService_1 = __importDefault(require("../services/FlowServices/FlowAIService"));
 const FlowService_1 = require("../services/FlowServices/FlowService");
 const FlowExecutorService_1 = __importDefault(require("../services/FlowServices/FlowExecutorService"));
 const AppError_1 = __importDefault(require("../errors/AppError"));
 const logger_1 = require("../utils/logger");
+const ShowTicketService_1 = __importDefault(require("../services/TicketServices/ShowTicketService"));
 const generateFlowAI = async (req, res) => {
     const { prompt } = req.body;
     if (!prompt) {
@@ -95,3 +96,31 @@ const simulate = async (req, res) => {
     return res.json(result);
 };
 exports.simulate = simulate;
+const startForTicket = async (req, res) => {
+    const { flowId, ticketId } = req.params;
+    const { tenantId } = req.user;
+    const flow = await (0, FlowService_1.ShowFlowService)({
+        id: Number(flowId),
+        tenantId
+    });
+    if (!flow.isActive) {
+        throw new AppError_1.default("Fluxo inativo", 400);
+    }
+    const ticket = await (0, ShowTicketService_1.default)(ticketId, tenantId);
+    if (flow.whatsappId && ticket.whatsappId && Number(flow.whatsappId) !== Number(ticket.whatsappId)) {
+        throw new AppError_1.default("Fluxo não está vinculado à conexão do ticket", 400);
+    }
+    const session = await FlowExecutorService_1.default.start(Number(flowId), {
+        ticketId: ticket.id,
+        contactId: ticket.contactId,
+        tenantId
+    }, tenantId);
+    logger_1.logger.info(`[FlowController] Manual flow start flowId=${flow.id} ticketId=${ticket.id} sessionId=${session.id}`);
+    return res.status(200).json({
+        ok: true,
+        flowId: flow.id,
+        ticketId: ticket.id,
+        sessionId: session.id
+    });
+};
+exports.startForTicket = startForTicket;

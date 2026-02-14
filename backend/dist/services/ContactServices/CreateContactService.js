@@ -11,27 +11,46 @@ const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
 const logger_1 = require("../../utils/logger");
 const EntityTagService_1 = __importDefault(require("../TagServices/EntityTagService"));
 const CreateOrUpdateContactService_1 = require("./CreateOrUpdateContactService");
-const CreateContactService = async ({ name, number, email = "", walletUserId, extraInfo = [], tenantId, waitEnrichment = false, // Default false to maintain backward compat unless requested
-tags }) => {
+const WhatsAppContactIdentityService_1 = require("./WhatsAppContactIdentityService");
+const MergeContactsService_1 = __importDefault(require("./MergeContactsService"));
+const CreateContactService = async ({ name, number, email = "", walletUserId, extraInfo = [], tenantId, waitEnrichment = false, tags }) => {
     if (!tenantId) {
         throw new AppError_1.default("Tenant ID is required for creating a contact.", 403);
     }
-    const numberExists = await Contact_1.default.findOne({
-        where: { number, tenantId }
+    const identity = (0, WhatsAppContactIdentityService_1.buildCanonicalContactIdentity)({ number });
+    const matches = await (0, WhatsAppContactIdentityService_1.resolveContactsByIdentity)({
+        tenantId,
+        number: identity.normalizedE164 || number,
+        jid: number
     });
-    if (numberExists) {
-        throw new AppError_1.default("ERR_DUPLICATED_CONTACT");
+    let contact = (0, WhatsAppContactIdentityService_1.chooseCanonicalContact)(matches);
+    if (contact) {
+        for (const duplicate of matches.filter(c => c.id !== contact.id)) {
+            contact = await (0, MergeContactsService_1.default)({
+                contactIdOrigin: duplicate.id,
+                contactIdTarget: contact.id,
+                tenantId
+            });
+        }
+        await contact.update({
+            name: contact.name || name,
+            number: contact.number || identity.normalizedE164 || number,
+            email: contact.email || email,
+            walletUserId: contact.walletUserId || walletUserId || null
+        });
     }
-    const contact = await Contact_1.default.create({
-        name,
-        number,
-        email,
-        walletUserId,
-        extraInfo,
-        tenantId
-    }, {
-        include: ["extraInfo"]
-    });
+    else {
+        contact = await Contact_1.default.create({
+            name,
+            number: identity.normalizedE164 || number,
+            email,
+            walletUserId,
+            extraInfo,
+            tenantId
+        }, {
+            include: ["extraInfo"]
+        });
+    }
     if (tags && tags.length > 0) {
         await EntityTagService_1.default.BulkApplyTags({
             tagIds: tags,
@@ -41,9 +60,7 @@ tags }) => {
         });
     }
     try {
-        const whatsapp = await Whatsapp_1.default.findOne({
-            where: { status: "CONNECTED", tenantId }
-        });
+        const whatsapp = await Whatsapp_1.default.findOne({ where: { status: "CONNECTED", tenantId } });
         if (whatsapp) {
             await RabbitMQService_1.default.publishCommand(RabbitMQService_1.default.generateRoutingKey(tenantId, whatsapp.engineType, whatsapp.id, "contact.sync"), {
                 id: (0, uuid_1.v4)(),
@@ -57,15 +74,8 @@ tags }) => {
                 tenantId
             });
             logger_1.logger.info(`[CreateContactService] Sent contact.sync command for contact ${contact.id}`);
-            // BARRIER LOGIC
             if (waitEnrichment) {
-                // Check if we need to wait (if name is raw number and no pfp)
-                // Actually, a newly created contact here ALWAYS likely needs enrichment unless user provided heavy data.
-                // But even if user provided data, we might want to sync with WhatsApp to get real PFP.
-                // We wait if asked.
-                await (0, CreateOrUpdateContactService_1.waitForContactEnrichment)(contact.id, false, tenantId); // isGroup false for now as this service seems to be for manual scalar contacts?
-                // To be safe, manual contacts are usually individuals. If groups are allowed here, we need to check isGroup from body?
-                // Contact model has default isGroup=false.
+                await (0, CreateOrUpdateContactService_1.waitForContactEnrichment)(contact.id, false, tenantId);
                 await contact.reload();
             }
         }

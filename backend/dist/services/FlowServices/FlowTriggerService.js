@@ -22,9 +22,19 @@ class FlowTriggerService {
             // If no condition, it's a catch-all (be careful with these!)
             if (!condition || Object.keys(condition).length === 0)
                 return true;
-            // Check all keys in condition match context
+            // Matching mais tolerante para mensagens
             for (const key of Object.keys(condition)) {
-                if (context[key] != condition[key]) {
+                const expected = condition[key];
+                const actual = context[key];
+                if (key === "body" && typeof expected === "string" && typeof actual === "string") {
+                    const expectedNormalized = expected.trim().toLowerCase();
+                    const actualNormalized = actual.trim().toLowerCase();
+                    if (expectedNormalized && actualNormalized.includes(expectedNormalized)) {
+                        continue;
+                    }
+                    return false;
+                }
+                if (actual != expected) {
                     return false;
                 }
             }

@@ -31,6 +31,14 @@ __decorate([
     __metadata("design:type", String)
 ], QuickAnswer.prototype, "message", void 0);
 __decorate([
+    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.STRING),
+    __metadata("design:type", String)
+], QuickAnswer.prototype, "mediaType", void 0);
+__decorate([
+    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.TEXT),
+    __metadata("design:type", String)
+], QuickAnswer.prototype, "dataJson", void 0);
+__decorate([
     sequelize_typescript_1.CreatedAt,
     __metadata("design:type", Date)
 ], QuickAnswer.prototype, "createdAt", void 0);

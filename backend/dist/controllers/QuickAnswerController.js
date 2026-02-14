@@ -58,9 +58,12 @@ const index = async (req, res) => {
 exports.index = index;
 const store = async (req, res) => {
     const newQuickAnswer = req.body;
+    const { tenantId } = req.user;
     const QuickAnswerSchema = Yup.object().shape({
         shortcut: Yup.string().required(),
-        message: Yup.string().required()
+        message: Yup.string().required(),
+        mediaType: Yup.string().oneOf(["text", "buttons", "list", "carousel"]).default("text"),
+        dataJson: Yup.string().nullable()
     });
     try {
         await QuickAnswerSchema.validate(newQuickAnswer);
@@ -69,7 +72,8 @@ const store = async (req, res) => {
         throw new AppError_1.default(err.message);
     }
     const quickAnswer = await (0, CreateQuickAnswerService_1.default)({
-        ...newQuickAnswer
+        ...newQuickAnswer,
+        tenantId
     });
     const io = (0, socket_1.getIO)();
     io.emit("quickAnswer", {
@@ -81,15 +85,19 @@ const store = async (req, res) => {
 exports.store = store;
 const show = async (req, res) => {
     const { quickAnswerId } = req.params;
-    const quickAnswer = await (0, ShowQuickAnswerService_1.default)(quickAnswerId);
+    const { tenantId } = req.user;
+    const quickAnswer = await (0, ShowQuickAnswerService_1.default)(quickAnswerId, tenantId);
     return res.status(200).json(quickAnswer);
 };
 exports.show = show;
 const update = async (req, res) => {
     const quickAnswerData = req.body;
+    const { tenantId } = req.user;
     const schema = Yup.object().shape({
         shortcut: Yup.string(),
-        message: Yup.string()
+        message: Yup.string(),
+        mediaType: Yup.string().oneOf(["text", "buttons", "list", "carousel"]),
+        dataJson: Yup.string().nullable()
     });
     try {
         await schema.validate(quickAnswerData);
@@ -100,7 +108,8 @@ const update = async (req, res) => {
     const { quickAnswerId } = req.params;
     const quickAnswer = await (0, UpdateQuickAnswerService_1.default)({
         quickAnswerData,
-        quickAnswerId
+        quickAnswerId,
+        tenantId
     });
     const io = (0, socket_1.getIO)();
     io.emit("quickAnswer", {
@@ -112,7 +121,8 @@ const update = async (req, res) => {
 exports.update = update;
 const remove = async (req, res) => {
     const { quickAnswerId } = req.params;
-    await (0, DeleteQuickAnswerService_1.default)(quickAnswerId);
+    const { tenantId } = req.user;
+    await (0, DeleteQuickAnswerService_1.default)(quickAnswerId, tenantId);
     const io = (0, socket_1.getIO)();
     io.emit("quickAnswer", {
         action: "delete",

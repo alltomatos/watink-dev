@@ -693,7 +693,7 @@ const Connections = () => {
 																		</Typography>
 																	)}
 																	<Typography variant="caption" color="textSecondary" display="block" style={{ marginTop: 4 }}>
-																		Última atualização: {whatsApp.updatedAt ? format(parseISO(whatsApp.updatedAt), "dd/MM HH:mm") : "N/A"}
+																		Conectado desde: {whatsApp.createdAt ? format(parseISO(whatsApp.createdAt), "dd/MM") : "N/A"}
 																	</Typography>
 																</Box>
 
@@ -719,16 +719,18 @@ const Connections = () => {
 																</div>
 
 																<Tooltip title={i18n.t("connections.buttons.restart")}>
-																	<IconButton
-																		size="small"
-																		onClick={(e) => {
-																			e.stopPropagation();
-																			handleRestartWhatsApp(whatsApp.id);
-																		}}
-																		disabled={whatsApp.status === "CONNECTED" || whatsApp.type === 'webchat'}
-																	>
-																		<Autorenew fontSize="small" />
-																	</IconButton>
+																	<span>
+																		<IconButton
+																			size="small"
+																			onClick={(e) => {
+																				e.stopPropagation();
+																				handleRestartWhatsApp(whatsApp.id);
+																			}}
+																			disabled={whatsApp.status === "CONNECTED" || whatsApp.type === 'webchat'}
+																		>
+																			<Autorenew fontSize="small" />
+																		</IconButton>
+																	</span>
 																</Tooltip>
 															</div>
 														</Paper>

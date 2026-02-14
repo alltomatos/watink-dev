@@ -56,8 +56,8 @@ const StartWhatsAppSession = async (whatsapp, usePairingCode, phoneNumber, force
                 // Fetch settings for PAPI
                 const urlSetting = await Setting_1.default.findOne({ where: { key: "papiUrl", tenantId: whatsapp.tenantId } });
                 const keySetting = await Setting_1.default.findOne({ where: { key: "papiKey", tenantId: whatsapp.tenantId } });
-                papiUrl = urlSetting === null || urlSetting === void 0 ? void 0 : urlSetting.value;
-                papiKey = keySetting === null || keySetting === void 0 ? void 0 : keySetting.value;
+                papiUrl = urlSetting?.value;
+                papiKey = keySetting?.value;
                 if (!papiUrl) {
                     logger_1.logger.error(`StartWhatsAppSession: papiUrl setting missing for tenant ${whatsapp.tenantId}`);
                     throw new AppError_1.default("ERR_PAPI_URL_NOT_CONFIGURED", 400);
@@ -66,7 +66,7 @@ const StartWhatsAppSession = async (whatsapp, usePairingCode, phoneNumber, force
             logger_1.logger.info(`StartWhatsAppSession: PAPI settings loaded. URL provided: ${!!papiUrl}, Key provided: ${!!papiKey}`);
         }
         else {
-            logger_1.logger.warn(`StartWhatsAppSession: PAPI engine selected but 'engine-papi' plugin not found in DB.`);
+            logger_1.logger.info(`StartWhatsAppSession: Engine '${whatsapp.engineType}' selected; skipping PAPI plugin checks.`);
         }
         // [NEW] Auto-configure Webhook URL based on Frontend/App Domain
         // The engine-papi is exposed via Traefik at /plugins/papi

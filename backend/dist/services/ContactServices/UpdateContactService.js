@@ -11,34 +11,50 @@ const uuid_1 = require("uuid");
 const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
 const logger_1 = require("../../utils/logger");
 const EntityTagService_1 = __importDefault(require("../TagServices/EntityTagService"));
+const MergeContactsService_1 = __importDefault(require("./MergeContactsService"));
+const WhatsAppContactIdentityService_1 = require("./WhatsAppContactIdentityService");
 const UpdateContactService = async ({ contactData, contactId }) => {
-    const { email, name, number, extraInfo } = contactData;
-    const contact = await Contact_1.default.findOne({
+    const { extraInfo } = contactData;
+    let contact = await Contact_1.default.findOne({
         where: { id: contactId },
-        attributes: ["id", "name", "number", "email", "profilePicUrl", "tenantId"],
+        attributes: ["id", "name", "number", "email", "profilePicUrl", "tenantId", "lid", "walletUserId"],
         include: ["extraInfo"]
     });
-    if (!contact) {
+    if (!contact)
         throw new AppError_1.default("ERR_NO_CONTACT_FOUND", 404);
+    const identity = (0, WhatsAppContactIdentityService_1.buildCanonicalContactIdentity)({
+        lid: contactData.lid || contact.lid,
+        number: contactData.number || contact.number
+    });
+    const identityMatches = await (0, WhatsAppContactIdentityService_1.resolveContactsByIdentity)({
+        tenantId: contact.tenantId,
+        lid: identity.normalizedLid,
+        number: identity.normalizedE164 || contactData.number || contact.number,
+        jid: contactData.number
+    });
+    const canonical = (0, WhatsAppContactIdentityService_1.chooseCanonicalContact)(identityMatches);
+    if (canonical && canonical.id !== contact.id) {
+        contact = await (0, MergeContactsService_1.default)({
+            contactIdOrigin: contact.id,
+            contactIdTarget: canonical.id,
+            tenantId: contact.tenantId
+        });
     }
     if (extraInfo) {
-        await Promise.all(extraInfo.map(async (info) => {
-            await ContactCustomField_1.default.upsert({ ...info, contactId: contact.id });
-        }));
-        await Promise.all(contact.extraInfo.map(async (oldInfo) => {
+        await Promise.all(extraInfo.map(async (info) => ContactCustomField_1.default.upsert({ ...info, contactId: contact.id })));
+        await Promise.all((contact.extraInfo || []).map(async (oldInfo) => {
             const stillExists = extraInfo.findIndex(info => info.id === oldInfo.id);
-            if (stillExists === -1) {
+            if (stillExists === -1)
                 await ContactCustomField_1.default.destroy({ where: { id: oldInfo.id } });
-            }
         }));
     }
-    const { email: newEmail, name: newName, number: newNumber, walletUserId: newWalletUserId, extraInfo: newExtraInfo, lid } = contactData;
+    const { email, name, number, walletUserId, lid } = contactData;
     await contact.update({
-        name: newName,
-        number: newNumber,
-        email: newEmail,
-        walletUserId: newWalletUserId,
-        lid
+        name,
+        number: identity.normalizedE164 || number,
+        email,
+        walletUserId,
+        lid: identity.normalizedLid || lid
     });
     if (contactData.tags) {
         await EntityTagService_1.default.SyncEntityTags({
@@ -49,14 +65,12 @@ const UpdateContactService = async ({ contactData, contactId }) => {
         });
     }
     await contact.reload({
-        attributes: ["id", "name", "number", "email", "profilePicUrl", "tenantId"],
+        attributes: ["id", "name", "number", "email", "profilePicUrl", "tenantId", "lid"],
         include: ["extraInfo", "tags"]
     });
     try {
         const tenantId = contact.tenantId || 1;
-        const whatsapp = await Whatsapp_1.default.findOne({
-            where: { status: "CONNECTED", tenantId: tenantId.toString() }
-        });
+        const whatsapp = await Whatsapp_1.default.findOne({ where: { status: "CONNECTED", tenantId: tenantId.toString() } });
         if (whatsapp) {
             await RabbitMQService_1.default.publishCommand(RabbitMQService_1.default.generateRoutingKey(tenantId, whatsapp.engineType, whatsapp.id, "contact.sync"), {
                 id: (0, uuid_1.v4)(),
@@ -65,6 +79,7 @@ const UpdateContactService = async ({ contactData, contactId }) => {
                 payload: {
                     contactId: contact.id,
                     number: contact.number,
+                    lid: contact.lid,
                     sessionId: whatsapp.id
                 },
                 tenantId

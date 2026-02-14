@@ -13,7 +13,6 @@ const Message_1 = __importDefault(require("../../models/Message"));
 const socket_1 = require("../../libs/socket");
 const GenerateWAMessageId_1 = __importDefault(require("../../helpers/GenerateWAMessageId"));
 const SendWhatsAppMessage = async ({ body, ticket, quotedMsg, mentionedIds }) => {
-    var _a, _b;
     try {
         const formattedBody = (0, Mustache_1.default)(body, ticket.contact);
         if (!ticket.whatsappId) {
@@ -21,17 +20,23 @@ const SendWhatsAppMessage = async ({ body, ticket, quotedMsg, mentionedIds }) =>
         }
         // Sanitize number to ensure only digits
         const contactNumber = ticket.contact.number.replace(/\D/g, "");
+        const groupJid = ticket.isGroup ? `${contactNumber}@g.us` : null;
         const messageData = {
             id: (0, GenerateWAMessageId_1.default)(),
+            waMessageId: null,
             ticketId: ticket.id,
             contactId: undefined,
             body: formattedBody,
             fromMe: true,
             mediaType: "chat",
             read: true,
-            quotedMsgId: quotedMsg === null || quotedMsg === void 0 ? void 0 : quotedMsg.id,
+            quotedMsgId: quotedMsg?.id,
             ack: 0, // Pending
             timestamp: new Date().getTime(),
+            isGroup: !!ticket.isGroup,
+            groupJid,
+            participantJid: null,
+            participantName: null,
             tenantId: ticket.tenantId
         };
         const message = await Message_1.default.create(messageData);
@@ -61,12 +66,12 @@ const SendWhatsAppMessage = async ({ body, ticket, quotedMsg, mentionedIds }) =>
                 body: formattedBody,
                 mentions: mentionedIds,
                 options: {
-                    quotedMsgId: quotedMsg === null || quotedMsg === void 0 ? void 0 : quotedMsg.id,
+                    quotedMsgId: quotedMsg?.id,
                     quoted: quotedMsg ? {
                         key: {
                             id: quotedMsg.id,
                             fromMe: quotedMsg.fromMe,
-                            participant: quotedMsg.isGroup ? quotedMsg.participant || ((_a = quotedMsg.contact) === null || _a === void 0 ? void 0 : _a.number) + "@s.whatsapp.net" : undefined
+                            participant: quotedMsg.isGroup ? quotedMsg.participant || quotedMsg.contact?.number + "@s.whatsapp.net" : undefined
                         },
                         message: quotedMsg.dataJson // Optional but helpful
                     } : undefined
@@ -74,10 +79,10 @@ const SendWhatsAppMessage = async ({ body, ticket, quotedMsg, mentionedIds }) =>
             }
         };
         // Determine Routing Key based on Engine Type
-        let engineType = (_b = ticket.whatsapp) === null || _b === void 0 ? void 0 : _b.engineType;
+        let engineType = ticket.whatsapp?.engineType;
         if (!engineType) {
             const whatsapp = await Whatsapp_1.default.findByPk(ticket.whatsappId);
-            engineType = whatsapp === null || whatsapp === void 0 ? void 0 : whatsapp.engineType;
+            engineType = whatsapp?.engineType;
         }
         if (!engineType) {
             // Default to whaileys if not found (legacy fallback)

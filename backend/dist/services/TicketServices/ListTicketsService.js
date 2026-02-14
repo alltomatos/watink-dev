@@ -13,9 +13,8 @@ const ShowUserService_1 = __importDefault(require("../UserServices/ShowUserServi
 const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
 const Tag_1 = __importDefault(require("../../models/Tag"));
 const ListTicketsService = async ({ searchParam = "", pageNumber = "1", queueIds, status, date, showAll, userId, withUnreadMessages, isGroup, tags, tenantId, profile }) => {
-    var _a;
     const ctx = require("../../libs/context").default.getStore();
-    const effectiveTenantId = tenantId || (ctx === null || ctx === void 0 ? void 0 : ctx.tenantId);
+    const effectiveTenantId = tenantId || ctx?.tenantId;
     let whereCondition = {
         [sequelize_1.Op.or]: [{ userId }, { status: "pending" }],
         tenantId: effectiveTenantId
@@ -24,7 +23,7 @@ const ListTicketsService = async ({ searchParam = "", pageNumber = "1", queueIds
     // Fetch user to check roles and assigned queues securely
     const user = await (0, ShowUserService_1.default)(userId);
     const userQueueIds = user.queues.map(queue => queue.id);
-    const isAdmin = ((_a = user.roles) === null || _a === void 0 ? void 0 : _a.some(r => r.name === "admin")) || profile === "admin"; // Check both role and profile (legacy)
+    const isAdmin = user.roles?.some(r => r.name === "admin") || profile === "admin"; // Check both role and profile (legacy)
     if (isAdmin) {
         // Admins can see everything based on request params
         if (queueIds && queueIds.length > 0) {

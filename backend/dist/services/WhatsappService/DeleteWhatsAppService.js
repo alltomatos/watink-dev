@@ -40,7 +40,7 @@ const DeleteWhatsAppService = async (id) => {
                 const keySetting = await Setting_1.default.findOne({
                     where: { key: "papiKey", tenantId: whatsapp.tenantId }
                 });
-                if ((urlSetting === null || urlSetting === void 0 ? void 0 : urlSetting.value) && (keySetting === null || keySetting === void 0 ? void 0 : keySetting.value)) {
+                if (urlSetting?.value && keySetting?.value) {
                     try {
                         await axios_1.default.delete(`${urlSetting.value}/api/instances/${whatsapp.id}`, {
                             headers: {

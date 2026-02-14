@@ -44,7 +44,31 @@ const SettingController = __importStar(require("../controllers/SettingController
 const settingRoutes = (0, express_1.Router)();
 // Configure multer for memory storage
 const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
+/**
+ * @swagger
+ * /settings:
+ *   get:
+ *     summary: Lista configurações do tenant
+ *     tags: [Settings]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de configurações
+ *       401:
+ *         description: Não autenticado
+ */
 settingRoutes.get("/settings", isAuth_1.default, (0, checkPermission_1.default)("settings:read"), SettingController.index);
+/**
+ * @swagger
+ * /public-settings:
+ *   get:
+ *     summary: Lista configurações públicas
+ *     tags: [Settings]
+ *     responses:
+ *       200:
+ *         description: Lista de configurações públicas
+ */
 settingRoutes.get("/public-settings", SettingController.getPublicSettings); // [NEW] Public route
 // routes.get("/settings/:settingKey", isAuth, SettingsController.show);
 // change setting key to key in future

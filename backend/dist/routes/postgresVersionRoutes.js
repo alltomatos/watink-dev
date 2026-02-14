@@ -18,10 +18,9 @@ const postgresRoutes = (0, express_1.Router)();
  *         description: Versão do PostgreSQL
  */
 postgresRoutes.get("/postgres/version", async (req, res) => {
-    var _a;
     try {
         const [rows] = await database_1.default.query("SELECT version()");
-        const versionStr = ((_a = rows === null || rows === void 0 ? void 0 : rows[0]) === null || _a === void 0 ? void 0 : _a.version) || "unknown";
+        const versionStr = rows?.[0]?.version || "unknown";
         const lastUpdated = process.env.BUILD_TIMESTAMP ||
             new Date(Number(process.env.BUILD_UNIX_TS || Date.now())).toISOString();
         res.setHeader("Cache-Control", "no-store");

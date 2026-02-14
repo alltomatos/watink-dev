@@ -31,12 +31,13 @@ import { getBackendUrl } from "../helpers/urlUtils";
 const drawerWidth = 260;
 const drawerWidthClosed = 72;
 
+import { motion, AnimatePresence } from "framer-motion";
+
 const useStyles = makeStyles((theme) => ({
     root: {
         display: "flex",
         height: "100vh",
-        // Fundo claro para área principal (Soft Cloud)
-        backgroundColor: "#F1F5F9",
+        backgroundColor: theme.palette.background.default,
     },
     drawerPaper: {
         position: "relative",
@@ -46,13 +47,13 @@ const useStyles = makeStyles((theme) => ({
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
         }),
-        borderRight: "1px solid #334155",
-        // Sidebar com tom intermediário (não muito escuro, não muito claro)
-        backgroundColor: "#1E293B",
+        borderRight: `1px solid ${theme.palette.divider}`,
+        backgroundColor: theme.palette.type === "dark" ? "#020617" : "#1E293B",
         color: "#E2E8F0",
         boxShadow: "0 0 20px rgba(0,0,0,0.1)",
         display: "flex",
         flexDirection: "column",
+        zIndex: theme.zIndex.drawer + 2,
     },
     drawerPaperClose: {
         overflowX: "hidden",
@@ -70,12 +71,11 @@ const useStyles = makeStyles((theme) => ({
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
         }),
-        // AppBar branco para contrastar
-        backgroundColor: "#FFFFFF",
+        backgroundColor: theme.palette.type === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(255, 255, 255, 0.8)",
         backdropFilter: "blur(12px)",
-        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
-        borderBottom: "1px solid #E2E8F0",
-        color: "#1E293B",
+        boxShadow: "none",
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        color: theme.palette.text.primary,
     },
     appBarShift: {
         marginLeft: drawerWidth,
@@ -101,8 +101,7 @@ const useStyles = makeStyles((theme) => ({
         flexGrow: 1,
         height: "100vh",
         overflow: "auto",
-        // Fundo claro para área de conteúdo
-        backgroundColor: "#F1F5F9",
+        backgroundColor: theme.palette.background.default,
     },
     appBarSpacer: {
         minHeight: 64,
@@ -113,7 +112,7 @@ const useStyles = makeStyles((theme) => ({
         justifyContent: "center",
         height: 80,
         padding: "16px",
-        borderBottom: "1px solid rgba(0,0,0,0.05)",
+        borderBottom: `1px solid ${theme.palette.type === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
     },
     logoText: {
         fontWeight: 700,
@@ -182,8 +181,13 @@ const MainLayoutSaaS = ({ children }) => {
                 }
                 // Update browser favicon dynamically
                 if (faviconSetting && faviconSetting.value) {
+                    let link = document.querySelector("link[rel~='icon']");
+                    if (!link) {
+                        link = document.createElement('link');
+                        link.rel = 'icon';
+                        document.head.appendChild(link);
+                    }
                     link.href = getBackendUrl(faviconSetting.value);
-                    document.head.appendChild(link);
                 }
             } catch (err) {
                 console.error("Error fetching settings:", err);
@@ -341,7 +345,15 @@ const MainLayoutSaaS = ({ children }) => {
 
             <main className={classes.content}>
                 <div className={classes.appBarSpacer} />
-                {children}
+                <motion.div
+                    key={history.location.pathname}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    style={{ height: 'calc(100% - 64px)' }}
+                >
+                    {children}
+                </motion.div>
             </main>
         </div>
     );

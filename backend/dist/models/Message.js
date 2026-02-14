@@ -78,6 +78,27 @@ __decorate([
     __metadata("design:type", String)
 ], Message.prototype, "participant", void 0);
 __decorate([
+    (0, sequelize_typescript_1.Default)(false),
+    sequelize_typescript_1.Column,
+    __metadata("design:type", Boolean)
+], Message.prototype, "isGroup", void 0);
+__decorate([
+    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.STRING),
+    __metadata("design:type", String)
+], Message.prototype, "groupJid", void 0);
+__decorate([
+    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.STRING),
+    __metadata("design:type", String)
+], Message.prototype, "participantJid", void 0);
+__decorate([
+    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.STRING),
+    __metadata("design:type", String)
+], Message.prototype, "participantName", void 0);
+__decorate([
+    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.STRING),
+    __metadata("design:type", String)
+], Message.prototype, "waMessageId", void 0);
+__decorate([
     sequelize_typescript_1.CreatedAt,
     (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.DATE(6)),
     __metadata("design:type", Date)

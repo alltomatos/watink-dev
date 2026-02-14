@@ -22,14 +22,13 @@ const initIO = (httpServer) => {
         allowEIO3: true
     });
     io.on("connection", async (socket) => {
-        var _a, _b;
         logger_1.logger.info("Socket Connection Attempt");
         let { token } = socket.handshake.query;
-        if (!token && ((_a = socket.handshake.auth) === null || _a === void 0 ? void 0 : _a.token)) {
+        if (!token && socket.handshake.auth?.token) {
             token = socket.handshake.auth.token;
             logger_1.logger.info(`[Socket Debug] Token found in handshake.auth`);
         }
-        if (!token && ((_b = socket.handshake.headers) === null || _b === void 0 ? void 0 : _b.authorization)) {
+        if (!token && socket.handshake.headers?.authorization) {
             const authHeader = socket.handshake.headers.authorization;
             if (authHeader.startsWith("Bearer ")) {
                 token = authHeader.substring(7);
@@ -54,7 +53,7 @@ const initIO = (httpServer) => {
             return io;
         }
         // Extract userId from token
-        const userId = tokenData === null || tokenData === void 0 ? void 0 : tokenData.id;
+        const userId = tokenData?.id;
         // Track user as online in Redis
         if (userId) {
             await UserOnlineService_1.default.setUserOnline(userId, socket.id);

@@ -9,7 +9,7 @@ const User_1 = __importDefault(require("../../models/User"));
 const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
 const ListUsersService = async ({ searchParam = "", pageNumber = "1", tenantId }) => {
     const ctx = require("../../libs/context").default.getStore();
-    const effectiveTenantId = tenantId || (ctx === null || ctx === void 0 ? void 0 : ctx.tenantId);
+    const effectiveTenantId = tenantId || ctx?.tenantId;
     let whereCondition = {};
     if (effectiveTenantId !== undefined) {
         whereCondition.tenantId = effectiveTenantId;

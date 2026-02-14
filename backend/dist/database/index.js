@@ -46,6 +46,8 @@ const GroupPermission_1 = __importDefault(require("../models/GroupPermission"));
 const Step_1 = __importDefault(require("../models/Step"));
 const EmailTemplate_1 = __importDefault(require("../models/EmailTemplate"));
 const ContactAudit_1 = __importDefault(require("../models/ContactAudit"));
+const WhatsAppGroup_1 = __importDefault(require("../models/WhatsAppGroup"));
+const WhatsAppGroupParticipant_1 = __importDefault(require("../models/WhatsAppGroupParticipant"));
 // eslint-disable-next-line
 const dbConfig = require("../config/database");
 const sequelize = new sequelize_typescript_1.Sequelize(dbConfig);
@@ -92,6 +94,8 @@ const models = [
     Step_1.default,
     EmailTemplate_1.default,
     ContactAudit_1.default,
+    WhatsAppGroup_1.default,
+    WhatsAppGroupParticipant_1.default,
 ];
 sequelize.addModels(models);
 const context_1 = __importDefault(require("../libs/context"));
@@ -114,22 +118,22 @@ const setTenant = async (options, tenantId) => {
 };
 sequelize.addHook("beforeFind", async (options) => {
     const ctx = context_1.default.getStore();
-    const tenantId = options.tenantId || (ctx === null || ctx === void 0 ? void 0 : ctx.tenantId);
+    const tenantId = options.tenantId || ctx?.tenantId;
     await setTenant(options, tenantId);
 });
 sequelize.addHook("beforeCreate", async (instance, options) => {
     const ctx = context_1.default.getStore();
-    const tenantId = instance.tenantId || (ctx === null || ctx === void 0 ? void 0 : ctx.tenantId);
+    const tenantId = instance.tenantId || ctx?.tenantId;
     await setTenant(options, tenantId);
 });
 sequelize.addHook("beforeUpdate", async (instance, options) => {
     const ctx = context_1.default.getStore();
-    const tenantId = instance.tenantId || (ctx === null || ctx === void 0 ? void 0 : ctx.tenantId);
+    const tenantId = instance.tenantId || ctx?.tenantId;
     await setTenant(options, tenantId);
 });
 sequelize.addHook("beforeDestroy", async (instance, options) => {
     const ctx = context_1.default.getStore();
-    const tenantId = instance.tenantId || (ctx === null || ctx === void 0 ? void 0 : ctx.tenantId);
+    const tenantId = instance.tenantId || ctx?.tenantId;
     await setTenant(options, tenantId);
 });
 exports.default = sequelize;

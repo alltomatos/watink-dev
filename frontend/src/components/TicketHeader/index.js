@@ -9,7 +9,7 @@ import { useHistory } from "react-router-dom";
 const useStyles = makeStyles((theme) => ({
   ticketHeader: {
     display: "flex",
-    backgroundColor: "#ffffff",
+    backgroundColor: theme.palette.type === 'dark' ? "#202C33" : "#F0F2F5",
     flex: "none",
     borderBottom: "1px solid rgba(0, 0, 0, 0.05)",
     boxShadow: "0 1px 2px rgba(0, 0, 0, 0.03)",

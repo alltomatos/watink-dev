@@ -19,7 +19,8 @@ const flowRoutes = (0, express_1.Router)();
  */
 flowRoutes.get("/flow/version", async (req, res) => {
     try {
-        const { data } = await axios_1.default.get("http://flow-engine-worker:3336/version", {
+        const flowEngineUrl = process.env.FLOW_ENGINE_URL || "http://flow-engine-worker:3336";
+        const { data } = await axios_1.default.get(`${flowEngineUrl}/version`, {
             headers: { "Cache-Control": "no-store" },
             timeout: 1500,
         });

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import clsx from "clsx";
 
 import { Avatar, CardHeader, Box, makeStyles, Typography } from "@material-ui/core";
 import { blue } from "@material-ui/core/colors";
@@ -6,6 +7,7 @@ import { blue } from "@material-ui/core/colors";
 import { i18n } from "../../translate/i18n";
 import { getBackendUrl } from "../../helpers/urlUtils";
 import WalletButton from "../WalletButton";
+import { useThemeContext } from "../../context/DarkMode";
 
 const useStyles = makeStyles((theme) => ({
 	cardHeader: {
@@ -16,8 +18,14 @@ const useStyles = makeStyles((theme) => ({
 		},
 	},
 	avatar: {
-		width: 48,
-		height: 48,
+		width: 40,
+		height: 40,
+	},
+	avatarWhatsapp: {
+		border: "none",
+		boxShadow: "none",
+	},
+	avatarOthers: {
 		border: `2px solid ${theme.palette.primary.main}`,
 		boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
 	},
@@ -27,22 +35,23 @@ const useStyles = makeStyles((theme) => ({
 		gap: 8,
 	},
 	ticketId: {
-		fontSize: "0.8rem",
+		fontSize: "0.75rem",
 		color: theme.palette.text.secondary,
 		fontWeight: 500,
-		backgroundColor: "rgba(0, 0, 0, 0.05)",
-		padding: "2px 6px",
+		backgroundColor: theme.palette.type === 'dark' ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)",
+		padding: "1px 5px",
 		borderRadius: "4px",
 	},
 	contactName: {
-		fontWeight: "bold",
-		fontSize: "1.1rem",
+		fontWeight: 500,
+		fontSize: "1rem",
 		color: theme.palette.text.primary,
 	},
 }));
 
 const TicketInfo = ({ contact, ticket, onClick }) => {
 	const classes = useStyles();
+	const { appTheme } = useThemeContext();
 	const [localContact, setLocalContact] = useState(contact);
 
 	// Handle wallet update to avoid full page refresh
@@ -63,7 +72,7 @@ const TicketInfo = ({ contact, ticket, onClick }) => {
 				<Avatar
 					src={getBackendUrl(displayContact.profilePicUrl)}
 					alt="contact_image"
-					className={classes.avatar}
+					className={clsx(classes.avatar, appTheme === "whatsapp" ? classes.avatarWhatsapp : classes.avatarOthers)}
 				/>
 			}
 			title={

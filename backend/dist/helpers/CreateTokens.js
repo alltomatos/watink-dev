@@ -7,10 +7,9 @@ exports.createRefreshToken = exports.createAccessToken = void 0;
 const jsonwebtoken_1 = require("jsonwebtoken");
 const auth_1 = __importDefault(require("../config/auth"));
 const createAccessToken = (user) => {
-    var _a;
     const { secret, expiresIn } = auth_1.default;
     // Determine profile based on roles for legacy compatibility
-    const isAdmin = ((_a = user.roles) === null || _a === void 0 ? void 0 : _a.some(role => role.name === "Admin")) || user.email === "admin@admin.com";
+    const isAdmin = user.roles?.some(role => role.name === "Admin") || user.email === "admin@admin.com";
     const profile = isAdmin ? "admin" : "user";
     return (0, jsonwebtoken_1.sign)({ username: user.name, id: user.id, tenantId: user.tenantId, profile }, secret, {
         expiresIn

@@ -41,7 +41,20 @@ const isAuth_1 = __importDefault(require("../middleware/isAuth"));
 const checkPermission_1 = __importDefault(require("../middleware/checkPermission"));
 const TicketController = __importStar(require("../controllers/TicketController"));
 const ticketRoutes = express_1.default.Router();
-// ... (Swagger docs omitted for brevity)
+/**
+ * @swagger
+ * /tickets:
+ *   get:
+ *     summary: Lista tickets
+ *     tags: [Tickets]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista paginada de tickets
+ *       401:
+ *         description: Não autenticado
+ */
 ticketRoutes.get("/tickets", isAuth_1.default, TicketController.index);
 ticketRoutes.get("/tickets/:ticketId", isAuth_1.default, TicketController.show);
 ticketRoutes.post("/tickets", isAuth_1.default, TicketController.store);

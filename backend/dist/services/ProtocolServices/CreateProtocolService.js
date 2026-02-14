@@ -52,7 +52,6 @@ const generateProtocolNumber = () => {
     return `${date}-${random}`;
 };
 const CreateProtocolService = async (data, createdByUserId) => {
-    var _a;
     const protocolNumber = generateProtocolNumber();
     let dueDate = data.dueDate;
     // SLA Logic
@@ -118,7 +117,7 @@ const CreateProtocolService = async (data, createdByUserId) => {
         try {
             // TODO: Restore Carousel logic if needed. Currently using reliable RabbitMQ interactive message.
             // if (data.carouselCards && data.carouselCards.length > 0) { ... }
-            if ((fullProtocol === null || fullProtocol === void 0 ? void 0 : fullProtocol.ticket) && fullProtocol.ticket.whatsappId) {
+            if (fullProtocol?.ticket && fullProtocol.ticket.whatsappId) {
                 const { contact, ticket } = fullProtocol;
                 const appUrl = process.env.FRONTEND_URL || "http://localhost:3000";
                 const protocolUrl = `${appUrl}/public/protocols/${protocol.token}`; // Use token URL from HEAD idea, it's better for public access
@@ -148,7 +147,7 @@ const CreateProtocolService = async (data, createdByUserId) => {
                         ticketId: ticket.id
                     }
                 };
-                const engineType = ((_a = ticket.whatsapp) === null || _a === void 0 ? void 0 : _a.engineType) || "whaileys";
+                const engineType = ticket.whatsapp?.engineType || "whaileys";
                 await RabbitMQService_1.default.publishCommand(RabbitMQService_1.default.generateRoutingKey(data.tenantId, engineType, ticket.whatsappId, "message.send.text"), command);
             }
         }

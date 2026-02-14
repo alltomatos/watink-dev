@@ -16,8 +16,8 @@ const AIService = async (history, tenantId) => {
     const modelSetting = await Setting_1.default.findOne({
         where: { key: "aiModel", tenantId }
     });
-    let apiKey = apiKeySetting === null || apiKeySetting === void 0 ? void 0 : apiKeySetting.value;
-    let provider = (providerSetting === null || providerSetting === void 0 ? void 0 : providerSetting.value) || "openai";
+    let apiKey = apiKeySetting?.value;
+    let provider = providerSetting?.value || "openai";
     // Fallback para variáveis de ambiente se não houver no banco
     if (!apiKey) {
         if (process.env.OPENAI_API_KEY) {
@@ -36,14 +36,14 @@ const AIService = async (history, tenantId) => {
         baseURL = "https://api.x.ai/v1";
         model = "grok-beta";
     }
-    if (modelSetting === null || modelSetting === void 0 ? void 0 : modelSetting.value) {
+    if (modelSetting?.value) {
         model = modelSetting.value;
     }
     const guidePromptSetting = await Setting_1.default.findOne({
         where: { key: "aiGuidePrompt", tenantId }
     });
     // CONTEXTO PRIORITÁRIO
-    const guidePrompt = (guidePromptSetting === null || guidePromptSetting === void 0 ? void 0 : guidePromptSetting.value)
+    const guidePrompt = guidePromptSetting?.value
         ? `\nCONTEXTO DE NEGÓCIO (IMPORTANTÍSSIMO - SIGA ESTRITAMENTE):\n${guidePromptSetting.value}\n`
         : "";
     const systemPrompt = `

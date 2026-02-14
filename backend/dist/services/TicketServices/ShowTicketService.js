@@ -12,7 +12,7 @@ const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
 const Tag_1 = __importDefault(require("../../models/Tag"));
 const ShowTicketService = async (id, tenantId) => {
     const ctx = require("../../libs/context").default.getStore();
-    const effectiveTenantId = tenantId || (ctx === null || ctx === void 0 ? void 0 : ctx.tenantId);
+    const effectiveTenantId = tenantId || ctx?.tenantId;
     const where = { id };
     if (effectiveTenantId)
         where.tenantId = effectiveTenantId;

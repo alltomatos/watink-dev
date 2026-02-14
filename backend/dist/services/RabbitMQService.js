@@ -128,7 +128,6 @@ class RabbitMQService {
             await this.channel.bindQueue(q.queue, "wbot.events", key);
         }
         this.channel.consume(q.queue, async (msg) => {
-            var _a, _b, _c;
             if (msg) {
                 try {
                     const raw = JSON.parse(msg.content.toString());
@@ -136,18 +135,18 @@ class RabbitMQService {
                     // Security Check: Total Isolation
                     if (authorizedTenantId && String(content.tenantId) !== String(authorizedTenantId)) {
                         logger_1.logger.error(`[Security] Worker authorized for tenant ${authorizedTenantId} received message for tenant ${content.tenantId}. Ignoring.`);
-                        (_a = this.channel) === null || _a === void 0 ? void 0 : _a.ack(msg);
+                        this.channel?.ack(msg);
                         return;
                     }
                     // Fix Context Propagation
                     await context_1.default.run({ tenantId: String(content.tenantId) }, async () => {
                         await handler(content);
                     });
-                    (_b = this.channel) === null || _b === void 0 ? void 0 : _b.ack(msg);
+                    this.channel?.ack(msg);
                 }
                 catch (error) {
                     logger_1.logger.error(`Error processing event: ${error.message}\n${error.stack}`);
-                    (_c = this.channel) === null || _c === void 0 ? void 0 : _c.nack(msg, false, false);
+                    this.channel?.nack(msg, false, false);
                 }
             }
         });
@@ -160,7 +159,6 @@ class RabbitMQService {
             await this.channel.bindQueue(q.queue, "wbot.commands", key);
         }
         this.channel.consume(q.queue, async (msg) => {
-            var _a, _b, _c;
             if (msg) {
                 try {
                     const raw = JSON.parse(msg.content.toString());
@@ -168,18 +166,18 @@ class RabbitMQService {
                     // Security Check: Total Isolation
                     if (authorizedTenantId && String(content.tenantId) !== String(authorizedTenantId)) {
                         logger_1.logger.error(`[Security] Command worker authorized for tenant ${authorizedTenantId} received message for tenant ${content.tenantId}. Ignoring.`);
-                        (_a = this.channel) === null || _a === void 0 ? void 0 : _a.ack(msg);
+                        this.channel?.ack(msg);
                         return;
                     }
                     // Fix Context Propagation
                     await context_1.default.run({ tenantId: String(content.tenantId) }, async () => {
                         await handler(content);
                     });
-                    (_b = this.channel) === null || _b === void 0 ? void 0 : _b.ack(msg);
+                    this.channel?.ack(msg);
                 }
                 catch (error) {
                     logger_1.logger.error("Error processing command", error);
-                    (_c = this.channel) === null || _c === void 0 ? void 0 : _c.nack(msg, false, false);
+                    this.channel?.nack(msg, false, false);
                 }
             }
         });
@@ -189,16 +187,15 @@ class RabbitMQService {
             return;
         await this.channel.assertQueue(queueName, { durable: true });
         this.channel.consume(queueName, async (msg) => {
-            var _a, _b;
             if (msg) {
                 try {
                     const content = JSON.parse(msg.content.toString());
                     await handler(content);
-                    (_a = this.channel) === null || _a === void 0 ? void 0 : _a.ack(msg);
+                    this.channel?.ack(msg);
                 }
                 catch (error) {
                     logger_1.logger.error(`Error processing queue message: ${error.message}`);
-                    (_b = this.channel) === null || _b === void 0 ? void 0 : _b.nack(msg, false, false);
+                    this.channel?.nack(msg, false, false);
                 }
             }
         });

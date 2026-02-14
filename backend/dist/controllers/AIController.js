@@ -54,7 +54,7 @@ class AIController {
         const aiEnabled = await Setting_1.default.findOne({
             where: { key: "aiEnabled", tenantId }
         });
-        if ((aiEnabled === null || aiEnabled === void 0 ? void 0 : aiEnabled.value) !== "true") {
+        if (aiEnabled?.value !== "true") {
             return res.status(403).json({ error: "AI is not enabled for this tenant" });
         }
         try {
@@ -78,7 +78,7 @@ class AIController {
             Setting_1.default.findOne({ where: { key: "aiEnabled", tenantId } }),
             Setting_1.default.findOne({ where: { key: "aiAssistantEnabled", tenantId } })
         ]);
-        if ((aiEnabled === null || aiEnabled === void 0 ? void 0 : aiEnabled.value) !== "true" || (aiAssistantEnabled === null || aiAssistantEnabled === void 0 ? void 0 : aiAssistantEnabled.value) !== "true") {
+        if (aiEnabled?.value !== "true" || aiAssistantEnabled?.value !== "true") {
             return res.status(403).json({ error: "AI Assistant is not enabled" });
         }
         try {
@@ -107,7 +107,7 @@ class AIController {
         const aiEnabled = await Setting_1.default.findOne({
             where: { key: "aiEnabled", tenantId }
         });
-        if ((aiEnabled === null || aiEnabled === void 0 ? void 0 : aiEnabled.value) !== "true") {
+        if (aiEnabled?.value !== "true") {
             return res.status(403).json({ error: "AI is not enabled for this tenant" });
         }
         try {
@@ -147,7 +147,7 @@ class AIController {
             Setting_1.default.findOne({ where: { key: "aiEnabled", tenantId } }),
             Setting_1.default.findOne({ where: { key: "aiAssistantEnabled", tenantId } })
         ]);
-        if ((aiEnabled === null || aiEnabled === void 0 ? void 0 : aiEnabled.value) !== "true" || (aiAssistantEnabled === null || aiAssistantEnabled === void 0 ? void 0 : aiAssistantEnabled.value) !== "true") {
+        if (aiEnabled?.value !== "true" || aiAssistantEnabled?.value !== "true") {
             return res.status(403).json({ error: "AI Assistant is not enabled" });
         }
         try {

@@ -205,7 +205,7 @@ const TagManager = () => {
                 </MainHeaderButtonsWrapper>
             </MainHeader>
 
-            <Paper className={classes.paper}>
+            <Paper className={classes.paper} elevation={0} style={{ backgroundColor: 'transparent', padding: 0 }}>
                 <Table size="small">
                     <TableHead>
                         <TableRow>

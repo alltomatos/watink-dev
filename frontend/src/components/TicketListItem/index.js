@@ -43,9 +43,71 @@ const useStyles = makeStyles(theme => ({
 		borderBottom: "1px solid #f0f0f0", 
 	},
 
+	ticketApple: {
+		borderRadius: 12,
+		margin: "4px 12px",
+		width: "calc(100% - 24px)",
+		borderBottom: "none",
+		height: "auto",
+		padding: "12px 16px",
+		backgroundColor: theme.palette.type === 'dark' ? "rgba(255, 255, 255, 0.03)" : "rgba(255, 255, 255, 0.5)",
+		backdropFilter: "blur(10px)",
+		transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+		"&:hover": {
+			transform: "scale(1.01)",
+			backgroundColor: theme.palette.type === 'dark' ? "rgba(255, 255, 255, 0.06)" : "#FFFFFF",
+			boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+		},
+		"&.Mui-selected": {
+			backgroundColor: "#007AFF",
+			boxShadow: "0 10px 20px rgba(0, 122, 255, 0.25)",
+			color: "#FFFFFF",
+			"& .MuiTypography-root": {
+				color: "#FFFFFF",
+			},
+			"& .MuiTypography-colorTextSecondary": {
+				color: "rgba(255, 255, 255, 0.7)",
+			},
+			"& .MuiListItemIcon-root": {
+				color: "#FFFFFF",
+			},
+			"&:hover": {
+				backgroundColor: "#007AFF",
+				opacity: 0.95,
+			},
+		},
+	},
+
+	ticketWhatsapp: {
+		height: 72,
+		padding: "0 15px",
+		borderBottom: `1px solid ${theme.palette.type === 'dark' ? "#222D34" : "#F0F2F5"}`,
+		"&.Mui-selected": {
+			backgroundColor: theme.palette.type === 'dark' ? "#2A3942" : "#F0F2F5",
+			"&:hover": {
+				backgroundColor: theme.palette.type === 'dark' ? "#202C33" : "#F5F6F6",
+			},
+		},
+		"&:hover": {
+			backgroundColor: theme.palette.type === 'dark' ? "#202C33" : "#F5F6F6",
+		},
+	},
+
 	contactNameSaas: {
 		fontWeight: 600,
 		fontSize: "1rem",
+	},
+
+	contactNameApple: {
+		fontWeight: 600,
+		fontSize: "0.95rem",
+		letterSpacing: "-0.01em",
+	},
+
+	contactNameWhatsapp: {
+		fontWeight: 400,
+		fontSize: "1rem",
+		color: theme.palette.type === 'dark' ? "#E9EDEF" : "#111B21",
 	},
 
 	pendingTicket: {
@@ -110,12 +172,12 @@ const useStyles = makeStyles(theme => ({
 		marginLeft: "auto",
 	},
 
-	badgeStyle: {
+	badgeStyle: ({ appTheme }) => ({
 		color: "white",
 		backgroundColor: theme.palette.primary.main,
 		fontWeight: "bold",
-		boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-	},
+		boxShadow: appTheme === "whatsapp" ? "none" : "0 2px 4px rgba(0,0,0,0.2)",
+	}),
 
 	acceptButton: {
 		position: "absolute",
@@ -173,13 +235,13 @@ const useStyles = makeStyles(theme => ({
 }));
 
 const TicketListItem = ({ ticket }) => {
-	const classes = useStyles();
+	const { appTheme } = useThemeContext();
+	const classes = useStyles({ appTheme });
 	const history = useHistory();
 	const [loading, setLoading] = useState(false);
 	const { ticketId } = useParams();
 	const isMounted = useRef(true);
 	const { user } = useContext(AuthContext);
-	const { appTheme } = useThemeContext();
 
 	useEffect(() => {
 		return () => {
@@ -221,18 +283,22 @@ const TicketListItem = ({ ticket }) => {
 				className={clsx(classes.ticket, {
 					[classes.pendingTicket]: ticket.status === "pending",
 					[classes.ticketSaas]: appTheme === "saas",
+					[classes.ticketApple]: appTheme === "apple",
+					[classes.ticketWhatsapp]: appTheme === "whatsapp",
 				})}
 			>
-				<Tooltip
-					arrow
-					placement="right"
-					title={ticket.queue?.name || "Sem fila"}
-				>
-					<span
-						style={{ backgroundColor: ticket.queue?.color || "#7C7C7C" }}
-						className={classes.ticketQueueColor}
-					></span>
-				</Tooltip>
+				{appTheme !== "whatsapp" && (
+					<Tooltip
+						arrow
+						placement="right"
+						title={ticket.queue?.name || "Sem fila"}
+					>
+						<span
+							style={{ backgroundColor: ticket.queue?.color || "#7C7C7C" }}
+							className={classes.ticketQueueColor}
+						></span>
+					</Tooltip>
+				)}
 				<ListItemAvatar>
 					<Avatar src={getBackendUrl(ticket?.contact?.profilePicUrl)} className={classes.avatar} />
 				</ListItemAvatar>
@@ -245,7 +311,11 @@ const TicketListItem = ({ ticket }) => {
 								component="span"
 								variant="body2"
 								color="textPrimary"
-								className={clsx({ [classes.contactNameSaas]: appTheme === "saas" })}
+								className={clsx({ 
+									[classes.contactNameSaas]: appTheme === "saas",
+									[classes.contactNameApple]: appTheme === "apple",
+									[classes.contactNameWhatsapp]: appTheme === "whatsapp",
+								})}
 							>
 								{ticket.contact.name}
 							</Typography>
@@ -335,7 +405,7 @@ const TicketListItem = ({ ticket }) => {
 					</ButtonWithSpinner>
 				)}
 			</ListItem>
-			{appTheme !== "saas" && <Divider variant="inset" component="li" />}
+			{appTheme !== "saas" && appTheme !== "apple" && appTheme !== "whatsapp" && <Divider variant="inset" component="li" />}
 		</React.Fragment>
 	);
 };

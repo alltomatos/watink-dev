@@ -210,7 +210,7 @@ const WalletButton = ({ contact, onWalletUpdate }) => {
         if (contact.walletUser?.profilePicUrl) {
             return (
                 <WalletBadge
-                    overlap="circle"
+                    overlap="circular"
                     anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
                     variant="dot"
                 >

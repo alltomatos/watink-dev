@@ -8,7 +8,7 @@ const Whatsapp_1 = __importDefault(require("../models/Whatsapp"));
 const GetDefaultWhatsAppByUser_1 = __importDefault(require("./GetDefaultWhatsAppByUser"));
 const GetDefaultWhatsApp = async (userId) => {
     const ctx = require("./context").default.getStore();
-    const effectiveTenantId = ctx === null || ctx === void 0 ? void 0 : ctx.tenantId;
+    const effectiveTenantId = ctx?.tenantId;
     if (userId) {
         const whatsappByUser = await (0, GetDefaultWhatsAppByUser_1.default)(userId);
         if (whatsappByUser !== null) {

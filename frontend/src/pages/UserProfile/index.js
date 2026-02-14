@@ -176,7 +176,7 @@ const UserProfile = () => {
                                 />
                                 <label htmlFor="icon-button-file">
                                     <Badge
-                                        overlap="circle"
+                                        overlap="circular"
                                         anchorOrigin={{
                                             vertical: "bottom",
                                             horizontal: "right",

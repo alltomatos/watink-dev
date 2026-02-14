@@ -18,7 +18,6 @@ const Tenant_1 = __importDefault(require("../../models/Tenant"));
 const Role_1 = __importDefault(require("../../models/Role"));
 const sequelize_1 = require("sequelize");
 const AuthUserService = async ({ email, password }) => {
-    var _a;
     const user = await User_1.default.findOne({
         where: { email },
         include: [
@@ -51,7 +50,7 @@ const AuthUserService = async ({ email, password }) => {
     if (!user) {
         throw new AppError_1.default("ERR_INVALID_CREDENTIALS", 401);
     }
-    if (process.env.TENANTS === "true" && ((_a = user.tenant) === null || _a === void 0 ? void 0 : _a.status) === "inactive") {
+    if (process.env.TENANTS === "true" && user.tenant?.status === "inactive") {
         throw new AppError_1.default("ERR_TENANT_INACTIVE", 401);
     }
     if (!(await user.checkPassword(password))) {

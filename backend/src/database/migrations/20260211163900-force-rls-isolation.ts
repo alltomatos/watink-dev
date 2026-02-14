@@ -3,18 +3,18 @@ import { QueryInterface } from "sequelize";
 module.exports = {
   up: async (queryInterface: QueryInterface) => {
     // 1. Get all tables with tenantId column in public schema
-    const [results] = await queryInterface.sequelize.query(`
-      SELECT table_name 
-      FROM information_schema.columns 
-      WHERE column_name = 'tenantId' 
-      AND table_schema = 'public'
-      AND table_type = 'BASE TABLE'
+    const results = await queryInterface.sequelize.query(`
+      SELECT c.table_name 
+      FROM information_schema.columns c
+      JOIN information_schema.tables t ON c.table_name = t.table_name AND c.table_schema = t.table_schema
+      WHERE c.column_name = 'tenantId' 
+      AND c.table_schema = 'public'
+      AND t.table_type = 'BASE TABLE'
       UNION
       SELECT 'Tenants' as table_name;
     `, { type: 'SELECT' }) as any[];
 
-    // Extract table names from the nested results structure if necessary
-    // Sequelize query result format can vary, but typically it's an array of objects
+    // Extract table names
     const tables = results.map((r: any) => r.table_name);
 
     console.log(`Enabling FORCE RLS on tables: ${tables.join(', ')}`);
@@ -71,12 +71,13 @@ module.exports = {
   },
 
   down: async (queryInterface: QueryInterface) => {
-    const [results] = await queryInterface.sequelize.query(`
-      SELECT table_name 
-      FROM information_schema.columns 
-      WHERE column_name = 'tenantId' 
-      AND table_schema = 'public'
-      AND table_type = 'BASE TABLE'
+    const results = await queryInterface.sequelize.query(`
+      SELECT c.table_name 
+      FROM information_schema.columns c
+      JOIN information_schema.tables t ON c.table_name = t.table_name AND c.table_schema = t.table_schema
+      WHERE c.column_name = 'tenantId' 
+      AND c.table_schema = 'public'
+      AND t.table_type = 'BASE TABLE'
       UNION
       SELECT 'Tenants' as table_name;
     `, { type: 'SELECT' }) as any[];

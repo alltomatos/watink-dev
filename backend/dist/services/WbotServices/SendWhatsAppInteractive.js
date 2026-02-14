@@ -11,7 +11,6 @@ const RabbitMQService_1 = __importDefault(require("../RabbitMQService"));
 const Message_1 = __importDefault(require("../../models/Message"));
 const GenerateWAMessageId_1 = __importDefault(require("../../helpers/GenerateWAMessageId"));
 const SendWhatsAppInteractive = async ({ body, ticket, buttons, list }) => {
-    var _a;
     try {
         const formattedBody = (0, Mustache_1.default)(body, ticket.contact);
         const id = (0, uuid_1.v4)();
@@ -32,10 +31,10 @@ const SendWhatsAppInteractive = async ({ body, ticket, buttons, list }) => {
         };
         const message = await Message_1.default.create(messageData);
         // Determine Engine Type
-        let engineType = (_a = ticket.whatsapp) === null || _a === void 0 ? void 0 : _a.engineType;
+        let engineType = ticket.whatsapp?.engineType;
         if (!engineType) {
             const whatsapp = await Whatsapp_1.default.findByPk(ticket.whatsappId);
-            engineType = whatsapp === null || whatsapp === void 0 ? void 0 : whatsapp.engineType;
+            engineType = whatsapp?.engineType;
         }
         if (!engineType)
             engineType = "whaileys";

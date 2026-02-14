@@ -14,7 +14,6 @@ const EmbeddingService_1 = __importDefault(require("../AIServices/EmbeddingServi
 const EntityTagService_1 = __importDefault(require("../TagServices/EntityTagService"));
 const logger_1 = require("../../utils/logger");
 const UpdateTicketService = async ({ ticketData, ticketId }) => {
-    var _a, _b;
     const { status, userId, queueId, whatsappId, stepId } = ticketData;
     const ticket = await (0, ShowTicketService_1.default)(ticketId);
     await (0, SetTicketMessagesAsRead_1.default)(ticket);
@@ -22,7 +21,7 @@ const UpdateTicketService = async ({ ticketData, ticketId }) => {
         await (0, CheckContactOpenTickets_1.default)(ticket.contactId, whatsappId);
     }
     const oldStatus = ticket.status;
-    const oldUserId = (_a = ticket.user) === null || _a === void 0 ? void 0 : _a.id;
+    const oldUserId = ticket.user?.id;
     const oldStepId = ticket.stepId;
     if (oldStatus === "closed") {
         await (0, CheckContactOpenTickets_1.default)(ticket.contact.id, ticket.whatsappId);
@@ -53,7 +52,7 @@ const UpdateTicketService = async ({ ticketData, ticketId }) => {
     }
     const ticketUpdated = await (0, ShowTicketService_1.default)(ticket.id);
     const io = (0, socket_1.getIO)();
-    if (ticket.status !== oldStatus || ((_b = ticket.user) === null || _b === void 0 ? void 0 : _b.id) !== oldUserId) {
+    if (ticket.status !== oldStatus || ticket.user?.id !== oldUserId) {
         io.to(oldStatus).emit("ticket", {
             action: "delete",
             ticketId: ticket.id
@@ -71,7 +70,7 @@ const UpdateTicketService = async ({ ticketData, ticketId }) => {
         (async () => {
             try {
                 const newStep = await Step_1.default.findByPk(stepId);
-                if (newStep === null || newStep === void 0 ? void 0 : newStep.isBindingStep) {
+                if (newStep?.isBindingStep) {
                     // Check if contact already has a wallet owner
                     const contact = await Contact_1.default.findByPk(ticket.contactId);
                     if (contact && !contact.walletUserId) {
@@ -96,7 +95,7 @@ const UpdateTicketService = async ({ ticketData, ticketId }) => {
                     Setting_1.default.findOne({ where: { key: "aiEnabled", tenantId: ticket.tenantId } }),
                     Setting_1.default.findOne({ where: { key: "aiAssistantEnabled", tenantId: ticket.tenantId } })
                 ]);
-                if ((aiEnabled === null || aiEnabled === void 0 ? void 0 : aiEnabled.value) === "true" && (aiAssistantEnabled === null || aiAssistantEnabled === void 0 ? void 0 : aiAssistantEnabled.value) === "true") {
+                if (aiEnabled?.value === "true" && aiAssistantEnabled?.value === "true") {
                     logger_1.logger.info(`Processing embeddings for closed ticket #${ticket.id}`);
                     await EmbeddingService_1.default.processTicket(ticket.id, ticket.tenantId);
                     logger_1.logger.info(`Embeddings processed successfully for ticket #${ticket.id}`);

@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import Grid from "@material-ui/core/Grid";
 import Paper from "@material-ui/core/Paper";
 import { makeStyles } from "@material-ui/core/styles";
+import clsx from "clsx";
 
 import TicketsManager from "../../components/TicketsManager/";
 import Ticket from "../../components/Ticket/";
@@ -10,23 +11,28 @@ import Ticket from "../../components/Ticket/";
 import { i18n } from "../../translate/i18n";
 import Hidden from "@material-ui/core/Hidden";
 import { AuthContext } from "../../context/Auth/AuthContext";
-// import Alert from "@material-ui/lab/Alert"; // Optional: Use Alert if available in basic Material UI or create a styled Paper
+import { useThemeContext } from "../../context/DarkMode";
 
 const useStyles = makeStyles((theme) => ({
   chatContainer: {
     flex: 1,
-    // // backgroundColor: "#eee",
-    // padding: theme.spacing(4),
     height: `calc(100% - 48px)`,
     overflowY: "hidden",
     backgroundColor: theme.palette.background.default,
   },
+  chatContainerApple: {
+    height: "100%",
+    backgroundColor: "transparent",
+  },
 
   chatPapper: {
-    // backgroundColor: "red",
     display: "flex",
     height: "100%",
     backgroundColor: theme.palette.background.paper,
+  },
+  chatPapperApple: {
+    backgroundColor: "transparent",
+    gap: "20px",
   },
 
   contactsWrapper: {
@@ -34,6 +40,12 @@ const useStyles = makeStyles((theme) => ({
     height: "100%",
     flexDirection: "column",
     overflowY: "hidden",
+  },
+  contactsWrapperApple: {
+    backgroundColor: theme.palette.type === 'dark' ? "rgba(28, 28, 30, 0.6)" : "rgba(255, 255, 255, 0.6)",
+    backdropFilter: "blur(20px)",
+    borderRadius: 20,
+    boxShadow: "0 4px 24px rgba(0,0,0,0.04)",
   },
   contactsWrapperSmall: {
     display: "flex",
@@ -49,6 +61,13 @@ const useStyles = makeStyles((theme) => ({
     height: "100%",
     flexDirection: "column",
   },
+  messagessWrapperApple: {
+    backgroundColor: theme.palette.type === 'dark' ? "rgba(28, 28, 30, 0.6)" : "rgba(255, 255, 255, 0.6)",
+    backdropFilter: "blur(20px)",
+    borderRadius: 20,
+    boxShadow: "0 4px 24px rgba(0,0,0,0.04)",
+    overflow: "hidden",
+  },
   welcomeMsg: {
     backgroundColor: theme.palette.background.paper,
     display: "flex",
@@ -57,6 +76,12 @@ const useStyles = makeStyles((theme) => ({
     height: "100%",
     textAlign: "center",
     borderRadius: 0,
+  },
+  welcomeMsgApple: {
+    backgroundColor: "transparent",
+    color: theme.palette.text.secondary,
+    fontSize: "1.1rem",
+    fontWeight: 500,
   },
   ticketsManager: {},
   ticketsManagerClosed: {
@@ -78,6 +103,7 @@ const Chat = () => {
   const classes = useStyles();
   const { ticketId } = useParams();
   const { user } = useContext(AuthContext);
+  const { appTheme } = useThemeContext();
 
   const showNoQueueWarning =
     user &&
@@ -85,17 +111,17 @@ const Chat = () => {
     (!user.queues || user.queues.length === 0);
 
   return (
-    <div className={classes.chatContainer}>
-      <div className={classes.chatPapper}>
-        <Grid container spacing={0}>
-          {/* <Grid item xs={4} className={classes.contactsWrapper}> */}
+    <div className={clsx(classes.chatContainer, appTheme === "apple" && classes.chatContainerApple)}>
+      <div className={clsx(classes.chatPapper, appTheme === "apple" && classes.chatPapperApple)}>
+        <Grid container spacing={appTheme === "apple" ? 0 : 0} style={{ height: '100%' }}>
           <Grid
             item
             xs={12}
             md={4}
-            className={
-              ticketId ? classes.contactsWrapperSmall : classes.contactsWrapper
-            }
+            className={clsx(
+              ticketId ? classes.contactsWrapperSmall : classes.contactsWrapper,
+              appTheme === "apple" && classes.contactsWrapperApple
+            )}
           >
             {showNoQueueWarning && (
               <Paper className={classes.noQueueWarning} square>
@@ -104,16 +130,14 @@ const Chat = () => {
             )}
             <TicketsManager />
           </Grid>
-          <Grid item xs={12} md={8} className={classes.messagessWrapper}>
-            {/* <Grid item xs={8} className={classes.messagessWrapper}> */}
+          <Grid item xs={12} md={8} className={clsx(classes.messagessWrapper, appTheme === "apple" && classes.messagessWrapperApple)}>
             {ticketId ? (
               <>
                 <Ticket />
               </>
             ) : (
               <Hidden only={["sm", "xs"]}>
-                <Paper className={classes.welcomeMsg}>
-                  {/* <Paper square variant="outlined" className={classes.welcomeMsg}> */}
+                <Paper className={clsx(classes.welcomeMsg, appTheme === "apple" && classes.welcomeMsgApple)} elevation={0}>
                   <span>{i18n.t("chat.noTicketMessage")}</span>
                 </Paper>
               </Hidden>

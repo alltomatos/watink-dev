@@ -11,7 +11,6 @@ const Message_1 = __importDefault(require("../../models/Message"));
 const socket_1 = require("../../libs/socket");
 const GenerateWAMessageId_1 = __importDefault(require("../../helpers/GenerateWAMessageId"));
 const SendWhatsAppCarousel = async ({ ticket, body, cards }) => {
-    var _a;
     try {
         if (!ticket.whatsappId) {
             throw new AppError_1.default("ERR_TICKET_WRONG_WHATSAPP_ID");
@@ -70,10 +69,10 @@ const SendWhatsAppCarousel = async ({ ticket, body, cards }) => {
             }
         };
         // Determine Engine Type
-        let engineType = (_a = ticket.whatsapp) === null || _a === void 0 ? void 0 : _a.engineType;
+        let engineType = ticket.whatsapp?.engineType;
         if (!engineType) {
             const whatsapp = await Whatsapp_1.default.findByPk(ticket.whatsappId);
-            engineType = whatsapp === null || whatsapp === void 0 ? void 0 : whatsapp.engineType;
+            engineType = whatsapp?.engineType;
         }
         if (!engineType)
             engineType = "whaileys";

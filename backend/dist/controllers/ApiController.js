@@ -95,7 +95,7 @@ const index = async (req, res) => {
     }
     const { tenantId } = req.user;
     const contactAndTicket = await createContact(whatsappId, newContact.number, tenantId);
-    if (medias === null || medias === void 0 ? void 0 : medias.length) {
+    if (medias?.length) {
         await Promise.all(medias.map(async (media) => {
             const mediaBuffer = await (0, promises_1.readFile)(media.path);
             const mediaBase64 = mediaBuffer.toString("base64");
@@ -129,7 +129,7 @@ const index = async (req, res) => {
                 sessionId: contactAndTicket.whatsappId,
                 to: `${contactAndTicket.contact.number}@${contactAndTicket.isGroup ? "g.us" : "s.whatsapp.net"}`,
                 body: body,
-                options: (quotedMsg === null || quotedMsg === void 0 ? void 0 : quotedMsg.id) ? { quotedMsgId: quotedMsg.id } : undefined
+                options: quotedMsg?.id ? { quotedMsgId: quotedMsg.id } : undefined
             }
         });
     }

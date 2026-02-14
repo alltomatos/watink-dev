@@ -16,6 +16,7 @@ import {
 	TextField,
 	Switch,
 	FormControlLabel,
+	Typography,
 } from "@material-ui/core";
 
 import api from "../../services/api";
@@ -29,18 +30,20 @@ const useStyles = makeStyles(theme => ({
 		display: "flex",
 		flexWrap: "wrap",
 	},
-
+	dialog: {
+		borderRadius: 20,
+	},
 	multFieldLine: {
 		display: "flex",
-		"& > *:not(:last-child)": {
-			marginRight: theme.spacing(1),
+		gap: theme.spacing(2),
+		marginBottom: theme.spacing(2),
+		"& > *": {
+			flex: 1,
 		},
 	},
-
 	btnWrapper: {
 		position: "relative",
 	},
-
 	buttonProgress: {
 		color: green[500],
 		position: "absolute",
@@ -49,6 +52,24 @@ const useStyles = makeStyles(theme => ({
 		marginTop: -12,
 		marginLeft: -12,
 	},
+	textField: {
+		'& .MuiOutlinedInput-root': {
+			borderRadius: 12,
+		}
+	},
+	saveButton: {
+		borderRadius: 12,
+		padding: "10px 24px",
+		textTransform: "none",
+		fontWeight: 600,
+	},
+	cancelButton: {
+		borderRadius: 12,
+		padding: "10px 24px",
+		textTransform: "none",
+		fontWeight: 600,
+		color: theme.palette.text.secondary,
+	}
 }));
 
 const SessionSchema = Yup.object().shape({
@@ -128,11 +149,14 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, engineType }) => {
 				maxWidth="sm"
 				fullWidth
 				scroll="paper"
+				PaperProps={{ className: classes.dialog }}
 			>
 				<DialogTitle>
-					{whatsAppId
-						? i18n.t("whatsappModal.title.edit")
-						: i18n.t("whatsappModal.title.add")}
+					<Typography variant="h6" style={{ fontWeight: 700 }}>
+						{whatsAppId
+							? "Configurações da Conexão"
+							: "Nova Conexão WhatsApp"}
+					</Typography>
 				</DialogTitle>
 				<Formik
 					initialValues={whatsApp}
@@ -160,19 +184,22 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, engineType }) => {
 										margin="dense"
 										className={classes.textField}
 									/>
-									<FormControlLabel
-										control={
-											<Field
-												as={Switch}
-												color="primary"
-												name="isDefault"
-												checked={values.isDefault}
-											/>
-										}
-										label={i18n.t("whatsappModal.form.default")}
-									/>
+									<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+										<FormControlLabel
+											control={
+												<Field
+													as={Switch}
+													color="primary"
+													name="isDefault"
+													checked={values.isDefault}
+												/>
+											}
+											label={i18n.t("whatsappModal.form.default")}
+										/>
+									</div>
 								</div>
-								<div className={classes.multFieldLine}>
+								
+								<div className={classes.multFieldLine} style={{ backgroundColor: 'rgba(0,0,0,0.02)', padding: '8px 16px', borderRadius: 12 }}>
 									<FormControlLabel
 										control={
 											<Field
@@ -184,8 +211,6 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, engineType }) => {
 										}
 										label="Reconexão Automática (Keep Alive)"
 									/>
-								</div>
-								<div className={classes.multFieldLine}>
 									<FormControlLabel
 										control={
 											<Field
@@ -193,33 +218,20 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, engineType }) => {
 												color="primary"
 												name="syncHistory"
 												checked={values.syncHistory}
-												disabled /* Desativado - histórico agora é sob demanda no chat */
+												disabled
 											/>
 										}
 										label={i18n.t("whatsappModal.form.syncHistory")}
 									/>
-									{values.syncHistory && (
-										<Field
-											as={TextField}
-											label={i18n.t("whatsappModal.form.syncPeriod")}
-											name="syncPeriod"
-											type="date"
-											InputLabelProps={{
-												shrink: true,
-											}}
-											variant="outlined"
-											margin="dense"
-											className={classes.textField}
-										/>
-									)}
 								</div>
-								<div>
+
+								<div style={{ marginTop: 16 }}>
 									<Field
 										as={TextField}
 										label={i18n.t("queueModal.form.greetingMessage")}
 										type="greetingMessage"
 										multiline
-										rows={5}
+										rows={3}
 										fullWidth
 										name="greetingMessage"
 										error={
@@ -230,15 +242,16 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, engineType }) => {
 										}
 										variant="outlined"
 										margin="dense"
+										className={classes.textField}
 									/>
 								</div>
-								<div>
+								<div style={{ marginTop: 16 }}>
 									<Field
 										as={TextField}
 										label={i18n.t("whatsappModal.form.farewellMessage")}
 										type="farewellMessage"
 										multiline
-										rows={5}
+										rows={3}
 										fullWidth
 										name="farewellMessage"
 										error={
@@ -249,34 +262,40 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, engineType }) => {
 										}
 										variant="outlined"
 										margin="dense"
+										className={classes.textField}
 									/>
 								</div>
-								<QueueSelect
-									selectedQueueIds={selectedQueueIds}
-									onChange={selectedIds => setSelectedQueueIds(selectedIds)}
-								/>
-								<div style={{ marginTop: 15 }}>
-									<TagPicker
-										selectedTags={selectedTags}
-										onChange={setSelectedTags}
+								
+								<div style={{ marginTop: 20 }}>
+									<Typography variant="subtitle2" style={{ marginBottom: 8, color: '#8e8e93', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem' }}>
+										Filas e Tags
+									</Typography>
+									<QueueSelect
+										selectedQueueIds={selectedQueueIds}
+										onChange={selectedIds => setSelectedQueueIds(selectedIds)}
 									/>
+									<div style={{ marginTop: 15 }}>
+										<TagPicker
+											selectedTags={selectedTags}
+											onChange={setSelectedTags}
+										/>
+									</div>
 								</div>
 							</DialogContent>
 							<DialogActions>
 								<Button
 									onClick={handleClose}
-									color="secondary"
 									disabled={isSubmitting}
-									variant="outlined"
+									className={classes.cancelButton}
 								>
 									{i18n.t("whatsappModal.buttons.cancel")}
 								</Button>
 								<Button
 									type="submit"
 									color="primary"
-									disabled={isSubmitting}
 									variant="contained"
-									className={classes.btnWrapper}
+									disabled={isSubmitting}
+									className={`${classes.saveButton} ${classes.btnWrapper}`}
 								>
 									{whatsAppId
 										? i18n.t("whatsappModal.buttons.okEdit")

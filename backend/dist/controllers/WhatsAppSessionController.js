@@ -12,15 +12,16 @@ const RestartAllWhatsAppsService_1 = __importDefault(require("../services/WbotSe
 const logger_1 = require("../utils/logger");
 const store = async (req, res) => {
     const { whatsappId } = req.params;
-    const { usePairingCode, phoneNumber } = req.body;
+    const { usePairingCode, phoneNumber, force } = req.body;
     try {
         console.log(`[DEBUG] WhatsAppSessionController.store called for whatsappId: ${whatsappId}`);
         const whatsapp = await Whatsapp_1.default.findByPk(whatsappId);
         if (!whatsapp) {
             throw new AppError_1.default("ERR_NO_WAPP_FOUND", 404);
         }
-        const force = true;
-        await (0, StartWhatsAppSession_1.StartWhatsAppSession)(whatsapp, usePairingCode, phoneNumber, force);
+        // Default must be non-forced start to preserve Redis auth state during QR refresh loops.
+        const shouldForce = force === true;
+        await (0, StartWhatsAppSession_1.StartWhatsAppSession)(whatsapp, usePairingCode, phoneNumber, shouldForce);
     }
     catch (err) {
         const message = err.message || "Unknown error";

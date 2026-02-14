@@ -15,7 +15,7 @@ const CreateTicketService = async ({ contactId, status, userId, queueId }) => {
     const { isGroup, tenantId } = await (0, ShowContactService_1.default)(contactId);
     if (queueId === undefined) {
         const user = await User_1.default.findByPk(userId, { include: ["queues"] });
-        queueId = (user === null || user === void 0 ? void 0 : user.queues.length) === 1 ? user.queues[0].id : undefined;
+        queueId = user?.queues.length === 1 ? user.queues[0].id : undefined;
     }
     // Use Model.create instead of deprecated wbot.$create injection
     const ticket = await Ticket_1.default.create({

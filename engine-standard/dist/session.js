@@ -49,7 +49,9 @@ const classifyDisconnect = (args) => {
     const isLoggedOut = statusCode === whaileys_1.DisconnectReason.loggedOut;
     const isForbidden = statusCode === whaileys_1.DisconnectReason.forbidden;
     const isBadSession = statusCode === whaileys_1.DisconnectReason.badSession;
-    const isPairingFlow401Retryable = !!usePairingCode && !registered && isLoggedOut;
+    // During QR/pairing bootstrap, 401 can happen before creds become fully registered.
+    // Treat any logged_out with !registered as retryable (not only pairing-code flow).
+    const isPairingFlow401Retryable = !registered && isLoggedOut;
     const isNonRecoverable = isForbidden ||
         isBadSession ||
         (isLoggedOut && !isPairingFlow401Retryable);

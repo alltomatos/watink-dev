@@ -79,6 +79,21 @@ const upload = (0, multer_1.default)(upload_1.default);
  *           type: integer
  *         contactId:
  *           type: integer
+ *         isGroup:
+ *           type: boolean
+ *           description: Indica se mensagem pertence a grupo
+ *         groupJid:
+ *           type: string
+ *           description: JID do grupo (ex. 1203630...@g.us)
+ *         participantJid:
+ *           type: string
+ *           description: Remetente no grupo
+ *         participantName:
+ *           type: string
+ *           description: Nome resolvido do remetente no grupo
+ *         waMessageId:
+ *           type: string
+ *           description: ID da mensagem no provedor WhatsApp
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -182,5 +197,7 @@ messageRoutes.post("/messages/:ticketId", isAuth_1.default, upload.array("medias
  *       200:
  *         description: Mensagem removida
  */
+messageRoutes.post("/messages/:ticketId/quick-answers/:quickAnswerId", isAuth_1.default, MessageController.sendQuickAnswer);
+messageRoutes.patch("/messages/:messageId/reaction", isAuth_1.default, MessageController.upsertReaction);
 messageRoutes.delete("/messages/:messageId", isAuth_1.default, MessageController.remove);
 exports.default = messageRoutes;

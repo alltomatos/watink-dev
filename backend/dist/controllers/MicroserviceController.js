@@ -7,93 +7,75 @@ exports.sendCarousel = exports.sendPoll = exports.sendList = exports.sendButtons
 const uuid_1 = require("uuid");
 const RabbitMQService_1 = __importDefault(require("../services/RabbitMQService"));
 const ShowTicketService_1 = __importDefault(require("../services/TicketServices/ShowTicketService"));
+const getRouteParts = async (ticketId, tenantId) => {
+    const ticket = await (0, ShowTicketService_1.default)(ticketId, tenantId);
+    const contactNumber = ticket.contact.number.replace(/\D/g, "");
+    const engineType = ticket.whatsapp?.engineType || "whaileys";
+    const sessionId = ticket.whatsappId;
+    const to = `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+    return { ticket, engineType, sessionId, to };
+};
 const sendButtons = async (req, res) => {
     const { tenantId } = req.user;
     const { ticketId, text, footer, buttons, imageUrl } = req.body;
-    const ticket = await (0, ShowTicketService_1.default)(ticketId, tenantId);
-    const contactNumber = ticket.contact.number.replace(/\D/g, "");
+    const { engineType, sessionId, to } = await getRouteParts(ticketId, tenantId);
     const command = {
         id: (0, uuid_1.v4)(),
         timestamp: Date.now(),
         tenantId,
         type: "message.send.buttons",
-        payload: {
-            sessionId: ticket.whatsappId,
-            to: `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
-            text,
-            footer,
-            buttons,
-            imageUrl
-        }
+        payload: { sessionId, to, text, footer, buttons, imageUrl }
     };
-    await RabbitMQService_1.default.publishCommand(`wbot.${tenantId}.${ticket.whatsappId}.message.send.buttons`, command);
+    const routingKey = RabbitMQService_1.default.generateRoutingKey(tenantId, engineType, sessionId, "message.send.buttons");
+    await RabbitMQService_1.default.publishCommand(routingKey, command);
     return res.status(200).json({ message: "Command sent to queue" });
 };
 exports.sendButtons = sendButtons;
 const sendList = async (req, res) => {
     const { tenantId } = req.user;
     const { ticketId, text, footer, buttonText, sections } = req.body;
-    const ticket = await (0, ShowTicketService_1.default)(ticketId, tenantId);
-    const contactNumber = ticket.contact.number.replace(/\D/g, "");
+    const { engineType, sessionId, to } = await getRouteParts(ticketId, tenantId);
     const command = {
         id: (0, uuid_1.v4)(),
         timestamp: Date.now(),
         tenantId,
         type: "message.send.list",
-        payload: {
-            sessionId: ticket.whatsappId,
-            to: `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
-            text,
-            footer,
-            buttonText,
-            sections
-        }
+        payload: { sessionId, to, text, footer, buttonText, sections }
     };
-    await RabbitMQService_1.default.publishCommand(`wbot.${tenantId}.${ticket.whatsappId}.message.send.list`, command);
+    const routingKey = RabbitMQService_1.default.generateRoutingKey(tenantId, engineType, sessionId, "message.send.list");
+    await RabbitMQService_1.default.publishCommand(routingKey, command);
     return res.status(200).json({ message: "Command sent to queue" });
 };
 exports.sendList = sendList;
 const sendPoll = async (req, res) => {
     const { tenantId } = req.user;
     const { ticketId, name, options, selectableCount } = req.body;
-    const ticket = await (0, ShowTicketService_1.default)(ticketId, tenantId);
-    const contactNumber = ticket.contact.number.replace(/\D/g, "");
+    const { engineType, sessionId, to } = await getRouteParts(ticketId, tenantId);
     const command = {
         id: (0, uuid_1.v4)(),
         timestamp: Date.now(),
         tenantId,
         type: "message.send.poll",
-        payload: {
-            sessionId: ticket.whatsappId,
-            to: `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
-            name,
-            options,
-            selectableCount
-        }
+        payload: { sessionId, to, name, options, selectableCount }
     };
-    await RabbitMQService_1.default.publishCommand(`wbot.${tenantId}.${ticket.whatsappId}.message.send.poll`, command);
+    const routingKey = RabbitMQService_1.default.generateRoutingKey(tenantId, engineType, sessionId, "message.send.poll");
+    await RabbitMQService_1.default.publishCommand(routingKey, command);
     return res.status(200).json({ message: "Command sent to queue" });
 };
 exports.sendPoll = sendPoll;
 const sendCarousel = async (req, res) => {
     const { tenantId } = req.user;
     const { ticketId, text, footer, cards } = req.body;
-    const ticket = await (0, ShowTicketService_1.default)(ticketId, tenantId);
-    const contactNumber = ticket.contact.number.replace(/\D/g, "");
+    const { engineType, sessionId, to } = await getRouteParts(ticketId, tenantId);
     const command = {
         id: (0, uuid_1.v4)(),
         timestamp: Date.now(),
         tenantId,
         type: "message.send.carousel",
-        payload: {
-            sessionId: ticket.whatsappId,
-            to: `${contactNumber}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`,
-            text,
-            footer,
-            cards
-        }
+        payload: { sessionId, to, text, footer, cards }
     };
-    await RabbitMQService_1.default.publishCommand(`wbot.${tenantId}.${ticket.whatsappId}.message.send.carousel`, command);
+    const routingKey = RabbitMQService_1.default.generateRoutingKey(tenantId, engineType, sessionId, "message.send.carousel");
+    await RabbitMQService_1.default.publishCommand(routingKey, command);
     return res.status(200).json({ message: "Command sent to queue" });
 };
 exports.sendCarousel = sendCarousel;

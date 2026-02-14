@@ -15,7 +15,7 @@ class VectorService {
         const apiKeySetting = await Setting_1.default.findOne({
             where: { key: "aiApiKey", tenantId }
         });
-        const apiKey = (apiKeySetting === null || apiKeySetting === void 0 ? void 0 : apiKeySetting.value) || process.env.OPENAI_API_KEY;
+        const apiKey = apiKeySetting?.value || process.env.OPENAI_API_KEY;
         if (!apiKey) {
             throw new Error("OpenAI API Key not found for this tenant.");
         }

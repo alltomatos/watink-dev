@@ -13,9 +13,9 @@ const CreateMessageService_1 = __importDefault(require("../MessageServices/Creat
 const Contact_1 = __importDefault(require("../../models/Contact"));
 const Message_1 = __importDefault(require("../../models/Message"));
 const CreateOrUpdateContactService_1 = __importDefault(require("../ContactServices/CreateOrUpdateContactService"));
-const DownloadProfileImage_1 = require("../../helpers/DownloadProfileImage");
 const Ticket_1 = __importDefault(require("../../models/Ticket"));
 const FlowTriggerDispatcherService_1 = __importDefault(require("../FlowServices/FlowTriggerDispatcherService"));
+const UpsertWhatsAppGroupService_1 = __importDefault(require("./UpsertWhatsAppGroupService"));
 const getSessionId = (sessionId) => {
     return parseInt(String(sessionId).split("-")[0], 10);
 };
@@ -76,10 +76,18 @@ const EventListener = async () => {
 exports.EventListener = EventListener;
 const handleQrCode = async (payload) => {
     const io = (0, socket_1.getIO)();
-    await Whatsapp_1.default.update({ qrcode: payload.qrcode, status: "QRCODE" }, { where: { id: getSessionId(payload.sessionId) } });
+    const sessionId = getSessionId(payload.sessionId);
+    const current = await Whatsapp_1.default.findByPk(sessionId);
+    // Guard against out-of-order events: if session is already connected,
+    // ignore late QR events to avoid UI regressing back to "scan QR".
+    if (current?.status === "CONNECTED") {
+        logger_1.logger.info(`[EventListener] Ignoring late QR event for connected session ${sessionId}`);
+        return;
+    }
+    await Whatsapp_1.default.update({ qrcode: payload.qrcode, status: "QRCODE" }, { where: { id: sessionId } });
     io.emit(`whatsappSession`, {
         action: "update",
-        session: { id: getSessionId(payload.sessionId), qrcode: payload.qrcode, status: "QRCODE" }
+        session: { id: sessionId, qrcode: payload.qrcode, status: "QRCODE" }
     });
 };
 const handlePairingCode = async (payload) => {
@@ -126,99 +134,29 @@ const handleSessionStatus = async (payload) => {
         }
     });
 };
-const MergeContactsService_1 = __importDefault(require("../ContactServices/MergeContactsService"));
-const sequelize_1 = require("sequelize");
-// ... previous imports
 const handleContactUpdate = async (payload, tenantId) => {
     logger_1.logger.info(`[EventListener] Received contact.update for ${payload.number} (ID: ${payload.contactId})`);
-    const { contactId, number, profilePicUrl, pushName, lid, isGroup, sessionId } = payload;
+    const { number, profilePicUrl, pushName, lid, isGroup, sessionId } = payload;
     if (!tenantId && sessionId) {
         const whatsapp = await Whatsapp_1.default.findByPk(getSessionId(sessionId));
-        if (whatsapp) {
+        if (whatsapp)
             tenantId = whatsapp.tenantId;
-        }
     }
-    const backendUrl = process.env.URL_BACKEND || process.env.BACKEND_URL || "http://localhost:8080";
-    let contact = null;
-    if (contactId) {
-        contact = await Contact_1.default.findByPk(contactId);
-    }
-    // If no contact found by ID (or no ID provided), try to find by LID or Number
-    if (!contact) {
-        if (lid) {
-            contact = await Contact_1.default.findOne({ where: { lid, tenantId } });
-        }
-        if (!contact && number) {
-            // Try finding by basic number or remoteJid equivalent
-            contact = await Contact_1.default.findOne({
-                where: {
-                    [sequelize_1.Op.or]: [
-                        { number: number }
-                    ],
-                    tenantId
-                }
-            });
-        }
-    }
-    if (contact) {
-        // 1. Check for LID Duplication/Collision
-        if (lid && contact.lid && lid !== contact.lid) {
-            const duplicate = await Contact_1.default.findOne({
-                where: {
-                    lid: lid,
-                    tenantId: contact.tenantId, // Use contact's tenant to be safe
-                    id: { [sequelize_1.Op.ne]: contact.id } // exclude self
-                }
-            });
-            if (duplicate) {
-                logger_1.logger.info(`[EventListener] LID collision detected: ${lid}. Merging ${contact.id} into ${duplicate.id}`);
-                await (0, MergeContactsService_1.default)({
-                    contactIdOrigin: contact.id,
-                    contactIdTarget: duplicate.id,
-                    tenantId: contact.tenantId
-                });
-                // After merge, the origin contact is destroyed. We stop here.
-                return;
-            }
-        }
-        // 2. Normal Update
-        const updates = {};
-        if (profilePicUrl) {
-            const filename = await (0, DownloadProfileImage_1.DownloadProfileImage)({
-                profilePicUrl,
-                tenantId,
-                contactId: contact.id
-            });
-            if (filename) {
-                // Cache busting
-                updates.profilePicUrl = `${backendUrl}/public/${tenantId}/contacts/${filename}?v=${new Date().getTime()}`;
-            }
-            else {
-                updates.profilePicUrl = profilePicUrl;
-            }
-        }
-        if (lid)
-            updates.lid = lid;
-        if (pushName)
-            updates.name = pushName; // Optionally update name if available
-        if (Object.keys(updates).length > 0) {
-            await contact.update(updates);
-            const io = (0, socket_1.getIO)();
-            io.emit("contact", {
-                action: "update",
-                contact
-            });
-        }
-    }
-    else {
-        // Optional: Create contact if it doesn't exist? 
-        // For now, we only update existing contacts to avoid polluting DB with random group updates if the user isn't interacting with them.
-        // However, for groups we are part of, we probably want them? 
-        // Let's stick to updating existing ones for now to be safe.
-    }
+    if (!tenantId)
+        return;
+    const isLidAddress = !!number && number.includes("@lid");
+    await (0, CreateOrUpdateContactService_1.default)({
+        name: pushName || number || "unknown",
+        number: isLidAddress ? undefined : number,
+        lid: lid || (isLidAddress ? number : undefined),
+        profilePicUrl,
+        isGroup: !!isGroup,
+        tenantId,
+        waitEnrichment: false,
+        sessionId: sessionId ? getSessionId(sessionId) : undefined
+    });
 };
 const handleMessageReceived = async (payload, tenantId) => {
-    var _a, _b;
     const { message, sessionId } = payload;
     if (message.from === "status@broadcast") {
         return;
@@ -393,6 +331,7 @@ const handleMessageReceived = async (payload, tenantId) => {
             }
             const msgDataVal = {
                 id: message.id,
+                waMessageId: message.id,
                 ticketId: ticketForMessage.id,
                 contactId: msgContact.id,
                 body: preservedBody || message.body,
@@ -403,6 +342,10 @@ const handleMessageReceived = async (payload, tenantId) => {
                 timestamp: hasValidTimestamp ? message.timestamp * 1000 : new Date().getTime(), // Fallback to now if invalid just for DB constaint, but logic handled it
                 createdAt: hasValidTimestamp ? new Date(message.timestamp * 1000) : new Date(),
                 participant: message.participant,
+                isGroup: !!message.isGroup,
+                groupJid: message.isGroup ? message.from : null,
+                participantJid: message.participant,
+                participantName: message.pushName || null,
                 dataJson: message,
                 quotedMsgId: message.quotedMsgId,
                 ack: 3, // Mensagens antigas assumem ACK = read
@@ -415,7 +358,7 @@ const handleMessageReceived = async (payload, tenantId) => {
                     const { writeFile } = require("fs").promises;
                     const uploadConfig = require("../../config/upload").default;
                     const mimetype = message.mimetype || "";
-                    const ext = ((_a = mimetype.split("/")[1]) === null || _a === void 0 ? void 0 : _a.split(";")[0]) || "bin";
+                    const ext = mimetype.split("/")[1]?.split(";")[0] || "bin";
                     const filename = `${new Date().getTime()}-${message.id}.${ext}`;
                     const tenantFolder = join(uploadConfig.directory, tenantId.toString());
                     if (!require("fs").existsSync(tenantFolder)) {
@@ -440,6 +383,17 @@ const handleMessageReceived = async (payload, tenantId) => {
                     logger_1.logger.error(`Error saving media for old message ${message.id}: ${err}`);
                 }
             }
+            if (message.isGroup && message.from) {
+                await (0, UpsertWhatsAppGroupService_1.default)({
+                    tenantId,
+                    whatsappId: whatsapp.id,
+                    groupJid: message.from,
+                    subject: groupContact?.name || message.from,
+                    contactId: groupContact?.id,
+                    participantJid: message.participant,
+                    participantName: message.pushName
+                });
+            }
             await (0, CreateMessageService_1.default)({ messageData: msgDataVal });
         }
         return; // Stop here, do not create pending ticket
@@ -455,7 +409,8 @@ const handleMessageReceived = async (payload, tenantId) => {
             contactId: msgContact.id,
             messageBody: preservedBody || message.body || "",
             fromMe: !!message.fromMe,
-            isGroup: !!message.isGroup
+            isGroup: !!message.isGroup,
+            whatsappId: whatsapp.id
         }, tenantId);
     }
     catch (flowQueueErr) {
@@ -476,6 +431,7 @@ const handleMessageReceived = async (payload, tenantId) => {
     }
     const msgData = {
         id: message.id,
+        waMessageId: message.id,
         ticketId: ticket.id,
         contactId: msgContact.id,
         body: preservedBody || message.body,
@@ -486,6 +442,10 @@ const handleMessageReceived = async (payload, tenantId) => {
         timestamp: creationDate.getTime(), // Use sanitized timestamp
         createdAt: creationDate, // Fix Timestamp
         participant: message.participant,
+        isGroup: !!message.isGroup,
+        groupJid: message.isGroup ? message.from : null,
+        participantJid: message.participant,
+        participantName: message.pushName || null,
         dataJson: message, // Store full payload including urlPreview and pushName
         quotedMsgId: message.quotedMsgId,
         ack: message.status || message.ack || 0,
@@ -507,7 +467,7 @@ const handleMessageReceived = async (payload, tenantId) => {
             const uploadConfig = require("../../config/upload").default;
             // Deduce extension
             const mimetype = message.mimetype || "";
-            const ext = ((_b = mimetype.split("/")[1]) === null || _b === void 0 ? void 0 : _b.split(";")[0]) || "bin";
+            const ext = mimetype.split("/")[1]?.split(";")[0] || "bin";
             const filename = `${new Date().getTime()}-${message.id}.${ext}`;
             const tenantFolder = join(uploadConfig.directory, tenantId.toString());
             if (!require("fs").existsSync(tenantFolder)) {
@@ -534,6 +494,17 @@ const handleMessageReceived = async (payload, tenantId) => {
             // Fallback: Don't block message creation, but it will lack media
         }
     }
+    if (message.isGroup && message.from) {
+        await (0, UpsertWhatsAppGroupService_1.default)({
+            tenantId,
+            whatsappId: whatsapp.id,
+            groupJid: message.from,
+            subject: groupContact?.name || message.from,
+            contactId: groupContact?.id,
+            participantJid: message.participant,
+            participantName: message.pushName
+        });
+    }
     await (0, CreateMessageService_1.default)({ messageData: msgData });
     try {
         await FlowTriggerDispatcherService_1.default.dispatchWhatsAppMessage({
@@ -541,7 +512,8 @@ const handleMessageReceived = async (payload, tenantId) => {
             contactId: msgContact.id,
             messageBody: msgData.body || "",
             fromMe: !!message.fromMe,
-            isGroup: !!message.isGroup
+            isGroup: !!message.isGroup,
+            whatsappId: whatsapp.id
         }, tenantId);
     }
     catch (err) {
@@ -667,6 +639,32 @@ const handleMessageAck = async (payload, tenantId) => {
         logger_1.logger.error(`[EventListener] Error handling message ACK: ${err}`);
     }
 };
+const formatMaskedNumber = (jidOrNumber) => {
+    if (!jidOrNumber)
+        return null;
+    const digits = String(jidOrNumber).replace(/\D/g, "");
+    if (!digits)
+        return null;
+    if (digits.length <= 4)
+        return `****${digits}`;
+    return `****${digits.slice(-4)}`;
+};
+const resolveDeletedByName = async (participant, tenantId, explicitName) => {
+    const trimmedExplicitName = explicitName?.trim();
+    if (trimmedExplicitName)
+        return trimmedExplicitName;
+    if (!participant || !tenantId)
+        return formatMaskedNumber(participant);
+    const participantNumber = participant.replace(/\D/g, "");
+    if (!participantNumber)
+        return formatMaskedNumber(participant);
+    const participantContact = await Contact_1.default.findOne({
+        where: { tenantId, number: participantNumber }
+    });
+    if (participantContact?.name?.trim())
+        return participantContact.name.trim();
+    return formatMaskedNumber(participantNumber);
+};
 const handleMessageRevoke = async (payload, tenantId) => {
     try {
         const { messageId, sessionId, participant } = payload;
@@ -687,11 +685,13 @@ const handleMessageRevoke = async (payload, tenantId) => {
         // Update isDeleted and store deleter info in dataJson
         // We preserve the original body in the DB, but frontend must know it's deleted.
         const currentDataJson = message.dataJson || {};
+        const deletedByName = await resolveDeletedByName(participant, tenantId, payload.participantName || payload.pushName);
         await message.update({
             isDeleted: true,
             dataJson: {
                 ...currentDataJson,
-                deletedBy: participant
+                deletedBy: participant,
+                deletedByName
             }
         });
         const io = (0, socket_1.getIO)();

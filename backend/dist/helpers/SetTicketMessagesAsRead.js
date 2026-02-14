@@ -10,7 +10,6 @@ const Message_1 = __importDefault(require("../models/Message"));
 const Whatsapp_1 = __importDefault(require("../models/Whatsapp"));
 const logger_1 = require("../utils/logger");
 const SetTicketMessagesAsRead = async (ticket) => {
-    var _a;
     try {
         // 1. Find unread messages (received only, since we don't mark our own messages as read for ourselves)
         const unreadMessages = await Message_1.default.findAll({
@@ -43,10 +42,10 @@ const SetTicketMessagesAsRead = async (ticket) => {
                 type: "message.markAsRead",
                 payload: markReadPayload
             };
-            let engineType = (_a = ticket.whatsapp) === null || _a === void 0 ? void 0 : _a.engineType;
+            let engineType = ticket.whatsapp?.engineType;
             if (!engineType) {
                 const whatsapp = await Whatsapp_1.default.findByPk(ticket.whatsappId);
-                engineType = whatsapp === null || whatsapp === void 0 ? void 0 : whatsapp.engineType;
+                engineType = whatsapp?.engineType;
             }
             await RabbitMQService_1.default.publishCommand(`wbot.${ticket.tenantId}.${ticket.whatsappId}.${engineType || "whaileys"}.message.markAsRead`, command);
         }

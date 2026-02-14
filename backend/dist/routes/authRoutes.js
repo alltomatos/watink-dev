@@ -107,6 +107,7 @@ authRoutes.post("/login", SessionController.store);
  * /auth/refresh_token:
  *   get:
  *     summary: Refresh authentication token
+ *     description: Requer cookie HttpOnly `jrt` retornado no login.
  *     tags: [Auth]
  *     responses:
  *       200:
@@ -118,6 +119,8 @@ authRoutes.post("/login", SessionController.store);
  *               properties:
  *                 token:
  *                   type: string
+ *       401:
+ *         description: Sessão expirada/ausência do cookie jrt
  */
 authRoutes.get("/refresh_token", SessionController.update);
 authRoutes.delete("/logout", isAuth_1.default, SessionController.remove);

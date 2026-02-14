@@ -15,7 +15,6 @@ const Message_1 = __importDefault(require("../../models/Message"));
 const socket_1 = require("../../libs/socket");
 const GenerateWAMessageId_1 = __importDefault(require("../../helpers/GenerateWAMessageId"));
 const SendWhatsAppMedia = async ({ media, ticket, body, mentionedIds }) => {
-    var _a;
     try {
         const hasBody = body
             ? (0, Mustache_1.default)(body, ticket.contact)
@@ -31,8 +30,10 @@ const SendWhatsAppMedia = async ({ media, ticket, body, mentionedIds }) => {
         fs_1.default.renameSync(media.path, newPath);
         // Sanitize number to ensure only digits
         const contactNumber = ticket.contact.number.replace(/\D/g, "");
+        const groupJid = ticket.isGroup ? `${contactNumber}@g.us` : null;
         const messageData = {
             id: (0, GenerateWAMessageId_1.default)(),
+            waMessageId: null,
             ticketId: ticket.id,
             contactId: undefined,
             body: body || media.originalname,
@@ -42,6 +43,10 @@ const SendWhatsAppMedia = async ({ media, ticket, body, mentionedIds }) => {
             quotedMsgId: undefined,
             ack: 0, // Pending
             timestamp: new Date().getTime(),
+            isGroup: !!ticket.isGroup,
+            groupJid,
+            participantJid: null,
+            participantName: null,
             mediaUrl: `${ticket.tenantId}/${media.filename}`,
             tenantId: ticket.tenantId
         };
@@ -73,10 +78,10 @@ const SendWhatsAppMedia = async ({ media, ticket, body, mentionedIds }) => {
             }
         };
         // Determine Routing Key based on Engine Type
-        let engineType = (_a = ticket.whatsapp) === null || _a === void 0 ? void 0 : _a.engineType;
+        let engineType = ticket.whatsapp?.engineType;
         if (!engineType) {
             const whatsapp = await Whatsapp_1.default.findByPk(ticket.whatsappId);
-            engineType = whatsapp === null || whatsapp === void 0 ? void 0 : whatsapp.engineType;
+            engineType = whatsapp?.engineType;
         }
         if (!engineType) {
             engineType = "whaileys";

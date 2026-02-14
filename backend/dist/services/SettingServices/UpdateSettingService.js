@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Setting_1 = __importDefault(require("../../models/Setting"));
 const UpdateSettingService = async ({ key, value, tenantId }) => {
     const ctx = require("../../libs/context").default.getStore();
-    const effectiveTenantId = tenantId || (ctx === null || ctx === void 0 ? void 0 : ctx.tenantId);
+    const effectiveTenantId = tenantId || ctx?.tenantId;
     let setting = await Setting_1.default.findOne({
         where: { key, tenantId: effectiveTenantId }
     });

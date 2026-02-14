@@ -93,7 +93,6 @@ const remove = async (req, res) => {
 exports.remove = remove;
 // Novo: Buscar histórico de mensagens sob demanda
 const syncHistory = async (req, res) => {
-    var _a, _b;
     const { ticketId } = req.params;
     const { fromDate, toDate } = req.body;
     const { tenantId } = req.user;
@@ -109,7 +108,7 @@ const syncHistory = async (req, res) => {
     if (!ticket.whatsapp || ticket.whatsapp.status !== "CONNECTED") {
         throw new AppError_1.default("ERR_WHATSAPP_NOT_CONNECTED", 400);
     }
-    const contactNumber = ((_a = ticket.contact) === null || _a === void 0 ? void 0 : _a.number) || ((_b = ticket.contact) === null || _b === void 0 ? void 0 : _b.lid) || "";
+    const contactNumber = ticket.contact?.number || ticket.contact?.lid || "";
     if (!contactNumber) {
         throw new AppError_1.default("ERR_NO_CONTACT_NUMBER", 400);
     }

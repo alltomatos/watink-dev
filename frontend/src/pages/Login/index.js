@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Link as RouterLink } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
 import {
   Avatar,
@@ -18,46 +19,97 @@ import {
 } from '@material-ui/core';
 
 import { LockOutlined, Visibility, VisibilityOff } from '@material-ui/icons';
-
 import { makeStyles } from "@material-ui/core/styles";
 
 import { i18n } from "../../translate/i18n";
-
 import { AuthContext } from "../../context/Auth/AuthContext";
 import api from "../../services/api";
 import { getBackendUrl } from "../../helpers/urlUtils";
 
-// const Copyright = () => {
-// 	return (
-// 		<Typography variant="body2" color="textSecondary" align="center">
-// 			{"Copyleft "}
-// 			<Link color="inherit" href="https://github.com/canove">
-// 				Canove
-// 			</Link>{" "}
-// 			{new Date().getFullYear()}
-// 			{"."}
-// 		</Typography>
-// 	);
-// };
-
 const useStyles = makeStyles((theme) => ({
+  root: {
+    minHeight: "100vh",
+    display: "flex",
+    overflow: "hidden",
+    position: "relative",
+    backgroundColor: theme.palette.background.default,
+  },
   paper: {
-    marginTop: theme.spacing(8),
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
+    width: "100%",
+  },
+  formContainer: {
+    backgroundColor: theme.palette.type === "dark" ? "rgba(30, 41, 59, 0.7)" : "rgba(255, 255, 255, 0.8)",
+    backdropFilter: "blur(12px)",
+    padding: theme.spacing(6),
+    borderRadius: 24,
+    boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+    border: `1px solid ${theme.palette.divider}`,
+    width: "100%",
+    maxWidth: 450,
   },
   avatar: {
     margin: theme.spacing(1),
-    backgroundColor: theme.palette.secondary.main,
+    backgroundColor: theme.palette.primary.main,
+    width: 56,
+    height: 56,
   },
   form: {
-    width: "100%", // Fix IE 11 issue.
+    width: "100%",
     marginTop: theme.spacing(1),
   },
   submit: {
     margin: theme.spacing(3, 0, 2),
+    height: 48,
+    borderRadius: 12,
+    fontSize: "1rem",
+    fontWeight: 600,
   },
+  backgroundWrapper: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    zIndex: 1,
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    background: theme.palette.type === "dark" 
+      ? "linear-gradient(to right, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.3))"
+      : "linear-gradient(to right, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.2))",
+    zIndex: 2,
+  },
+  splitFormSide: {
+    flex: "0 0 550px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: theme.spacing(0, 4),
+    backgroundColor: theme.palette.background.paper,
+    zIndex: 10,
+    boxShadow: "0 0 40px rgba(0,0,0,0.1)",
+    [theme.breakpoints.down("sm")]: {
+      flex: 1,
+      width: "100%",
+    }
+  },
+  splitImageSide: {
+    flex: 1,
+    position: "relative",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    [theme.breakpoints.down("sm")]: {
+      display: "none",
+    }
+  }
 }));
 
 const Login = () => {
@@ -66,7 +118,6 @@ const Login = () => {
   const [user, setUser] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => {
-    // Se há email salvo, mantém rememberMe como true
     return localStorage.getItem("rememberedEmail") !== null;
   });
   const [settings, setSettings] = useState({
@@ -77,7 +128,6 @@ const Login = () => {
 
   const { handleLogin } = useContext(AuthContext);
 
-  // Carregar email salvo do localStorage
   useEffect(() => {
     const savedEmail = localStorage.getItem("rememberedEmail");
     if (savedEmail) {
@@ -116,37 +166,41 @@ const Login = () => {
 
   const handlSubmit = (e) => {
     e.preventDefault();
-
-    // Salvar ou remover email do localStorage baseado no rememberMe
     if (rememberMe) {
       localStorage.setItem("rememberedEmail", user.email);
     } else {
       localStorage.removeItem("rememberedEmail");
     }
-
     handleLogin(user, rememberMe);
   };
 
   const renderLoginForm = () => (
-    <div className={classes.paper}>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className={classes.paper}
+    >
       {settings.systemLogo && (
         <img
           src={settings.systemLogo}
           alt="Logo"
-          style={{ maxWidth: 200, marginBottom: 20 }}
+          style={{ maxWidth: 220, marginBottom: 40 }}
           onError={(e) => { e.target.onerror = null; e.target.src = "/logo.png"; }}
         />
       )}
       {!settings.systemLogo && (
         <Avatar className={classes.avatar}>
-          <LockOutlined />
+          <LockOutlined style={{ fontSize: 32 }} />
         </Avatar>
       )}
-      {!settings.systemLogo && (
-        <Typography component="h1" variant="h5">
-          {i18n.t("login.title")}
-        </Typography>
-      )}
+      
+      <Typography component="h1" variant="h4" style={{ fontWeight: 700, marginBottom: 8, color: "inherit" }}>
+        {i18n.t("login.title")}
+      </Typography>
+      <Typography variant="body2" style={{ marginBottom: 32, opacity: 0.7 }}>
+        Bem-vindo de volta! Por favor, insira seus dados.
+      </Typography>
 
       <form className={classes.form} noValidate onSubmit={handlSubmit}>
         <TextField
@@ -187,7 +241,7 @@ const Login = () => {
             )
           }}
         />
-        <Grid container alignItems="center">
+        <Grid container alignItems="center" style={{ marginTop: 8 }}>
           <Grid item xs={12}>
             <FormControlLabel
               control={
@@ -208,114 +262,101 @@ const Login = () => {
           variant="contained"
           color="primary"
           className={classes.submit}
+          component={motion.button}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
           {i18n.t("login.buttons.submit")}
         </Button>
-        <Grid container>
+        <Grid container justifyContent="center" style={{ marginTop: 16 }}>
           <Grid item>
             {settings.userCreation === "enabled" && (
-              <Grid item>
+              <Typography variant="body2">
+                Ainda não tem uma conta?{" "}
                 <Link
-                  href="#"
-                  variant="body2"
                   component={RouterLink}
                   to="/signup"
+                  style={{ fontWeight: 600, color: "inherit" }}
                 >
                   {i18n.t("login.buttons.register")}
                 </Link>
-              </Grid>
+              </Typography>
             )}
           </Grid>
         </Grid>
       </form>
-    </div>
+    </motion.div>
   );
 
-  // Layout Render Logic
   if (settings.loginLayout === "centered") {
     return (
-      <Box
-        style={{
-          minHeight: "100vh",
-          backgroundImage: settings.loginBackground ? `url(${settings.loginBackground})` : "none",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: settings.loginBackground ? "transparent" : "#f0f2f5",
-        }}
-      >
+      <Box className={classes.root} style={{ alignItems: "center", justifyContent: "center" }}>
         <CssBaseline />
-        <Container component="main" maxWidth="xs">
-          <Box
-            style={{
-              backgroundColor: "rgba(255, 255, 255, 0.95)",
-              padding: 40,
-              borderRadius: 16,
-              boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.37)"
-            }}
-          >
+        <div 
+          className={classes.backgroundWrapper} 
+          style={{ 
+            backgroundImage: settings.loginBackground ? `url(${settings.loginBackground})` : "none",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }} 
+        />
+        <div className={classes.overlay} style={{ background: "radial-gradient(circle, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 100%)" }} />
+        
+        <Container component="main" maxWidth="xs" style={{ zIndex: 10 }}>
+          <div className={classes.formContainer}>
             {renderLoginForm()}
-          </Box>
+          </div>
         </Container>
       </Box>
     );
   }
 
-  // Split Screen Logic
   const isRightForm = settings.loginLayout === "split_right";
 
   return (
-    <Box style={{ minHeight: "100vh", display: "flex" }}>
+    <Box className={classes.root}>
       <CssBaseline />
-      {/* Left Side (Image if Right Form, Form if Left Form) */}
-      {!isRightForm ? (
-        <Box style={{ flex: "0 0 450px", display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 40px", backgroundColor: "#fff", zIndex: 2, boxShadow: "4px 0 24px rgba(0,0,0,0.1)" }}>
-          {renderLoginForm()}
-        </Box>
-      ) : (
-        <Box style={{ flex: 1, position: "relative" }}>
-          {settings.loginBackground && (
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                backgroundImage: `url(${settings.loginBackground})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            />
-          )}
-        </Box>
-      )}
-
-      {/* Right Side */}
-      {!isRightForm ? (
-        <Box style={{ flex: 1, position: "relative" }}>
-          {settings.loginBackground && (
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                backgroundImage: `url(${settings.loginBackground})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            />
-          )}
-        </Box>
-      ) : (
-        <Box style={{ flex: "0 0 450px", display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 40px", backgroundColor: "#fff", zIndex: 2, boxShadow: "-4px 0 24px rgba(0,0,0,0.1)" }}>
-          {renderLoginForm()}
-        </Box>
-      )}
+      <AnimatePresence>
+        {!isRightForm ? (
+          <>
+            <motion.div 
+              initial={{ x: -100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -100, opacity: 0 }}
+              className={classes.splitFormSide}
+            >
+              <div style={{ width: "100%", maxWidth: 400 }}>
+                {renderLoginForm()}
+              </div>
+            </motion.div>
+            <div 
+              className={classes.splitImageSide}
+              style={{ backgroundImage: settings.loginBackground ? `url(${settings.loginBackground})` : "none" }}
+            >
+              <div className={classes.overlay} style={{ background: "linear-gradient(to left, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.4) 100%)" }} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div 
+              className={classes.splitImageSide}
+              style={{ backgroundImage: settings.loginBackground ? `url(${settings.loginBackground})` : "none" }}
+            >
+               <div className={classes.overlay} style={{ background: "linear-gradient(to right, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.4) 100%)" }} />
+            </div>
+            <motion.div 
+              initial={{ x: 100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 100, opacity: 0 }}
+              className={classes.splitFormSide}
+            >
+              <div style={{ width: "100%", maxWidth: 400 }}>
+                {renderLoginForm()}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </Box>
   );
 };
