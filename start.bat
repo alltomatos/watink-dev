@@ -1,111 +1,120 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 
-set "ROOT_DIR=%~dp0"
-cd /d "%ROOT_DIR%"
+echo ======================================================
+echo   Watink Core - Inicializacao Standalone
+echo ======================================================
 
-set "ENV_FILE=.env.deploy"
-set "COMPOSE_FILE=docker-compose.prod.yml"
-set "MODE=%~1"
+:: Verificar Docker Desktop instalado
+set "DOCKER_DESKTOP_EXE=%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+if not exist "%DOCKER_DESKTOP_EXE%" (
+  set "DOCKER_DESKTOP_EXE=%ProgramFiles(x86)%\Docker\Docker\Docker Desktop.exe"
+)
+if not exist "%DOCKER_DESKTOP_EXE%" goto :erro_docker_desktop
 
+:: Verificar Docker CLI no PATH
 where docker >nul 2>&1
-if errorlevel 1 (
-  echo [ERRO] Docker nao encontrado no PATH.
-  exit /b 1
-)
+if errorlevel 1 goto :erro_docker
 
+:: Verificar Docker Engine respondendo
+for /f %%s in ('docker info --format "{{.ServerVersion}}" 2^>nul') do set "DOCKER_SERVER=%%s"
+if "%DOCKER_SERVER%"=="" goto :erro_docker_not_running
+
+:: Tentar docker-compose
+where docker-compose >nul 2>&1
+if not errorlevel 1 goto :use_compose_v1
+
+:: Tentar docker compose
 docker compose version >nul 2>&1
-if errorlevel 1 (
-  echo [ERRO] Docker Compose plugin nao encontrado.
-  exit /b 1
-)
+if not errorlevel 1 goto :use_compose_v2
 
-if not exist "%ENV_FILE%" (
-  copy ".env.deploy.example" "%ENV_FILE%" >nul
-  echo [OK] %ENV_FILE% criado a partir de .env.deploy.example
-)
+goto :erro_compose
 
-set /p APP_DOMAIN=Dominio APP (ex: app.seudominio.com): 
-set /p API_DOMAIN=Dominio API (ex: api.seudominio.com): 
+:use_compose_v1
+set COMPOSE_CMD=docker-compose
+goto :menu_mode
 
-if "%APP_DOMAIN%"=="" (
-  echo [ERRO] APP_DOMAIN e obrigatorio.
-  exit /b 1
-)
-if "%API_DOMAIN%"=="" (
-  echo [ERRO] API_DOMAIN e obrigatorio.
-  exit /b 1
-)
+:use_compose_v2
+set COMPOSE_CMD=docker compose
+goto :menu_mode
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "
-$envFile = '%ENV_FILE%';
-$content = Get-Content $envFile -ErrorAction SilentlyContinue;
-if(-not $content){$content=@()};
-function Upsert([string]$k,[string]$v){
-  $script:content = $script:content | Where-Object {$_ -notmatch ('^'+[regex]::Escape($k)+'=')}
-  $script:content += ('{0}={1}' -f $k,$v)
-}
-Upsert 'APP_DOMAIN' '%APP_DOMAIN%';
-Upsert 'API_DOMAIN' '%API_DOMAIN%';
-Upsert 'DOMAIN_FRONTEND' '%APP_DOMAIN%';
-Upsert 'DOMAIN_BACKEND' '%API_DOMAIN%';
-if(-not ($content | Select-String '^TRAEFIK_NETWORK=' -Quiet)){ $content += 'TRAEFIK_NETWORK=traefik-public' }
-if(-not ($content | Select-String '^INTERNAL_NETWORK=' -Quiet)){ $content += 'INTERNAL_NETWORK=watink-internal' }
-if(-not ($content | Select-String '^STACK_NAME=' -Quiet)){ $content += 'STACK_NAME=watink' }
-Set-Content -Path $envFile -Value $content -Encoding UTF8
-"
+:menu_mode
+echo [OK] Docker detectado.
+echo [OK] Docker Compose detectado (%COMPOSE_CMD%).
+echo.
+echo Escolha o modo de inicializacao:
+echo.
+echo   [1] NORMAL - Iniciar mantendo os dados existentes (Padrao)
+echo   [2] LIMPO  - APAGAR todo o banco de dados e iniciar do zero
+echo.
+set /p "CHOICE=Digite sua escolha (1 ou 2): "
 
-for /f "tokens=1,2 delims==" %%A in (%ENV_FILE%) do (
-  if "%%A"=="TRAEFIK_NETWORK" set "TRAEFIK_NETWORK=%%B"
-  if "%%A"=="INTERNAL_NETWORK" set "INTERNAL_NETWORK=%%B"
-  if "%%A"=="STACK_NAME" set "STACK_NAME=%%B"
-)
+if "%CHOICE%"=="2" goto :start_clean
+if "%CHOICE%"=="1" goto :start_normal
+:: Default para normal se der enter vazio ou opcao invalida
+goto :start_normal
 
-if "%TRAEFIK_NETWORK%"=="" set "TRAEFIK_NETWORK=traefik-public"
-if "%INTERNAL_NETWORK%"=="" set "INTERNAL_NETWORK=watink-internal"
-if "%STACK_NAME%"=="" set "STACK_NAME=watink"
+:start_clean
+echo.
+echo [ATENCAO] Voce escolheu iniciar do ZERO.
+echo Parando containers e removendo volumes...
+echo.
+%COMPOSE_CMD% -f docker-compose.standalone.yml down -v
+if errorlevel 1 goto :erro_clean
+echo [OK] Ambiente limpo.
+goto :start_normal
 
-docker network inspect "%TRAEFIK_NETWORK%" >nul 2>&1
-if errorlevel 1 (
-  echo [ERRO] Rede Traefik "%TRAEFIK_NETWORK%" nao encontrada.
-  echo Crie a rede no host do Traefik e rode novamente.
-  exit /b 1
-)
+:start_normal
+echo.
+echo Iniciando containers em modo Standalone...
+echo.
 
-if /I "%MODE%"=="swarm" (
-  for /f %%s in ('docker info --format "{{.Swarm.LocalNodeState}}"') do set SWARM_STATE=%%s
-  if /I not "%SWARM_STATE%"=="active" (
-    echo [ERRO] Docker Swarm nao esta ativo. Rode: docker swarm init
-    exit /b 1
-  )
+%COMPOSE_CMD% -f docker-compose.standalone.yml up -d
+if errorlevel 1 goto :erro_start
 
-  docker network inspect "%INTERNAL_NETWORK%" >nul 2>&1
-  if errorlevel 1 (
-    docker network create --driver overlay --attachable "%INTERNAL_NETWORK%"
-  )
+echo.
+echo ======================================================
+echo   Projeto rodando com sucesso!
+echo   Frontend: http://localhost:3000
+echo   Backend:  http://localhost:8080
+echo ======================================================
+echo.
+echo Exibindo logs em 5 segundos... (Pressione Ctrl+C para parar de ver logs)
+echo.
+timeout /t 5
+%COMPOSE_CMD% -f docker-compose.standalone.yml logs -f
+goto :eof
 
-  if "%BUILD_LOCAL%"=="1" (
-    docker compose --env-file "%ENV_FILE%" -f docker-stack.yml build backend frontend whaileys-engine
-  )
+:erro_docker_desktop
+echo [ERRO] Docker Desktop nao encontrado neste computador.
+echo Instale o Docker Desktop para Windows e tente novamente:
+echo https://www.docker.com/products/docker-desktop/
+pause
+exit /b 1
 
-  docker stack deploy --with-registry-auth --compose-file docker-stack.yml "%STACK_NAME%"
-  if errorlevel 1 exit /b 1
-  echo [OK] Stack "%STACK_NAME%" implantada em modo swarm.
-) else (
-  docker network inspect "%INTERNAL_NETWORK%" >nul 2>&1
-  if errorlevel 1 (
-    docker network create "%INTERNAL_NETWORK%"
-  )
+:erro_docker
+echo [ERRO] Docker CLI nao encontrado no PATH.
+echo Abra o Docker Desktop, aguarde inicializar e tente novamente.
+pause
+exit /b 1
 
-  if "%BUILD_LOCAL%"=="1" (
-    docker compose --env-file "%ENV_FILE%" -f "%COMPOSE_FILE%" build backend frontend whaileys-engine
-  )
+:erro_docker_not_running
+echo [ERRO] Docker Desktop instalado, mas o Engine nao esta respondendo.
+echo Abra o Docker Desktop e aguarde o status ^"Engine running^".
+pause
+exit /b 1
 
-  docker compose --env-file "%ENV_FILE%" -f "%COMPOSE_FILE%" up -d
-  if errorlevel 1 exit /b 1
-  echo [OK] Watink iniciado com Docker Compose.
-)
+:erro_compose
+echo [ERRO] Docker Compose nao encontrado.
+pause
+exit /b 1
 
-echo [INFO] APP: https://%APP_DOMAIN%
-echo [INFO] API: https://%API_DOMAIN%
-exit /b 0
+:erro_clean
+echo [ERRO] Falha ao limpar o ambiente. Verifique se ha arquivos bloqueados.
+pause
+exit /b 1
+
+:erro_start
+echo [ERRO] Falha ao iniciar containers.
+pause
+exit /b 1
