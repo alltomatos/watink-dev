@@ -51,6 +51,7 @@ type CheckoutRequest struct {
 
 type CreateCheckoutPayload struct {
 	Plan       string `json:"plan"`
+	Slug       string `json:"slug"`
 	InstanceID string `json:"instanceId"`
 	Email      string `json:"email"`
 	Name       string `json:"name"`
@@ -134,6 +135,7 @@ func createCheckoutLink(instanceID, email, name, slug string) (string, error) {
 	url := fmt.Sprintf("%s/functions/v1/create-checkout", SupabaseURL)
 	payload, _ := json.Marshal(CreateCheckoutPayload{
 		Plan:       plan,
+		Slug:       slug,
 		InstanceID: instanceID,
 		Email:      email,
 		Name:       name,

@@ -36,7 +36,7 @@ serve(async (req) => {
       throw new Error("Missing required environment variables");
     }
 
-    const { plan, instanceId, email, name } = await req.json();
+    const { plan, slug, instanceId, email, name } = await req.json();
 
     if (!plan || !PLAN_PRICES[plan]) throw new Error("Plano inválido");
     if (!instanceId) throw new Error("instanceId é obrigatório");
@@ -73,6 +73,11 @@ serve(async (req) => {
 
     if (subError || !subscription) throw new Error(subError?.message ?? "Falha ao criar assinatura");
 
+    const safeSlug = typeof slug === "string" && slug.trim().length > 0 ? encodeURIComponent(slug.trim()) : "";
+    const marketplaceBasePath = safeSlug
+      ? `${APP_BASE_URL}/admin/settings/marketplace/${safeSlug}`
+      : `${APP_BASE_URL}/admin/settings/marketplace`;
+
     const mpResponse = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",
       headers: {
@@ -91,9 +96,9 @@ serve(async (req) => {
         external_reference: subscription.id,
         notification_url: WEBHOOK_URL,
         back_urls: {
-          success: `${APP_BASE_URL}/success`,
-          failure: `${APP_BASE_URL}/failure`,
-          pending: `${APP_BASE_URL}/pending`,
+          success: `${marketplaceBasePath}?checkout=approved`,
+          failure: `${marketplaceBasePath}?checkout=failure`,
+          pending: `${marketplaceBasePath}?checkout=pending`,
         },
         auto_return: "approved",
         payer: {
