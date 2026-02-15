@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -82,12 +73,12 @@ app.get("/test", (req, res) => {
 });
 app.use(routes_1.default);
 app.use(Sentry.Handlers.errorHandler());
-app.use((err, req, res, _) => __awaiter(void 0, void 0, void 0, function* () {
+app.use(async (err, req, res, _) => {
     if (err instanceof AppError_1.default) {
         logger_1.logger.warn(err);
         return res.status(err.statusCode).json({ error: err.message });
     }
     logger_1.logger.error(err);
     return res.status(500).json({ error: "Internal server error" });
-}));
+});
 exports.default = app;

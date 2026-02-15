@@ -36,22 +36,6 @@ __decorate([
     __metadata("design:type", Number)
 ], Tenant.prototype, "ownerId", void 0);
 __decorate([
-    sequelize_typescript_1.Column,
-    __metadata("design:type", String)
-], Tenant.prototype, "logo", void 0);
-__decorate([
-    sequelize_typescript_1.Column,
-    __metadata("design:type", String)
-], Tenant.prototype, "document", void 0);
-__decorate([
-    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.JSON),
-    __metadata("design:type", Object)
-], Tenant.prototype, "businessHours", void 0);
-__decorate([
-    sequelize_typescript_1.Column,
-    __metadata("design:type", String)
-], Tenant.prototype, "message", void 0);
-__decorate([
     sequelize_typescript_1.CreatedAt,
     __metadata("design:type", Date)
 ], Tenant.prototype, "createdAt", void 0);

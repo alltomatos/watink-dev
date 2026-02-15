@@ -15,10 +15,9 @@ pluginRoutes.use("/plugins", isAuth_1.default, (0, http_proxy_middleware_1.creat
         "^/plugins": "", // remove /plugins prefix when forwarding
     },
     onProxyReq: (proxyReq, req) => {
-        var _a, _b;
         try {
-            const tenantId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.tenantId;
-            const profile = (_b = req.user) === null || _b === void 0 ? void 0 : _b.profile;
+            const tenantId = req.user?.tenantId;
+            const profile = req.user?.profile;
             if (tenantId) {
                 proxyReq.setHeader("x-tenant-id", tenantId.toString());
             }

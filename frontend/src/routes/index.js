@@ -34,6 +34,7 @@ import HelpdeskKanban from "../pages/Helpdesk/HelpdeskKanban";
 import HelpdeskTvMode from "../pages/Helpdesk/HelpdeskTvMode";
 import Swagger from "../pages/Swagger/";
 import VersionDashboard from "../pages/VersionDashboard/";
+import SaaSAdmin from "../pages/SaaS/";
 import { AuthProvider } from "../context/Auth/AuthContext";
 import { WhatsAppsProvider } from "../context/WhatsApp/WhatsAppsContext";
 import { ThemeProvider } from "../context/DarkMode";
@@ -74,6 +75,7 @@ const PrivateRoutes = () => {
             <Route exact path="/helpdesk/kanban" component={HelpdeskKanban} isPrivate />
             <Route exact path="/helpdesk/tv" component={HelpdeskTvMode} isPrivate />
             <Route exact path="/helpdesk/:protocolId" component={ProtocolDetails} isPrivate />
+            <Route exact path="/saas-manager" component={SaaSAdmin} isPrivate />
             <Route exact path="/versions" component={VersionDashboard} isPrivate />
           </Switch>
         </LoggedInLayout>

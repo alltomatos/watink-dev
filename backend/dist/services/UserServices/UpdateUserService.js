@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -50,19 +41,17 @@ const AppError_1 = __importDefault(require("../../errors/AppError"));
 const SerializeUser_1 = require("../../helpers/SerializeUser");
 const ShowUserService_1 = __importDefault(require("./ShowUserService"));
 const Permission_1 = __importDefault(require("../../models/Permission"));
-const UpdateUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ userData, userId, requestUser }) {
-    const user = yield (0, ShowUserService_1.default)(userId);
+const UpdateUserService = async ({ userData, userId, requestUser }) => {
+    const user = await (0, ShowUserService_1.default)(userId);
     const schema = Yup.object().shape({
         name: Yup.string().min(2),
         email: Yup.string().email(),
         profile: Yup.string(),
-        password: Yup.string(),
-        socialName: Yup.string().nullable(),
-        profileImage: Yup.string().nullable()
+        password: Yup.string()
     });
-    const { email, password, profile, name, queueIds = [], whatsappId, socialName, profileImage } = userData;
+    const { email, password, profile, name, queueIds = [], whatsappId } = userData;
     try {
-        yield schema.validate({ email, password, profile, name, socialName, profileImage });
+        await schema.validate({ email, password, profile, name });
     }
     catch (err) {
         throw new AppError_1.default(err.message);
@@ -71,22 +60,20 @@ const UpdateUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ u
     if (user.profile === "superadmin" && user.id.toString() !== requestUser.id.toString()) {
         throw new AppError_1.default("ERR_NO_PERMISSION", 403);
     }
-    yield user.update({
+    await user.update({
         email,
         password,
         profile,
         name,
-        whatsappId: whatsappId ? whatsappId : null,
-        socialName,
-        profileImage
+        whatsappId: whatsappId ? whatsappId : null
     });
-    yield user.$set("queues", queueIds);
+    await user.$set("queues", queueIds);
     // Ensure superadmin has all permissions if profile is being updated to superadmin
     if (profile === "superadmin" || (user.profile === "superadmin" && profile === undefined)) {
-        const allPermissions = yield Permission_1.default.findAll();
-        yield user.$set("permissions", allPermissions);
+        const allPermissions = await Permission_1.default.findAll();
+        await user.$set("permissions", allPermissions);
     }
-    yield user.reload();
+    await user.reload();
     return (0, SerializeUser_1.SerializeUser)(user);
-});
+};
 exports.default = UpdateUserService;

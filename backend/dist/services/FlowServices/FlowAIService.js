@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -17,37 +8,35 @@ const AppError_1 = __importDefault(require("../../errors/AppError"));
 const logger_1 = require("../../utils/logger");
 const axios_1 = __importDefault(require("axios"));
 class FlowAIService {
-    generateFlowFromPrompt(prompt, tenantId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            var _a, _b, _c;
-            // 1. Buscar Configurações
-            const apiKeySetting = yield Setting_1.default.findOne({ where: { key: "aiApiKey", tenantId } });
-            const providerSetting = yield Setting_1.default.findOne({ where: { key: "aiProvider", tenantId } });
-            const modelSetting = yield Setting_1.default.findOne({ where: { key: "aiModel", tenantId } });
-            const guidePromptSetting = yield Setting_1.default.findOne({ where: { key: "aiGuidePrompt", tenantId } });
-            let apiKey = apiKeySetting === null || apiKeySetting === void 0 ? void 0 : apiKeySetting.value;
-            let provider = (providerSetting === null || providerSetting === void 0 ? void 0 : providerSetting.value) || "openai";
-            let model = (modelSetting === null || modelSetting === void 0 ? void 0 : modelSetting.value) || "gpt-4o-mini";
-            // Fallback env
-            if (!apiKey && process.env.OPENAI_API_KEY) {
-                apiKey = process.env.OPENAI_API_KEY;
-                provider = "openai";
-            }
-            if (!apiKey) {
-                logger_1.logger.warn(`FlowAIService: API Key não encontrada para tenant ${tenantId}. Verifique Settings ou OPENAI_API_KEY env.`);
-                throw new AppError_1.default("Não há API Key de IA configurada. Vá em Configurações e configure a chave da OpenAI ou Grok.", 400);
-            }
-            // 2. Configurar Endpoint
-            let baseURL = "https://api.openai.com/v1";
-            if (provider === "grok") {
-                baseURL = "https://api.x.ai/v1";
-                model = model || "grok-beta";
-            }
-            // 3. Montar Prompt
-            const businessContext = (guidePromptSetting === null || guidePromptSetting === void 0 ? void 0 : guidePromptSetting.value)
-                ? `CONTEXTO DO NEGÓCIO:\n${guidePromptSetting.value}\n---\n`
-                : "";
-            const systemPrompt = `
+    async generateFlowFromPrompt(prompt, tenantId) {
+        // 1. Buscar Configurações
+        const apiKeySetting = await Setting_1.default.findOne({ where: { key: "aiApiKey", tenantId } });
+        const providerSetting = await Setting_1.default.findOne({ where: { key: "aiProvider", tenantId } });
+        const modelSetting = await Setting_1.default.findOne({ where: { key: "aiModel", tenantId } });
+        const guidePromptSetting = await Setting_1.default.findOne({ where: { key: "aiGuidePrompt", tenantId } });
+        let apiKey = apiKeySetting?.value;
+        let provider = providerSetting?.value || "openai";
+        let model = modelSetting?.value || "gpt-4o-mini";
+        // Fallback env
+        if (!apiKey && process.env.OPENAI_API_KEY) {
+            apiKey = process.env.OPENAI_API_KEY;
+            provider = "openai";
+        }
+        if (!apiKey) {
+            logger_1.logger.warn(`FlowAIService: API Key não encontrada para tenant ${tenantId}. Verifique Settings ou OPENAI_API_KEY env.`);
+            throw new AppError_1.default("Não há API Key de IA configurada. Vá em Configurações e configure a chave da OpenAI ou Grok.", 400);
+        }
+        // 2. Configurar Endpoint
+        let baseURL = "https://api.openai.com/v1";
+        if (provider === "grok") {
+            baseURL = "https://api.x.ai/v1";
+            model = model || "grok-beta";
+        }
+        // 3. Montar Prompt
+        const businessContext = guidePromptSetting?.value
+            ? `CONTEXTO DO NEGÓCIO:\n${guidePromptSetting.value}\n---\n`
+            : "";
+        const systemPrompt = `
 ${businessContext}
 Você é o **Flow Assistant**, um especialista em criação de fluxos de conversação para WhatsApp (Chatbot) no sistema whaticket Premium.
 Seu objetivo é converter a solicitação do usuário em uma estrutura JSON para a biblioteca React Flow.
@@ -221,56 +210,55 @@ Estrutura OBRIGATÓRIA:
 
 Agora, converta a solicitação do usuário em um fluxo seguindo estas diretrizes.
         `;
-            // 4. Chamada API via Axios
+        // 4. Chamada API via Axios
+        try {
+            const { data } = await axios_1.default.post(`${baseURL}/chat/completions`, {
+                model: model,
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: prompt }
+                ],
+                temperature: 0.1,
+                response_format: provider === "openai" ? { type: "json_object" } : undefined
+            }, {
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                },
+                timeout: 30000 // 30 segundos
+            });
+            const content = data?.choices?.[0]?.message?.content;
+            if (!content) {
+                logger_1.logger.error("FlowAIService Error - Estrutura de resposta inválida:", JSON.stringify(data));
+                throw new AppError_1.default("A IA retornou uma resposta vazia ou inválida. Verifique sua quota/configurações.", 500);
+            }
+            // 5. Parse JSON (Extração mais robusta)
+            let cleanContent = content.trim();
+            // Tentar extrair apenas o objeto JSON se houver texto ao redor
+            const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                cleanContent = jsonMatch[0];
+            }
             try {
-                const { data } = yield axios_1.default.post(`${baseURL}/chat/completions`, {
-                    model: model,
-                    messages: [
-                        { role: "system", content: systemPrompt },
-                        { role: "user", content: prompt }
-                    ],
-                    temperature: 0.1,
-                    response_format: provider === "openai" ? { type: "json_object" } : undefined
-                }, {
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${apiKey}`
-                    },
-                    timeout: 30000 // 30 segundos
-                });
-                const content = (_c = (_b = (_a = data === null || data === void 0 ? void 0 : data.choices) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.message) === null || _c === void 0 ? void 0 : _c.content;
-                if (!content) {
-                    logger_1.logger.error("FlowAIService Error - Estrutura de resposta inválida:", JSON.stringify(data));
-                    throw new AppError_1.default("A IA retornou uma resposta vazia ou inválida. Verifique sua quota/configurações.", 500);
-                }
-                // 5. Parse JSON (Extração mais robusta)
-                let cleanContent = content.trim();
-                // Tentar extrair apenas o objeto JSON se houver texto ao redor
-                const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    cleanContent = jsonMatch[0];
-                }
-                try {
-                    const json = JSON.parse(cleanContent);
-                    // Garantir estrutura mínima
-                    return {
-                        nodes: json.nodes || [],
-                        edges: json.edges || [],
-                        message: json.message || ""
-                    };
-                }
-                catch (err) {
-                    console.error("JSON Parse Fail:", content);
-                    throw new AppError_1.default("A IA não retornou um JSON válido. Tente reformular o pedido.", 500);
-                }
+                const json = JSON.parse(cleanContent);
+                // Garantir estrutura mínima
+                return {
+                    nodes: json.nodes || [],
+                    edges: json.edges || [],
+                    message: json.message || ""
+                };
             }
-            catch (error) {
-                console.error("FlowAIService Fatal:", error);
-                if (error instanceof AppError_1.default)
-                    throw error;
-                throw new AppError_1.default("Falha interna no serviço de IA.", 500);
+            catch (err) {
+                console.error("JSON Parse Fail:", content);
+                throw new AppError_1.default("A IA não retornou um JSON válido. Tente reformular o pedido.", 500);
             }
-        });
+        }
+        catch (error) {
+            console.error("FlowAIService Fatal:", error);
+            if (error instanceof AppError_1.default)
+                throw error;
+            throw new AppError_1.default("Falha interna no serviço de IA.", 500);
+        }
     }
 }
 exports.default = new FlowAIService();

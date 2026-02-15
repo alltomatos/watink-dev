@@ -38,15 +38,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const isAuth_1 = __importDefault(require("../middleware/isAuth"));
-const multer_1 = __importDefault(require("multer"));
-const upload_1 = __importDefault(require("../config/upload"));
 const TenantController = __importStar(require("../controllers/TenantController"));
 const tenantRoutes = express_1.default.Router();
-const upload = (0, multer_1.default)(upload_1.default);
 tenantRoutes.get("/tenants", isAuth_1.default, TenantController.index);
 tenantRoutes.post("/tenants", isAuth_1.default, TenantController.store);
 tenantRoutes.get("/tenants/:tenantId", isAuth_1.default, TenantController.show);
 tenantRoutes.put("/tenants/:tenantId", isAuth_1.default, TenantController.update);
-tenantRoutes.put("/tenants/:tenantId/business", isAuth_1.default, upload.single("logo"), TenantController.updateBusiness);
 tenantRoutes.delete("/tenants/:tenantId", isAuth_1.default, TenantController.remove);
 exports.default = tenantRoutes;

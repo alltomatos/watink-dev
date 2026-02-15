@@ -1,19 +1,10 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 module.exports = {
-    up: (queryInterface) => __awaiter(void 0, void 0, void 0, function* () {
+    up: async (queryInterface) => {
         // Create Clients table
-        yield queryInterface.createTable("Clients", {
+        await queryInterface.createTable("Clients", {
             id: {
                 type: sequelize_1.DataTypes.INTEGER,
                 autoIncrement: true,
@@ -69,7 +60,7 @@ module.exports = {
             }
         });
         // Create ClientContacts table (multiple contacts per client)
-        yield queryInterface.createTable("ClientContacts", {
+        await queryInterface.createTable("ClientContacts", {
             id: {
                 type: sequelize_1.DataTypes.INTEGER,
                 autoIncrement: true,
@@ -123,7 +114,7 @@ module.exports = {
             }
         });
         // Create ClientAddresses table (multiple addresses per client)
-        yield queryInterface.createTable("ClientAddresses", {
+        await queryInterface.createTable("ClientAddresses", {
             id: {
                 type: sequelize_1.DataTypes.INTEGER,
                 autoIncrement: true,
@@ -186,15 +177,15 @@ module.exports = {
             }
         });
         // Add indexes
-        yield queryInterface.addIndex("Clients", ["tenantId"]);
-        yield queryInterface.addIndex("Clients", ["document"]);
-        yield queryInterface.addIndex("ClientContacts", ["clientId"]);
-        yield queryInterface.addIndex("ClientContacts", ["contactId"]);
-        yield queryInterface.addIndex("ClientAddresses", ["clientId"]);
-    }),
-    down: (queryInterface) => __awaiter(void 0, void 0, void 0, function* () {
-        yield queryInterface.dropTable("ClientAddresses");
-        yield queryInterface.dropTable("ClientContacts");
-        yield queryInterface.dropTable("Clients");
-    })
+        await queryInterface.addIndex("Clients", ["tenantId"]);
+        await queryInterface.addIndex("Clients", ["document"]);
+        await queryInterface.addIndex("ClientContacts", ["clientId"]);
+        await queryInterface.addIndex("ClientContacts", ["contactId"]);
+        await queryInterface.addIndex("ClientAddresses", ["clientId"]);
+    },
+    down: async (queryInterface) => {
+        await queryInterface.dropTable("ClientAddresses");
+        await queryInterface.dropTable("ClientContacts");
+        await queryInterface.dropTable("Clients");
+    }
 };

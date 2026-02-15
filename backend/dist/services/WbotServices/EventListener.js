@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -27,7 +18,7 @@ const Ticket_1 = __importDefault(require("../../models/Ticket"));
 const getSessionId = (sessionId) => {
     return parseInt(String(sessionId).split("-")[0], 10);
 };
-const EventListener = () => __awaiter(void 0, void 0, void 0, function* () {
+const EventListener = async () => {
     const routingKeys = [
         "wbot.*.*.session.qrcode",
         "wbot.*.*.session.pairingcode",
@@ -39,63 +30,63 @@ const EventListener = () => __awaiter(void 0, void 0, void 0, function* () {
         "wbot.*.*.message.ack",
         "wbot.*.*.message.revoke"
     ];
-    yield RabbitMQService_1.default.consumeEvents("api.events.process", routingKeys, (msg) => __awaiter(void 0, void 0, void 0, function* () {
+    await RabbitMQService_1.default.consumeEvents("api.events.process", routingKeys, async (msg) => {
         logger_1.logger.info(`Event received: ${msg.type}`);
         switch (msg.type) {
             case "session.qrcode":
-                yield handleQrCode(msg.payload);
+                await handleQrCode(msg.payload);
                 break;
             case "session.pairingcode":
-                yield handlePairingCode(msg.payload);
+                await handlePairingCode(msg.payload);
                 break;
             case "session.status":
-                yield handleSessionStatus(msg.payload);
+                await handleSessionStatus(msg.payload);
                 break;
             case "message.received":
-                yield handleMessageReceived(msg.payload, msg.tenantId);
+                await handleMessageReceived(msg.payload, msg.tenantId);
                 break;
             case "message.reaction":
-                yield handleMessageReaction(msg.payload, msg.tenantId);
+                await handleMessageReaction(msg.payload, msg.tenantId);
                 break;
             case "contact.update":
-                yield handleContactUpdate(msg.payload, msg.tenantId);
+                await handleContactUpdate(msg.payload, msg.tenantId);
                 break;
             case "message.ack":
-                yield handleMessageAck(msg.payload, msg.tenantId);
+                await handleMessageAck(msg.payload, msg.tenantId);
                 break;
             case "message.revoke":
-                yield handleMessageRevoke(msg.payload, msg.tenantId);
+                await handleMessageRevoke(msg.payload, msg.tenantId);
                 break;
             default:
                 logger_1.logger.warn(`Unknown event type: ${msg.type}`);
         }
-    }));
-});
+    });
+};
 exports.EventListener = EventListener;
-const handleQrCode = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+const handleQrCode = async (payload) => {
     const io = (0, socket_1.getIO)();
-    yield Whatsapp_1.default.update({ qrcode: payload.qrcode, status: "QRCODE" }, { where: { id: getSessionId(payload.sessionId) } });
+    await Whatsapp_1.default.update({ qrcode: payload.qrcode, status: "QRCODE" }, { where: { id: getSessionId(payload.sessionId) } });
     io.emit(`whatsappSession`, {
         action: "update",
         session: { id: getSessionId(payload.sessionId), qrcode: payload.qrcode, status: "QRCODE" }
     });
-});
-const handlePairingCode = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+};
+const handlePairingCode = async (payload) => {
     const io = (0, socket_1.getIO)();
     io.emit(`whatsappSession`, {
         action: "update",
         session: { id: getSessionId(payload.sessionId), pairingCode: payload.pairingCode, status: "PAIRING" }
     });
-});
+};
 const RedisService_1 = require("../RedisService");
-const handleSessionStatus = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+const handleSessionStatus = async (payload) => {
     const io = (0, socket_1.getIO)();
     const updateData = { status: payload.status, qrcode: "" };
     if (payload.number)
         updateData.number = payload.number;
     if (payload.profilePicUrl)
         updateData.profilePicUrl = payload.profilePicUrl;
-    yield Whatsapp_1.default.update(updateData, { where: { id: getSessionId(payload.sessionId) } });
+    await Whatsapp_1.default.update(updateData, { where: { id: getSessionId(payload.sessionId) } });
     // REDIS CACHE IMPLEMENTATION
     try {
         const redis = RedisService_1.RedisService.getInstance();
@@ -104,7 +95,7 @@ const handleSessionStatus = (payload) => __awaiter(void 0, void 0, void 0, funct
         // We store the full payload or just the status string? 
         // Plan said "session:status:{id} exists and has correct value"
         // Let's store a simple JSON object
-        yield redis.setValue(statusKey, JSON.stringify({
+        await redis.setValue(statusKey, JSON.stringify({
             status: payload.status,
             number: payload.number,
             profilePicUrl: payload.profilePicUrl,
@@ -123,15 +114,15 @@ const handleSessionStatus = (payload) => __awaiter(void 0, void 0, void 0, funct
             profilePicUrl: payload.profilePicUrl
         }
     });
-});
+};
 const MergeContactsService_1 = __importDefault(require("../ContactServices/MergeContactsService"));
 const sequelize_1 = require("sequelize");
 // ... previous imports
-const handleContactUpdate = (payload, tenantId) => __awaiter(void 0, void 0, void 0, function* () {
+const handleContactUpdate = async (payload, tenantId) => {
     logger_1.logger.info(`[EventListener] Received contact.update for ${payload.number} (ID: ${payload.contactId})`);
     const { contactId, number, profilePicUrl, pushName, lid, isGroup, sessionId } = payload;
     if (!tenantId && sessionId) {
-        const whatsapp = yield Whatsapp_1.default.findByPk(getSessionId(sessionId));
+        const whatsapp = await Whatsapp_1.default.findByPk(getSessionId(sessionId));
         if (whatsapp) {
             tenantId = whatsapp.tenantId;
         }
@@ -139,16 +130,16 @@ const handleContactUpdate = (payload, tenantId) => __awaiter(void 0, void 0, voi
     const backendUrl = process.env.URL_BACKEND || process.env.BACKEND_URL || "http://localhost:8080";
     let contact = null;
     if (contactId) {
-        contact = yield Contact_1.default.findByPk(contactId);
+        contact = await Contact_1.default.findByPk(contactId);
     }
     // If no contact found by ID (or no ID provided), try to find by LID or Number
     if (!contact) {
         if (lid) {
-            contact = yield Contact_1.default.findOne({ where: { lid, tenantId } });
+            contact = await Contact_1.default.findOne({ where: { lid, tenantId } });
         }
         if (!contact && number) {
             // Try finding by basic number or remoteJid equivalent
-            contact = yield Contact_1.default.findOne({
+            contact = await Contact_1.default.findOne({
                 where: {
                     [sequelize_1.Op.or]: [
                         { number: number }
@@ -161,7 +152,7 @@ const handleContactUpdate = (payload, tenantId) => __awaiter(void 0, void 0, voi
     if (contact) {
         // 1. Check for LID Duplication/Collision
         if (lid && contact.lid && lid !== contact.lid) {
-            const duplicate = yield Contact_1.default.findOne({
+            const duplicate = await Contact_1.default.findOne({
                 where: {
                     lid: lid,
                     tenantId: contact.tenantId, // Use contact's tenant to be safe
@@ -170,7 +161,7 @@ const handleContactUpdate = (payload, tenantId) => __awaiter(void 0, void 0, voi
             });
             if (duplicate) {
                 logger_1.logger.info(`[EventListener] LID collision detected: ${lid}. Merging ${contact.id} into ${duplicate.id}`);
-                yield (0, MergeContactsService_1.default)({
+                await (0, MergeContactsService_1.default)({
                     contactIdOrigin: contact.id,
                     contactIdTarget: duplicate.id,
                     tenantId: contact.tenantId
@@ -182,7 +173,7 @@ const handleContactUpdate = (payload, tenantId) => __awaiter(void 0, void 0, voi
         // 2. Normal Update
         const updates = {};
         if (profilePicUrl) {
-            const filename = yield (0, DownloadProfileImage_1.DownloadProfileImage)({
+            const filename = await (0, DownloadProfileImage_1.DownloadProfileImage)({
                 profilePicUrl,
                 tenantId,
                 contactId: contact.id
@@ -200,7 +191,7 @@ const handleContactUpdate = (payload, tenantId) => __awaiter(void 0, void 0, voi
         if (pushName)
             updates.name = pushName; // Optionally update name if available
         if (Object.keys(updates).length > 0) {
-            yield contact.update(updates);
+            await contact.update(updates);
             const io = (0, socket_1.getIO)();
             io.emit("contact", {
                 action: "update",
@@ -214,15 +205,14 @@ const handleContactUpdate = (payload, tenantId) => __awaiter(void 0, void 0, voi
         // However, for groups we are part of, we probably want them? 
         // Let's stick to updating existing ones for now to be safe.
     }
-});
-const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+};
+const handleMessageReceived = async (payload, tenantId) => {
     const { message, sessionId } = payload;
     if (message.from === "status@broadcast") {
         return;
     }
     logger_1.logger.info(`[EventListener] handleMessageReceived: ${JSON.stringify(payload)}`);
-    const whatsapp = yield Whatsapp_1.default.findByPk(getSessionId(sessionId));
+    const whatsapp = await Whatsapp_1.default.findByPk(getSessionId(sessionId));
     if (!whatsapp)
         return;
     if (!tenantId && whatsapp.tenantId) {
@@ -242,7 +232,7 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
     if (message.originalId) {
         if (message.originalId === message.id) {
             logger_1.logger.info(`[EventListener] handleMessageReceived - Deduping: IDs match (${message.id}). Skipping destruction.`);
-            const existingMsg = yield Message_1.default.findByPk(message.id);
+            const existingMsg = await Message_1.default.findByPk(message.id);
             if (existingMsg) {
                 preservedBody = existingMsg.body;
                 preservedMediaUrl = existingMsg.getDataValue("mediaUrl");
@@ -253,14 +243,14 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
         else {
             logger_1.logger.info(`[EventListener] handleMessageReceived - Deduping: Found originalId ${message.originalId}. Processing replacement.`);
             try {
-                const pendingMessage = yield Message_1.default.findByPk(message.originalId);
+                const pendingMessage = await Message_1.default.findByPk(message.originalId);
                 if (pendingMessage) {
                     // PRESERVE: Capture data from pending message before destroying
                     preservedBody = pendingMessage.body;
                     preservedMediaUrl = pendingMessage.getDataValue("mediaUrl");
                     preservedMediaType = pendingMessage.mediaType;
                     preservedCreatedAt = pendingMessage.createdAt;
-                    yield pendingMessage.destroy();
+                    await pendingMessage.destroy();
                     logger_1.logger.info(`[EventListener] Pending message ${message.originalId} destroyed successfully.`);
                     // Emit deletion event to frontend to remove the clock icon
                     const io = (0, socket_1.getIO)();
@@ -293,7 +283,7 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
         // For now, passing message.from as name is standard behavior if name not known.
         groupData.waitEnrichment = true;
         groupData.sessionId = sessionId;
-        groupContact = yield (0, CreateOrUpdateContactService_1.default)(groupData);
+        groupContact = await (0, CreateOrUpdateContactService_1.default)(groupData);
         // 2. Participant Contact (Sender)
         const participant = message.participant || "";
         // Logging diagnostic for missing participant
@@ -302,7 +292,7 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
         }
         const participantNumber = participant.replace(/\D/g, "");
         // Check if we already have this participant as a contact
-        let savedParticipant = yield Contact_1.default.findOne({
+        let savedParticipant = await Contact_1.default.findOne({
             where: {
                 number: participantNumber,
                 tenantId
@@ -339,7 +329,7 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
             // If fromMe, use the number/address as name just for creation if it doesn't exist
             contactData.name = message.from;
         }
-        msgContact = yield (0, CreateOrUpdateContactService_1.default)(contactData);
+        msgContact = await (0, CreateOrUpdateContactService_1.default)(contactData);
     }
     // FIX: Se a mensagem veio com timestamp inválido (0) mas temos a data original de criação, restauramos.
     if (preservedCreatedAt && (!message.timestamp || message.timestamp * 1000 < 1577836800000)) { // < 2020
@@ -361,7 +351,7 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
     // Mensagens históricas (ou sem data) não criam ticket novo
     if (isOldMessage) {
         logger_1.logger.info(`[EventListener] Old/Historic message detected (${message.id}). Timestamp: ${message.timestamp}. Archiving without opening ticket.`);
-        let ticketForMessage = yield Ticket_1.default.findOne({
+        let ticketForMessage = await Ticket_1.default.findOne({
             where: {
                 contactId: (groupContact || msgContact).id,
                 whatsappId: whatsapp.id,
@@ -371,7 +361,7 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
         });
         if (!ticketForMessage) {
             logger_1.logger.info(`[EventListener] Old message ${message.id} has no ticket. Creating USED closed ticket to save history.`);
-            ticketForMessage = yield Ticket_1.default.create({
+            ticketForMessage = await Ticket_1.default.create({
                 contactId: groupContact ? groupContact.id : msgContact.id,
                 status: "closed",
                 isGroup: !!groupContact,
@@ -412,7 +402,7 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
                     const { writeFile } = require("fs").promises;
                     const uploadConfig = require("../../config/upload").default;
                     const mimetype = message.mimetype || "";
-                    const ext = ((_a = mimetype.split("/")[1]) === null || _a === void 0 ? void 0 : _a.split(";")[0]) || "bin";
+                    const ext = mimetype.split("/")[1]?.split(";")[0] || "bin";
                     const filename = `${new Date().getTime()}-${message.id}.${ext}`;
                     const tenantFolder = join(uploadConfig.directory, tenantId.toString());
                     if (!require("fs").existsSync(tenantFolder)) {
@@ -420,7 +410,7 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
                     }
                     const filePath = join(tenantFolder, filename);
                     const buffer = Buffer.from(message.mediaData, "base64");
-                    yield writeFile(filePath, buffer);
+                    await writeFile(filePath, buffer);
                     msgDataVal.mediaUrl = `${tenantId}/${filename}`;
                     if (message.type === "media") {
                         if (mimetype.startsWith("image/"))
@@ -437,12 +427,12 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
                     logger_1.logger.error(`Error saving media for old message ${message.id}: ${err}`);
                 }
             }
-            yield (0, CreateMessageService_1.default)({ messageData: msgDataVal });
+            await (0, CreateMessageService_1.default)({ messageData: msgDataVal });
         }
         return; // Stop here, do not create pending ticket
     }
     // Apenas para mensagens NOVAS - criar ticket pending
-    const ticket = yield (0, FindOrCreateTicketService_1.default)(groupContact || msgContact, whatsapp.id, 1, // Unread messages
+    const ticket = await (0, FindOrCreateTicketService_1.default)(groupContact || msgContact, whatsapp.id, 1, // Unread messages
     tenantId, groupContact);
     let creationDate = new Date(message.timestamp * 1000);
     // FIX: Prioritize preservedCreatedAt to avoid message jumping in Optimistic UI
@@ -476,7 +466,7 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
     };
     // If this is an existing sent message, we should not revert the ACK if it is already higher
     if (message.fromMe) {
-        const currentMsg = yield Message_1.default.findByPk(message.id);
+        const currentMsg = await Message_1.default.findByPk(message.id);
         if (currentMsg && currentMsg.ack > msgData.ack) {
             msgData.ack = currentMsg.ack;
         }
@@ -490,7 +480,7 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
             const uploadConfig = require("../../config/upload").default;
             // Deduce extension
             const mimetype = message.mimetype || "";
-            const ext = ((_b = mimetype.split("/")[1]) === null || _b === void 0 ? void 0 : _b.split(";")[0]) || "bin";
+            const ext = mimetype.split("/")[1]?.split(";")[0] || "bin";
             const filename = `${new Date().getTime()}-${message.id}.${ext}`;
             const tenantFolder = join(uploadConfig.directory, tenantId.toString());
             if (!require("fs").existsSync(tenantFolder)) {
@@ -498,7 +488,7 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
             }
             const filePath = join(tenantFolder, filename);
             const buffer = Buffer.from(message.mediaData, "base64");
-            yield writeFile(filePath, buffer);
+            await writeFile(filePath, buffer);
             msgData.mediaUrl = `${tenantId}/${filename}`;
             // Fix mediaType to be more specific if Engine sent "media"
             if (message.type === "media") {
@@ -517,10 +507,10 @@ const handleMessageReceived = (payload, tenantId) => __awaiter(void 0, void 0, v
             // Fallback: Don't block message creation, but it will lack media
         }
     }
-    yield (0, CreateMessageService_1.default)({ messageData: msgData });
-});
+    await (0, CreateMessageService_1.default)({ messageData: msgData });
+};
 // Helper function for Poll Barrier
-const waitForContactEnrichment = (contactId, isGroup, tenantId) => __awaiter(void 0, void 0, void 0, function* () {
+const waitForContactEnrichment = async (contactId, isGroup, tenantId) => {
     const MAX_WAIT_MS = 5000; // 5 seconds max
     const POLLING_INTERVAL = 500;
     let waited = 0;
@@ -528,7 +518,7 @@ const waitForContactEnrichment = (contactId, isGroup, tenantId) => __awaiter(voi
     // Helper sleep
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     while (waited < MAX_WAIT_MS) {
-        const contact = yield Contact_1.default.findByPk(contactId);
+        const contact = await Contact_1.default.findByPk(contactId);
         if (!contact)
             return; // Should not happen
         let isReady = false;
@@ -549,22 +539,22 @@ const waitForContactEnrichment = (contactId, isGroup, tenantId) => __awaiter(voi
             logger_1.logger.info(`[Barrier] Contact ${contactId} enriched after ${waited}ms!`);
             return;
         }
-        yield sleep(POLLING_INTERVAL);
+        await sleep(POLLING_INTERVAL);
         waited += POLLING_INTERVAL;
     }
     logger_1.logger.warn(`[Barrier] Timeout waiting for enrichment of contact ${contactId} after ${MAX_WAIT_MS}ms. Proceeding anyway.`);
-});
-const handleMessageReaction = (payload, tenantId) => __awaiter(void 0, void 0, void 0, function* () {
+};
+const handleMessageReaction = async (payload, tenantId) => {
     try {
         const { messageId, reaction, sender, timestamp, sessionId } = payload;
         if (!tenantId && sessionId) {
-            const whatsapp = yield Whatsapp_1.default.findByPk(getSessionId(sessionId));
+            const whatsapp = await Whatsapp_1.default.findByPk(getSessionId(sessionId));
             if (whatsapp) {
                 tenantId = whatsapp.tenantId;
             }
         }
         logger_1.logger.info(`[EventListener] Received reaction for message ${messageId}: ${reaction} from ${sender}`);
-        const message = yield Message_1.default.findOne({
+        const message = await Message_1.default.findOne({
             where: { id: messageId, tenantId }
         });
         if (!message) {
@@ -585,7 +575,7 @@ const handleMessageReaction = (payload, tenantId) => __awaiter(void 0, void 0, v
                 timestamp
             });
         }
-        yield message.update({ reactions: currentReactions });
+        await message.update({ reactions: currentReactions });
         // Emit via Socket.IO
         const io = (0, socket_1.getIO)();
         io.to(message.ticketId.toString()).emit(`appMessage`, {
@@ -596,12 +586,12 @@ const handleMessageReaction = (payload, tenantId) => __awaiter(void 0, void 0, v
     catch (err) {
         logger_1.logger.error(`[EventListener] Error handling message reaction: ${err}`);
     }
-});
-const handleMessageAck = (payload, tenantId) => __awaiter(void 0, void 0, void 0, function* () {
+};
+const handleMessageAck = async (payload, tenantId) => {
     try {
         const { messageId, ack, sessionId } = payload;
         if (!tenantId && sessionId) {
-            const whatsapp = yield Whatsapp_1.default.findByPk(getSessionId(sessionId));
+            const whatsapp = await Whatsapp_1.default.findByPk(getSessionId(sessionId));
             if (whatsapp) {
                 tenantId = whatsapp.tenantId;
             }
@@ -611,14 +601,14 @@ const handleMessageAck = (payload, tenantId) => __awaiter(void 0, void 0, void 0
         // Try up to 10 times with 500ms delay (5 seconds total)
         let message = null;
         for (let i = 0; i < 10; i++) {
-            message = yield Message_1.default.findOne({
+            message = await Message_1.default.findOne({
                 where: { id: messageId, tenantId }
             });
             if (message)
                 break;
             if (i === 0)
                 logger_1.logger.info(`[EventListener] Message ${messageId} not found for ACK update. Starting retries...`);
-            yield new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, 500));
         }
         if (!message) {
             logger_1.logger.warn(`[EventListener] Message ${messageId} not found after retries. ACK ${ack} lost.`);
@@ -626,7 +616,7 @@ const handleMessageAck = (payload, tenantId) => __awaiter(void 0, void 0, void 0
         }
         // Only update if new ACK is higher than current to prevent regression
         if (ack > message.ack) {
-            yield message.update({ ack });
+            await message.update({ ack });
             const io = (0, socket_1.getIO)();
             io.to(message.ticketId.toString()).emit(`appMessage`, {
                 action: "update",
@@ -637,18 +627,18 @@ const handleMessageAck = (payload, tenantId) => __awaiter(void 0, void 0, void 0
     catch (err) {
         logger_1.logger.error(`[EventListener] Error handling message ACK: ${err}`);
     }
-});
-const handleMessageRevoke = (payload, tenantId) => __awaiter(void 0, void 0, void 0, function* () {
+};
+const handleMessageRevoke = async (payload, tenantId) => {
     try {
         const { messageId, sessionId, participant } = payload;
         if (!tenantId && sessionId) {
-            const whatsapp = yield Whatsapp_1.default.findByPk(getSessionId(sessionId));
+            const whatsapp = await Whatsapp_1.default.findByPk(getSessionId(sessionId));
             if (whatsapp) {
                 tenantId = whatsapp.tenantId;
             }
         }
         logger_1.logger.info(`[EventListener] handleMessageRevoke: Revoking msg ${messageId} (by ${participant})`);
-        const message = yield Message_1.default.findOne({
+        const message = await Message_1.default.findOne({
             where: { id: messageId, tenantId }
         });
         if (!message) {
@@ -658,9 +648,12 @@ const handleMessageRevoke = (payload, tenantId) => __awaiter(void 0, void 0, voi
         // Update isDeleted and store deleter info in dataJson
         // We preserve the original body in the DB, but frontend must know it's deleted.
         const currentDataJson = message.dataJson || {};
-        yield message.update({
+        await message.update({
             isDeleted: true,
-            dataJson: Object.assign(Object.assign({}, currentDataJson), { deletedBy: participant })
+            dataJson: {
+                ...currentDataJson,
+                deletedBy: participant
+            }
         });
         const io = (0, socket_1.getIO)();
         io.to(message.ticketId.toString()).emit(`appMessage`, {
@@ -671,4 +664,4 @@ const handleMessageRevoke = (payload, tenantId) => __awaiter(void 0, void 0, voi
     catch (err) {
         logger_1.logger.error(`[EventListener] Error handling message revocation: ${err}`);
     }
-});
+};
