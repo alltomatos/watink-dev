@@ -16,7 +16,7 @@ import {
     Cancel as CancelIcon,
 } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useHistory, useLocation } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
@@ -89,15 +89,51 @@ const PluginDetail = () => {
     const classes = useStyles();
     const { slug } = useParams();
     const history = useHistory();
+    const location = useLocation();
     const { user } = useContext(AuthContext);
     const [plugin, setPlugin] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activating, setActivating] = useState(false);
+    const [waitingPayment, setWaitingPayment] = useState(false);
 
     useEffect(() => {
         loadPlugin();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [slug]);
+
+    useEffect(() => {
+        const search = new URLSearchParams(location.search);
+        const status = search.get("checkout") || search.get("status");
+        if (status === "approved" || status === "success") {
+            toast.success("Pagamento aprovado. Atualizando licenças...");
+            setWaitingPayment(true);
+            loadPlugin();
+        } else if (status === "pending") {
+            toast.info("Pagamento pendente. Vamos atualizar automaticamente.");
+            setWaitingPayment(true);
+        } else if (status === "failure" || status === "rejected") {
+            toast.error("Pagamento não concluído. Tente novamente.");
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.search]);
+
+    useEffect(() => {
+        if (!waitingPayment) return undefined;
+
+        const intervalId = setInterval(() => {
+            loadPlugin();
+        }, 15000);
+
+        const timeoutId = setTimeout(() => {
+            setWaitingPayment(false);
+        }, 10 * 60 * 1000);
+
+        return () => {
+            clearInterval(intervalId);
+            clearTimeout(timeoutId);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [waitingPayment]);
 
     const loadPlugin = async () => {
         try {
@@ -116,13 +152,18 @@ const PluginDetail = () => {
                 return;
             }
 
+            const isLicensed = active.has(p.slug);
             setPlugin({
                 ...p,
-                installed: active.has(p.slug),
-                active: active.has(p.slug),
+                installed: isLicensed,
+                active: isLicensed,
                 iconUrl: `/public/plugins/${p.slug}.png`,
                 longDescription: longDescriptionBySlug(p.slug),
             });
+
+            if (isLicensed) {
+                setWaitingPayment(false);
+            }
         } catch (err) {
             toast.error("Erro ao carregar plugin");
         } finally {
@@ -151,10 +192,12 @@ const PluginDetail = () => {
             if (!data?.checkoutUrl) {
                 throw new Error("checkoutUrl ausente");
             }
+            setWaitingPayment(true);
             window.open(data.checkoutUrl, "_blank", "noopener,noreferrer");
-            toast.info("Checkout aberto. Após pagamento aprovado, volte aqui e ative o plugin.");
+            toast.info("Checkout aberto. Vamos atualizar a licença automaticamente.");
         } catch (err) {
-            toast.error("Não foi possível iniciar checkout");
+            const apiError = err?.response?.data?.error;
+            toast.error(apiError || "Não foi possível iniciar checkout");
         } finally {
             setActivating(false);
         }
@@ -259,15 +302,24 @@ const PluginDetail = () => {
                                     {activating ? <CircularProgress size={20} /> : "Desativar Plugin"}
                                 </Button>
                             ) : plugin.type === "premium" && !plugin.installed ? (
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    startIcon={<CheckCircleIcon />}
-                                    onClick={handleSubscribe}
-                                    disabled={activating}
-                                >
-                                    {activating ? <CircularProgress size={20} /> : "Assinar Plugin"}
-                                </Button>
+                                <>
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        startIcon={<CheckCircleIcon />}
+                                        onClick={handleSubscribe}
+                                        disabled={activating}
+                                    >
+                                        {activating ? <CircularProgress size={20} /> : "Assinar Plugin"}
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        onClick={loadPlugin}
+                                        disabled={activating}
+                                    >
+                                        {waitingPayment ? "Atualizando licença..." : "Atualizar licença"}
+                                    </Button>
+                                </>
                             ) : (
                                 <Button
                                     variant="contained"
