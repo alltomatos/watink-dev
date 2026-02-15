@@ -25,6 +25,7 @@ import Queues from "../pages/Queues/";
 import KnowledgeBase from "../pages/KnowledgeBase/";
 import KnowledgeBaseConfig from "../pages/KnowledgeBase/KnowledgeBaseConfig";
 import Marketplace from "../pages/Marketplace/";
+import Billing from "../pages/Billing/";
 import PluginDetail from "../pages/Marketplace/PluginDetail";
 import Clients from "../pages/Clients/";
 import Helpdesk from "../pages/Helpdesk/";
@@ -66,6 +67,7 @@ const PrivateRoutes = () => {
             <Route exact path="/knowledge-bases/:knowledgeBaseId" component={KnowledgeBaseConfig} isPrivate />
             <Route exact path="/swagger" component={Swagger} isPrivate />
             <Route exact path="/admin/settings/marketplace" component={Marketplace} isPrivate />
+            <Route exact path="/admin/settings/billing" component={Billing} isPrivate />
             <Route exact path="/admin/settings/marketplace/:slug" component={PluginDetail} isPrivate />
             <Route exact path="/clients" component={Clients} isPrivate />
             <Route exact path="/helpdesk" component={Helpdesk} isPrivate />
