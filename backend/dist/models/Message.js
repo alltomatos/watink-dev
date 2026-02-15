@@ -51,7 +51,7 @@ __decorate([
 ], Message.prototype, "body", void 0);
 __decorate([
     (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.STRING),
-    __metadata("design:type", Object),
+    __metadata("design:type", String),
     __metadata("design:paramtypes", [])
 ], Message.prototype, "mediaUrl", null);
 __decorate([

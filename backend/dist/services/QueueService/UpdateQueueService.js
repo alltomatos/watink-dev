@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -50,52 +41,47 @@ const Yup = __importStar(require("yup"));
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const Queue_1 = __importDefault(require("../../models/Queue"));
 const ShowQueueService_1 = __importDefault(require("./ShowQueueService"));
-const RedisService_1 = require("../../services/RedisService");
-const UpdateQueueService = (queueId, queueData) => __awaiter(void 0, void 0, void 0, function* () {
+const UpdateQueueService = async (queueId, queueData) => {
     const { color, name } = queueData;
     const queueSchema = Yup.object().shape({
         name: Yup.string()
             .min(2, "ERR_QUEUE_INVALID_NAME")
-            .test("Check-unique-name", "ERR_QUEUE_NAME_ALREADY_EXISTS", (value) => __awaiter(void 0, void 0, void 0, function* () {
+            .test("Check-unique-name", "ERR_QUEUE_NAME_ALREADY_EXISTS", async (value) => {
             if (value) {
-                const queueWithSameName = yield Queue_1.default.findOne({
+                const queueWithSameName = await Queue_1.default.findOne({
                     where: { name: value, id: { [sequelize_1.Op.not]: queueId } }
                 });
                 return !queueWithSameName;
             }
             return true;
-        })),
+        }),
         color: Yup.string()
             .required("ERR_QUEUE_INVALID_COLOR")
-            .test("Check-color", "ERR_QUEUE_INVALID_COLOR", (value) => __awaiter(void 0, void 0, void 0, function* () {
+            .test("Check-color", "ERR_QUEUE_INVALID_COLOR", async (value) => {
             if (value) {
                 const colorTestRegex = /^#[0-9a-f]{3,6}$/i;
                 return colorTestRegex.test(value);
             }
             return true;
-        }))
-            .test("Check-color-exists", "ERR_QUEUE_COLOR_ALREADY_EXISTS", (value) => __awaiter(void 0, void 0, void 0, function* () {
+        })
+            .test("Check-color-exists", "ERR_QUEUE_COLOR_ALREADY_EXISTS", async (value) => {
             if (value) {
-                const queueWithSameColor = yield Queue_1.default.findOne({
+                const queueWithSameColor = await Queue_1.default.findOne({
                     where: { color: value, id: { [sequelize_1.Op.not]: queueId } }
                 });
                 return !queueWithSameColor;
             }
             return true;
-        }))
+        })
     });
     try {
-        yield queueSchema.validate({ color, name });
+        await queueSchema.validate({ color, name });
     }
     catch (err) {
         throw new AppError_1.default(err.message);
     }
-    const queue = yield (0, ShowQueueService_1.default)(queueId);
-    yield queue.update(queueData);
-    if (queueData.distributionMode) {
-        const redis = RedisService_1.RedisService.getInstance().getClient();
-        yield redis.hset(`queue:config:${queue.id}`, "distributionMode", queueData.distributionMode);
-    }
+    const queue = await (0, ShowQueueService_1.default)(queueId);
+    await queue.update(queueData);
     return queue;
-});
+};
 exports.default = UpdateQueueService;

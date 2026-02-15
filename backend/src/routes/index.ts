@@ -28,6 +28,7 @@ import groupRoutes from "./groupRoutes";
 import knowledgeRoutes from "./knowledgeRoutes";
 import clientRoutes from "./clientRoutes";
 import protocolRoutes from "./protocolRoutes";
+import saasRoutes from "./saasRoutes";
 
 import pluginRoutes from "./pluginRoutes";
 import aiRoutes from "./aiRoutes";
@@ -61,6 +62,7 @@ routes.use(flowRoutes);
 routes.use(knowledgeRoutes);
 routes.use(clientRoutes);
 routes.use(protocolRoutes);
+routes.use(saasRoutes);
 routes.use(pluginRoutes);
 routes.use(aiRoutes);
 routes.use("/users", userRoutes);

@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -18,14 +9,14 @@ const uuid_1 = require("uuid");
 const RabbitMQService_1 = __importDefault(require("../services/RabbitMQService"));
 const GetDefaultWhatsApp_1 = __importDefault(require("../helpers/GetDefaultWhatsApp"));
 const logger_1 = require("../utils/logger");
-const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const store = async (req, res) => {
     const userId = parseInt(req.user.id);
     // await ImportContactsService(userId);
     // New Async Logic
     try {
-        const whatsapp = yield (0, GetDefaultWhatsApp_1.default)(userId);
+        const whatsapp = await (0, GetDefaultWhatsApp_1.default)(userId);
         const tenantId = whatsapp.tenantId;
-        yield RabbitMQService_1.default.publishCommand(`wbot.${tenantId}.${whatsapp.id}.contact.import`, {
+        await RabbitMQService_1.default.publishCommand(`wbot.${tenantId}.${whatsapp.id}.contact.import`, {
             id: (0, uuid_1.v4)(),
             timestamp: Date.now(),
             tenantId,
@@ -42,5 +33,5 @@ const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         // Fallback if no default whatsapp
         return res.status(400).json({ error: "Could not schedule import. Ensure you have a connected WhatsApp." });
     }
-});
+};
 exports.store = store;

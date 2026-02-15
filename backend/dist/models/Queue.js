@@ -43,10 +43,6 @@ __decorate([
     __metadata("design:type", String)
 ], Queue.prototype, "greetingMessage", void 0);
 __decorate([
-    (0, sequelize_typescript_1.Column)({ defaultValue: "manual" }),
-    __metadata("design:type", String)
-], Queue.prototype, "distributionMode", void 0);
-__decorate([
     sequelize_typescript_1.CreatedAt,
     __metadata("design:type", Date)
 ], Queue.prototype, "createdAt", void 0);

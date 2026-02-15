@@ -1,18 +1,9 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 module.exports = {
-    up: (queryInterface) => __awaiter(void 0, void 0, void 0, function* () {
-        yield queryInterface.createTable("Pipelines", {
+    up: async (queryInterface) => {
+        await queryInterface.createTable("Pipelines", {
             id: {
                 type: sequelize_1.DataTypes.INTEGER,
                 autoIncrement: true,
@@ -52,7 +43,7 @@ module.exports = {
                 allowNull: false
             }
         });
-        yield queryInterface.createTable("PipelineStages", {
+        await queryInterface.createTable("PipelineStages", {
             id: {
                 type: sequelize_1.DataTypes.INTEGER,
                 autoIncrement: true,
@@ -87,9 +78,9 @@ module.exports = {
                 allowNull: false
             }
         });
-    }),
-    down: (queryInterface) => __awaiter(void 0, void 0, void 0, function* () {
-        yield queryInterface.dropTable("PipelineStages");
-        yield queryInterface.dropTable("Pipelines");
-    })
+    },
+    down: async (queryInterface) => {
+        await queryInterface.dropTable("PipelineStages");
+        await queryInterface.dropTable("Pipelines");
+    }
 };

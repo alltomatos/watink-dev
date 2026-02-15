@@ -123,7 +123,18 @@ func isSaaS(slug string) bool {
 	return strings.EqualFold(strings.TrimSpace(slug), "saas-plugin")
 }
 
-func resolveTenantLimit(entitled []string) int {
+func resolveTenantLimit(r *http.Request, entitled []string) int {
+	// 1. Prioridade para o header do backend (quota real do tenant)
+	quotaHeader := r.Header.Get("x-tenant-quota")
+	if quotaHeader != "" {
+		var q int
+		fmt.Sscanf(quotaHeader, "%d", &q)
+		if q > 0 {
+			return q
+		}
+	}
+
+	// 2. Fallback para limite do plano da instância
 	set := map[string]struct{}{}
 	for _, s := range entitled {
 		set[strings.ToLower(strings.TrimSpace(s))] = struct{}{}
@@ -399,6 +410,14 @@ func main() {
 			return
 		}
 
+		// Validar status do tenant
+		tenantStatus := r.Header.Get("x-tenant-status")
+		if tenantStatus == "overdue" {
+			w.WriteHeader(http.StatusPaymentRequired)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "assinatura do tenant pendente ou atrasada"})
+			return
+		}
+
 		entitled, err := getActivePluginsFromSupabase(instanceID)
 		if err != nil {
 			w.WriteHeader(http.StatusBadGateway)
@@ -412,7 +431,7 @@ func main() {
 			return
 		}
 
-		limit := resolveTenantLimit(entitled)
+		limit := resolveTenantLimit(r, entitled)
 		current := getTenantActivePlugins(tenantID)
 		if containsSlug(current, slug) {
 			_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "active": normalizePlugins(current), "limit": limit})

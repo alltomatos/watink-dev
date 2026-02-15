@@ -14,8 +14,10 @@ const options = {
         },
         servers: [
             {
-                url: process.env.URL_BACKEND || "http://localhost:8080",
-                description: "Backend API Server"
+                url: "http://localhost:8080",
+            },
+            {
+                url: "http://localhost:3000",
             },
         ],
         components: {

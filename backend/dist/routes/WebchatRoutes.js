@@ -32,14 +32,12 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
+const express_1 = require("express");
 const WebchatController = __importStar(require("../controllers/WebchatController"));
-const webchatRoutes = express_1.default.Router();
-webchatRoutes.get("/webchat/config/:whatsappId", WebchatController.getConfig);
-webchatRoutes.post("/webchat/ticket/:whatsappId", WebchatController.createTicket);
-webchatRoutes.post("/webchat/message/:ticketId", WebchatController.saveMessage);
+const webchatRoutes = (0, express_1.Router)();
+webchatRoutes.get("/webchat/:whatsappId", WebchatController.getConfig);
+webchatRoutes.post("/webchat/:whatsappId/tickets", WebchatController.createTicket);
+webchatRoutes.post("/webchat/:ticketId/messages", WebchatController.saveMessage);
+webchatRoutes.get("/webchat/:ticketId/messages", WebchatController.listMessages);
 exports.default = webchatRoutes;

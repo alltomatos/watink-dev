@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -19,33 +10,30 @@ const socket_1 = require("../libs/socket");
 const AppError_1 = __importDefault(require("../errors/AppError"));
 const UpdateSettingService_1 = __importDefault(require("../services/SettingServices/UpdateSettingService"));
 const ListSettingsService_1 = __importDefault(require("../services/SettingServices/ListSettingsService"));
-const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const index = async (req, res) => {
     if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
         throw new AppError_1.default("ERR_NO_PERMISSION", 403);
     }
     const { tenantId } = req.user;
-    const settings = yield (0, ListSettingsService_1.default)({ tenantId });
+    const settings = await (0, ListSettingsService_1.default)({ tenantId });
     return res.status(200).json(settings);
-});
+};
 exports.index = index;
-const getPublicSettings = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const settings = yield (0, ListSettingsService_1.default)();
-    const publicKeys = ["systemLogo", "login_backgroundImage", "login_layout", "systemFavicon", "language", "userCreation"];
+const getPublicSettings = async (req, res) => {
+    const settings = await (0, ListSettingsService_1.default)();
+    const publicKeys = ["systemLogo", "login_backgroundImage", "login_layout", "systemFavicon"];
     const publicSettings = (settings || []).filter(s => publicKeys.includes(s.key));
     return res.status(200).json(publicSettings);
-});
+};
 exports.getPublicSettings = getPublicSettings;
-const update = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const update = async (req, res) => {
     if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
         throw new AppError_1.default("ERR_NO_PERMISSION", 403);
     }
     const { settingKey: key } = req.params;
     const { value } = req.body;
-    let tenantId = req.user.tenantId;
-    if (key === "userCreation") {
-        tenantId = null;
-    }
-    const setting = yield (0, UpdateSettingService_1.default)({
+    const { tenantId } = req.user;
+    const setting = await (0, UpdateSettingService_1.default)({
         key,
         value,
         tenantId
@@ -56,9 +44,9 @@ const update = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         setting
     });
     return res.status(200).json(setting);
-});
+};
 exports.update = update;
-const uploadLogo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const uploadLogo = async (req, res) => {
     if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
         throw new AppError_1.default("ERR_NO_PERMISSION", 403);
     }
@@ -81,7 +69,7 @@ const uploadLogo = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     // Build logo URL (without leading slash to avoid double slash when combined with backend URL)
     const logoUrl = `public/${filename}`;
     // Update setting
-    const setting = yield (0, UpdateSettingService_1.default)({
+    const setting = await (0, UpdateSettingService_1.default)({
         key: "systemLogo",
         value: logoUrl,
         tenantId
@@ -92,9 +80,9 @@ const uploadLogo = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         setting
     });
     return res.status(200).json({ logoUrl });
-});
+};
 exports.uploadLogo = uploadLogo;
-const uploadFavicon = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const uploadFavicon = async (req, res) => {
     if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
         throw new AppError_1.default("ERR_NO_PERMISSION", 403);
     }
@@ -112,7 +100,7 @@ const uploadFavicon = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     const filepath = path_1.default.join(publicDir, filename);
     fs_1.default.writeFileSync(filepath, file.buffer);
     const faviconUrl = `public/${filename}`;
-    const setting = yield (0, UpdateSettingService_1.default)({
+    const setting = await (0, UpdateSettingService_1.default)({
         key: "systemFavicon",
         value: faviconUrl,
         tenantId
@@ -123,9 +111,9 @@ const uploadFavicon = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         setting
     });
     return res.status(200).json({ faviconUrl });
-});
+};
 exports.uploadFavicon = uploadFavicon;
-const uploadLoginImage = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const uploadLoginImage = async (req, res) => {
     if (req.user.profile !== "admin" && req.user.profile !== "superadmin") {
         throw new AppError_1.default("ERR_NO_PERMISSION", 403);
     }
@@ -143,7 +131,7 @@ const uploadLoginImage = (req, res) => __awaiter(void 0, void 0, void 0, functio
     const filepath = path_1.default.join(publicDir, filename);
     fs_1.default.writeFileSync(filepath, file.buffer);
     const imageUrl = `public/${filename}`;
-    const setting = yield (0, UpdateSettingService_1.default)({
+    const setting = await (0, UpdateSettingService_1.default)({
         key: "login_backgroundImage",
         value: imageUrl,
         tenantId
@@ -154,5 +142,5 @@ const uploadLoginImage = (req, res) => __awaiter(void 0, void 0, void 0, functio
         setting
     });
     return res.status(200).json({ imageUrl });
-});
+};
 exports.uploadLoginImage = uploadLoginImage;

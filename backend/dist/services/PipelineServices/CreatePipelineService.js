@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -49,7 +40,7 @@ const Yup = __importStar(require("yup"));
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const Pipeline_1 = __importDefault(require("../../models/Pipeline"));
 const PipelineStage_1 = __importDefault(require("../../models/PipelineStage"));
-const CreatePipelineService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ name, type, description, stages, tenantId }) {
+const CreatePipelineService = async ({ name, type, description, stages, tenantId }) => {
     const schema = Yup.object().shape({
         name: Yup.string().required(),
         type: Yup.string().required().oneOf(["kanban", "funnel"]),
@@ -58,13 +49,13 @@ const CreatePipelineService = (_a) => __awaiter(void 0, [_a], void 0, function* 
         })).required().min(1)
     });
     try {
-        yield schema.validate({ name, type, stages });
+        await schema.validate({ name, type, stages });
     }
     catch (err) {
         throw new AppError_1.default(err.message);
     }
     // Criar Pipeline
-    const pipeline = yield Pipeline_1.default.create({
+    const pipeline = await Pipeline_1.default.create({
         name,
         type,
         description,
@@ -79,14 +70,14 @@ const CreatePipelineService = (_a) => __awaiter(void 0, [_a], void 0, function* 
             order: index,
             pipelineId: pipeline.id
         }));
-        yield PipelineStage_1.default.bulkCreate(stagesToCreate);
+        await PipelineStage_1.default.bulkCreate(stagesToCreate);
     }
     // Recarregar com stages
-    yield pipeline.reload({
+    await pipeline.reload({
         include: [
             { model: PipelineStage_1.default, as: "stages" }
         ]
     });
     return pipeline;
-});
+};
 exports.default = CreatePipelineService;

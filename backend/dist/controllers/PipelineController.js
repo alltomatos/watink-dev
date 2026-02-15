@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -53,16 +44,16 @@ const ListPipelineService_1 = __importDefault(require("../services/PipelineServi
 const UpdatePipelineService_1 = __importDefault(require("../services/PipelineServices/UpdatePipelineService"));
 const DeletePipelineService_1 = __importDefault(require("../services/PipelineServices/DeletePipelineService"));
 const AIService_1 = __importDefault(require("../services/PipelineServices/AIService"));
-const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const index = async (req, res) => {
     const { tenantId } = req.user;
-    const pipelines = yield (0, ListPipelineService_1.default)({ tenantId });
+    const pipelines = await (0, ListPipelineService_1.default)({ tenantId });
     return res.status(200).json(pipelines);
-});
+};
 exports.index = index;
-const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const store = async (req, res) => {
     const { tenantId } = req.user;
     const { name, type, description, stages } = req.body;
-    const pipeline = yield (0, CreatePipelineService_1.default)({
+    const pipeline = await (0, CreatePipelineService_1.default)({
         name,
         type,
         description,
@@ -70,13 +61,13 @@ const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         tenantId
     });
     return res.status(201).json(pipeline);
-});
+};
 exports.store = store;
-const update = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const update = async (req, res) => {
     const { tenantId } = req.user;
     const { pipelineId } = req.params;
     const { name, description, color } = req.body;
-    const pipeline = yield (0, UpdatePipelineService_1.default)({
+    const pipeline = await (0, UpdatePipelineService_1.default)({
         id: pipelineId,
         name,
         description,
@@ -84,26 +75,26 @@ const update = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         tenantId
     });
     return res.status(200).json(pipeline);
-});
+};
 exports.update = update;
-const remove = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const remove = async (req, res) => {
     const { tenantId } = req.user;
     const { pipelineId } = req.params;
-    yield (0, DeletePipelineService_1.default)(pipelineId, tenantId);
+    await (0, DeletePipelineService_1.default)(pipelineId, tenantId);
     return res.status(200).json({ message: "Pipeline deleted" });
-});
+};
 exports.remove = remove;
-const aiSuggest = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const aiSuggest = async (req, res) => {
     const { tenantId } = req.user;
     const { messages } = req.body;
-    const suggestion = yield (0, AIService_1.default)(messages, tenantId);
+    const suggestion = await (0, AIService_1.default)(messages, tenantId);
     return res.json(suggestion);
-});
+};
 exports.aiSuggest = aiSuggest;
-const exportPipeline = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const exportPipeline = async (req, res) => {
     const { tenantId } = req.user;
     const { pipelineId } = req.params;
-    const pipeline = yield (0, ListPipelineService_1.default)({ tenantId });
+    const pipeline = await (0, ListPipelineService_1.default)({ tenantId });
     const selectedPipeline = pipeline.find(p => p.id === Number(pipelineId));
     if (!selectedPipeline) {
         throw new AppError_1.default("Pipeline not found", 404);
@@ -115,9 +106,9 @@ const exportPipeline = (req, res) => __awaiter(void 0, void 0, void 0, function*
         stages: selectedPipeline.stages.map(stage => ({ name: stage.name }))
     };
     return res.json(exportData);
-});
+};
 exports.exportPipeline = exportPipeline;
-const importPipeline = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const importPipeline = async (req, res) => {
     const { tenantId } = req.user;
     const { name, type, description, stages } = req.body;
     const schema = Yup.object().shape({
@@ -127,12 +118,12 @@ const importPipeline = (req, res) => __awaiter(void 0, void 0, void 0, function*
         })).required()
     });
     try {
-        yield schema.validate({ name, stages });
+        await schema.validate({ name, stages });
     }
     catch (err) {
         throw new AppError_1.default(err.message);
     }
-    const pipeline = yield (0, CreatePipelineService_1.default)({
+    const pipeline = await (0, CreatePipelineService_1.default)({
         name,
         type: type || "kanban",
         description,
@@ -140,5 +131,5 @@ const importPipeline = (req, res) => __awaiter(void 0, void 0, void 0, function*
         tenantId
     });
     return res.status(201).json(pipeline);
-});
+};
 exports.importPipeline = importPipeline;
