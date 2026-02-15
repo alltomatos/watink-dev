@@ -19,11 +19,19 @@ pluginRoutes.use(
             try {
                 const tenantId = req.user?.tenantId;
                 const profile = req.user?.profile;
+                const email = req.user?.email;
+                const name = req.user?.name;
                 if (tenantId) {
                     proxyReq.setHeader("x-tenant-id", tenantId.toString());
                 }
                 if (profile) {
                     proxyReq.setHeader("x-user-profile", profile.toString());
+                }
+                if (email) {
+                    proxyReq.setHeader("x-user-email", email.toString());
+                }
+                if (name) {
+                    proxyReq.setHeader("x-user-name", name.toString());
                 }
             } catch (_) {
                 // no-op

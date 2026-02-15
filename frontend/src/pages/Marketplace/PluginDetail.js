@@ -8,11 +8,6 @@ import {
     Chip,
     Divider,
     CircularProgress,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
 } from "@material-ui/core";
 import {
     ArrowBack as ArrowBackIcon,
@@ -78,6 +73,18 @@ const useStyles = makeStyles((theme) => ({
     },
 }));
 
+const longDescriptionBySlug = (slug) => {
+    if (slug === "clientes") {
+        return `O Plugin de Clientes adiciona ao Watink uma gestão completa de clientes, permitindo:\n\n• Cadastro detalhado de clientes (pessoa física e jurídica)\n• Múltiplos contatos vinculados ao mesmo cliente\n• Múltiplos endereços por cliente\n• Integração automática com API ViaCEP para autocompletar endereços\n• Vinculação de contatos do WhatsApp a clientes cadastrados\n• Histórico de interações por cliente`;
+    }
+
+    if (slug === "helpdesk") {
+        return `O Plugin de Helpdesk transforma seu atendimento em um sistema de suporte profissional:\n\n• Criação de protocolos de atendimento\n• Vinculação de protocolos a tickets\n• Gestão de status, prioridade e SLA\n• Histórico completo de interações no protocolo\n• Relatórios de atendimento`;
+    }
+
+    return "Plugin premium para expandir recursos do Watink no seu ambiente.";
+};
+
 const PluginDetail = () => {
     const classes = useStyles();
     const { slug } = useParams();
@@ -86,34 +93,36 @@ const PluginDetail = () => {
     const [plugin, setPlugin] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activating, setActivating] = useState(false);
-    const [licenseDialogOpen, setLicenseDialogOpen] = useState(false);
-    const [licenseKey, setLicenseKey] = useState("");
 
     useEffect(() => {
         loadPlugin();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [slug]);
 
     const loadPlugin = async () => {
         try {
             setLoading(true);
-            const { data: catalogRes } = await pluginApi.get("/api/v1/plugins/catalog");
+            const [{ data: catalogRes }, { data: installedRes }] = await Promise.all([
+                pluginApi.get("/api/v1/plugins/catalog"),
+                pluginApi.get("/api/v1/plugins/installed"),
+            ]);
+
             const all = Array.isArray(catalogRes?.plugins) ? catalogRes.plugins : [];
-            const p = all.find(x => x.slug === slug && ["clientes", "helpdesk"].includes(x.slug));
+            const active = new Set(Array.isArray(installedRes?.active) ? installedRes.active : []);
+            const p = all.find((x) => x.slug === slug);
+
             if (!p) {
                 setPlugin(null);
-            } else {
-                setPlugin({
-                    ...p,
-                    installed: p.status !== 'not_installed' && p.status !== null && p.status !== undefined,
-                    active: p.status === 'active',
-                    // Force use of local icons based on slug
-                    iconUrl: `/public/plugins/${p.slug}.png`,
-                    longDescription:
-                        p.slug === "clientes"
-                            ? `O Plugin de Clientes adiciona ao Watink uma gestão completa de clientes, permitindo:\n\n• Cadastro detalhado de clientes (pessoa física e jurídica)\n• Múltiplos contatos vinculados ao mesmo cliente\n• Múltiplos endereços por cliente\n• Integração automática com API ViaCEP para autocompletar endereços\n• Vinculação de contatos do WhatsApp a clientes cadastrados\n• Histórico de interações por cliente`
-                            : `O Plugin de Helpdesk transforma seu atendimento em um sistema de suporte profissional:\n\n• Criação de protocolos de atendimento\n• Vinculação de protocolos a tickets\n• Gestão de status, prioridade e SLA\n• Histórico completo de interações no protocolo\n• Relatórios de atendimento`,
-                });
+                return;
             }
+
+            setPlugin({
+                ...p,
+                installed: active.has(p.slug),
+                active: active.has(p.slug),
+                iconUrl: `/public/plugins/${p.slug}.png`,
+                longDescription: longDescriptionBySlug(p.slug),
+            });
         } catch (err) {
             toast.error("Erro ao carregar plugin");
         } finally {
@@ -121,25 +130,31 @@ const PluginDetail = () => {
         }
     };
 
-
     const handleActivate = async () => {
-        if (plugin.type === "premium" && !plugin.installed) {
-            setLicenseDialogOpen(true);
-            return;
-        }
-
         try {
             setActivating(true);
-            await pluginApi.post(`/api/v1/plugins/${plugin.slug}/activate`, {
-                licenseKey: licenseKey || undefined,
-            });
+            await pluginApi.post(`/api/v1/plugins/${plugin.slug}/activate`);
             toast.success(`Plugin ${plugin.name} ativado com sucesso!`);
             setPlugin({ ...plugin, installed: true, active: true });
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            setTimeout(() => window.location.reload(), 1000);
         } catch (err) {
             toast.error("Erro ao ativar plugin");
+        } finally {
+            setActivating(false);
+        }
+    };
+
+    const handleSubscribe = async () => {
+        try {
+            setActivating(true);
+            const { data } = await pluginApi.post("/api/v1/plugins/checkout", { slug: plugin.slug });
+            if (!data?.checkoutUrl) {
+                throw new Error("checkoutUrl ausente");
+            }
+            window.open(data.checkoutUrl, "_blank", "noopener,noreferrer");
+            toast.info("Checkout aberto. Após pagamento aprovado, volte aqui e ative o plugin.");
+        } catch (err) {
+            toast.error("Não foi possível iniciar checkout");
         } finally {
             setActivating(false);
         }
@@ -151,35 +166,9 @@ const PluginDetail = () => {
             await pluginApi.post(`/api/v1/plugins/${plugin.slug}/deactivate`);
             toast.success(`Plugin ${plugin.name} desativado.`);
             setPlugin({ ...plugin, active: false });
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            setTimeout(() => window.location.reload(), 1000);
         } catch (err) {
             toast.error("Erro ao desativar plugin");
-        } finally {
-            setActivating(false);
-        }
-    };
-
-    const handleLicenseSubmit = async () => {
-        if (!licenseKey.trim()) {
-            toast.error("Informe a chave de licença");
-            return;
-        }
-
-        try {
-            setActivating(true);
-            await pluginApi.post(`/api/v1/plugins/${plugin.slug}/install`, { licenseKey });
-            await pluginApi.post(`/api/v1/plugins/${plugin.slug}/activate`, { licenseKey });
-            toast.success(`Plugin ${plugin.name} ativado com sucesso!`);
-            setPlugin({ ...plugin, installed: true, active: true });
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-            setLicenseDialogOpen(false);
-            setLicenseKey("");
-        } catch (err) {
-            toast.error("Chave de licença inválida");
         } finally {
             setActivating(false);
         }
@@ -269,6 +258,16 @@ const PluginDetail = () => {
                                 >
                                     {activating ? <CircularProgress size={20} /> : "Desativar Plugin"}
                                 </Button>
+                            ) : plugin.type === "premium" && !plugin.installed ? (
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    startIcon={<CheckCircleIcon />}
+                                    onClick={handleSubscribe}
+                                    disabled={activating}
+                                >
+                                    {activating ? <CircularProgress size={20} /> : "Assinar Plugin"}
+                                </Button>
                             ) : (
                                 <Button
                                     variant="contained"
@@ -282,36 +281,6 @@ const PluginDetail = () => {
                             )}
                         </Box>
                     </Paper>
-
-                    <Dialog open={licenseDialogOpen} onClose={() => setLicenseDialogOpen(false)}>
-                        <DialogTitle>Ativar Plugin Premium</DialogTitle>
-                        <DialogContent>
-                            <Typography variant="body2" gutterBottom>
-                                Este é um plugin premium. Insira sua chave de licença para ativar.
-                            </Typography>
-                            <TextField
-                                autoFocus
-                                margin="dense"
-                                label="Chave de Licença"
-                                fullWidth
-                                variant="outlined"
-                                value={licenseKey}
-                                onChange={(e) => setLicenseKey(e.target.value)}
-                                placeholder="XXXX-XXXX-XXXX-XXXX"
-                            />
-                        </DialogContent>
-                        <DialogActions>
-                            <Button onClick={() => setLicenseDialogOpen(false)}>Cancelar</Button>
-                            <Button
-                                onClick={handleLicenseSubmit}
-                                color="primary"
-                                variant="contained"
-                                disabled={activating}
-                            >
-                                {activating ? <CircularProgress size={20} /> : "Ativar"}
-                            </Button>
-                        </DialogActions>
-                    </Dialog>
                 </Container>
             )}
             no={() => (
