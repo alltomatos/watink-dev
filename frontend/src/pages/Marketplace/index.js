@@ -119,9 +119,21 @@ const Marketplace = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [offline, setOffline] = useState(false);
 
+    const [instanceId, setInstanceId] = useState("");
+
     useEffect(() => {
         loadPlugins();
+        loadInstanceId();
     }, []);
+
+    const loadInstanceId = async () => {
+        try {
+            const { data } = await pluginApi.get("/api/v1/plugins/instance");
+            setInstanceId(data.instanceId);
+        } catch (err) {
+            console.error("Erro ao carregar Instance ID");
+        }
+    };
 
     const loadPlugins = async () => {
         try {
@@ -131,8 +143,7 @@ const Marketplace = () => {
             const { data: installedRes } = await pluginApi.get("/api/v1/plugins/installed");
             const activeSlugs = new Set(Array.isArray(installedRes?.active) ? installedRes.active : []);
             const all = Array.isArray(catalogRes?.plugins) ? catalogRes.plugins : [];
-            const filtered = all.filter(p => ["clientes", "helpdesk"].includes(p.slug));
-            const normalized = filtered.map(p => ({
+            const normalized = all.map(p => ({
                 id: p.id,
                 slug: p.slug,
                 name: p.name,
@@ -140,6 +151,7 @@ const Marketplace = () => {
                 version: p.version,
                 type: p.type,
                 category: p.category,
+                price: p.price,
                 // Force use of local icons based on slug, as user is managing them manually in backend/public
                 iconUrl: `/public/plugins/${p.slug}.png`,
                 installed: activeSlugs.has(p.slug),
@@ -311,6 +323,23 @@ const Marketplace = () => {
                             <Box mb={2}>
                                 <Alert severity="warning">
                                     Modo offline: exibindo catálogo local. Conexão com Marketplace remoto indisponível.
+                                </Alert>
+                            </Box>
+                        )}
+
+                        {instanceId && (
+                            <Box mb={3}>
+                                <Alert severity="info" action={
+                                    <Button color="inherit" size="small" onClick={() => {
+                                        navigator.clipboard.writeText(instanceId);
+                                        toast.success("ID copiado!");
+                                    }}>
+                                        Copiar ID
+                                    </Button>
+                                }>
+                                    <Typography variant="body2">
+                                        <strong>Instance ID:</strong> {instanceId} (Use este ID para gerenciar suas licenças)
+                                    </Typography>
                                 </Alert>
                             </Box>
                         )}
