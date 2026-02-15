@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import { getBackendUrl as getBackendUrlFromConfig } from "../config";
 
 export const getBackendUrl = (url) => {

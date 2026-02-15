@@ -1,3 +1,21 @@
+export interface MenuItem {
+  name: string;
+  icon: string;
+  path: string;
+  permission?: string;
+}
+
+export interface RouteDefinition {
+  path: string;
+  component: string;
+  exact?: boolean;
+}
+
+export interface PermissionDefinition {
+  name: string;
+  description: string;
+}
+
 export interface PluginManifest {
   slug: string;
   name: string;
@@ -22,23 +40,23 @@ export interface PluginManifest {
     permissions?: PermissionDefinition[];
     hooks?: string[]; // Lista de eventos que o plugin escuta
     migrationsPath?: string;
+    main?: string; // Caminho para o arquivo principal de entrada do backend
   };
 }
 
-export interface MenuItem {
-  name: string;
-  icon: string;
-  path: string;
-  permission?: string;
-}
+export abstract class WatinkPlugin {
+  abstract manifest: PluginManifest;
 
-export interface RouteDefinition {
-  path: string;
-  component: string;
-  exact?: boolean;
-}
+  // Ciclo de vida
+  abstract onInstall(): Promise<void>;
+  abstract onActivate(): Promise<void>;
+  abstract onDeactivate(): Promise<void>;
+  abstract onUninstall(): Promise<void>;
 
-export interface PermissionDefinition {
-  name: string;
-  description: string;
+  // Acesso ao Core (será injetado pelo host)
+  protected core: any;
+
+  setCore(core: any) {
+    this.core = core;
+  }
 }

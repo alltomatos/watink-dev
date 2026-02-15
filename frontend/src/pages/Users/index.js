@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState, useEffect, useReducer } from "react";
 import { toast } from "react-toastify";
 import openSocket from "../../services/socket-io";

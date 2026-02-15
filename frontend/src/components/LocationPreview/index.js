@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useEffect } from 'react';
 import toastError from "../../errors/toastError";
 

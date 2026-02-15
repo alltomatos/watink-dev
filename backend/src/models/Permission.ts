@@ -22,7 +22,15 @@ class Permission extends Model<Permission> {
     id: number;
 
     @Column(DataType.STRING)
-    name: string;
+    resource: string;
+
+    @Column(DataType.STRING)
+    action: string;
+
+    @Column(DataType.VIRTUAL)
+    get name(): string {
+        return `${this.resource}:${this.action}`;
+    }
 
     @Column(DataType.STRING)
     description: string;

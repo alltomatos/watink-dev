@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from 'react';
 import { Timeline as PipelineIcon } from '@material-ui/icons';
 import BaseNode from './BaseNode';

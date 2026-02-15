@@ -1,9 +1,12 @@
+/* @jsxImportSource react */
 import React, { useState, useEffect } from "react";
 import Routes from "./routes";
 
 
 import { createTheme, ThemeProvider } from "@material-ui/core/styles";
 import { ptBR } from "@material-ui/core/locale";
+
+import StatusCheck from "./components/StatusCheck";
 
 const App = () => {
   const [locale, setLocale] = useState();
@@ -39,7 +42,9 @@ const App = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <Routes />
+      <StatusCheck>
+        <Routes />
+      </StatusCheck>
     </ThemeProvider>
   );
 };

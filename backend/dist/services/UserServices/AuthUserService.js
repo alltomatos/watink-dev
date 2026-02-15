@@ -20,9 +20,9 @@ const AuthUserService = async ({ email, password }) => {
             {
                 model: Group_1.default,
                 as: "group",
-                include: [{ model: Permission_1.default, as: "permissions", attributes: ["id", "name"] }]
+                include: [{ model: Permission_1.default, as: "permissions", attributes: ["id", "resource", "action"] }]
             },
-            { model: Permission_1.default, as: "permissions", attributes: ["id", "name"] }
+            { model: Permission_1.default, as: "permissions", attributes: ["id", "resource", "action"] }
         ]
     });
     if (!user) {

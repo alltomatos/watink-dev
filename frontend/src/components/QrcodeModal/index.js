@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useEffect, useState } from "react";
 import QRCode from "qrcode.react";
 import openSocket from "../../services/socket-io";

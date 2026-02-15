@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState, useEffect, useContext, useRef } from "react";
 import "emoji-mart/css/emoji-mart.css";
 import { useParams } from "react-router-dom";

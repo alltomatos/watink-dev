@@ -36,6 +36,8 @@ const Protocol_1 = __importDefault(require("../models/Protocol"));
 const ProtocolHistory_1 = __importDefault(require("../models/ProtocolHistory"));
 const ProtocolAttachment_1 = __importDefault(require("../models/ProtocolAttachment"));
 const ConversationEmbedding_1 = __importDefault(require("../models/ConversationEmbedding"));
+const TenantSubscription_1 = __importDefault(require("../models/TenantSubscription"));
+const Plan_1 = __importDefault(require("../models/Plan"));
 // eslint-disable-next-line
 const dbConfig = require("../config/database");
 const sequelize = new sequelize_typescript_1.Sequelize(dbConfig);
@@ -71,7 +73,9 @@ const models = [
     Protocol_1.default,
     ProtocolHistory_1.default,
     ProtocolAttachment_1.default,
-    ConversationEmbedding_1.default
+    ConversationEmbedding_1.default,
+    TenantSubscription_1.default,
+    Plan_1.default
 ];
 sequelize.addModels(models);
 exports.default = sequelize;

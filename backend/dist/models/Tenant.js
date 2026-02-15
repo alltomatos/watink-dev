@@ -33,6 +33,10 @@ __decorate([
 ], Tenant.prototype, "status", void 0);
 __decorate([
     sequelize_typescript_1.Column,
+    __metadata("design:type", String)
+], Tenant.prototype, "document", void 0);
+__decorate([
+    sequelize_typescript_1.Column,
     __metadata("design:type", Number)
 ], Tenant.prototype, "ownerId", void 0);
 __decorate([

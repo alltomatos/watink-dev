@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 // MainListItems.js modifications
 import React, { useContext, useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
@@ -24,6 +25,8 @@ import DeviceHubIcon from "@material-ui/icons/DeviceHub";
 import LibraryBooksIcon from "@material-ui/icons/LibraryBooks";
 import PersonOutlineIcon from "@material-ui/icons/PersonOutline";
 import HeadsetMicIcon from "@material-ui/icons/HeadsetMic";
+import BusinessIcon from "@material-ui/icons/Business";
+import ExtensionIcon from "@material-ui/icons/Extension";
 
 import { i18n } from "../translate/i18n";
 import { WhatsAppsContext } from "../context/WhatsApp/WhatsAppsContext";
@@ -42,6 +45,14 @@ const googleColors = {
   teal: "#00897B",
   orange: "#E8710A",
   pink: "#D01884",
+};
+
+// Icon Mapping for Plugins
+const iconMapping = {
+  "Business": <BusinessIcon />,
+  "PersonOutline": <PersonOutlineIcon />,
+  "HeadsetMic": <HeadsetMicIcon />,
+  "Extension": <ExtensionIcon />,
 };
 
 function ListItemLink(props) {
@@ -89,13 +100,19 @@ const MainListItems = (props) => {
   const { user } = useContext(AuthContext);
   const [connectionWarning, setConnectionWarning] = useState(false);
   const [activePlugins, setActivePlugins] = useState([]);
+  const [pluginManifests, setPluginManifests] = useState([]);
 
   useEffect(() => {
-    // Fetch active plugins
+    // Fetch active plugins and manifests
     const fetchPlugins = async () => {
       try {
-        const { data } = await api.get("/plugins/api/v1/plugins/installed");
-        setActivePlugins(data.active || []);
+        const { data: installed } = await api.get("/plugins/api/v1/plugins/installed");
+        const activeSlugs = installed.active || [];
+        setActivePlugins(activeSlugs);
+
+        const { data: manifests } = await api.get("/custom-plugins/manifests");
+        // Filter only active manifests
+        setPluginManifests(manifests.filter(m => activeSlugs.includes(m.slug)));
       } catch (err) {
         console.error("Failed to fetch plugins", err);
       }
@@ -196,8 +213,28 @@ const MainListItems = (props) => {
         )}
       />
 
-      {/* Dynamic Plugins */}
-      {activePlugins.includes("clientes") && (
+      {/* Dynamic Plugins Menu Items */}
+      {pluginManifests.map(manifest => (
+        manifest.frontend?.menuItems?.map((item, idx) => (
+          <Can
+            key={`${manifest.slug}-${idx}`}
+            user={user}
+            perform={item.permission || "view_dashboard"}
+            yes={() => (
+              <ListItemLink
+                to={item.path}
+                primary={item.name}
+                icon={iconMapping[item.icon] || <ExtensionIcon />}
+                iconColor={googleColors.blue}
+                collapsed={collapsed}
+              />
+            )}
+          />
+        ))
+      ))}
+
+      {/* Legacy/Hardcoded Plugins (Keep for compatibility until fully migrated) */}
+      {activePlugins.includes("clientes") && !pluginManifests.some(m => m.slug === "clientes") && (
         <ListItemLink
           to="/clients"
           primary="Clientes"
@@ -207,7 +244,7 @@ const MainListItems = (props) => {
         />
       )}
 
-      {activePlugins.includes("helpdesk") && (
+      {activePlugins.includes("helpdesk") && !pluginManifests.some(m => m.slug === "helpdesk") && (
         <ListItemLink
           to="/helpdesk"
           primary="Helpdesk"

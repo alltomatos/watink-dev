@@ -13,10 +13,21 @@ import uploadConfig from "./config/upload";
 import AppError from "./errors/AppError";
 import routes from "./routes";
 import { logger } from "./utils/logger";
+import PluginLoader from "./services/PluginServices/PluginLoader";
 
 Sentry.init({ dsn: process.env.SENTRY_DSN });
 
 const app = express();
+
+let isReady = false;
+export const setReady = () => { isReady = true; };
+
+app.get("/health", (req, res) => {
+  if (isReady) {
+    return res.status(200).send("OK");
+  }
+  return res.status(503).send("Service Initializing");
+});
 
 app.use(
   cors({
@@ -37,9 +48,20 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/test", (req, res) => {
-  res.send("Backend is working!");
+app.get("/test", async (req, res) => {
+  try {
+    const { Sequelize } = require("sequelize");
+    const dbConfig = require("./config/database");
+    const sequelize = new Sequelize(dbConfig);
+    await sequelize.authenticate();
+    res.send("Backend and Database are working!");
+  } catch (err) {
+    res.status(500).send("Backend is working, but Database is not reachable.");
+  }
 });
+
+// Plugin Routes
+app.use("/plugins/custom", PluginLoader.getInstance().getRouter());
 
 app.use(routes);
 
