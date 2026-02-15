@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState, useEffect, useContext } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
@@ -221,7 +222,7 @@ const Login = () => {
         }}
       >
         <CssBaseline />
-        <Container component="main" maxWidth="xs">
+        <Container component="main" maxWidth="sm">
           <Box
             style={{
               backgroundColor: "rgba(255, 255, 255, 0.95)",

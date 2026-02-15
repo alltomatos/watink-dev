@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from "react";
 import { BrowserRouter, Switch } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
@@ -35,6 +36,7 @@ import HelpdeskTvMode from "../pages/Helpdesk/HelpdeskTvMode";
 import Swagger from "../pages/Swagger/";
 import VersionDashboard from "../pages/VersionDashboard/";
 import SaaSAdmin from "../pages/SaaS/";
+import InitialSetup from "../pages/InitialSetup/";
 import { AuthProvider } from "../context/Auth/AuthContext";
 import { WhatsAppsProvider } from "../context/WhatsApp/WhatsAppsContext";
 import { ThemeProvider } from "../context/DarkMode";
@@ -92,6 +94,7 @@ const Routes = () => {
       <AuthProvider>
         <ThemeProvider>
           <Switch>
+            <Route exact path="/initial-setup" component={InitialSetup} />
             <Route exact path="/login" component={Login} />
             <Route exact path="/signup" component={Signup} />
             <Route exact path="/public/protocols/:token" component={PublicProtocol} isPublic />

@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState, useEffect, useContext } from "react";
 import openSocket from "../../services/socket-io";
 import MemoryIcon from "@material-ui/icons/Memory";

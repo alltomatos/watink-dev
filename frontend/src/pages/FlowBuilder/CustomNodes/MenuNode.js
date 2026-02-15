@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from 'react';
 import { Position } from 'reactflow';
 import { List as MenuIcon } from '@material-ui/icons';

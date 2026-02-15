@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 function getConfig(name, defaultValue = null) {
   if (typeof window !== "undefined") {
     const runtimeEnv = window.ENV;

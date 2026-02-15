@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from 'react';
 import BaseNode from './BaseNode';
 import { ConfirmationNumber as HelpdeskIcon } from '@material-ui/icons';

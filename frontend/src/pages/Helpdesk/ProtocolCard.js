@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import { Paper, Typography, Avatar, Box } from "@material-ui/core";
