@@ -8,7 +8,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -63,10 +65,130 @@ type CreateCheckoutResponse struct {
 
 // Global Config (Hardcoded for Security)
 const (
-	SupabaseURL     = "https://quxtkdxrafulqibwbqld.supabase.co"
+	SupabaseURL      = "https://quxtkdxrafulqibwbqld.supabase.co"
 	SupabaseAnonKey  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHRrZHhyYWZ1bHFpYndicWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwODkwNDEsImV4cCI6MjA4NjY2NTA0MX0.cg2YNyUB47yRW7g4pUBAHNF4SUt479savrmkVajYvD4"
-	InstanceFile    = ".instance_id"
+	InstanceFile     = ".instance_id"
+	TenantPluginsFile = ".tenant_plugins.json"
 )
+
+var tenantPluginsMu sync.Mutex
+
+type tenantPluginsStore map[string][]string
+
+func readTenantPlugins() tenantPluginsStore {
+	data, err := os.ReadFile(TenantPluginsFile)
+	if err != nil {
+		return tenantPluginsStore{}
+	}
+
+	var store tenantPluginsStore
+	if err := json.Unmarshal(data, &store); err != nil {
+		return tenantPluginsStore{}
+	}
+	if store == nil {
+		return tenantPluginsStore{}
+	}
+	return store
+}
+
+func writeTenantPlugins(store tenantPluginsStore) error {
+	if store == nil {
+		store = tenantPluginsStore{}
+	}
+	payload, err := json.MarshalIndent(store, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(TenantPluginsFile, payload, 0644)
+}
+
+func normalizePlugins(input []string) []string {
+	set := map[string]struct{}{}
+	for _, slug := range input {
+		s := strings.TrimSpace(strings.ToLower(slug))
+		if s == "" {
+			continue
+		}
+		set[s] = struct{}{}
+	}
+	out := make([]string, 0, len(set))
+	for slug := range set {
+		out = append(out, slug)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func isSaaS(slug string) bool {
+	return strings.EqualFold(strings.TrimSpace(slug), "saas-plugin")
+}
+
+func resolveTenantLimit(entitled []string) int {
+	set := map[string]struct{}{}
+	for _, s := range entitled {
+		set[strings.ToLower(strings.TrimSpace(s))] = struct{}{}
+	}
+
+	if _, ok := set["papi"]; ok {
+		return 6
+	}
+	if _, ok := set["whatsmeow"]; ok {
+		return 6
+	}
+	if _, ok := set["helpdesk"]; ok {
+		return 4
+	}
+	if _, ok := set["clientes"]; ok {
+		return 4
+	}
+	if _, ok := set["smtp"]; ok {
+		return 4
+	}
+	if _, ok := set["plugin-smtp"]; ok {
+		return 4
+	}
+	if _, ok := set["webchat"]; ok {
+		return 4
+	}
+	return 0
+}
+
+func containsSlug(list []string, slug string) bool {
+	target := strings.ToLower(strings.TrimSpace(slug))
+	for _, item := range list {
+		if strings.ToLower(strings.TrimSpace(item)) == target {
+			return true
+		}
+	}
+	return false
+}
+
+func countNonSaaS(list []string) int {
+	total := 0
+	for _, slug := range list {
+		if !isSaaS(slug) {
+			total++
+		}
+	}
+	return total
+}
+
+func getTenantActivePlugins(tenantID string) []string {
+	tenantPluginsMu.Lock()
+	defer tenantPluginsMu.Unlock()
+
+	store := readTenantPlugins()
+	return normalizePlugins(store[tenantID])
+}
+
+func setTenantActivePlugins(tenantID string, plugins []string) error {
+	tenantPluginsMu.Lock()
+	defer tenantPluginsMu.Unlock()
+
+	store := readTenantPlugins()
+	store[tenantID] = normalizePlugins(plugins)
+	return writeTenantPlugins(store)
+}
 
 func getInstanceID() string {
 	// 1. Try to read existing ID
@@ -220,23 +342,38 @@ func main() {
 				{ID: "4", Slug: "webchat", Name: "Webchat Widget", Description: "Chat em tempo real no site", Version: "1.0.0", Type: "premium", Category: "channel", Price: 49.99},
 				{ID: "5", Slug: "whatsmeow", Name: "Engine WhatsMeow (Go)", Description: "Motor ultra rápido em Go", Version: "1.0.0", Type: "premium", Category: "engine", Price: 99.99},
 				{ID: "6", Slug: "papi", Name: "Engine PAPI", Description: "Integração via Cloud API", Version: "1.0.0", Type: "premium", Category: "engine", Price: 99.99},
+				{ID: "7", Slug: "saas-plugin", Name: "SaaS Add-on", Description: "Habilita operação multi-tenant com franquia por tenant", Version: "1.0.0", Type: "premium", Category: "saas", Price: 199.99},
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(catalog)
 	}).Methods("GET")
 
-	// Installed Handler (REAL VALIDATION)
+	// Installed Handler (tenant-aware)
 	api.HandleFunc("/installed", func(w http.ResponseWriter, r *http.Request) {
-		active, err := getActivePluginsFromSupabase(instanceID)
-		if err != nil {
-			log.Printf("Error fetching licenses: %v", err)
-			// Fallback to empty if remote fails
-			active = []string{}
+		w.Header().Set("Content-Type", "application/json")
+		tenantID := strings.TrimSpace(r.Header.Get("x-tenant-id"))
+		if tenantID == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "x-tenant-id ausente"})
+			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(InstalledResponse{Active: active})
+		entitled, err := getActivePluginsFromSupabase(instanceID)
+		if err != nil {
+			log.Printf("Error fetching licenses: %v", err)
+			entitled = []string{}
+		}
+
+		tenantActive := getTenantActivePlugins(tenantID)
+		final := []string{}
+		for _, slug := range tenantActive {
+			if containsSlug(entitled, slug) {
+				final = append(final, slug)
+			}
+		}
+
+		_ = json.NewEncoder(w).Encode(InstalledResponse{Active: normalizePlugins(final)})
 	}).Methods("GET")
 
 	// Instance Info Helper (to show the user their ID for licensing)
@@ -244,6 +381,92 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"instanceId": instanceID})
 	}).Methods("GET")
+
+	// Activate plugin per tenant with quota enforcement
+	api.HandleFunc("/{slug}/activate", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		tenantID := strings.TrimSpace(r.Header.Get("x-tenant-id"))
+		if tenantID == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "x-tenant-id ausente"})
+			return
+		}
+
+		slug := strings.ToLower(strings.TrimSpace(mux.Vars(r)["slug"]))
+		if slug == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "slug inválido"})
+			return
+		}
+
+		entitled, err := getActivePluginsFromSupabase(instanceID)
+		if err != nil {
+			w.WriteHeader(http.StatusBadGateway)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "falha ao validar licenças"})
+			return
+		}
+
+		if !containsSlug(entitled, slug) {
+			w.WriteHeader(http.StatusPaymentRequired)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "plugin não contratado para esta instância"})
+			return
+		}
+
+		limit := resolveTenantLimit(entitled)
+		current := getTenantActivePlugins(tenantID)
+		if containsSlug(current, slug) {
+			_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "active": normalizePlugins(current), "limit": limit})
+			return
+		}
+
+		if !isSaaS(slug) && limit > 0 && countNonSaaS(current) >= limit {
+			w.WriteHeader(http.StatusPaymentRequired)
+			_ = json.NewEncoder(w).Encode(map[string]any{"error": fmt.Sprintf("limite do plano atingido (%d plugins por tenant)", limit), "limit": limit})
+			return
+		}
+
+		current = append(current, slug)
+		if err := setTenantActivePlugins(tenantID, current); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "falha ao persistir ativação"})
+			return
+		}
+
+		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "active": normalizePlugins(current), "limit": limit})
+	}).Methods("POST")
+
+	// Install alias (compatibilidade com front antigo)
+	api.HandleFunc("/{slug}/install", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "message": "use /activate"})
+	}).Methods("POST")
+
+	api.HandleFunc("/{slug}/deactivate", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		tenantID := strings.TrimSpace(r.Header.Get("x-tenant-id"))
+		if tenantID == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "x-tenant-id ausente"})
+			return
+		}
+
+		slug := strings.ToLower(strings.TrimSpace(mux.Vars(r)["slug"]))
+		current := getTenantActivePlugins(tenantID)
+		next := []string{}
+		for _, s := range current {
+			if strings.ToLower(strings.TrimSpace(s)) != slug {
+				next = append(next, s)
+			}
+		}
+		if err := setTenantActivePlugins(tenantID, next); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "falha ao persistir desativação"})
+			return
+		}
+
+		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "active": normalizePlugins(next)})
+	}).Methods("POST")
 
 	// Checkout link (proxy seguro para função central; sem token MP na instância do cliente)
 	api.HandleFunc("/checkout", func(w http.ResponseWriter, r *http.Request) {
