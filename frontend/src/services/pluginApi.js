@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import axios from "axios";
 
 const pluginApi = axios.create({

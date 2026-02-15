@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState, useEffect, useReducer } from "react";
 import { useHistory } from "react-router-dom";
 import { toast } from "react-toastify";

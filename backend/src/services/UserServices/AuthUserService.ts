@@ -44,9 +44,9 @@ const AuthUserService = async ({
       {
         model: Group,
         as: "group",
-        include: [{ model: Permission, as: "permissions", attributes: ["id", "name"] }]
+        include: [{ model: Permission, as: "permissions", attributes: ["id", "resource", "action"] }]
       },
-      { model: Permission, as: "permissions", attributes: ["id", "name"] }
+      { model: Permission, as: "permissions", attributes: ["id", "resource", "action"] }
     ]
   });
 

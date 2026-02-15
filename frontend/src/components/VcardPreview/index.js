@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useEffect, useState, useContext } from 'react';
 import { useHistory } from "react-router-dom";
 import toastError from "../../errors/toastError";

@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 const rules = {
 	user: {
 		static: [],

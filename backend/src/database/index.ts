@@ -32,6 +32,7 @@ import ProtocolHistory from "../models/ProtocolHistory";
 import ProtocolAttachment from "../models/ProtocolAttachment";
 import ConversationEmbedding from "../models/ConversationEmbedding";
 import TenantSubscription from "../models/TenantSubscription";
+import Plan from "../models/Plan";
 
 // eslint-disable-next-line
 const dbConfig = require("../config/database");
@@ -71,7 +72,8 @@ const models = [
   ProtocolHistory,
   ProtocolAttachment,
   ConversationEmbedding,
-  TenantSubscription
+  TenantSubscription,
+  Plan
 ];
 
 sequelize.addModels(models);

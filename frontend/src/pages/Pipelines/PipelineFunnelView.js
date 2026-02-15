@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState } from 'react';
 import { Paper, Tabs, Tab } from '@material-ui/core';
 import PipelineKanban from './PipelineKanban';

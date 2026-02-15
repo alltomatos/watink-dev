@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { memo } from 'react';
 import { Language } from '@material-ui/icons';
 import BaseNode from './BaseNode';

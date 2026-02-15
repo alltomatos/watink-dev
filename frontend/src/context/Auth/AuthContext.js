@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { createContext } from "react";
 
 import useAuth from "../../hooks/useAuth";

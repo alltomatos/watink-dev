@@ -36,6 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.setReady = void 0;
 require("./bootstrap");
 require("reflect-metadata");
 require("express-async-errors");
@@ -50,8 +51,18 @@ const upload_1 = __importDefault(require("./config/upload"));
 const AppError_1 = __importDefault(require("./errors/AppError"));
 const routes_1 = __importDefault(require("./routes"));
 const logger_1 = require("./utils/logger");
+const PluginLoader_1 = __importDefault(require("./services/PluginServices/PluginLoader"));
 Sentry.init({ dsn: process.env.SENTRY_DSN });
 const app = (0, express_1.default)();
+let isReady = false;
+const setReady = () => { isReady = true; };
+exports.setReady = setReady;
+app.get("/health", (req, res) => {
+    if (isReady) {
+        return res.status(200).send("OK");
+    }
+    return res.status(503).send("Service Initializing");
+});
 app.use((0, cors_1.default)({
     credentials: true,
     origin: (origin, callback) => {
@@ -68,9 +79,20 @@ app.use((req, res, next) => {
     logger_1.logger.info(`${req.method} ${req.url}`);
     next();
 });
-app.get("/test", (req, res) => {
-    res.send("Backend is working!");
+app.get("/test", async (req, res) => {
+    try {
+        const { Sequelize } = require("sequelize");
+        const dbConfig = require("./config/database");
+        const sequelize = new Sequelize(dbConfig);
+        await sequelize.authenticate();
+        res.send("Backend and Database are working!");
+    }
+    catch (err) {
+        res.status(500).send("Backend is working, but Database is not reachable.");
+    }
 });
+// Plugin Routes
+app.use("/plugins/custom", PluginLoader_1.default.getInstance().getRouter());
 app.use(routes_1.default);
 app.use(Sentry.Handlers.errorHandler());
 app.use(async (err, req, res, _) => {

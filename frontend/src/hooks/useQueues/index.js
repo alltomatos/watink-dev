@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import api from "../../services/api";
 
 const useQueues = () => {

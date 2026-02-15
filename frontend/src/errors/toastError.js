@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import { toast } from "react-toastify";
 import { i18n } from "../translate/i18n";
 

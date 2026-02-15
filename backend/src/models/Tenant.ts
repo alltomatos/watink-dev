@@ -26,6 +26,9 @@ class Tenant extends Model<Tenant> {
   status: string;
 
   @Column
+  document: string;
+
+  @Column
   ownerId: number;
 
   @CreatedAt

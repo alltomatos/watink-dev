@@ -4,12 +4,16 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [
     react({
-      jsxRuntime: "classic",
+      // Use automatic runtime to support the /* @jsxImportSource react */ comments 
+      // or to handle JSX without manual React imports.
+      jsxRuntime: "automatic",
     }),
   ],
   server: {
     port: 3000,
-    open: true,
+    open: false,
+    host: true,
+    allowedHosts: ["app.docker"]
   },
   build: {
     outDir: "build",
@@ -28,6 +32,7 @@ export default defineConfig({
   },
   envPrefix: "VITE_",
   esbuild: {
+    // Force JSX loader for .js files in src
     loader: "jsx",
     include: /src\/.*\.[jt]sx?$/,
     exclude: [],
@@ -39,6 +44,11 @@ export default defineConfig({
     ),
   },
   optimizeDeps: {
+    esbuildOptions: {
+      loader: {
+        ".js": "jsx",
+      },
+    },
     include: [
       "mic-recorder-to-mp3",
       "@material-ui/core",
