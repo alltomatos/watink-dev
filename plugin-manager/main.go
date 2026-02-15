@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -44,6 +45,21 @@ type LicenseCheckRequest struct {
 	InstanceUuid string `json:"instanceUuid"`
 }
 
+type CheckoutRequest struct {
+	Slug string `json:"slug"`
+}
+
+type CreateCheckoutPayload struct {
+	Plan       string `json:"plan"`
+	InstanceID string `json:"instanceId"`
+	Email      string `json:"email"`
+	Name       string `json:"name"`
+}
+
+type CreateCheckoutResponse struct {
+	CheckoutURL string `json:"checkoutUrl"`
+}
+
 // Global Config (Hardcoded for Security)
 const (
 	SupabaseURL     = "https://quxtkdxrafulqibwbqld.supabase.co"
@@ -66,7 +82,7 @@ func getInstanceID() string {
 
 func getActivePluginsFromSupabase(instanceID string) ([]string, error) {
 	url := fmt.Sprintf("%s/functions/v1/validate-license", SupabaseURL)
-	
+
 	reqBody, _ := json.Marshal(LicenseCheckRequest{InstanceUuid: instanceID})
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
 	if err != nil {
@@ -93,6 +109,65 @@ func getActivePluginsFromSupabase(instanceID string) ([]string, error) {
 	}
 
 	return result.Active, nil
+}
+
+func planFromSlug(slug string) string {
+	slug = strings.ToLower(strings.TrimSpace(slug))
+	switch slug {
+	case "smtp", "plugin-smtp", "clientes", "helpdesk", "webchat":
+		return "Start"
+	case "papi", "whatsmeow":
+		return "Pro"
+	case "saas-plugin":
+		return "SaaS"
+	default:
+		return ""
+	}
+}
+
+func createCheckoutLink(instanceID, email, name, slug string) (string, error) {
+	plan := planFromSlug(slug)
+	if plan == "" {
+		return "", fmt.Errorf("plugin não elegível para checkout: %s", slug)
+	}
+
+	url := fmt.Sprintf("%s/functions/v1/create-checkout", SupabaseURL)
+	payload, _ := json.Marshal(CreateCheckoutPayload{
+		Plan:       plan,
+		InstanceID: instanceID,
+		Email:      email,
+		Name:       name,
+	})
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+SupabaseAnonKey)
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return "", fmt.Errorf("erro create-checkout (%d): %s", resp.StatusCode, string(body))
+	}
+
+	var result CreateCheckoutResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(result.CheckoutURL) == "" {
+		return "", fmt.Errorf("checkoutUrl vazio na resposta")
+	}
+
+	return result.CheckoutURL, nil
 }
 
 func main() {
@@ -167,6 +242,37 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"instanceId": instanceID})
 	}).Methods("GET")
+
+	// Checkout link (proxy seguro para função central; sem token MP na instância do cliente)
+	api.HandleFunc("/checkout", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		var reqBody CheckoutRequest
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "payload inválido"})
+			return
+		}
+
+		email := strings.TrimSpace(r.Header.Get("x-user-email"))
+		name := strings.TrimSpace(r.Header.Get("x-user-name"))
+		if email == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "email do usuário ausente"})
+			return
+		}
+
+		checkoutURL, err := createCheckoutLink(instanceID, email, name, reqBody.Slug)
+		if err != nil {
+			log.Printf("checkout error: %v", err)
+			w.WriteHeader(http.StatusBadGateway)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"checkoutUrl": checkoutURL})
+	}).Methods("POST")
 
 	log.Printf("Plugin Manager (Marketplace Enabled) running on port %s", port)
 	if err := http.ListenAndServe(":"+port, r); err != nil {
