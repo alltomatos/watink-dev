@@ -1,0 +1,29 @@
+# Etapa 1: Build do Frontend React
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
+# Etapa 2: Build do Backend Go (com Frontend embutido)
+FROM golang:1.24-alpine AS backend-builder
+RUN apk add --no-cache gcc musl-dev
+WORKDIR /app
+COPY backend-go/go.mod backend-go/go.sum ./
+RUN go mod download
+COPY backend-go/ ./
+# Copia o build do frontend para a pasta de embed do Go
+COPY --from=frontend-builder /app/frontend/build ./internal/web/build
+RUN CGO_ENABLED=1 GOOS=linux go build -o watink-core cmd/server/main.go
+
+# Etapa 3: Imagem Final Ultra-Leve
+FROM alpine:latest
+RUN apk add --no-cache ca-certificates tzdata
+WORKDIR /root/
+COPY --from=backend-builder /app/watink-core .
+# Pasta public para uploads
+RUN mkdir -p public
+
+EXPOSE 8082
+CMD ["./watink-core"]

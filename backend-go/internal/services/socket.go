@@ -58,3 +58,31 @@ func GetIO() *socketio.Server {
 func SocketHandler(server *socketio.Server) http.Handler {
 	return server
 }
+
+// Cluster-aware Broadcast
+func EmitToRoom(nsp string, room string, event string, payload interface{}) {
+	// 1. Emit locally
+	if Server != nil {
+		Server.BroadcastToRoom(nsp, room, event, payload)
+	}
+	// 2. Publish to Redis for other nodes
+	PublishSocketMessage(SocketMessage{
+		Namespace: nsp,
+		Room:      room,
+		Event:     event,
+		Payload:   payload,
+	})
+}
+
+func EmitToNamespace(nsp string, event string, payload interface{}) {
+	// 1. Emit locally
+	if Server != nil {
+		Server.BroadcastToNamespace(nsp, event, payload)
+	}
+	// 2. Publish to Redis for other nodes
+	PublishSocketMessage(SocketMessage{
+		Namespace: nsp,
+		Event:     event,
+		Payload:   payload,
+	})
+}

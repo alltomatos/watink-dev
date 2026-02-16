@@ -45,6 +45,9 @@ func Migrate() {
 		&models.Queue{},
 		&models.Ticket{},
 		&models.Message{},
+		&models.Group{},
+		&models.Permission{},
+		&models.Flow{},
 	)
 
 	if err != nil {
@@ -52,4 +55,24 @@ func Migrate() {
 	}
 
 	fmt.Println("Database migration completed")
+	Seed()
+}
+
+func Seed() {
+	// Seed Permissions
+	permissions := []models.Permission{
+		{Resource: "pipelines", Action: "view", Description: "Visualizar menu de Pipelines"},
+		{Resource: "chats", Action: "view", Description: "Visualizar menu de Chats/Tickets"},
+		{Resource: "admin", Action: "view", Description: "Visualizar menu de Administração"},
+		{Resource: "queues", Action: "view", Description: "Gerenciar Filas (Admin)"},
+		{Resource: "settings", Action: "view", Description: "Gerenciar Configurações (Admin)"},
+		{Resource: "groups", Action: "view", Description: "Gerenciar Grupos de Usuários"},
+		{Resource: "users", Action: "view", Description: "Gerenciar Usuários"},
+	}
+
+	for _, p := range permissions {
+		DB.FirstOrCreate(&p, models.Permission{Resource: p.Resource, Action: p.Action})
+	}
+
+	fmt.Println("Database seeding completed")
 }

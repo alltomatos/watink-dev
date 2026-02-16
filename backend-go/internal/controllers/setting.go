@@ -5,6 +5,7 @@ import (
 
 	"github.com/alltomatos/watinkdev/backend-go/internal/database"
 	"github.com/alltomatos/watinkdev/backend-go/internal/models"
+	"github.com/alltomatos/watinkdev/backend-go/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -13,7 +14,7 @@ func ListSettings(c *gin.Context) {
 	tenantID, _ := c.Get("tenantId")
 	
 	var settings []models.Setting
-	if err := database.DB.Where("tenantId = ?", tenantID).Find(&settings).Error; err != nil {
+	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Find(&settings).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch settings"})
 		return
 	}
@@ -54,6 +55,12 @@ func UpdateSetting(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update setting"})
 		return
 	}
+
+	// Real-time broadcast
+	services.EmitToNamespace("/", "settings", map[string]interface{}{
+		"action":  "update",
+		"setting": setting,
+	})
 
 	c.JSON(http.StatusOK, setting)
 }

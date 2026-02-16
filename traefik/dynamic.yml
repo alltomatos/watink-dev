@@ -13,7 +13,7 @@ http:
         - web
     api-router:
       rule: "Host(`api.docker`)"
-      service: api-service
+      service: api-service-go
       middlewares:
         - api-strip
       entryPoints:
@@ -24,7 +24,11 @@ http:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:3000"
-    api-service:
+    api-service-node:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:8080"
+    api-service-go:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8082"

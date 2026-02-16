@@ -52,25 +52,43 @@ func InitialSetup(c *gin.Context) {
 	}
 	database.DB.Create(&tenant)
 
-	// 3. User
+	// 3. Admin Group
+	group := models.Group{
+		Name:     "Admin",
+		TenantID: tenant.ID,
+	}
+	database.DB.Create(&group)
+
+	// 4. Assign all permissions to group
+	var permissions []models.Permission
+	database.DB.Find(&permissions)
+	for _, p := range permissions {
+		database.DB.Exec("INSERT INTO \"GroupPermissions\" (\"groupId\", \"permissionId\", \"tenantId\", \"createdAt\", \"updatedAt\") VALUES (?, ?, ?, now(), now())",
+			group.ID, p.ID, tenant.ID)
+	}
+
+	// 5. User
 	user := models.User{
 		Name:     req.FirstName + " " + req.LastName,
 		Email:    req.Email,
 		Profile:  "superadmin",
 		TenantID: tenant.ID,
+		GroupID:  &group.ID,
+		Configs:  `{"dashboard":{"widgets":[{"id":"tickets_info","visible":true,"width":4,"order":1},{"id":"attendance_chart","visible":true,"width":8,"order":2}]}}`,
 	}
 	user.HashPassword(req.Password)
 	database.DB.Create(&user)
 
-	// 4. Update Tenant Owner
+	// 6. Update Tenant Owner
 	database.DB.Model(&tenant).Update("ownerId", user.ID)
 
-	// 5. Default Settings
+	// 7. Default Settings
 	settings := []models.Setting{
 		{Key: "systemTitle", Value: "Watink", TenantID: tenant.ID},
 		{Key: "systemLogo", Value: "public/logo.png", TenantID: tenant.ID},
 		{Key: "systemLogoEnabled", Value: "true", TenantID: tenant.ID},
 		{Key: "login_layout", Value: "centered", TenantID: tenant.ID},
+		{Key: "login_backgroundImage", Value: "https://images.unsplash.com/photo-1557683316-973673baf926", TenantID: tenant.ID},
 	}
 	database.DB.Create(&settings)
 

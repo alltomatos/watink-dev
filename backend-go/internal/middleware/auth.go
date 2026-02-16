@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/alltomatos/watinkdev/backend-go/internal/database"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -52,11 +53,17 @@ func IsAuth() gin.HandlerFunc {
 			return
 		}
 
+		tenantID := claims["tenantId"].(string)
+
 		// Set user info in context
 		c.Set("userId", claims["id"])
 		c.Set("userEmail", claims["email"])
 		c.Set("userProfile", claims["profile"])
-		c.Set("tenantId", claims["tenantId"])
+		c.Set("tenantId", tenantID)
+
+		// Support for Row Level Security (RLS)
+		// Run SET app.current_tenant = tenantID on the DB connection for this request
+		database.DB.Exec(fmt.Sprintf("SET app.current_tenant = '%s'", tenantID))
 
 		c.Next()
 	}

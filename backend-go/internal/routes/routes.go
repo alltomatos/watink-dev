@@ -6,18 +6,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(r *gin.Engine) {
+func SetupRoutes(group *gin.RouterGroup) {
 	// Public Routes
-	r.POST("/auth/login", controllers.Login)
-	r.GET("/public-settings", controllers.GetPublicSettings)
-	r.GET("/initial-setup/check", controllers.CheckSetup)
-	r.POST("/initial-setup", controllers.InitialSetup)
+	group.POST("/auth/login", controllers.Login)
+	group.POST("/auth/refresh_token", controllers.RefreshToken)
+	group.GET("/public-settings", controllers.GetPublicSettings)
+	group.GET("/initial-setup/check", controllers.CheckSetup)
+	group.POST("/initial-setup", controllers.InitialSetup)
 
 	// Protected Routes
-	protected := r.Group("/")
+	protected := group.Group("/")
 	protected.Use(middleware.IsAuth())
 	protected.Use(middleware.TenantMiddleware())
 	{
+		// Auth
+		protected.DELETE("/auth/logout", controllers.Logout)
+
 		// Settings
 		protected.GET("/settings", controllers.ListSettings)
 		protected.PUT("/settings/:key", controllers.UpdateSetting)
@@ -25,11 +29,20 @@ func SetupRoutes(r *gin.Engine) {
 		// Tickets
 		protected.GET("/tickets", controllers.ListTickets)
 		protected.GET("/tickets/:ticketId", controllers.ShowTicket)
+		
+		// Messages
 		protected.GET("/messages/:ticketId", controllers.ListMessages)
+		protected.POST("/messages/:ticketId", controllers.SendMessage)
 
 		// WhatsApp Connections
 		protected.GET("/whatsapp", controllers.ListWhatsapps)
 		protected.GET("/whatsapp/:id", controllers.ShowWhatsapp)
+
+		// WhatsApp Sessions
+		protected.POST("/whatsappsession/all", controllers.RestartAllSessions)
+		protected.POST("/whatsappsession/:whatsappId", controllers.StartSession)
+		protected.PUT("/whatsappsession/:whatsappId", controllers.StartSession)
+		protected.DELETE("/whatsappsession/:whatsappId", controllers.StopSession)
 
 		// Contacts
 		protected.GET("/contacts", controllers.ListContacts)
@@ -43,5 +56,26 @@ func SetupRoutes(r *gin.Engine) {
 		// Quick Answers
 		protected.GET("/quickAnswers", controllers.ListQuickAnswers)
 		protected.GET("/quickAnswers/:quickAnswerId", controllers.ShowQuickAnswer)
+
+		// Users
+		protected.GET("/users", controllers.ListUsers)
+		protected.POST("/users", controllers.CreateUser)
+		protected.PUT("/users/:userId", controllers.UpdateUser)
+		protected.DELETE("/users/:userId", controllers.DeleteUser)
+
+		// SaaS
+		protected.GET("/saas/tenants", controllers.ListTenants)
+		protected.GET("/saas/tenants/:tenantId/plan", controllers.GetTenantPlan)
+		protected.GET("/saas/plans", controllers.ListPlans)
+		protected.POST("/saas/plans", controllers.CreatePlan)
+
+		// RBAC
+		protected.GET("/groups", controllers.ListGroups)
+		protected.POST("/groups", controllers.CreateGroup)
+		protected.GET("/permissions", controllers.ListPermissions)
+
+		// Flows
+		protected.GET("/flows", controllers.ListFlows)
+		protected.POST("/flows", controllers.CreateFlow)
 	}
 }

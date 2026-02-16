@@ -106,17 +106,14 @@ func handleQrCode(payload json.RawMessage) {
 		"status": "QRCODE",
 	})
 
-	io := GetIO()
-	if io != nil {
-		io.BroadcastToNamespace("/", "whatsappSession", map[string]interface{}{
-			"action": "update",
-			"session": map[string]interface{}{
-				"id":     sessionID,
-				"qrcode": p.QrCode,
-				"status": "QRCODE",
-			},
-		})
-	}
+	EmitToNamespace("/", "whatsappSession", map[string]interface{}{
+		"action": "update",
+		"session": map[string]interface{}{
+			"id":     sessionID,
+			"qrcode": p.QrCode,
+			"status": "QRCODE",
+		},
+	})
 }
 
 func handleSessionStatus(payload json.RawMessage) {
@@ -140,18 +137,15 @@ func handleSessionStatus(payload json.RawMessage) {
 
 	database.DB.Model(&models.Whatsapp{}).Where("id = ?", sessionID).Updates(updates)
 
-	io := GetIO()
-	if io != nil {
-		io.BroadcastToNamespace("/", "whatsappSession", map[string]interface{}{
-			"action": "update",
-			"session": map[string]interface{}{
-				"id":            sessionID,
-				"status":        p.Status,
-				"number":        p.Number,
-				"profilePicUrl": p.ProfilePicUrl,
-			},
-		})
-	}
+	EmitToNamespace("/", "whatsappSession", map[string]interface{}{
+		"action": "update",
+		"session": map[string]interface{}{
+			"id":            sessionID,
+			"status":        p.Status,
+			"number":        p.Number,
+			"profilePicUrl": p.ProfilePicUrl,
+		},
+	})
 }
 
 func handleMessageReceived(payload json.RawMessage, tenantID string) {
@@ -179,14 +173,11 @@ func handleMessageReceived(payload json.RawMessage, tenantID string) {
 		return
 	}
 
-	io := GetIO()
-	if io != nil {
-		room := strconv.Itoa(msg.TicketID)
-		io.BroadcastToRoom("/", room, "appMessage", map[string]interface{}{
-			"action":  "create",
-			"message": msg,
-		})
-	}
+	room := strconv.Itoa(msg.TicketID)
+	EmitToRoom("/", room, "appMessage", map[string]interface{}{
+		"action":  "create",
+		"message": msg,
+	})
 }
 
 func handleMessageAck(payload json.RawMessage, tenantID string) {
@@ -204,14 +195,11 @@ func handleMessageAck(payload json.RawMessage, tenantID string) {
 		if p.Ack > msg.Ack {
 			database.DB.Model(&msg).Update("ack", p.Ack)
 			
-			io := GetIO()
-			if io != nil {
-				room := strconv.Itoa(msg.TicketID)
-				io.BroadcastToRoom("/", room, "appMessage", map[string]interface{}{
-					"action":  "update",
-					"message": msg,
-				})
-			}
+			room := strconv.Itoa(msg.TicketID)
+			EmitToRoom("/", room, "appMessage", map[string]interface{}{
+				"action":  "update",
+				"message": msg,
+			})
 		}
 	}
 }
