@@ -106,7 +106,7 @@ const MainListItems = (props) => {
     // Fetch active plugins and manifests
     const fetchPlugins = async () => {
       try {
-        const { data: installed } = await api.get("/plugins/api/v1/plugins/installed");
+        const { data: installed } = await api.get("/api/v1/plugins/installed");
         const activeSlugs = installed.active || [];
         setActivePlugins(activeSlugs);
 

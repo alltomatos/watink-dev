@@ -223,7 +223,7 @@ const Settings = () => {
 	useEffect(() => {
 		const fetchPlugins = async () => {
 			try {
-				const { data } = await api.get("/plugins/api/v1/plugins/installed");
+				const { data } = await api.get("/api/v1/plugins/installed");
 				setActivePlugins(data.active || []);
 			} catch (err) {
 				console.error("Failed to fetch plugins", err);
@@ -555,7 +555,7 @@ const Settings = () => {
 					onChange={(e) => setAppTheme(e.target.value)}
 				>
 					<option value="whaticket">Whaticket (Padrão)</option>
-					<option value="saas">SaaS Premium</option>
+					<option value="saas">SaaS Business</option>
 					<option value="corporate">Corporate Theme</option>
 					<option value="whatsapp">WhatsApp Theme</option>
 					<option value="google">Google Like Theme</option>

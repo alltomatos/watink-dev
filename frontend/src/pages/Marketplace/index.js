@@ -85,7 +85,7 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: theme.palette.success.main,
         color: "#fff",
     },
-    chipPremium: {
+    chipBusiness: {
         backgroundColor: theme.palette.warning.main,
         color: "#fff",
     },
@@ -129,7 +129,7 @@ const Marketplace = () => {
 
     const loadInstanceId = async () => {
         try {
-            const { data } = await pluginApi.get("/api/v1/plugins/instance");
+            const { data } = await pluginApi.get("/plugins/instance");
             setInstanceId(data.instanceId);
         } catch (err) {
             console.error("Erro ao carregar Instance ID");
@@ -139,9 +139,9 @@ const Marketplace = () => {
     const loadPlugins = async () => {
         try {
             setLoading(true);
-            const { data: catalogRes } = await pluginApi.get("/api/v1/plugins/catalog");
+            const { data: catalogRes } = await pluginApi.get("/plugins/catalog");
             setOffline(Boolean(catalogRes?.offline));
-            const { data: installedRes } = await pluginApi.get("/api/v1/plugins/installed");
+            const { data: installedRes } = await pluginApi.get("/plugins/installed");
             const activeSlugs = new Set(Array.isArray(installedRes?.active) ? installedRes.active : []);
             const all = Array.isArray(catalogRes?.plugins) ? catalogRes.plugins : [];
             const normalized = all.map(p => ({
@@ -207,7 +207,7 @@ const Marketplace = () => {
                                 <Chip
                                     label={plugin.type === "free" ? "Gratuito" : `R$ ${plugin.price}`}
                                     size="small"
-                                    className={plugin.type === "free" ? classes.chipFree : classes.chipPremium}
+                                    className={plugin.type === "free" ? classes.chipFree : classes.chipBusiness}
                                 />
                                 {plugin.installed && (
                                     <Chip label="Instalado" size="small" className={classes.chipInstalled} />
@@ -269,7 +269,7 @@ const Marketplace = () => {
                                 <Chip
                                     label={plugin.type === "free" ? "Gratuito" : `R$ ${plugin.price}`}
                                     size="small"
-                                    className={plugin.type === "free" ? classes.chipFree : classes.chipPremium}
+                                    className={plugin.type === "free" ? classes.chipFree : classes.chipBusiness}
                                 />
                             </TableCell>
                             <TableCell>{plugin.version}</TableCell>

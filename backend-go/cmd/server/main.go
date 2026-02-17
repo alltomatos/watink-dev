@@ -70,17 +70,6 @@ func main() {
 		routes.SetupRoutes(apiGroup)
 	}
 
-	// Legacy Plugin Manager proxy support (/plugins/api/v1/... -> /api/v1/...)
-	r.Group("/plugins").Any("/*any", func(c *gin.Context) {
-		path := c.Param("any")
-		if strings.HasPrefix(path, "/api/v1") {
-			c.Request.URL.Path = path
-		} else {
-			c.Request.URL.Path = "/api/v1" + path
-		}
-		r.HandleContext(c)
-	})
-
 	// Serve Frontend (Embed)
 	publicFS, _ := fs.Sub(web.StaticFiles, "build")
 

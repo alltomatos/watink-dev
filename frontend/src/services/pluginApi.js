@@ -2,7 +2,7 @@
 import axios from "axios";
 
 const pluginApi = axios.create({
-  baseURL: "/plugins",
+  baseURL: "/api/v1",
   withCredentials: true,
 });
 

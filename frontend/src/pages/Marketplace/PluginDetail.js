@@ -55,7 +55,7 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: theme.palette.success.main,
         color: "#fff",
     },
-    chipPremium: {
+    chipBusiness: {
         backgroundColor: theme.palette.warning.main,
         color: "#fff",
     },
@@ -140,8 +140,8 @@ const PluginDetail = () => {
         try {
             setLoading(true);
             const [{ data: catalogRes }, { data: installedRes }] = await Promise.all([
-                pluginApi.get("/api/v1/plugins/catalog"),
-                pluginApi.get("/api/v1/plugins/installed"),
+                pluginApi.get("/plugins/catalog"),
+                pluginApi.get("/plugins/installed"),
             ]);
 
             const all = Array.isArray(catalogRes?.plugins) ? catalogRes.plugins : [];
@@ -189,7 +189,7 @@ const PluginDetail = () => {
     const handleSubscribe = async () => {
         try {
             setActivating(true);
-            const { data } = await pluginApi.post("/api/v1/plugins/checkout", { slug: plugin.slug });
+            const { data } = await pluginApi.post("/plugins/checkout", { slug: plugin.slug });
             if (!data?.checkoutUrl) {
                 throw new Error("checkoutUrl ausente");
             }
@@ -269,7 +269,7 @@ const PluginDetail = () => {
                                 <Box mt={1} display="flex" gap={1}>
                                     <Chip
                                         label={plugin.type === "free" ? "Gratuito" : `R$ ${plugin.price}`}
-                                        className={plugin.type === "free" ? classes.chipFree : classes.chipPremium}
+                                        className={plugin.type === "free" ? classes.chipFree : classes.chipBusiness}
                                     />
                                     <Chip label={`v${plugin.version}`} variant="outlined" />
                                     <Chip label={plugin.category} variant="outlined" />

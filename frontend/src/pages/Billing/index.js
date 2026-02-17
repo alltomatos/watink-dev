@@ -77,7 +77,7 @@ const Billing = () => {
     useEffect(() => {
         const loadInstanceId = async () => {
             try {
-                const { data } = await pluginApi.get("/api/v1/plugins/instance");
+                const { data } = await pluginApi.get("/plugins/instance");
                 setInstanceId(data.instanceId);
             } catch (err) {
                 console.error("Erro ao carregar ID");
@@ -98,13 +98,13 @@ const Billing = () => {
             name: "Start",
             price: "49,99",
             limit: "4 plugins",
-            features: ["Até 4 plugins Premium", "Suporte Standard", "Atualizações Core", "Webchat incluso"],
+            features: ["Até 4 plugins Business", "Suporte Standard", "Atualizações Core", "Webchat incluso"],
         },
         {
             name: "Pro",
             price: "99,99",
             limit: "6 plugins",
-            features: ["Até 6 plugins Premium", "Suporte Prioritário", "Todas as Engines (WhatsMeow/Papi)", "Acesso antecipado"],
+            features: ["Até 6 plugins Business", "Suporte Prioritário", "Todas as Engines (WhatsMeow/Papi)", "Acesso antecipado"],
         },
         {
             name: "SaaS",
