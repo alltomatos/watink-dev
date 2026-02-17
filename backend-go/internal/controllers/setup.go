@@ -15,11 +15,12 @@ func CheckSetup(c *gin.Context) {
 }
 
 type SetupRequest struct {
-	FirstName string `json:"firstName" binding:"required"`
-	LastName  string `json:"lastName"`
-	Email     string `json:"email" binding:"required,email"`
-	Password  string `json:"password" binding:"required"`
-	Document  string `json:"document"`
+	FirstName  string `json:"firstName" binding:"required"`
+	LastName   string `json:"lastName"`
+	Email      string `json:"email" binding:"required,email"`
+	Password   string `json:"password" binding:"required"`
+	Document   string `json:"document"`
+	BackendURL string `json:"backendUrl"`
 }
 
 func InitialSetup(c *gin.Context) {
@@ -85,11 +86,16 @@ func InitialSetup(c *gin.Context) {
 	// 7. Default Settings
 	settings := []models.Setting{
 		{Key: "systemTitle", Value: "Watink", TenantID: tenant.ID},
-		{Key: "systemLogo", Value: "public/logo.png", TenantID: tenant.ID},
+		{Key: "systemLogo", Value: "/logo.png", TenantID: tenant.ID},
 		{Key: "systemLogoEnabled", Value: "true", TenantID: tenant.ID},
 		{Key: "login_layout", Value: "centered", TenantID: tenant.ID},
-		{Key: "login_backgroundImage", Value: "https://images.unsplash.com/photo-1557683316-973673baf926", TenantID: tenant.ID},
+		{Key: "login_backgroundImage", Value: "", TenantID: tenant.ID},
 	}
+	
+	if req.BackendURL != "" {
+		settings = append(settings, models.Setting{Key: "backendUrl", Value: req.BackendURL, TenantID: tenant.ID})
+	}
+	
 	database.DB.Create(&settings)
 
 	c.JSON(http.StatusOK, gin.H{"message": "System initialized successfully"})
