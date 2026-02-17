@@ -1,104 +1,113 @@
 package main
 
 import (
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
-	"time"
+	"strings"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/controllers"
 	"github.com/alltomatos/watinkdev/backend-go/internal/database"
+	"github.com/alltomatos/watinkdev/backend-go/internal/plugins"
 	"github.com/alltomatos/watinkdev/backend-go/internal/routes"
 	"github.com/alltomatos/watinkdev/backend-go/internal/services"
 	"github.com/alltomatos/watinkdev/backend-go/internal/web"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"io/fs"
 )
 
 func main() {
-	// Load .env if exists
 	_ = godotenv.Load()
 
-	log.Println("🦞 Watink Industrial starting...")
+	log.Println("🦞 Watink Business starting...")
 
-	// 1. Wait for Database (Retry logic for clean VPS setup)
-	retryCount := 0
-	for {
-		err := tryConnectDB()
-		if err == nil {
-			break
-		}
-		retryCount++
-		if retryCount > 30 {
-			log.Fatalf("Fatal: Could not connect to database after 30 attempts: %v", err)
-		}
-		log.Printf("Waiting for database... (attempt %d/30)", retryCount)
-		time.Sleep(5 * time.Second)
-	}
+	// 1. Connect to Database
+	database.Connect()
+	database.Migrate()
 
 	// 2. Connect to Redis
 	services.ConnectRedis()
 	services.SetupRedisBroadcast()
 
-	// 3. Connect to RabbitMQ (Wait for it too)
+	// 3. Connect to RabbitMQ
 	rabbitMQ := services.NewRabbitMQService()
-	retryCount = 0
-	for {
-		err := rabbitMQ.Connect()
-		if err == nil {
-			break
-		}
-		retryCount++
-		if retryCount > 30 {
-			log.Printf("Warning: Failed to connect to RabbitMQ: %v. Continuing without messaging...", err)
-			break
-		}
-		log.Printf("Waiting for RabbitMQ... (attempt %d/30)", retryCount)
-		time.Sleep(5 * time.Second)
+	if err := rabbitMQ.Connect(); err == nil {
+		// 4. Start Workers
+		rabbitMQ.StartFlowWorker()
+		services.StartEventListener(rabbitMQ)
+	} else {
+		log.Printf("⚠️ Warning: RabbitMQ connection failed: %v", err)
 	}
 
 	// Start services
 	server := services.StartSocket()
-	services.StartEventListener(rabbitMQ)
 
 	r := gin.Default()
 
-	// Socket.IO
+	// Socket.IO Routes
 	r.GET("/socket.io/*any", gin.WrapH(server))
 	r.POST("/socket.io/*any", gin.WrapH(server))
 
-	// API
+	// API Group
 	apiGroup := r.Group("/api")
 	{
 		apiGroup.GET("/health", func(c *gin.Context) {
-			c.JSON(200, gin.H{"status": "OK", "service": "watink-industrial"})
+			c.JSON(200, gin.H{"status": "OK", "service": "watink-business"})
 		})
-		apiGroup.GET("/version", controllers.GetVersion)
+
+		// Init integrated marketplace hub manager (replaces standalone plugin-manager service)
+		plugins.InitHubManager()
+
+		// Initialize Plugin SDK Manager
+		pluginManager := plugins.NewPluginManager(database.DB, apiGroup)
+
+		// Register Plugins
+		pluginManager.Register(&plugins.HelpdeskPlugin{})
+		pluginManager.Register(&plugins.WebchatPlugin{})
+		pluginManager.Register(&plugins.ClientesPlugin{})
+		pluginManager.Register(&plugins.SaaSPlugin{})
+
 		routes.SetupRoutes(apiGroup)
 	}
 
+	// Legacy Plugin Manager proxy support (/plugins/api/v1/... -> /api/v1/...)
+	r.Group("/plugins").Any("/*any", func(c *gin.Context) {
+		path := c.Param("any")
+		if strings.HasPrefix(path, "/api/v1") {
+			c.Request.URL.Path = path
+		} else {
+			c.Request.URL.Path = "/api/v1" + path
+		}
+		r.HandleContext(c)
+	})
+
 	// Serve Frontend (Embed)
-	publicFS, err := fs.Sub(web.StaticFiles, "build")
-	if err != nil {
-		log.Printf("Warning: Frontend build not found in embed: %v", err)
-	}
+	publicFS, _ := fs.Sub(web.StaticFiles, "build")
 
 	r.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
-		if len(path) >= 4 && path[:4] == "/api" {
+
+		lowerPath := strings.ToLower(path)
+		if strings.HasPrefix(lowerPath, "/api") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "API route not found"})
 			return
 		}
-		f, err := publicFS.Open(path[1:])
+
+		f, err := publicFS.Open(strings.TrimPrefix(path, "/"))
 		if err == nil {
 			f.Close()
+			if strings.HasPrefix(path, "/assets/") {
+				c.Header("Cache-Control", "public, max-age=31536000, immutable")
+			}
 			http.FileServer(http.FS(publicFS)).ServeHTTP(c.Writer, c.Request)
 			return
 		}
-		index, err := web.StaticFiles.ReadFile("build/index.html")
+
+		// SPA Fallback
+		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
+		index, err := fs.ReadFile(publicFS, "index.html")
 		if err != nil {
-			c.String(http.StatusNotFound, "Initial setup needed: Run build and release.")
+			c.String(http.StatusInternalServerError, "Index not found")
 			return
 		}
 		c.Data(http.StatusOK, "text/html; charset=utf-8", index)
@@ -109,20 +118,7 @@ func main() {
 		port = "8082"
 	}
 
-	log.Printf("✅ Watink Industrial Ready on port %s", port)
+	log.Printf("✅ Watink Business Ready on port %s", port)
 	s := &http.Server{Addr: ":" + port, Handler: r}
-	if err := s.ListenAndServe(); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
-}
-
-func tryConnectDB() error {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("Recovered from DB connection panic")
-		}
-	}()
-	database.Connect()
-	database.Migrate()
-	return nil
+	_ = s.ListenAndServe()
 }
