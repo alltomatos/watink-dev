@@ -13,12 +13,17 @@ func SetupRoutes(group *gin.RouterGroup) {
 	group.GET("/public-settings", controllers.GetPublicSettings)
 	group.GET("/initial-setup/check", controllers.CheckSetup)
 	group.POST("/initial-setup", controllers.InitialSetup)
+	group.GET("/system/stats", controllers.GetSystemStats)
+	group.GET("/system/maintenance", controllers.GetMaintenanceStatus)
 
 	// Protected Routes
 	protected := group.Group("/")
+	protected.Use(controllers.MaintenanceMiddleware())
 	protected.Use(middleware.IsAuth())
 	protected.Use(middleware.TenantMiddleware())
 	{
+		// Update & System
+		protected.POST("/system/update", controllers.StartUpdate)
 		// Auth
 		protected.DELETE("/auth/logout", controllers.Logout)
 
@@ -28,14 +33,16 @@ func SetupRoutes(group *gin.RouterGroup) {
 
 		// Tickets
 		protected.GET("/tickets", controllers.ListTickets)
+		protected.GET("/tickets/", controllers.ListTickets)
 		protected.GET("/tickets/:ticketId", controllers.ShowTicket)
-		
+
 		// Messages
 		protected.GET("/messages/:ticketId", controllers.ListMessages)
 		protected.POST("/messages/:ticketId", controllers.SendMessage)
 
 		// WhatsApp Connections
 		protected.GET("/whatsapp", controllers.ListWhatsapps)
+		protected.GET("/whatsapp/", controllers.ListWhatsapps)
 		protected.GET("/whatsapp/:id", controllers.ShowWhatsapp)
 
 		// WhatsApp Sessions
@@ -46,19 +53,24 @@ func SetupRoutes(group *gin.RouterGroup) {
 
 		// Contacts
 		protected.GET("/contacts", controllers.ListContacts)
+		protected.GET("/contacts/", controllers.ListContacts)
 		protected.GET("/contacts/:contactId", controllers.ShowContact)
 		protected.POST("/contacts", controllers.CreateContact)
 
 		// Queues
 		protected.GET("/queue", controllers.ListQueues)
+		protected.GET("/queue/", controllers.ListQueues)
 		protected.GET("/queue/:queueId", controllers.ShowQueue)
 
 		// Quick Answers
 		protected.GET("/quickAnswers", controllers.ListQuickAnswers)
+		protected.GET("/quickAnswers/", controllers.ListQuickAnswers)
 		protected.GET("/quickAnswers/:quickAnswerId", controllers.ShowQuickAnswer)
 
 		// Users
 		protected.GET("/users", controllers.ListUsers)
+		protected.GET("/users/", controllers.ListUsers)
+		protected.GET("/users/:userId", controllers.ShowUser)
 		protected.POST("/users", controllers.CreateUser)
 		protected.PUT("/users/:userId", controllers.UpdateUser)
 		protected.DELETE("/users/:userId", controllers.DeleteUser)
@@ -77,5 +89,14 @@ func SetupRoutes(group *gin.RouterGroup) {
 		// Flows
 		protected.GET("/flows", controllers.ListFlows)
 		protected.POST("/flows", controllers.CreateFlow)
+
+		// Business Marketplace Support (V1)
+		v1 := protected.Group("/v1")
+		{
+			v1.GET("/plugins/catalog", controllers.PluginsCatalog)
+			v1.GET("/plugins/installed", controllers.PluginsInstalled)
+			v1.POST("/plugins/checkout", controllers.PluginsCheckout)
+			v1.GET("/plugins/instance", controllers.PluginsInstance)
+		}
 	}
 }
