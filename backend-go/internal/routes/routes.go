@@ -16,6 +16,12 @@ func SetupRoutes(group *gin.RouterGroup) {
 	group.GET("/system/stats", controllers.GetSystemStats)
 	group.GET("/system/maintenance", controllers.GetMaintenanceStatus)
 
+	// Business Marketplace Support (V1)
+	group.GET("/v1/plugins/catalog", controllers.PluginsCatalog)
+	group.GET("/v1/plugins/installed", controllers.PluginsInstalled)
+	group.POST("/v1/plugins/checkout", controllers.PluginsCheckout)
+	group.GET("/v1/plugins/instance", controllers.PluginsInstance)
+
 	// Protected Routes
 	protected := group.Group("/")
 	protected.Use(controllers.MaintenanceMiddleware())
@@ -102,14 +108,5 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.GET("/pipelines", controllers.ListPipelines)
 		protected.GET("/pipelines/", controllers.ListPipelines)
 		protected.POST("/pipelines", controllers.CreatePipeline)
-
-		// Business Marketplace Support (V1)
-		v1 := protected.Group("/v1")
-		{
-			v1.GET("/plugins/catalog", controllers.PluginsCatalog)
-			v1.GET("/plugins/installed", controllers.PluginsInstalled)
-			v1.POST("/plugins/checkout", controllers.PluginsCheckout)
-			v1.GET("/plugins/instance", controllers.PluginsInstance)
-		}
 	}
 }
