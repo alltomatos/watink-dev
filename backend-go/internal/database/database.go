@@ -49,6 +49,7 @@ func Migrate() {
 		&models.Permission{},
 		&models.Flow{},
 		&models.QuickAnswer{},
+		&models.KnowledgeBase{},
 		&models.Pipeline{},
 		&models.PipelineStage{},
 	)
