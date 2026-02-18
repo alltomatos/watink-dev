@@ -83,7 +83,7 @@ const longDescriptionBySlug = (slug) => {
         return `O Plugin de Helpdesk transforma seu atendimento em um sistema de suporte profissional:\n\n• Criação de protocolos de atendimento\n• Vinculação de protocolos a tickets\n• Gestão de status, prioridade e SLA\n• Histórico completo de interações no protocolo\n• Relatórios de atendimento`;
     }
 
-    return "Plugin premium para expandir recursos do Watink no seu ambiente.";
+    return "Plugin profissional para expandir recursos do Watink no seu ambiente.";
 };
 
 const PluginDetail = () => {
@@ -175,7 +175,7 @@ const PluginDetail = () => {
     const handleActivate = async () => {
         try {
             setActivating(true);
-            await pluginApi.post(`/api/v1/plugins/${plugin.slug}/activate`);
+            await pluginApi.post(`/plugins/${plugin.slug}/activate`);
             toast.success(`Plugin ${plugin.name} ativado com sucesso!`);
             setPlugin({ ...plugin, installed: true, active: true });
             setTimeout(() => window.location.reload(), 1000);
@@ -207,7 +207,7 @@ const PluginDetail = () => {
     const handleDeactivate = async () => {
         try {
             setActivating(true);
-            await pluginApi.post(`/api/v1/plugins/${plugin.slug}/deactivate`);
+            await pluginApi.post(`/plugins/${plugin.slug}/deactivate`);
             toast.success(`Plugin ${plugin.name} desativado.`);
             setPlugin({ ...plugin, active: false });
             setTimeout(() => window.location.reload(), 1000);
@@ -302,7 +302,7 @@ const PluginDetail = () => {
                                 >
                                     {activating ? <CircularProgress size={20} /> : "Desativar Plugin"}
                                 </Button>
-                            ) : plugin.type === "premium" && !plugin.installed ? (
+                            ) : plugin.type !== "free" && !plugin.installed ? (
                                 <>
                                     <Button
                                         variant="contained"
