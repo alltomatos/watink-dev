@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: "backend-go",
-      cwd: "./backend-go",
+      cwd: "./bussines",
       script: "./backend-go",
       env: {
         PORT_GO: 8082,
@@ -29,6 +29,24 @@ module.exports = {
         DB_PASS: "rMOb4RHlVkMB4hKgMjYSSZ6TUTjiHUq7",
         DB_NAME: "watink",
       },
+    },
+    {
+      name: "marketplace-hub",
+      cwd: "./marketplace-hub",
+      script: "go",
+      args: "run cmd/hub/main.go",
+      env: {
+        HUB_PORT: 8090,
+      }
+    },
+    {
+      name: "plugin-manager",
+      cwd: "./plugin-manager",
+      script: "go",
+      args: "run main.go",
+      env: {
+        PORT: 8081,
+      }
     },
     {
       name: "frontend",

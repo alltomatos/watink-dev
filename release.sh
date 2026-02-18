@@ -18,20 +18,20 @@ cd ..
 
 # 3. Prepare Go Web Folder
 echo "🔗 Preparing Go Embed Folder..."
-rm -rf backend-go/internal/web/build
-mkdir -p backend-go/internal/web/build
-cp -r frontend/build/* backend-go/internal/web/build/
+rm -rf bussines/internal/web/build
+mkdir -p bussines/internal/web/build
+cp -r frontend/build/* bussines/internal/web/build/
 
 # 4. Build for Linux (Native Binary)
 echo "🐧 Building Linux Binary..."
-cd backend-go
+cd bussines
 go mod tidy
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../release/linux/watink-linux cmd/server/main.go
 cd ..
 
 # 5. Build for Windows (watink.exe)
 echo "🪟 Building Windows Binary..."
-cd backend-go
+cd bussines
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o ../release/windows/watink.exe cmd/server/main.go
 cd ..
 

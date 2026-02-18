@@ -23,6 +23,19 @@ func ListUsers(c *gin.Context) {
 	})
 }
 
+func ShowUser(c *gin.Context) {
+	tenantID, _ := c.Get("tenantId")
+	id := c.Param("userId")
+
+	var user models.User
+	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
 func CreateUser(c *gin.Context) {
 	tenantID, _ := c.Get("tenantId")
 

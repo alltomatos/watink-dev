@@ -1,6 +1,6 @@
 # Watink Backend Go 🦞
 
-Este é o backend de alta performance do Watink, desenvolvido em **Go** para garantir escalabilidade industrial e baixa latência.
+Este é o backend de alta performance do Watink, desenvolvido em **Go** para garantir escalabilidade em produção e baixa latência.
 
 ## Tecnologias
 - **Framework:** Gin Gonic (API Rest)
@@ -32,4 +32,4 @@ go build -o backend-go cmd/server/main.go
 ```
 
 ---
-*Desenvolvido proativamente para elevar o Watink ao nível industrial.*
+*Desenvolvido proativamente para elevar o Watink ao nível profissional.*
