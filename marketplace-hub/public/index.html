@@ -5,132 +5,241 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Marketplace Admin</title>
   <style>
-    body{font-family:Inter,Arial,sans-serif;background:#0b1220;color:#e5e7eb;margin:0;padding:24px}
-    h1{margin:0 0 16px}
-    .row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-    .card{background:#111827;border:1px solid #1f2937;border-radius:10px;padding:14px;min-width:180px}
-    input,button,select{background:#0f172a;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:8px}
-    button{cursor:pointer}
-    table{width:100%;border-collapse:collapse;margin-top:10px}
-    th,td{border-bottom:1px solid #1f2937;padding:8px;text-align:left;font-size:14px}
-    .muted{color:#94a3b8;font-size:12px}
-    .ok{color:#22c55e}
+    :root{--bg:#070b14;--panel:#0f1726;--card:#111c2e;--line:#22304a;--txt:#e6edf7;--muted:#8da0be;--brand:#6aa6ff;--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Text",Arial;background:linear-gradient(180deg,#070b14,#0a1220);color:var(--txt)}
+    .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+    .side{border-right:1px solid var(--line);background:rgba(8,14,25,.88);backdrop-filter:blur(8px);padding:18px;position:sticky;top:0;height:100vh}
+    .brand{font-size:20px;font-weight:700;margin-bottom:18px}
+    .menu button{display:block;width:100%;text-align:left;background:transparent;border:1px solid transparent;color:var(--txt);padding:10px 12px;border-radius:10px;cursor:pointer;margin-bottom:6px}
+    .menu button:hover{background:#0f1a2c;border-color:#1f2f4a}.menu button.active{background:#13233a;border-color:#2a4470;color:#cfe1ff}
+    .logout{margin-top:16px;width:100%;padding:10px;border-radius:10px;border:1px solid #2f425f;background:#101c2e;color:#d7e8ff;cursor:pointer}
+    .main{padding:20px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
+    .btn{background:#11233c;border:1px solid #29486f;color:#ddecff;padding:9px 12px;border-radius:10px;cursor:pointer}
+    .btn:hover{filter:brightness(1.1)} .btn.danger{border-color:#6c2d2d;background:#2b1313}
+    .cards{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}.muted{color:var(--muted);font-size:12px}.v{font-size:22px;font-weight:700;margin-top:6px}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+    h2{margin:0 0 10px;font-size:18px} h3{margin:0 0 10px;font-size:16px}
+    table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid #1b2a44;text-align:left;font-size:13px} th{color:#a6bbdb}
+    input,select,textarea{width:100%;background:#0d1727;border:1px solid #2a3d5a;color:#eaf2ff;padding:9px;border-radius:10px}
+    .row{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:8px}.row2{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px}
+    .hidden{display:none}.tag{padding:3px 7px;border-radius:999px;font-size:11px;border:1px solid #2d4b76;color:#b7cff3}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .danger{color:var(--danger)}
+    @media (max-width: 980px){.app{grid-template-columns:1fr}.side{height:auto;position:relative}.cards{grid-template-columns:repeat(2,minmax(140px,1fr))}.row,.row2{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <h1>Marketplace Admin</h1>
-  <div class="row">
-    <button onclick="loadAll()">Atualizar</button>
-    <button onclick="logout()">Sair</button>
-  </div>
+<div class="app">
+  <aside class="side">
+    <div class="brand">Marketplace Admin</div>
+    <div class="menu">
+      <button class="active" data-tab="dashboard" onclick="switchTab('dashboard',this)">Dashboard</button>
+      <button data-tab="financeiro" onclick="switchTab('financeiro',this)">Financeiro</button>
+      <button data-tab="plugins" onclick="switchTab('plugins',this)">Plugins</button>
+      <button data-tab="cupons" onclick="switchTab('cupons',this)">Cupons</button>
+      <button data-tab="licencas" onclick="switchTab('licencas',this)">Licenças</button>
+      <button data-tab="auditoria" onclick="switchTab('auditoria',this)">Auditoria</button>
+    </div>
+    <button class="logout" onclick="logout()">Sair</button>
+  </aside>
 
-  <div class="row">
-    <div class="card"><div class="muted">Instâncias</div><div id="kpi-instances">-</div></div>
-    <div class="card"><div class="muted">Licenças</div><div id="kpi-licenses">-</div></div>
-    <div class="card"><div class="muted">Assinaturas</div><div id="kpi-subs">-</div></div>
-    <div class="card"><div class="muted">MRR (BRL)</div><div id="kpi-mrr">-</div></div>
-  </div>
+  <main class="main">
+    <div class="top">
+      <h2 id="screenTitle">Visão Executiva</h2>
+      <button class="btn" onclick="loadAll()">Atualizar dados</button>
+    </div>
 
-  <h3>Instâncias</h3>
-  <table id="instances"><thead><tr><th>UUID</th><th>Status</th><th>Versão</th><th>Last seen</th></tr></thead><tbody></tbody></table>
+    <section id="dashboard" class="tab">
+      <div class="cards">
+        <div class="card"><div class="muted">Instâncias</div><div id="kpi-instances" class="v">-</div></div>
+        <div class="card"><div class="muted">Licenças</div><div id="kpi-licenses" class="v">-</div></div>
+        <div class="card"><div class="muted">Assinaturas</div><div id="kpi-subs" class="v">-</div></div>
+        <div class="card"><div class="muted">MRR (BRL)</div><div id="kpi-mrr" class="v">-</div></div>
+      </div>
+      <div class="panel">
+        <h3>Instâncias recentes</h3>
+        <table id="instances"><thead><tr><th>UUID</th><th>Status</th><th>Versão</th><th>Last seen</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
 
-  <h3>Licenças (últimas)</h3>
-  <table id="licenses"><thead><tr><th>instance_id</th><th>plugin</th><th>status</th><th>updated_at</th></tr></thead><tbody></tbody></table>
+    <section id="financeiro" class="tab hidden">
+      <div class="panel">
+        <h3>Resumo financeiro</h3>
+        <table id="byplan"><thead><tr><th>Plano</th><th>Total</th><th>Ativos</th><th>Pendentes</th><th>Inadimplentes</th><th>Cancelados</th><th>MRR</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="panel">
+        <h3>Timeline (cadastro diário)</h3>
+        <table id="timeline"><thead><tr><th>Data</th><th>Criadas</th><th>Ativas</th><th>Pendentes</th><th>Inadimplentes</th><th>Canceladas</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="panel">
+        <h3>Assinaturas</h3>
+        <table id="subscriptions"><thead><tr><th>ID</th><th>Status</th><th>Plan</th><th>Customer</th><th>Criada</th><th>Expira</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
 
-  <h3>Gerenciar licença (MVP)</h3>
-  <div class="row">
-    <input id="instance_id" placeholder="instance_id" />
-    <input id="plugin_slug" placeholder="plugin_slug" />
-    <select id="status"><option value="active">active</option><option value="inactive">inactive</option></select>
-    <button onclick="upsertLicense()">Salvar licença</button>
-  </div>
+    <section id="plugins" class="tab hidden">
+      <div class="panel">
+        <h3>Cadastro de plugin</h3>
+        <div class="row2">
+          <input id="p_slug" placeholder="slug" />
+          <input id="p_name" placeholder="nome" />
+          <input id="p_version" placeholder="versão" value="1.0.0" />
+          <select id="p_type"><option value="business">business</option><option value="free">free</option></select>
+          <input id="p_category" placeholder="categoria" value="other" />
+          <input id="p_price" placeholder="preço" type="number" step="0.01" value="0" />
+          <input id="p_icon" placeholder="iconUrl (opcional)" />
+          <input id="p_desc" placeholder="descrição" />
+        </div>
+        <div style="margin-top:8px"><button class="btn" onclick="createPlugin()">Adicionar plugin</button></div>
+      </div>
+      <div class="panel">
+        <h3>Plugins cadastrados</h3>
+        <table id="pluginsTable"><thead><tr><th>Nome</th><th>slug</th><th>tipo</th><th>preço</th><th>ativo</th><th>Ações</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
 
-  <h3>Assinaturas (últimas)</h3>
-  <table id="subscriptions"><thead><tr><th>id</th><th>status</th><th>plan_id</th><th>customer_id</th><th>created_at</th><th>expires_at</th></tr></thead><tbody></tbody></table>
+    <section id="cupons" class="tab hidden">
+      <div class="panel">
+        <h3>Novo cupom (regras)</h3>
+        <div class="row">
+          <input id="c_code" placeholder="código (ex: WELCOME10)" />
+          <select id="c_type"><option value="percent">percent</option><option value="fixed">fixed</option></select>
+          <input id="c_value" type="number" step="0.01" placeholder="valor" />
+          <input id="c_max" type="number" step="0.01" placeholder="max desconto" />
+          <input id="c_min" type="number" step="0.01" placeholder="valor mínimo" />
+          <input id="c_limit" type="number" placeholder="limite de uso (0=ilimitado)" />
+          <input id="c_start" type="datetime-local" placeholder="início" />
+          <input id="c_end" type="datetime-local" placeholder="fim" />
+          <input id="c_plugins" placeholder="plugins (slug,slug)" />
+          <select id="c_active"><option value="true">ativo</option><option value="false">inativo</option></select>
+        </div>
+        <div style="margin-top:8px"><button class="btn" onclick="createCoupon()">Criar cupom</button></div>
+      </div>
+      <div class="panel">
+        <h3>Cupons cadastrados</h3>
+        <table id="couponsTable"><thead><tr><th>Código</th><th>Regra</th><th>Uso</th><th>Janela</th><th>Ativo</th><th>Ações</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
 
-  <h3>Financeiro por Plano</h3>
-  <table id="byplan"><thead><tr><th>Plano</th><th>Total</th><th>Ativos</th><th>Pendentes</th><th>Inadimplentes</th><th>Cancelados</th><th>MRR</th></tr></thead><tbody></tbody></table>
+    <section id="licencas" class="tab hidden">
+      <div class="panel">
+        <h3>Gerenciar licenças por instância</h3>
+        <div class="row2">
+          <input id="instance_id" placeholder="instance_id" />
+          <input id="plugin_slug" placeholder="plugin_slug" />
+          <select id="status"><option value="active">active</option><option value="inactive">inactive</option></select>
+          <button class="btn" onclick="upsertLicense()">Salvar licença</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Licenças (últimas)</h3>
+        <table id="licenses"><thead><tr><th>instance_id</th><th>plugin</th><th>status</th><th>updated_at</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
 
-  <h3>Timeline (cadastros por dia)</h3>
-  <table id="timeline"><thead><tr><th>Data</th><th>Criadas</th><th>Ativas</th><th>Pendentes</th><th>Inadimplentes</th><th>Canceladas</th></tr></thead><tbody></tbody></table>
-
-  <p class="muted">Cupom/desconto: endpoint stub criado (próxima fase).</p>
+    <section id="auditoria" class="tab hidden">
+      <div class="panel">
+        <h3>Trilha de auditoria</h3>
+        <table id="audits"><thead><tr><th>Quando</th><th>Ação</th><th>Ator</th><th>Payload</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+  </main>
+</div>
 
 <script>
+function switchTab(tab, el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.add('hidden'));
+  document.getElementById(tab).classList.remove('hidden');
+  document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const title = {dashboard:'Visão Executiva', financeiro:'Financeiro', plugins:'Cadastro de Plugins', cupons:'Cupons e Regras', licencas:'Gestão de Licenças', auditoria:'Auditoria'};
+  document.getElementById('screenTitle').textContent = title[tab] || 'Marketplace Admin';
+}
+
 async function api(path, opts={}){
-  const res = await fetch(path, {
-    ...opts,
-    credentials: 'include',
-    headers: {
-      'content-type':'application/json',
-      ...(opts.headers||{})
-    }
-  });
+  const res = await fetch(path, { ...opts, credentials:'include', headers:{'content-type':'application/json', ...(opts.headers||{})} });
   const data = await res.json().catch(()=>({}));
-  if(res.status === 401){
-    window.location.href = '/login';
-    return;
-  }
+  if(res.status===401){ window.location.href='/login'; return; }
   if(!res.ok) throw new Error(data.error ? JSON.stringify(data.error) : res.statusText);
   return data;
 }
 
-async function logout(){
-  await fetch('/logout', { method:'POST', credentials:'include' });
-  window.location.href = '/login';
-}
+async function logout(){ await fetch('/logout',{method:'POST',credentials:'include'}); window.location.href='/login'; }
 
 function fillTable(id, rows, mapFn){
-  const tb = document.querySelector(`#${id} tbody`);
-  tb.innerHTML = '';
-  rows.forEach(r=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = mapFn(r);
-    tb.appendChild(tr);
-  });
+  const tb=document.querySelector(`#${id} tbody`); tb.innerHTML='';
+  rows.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=mapFn(r); tb.appendChild(tr); });
 }
 
 async function loadAll(){
   try{
-    const [ov, inst, lic, fin, subs, byplan, timeline] = await Promise.all([
+    const [ov,inst,lic,fin,subs,byplan,timeline,plugins,coupons,audits]=await Promise.all([
       api('/api/v1/admin/overview'),
       api('/api/v1/admin/instances?limit=20'),
       api('/api/v1/admin/licenses'),
       api('/api/v1/admin/finance/summary'),
       api('/api/v1/admin/subscriptions?limit=20'),
       api('/api/v1/admin/finance/by-plan'),
-      api('/api/v1/admin/finance/timeline')
+      api('/api/v1/admin/finance/timeline'),
+      api('/api/v1/admin/plugins'),
+      api('/api/v1/admin/coupons'),
+      api('/api/v1/admin/audits?limit=80')
     ]);
 
-    document.getElementById('kpi-instances').textContent = ov.instances;
-    document.getElementById('kpi-licenses').textContent = ov.licenses;
-    document.getElementById('kpi-subs').textContent = ov.subscriptions;
-    document.getElementById('kpi-mrr').textContent = Number(fin.mrr || 0).toFixed(2);
+    document.getElementById('kpi-instances').textContent=ov.instances;
+    document.getElementById('kpi-licenses').textContent=ov.licenses;
+    document.getElementById('kpi-subs').textContent=ov.subscriptions;
+    document.getElementById('kpi-mrr').textContent=Number(fin.mrr||0).toFixed(2);
 
-    fillTable('instances', inst.items || [], (r)=>`<td>${r.instance_uuid||''}</td><td>${r.status||''}</td><td>${r.version||''}</td><td>${r.last_seen||''}</td>`);
-    fillTable('licenses', lic.items || [], (r)=>`<td>${r.instance_id||''}</td><td>${r.plugin_slug||''}</td><td class='ok'>${r.status||''}</td><td>${r.updated_at||''}</td>`);
-    fillTable('subscriptions', subs.items || [], (r)=>`<td>${r.id||''}</td><td>${r.status||''}</td><td>${r.plan_id||''}</td><td>${r.customer_id||''}</td><td>${r.created_at||''}</td><td>${r.expires_at||''}</td>`);
-    fillTable('byplan', byplan.items || [], (r)=>`<td>${r.plan||''}</td><td>${r.total||0}</td><td>${r.active||0}</td><td>${r.pending||0}</td><td>${r.overdue||0}</td><td>${r.canceled||0}</td><td>${Number(r.mrr||0).toFixed(2)}</td>`);
-    fillTable('timeline', timeline.items || [], (r)=>`<td>${r.date||''}</td><td>${r.created||0}</td><td>${r.active||0}</td><td>${r.pending||0}</td><td>${r.overdue||0}</td><td>${r.canceled||0}</td>`);
-  }catch(e){
-    alert('Erro: '+e.message);
-  }
+    fillTable('instances',inst.items||[],r=>`<td>${r.instance_uuid||''}</td><td>${r.status||''}</td><td>${r.version||''}</td><td>${r.last_seen||''}</td>`);
+    fillTable('licenses',lic.items||[],r=>`<td>${r.instance_id||''}</td><td>${r.plugin_slug||''}</td><td class='ok'>${r.status||''}</td><td>${r.updated_at||''}</td>`);
+    fillTable('subscriptions',subs.items||[],r=>`<td>${r.id||''}</td><td>${r.status||''}</td><td>${r.plan_id||''}</td><td>${r.customer_id||''}</td><td>${r.created_at||''}</td><td>${r.expires_at||''}</td>`);
+    fillTable('byplan',byplan.items||[],r=>`<td>${r.plan||''}</td><td>${r.total||0}</td><td>${r.active||0}</td><td>${r.pending||0}</td><td>${r.overdue||0}</td><td>${r.canceled||0}</td><td>${Number(r.mrr||0).toFixed(2)}</td>`);
+    fillTable('timeline',timeline.items||[],r=>`<td>${r.date||''}</td><td>${r.created||0}</td><td>${r.active||0}</td><td>${r.pending||0}</td><td>${r.overdue||0}</td><td>${r.canceled||0}</td>`);
+
+    fillTable('pluginsTable',plugins.items||[],r=>`<td>${r.name||''}</td><td>${r.slug||''}</td><td>${r.type||''}</td><td>${Number(r.price||0).toFixed(2)}</td><td>${r.active?'sim':'não'}</td><td><button class='btn danger' onclick="deletePlugin('${r.id}')">Excluir</button></td>`);
+
+    fillTable('couponsTable',coupons.items||[],r=>`<td>${r.code}</td><td>${r.type} ${r.value} ${r.minAmount?`• min ${r.minAmount}`:''}</td><td>${r.usedCount||0}/${r.usageLimit||'∞'}</td><td>${r.startAt||'-'}<br>${r.endAt||'-'}</td><td>${r.active?'sim':'não'}</td><td><button class='btn danger' onclick="deleteCoupon('${r.id}')">Excluir</button></td>`);
+
+    fillTable('audits',audits.items||[],r=>`<td>${r.created_at||''}</td><td><span class='tag'>${r.action||''}</span></td><td>${r.actor||''}</td><td><code>${JSON.stringify(r.payload||{}).slice(0,120)}</code></td>`);
+  }catch(e){ alert('Erro: '+e.message); }
 }
 
 async function upsertLicense(){
-  try{
-    const payload = {
-      instance_id: document.getElementById('instance_id').value.trim(),
-      plugin_slug: document.getElementById('plugin_slug').value.trim(),
-      status: document.getElementById('status').value
-    };
-    await api('/api/v1/admin/licenses/upsert', { method:'POST', body: JSON.stringify(payload) });
-    alert('Licença atualizada');
-    await loadAll();
-  }catch(e){
-    alert('Erro: '+e.message);
-  }
+  const payload={instance_id:val('instance_id'),plugin_slug:val('plugin_slug'),status:document.getElementById('status').value};
+  await api('/api/v1/admin/licenses/upsert',{method:'POST',body:JSON.stringify(payload)});
+  alert('Licença atualizada'); loadAll();
 }
+
+async function createPlugin(){
+  const payload={slug:val('p_slug'),name:val('p_name'),description:val('p_desc'),version:val('p_version'),type:document.getElementById('p_type').value,category:val('p_category'),price:Number(val('p_price')||0),iconUrl:val('p_icon'),active:true};
+  await api('/api/v1/admin/plugins',{method:'POST',body:JSON.stringify(payload)});
+  alert('Plugin criado'); loadAll();
+}
+
+async function deletePlugin(id){ if(!confirm('Excluir plugin?')) return; await api(`/api/v1/admin/plugins/${id}`,{method:'DELETE'}); loadAll(); }
+
+async function createCoupon(){
+  const payload={
+    code: val('c_code'),
+    type: document.getElementById('c_type').value,
+    value: Number(val('c_value')||0),
+    maxDiscount: Number(val('c_max')||0),
+    minAmount: Number(val('c_min')||0),
+    usageLimit: Number(val('c_limit')||0),
+    startAt: val('c_start') || null,
+    endAt: val('c_end') || null,
+    appliesToPlugins: val('c_plugins') ? val('c_plugins').split(',').map(s=>s.trim()).filter(Boolean) : [],
+    active: document.getElementById('c_active').value === 'true'
+  };
+  await api('/api/v1/admin/coupons',{method:'POST',body:JSON.stringify(payload)});
+  alert('Cupom criado'); loadAll();
+}
+
+async function deleteCoupon(id){ if(!confirm('Excluir cupom?')) return; await api(`/api/v1/admin/coupons/${id}`,{method:'DELETE'}); loadAll(); }
+
+function val(id){ return (document.getElementById(id)?.value||'').trim(); }
 
 loadAll();
 </script>
