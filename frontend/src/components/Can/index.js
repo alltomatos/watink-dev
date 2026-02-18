@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 const check = (user, action, data) => {
 	const userPermissions = user?.permissions || [];
 	const profile = user?.profile || user?.role; // Fallback for legacy calls passing role directly in user prop? No, user prop is object. 

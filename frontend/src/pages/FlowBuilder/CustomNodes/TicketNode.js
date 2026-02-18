@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from 'react';
 import { ConfirmationNumber as TicketIcon } from '@material-ui/icons';
 import BaseNode from './BaseNode';

@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 function getConfig(name, defaultValue = null) {
   if (typeof window !== "undefined") {
     const runtimeEnv = window.ENV;
@@ -10,7 +11,14 @@ function getConfig(name, defaultValue = null) {
 }
 
 export function getBackendUrl() {
-  return getConfig("VITE_BACKEND_URL");
+  // MODO BUSSINES: Se o backendUrl não estiver definido, 
+  // assume que a API está no mesmo domínio (Caminho Relativo)
+  const configUrl = getConfig("VITE_BACKEND_URL");
+  if (!configUrl) {
+    // Retorna a URL base do navegador removendo a barra final se houver
+    return window.location.origin;
+  }
+  return configUrl;
 }
 
 export function getHoursCloseTicketsAuto() {
@@ -19,4 +27,17 @@ export function getHoursCloseTicketsAuto() {
 
 export function getPluginManagerUrl() {
   return getConfig("VITE_PLUGIN_MANAGER_URL") || getBackendUrl();
+}
+
+export function getSwaggerUrl() {
+  const backendUrl = getBackendUrl() || (typeof window !== "undefined" ? window.location.origin : "");
+  const base = backendUrl.endsWith("/") ? backendUrl.slice(0, -1) : backendUrl;
+
+  // Watink Business (binário único): prioriza docs no backend sob /api/docs
+  if (typeof window !== "undefined" && base === window.location.origin) {
+    return `${base}/api/docs`;
+  }
+
+  // Cenário backend separado
+  return `${base}/docs`;
 }

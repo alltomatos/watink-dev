@@ -40,14 +40,13 @@ const express_1 = __importDefault(require("express"));
 const isAuth_1 = __importDefault(require("../middleware/isAuth"));
 const checkPermission_1 = __importDefault(require("../middleware/checkPermission"));
 const TicketController = __importStar(require("../controllers/TicketController"));
-const isAuditor_1 = __importDefault(require("../middleware/isAuditor"));
 const ticketRoutes = express_1.default.Router();
 // ... (Swagger docs omitted for brevity)
 ticketRoutes.get("/tickets", isAuth_1.default, TicketController.index);
 ticketRoutes.get("/tickets/:ticketId", isAuth_1.default, TicketController.show);
-ticketRoutes.post("/tickets", isAuth_1.default, isAuditor_1.default, TicketController.store);
+ticketRoutes.post("/tickets", isAuth_1.default, TicketController.store);
 ticketRoutes.put("/tickets/close-all", isAuth_1.default, TicketController.closeAll);
-ticketRoutes.put("/tickets/:ticketId", isAuth_1.default, isAuditor_1.default, TicketController.update);
+ticketRoutes.put("/tickets/:ticketId", isAuth_1.default, TicketController.update);
 ticketRoutes.delete("/tickets/:ticketId", isAuth_1.default, (0, checkPermission_1.default)("delete_tickets"), TicketController.remove);
 // Novo: Rota para buscar histórico de mensagens sob demanda
 ticketRoutes.post("/tickets/:ticketId/history", isAuth_1.default, TicketController.syncHistory);

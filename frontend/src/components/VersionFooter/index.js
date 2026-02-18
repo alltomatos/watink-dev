@@ -1,6 +1,8 @@
-import React from "react";
+/* @jsxImportSource react */
+import React, { useContext } from "react";
 import { makeStyles, Typography } from "@material-ui/core";
 import { Link as RouterLink } from "react-router-dom";
+import { AuthContext } from "../../context/Auth/AuthContext";
 
 const useStyles = makeStyles((theme) => ({
     footer: {
@@ -22,17 +24,19 @@ const useStyles = makeStyles((theme) => ({
 
 const VersionFooter = ({ collapsed = false }) => {
     const classes = useStyles();
+    const { user } = useContext(AuthContext);
+    const isSuperAdmin = (user?.profile || "").toLowerCase() === "superadmin";
 
     // Esconder footer quando drawer está colapsado
-    if (collapsed) {
+    if (collapsed || !isSuperAdmin) {
         return null;
     }
 
     return (
         <div className={classes.footer}>
-            <RouterLink to="/versions" className={classes.link}>
+            <RouterLink to="/monitor" className={classes.link}>
                 <Typography variant="caption" display="block">
-                    Versões
+                    Monitor
                 </Typography>
             </RouterLink>
         </div>

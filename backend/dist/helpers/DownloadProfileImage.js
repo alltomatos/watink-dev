@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -51,7 +42,7 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importStar(require("path"));
 const upload_1 = __importDefault(require("../config/upload"));
 const logger_1 = require("../utils/logger");
-const DownloadProfileImage = (_a) => __awaiter(void 0, [_a], void 0, function* ({ profilePicUrl, tenantId, contactId }) {
+const DownloadProfileImage = async ({ profilePicUrl, tenantId, contactId }) => {
     const publicFolder = upload_1.default.directory;
     let filename = "";
     const folder = path_1.default.join(publicFolder, String(tenantId), "contacts");
@@ -70,14 +61,14 @@ const DownloadProfileImage = (_a) => __awaiter(void 0, [_a], void 0, function* (
     logger_1.logger.info(`[DownloadProfileImage] Downloading new image for contact ${contactId}...`);
     while (attempt < maxAttempts) {
         try {
-            const response = yield axios_1.default.get(profilePicUrl, {
+            const response = await axios_1.default.get(profilePicUrl, {
                 responseType: "arraybuffer",
                 timeout: 10000
             });
             // Process image with sharp if available, else save directly
             try {
                 const sharp = require("sharp");
-                yield sharp(response.data)
+                await sharp(response.data)
                     .resize(500, 500, {
                     fit: 'inside', // Maintain aspect ratio, max 500x500
                     withoutEnlargement: true // Don't upscale if smaller
@@ -103,9 +94,9 @@ const DownloadProfileImage = (_a) => __awaiter(void 0, [_a], void 0, function* (
         catch (error) {
             logger_1.logger.error(`[DownloadProfileImage] Failed attempt ${attempt + 1} for contact ${contactId}: ${error}`);
             attempt++;
-            yield new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 1000));
         }
     }
     return "";
-});
+};
 exports.DownloadProfileImage = DownloadProfileImage;

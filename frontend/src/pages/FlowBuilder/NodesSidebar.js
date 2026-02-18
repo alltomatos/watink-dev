@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState, useEffect } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import { Typography, Tooltip } from '@material-ui/core';
@@ -132,7 +133,7 @@ const NodesSidebar = () => {
         const checkHelpdeskPlugin = async () => {
             try {
                 // Verificar plugins instalados/ativos
-                const { data } = await api.get('/plugins/api/v1/plugins/installed');
+                const { data } = await api.get('/v1/plugins/installed');
                 // API retorna { active: ["slug1", "slug2"] } - array de strings
                 const activePlugins = data.active || [];
                 // Verificar se 'helpdesk' está na lista de plugins ativos

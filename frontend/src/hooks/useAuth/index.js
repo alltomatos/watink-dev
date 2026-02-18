@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import { useState, useEffect } from "react";
 import { useHistory } from "react-router-dom";
 import openSocket from "../../services/socket-io";

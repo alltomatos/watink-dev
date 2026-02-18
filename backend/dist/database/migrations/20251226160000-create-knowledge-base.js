@@ -1,21 +1,12 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 module.exports = {
-    up: (queryInterface) => __awaiter(void 0, void 0, void 0, function* () {
+    up: async (queryInterface) => {
         // Enable pgvector extension
-        yield queryInterface.sequelize.query("CREATE EXTENSION IF NOT EXISTS vector;");
+        await queryInterface.sequelize.query("CREATE EXTENSION IF NOT EXISTS vector;");
         // Table: KnowledgeBases
-        yield queryInterface.createTable("KnowledgeBases", {
+        await queryInterface.createTable("KnowledgeBases", {
             id: {
                 type: sequelize_1.DataTypes.INTEGER,
                 autoIncrement: true,
@@ -47,7 +38,7 @@ module.exports = {
             }
         });
         // Table: KnowledgeSources
-        yield queryInterface.createTable("KnowledgeSources", {
+        await queryInterface.createTable("KnowledgeSources", {
             id: {
                 type: sequelize_1.DataTypes.INTEGER,
                 autoIncrement: true,
@@ -99,7 +90,7 @@ module.exports = {
             }
         });
         // Table: KnowledgeVectors
-        yield queryInterface.createTable("KnowledgeVectors", {
+        await queryInterface.createTable("KnowledgeVectors", {
             id: {
                 type: sequelize_1.DataTypes.INTEGER,
                 autoIncrement: true,
@@ -143,15 +134,15 @@ module.exports = {
         // Manually alter column to be vector type if possible, or trust array logic
         // We execute a raw query to convert the column to actual vector type to be safe
         try {
-            yield queryInterface.sequelize.query(`ALTER TABLE "KnowledgeVectors" ALTER COLUMN vector TYPE vector(1536);`);
+            await queryInterface.sequelize.query(`ALTER TABLE "KnowledgeVectors" ALTER COLUMN vector TYPE vector(1536);`);
         }
         catch (e) {
             console.log("Vector extension might not be enabled or vector type issue", e);
         }
-    }),
-    down: (queryInterface) => __awaiter(void 0, void 0, void 0, function* () {
-        yield queryInterface.dropTable("KnowledgeVectors");
-        yield queryInterface.dropTable("KnowledgeSources");
-        yield queryInterface.dropTable("KnowledgeBases");
-    })
+    },
+    down: async (queryInterface) => {
+        await queryInterface.dropTable("KnowledgeVectors");
+        await queryInterface.dropTable("KnowledgeSources");
+        await queryInterface.dropTable("KnowledgeBases");
+    }
 };

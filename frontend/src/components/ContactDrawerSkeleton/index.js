@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from "react";
 import Skeleton from "@material-ui/lab/Skeleton";
 import Typography from "@material-ui/core/Typography";

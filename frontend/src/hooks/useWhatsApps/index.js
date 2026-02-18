@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import { useState, useEffect, useReducer } from "react";
 import openSocket from "../../services/socket-io";
 import toastError from "../../errors/toastError";

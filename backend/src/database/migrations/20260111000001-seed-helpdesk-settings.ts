@@ -40,15 +40,6 @@ module.exports = {
                     { key: "helpdesk_sla_config", value: defaultSla, createdAt: now, updatedAt: now, tenantId }
                 );
             }
-        } else {
-            // Fallback for single tenant / no tenants table
-            const tenantId = 1;
-            const now = new Date();
-            settingsToInsert.push(
-                { key: "helpdesk_settings_enabled", value: "false", createdAt: now, updatedAt: now, tenantId },
-                { key: "helpdesk_categories", value: defaultCategories, createdAt: now, updatedAt: now, tenantId },
-                { key: "helpdesk_sla_config", value: defaultSla, createdAt: now, updatedAt: now, tenantId }
-            );
         }
 
         if (settingsToInsert.length > 0) {

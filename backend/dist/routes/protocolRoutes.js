@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const multer_1 = __importDefault(require("multer"));
 const isAuth_1 = __importDefault(require("../middleware/isAuth"));
+const ensurePluginLicense_1 = __importDefault(require("../middleware/ensurePluginLicense"));
 const upload_1 = __importDefault(require("../config/upload"));
 const ProtocolController = __importStar(require("../controllers/ProtocolController"));
 const ProtocolPublicController = __importStar(require("../controllers/ProtocolPublicController"));
@@ -46,19 +47,19 @@ const ProtocolKanbanController = __importStar(require("../controllers/ProtocolKa
 const ProtocolAttachmentController = __importStar(require("../controllers/ProtocolAttachmentController"));
 const protocolRoutes = express_1.default.Router();
 const upload = (0, multer_1.default)(upload_1.default);
-protocolRoutes.get("/protocols/kanban", isAuth_1.default, ProtocolKanbanController.index);
-protocolRoutes.get("/protocols/dashboard", isAuth_1.default, ProtocolController.dashboard);
-protocolRoutes.get("/protocols", isAuth_1.default, ProtocolController.index);
-protocolRoutes.post("/protocols", isAuth_1.default, ProtocolController.store);
-protocolRoutes.get("/protocols/:protocolId", isAuth_1.default, ProtocolController.show);
-protocolRoutes.put("/protocols/:protocolId", isAuth_1.default, upload.array("files", 10), ProtocolController.update);
+protocolRoutes.get("/protocols/kanban", isAuth_1.default, (0, ensurePluginLicense_1.default)("helpdesk"), ProtocolKanbanController.index);
+protocolRoutes.get("/protocols/dashboard", isAuth_1.default, (0, ensurePluginLicense_1.default)("helpdesk"), ProtocolController.dashboard);
+protocolRoutes.get("/protocols", isAuth_1.default, (0, ensurePluginLicense_1.default)("helpdesk"), ProtocolController.index);
+protocolRoutes.post("/protocols", isAuth_1.default, (0, ensurePluginLicense_1.default)("helpdesk"), ProtocolController.store);
+protocolRoutes.get("/protocols/:protocolId", isAuth_1.default, (0, ensurePluginLicense_1.default)("helpdesk"), ProtocolController.show);
+protocolRoutes.put("/protocols/:protocolId", isAuth_1.default, (0, ensurePluginLicense_1.default)("helpdesk"), upload.array("files", 10), ProtocolController.update);
 // Attachment routes
-protocolRoutes.get("/protocols/:protocolId/attachments", isAuth_1.default, ProtocolAttachmentController.index);
-protocolRoutes.post("/protocols/:protocolId/attachments", isAuth_1.default, upload.array("files", 10), ProtocolAttachmentController.store);
-protocolRoutes.delete("/protocols/:protocolId/attachments/:attachmentId", isAuth_1.default, ProtocolAttachmentController.destroy);
+protocolRoutes.get("/protocols/:protocolId/attachments", isAuth_1.default, (0, ensurePluginLicense_1.default)("helpdesk"), ProtocolAttachmentController.index);
+protocolRoutes.post("/protocols/:protocolId/attachments", isAuth_1.default, (0, ensurePluginLicense_1.default)("helpdesk"), upload.array("files", 10), ProtocolAttachmentController.store);
+protocolRoutes.delete("/protocols/:protocolId/attachments/:attachmentId", isAuth_1.default, (0, ensurePluginLicense_1.default)("helpdesk"), ProtocolAttachmentController.destroy);
 // Public route for protocol checking
 protocolRoutes.get("/public/protocols/:token", ProtocolPublicController.show);
 protocolRoutes.get("/public/protocols/:token/attachments", ProtocolAttachmentController.publicIndex);
 // Special route for creating protocol from contact drawer
-protocolRoutes.post("/contacts/:contactId/protocols", isAuth_1.default, ProtocolController.createFromContact);
+protocolRoutes.post("/contacts/:contactId/protocols", isAuth_1.default, (0, ensurePluginLicense_1.default)("helpdesk"), ProtocolController.createFromContact);
 exports.default = protocolRoutes;

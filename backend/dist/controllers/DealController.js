@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -52,10 +43,10 @@ const CreateDealService_1 = __importDefault(require("../services/DealServices/Cr
 const ListDealsService_1 = __importDefault(require("../services/DealServices/ListDealsService"));
 const UpdateDealService_1 = __importDefault(require("../services/DealServices/UpdateDealService"));
 const DeleteDealService_1 = __importDefault(require("../services/DealServices/DeleteDealService"));
-const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const index = async (req, res) => {
     const { tenantId } = req.user;
     const { searchParam, pageNumber, pipelineId, stageId, ticketId } = req.query;
-    const { deals, count, hasMore } = yield (0, ListDealsService_1.default)({
+    const { deals, count, hasMore } = await (0, ListDealsService_1.default)({
         searchParam,
         pageNumber,
         pipelineId,
@@ -64,38 +55,38 @@ const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         tenantId
     });
     return res.json({ deals, count, hasMore });
-});
+};
 exports.index = index;
-const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const store = async (req, res) => {
     const { tenantId } = req.user;
-    const dealData = Object.assign(Object.assign({}, req.body), { tenantId });
+    const dealData = { ...req.body, tenantId };
     const schema = Yup.object().shape({
         title: Yup.string().required(),
         contactId: Yup.number().required(),
         pipelineId: Yup.number().required()
     });
     try {
-        yield schema.validate(dealData);
+        await schema.validate(dealData);
     }
     catch (err) {
         throw new AppError_1.default(err.message);
     }
-    const deal = yield (0, CreateDealService_1.default)(dealData);
+    const deal = await (0, CreateDealService_1.default)(dealData);
     return res.status(200).json(deal);
-});
+};
 exports.store = store;
-const update = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const update = async (req, res) => {
     const { tenantId } = req.user;
     const { dealId } = req.params;
     const dealData = req.body;
-    const deal = yield (0, UpdateDealService_1.default)({ dealData, dealId, tenantId });
+    const deal = await (0, UpdateDealService_1.default)({ dealData, dealId, tenantId });
     return res.status(200).json(deal);
-});
+};
 exports.update = update;
-const remove = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const remove = async (req, res) => {
     const { tenantId } = req.user;
     const { dealId } = req.params;
-    yield (0, DeleteDealService_1.default)({ id: dealId, tenantId });
+    await (0, DeleteDealService_1.default)({ id: dealId, tenantId });
     return res.status(200).json({ message: "Deal deleted" });
-});
+};
 exports.remove = remove;

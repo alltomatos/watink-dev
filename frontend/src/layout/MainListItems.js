@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 // MainListItems.js modifications
 import React, { useContext, useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
@@ -5,7 +6,6 @@ import { Link as RouterLink } from "react-router-dom";
 import ListItem from "@material-ui/core/ListItem";
 import ListItemIcon from "@material-ui/core/ListItemIcon";
 import ListItemText from "@material-ui/core/ListItemText";
-import ListSubheader from "@material-ui/core/ListSubheader";
 import Divider from "@material-ui/core/Divider";
 import { Badge, Tooltip, makeStyles } from "@material-ui/core";
 import DashboardOutlinedIcon from "@material-ui/icons/DashboardOutlined";
@@ -19,11 +19,12 @@ import PeopleAltOutlinedIcon from "@material-ui/icons/PeopleAltOutlined";
 import ContactPhoneOutlinedIcon from "@material-ui/icons/ContactPhoneOutlined";
 import AccountTreeOutlinedIcon from "@material-ui/icons/AccountTreeOutlined";
 import QuestionAnswerOutlinedIcon from "@material-ui/icons/QuestionAnswerOutlined";
-import MenuBookIcon from "@material-ui/icons/MenuBook";
 import DeviceHubIcon from "@material-ui/icons/DeviceHub";
 import LibraryBooksIcon from "@material-ui/icons/LibraryBooks";
 import PersonOutlineIcon from "@material-ui/icons/PersonOutline";
 import HeadsetMicIcon from "@material-ui/icons/HeadsetMic";
+import BusinessIcon from "@material-ui/icons/Business";
+import ExtensionIcon from "@material-ui/icons/Extension";
 
 import { i18n } from "../translate/i18n";
 import { WhatsAppsContext } from "../context/WhatsApp/WhatsAppsContext";
@@ -44,8 +45,16 @@ const googleColors = {
   pink: "#D01884",
 };
 
+// Icon Mapping for Plugins
+const iconMapping = {
+  "Business": <BusinessIcon />,
+  "PersonOutline": <PersonOutlineIcon />,
+  "HeadsetMic": <HeadsetMicIcon />,
+  "Extension": <ExtensionIcon />,
+};
+
 function ListItemLink(props) {
-  const { icon, primary, to, className, collapsed, iconColor } = props;
+  const { icon, primary, to, href, className, collapsed, iconColor } = props;
   const { appTheme } = useThemeContext();
   const isGoogleTheme = appTheme === "google";
 
@@ -62,7 +71,12 @@ function ListItemLink(props) {
     ? React.cloneElement(icon, { style: { color: iconColor } })
     : icon;
 
-  const listItem = (
+  const listItem = href ? (
+    <ListItem button component="a" href={href} className={className}>
+      {coloredIcon ? <ListItemIcon>{coloredIcon}</ListItemIcon> : null}
+      {!collapsed && <ListItemText primary={primary} />}
+    </ListItem>
+  ) : (
     <ListItem button component={renderLink} className={className}>
       {coloredIcon ? <ListItemIcon>{coloredIcon}</ListItemIcon> : null}
       {!collapsed && <ListItemText primary={primary} />}
@@ -89,13 +103,19 @@ const MainListItems = (props) => {
   const { user } = useContext(AuthContext);
   const [connectionWarning, setConnectionWarning] = useState(false);
   const [activePlugins, setActivePlugins] = useState([]);
+  const [pluginManifests, setPluginManifests] = useState([]);
 
   useEffect(() => {
-    // Fetch active plugins
+    // Fetch active plugins and manifests
     const fetchPlugins = async () => {
       try {
-        const { data } = await api.get("/plugins/api/v1/plugins/installed");
-        setActivePlugins(data.active || []);
+        const { data: installed } = await api.get("/v1/plugins/installed");
+        const activeSlugs = installed.active || [];
+        setActivePlugins(activeSlugs);
+
+        // Endpoint legado /custom-plugins/manifests não existe no backend-go integrado.
+        // Mantemos menu dinâmico vazio até existir um catálogo com metadados de menu.
+        setPluginManifests([]);
       } catch (err) {
         console.error("Failed to fetch plugins", err);
       }
@@ -196,8 +216,28 @@ const MainListItems = (props) => {
         )}
       />
 
-      {/* Dynamic Plugins */}
-      {activePlugins.includes("clientes") && (
+      {/* Dynamic Plugins Menu Items */}
+      {pluginManifests.map(manifest => (
+        manifest.frontend?.menuItems?.map((item, idx) => (
+          <Can
+            key={`${manifest.slug}-${idx}`}
+            user={user}
+            perform={item.permission || "view_dashboard"}
+            yes={() => (
+              <ListItemLink
+                to={item.path}
+                primary={item.name}
+                icon={iconMapping[item.icon] || <ExtensionIcon />}
+                iconColor={googleColors.blue}
+                collapsed={collapsed}
+              />
+            )}
+          />
+        ))
+      ))}
+
+      {/* Legacy/Hardcoded Plugins (Keep for compatibility until fully migrated) */}
+      {activePlugins.includes("clientes") && !pluginManifests.some(m => m.slug === "clientes") && (
         <ListItemLink
           to="/clients"
           primary="Clientes"
@@ -207,7 +247,7 @@ const MainListItems = (props) => {
         />
       )}
 
-      {activePlugins.includes("helpdesk") && (
+      {activePlugins.includes("helpdesk") && !pluginManifests.some(m => m.slug === "helpdesk") && (
         <ListItemLink
           to="/helpdesk"
           primary="Helpdesk"
@@ -218,11 +258,6 @@ const MainListItems = (props) => {
       )}
 
       <Divider />
-      {!collapsed && (
-        <ListSubheader inset>
-          {i18n.t("mainDrawer.listItems.administration")}
-        </ListSubheader>
-      )}
 
       <Can
         user={user}
@@ -314,19 +349,6 @@ const MainListItems = (props) => {
         )}
       />
 
-      <Can
-        user={user}
-        perform="view_swagger"
-        yes={() => (
-          <ListItemLink
-            to="/swagger"
-            primary="Swagger"
-            icon={<MenuBookIcon />}
-            iconColor={googleColors.pink}
-            collapsed={collapsed}
-          />
-        )}
-      />
     </div>
   );
 };

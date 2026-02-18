@@ -18,6 +18,9 @@ const GroupPermission_1 = __importDefault(require("./GroupPermission"));
 const User_1 = __importDefault(require("./User"));
 const UserPermission_1 = __importDefault(require("./UserPermission"));
 let Permission = class Permission extends sequelize_typescript_1.Model {
+    get name() {
+        return `${this.resource}:${this.action}`;
+    }
 };
 __decorate([
     sequelize_typescript_1.PrimaryKey,
@@ -28,7 +31,16 @@ __decorate([
 __decorate([
     (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.STRING),
     __metadata("design:type", String)
-], Permission.prototype, "name", void 0);
+], Permission.prototype, "resource", void 0);
+__decorate([
+    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.STRING),
+    __metadata("design:type", String)
+], Permission.prototype, "action", void 0);
+__decorate([
+    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.VIRTUAL),
+    __metadata("design:type", String),
+    __metadata("design:paramtypes", [])
+], Permission.prototype, "name", null);
 __decorate([
     (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.STRING),
     __metadata("design:type", String)

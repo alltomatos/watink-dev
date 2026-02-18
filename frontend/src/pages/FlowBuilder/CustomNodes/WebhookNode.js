@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { memo } from 'react';
 import HttpIcon from '@material-ui/icons/Http';
 import BaseNode from './BaseNode';
