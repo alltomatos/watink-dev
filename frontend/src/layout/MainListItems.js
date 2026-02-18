@@ -56,7 +56,7 @@ const iconMapping = {
 };
 
 function ListItemLink(props) {
-  const { icon, primary, to, className, collapsed, iconColor } = props;
+  const { icon, primary, to, href, className, collapsed, iconColor } = props;
   const { appTheme } = useThemeContext();
   const isGoogleTheme = appTheme === "google";
 
@@ -73,7 +73,12 @@ function ListItemLink(props) {
     ? React.cloneElement(icon, { style: { color: iconColor } })
     : icon;
 
-  const listItem = (
+  const listItem = href ? (
+    <ListItem button component="a" href={href} className={className}>
+      {coloredIcon ? <ListItemIcon>{coloredIcon}</ListItemIcon> : null}
+      {!collapsed && <ListItemText primary={primary} />}
+    </ListItem>
+  ) : (
     <ListItem button component={renderLink} className={className}>
       {coloredIcon ? <ListItemIcon>{coloredIcon}</ListItemIcon> : null}
       {!collapsed && <ListItemText primary={primary} />}
@@ -353,7 +358,7 @@ const MainListItems = (props) => {
 
       {(user?.permissions || []).includes("view_swagger") && (
         <ListItemLink
-          to="/swagger"
+          href="/api/docs"
           primary="Swagger"
           icon={<MenuBookIcon />}
           iconColor={googleColors.pink}
