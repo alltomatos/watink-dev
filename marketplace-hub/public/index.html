@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Marketplace Admin</title>
+  <style>
+    body{font-family:Inter,Arial,sans-serif;background:#0b1220;color:#e5e7eb;margin:0;padding:24px}
+    h1{margin:0 0 16px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .card{background:#111827;border:1px solid #1f2937;border-radius:10px;padding:14px;min-width:180px}
+    input,button,select{background:#0f172a;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:8px}
+    button{cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border-bottom:1px solid #1f2937;padding:8px;text-align:left;font-size:14px}
+    .muted{color:#94a3b8;font-size:12px}
+    .ok{color:#22c55e}
+  </style>
+</head>
+<body>
+  <h1>Marketplace Admin</h1>
+  <div class="row">
+    <input id="token" placeholder="x-admin-token" style="min-width:320px" />
+    <button onclick="saveToken()">Salvar token</button>
+    <button onclick="loadAll()">Atualizar</button>
+  </div>
+
+  <div class="row">
+    <div class="card"><div class="muted">Instâncias</div><div id="kpi-instances">-</div></div>
+    <div class="card"><div class="muted">Licenças</div><div id="kpi-licenses">-</div></div>
+    <div class="card"><div class="muted">Assinaturas</div><div id="kpi-subs">-</div></div>
+  </div>
+
+  <h3>Instâncias</h3>
+  <table id="instances"><thead><tr><th>UUID</th><th>Status</th><th>Versão</th><th>Last seen</th></tr></thead><tbody></tbody></table>
+
+  <h3>Licenças (últimas)</h3>
+  <table id="licenses"><thead><tr><th>instance_id</th><th>plugin</th><th>status</th><th>updated_at</th></tr></thead><tbody></tbody></table>
+
+  <h3>Gerenciar licença (MVP)</h3>
+  <div class="row">
+    <input id="instance_id" placeholder="instance_id" />
+    <input id="plugin_slug" placeholder="plugin_slug" />
+    <select id="status"><option value="active">active</option><option value="inactive">inactive</option></select>
+    <button onclick="upsertLicense()">Salvar licença</button>
+  </div>
+
+  <p class="muted">Cupom/desconto: endpoint stub criado (próxima fase).</p>
+
+<script>
+const tokenInput = document.getElementById('token');
+const tokenSaved = localStorage.getItem('marketplace_admin_token') || '';
+tokenInput.value = tokenSaved;
+
+function getToken(){ return tokenInput.value.trim(); }
+function saveToken(){ localStorage.setItem('marketplace_admin_token', getToken()); alert('Token salvo'); }
+
+async function api(path, opts={}){
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      'content-type':'application/json',
+      'x-admin-token': getToken(),
+      ...(opts.headers||{})
+    }
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error ? JSON.stringify(data.error) : res.statusText);
+  return data;
+}
+
+function fillTable(id, rows, mapFn){
+  const tb = document.querySelector(`#${id} tbody`);
+  tb.innerHTML = '';
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = mapFn(r);
+    tb.appendChild(tr);
+  });
+}
+
+async function loadAll(){
+  try{
+    const [ov, inst, lic] = await Promise.all([
+      api('/api/v1/admin/overview'),
+      api('/api/v1/admin/instances?limit=20'),
+      api('/api/v1/admin/licenses')
+    ]);
+
+    document.getElementById('kpi-instances').textContent = ov.instances;
+    document.getElementById('kpi-licenses').textContent = ov.licenses;
+    document.getElementById('kpi-subs').textContent = ov.subscriptions;
+
+    fillTable('instances', inst.items || [], (r)=>`<td>${r.instance_uuid||''}</td><td>${r.status||''}</td><td>${r.version||''}</td><td>${r.last_seen||''}</td>`);
+    fillTable('licenses', lic.items || [], (r)=>`<td>${r.instance_id||''}</td><td>${r.plugin_slug||''}</td><td class='ok'>${r.status||''}</td><td>${r.updated_at||''}</td>`);
+  }catch(e){
+    alert('Erro: '+e.message);
+  }
+}
+
+async function upsertLicense(){
+  try{
+    const payload = {
+      instance_id: document.getElementById('instance_id').value.trim(),
+      plugin_slug: document.getElementById('plugin_slug').value.trim(),
+      status: document.getElementById('status').value
+    };
+    await api('/api/v1/admin/licenses/upsert', { method:'POST', body: JSON.stringify(payload) });
+    alert('Licença atualizada');
+    await loadAll();
+  }catch(e){
+    alert('Erro: '+e.message);
+  }
+}
+
+loadAll();
+</script>
+</body>
+</html>
