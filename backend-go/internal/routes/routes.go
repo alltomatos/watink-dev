@@ -90,6 +90,11 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.GET("/flows", controllers.ListFlows)
 		protected.POST("/flows", controllers.CreateFlow)
 
+		// Pipelines
+		protected.GET("/pipelines", controllers.ListPipelines)
+		protected.GET("/pipelines/", controllers.ListPipelines)
+		protected.POST("/pipelines", controllers.CreatePipeline)
+
 		// Business Marketplace Support (V1)
 		v1 := protected.Group("/v1")
 		{
