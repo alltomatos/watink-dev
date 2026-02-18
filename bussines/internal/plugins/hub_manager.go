@@ -141,6 +141,28 @@ func (m *HubManager) CreateCheckout(slug string) (CreateCheckoutResponse, int, e
 	return out, http.StatusOK, nil
 }
 
+func (m *HubManager) RegisterInstance(meta map[string]string) error {
+	payload := map[string]string{
+		"instanceId": m.instanceID,
+		"version":    m.CoreVersion,
+	}
+	for k, v := range meta {
+		payload[k] = v
+	}
+
+	body, _ := json.Marshal(payload)
+	resp, err := m.httpClient.Post(m.HubURL+"/register", "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("hub register status %d", resp.StatusCode)
+	}
+	return nil
+}
+
 func (m *HubManager) startHeartbeat() {
 	go func() {
 		ticker := time.NewTicker(15 * time.Minute)

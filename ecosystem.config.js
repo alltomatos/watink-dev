@@ -15,6 +15,7 @@ module.exports = {
         REDIS_URL: "redis://localhost:6379",
         JWT_SECRET: "watink_secret_key_2026",
         JWT_REFRESH_SECRET: "***REMOVED_JWT_REFRESH_SECRET***",
+        PLUGIN_HUB_URL: "https://marketplace.alltomatos.dev.br/api/v1/hub",
       },
     },
     {

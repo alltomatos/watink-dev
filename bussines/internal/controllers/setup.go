@@ -1,10 +1,12 @@
 package controllers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/alltomatos/watinkdev/backend-go/internal/database"
 	"github.com/alltomatos/watinkdev/backend-go/internal/models"
+	"github.com/alltomatos/watinkdev/backend-go/internal/plugins"
 	"github.com/gin-gonic/gin"
 )
 
@@ -97,6 +99,19 @@ func InitialSetup(c *gin.Context) {
 	}
 	
 	database.DB.Create(&settings)
+
+	// 8. Register instance in Marketplace Hub (best effort)
+	if hm := plugins.GetHubManager(); hm != nil {
+		err := hm.RegisterInstance(map[string]string{
+			"ownerEmail": req.Email,
+			"ownerName":  user.Name,
+			"document":   req.Document,
+			"tenantName": tenant.Name,
+		})
+		if err != nil {
+			log.Printf("⚠️ marketplace hub register failed: %v", err)
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "System initialized successfully"})
 }

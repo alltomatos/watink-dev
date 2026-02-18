@@ -20,7 +20,8 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const FILES = {
   plugins: path.join(DATA_DIR, "plugins.json"),
   coupons: path.join(DATA_DIR, "coupons.json"),
-  audits: path.join(DATA_DIR, "audits.json")
+  audits: path.join(DATA_DIR, "audits.json"),
+  instances: path.join(DATA_DIR, "instances.json")
 };
 
 const DEFAULT_PLUGINS = [
@@ -35,6 +36,7 @@ function ensureDataFiles() {
   if (!fs.existsSync(FILES.plugins)) fs.writeFileSync(FILES.plugins, JSON.stringify(DEFAULT_PLUGINS, null, 2));
   if (!fs.existsSync(FILES.coupons)) fs.writeFileSync(FILES.coupons, JSON.stringify([], null, 2));
   if (!fs.existsSync(FILES.audits)) fs.writeFileSync(FILES.audits, JSON.stringify([], null, 2));
+  if (!fs.existsSync(FILES.instances)) fs.writeFileSync(FILES.instances, JSON.stringify([], null, 2));
 }
 
 function readJson(file, fallback) {
@@ -51,6 +53,25 @@ function writeJson(file, data) {
 
 function getCatalog() {
   return readJson(FILES.plugins, DEFAULT_PLUGINS).filter((p) => p.active !== false);
+}
+
+function upsertLocalInstance(instanceId, patch = {}) {
+  const rows = readJson(FILES.instances, []);
+  const now = new Date().toISOString();
+  const idx = rows.findIndex((r) => r.instanceId === instanceId);
+  if (idx >= 0) {
+    rows[idx] = { ...rows[idx], ...patch, instanceId, updated_at: now };
+  } else {
+    rows.push({
+      id: crypto.randomUUID(),
+      instanceId,
+      status: "active",
+      created_at: now,
+      updated_at: now,
+      ...patch
+    });
+  }
+  writeJson(FILES.instances, rows);
 }
 
 function planFromSlug(slug) {
@@ -231,6 +252,24 @@ app.get("/api/v1/hub/catalog", (_req, res) => {
   res.json({ plugins: getCatalog() });
 });
 
+app.post("/api/v1/hub/register", (req, res) => {
+  const { instanceId, version, ownerEmail, ownerName, document, tenantName } = req.body || {};
+  if (!instanceId) return res.status(400).json({ error: "instanceId obrigatório" });
+
+  upsertLocalInstance(instanceId, {
+    version: version || "-",
+    ownerEmail: ownerEmail || null,
+    ownerName: ownerName || null,
+    document: document || null,
+    tenantName: tenantName || null,
+    last_seen: new Date().toISOString(),
+    status: "active"
+  });
+
+  audit("instance_register", "runtime", { instanceId, ownerEmail: ownerEmail || null, tenantName: tenantName || null });
+  return res.json({ ok: true, instanceId });
+});
+
 app.post("/api/v1/hub/checkout", async (req, res) => {
   try {
     const { slug, instanceId, email, name, couponCode } = req.body || {};
@@ -279,7 +318,10 @@ app.post("/api/v1/hub/checkout", async (req, res) => {
 app.post("/api/v1/hub/heartbeat", async (req, res) => {
   try {
     const instanceId = req.body?.instanceId;
+    const version = req.body?.version || "-";
     if (!instanceId) return res.status(400).json({ error: "instanceId obrigatório" });
+
+    upsertLocalInstance(instanceId, { last_seen: new Date().toISOString(), version, status: "active" });
 
     const data = await callSupabaseFunction("validate-license", { instanceUuid: instanceId });
     const active = Array.isArray(data?.active) ? data.active : [];
@@ -323,36 +365,53 @@ app.get("/api/v1/admin/overview", adminAuth, async (_req, res) => {
 });
 
 app.get("/api/v1/admin/instances", adminAuth, async (req, res) => {
-  try {
-    const limit = Number(req.query.limit || 50);
+  const limit = Number(req.query.limit || 50);
+  const localItems = readJson(FILES.instances, [])
+    .map((r) => ({
+      id: r.id || r.instanceId,
+      instance_uuid: r.instanceId,
+      status: r.status || "active",
+      last_seen: r.last_seen || r.updated_at || r.created_at || null,
+      version: r.version || "-",
+      source: "local"
+    }))
+    .sort((a, b) => String(b.last_seen || "").localeCompare(String(a.last_seen || "")));
 
-    // Tentativa 1: schema novo
+  // tenta Supabase e mescla com local
+  try {
+    let remote = [];
     try {
       const out = await sbGet("instances", `?select=id,instance_uuid,status,last_seen,version&order=last_seen.desc&limit=${limit}`);
-      return res.json({ items: out.data || [], total: out.count });
+      remote = (out.data || []).map((r) => ({ ...r, source: "supabase" }));
     } catch (_e1) {
-      // Tentativa 2: schema alternativo (sem last_seen/version)
       try {
-        const out2 = await sbGet("instances", `?select=id,instance_uuid,status,updated_at,created_at&order=updated_at.desc&limit=${limit}`);
-        const items = (out2.data || []).map((r) => ({
+        const out2 = await sbGet("instances", `?select=id,instance_uuid,status,updated_at,created_at&order=created_at.desc&limit=${limit}`);
+        remote = (out2.data || []).map((r) => ({
           ...r,
           last_seen: r.last_seen || r.updated_at || r.created_at || null,
-          version: r.version || "-"
+          version: r.version || "-",
+          source: "supabase"
         }));
-        return res.json({ items, total: out2.count });
       } catch (_e2) {
-        // Tentativa 3: schema mínimo (apenas created_at)
-        const out3 = await sbGet("instances", `?select=id,instance_uuid,status,created_at&order=created_at.desc&limit=${limit}`);
-        const items = (out3.data || []).map((r) => ({
-          ...r,
-          last_seen: r.last_seen || r.created_at || null,
-          version: r.version || "-"
-        }));
-        return res.json({ items, total: out3.count });
+        remote = [];
       }
     }
-  } catch (e) {
-    return res.status(500).json({ error: e?.response?.data || e.message });
+
+    const map = new Map();
+    [...remote, ...localItems].forEach((r) => {
+      const key = r.instance_uuid || r.instanceId || r.id;
+      if (!key) return;
+      if (!map.has(key)) map.set(key, r);
+    });
+
+    const items = Array.from(map.values())
+      .sort((a, b) => String(b.last_seen || "").localeCompare(String(a.last_seen || "")))
+      .slice(0, limit);
+
+    return res.json({ items, total: items.length });
+  } catch (_e) {
+    const items = localItems.slice(0, limit);
+    return res.json({ items, total: items.length });
   }
 });
 
