@@ -351,19 +351,15 @@ const MainListItems = (props) => {
         )}
       />
 
-      <Can
-        user={user}
-        perform="view_swagger"
-        yes={() => (
-          <ListItemLink
-            to="/swagger"
-            primary="Swagger"
-            icon={<MenuBookIcon />}
-            iconColor={googleColors.pink}
-            collapsed={collapsed}
-          />
-        )}
-      />
+      {(user?.permissions || []).includes("view_swagger") && (
+        <ListItemLink
+          to="/swagger"
+          primary="Swagger"
+          icon={<MenuBookIcon />}
+          iconColor={googleColors.pink}
+          collapsed={collapsed}
+        />
+      )}
     </div>
   );
 };
