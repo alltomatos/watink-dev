@@ -1,16 +1,18 @@
 const express = require("express");
 const axios = require("axios");
 const path = require("path");
+const crypto = require("crypto");
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
-app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = Number(process.env.HUB_PORT || 8090);
 const APP_BASE_URL = process.env.APP_BASE_URL || "https://marketplace.alltomatos.dev.br";
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
+const ADMIN_USER = process.env.ADMIN_USER || "admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const MP_WEBHOOK_URL = process.env.MP_WEBHOOK_URL || `${APP_BASE_URL}/api/v1/hub/webhook/mp`;
 
 const CATALOG = [
@@ -31,11 +33,73 @@ function ensureSupabase() {
   }
 }
 
+const SESSION_COOKIE = "mp_admin";
+const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8h
+
+function parseCookies(req) {
+  const raw = req.headers.cookie || "";
+  const out = {};
+  raw.split(";").forEach((part) => {
+    const idx = part.indexOf("=");
+    if (idx > 0) {
+      const k = part.slice(0, idx).trim();
+      const v = decodeURIComponent(part.slice(idx + 1));
+      out[k] = v;
+    }
+  });
+  return out;
+}
+
+function sessionSecret() {
+  return ADMIN_TOKEN || "change_me_admin_token";
+}
+
+function signSession(payload) {
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const sig = crypto.createHmac("sha256", sessionSecret()).update(body).digest("base64url");
+  return `${body}.${sig}`;
+}
+
+function verifySession(token) {
+  if (!token || !token.includes(".")) return null;
+  const [body, sig] = token.split(".");
+  const expected = crypto.createHmac("sha256", sessionSecret()).update(body).digest("base64url");
+  if (sig !== expected) return null;
+
+  try {
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+    if (!payload?.exp || Date.now() > payload.exp) return null;
+    return payload;
+  } catch (_e) {
+    return null;
+  }
+}
+
+function hasValidAdminSession(req) {
+  const cookies = parseCookies(req);
+  const payload = verifySession(cookies[SESSION_COOKIE]);
+  return Boolean(payload?.user === ADMIN_USER);
+}
+
+function setSessionCookie(res) {
+  const token = signSession({ user: ADMIN_USER, exp: Date.now() + SESSION_TTL_SECONDS * 1000 });
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=${encodeURIComponent(token)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_TTL_SECONDS}`);
+}
+
+function clearSessionCookie(res) {
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`);
+}
+
 function adminAuth(req, res, next) {
-  if (!ADMIN_TOKEN) return res.status(500).json({ error: "ADMIN_TOKEN não configurado" });
   const token = req.header("x-admin-token") || "";
-  if (token !== ADMIN_TOKEN) return res.status(401).json({ error: "unauthorized" });
-  return next();
+  if (ADMIN_TOKEN && token === ADMIN_TOKEN) return next();
+  if (hasValidAdminSession(req)) return next();
+  return res.status(401).json({ error: "unauthorized" });
+}
+
+function webAuth(req, res, next) {
+  if (hasValidAdminSession(req)) return next();
+  return res.redirect("/login");
 }
 
 async function callSupabaseFunction(fn, payload) {
@@ -302,7 +366,26 @@ app.post("/api/v1/admin/coupons", adminAuth, async (_req, res) => {
   return res.status(501).json({ error: "cupons ainda não implementado (MVP stub)" });
 });
 
-app.get("/", (_req, res) => {
+app.get("/login", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+app.post("/login", (req, res) => {
+  const { username, password } = req.body || {};
+  if (!ADMIN_PASSWORD) return res.status(500).json({ error: "ADMIN_PASSWORD não configurado" });
+  if (username !== ADMIN_USER || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: "Credenciais inválidas" });
+  }
+  setSessionCookie(res);
+  return res.json({ ok: true });
+});
+
+app.post("/logout", (_req, res) => {
+  clearSessionCookie(res);
+  return res.json({ ok: true });
+});
+
+app.get("/", webAuth, (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 

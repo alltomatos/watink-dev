@@ -24,7 +24,14 @@ Serviço central do Marketplace para instâncias Watink em escala.
 - `GET /api/v1/admin/subscriptions`
 - `POST /api/v1/admin/coupons` (stub)
 
-Admin API usa header `x-admin-token`.
+Admin API usa sessão de login (`/login`) e aceita também header `x-admin-token` para automação.
+
+## Login do painel
+- Página: `/login`
+- Variáveis:
+  - `ADMIN_USER`
+  - `ADMIN_PASSWORD`
+  - `ADMIN_TOKEN` (assinatura de sessão + integração API)
 
 ## Rodar local
 1. Copiar `.env.example` para `.env`
