@@ -223,7 +223,7 @@ const Settings = () => {
 	useEffect(() => {
 		const fetchPlugins = async () => {
 			try {
-				const { data } = await api.get("/api/v1/plugins/installed");
+				const { data } = await api.get("/v1/plugins/installed");
 				setActivePlugins(data.active || []);
 			} catch (err) {
 				console.error("Failed to fetch plugins", err);
