@@ -16,6 +16,10 @@ func SetupRoutes(group *gin.RouterGroup) {
 	group.GET("/system/stats", controllers.GetSystemStats)
 	group.GET("/system/maintenance", controllers.GetMaintenanceStatus)
 
+	// Swagger / API docs
+	group.GET("/docs", controllers.SwaggerUI)
+	group.GET("/swagger.json", controllers.SwaggerJSON)
+
 	// Business Marketplace Support (V1)
 	group.GET("/v1/plugins/catalog", controllers.PluginsCatalog)
 	group.GET("/v1/plugins/installed", controllers.PluginsInstalled)
