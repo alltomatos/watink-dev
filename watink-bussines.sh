@@ -4,6 +4,8 @@ set -euo pipefail
 # Watink Bussines Interactive Installer
 # Uso: sudo bash watink-bussines.sh
 
+GITHUB_BIN_REPO="alltomatos/watink-bussines"
+
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
@@ -57,6 +59,53 @@ ask_yes_no() {
 
 gen_secret() {
   tr -dc 'A-Za-z0-9!@#$%&_+=' </dev/urandom | head -c 32
+}
+
+github_release_asset_url() {
+  local repo="$1"
+  local ref="${2:-latest}"
+  local api_url
+
+  if [[ "$ref" == "latest" ]]; then
+    api_url="https://api.github.com/repos/${repo}/releases/latest"
+  else
+    api_url="https://api.github.com/repos/${repo}/releases/tags/${ref}"
+  fi
+
+  curl -fsSL "$api_url" | python3 - <<'PY'
+import json,sys
+try:
+    data=json.load(sys.stdin)
+    assets=data.get("assets") or []
+    if not assets:
+        print("")
+        raise SystemExit(0)
+    # Prioriza arquivo com nome contendo watink-core
+    chosen=None
+    for a in assets:
+        name=(a.get("name") or "").lower()
+        if "watink-core" in name or "watink" in name:
+            chosen=a
+            break
+    if chosen is None:
+        chosen=assets[0]
+    print(chosen.get("browser_download_url") or "")
+except Exception:
+    print("")
+PY
+}
+
+resolve_binary_source() {
+  local input="$1"
+  local source="$input"
+
+  if [[ -z "$source" || "$source" == "latest" ]]; then
+    source="$(github_release_asset_url "$GITHUB_BIN_REPO" "latest")"
+  elif [[ "$source" =~ ^v[0-9] ]]; then
+    source="$(github_release_asset_url "$GITHUB_BIN_REPO" "$source")"
+  fi
+
+  echo "$source"
 }
 
 install_base_packages() {
@@ -279,7 +328,13 @@ main() {
 
   domain="$(ask 'Domínio público do painel (ex: watinkdev.alltomatos.dev.br)')"
   email="$(ask 'E-mail para SSL (Certbot)' 'ronaldodavi@gmail.com')"
-  binary_source="$(ask 'URL do binário (ou caminho local)')"
+  binary_source="$(ask "URL/caminho do binário (ou 'latest' / 'vX.Y.Z' do repo ${GITHUB_BIN_REPO})" "latest")"
+  binary_source="$(resolve_binary_source "$binary_source")"
+
+  if [[ -z "$binary_source" ]]; then
+    err "Não foi possível resolver o binário automaticamente no GitHub. Informe uma URL/caminho válido."
+    exit 1
+  fi
 
   if ask_yes_no "Gerar senhas fortes automaticamente?" "y"; then
     pg_pass="$(gen_secret)"
