@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -16,10 +7,10 @@ const socket_1 = require("../../libs/socket");
 const Message_1 = __importDefault(require("../../models/Message"));
 const Ticket_1 = __importDefault(require("../../models/Ticket"));
 const Whatsapp_1 = __importDefault(require("../../models/Whatsapp"));
-const CreateMessageService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ messageData }) {
+const CreateMessageService = async ({ messageData }) => {
     // Check if quotedMsgId refers to an existing message
     if (messageData.quotedMsgId) {
-        const quotedMsg = yield Message_1.default.findByPk(messageData.quotedMsgId);
+        const quotedMsg = await Message_1.default.findByPk(messageData.quotedMsgId);
         if (!quotedMsg) {
             // If quoted message does not exist, we cannot reference it in DB due to FK constraint.
             // We log a warning and proceed without the quote reference.
@@ -28,8 +19,8 @@ const CreateMessageService = (_a) => __awaiter(void 0, [_a], void 0, function* (
             messageData.quotedMsgId = null;
         }
     }
-    yield Message_1.default.upsert(messageData);
-    const message = yield Message_1.default.findByPk(messageData.id, {
+    await Message_1.default.upsert(messageData);
+    const message = await Message_1.default.findByPk(messageData.id, {
         include: [
             "contact",
             {
@@ -58,7 +49,7 @@ const CreateMessageService = (_a) => __awaiter(void 0, [_a], void 0, function* (
     // Atualizar lastMessage do ticket para manter sidebar sincronizada
     // Só atualiza se a mensagem for mais recente que a última
     if (message.ticket && messageData.body) {
-        yield Ticket_1.default.update({
+        await Ticket_1.default.update({
             lastMessage: messageData.body,
             updatedAt: new Date()
         }, { where: { id: message.ticketId } });
@@ -79,5 +70,5 @@ const CreateMessageService = (_a) => __awaiter(void 0, [_a], void 0, function* (
     const { logger } = require("../../utils/logger");
     logger.info(`[CreateMessageService] Emitted appMessage create for msg ${message.id} ticket ${message.ticketId}`);
     return message;
-});
+};
 exports.default = CreateMessageService;

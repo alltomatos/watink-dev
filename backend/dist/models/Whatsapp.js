@@ -92,15 +92,6 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Whatsapp.prototype, "keepAlive", void 0);
 __decorate([
-    (0, sequelize_typescript_1.Default)("whatsapp"),
-    sequelize_typescript_1.Column,
-    __metadata("design:type", String)
-], Whatsapp.prototype, "type", void 0);
-__decorate([
-    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.JSONB),
-    __metadata("design:type", Object)
-], Whatsapp.prototype, "chatConfig", void 0);
-__decorate([
     sequelize_typescript_1.CreatedAt,
     __metadata("design:type", Date)
 ], Whatsapp.prototype, "createdAt", void 0);

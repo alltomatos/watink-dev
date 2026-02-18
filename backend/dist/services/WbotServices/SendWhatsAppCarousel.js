@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -18,7 +9,7 @@ const RabbitMQService_1 = __importDefault(require("../RabbitMQService"));
 const Message_1 = __importDefault(require("../../models/Message"));
 const socket_1 = require("../../libs/socket");
 const GenerateWAMessageId_1 = __importDefault(require("../../helpers/GenerateWAMessageId"));
-const SendWhatsAppCarousel = (_a) => __awaiter(void 0, [_a], void 0, function* ({ ticket, body, cards }) {
+const SendWhatsAppCarousel = async ({ ticket, body, cards }) => {
     try {
         if (!ticket.whatsappId) {
             throw new AppError_1.default("ERR_TICKET_WRONG_WHATSAPP_ID");
@@ -39,7 +30,7 @@ const SendWhatsAppCarousel = (_a) => __awaiter(void 0, [_a], void 0, function* (
             tenantId: ticket.tenantId,
             dataJson: JSON.stringify({ cards })
         };
-        const message = yield Message_1.default.create(messageData);
+        const message = await Message_1.default.create(messageData);
         const io = (0, socket_1.getIO)();
         io.to(message.ticketId.toString()).emit("appMessage", {
             action: "create",
@@ -76,13 +67,13 @@ const SendWhatsAppCarousel = (_a) => __awaiter(void 0, [_a], void 0, function* (
                 }))
             }
         };
-        yield RabbitMQService_1.default.publishCommand(`wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.carousel`, command);
-        yield ticket.update({ lastMessage: body });
+        await RabbitMQService_1.default.publishCommand(`wbot.${ticket.tenantId}.${ticket.whatsappId}.message.send.carousel`, command);
+        await ticket.update({ lastMessage: body });
         return message;
     }
     catch (err) {
         console.error(err);
         throw new AppError_1.default("ERR_SENDING_WAPP_MSG");
     }
-});
+};
 exports.default = SendWhatsAppCarousel;

@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 import { makeStyles } from '@material-ui/core/styles';

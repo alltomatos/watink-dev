@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -54,19 +45,19 @@ const ScraperService_1 = __importDefault(require("../services/ScraperService"));
 const PdfService_1 = __importDefault(require("../services/PdfService"));
 const VectorService_1 = __importDefault(require("../services/VectorService"));
 const socket_1 = require("../libs/socket");
-const index = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const index = async (req, res) => {
     const { tenantId } = req.user;
-    const knowledgeBases = yield KnowledgeBase_1.default.findAll({
+    const knowledgeBases = await KnowledgeBase_1.default.findAll({
         where: { tenantId },
         include: ["sources"]
     });
     return res.status(200).json(knowledgeBases);
-});
+};
 exports.index = index;
-const show = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const show = async (req, res) => {
     const { tenantId } = req.user;
     const { knowledgeBaseId } = req.params;
-    const knowledgeBase = yield KnowledgeBase_1.default.findOne({
+    const knowledgeBase = await KnowledgeBase_1.default.findOne({
         where: { id: knowledgeBaseId, tenantId },
         include: ["sources"]
     });
@@ -74,68 +65,68 @@ const show = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         throw new AppError_1.default("ERR_NO_KNOWLEDGE_BASE_FOUND", 404);
     }
     return res.status(200).json(knowledgeBase);
-});
+};
 exports.show = show;
-const update = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const update = async (req, res) => {
     const { tenantId } = req.user;
     const { knowledgeBaseId } = req.params;
     const { name, description } = req.body;
-    const knowledgeBase = yield KnowledgeBase_1.default.findOne({
+    const knowledgeBase = await KnowledgeBase_1.default.findOne({
         where: { id: knowledgeBaseId, tenantId }
     });
     if (!knowledgeBase) {
         throw new AppError_1.default("ERR_NO_KNOWLEDGE_BASE_FOUND", 404);
     }
-    yield knowledgeBase.update({
+    await knowledgeBase.update({
         name,
         description
     });
     return res.status(200).json(knowledgeBase);
-});
+};
 exports.update = update;
-const store = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const store = async (req, res) => {
     const { tenantId } = req.user;
     const { name, description } = req.body;
     const schema = Yup.object().shape({
         name: Yup.string().required()
     });
     try {
-        yield schema.validate(req.body);
+        await schema.validate(req.body);
     }
     catch (err) {
         throw new AppError_1.default(err.message);
     }
-    const knowledgeBase = yield KnowledgeBase_1.default.create({
+    const knowledgeBase = await KnowledgeBase_1.default.create({
         name,
         description,
         tenantId
     });
     return res.status(200).json(knowledgeBase);
-});
+};
 exports.store = store;
-const remove = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const remove = async (req, res) => {
     const { tenantId } = req.user;
     const { knowledgeBaseId } = req.params;
-    const knowledgeBase = yield KnowledgeBase_1.default.findOne({
+    const knowledgeBase = await KnowledgeBase_1.default.findOne({
         where: { id: knowledgeBaseId, tenantId }
     });
     if (!knowledgeBase) {
         throw new AppError_1.default("ERR_NO_KNOWLEDGE_BASE_FOUND", 404);
     }
-    yield knowledgeBase.destroy();
+    await knowledgeBase.destroy();
     return res.status(200).json({ message: "Knowledge Base deleted" });
-});
+};
 exports.remove = remove;
-const listSources = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const listSources = async (req, res) => {
     const { tenantId } = req.user;
     const { knowledgeBaseId } = req.params;
-    const sources = yield KnowledgeSource_1.default.findAll({
+    const sources = await KnowledgeSource_1.default.findAll({
         where: { baseId: knowledgeBaseId, tenantId }
     });
     return res.status(200).json(sources);
-});
+};
 exports.listSources = listSources;
-const createSource = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const createSource = async (req, res) => {
     const { tenantId } = req.user;
     const { knowledgeBaseId } = req.params;
     const { name, url, type } = req.body;
@@ -145,7 +136,7 @@ const createSource = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         type: Yup.string().required().oneOf(["url", "pdf", "text"])
     });
     try {
-        yield schema.validate(req.body);
+        await schema.validate(req.body);
     }
     catch (err) {
         throw new AppError_1.default(err.message);
@@ -159,7 +150,7 @@ const createSource = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         if (!file)
             throw new AppError_1.default("File is required for type 'pdf'");
     }
-    const source = yield KnowledgeSource_1.default.create({
+    const source = await KnowledgeSource_1.default.create({
         name,
         type,
         url,
@@ -170,25 +161,25 @@ const createSource = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     // Process asynchronously
     processSourceContent(source, file ? file.path : null);
     return res.status(200).json(source);
-});
+};
 exports.createSource = createSource;
-const removeSource = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const removeSource = async (req, res) => {
     const { tenantId } = req.user;
     const { sourceId } = req.params;
-    const source = yield KnowledgeSource_1.default.findOne({
+    const source = await KnowledgeSource_1.default.findOne({
         where: { id: sourceId, tenantId }
     });
     if (!source) {
         throw new AppError_1.default("ERR_NO_SOURCE_FOUND", 404);
     }
-    yield source.destroy();
+    await source.destroy();
     return res.status(200).json({ message: "Source deleted" });
-});
+};
 exports.removeSource = removeSource;
-const retrySource = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const retrySource = async (req, res) => {
     const { tenantId } = req.user;
     const { sourceId } = req.params;
-    const source = yield KnowledgeSource_1.default.findOne({
+    const source = await KnowledgeSource_1.default.findOne({
         where: { id: sourceId, tenantId }
     });
     if (!source) {
@@ -201,20 +192,20 @@ const retrySource = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     // If re-trying PDF, we can't if we don't save the file.
     // But for now let's assume retry works for URL or if content is already there but failed indexing.
     return res.status(200).json({ message: "Retry started" });
-});
+};
 exports.retrySource = retrySource;
 // Helper function to process content
-const processSourceContent = (source, filePath) => __awaiter(void 0, void 0, void 0, function* () {
+const processSourceContent = async (source, filePath) => {
     try {
-        yield source.update({ status: "processing" });
+        await source.update({ status: "processing" });
         const io = (0, socket_1.getIO)();
         io.emit(`knowledgeSource:${source.tenantId}:update`, { source });
         let text = "";
         if (source.type === "url" && source.url) {
-            text = yield ScraperService_1.default.scrape(source.url);
+            text = await ScraperService_1.default.scrape(source.url);
         }
         else if (source.type === "pdf" && filePath) {
-            text = yield PdfService_1.default.parsePdf(filePath);
+            text = await PdfService_1.default.parsePdf(filePath);
             // Optionally delete file after parsing? or keep it?
             // fs.unlinkSync(filePath); 
         }
@@ -222,20 +213,20 @@ const processSourceContent = (source, filePath) => __awaiter(void 0, void 0, voi
             text = source.content;
         }
         if (text) {
-            yield source.update({ content: text });
-            yield VectorService_1.default.processSource(source.id, source.tenantId);
+            await source.update({ content: text });
+            await VectorService_1.default.processSource(source.id, source.tenantId);
             // Status updated to 'indexed' inside VectorService
         }
         else {
             throw new Error("No text extracted");
         }
-        const updatedSource = yield source.reload();
+        const updatedSource = await source.reload();
         io.emit(`knowledgeSource:${source.tenantId}:update`, { source: updatedSource });
     }
     catch (error) {
         console.error("Processing source error:", error);
-        yield source.update({ status: "error" });
+        await source.update({ status: "error" });
         const io = (0, socket_1.getIO)();
         io.emit(`knowledgeSource:${source.tenantId}:update`, { source });
     }
-});
+};

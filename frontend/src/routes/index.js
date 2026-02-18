@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from "react";
 import { BrowserRouter, Switch } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
@@ -25,6 +26,7 @@ import Queues from "../pages/Queues/";
 import KnowledgeBase from "../pages/KnowledgeBase/";
 import KnowledgeBaseConfig from "../pages/KnowledgeBase/KnowledgeBaseConfig";
 import Marketplace from "../pages/Marketplace/";
+import Billing from "../pages/Billing/";
 import PluginDetail from "../pages/Marketplace/PluginDetail";
 import Clients from "../pages/Clients/";
 import Helpdesk from "../pages/Helpdesk/";
@@ -33,11 +35,15 @@ import HelpdeskKanban from "../pages/Helpdesk/HelpdeskKanban";
 import HelpdeskTvMode from "../pages/Helpdesk/HelpdeskTvMode";
 import Swagger from "../pages/Swagger/";
 import VersionDashboard from "../pages/VersionDashboard/";
+import MonitorQueues from "../pages/MonitorQueues/";
+import SaaSAdmin from "../pages/SaaS/";
+import InitialSetup from "../pages/InitialSetup/";
 import { AuthProvider } from "../context/Auth/AuthContext";
 import { WhatsAppsProvider } from "../context/WhatsApp/WhatsAppsContext";
 import { ThemeProvider } from "../context/DarkMode";
 import { TicketsProvider } from "../context/Tickets/TicketsContext";
 import Route from "./Route";
+import StatusCheck from "../components/StatusCheck";
 
 const PrivateRoutes = () => {
   return (
@@ -66,12 +72,16 @@ const PrivateRoutes = () => {
             <Route exact path="/knowledge-bases/:knowledgeBaseId" component={KnowledgeBaseConfig} isPrivate />
             <Route exact path="/swagger" component={Swagger} isPrivate />
             <Route exact path="/admin/settings/marketplace" component={Marketplace} isPrivate />
+            <Route exact path="/admin/settings/billing" component={Billing} isPrivate />
             <Route exact path="/admin/settings/marketplace/:slug" component={PluginDetail} isPrivate />
             <Route exact path="/clients" component={Clients} isPrivate />
             <Route exact path="/helpdesk" component={Helpdesk} isPrivate />
             <Route exact path="/helpdesk/kanban" component={HelpdeskKanban} isPrivate />
             <Route exact path="/helpdesk/tv" component={HelpdeskTvMode} isPrivate />
             <Route exact path="/helpdesk/:protocolId" component={ProtocolDetails} isPrivate />
+            <Route exact path="/saas-manager" component={SaaSAdmin} isPrivate />
+            <Route exact path="/monitor" component={VersionDashboard} isPrivate />
+            <Route exact path="/monitor/queues" component={MonitorQueues} isPrivate />
             <Route exact path="/versions" component={VersionDashboard} isPrivate />
           </Switch>
         </LoggedInLayout>
@@ -85,17 +95,20 @@ import PublicProtocol from "../pages/PublicProtocol";
 const Routes = () => {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <ThemeProvider>
-          <Switch>
-            <Route exact path="/login" component={Login} />
-            <Route exact path="/signup" component={Signup} />
-            <Route exact path="/public/protocols/:token" component={PublicProtocol} isPublic />
-            <Route path="/" component={PrivateRoutes} isPrivate />
-          </Switch>
-          <ToastContainer autoClose={3000} />
-        </ThemeProvider>
-      </AuthProvider>
+      <StatusCheck>
+        <AuthProvider>
+          <ThemeProvider>
+            <Switch>
+              <Route exact path="/initial-setup" component={InitialSetup} />
+              <Route exact path="/login" component={Login} />
+              <Route exact path="/signup" component={Signup} />
+              <Route exact path="/public/protocols/:token" component={PublicProtocol} isPublic />
+              <Route path="/" component={PrivateRoutes} isPrivate />
+            </Switch>
+            <ToastContainer autoClose={3000} />
+          </ThemeProvider>
+        </AuthProvider>
+      </StatusCheck>
     </BrowserRouter>
   );
 };

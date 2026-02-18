@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const RedisService_1 = require("../services/RedisService");
@@ -23,10 +14,10 @@ const redisRoutes = (0, express_1.Router)();
  *       200:
  *         description: Status do Redis
  */
-redisRoutes.get("/redis/version", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+redisRoutes.get("/redis/version", async (req, res) => {
     try {
         const redis = RedisService_1.RedisService.getInstance();
-        const info = yield redis.info();
+        const info = await redis.info();
         // Parse Redis Version from INFO output (redis_version:6.2.6)
         const versionMatch = info.match(/redis_version:([^\r\n]+)/);
         const versionStr = versionMatch ? versionMatch[1] : "unknown";
@@ -52,5 +43,5 @@ redisRoutes.get("/redis/version", (req, res) => __awaiter(void 0, void 0, void 0
             error: "Redis Unavailable"
         });
     }
-}));
+});
 exports.default = redisRoutes;

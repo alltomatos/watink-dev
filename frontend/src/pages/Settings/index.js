@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState, useEffect, useContext } from "react";
 import openSocket from "../../services/socket-io";
 import MemoryIcon from "@material-ui/icons/Memory";
@@ -34,7 +35,7 @@ import api from "../../services/api";
 import { i18n } from "../../translate/i18n.js";
 import toastError from "../../errors/toastError";
 import { useThemeContext } from "../../context/DarkMode";
-import { getBackendUrl } from "../../config";
+import { getBackendUrl } from "../../helpers/urlUtils";
 import { AuthContext } from "../../context/Auth/AuthContext";
 
 const AI_MODELS = {
@@ -222,7 +223,7 @@ const Settings = () => {
 	useEffect(() => {
 		const fetchPlugins = async () => {
 			try {
-				const { data } = await api.get("/plugins/api/v1/plugins/installed");
+				const { data } = await api.get("/v1/plugins/installed");
 				setActivePlugins(data.active || []);
 			} catch (err) {
 				console.error("Failed to fetch plugins", err);
@@ -416,7 +417,7 @@ const Settings = () => {
 			toast.success("Favicon atualizado com sucesso!");
 			const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
 			link.rel = 'icon';
-			link.href = `${getBackendUrl()}${data.faviconUrl}`;
+			link.href = getBackendUrl(data.faviconUrl);
 			document.head.appendChild(link);
 		} catch (err) {
 			toastError(err);
@@ -554,7 +555,7 @@ const Settings = () => {
 					onChange={(e) => setAppTheme(e.target.value)}
 				>
 					<option value="whaticket">Whaticket (Padrão)</option>
-					<option value="saas">SaaS Premium</option>
+					<option value="saas">SaaS Business</option>
 					<option value="corporate">Corporate Theme</option>
 					<option value="whatsapp">WhatsApp Theme</option>
 					<option value="google">Google Like Theme</option>
@@ -643,7 +644,7 @@ const Settings = () => {
 						<Box className={classes.uploadBox}>
 							{logoPreview ? (
 								<img
-									src={`${getBackendUrl()}${logoPreview.startsWith('/') ? logoPreview.slice(1) : logoPreview}`}
+									src={getBackendUrl(logoPreview)}
 									alt="Logo"
 									className={classes.logoPreview}
 								/>
@@ -682,7 +683,7 @@ const Settings = () => {
 						<Box className={classes.uploadBox}>
 							{faviconPreview ? (
 								<img
-									src={`${getBackendUrl()}${faviconPreview.startsWith('/') ? faviconPreview.slice(1) : faviconPreview}`}
+									src={getBackendUrl(faviconPreview)}
 									alt="Favicon"
 									style={{ maxWidth: 64, maxHeight: 64, objectFit: 'contain' }}
 								/>
@@ -755,7 +756,7 @@ const Settings = () => {
 							<Box className={classes.uploadBox}>
 								{loginImagePreview ? (
 									<img
-										src={`${getBackendUrl()}${loginImagePreview.startsWith('/') ? loginImagePreview.slice(1) : loginImagePreview}`}
+										src={getBackendUrl(loginImagePreview)}
 										alt="Login Background"
 										style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain' }}
 									/>

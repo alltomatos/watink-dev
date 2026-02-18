@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState, useContext, useEffect } from "react";
 import clsx from "clsx";
 import {
@@ -25,7 +26,7 @@ import BackdropLoading from "../components/BackdropLoading";
 import { i18n } from "../translate/i18n";
 import VersionFooter from "../components/VersionFooter";
 import api from "../services/api";
-import { getBackendUrl } from "../config";
+import { getBackendUrl } from "../helpers/urlUtils";
 
 const drawerWidth = 240;
 
@@ -179,12 +180,9 @@ const MainLayoutDefault = ({ children }) => {
                 }
                 // Update browser favicon dynamically
                 if (faviconSetting && faviconSetting.value) {
-                    const faviconPath = faviconSetting.value.startsWith('/')
-                        ? faviconSetting.value.slice(1)
-                        : faviconSetting.value;
                     const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
                     link.rel = 'icon';
-                    link.href = `${getBackendUrl()}${faviconPath}`;
+                    link.href = getBackendUrl(faviconSetting.value);
                     document.head.appendChild(link);
                 }
             } catch (err) {
@@ -249,7 +247,7 @@ const MainLayoutDefault = ({ children }) => {
                 <Box className={classes.logoContainer}>
                     {drawerOpen && systemLogo && logoEnabled ? (
                         <img
-                            src={`${getBackendUrl()}${systemLogo.startsWith('/') ? systemLogo.slice(1) : systemLogo}`}
+                            src={getBackendUrl(systemLogo)}
                             alt="Logo"
                             className={classes.systemLogo}
                         />

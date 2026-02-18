@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState, useEffect } from "react";
 
 import { makeStyles } from "@material-ui/core/styles";
@@ -245,7 +246,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 	useEffect(() => {
 		const fetchPlugins = async () => {
 			try {
-				const { data } = await api.get("/plugins/api/v1/plugins/installed");
+				const { data } = await api.get("/v1/plugins/installed");
 				setActivePlugins(data.active || []);
 			} catch (err) {
 				console.error("Erro ao carregar plugins:", err);

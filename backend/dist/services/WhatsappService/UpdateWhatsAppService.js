@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -53,7 +44,7 @@ const ShowWhatsAppService_1 = __importDefault(require("./ShowWhatsAppService"));
 const AssociateWhatsappQueue_1 = __importDefault(require("./AssociateWhatsappQueue"));
 const StopWhatsAppSession_1 = __importDefault(require("../WbotServices/StopWhatsAppSession"));
 const logger_1 = require("../../utils/logger");
-const UpdateWhatsAppService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ whatsappData, whatsappId }) {
+const UpdateWhatsAppService = async ({ whatsappData, whatsappId }) => {
     const schema = Yup.object().shape({
         name: Yup.string().min(2),
         status: Yup.string(),
@@ -62,7 +53,7 @@ const UpdateWhatsAppService = (_a) => __awaiter(void 0, [_a], void 0, function* 
     const { name, status, isDefault, session, greetingMessage, farewellMessage, queueIds = [], syncHistory, syncPeriod, keepAlive, type, chatConfig } = whatsappData;
     logger_1.logger.info(`UpdateWhatsAppService - ID: ${whatsappId}, Data: ${JSON.stringify(whatsappData)} `); // [DEBUG]
     try {
-        yield schema.validate({ name, status, isDefault });
+        await schema.validate({ name, status, isDefault });
     }
     catch (err) {
         throw new AppError_1.default(err.message);
@@ -72,15 +63,15 @@ const UpdateWhatsAppService = (_a) => __awaiter(void 0, [_a], void 0, function* 
     }
     let oldDefaultWhatsapp = null;
     if (isDefault) {
-        oldDefaultWhatsapp = yield Whatsapp_1.default.findOne({
+        oldDefaultWhatsapp = await Whatsapp_1.default.findOne({
             where: { isDefault: true, id: { [sequelize_1.Op.not]: whatsappId } }
         });
         if (oldDefaultWhatsapp) {
-            yield oldDefaultWhatsapp.update({ isDefault: false });
+            await oldDefaultWhatsapp.update({ isDefault: false });
         }
     }
-    const whatsapp = yield (0, ShowWhatsAppService_1.default)(whatsappId);
-    yield whatsapp.update({
+    const whatsapp = await (0, ShowWhatsAppService_1.default)(whatsappId);
+    await whatsapp.update({
         name,
         status,
         session,
@@ -99,11 +90,11 @@ const UpdateWhatsAppService = (_a) => __awaiter(void 0, [_a], void 0, function* 
         // Using dynamic import or moving StopWhatsAppSession import to top.
         // Let's assume standard import at top.
     }
-    yield (0, AssociateWhatsappQueue_1.default)(whatsapp, queueIds);
+    await (0, AssociateWhatsappQueue_1.default)(whatsapp, queueIds);
     // Checks if sync settings were updated and connection is active/opening
     if (syncHistory !== undefined || syncPeriod !== undefined || keepAlive !== undefined) {
-        yield (0, StopWhatsAppSession_1.default)(whatsapp.id);
+        await (0, StopWhatsAppSession_1.default)(whatsapp.id);
     }
     return { whatsapp, oldDefaultWhatsapp };
-});
+};
 exports.default = UpdateWhatsAppService;

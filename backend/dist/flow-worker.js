@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -21,13 +12,13 @@ const logger_1 = require("./utils/logger");
 const http_1 = require("http");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
-const startWorker = () => __awaiter(void 0, void 0, void 0, function* () {
+const startWorker = async () => {
     logger_1.logger.info("Starting Flow Engine Worker...");
     try {
         // Connect to RabbitMQ
-        yield RabbitMQService_1.default.connect();
+        await RabbitMQService_1.default.connect();
         // Start Worker Consumer
-        yield FlowWorkerService_1.default.start();
+        await FlowWorkerService_1.default.start();
         logger_1.logger.info("Flow Engine Worker is running!");
         // Lightweight HTTP server for /version
         const port = Number(process.env.FLOW_WORKER_PORT || 3336);
@@ -41,7 +32,7 @@ const startWorker = () => __awaiter(void 0, void 0, void 0, function* () {
                         version = pkg.version || version;
                     }
                 }
-                catch (_a) { }
+                catch { }
                 const lastUpdated = process.env.BUILD_TIMESTAMP ||
                     new Date(Number(process.env.BUILD_UNIX_TS || Date.now())).toISOString();
                 res.setHeader("Content-Type", "application/json");
@@ -64,5 +55,5 @@ const startWorker = () => __awaiter(void 0, void 0, void 0, function* () {
         logger_1.logger.error(`Fatal Error in Flow Worker: ${err}`);
         process.exit(1);
     }
-});
+};
 startWorker();

@@ -1,21 +1,12 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 module.exports = {
-    up: (queryInterface) => __awaiter(void 0, void 0, void 0, function* () {
+    up: async (queryInterface) => {
         // Ensure pgvector extension is enabled
-        yield queryInterface.sequelize.query("CREATE EXTENSION IF NOT EXISTS vector;");
+        await queryInterface.sequelize.query("CREATE EXTENSION IF NOT EXISTS vector;");
         // Table: ConversationEmbeddings
-        yield queryInterface.createTable("ConversationEmbeddings", {
+        await queryInterface.createTable("ConversationEmbeddings", {
             id: {
                 type: sequelize_1.DataTypes.INTEGER,
                 autoIncrement: true,
@@ -88,28 +79,28 @@ module.exports = {
         });
         // Convert embedding column to proper vector type
         try {
-            yield queryInterface.sequelize.query(`ALTER TABLE "ConversationEmbeddings" ALTER COLUMN embedding TYPE vector(1536);`);
+            await queryInterface.sequelize.query(`ALTER TABLE "ConversationEmbeddings" ALTER COLUMN embedding TYPE vector(1536);`);
         }
         catch (e) {
             console.log("Vector type conversion issue (may already be vector type):", e);
         }
         // Create indexes for efficient querying
-        yield queryInterface.addIndex("ConversationEmbeddings", ["ticketId"], {
+        await queryInterface.addIndex("ConversationEmbeddings", ["ticketId"], {
             name: "conversation_embeddings_ticket_idx"
         });
-        yield queryInterface.addIndex("ConversationEmbeddings", ["contactId"], {
+        await queryInterface.addIndex("ConversationEmbeddings", ["contactId"], {
             name: "conversation_embeddings_contact_idx"
         });
-        yield queryInterface.addIndex("ConversationEmbeddings", ["tenantId"], {
+        await queryInterface.addIndex("ConversationEmbeddings", ["tenantId"], {
             name: "conversation_embeddings_tenant_idx"
         });
-        yield queryInterface.addIndex("ConversationEmbeddings", ["processedAt"], {
+        await queryInterface.addIndex("ConversationEmbeddings", ["processedAt"], {
             name: "conversation_embeddings_processed_idx"
         });
         // Create IVFFlat index for fast vector similarity search (after data is populated)
         // Note: This requires data in the table; in practice you might run this separately
         try {
-            yield queryInterface.sequelize.query(`
+            await queryInterface.sequelize.query(`
                 CREATE INDEX IF NOT EXISTS conversation_embeddings_vector_idx 
                 ON "ConversationEmbeddings" 
                 USING ivfflat (embedding vector_cosine_ops)
@@ -119,8 +110,8 @@ module.exports = {
         catch (e) {
             console.log("Vector index creation issue (may need data first):", e);
         }
-    }),
-    down: (queryInterface) => __awaiter(void 0, void 0, void 0, function* () {
-        yield queryInterface.dropTable("ConversationEmbeddings");
-    })
+    },
+    down: async (queryInterface) => {
+        await queryInterface.dropTable("ConversationEmbeddings");
+    }
 };

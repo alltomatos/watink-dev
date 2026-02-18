@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from "react";
 
 import { Avatar, CardHeader } from "@material-ui/core";

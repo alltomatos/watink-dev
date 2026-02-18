@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import { useState, useEffect } from "react";
 import { getHoursCloseTicketsAuto } from "../../config";
 import toastError from "../../errors/toastError";
