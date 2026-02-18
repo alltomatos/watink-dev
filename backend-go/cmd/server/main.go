@@ -31,6 +31,7 @@ func main() {
 
 	// 3. Connect to RabbitMQ
 	rabbitMQ := services.NewRabbitMQService()
+	services.SetRabbitMQService(rabbitMQ)
 	if err := rabbitMQ.Connect(); err == nil {
 		// 4. Start Workers
 		rabbitMQ.StartFlowWorker()

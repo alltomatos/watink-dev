@@ -248,16 +248,32 @@ export default function VersionDashboard() {
           </Paper>
         </Grid>
 
-        {/* Filas (Placeholder para RabbitMQ futuro) */}
         <Grid item xs={12} md={6}>
           <Paper className={classes.paper}>
             <Typography variant="h6" gutterBottom>Fila de Mensagens (RabbitMQ)</Typography>
             <Typography variant="body2" color="textSecondary">
-              Monitoramento de filas em tempo real (Em breve)
+              Status: {stats?.rabbitmq?.connected ? "Online" : "Offline"}
             </Typography>
             <Box mt={2}>
-              <Typography variant="caption">Status: Online</Typography>
-              <LinearProgress variant="query" style={{ marginTop: 8 }} />
+              {(stats?.rabbitmq?.queues || []).map((q) => (
+                <Box key={q.name} mb={1.5}>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="caption">{q.name}</Typography>
+                    <Typography variant="caption">
+                      msgs: {q.messages || 0} • consumers: {q.consumers || 0}
+                    </Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={Math.min(100, (q.messages || 0) * 5)}
+                    color={(q.messages || 0) > 20 ? "secondary" : "primary"}
+                    style={{ marginTop: 4 }}
+                  />
+                  {!!q.error && (
+                    <Typography variant="caption" color="error">{q.error}</Typography>
+                  )}
+                </Box>
+              ))}
             </Box>
           </Paper>
         </Grid>

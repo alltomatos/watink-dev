@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alltomatos/watinkdev/backend-go/internal/database"
+	"github.com/alltomatos/watinkdev/backend-go/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
@@ -23,6 +24,11 @@ type TenantConsumption struct {
 	Whatsapps   int64  `json:"whatsapps"`
 }
 
+type RabbitMQStats struct {
+	Connected bool                    `json:"connected"`
+	Queues    []services.QueueMetrics `json:"queues"`
+}
+
 type SystemStats struct {
 	CPUUsage          float64             `json:"cpuUsage"`
 	MemoryTotal       uint64              `json:"memoryTotal"`
@@ -30,6 +36,7 @@ type SystemStats struct {
 	MemoryFree        uint64              `json:"memoryFree"`
 	Uptime            float64             `json:"uptime"`
 	TenantConsumption []TenantConsumption `json:"tenantConsumption"`
+	RabbitMQ          RabbitMQStats       `json:"rabbitmq"`
 	Process           struct {
 		CPUUsage     float64 `json:"cpuUsage"`
 		MemoryUsed   uint64  `json:"memoryUsed"`
@@ -82,6 +89,16 @@ func GetSystemStats(c *gin.Context) {
 		ORDER BY tickets DESC, contacts DESC, users DESC
 	`).Scan(&tenantConsumption).Error
 	stats.TenantConsumption = tenantConsumption
+
+	rabbit := services.GetRabbitMQService()
+	stats.RabbitMQ.Connected = rabbit != nil && rabbit.IsConnected()
+	for _, q := range services.ParseQueueList(os.Getenv("MONITOR_RABBIT_QUEUES")) {
+		if rabbit == nil {
+			stats.RabbitMQ.Queues = append(stats.RabbitMQ.Queues, services.QueueMetrics{Name: q, Error: "not_initialized"})
+			continue
+		}
+		stats.RabbitMQ.Queues = append(stats.RabbitMQ.Queues, rabbit.InspectQueue(q))
+	}
 
 	stats.Timestamp = time.Now().Unix()
 
