@@ -1,121 +1,281 @@
 /* @jsxImportSource react */
-import React, { useEffect, useState, useCallback } from "react";
-import { Container, Typography } from "@material-ui/core";
+import React, { useEffect, useState, useCallback, useContext } from "react";
+import { 
+  Container, 
+  Typography, 
+  Grid, 
+  Paper, 
+  CircularProgress,
+  LinearProgress,
+  Box,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
+} from "@material-ui/core";
+import { SystemUpdate as UpdateIcon, MenuBook as MenuBookIcon } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
+import { getBackendUrl } from "../../helpers/urlUtils";
+import api from "../../services/api";
+import { toast } from "react-toastify";
+import { AuthContext } from "../../context/Auth/AuthContext";
 
 const useStyles = makeStyles((theme) => ({
   root: {
     marginTop: theme.spacing(3),
+    paddingBottom: theme.spacing(4),
   },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
+  paper: {
+    padding: theme.spacing(2),
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
   },
-  th: {
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    padding: "8px",
+  title: {
+    marginBottom: theme.spacing(2),
   },
-  td: {
-    borderBottom: "1px solid #f0f0f0",
-    padding: "8px",
+  statLabel: {
+    color: theme.palette.text.secondary,
+    fontSize: "0.875rem",
   },
-  error: {
-    color: theme.palette.error.main,
+  statValue: {
+    fontSize: "1.25rem",
+    fontWeight: "bold",
   },
+  progressBox: {
+    marginTop: theme.spacing(2),
+    marginBottom: theme.spacing(1),
+  },
+  footer: {
+    marginTop: theme.spacing(4),
+    textAlign: "center",
+    color: theme.palette.text.secondary,
+  }
 }));
 
-import { getBackendUrl } from "../../helpers/urlUtils";
+const formatBytes = (bytes, decimals = 2) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+};
 
-const endpoints = [
-  { key: "frontend", url: "/version.json" },
-  { key: "backend", url: getBackendUrl("/api/version") },
-  { key: "plugin-manager", url: "/plugins/version" },
-  { key: "whaileys-engine", url: getBackendUrl("/api/engine/version") },
-  { key: "flow-worker", url: getBackendUrl("/api/flow/version") },
-  { key: "pgvectorgis", url: getBackendUrl("/api/postgres/version") },
-  { key: "rabbitmq", url: getBackendUrl("/api/rabbitmq/version") },
-  { key: "redis", url: getBackendUrl("/api/redis/version") },
-];
+const formatUptime = (seconds) => {
+  const d = Math.floor(seconds / (3600*24));
+  const h = Math.floor(seconds % (3600*24) / 3600);
+  const m = Math.floor(seconds % 3600 / 60);
+  const s = Math.floor(seconds % 60);
+  return `${d}d ${h}h ${m}m ${s}s`;
+};
 
 export default function VersionDashboard() {
   const classes = useStyles();
-  const [data, setData] = useState({});
-  const [loading, setLoading] = useState(false);
+  const { user } = useContext(AuthContext);
+  const isAdmin = ["admin", "superadmin"].includes((user?.profile || "").toLowerCase());
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  const [openUpdateModal, setOpenUpdateModal] = useState(false);
+  const [error, setError] = useState(null);
 
-  const fetchVersions = useCallback(async () => {
-    setLoading(true);
-    const results = {};
-    const fetchOne = async (key, url) => {
-      const start = performance.now();
-      try {
-        const urlWithCacheBuster = `${url}?t=${Date.now()}`;
-        const res = await fetch(urlWithCacheBuster, { headers: { "Cache-Control": "no-store", "Pragma": "no-cache" } });
-        const elapsed = performance.now() - start;
-        if (!res.ok) throw new Error(`HTTP ${res.status} `);
-        const json = await res.json();
-        results[key] = {
-          service: json.service || key,
-          version: json.version || "-",
-          lastUpdated: json.lastUpdated || "-",
-          latencyMs: Math.round(elapsed),
-          error: null,
-        };
-      } catch (e) {
-        const elapsed = performance.now() - start;
-        results[key] = {
-          service: key,
-          version: "-",
-          lastUpdated: "-",
-          latencyMs: Math.round(elapsed),
-          error: e.message,
-        };
-      }
-    };
-
-    await Promise.all(endpoints.map((e) => fetchOne(e.key, e.url)));
-    setData(results);
-    setLoading(false);
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch(getBackendUrl("/api/system/stats"));
+      if (!res.ok) throw new Error("Falha ao carregar estatísticas");
+      const json = await res.json();
+      setStats(json);
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => {
-    fetchVersions();
-    const id = setInterval(fetchVersions, 5 * 60 * 1000);
-    return () => clearInterval(id);
-  }, [fetchVersions]);
+  const handleUpdate = async () => {
+    setUpdating(true);
+    setOpenUpdateModal(false);
+    try {
+      await api.post("/system/update", { version: "2.1.0" });
+      toast.info("Processo de atualização iniciado. O sistema entrará em manutenção.");
+      
+      // Monitorar manutenção
+      const checkInterval = setInterval(async () => {
+        try {
+          const { data } = await api.get("/system/maintenance");
+          if (data.enabled) {
+            window.location.reload(); // Vai cair no SplashScreen/StatusCheck
+          }
+        } catch (e) {
+          // Servidor pode estar reiniciando
+        }
+      }, 2000);
+    } catch (err) {
+      toast.error("Erro ao iniciar atualização");
+      setUpdating(false);
+    }
+  };
 
-  const rows = endpoints.map((e) => data[e.key] || { service: e.key, version: "-", lastUpdated: "-", latencyMs: 0, error: null });
+  useEffect(() => {
+    fetchStats();
+    const id = setInterval(fetchStats, 5000); // Atualiza a cada 5 segundos
+    return () => clearInterval(id);
+  }, [fetchStats]);
+
+  if (loading && !stats) {
+    return (
+      <Container className={classes.root}>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+          <CircularProgress />
+        </Box>
+      </Container>
+    );
+  }
 
   return (
-    <Container maxWidth="md" className={classes.root}>
-      <Typography variant="h5" gutterBottom>
-        Versões dos Serviços
-      </Typography>
-      <table className={classes.table}>
-        <thead>
-          <tr>
-            <th className={classes.th}>Serviço</th>
-            <th className={classes.th}>Versão</th>
-            <th className={classes.th}>Última Atualização</th>
-            <th className={classes.th}>Latência (ms)</th>
-            <th className={classes.th}>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.service}>
-              <td className={classes.td}>{r.service}</td>
-              <td className={classes.td}>{r.version}</td>
-              <td className={classes.td}>{r.lastUpdated}</td>
-              <td className={classes.td}>{r.latencyMs}</td>
-              <td className={classes.td}>
-                {r.error ? <span className={classes.error}>Erro: {r.error}</span> : "OK"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {loading && <Typography variant="body2">Atualizando...</Typography>}
+    <Container maxWidth="lg" className={classes.root}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h5">
+          Monitoramento do Sistema (Business)
+        </Typography>
+        <Box display="flex" gridGap={8}>
+          {isAdmin && (
+            <Button
+              variant="outlined"
+              color="default"
+              startIcon={<MenuBookIcon />}
+              component="a"
+              href="/api/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Swagger
+            </Button>
+          )}
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={updating ? <CircularProgress size={20} color="inherit" /> : <UpdateIcon />}
+            disabled={updating}
+            onClick={() => setOpenUpdateModal(true)}
+          >
+            {updating ? "Atualizando..." : "Verificar Atualização"}
+          </Button>
+        </Box>
+      </Box>
+
+      {error && (
+        <Typography color="error" gutterBottom>
+          Erro: {error}
+        </Typography>
+      )}
+
+      <Grid container spacing={3}>
+        {/* CPU Geral */}
+        <Grid item xs={12} md={4}>
+          <Paper className={classes.paper}>
+            <Typography variant="subtitle1" gutterBottom>CPU do Sistema</Typography>
+            <Typography className={classes.statValue}>{stats?.cpuUsage?.toFixed(1)}%</Typography>
+            <Box className={classes.progressBox}>
+              <LinearProgress variant="determinate" value={stats?.cpuUsage || 0} color={stats?.cpuUsage > 80 ? "secondary" : "primary"} />
+            </Box>
+          </Paper>
+        </Grid>
+
+        {/* Memória Geral */}
+        <Grid item xs={12} md={4}>
+          <Paper className={classes.paper}>
+            <Typography variant="subtitle1" gutterBottom>Memória RAM</Typography>
+            <Typography className={classes.statValue}>
+              {formatBytes(stats?.memoryUsed)} / {formatBytes(stats?.memoryTotal)}
+            </Typography>
+            <Box className={classes.progressBox}>
+              <LinearProgress 
+                variant="determinate" 
+                value={(stats?.memoryUsed / stats?.memoryTotal) * 100 || 0} 
+                color={(stats?.memoryUsed / stats?.memoryTotal) > 0.8 ? "secondary" : "primary"}
+              />
+            </Box>
+            <Typography variant="caption">{((stats?.memoryUsed / stats?.memoryTotal) * 100).toFixed(1)}% em uso</Typography>
+          </Paper>
+        </Grid>
+
+        {/* Uptime */}
+        <Grid item xs={12} md={4}>
+          <Paper className={classes.paper}>
+            <Typography variant="subtitle1" gutterBottom>Uptime do Backend</Typography>
+            <Typography className={classes.statValue}>{formatUptime(stats?.uptime || 0)}</Typography>
+            <Typography variant="caption" style={{ marginTop: 'auto' }}>Desde: {new Date((stats?.timestamp - stats?.uptime) * 1000).toLocaleString()}</Typography>
+          </Paper>
+        </Grid>
+
+        {/* Processo Go */}
+        <Grid item xs={12} md={6}>
+          <Paper className={classes.paper}>
+            <Typography variant="h6" gutterBottom>Processo Backend (Go)</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <Typography className={classes.statLabel}>Uso de CPU (Proc)</Typography>
+                <Typography className={classes.statValue}>{stats?.process?.cpuUsage?.toFixed(2)}%</Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography className={classes.statLabel}>Memória (Heap)</Typography>
+                <Typography className={classes.statValue}>{formatBytes(stats?.process?.memoryUsed)}</Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography className={classes.statLabel}>Goroutines</Typography>
+                <Typography className={classes.statValue}>{stats?.process?.numGoroutine}</Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography className={classes.statLabel}>Threads do SO</Typography>
+                <Typography className={classes.statValue}>-</Typography>
+              </Grid>
+            </Grid>
+          </Paper>
+        </Grid>
+
+        {/* Filas (Placeholder para RabbitMQ futuro) */}
+        <Grid item xs={12} md={6}>
+          <Paper className={classes.paper}>
+            <Typography variant="h6" gutterBottom>Fila de Mensagens (RabbitMQ)</Typography>
+            <Typography variant="body2" color="textSecondary">
+              Monitoramento de filas em tempo real (Em breve)
+            </Typography>
+            <Box mt={2}>
+              <Typography variant="caption">Status: Online</Typography>
+              <LinearProgress variant="query" style={{ marginTop: 8 }} />
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      <div className={classes.footer}>
+        <Typography variant="caption">
+          Watink Business v2.0 • Build ID: {stats?.timestamp}
+        </Typography>
+      </div>
+
+      <Dialog open={openUpdateModal} onClose={() => setOpenUpdateModal(false)}>
+        <DialogTitle>🚀 Nova Atualização Disponível</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Uma nova versão (v2.1.0) está disponível. Ao clicar em atualizar, o sistema irá:
+            <br /><br />
+            1. Entrar em <b>Modo Manutenção</b> (deslogando usuários).<br />
+            2. Realizar um <b>Backup Automático</b> do banco de dados.<br />
+            3. Aplicar os novos arquivos e reiniciar os serviços.<br /><br />
+            Deseja prosseguir agora?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenUpdateModal(false)}>Agora não</Button>
+          <Button onClick={handleUpdate} color="primary" variant="contained">Sim, Atualizar Agora</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

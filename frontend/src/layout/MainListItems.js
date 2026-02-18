@@ -6,7 +6,6 @@ import { Link as RouterLink } from "react-router-dom";
 import ListItem from "@material-ui/core/ListItem";
 import ListItemIcon from "@material-ui/core/ListItemIcon";
 import ListItemText from "@material-ui/core/ListItemText";
-import ListSubheader from "@material-ui/core/ListSubheader";
 import Divider from "@material-ui/core/Divider";
 import { Badge, Tooltip, makeStyles } from "@material-ui/core";
 import DashboardOutlinedIcon from "@material-ui/icons/DashboardOutlined";
@@ -20,7 +19,6 @@ import PeopleAltOutlinedIcon from "@material-ui/icons/PeopleAltOutlined";
 import ContactPhoneOutlinedIcon from "@material-ui/icons/ContactPhoneOutlined";
 import AccountTreeOutlinedIcon from "@material-ui/icons/AccountTreeOutlined";
 import QuestionAnswerOutlinedIcon from "@material-ui/icons/QuestionAnswerOutlined";
-import MenuBookIcon from "@material-ui/icons/MenuBook";
 import DeviceHubIcon from "@material-ui/icons/DeviceHub";
 import LibraryBooksIcon from "@material-ui/icons/LibraryBooks";
 import PersonOutlineIcon from "@material-ui/icons/PersonOutline";
@@ -260,11 +258,6 @@ const MainListItems = (props) => {
       )}
 
       <Divider />
-      {!collapsed && (
-        <ListSubheader inset>
-          {i18n.t("mainDrawer.listItems.administration")}
-        </ListSubheader>
-      )}
 
       <Can
         user={user}
@@ -356,15 +349,6 @@ const MainListItems = (props) => {
         )}
       />
 
-      {(user?.permissions || []).includes("view_swagger") && (
-        <ListItemLink
-          href="/api/docs"
-          primary="Swagger"
-          icon={<MenuBookIcon />}
-          iconColor={googleColors.pink}
-          collapsed={collapsed}
-        />
-      )}
     </div>
   );
 };
