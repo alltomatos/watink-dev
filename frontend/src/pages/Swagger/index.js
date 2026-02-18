@@ -32,32 +32,17 @@ const Swagger = () => {
     const [url, setUrl] = useState("");
     const [error, setError] = useState("");
 
-    useEffect(() => {
-        const resolveSwagger = async () => {
-            const targetUrl = getSwaggerUrl();
-            setUrl(targetUrl);
-
-            try {
-                const res = await fetch(targetUrl, { credentials: "include" });
-                const text = await res.text();
-
-                const looksLikeAppShell =
-                    text.includes("<title>Watink") ||
-                    text.includes("id=\"root\"") ||
-                    text.includes("build/assets");
-
-                if (!res.ok || looksLikeAppShell) {
-                    setError("Swagger não publicado no backend. Endpoint esperado: /api/docs");
-                }
-            } catch (e) {
-                setError("Falha ao carregar Swagger do backend.");
-            }
-        };
-
-        resolveSwagger();
-    }, []);
-
     const hasSwaggerPermission = (user?.permissions || []).includes("view_swagger");
+
+    useEffect(() => {
+        if (!hasSwaggerPermission) return;
+
+        const targetUrl = getSwaggerUrl();
+        setUrl(targetUrl);
+
+        // Fluxo definitivo: /swagger funciona como atalho e redireciona para docs reais no backend
+        window.location.replace(targetUrl);
+    }, [hasSwaggerPermission]);
 
     if (!hasSwaggerPermission) {
         return (
