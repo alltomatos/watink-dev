@@ -190,6 +190,54 @@ app.post("/api/v1/admin/licenses/upsert", adminAuth, async (req, res) => {
   }
 });
 
+app.get("/api/v1/admin/finance/summary", adminAuth, async (_req, res) => {
+  try {
+    const out = await sbGet("subscriptions", "?select=id,status,created_at,expires_at,plans(name,price)&limit=500");
+    const rows = out.data || [];
+
+    let active = 0;
+    let pending = 0;
+    let overdue = 0;
+    let canceled = 0;
+    let mrr = 0;
+
+    rows.forEach((r) => {
+      const st = String(r.status || "").toLowerCase();
+      if (st === "active") active += 1;
+      else if (st === "pending") pending += 1;
+      else if (st === "overdue") overdue += 1;
+      else if (st === "canceled") canceled += 1;
+
+      const plan = Array.isArray(r.plans) ? r.plans[0] : r.plans;
+      const price = Number(plan?.price || 0);
+      if (st === "active") mrr += price;
+    });
+
+    return res.json({
+      subscriptions_total: rows.length,
+      subscriptions_active: active,
+      subscriptions_pending: pending,
+      subscriptions_overdue: overdue,
+      subscriptions_canceled: canceled,
+      mrr,
+      currency: "BRL"
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e?.response?.data || e.message });
+  }
+});
+
+app.get("/api/v1/admin/subscriptions", adminAuth, async (req, res) => {
+  try {
+    const limit = Number(req.query.limit || 100);
+    // Mantemos seleção mínima para evitar quebra por variação de schema entre projetos
+    const out = await sbGet("subscriptions", `?select=id,status,created_at,expires_at,plan_id,customer_id&order=created_at.desc&limit=${limit}`);
+    return res.json({ items: out.data || [], total: out.count });
+  } catch (e) {
+    return res.status(500).json({ error: e?.response?.data || e.message });
+  }
+});
+
 app.post("/api/v1/admin/coupons", adminAuth, async (_req, res) => {
   return res.status(501).json({ error: "cupons ainda não implementado (MVP stub)" });
 });

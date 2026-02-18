@@ -29,6 +29,7 @@
     <div class="card"><div class="muted">Instâncias</div><div id="kpi-instances">-</div></div>
     <div class="card"><div class="muted">Licenças</div><div id="kpi-licenses">-</div></div>
     <div class="card"><div class="muted">Assinaturas</div><div id="kpi-subs">-</div></div>
+    <div class="card"><div class="muted">MRR (BRL)</div><div id="kpi-mrr">-</div></div>
   </div>
 
   <h3>Instâncias</h3>
@@ -44,6 +45,9 @@
     <select id="status"><option value="active">active</option><option value="inactive">inactive</option></select>
     <button onclick="upsertLicense()">Salvar licença</button>
   </div>
+
+  <h3>Assinaturas (últimas)</h3>
+  <table id="subscriptions"><thead><tr><th>id</th><th>status</th><th>plan_id</th><th>customer_id</th><th>created_at</th><th>expires_at</th></tr></thead><tbody></tbody></table>
 
   <p class="muted">Cupom/desconto: endpoint stub criado (próxima fase).</p>
 
@@ -81,18 +85,22 @@ function fillTable(id, rows, mapFn){
 
 async function loadAll(){
   try{
-    const [ov, inst, lic] = await Promise.all([
+    const [ov, inst, lic, fin, subs] = await Promise.all([
       api('/api/v1/admin/overview'),
       api('/api/v1/admin/instances?limit=20'),
-      api('/api/v1/admin/licenses')
+      api('/api/v1/admin/licenses'),
+      api('/api/v1/admin/finance/summary'),
+      api('/api/v1/admin/subscriptions?limit=20')
     ]);
 
     document.getElementById('kpi-instances').textContent = ov.instances;
     document.getElementById('kpi-licenses').textContent = ov.licenses;
     document.getElementById('kpi-subs').textContent = ov.subscriptions;
+    document.getElementById('kpi-mrr').textContent = Number(fin.mrr || 0).toFixed(2);
 
     fillTable('instances', inst.items || [], (r)=>`<td>${r.instance_uuid||''}</td><td>${r.status||''}</td><td>${r.version||''}</td><td>${r.last_seen||''}</td>`);
     fillTable('licenses', lic.items || [], (r)=>`<td>${r.instance_id||''}</td><td>${r.plugin_slug||''}</td><td class='ok'>${r.status||''}</td><td>${r.updated_at||''}</td>`);
+    fillTable('subscriptions', subs.items || [], (r)=>`<td>${r.id||''}</td><td>${r.status||''}</td><td>${r.plan_id||''}</td><td>${r.customer_id||''}</td><td>${r.created_at||''}</td><td>${r.expires_at||''}</td>`);
   }catch(e){
     alert('Erro: '+e.message);
   }
