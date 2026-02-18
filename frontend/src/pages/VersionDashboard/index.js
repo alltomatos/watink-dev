@@ -100,6 +100,7 @@ export default function VersionDashboard() {
   const [queueAlerts, setQueueAlerts] = useState({});
   const [frontendVersion, setFrontendVersion] = useState("-");
   const [frontendUpdatedAt, setFrontendUpdatedAt] = useState(null);
+  const [availableVersion, setAvailableVersion] = useState("-");
   const [changelog, setChangelog] = useState([]);
   const [updateStatus, setUpdateStatus] = useState(() => (localStorage.getItem("watink_update_ok") === "1" ? "ok" : "idle"));
   const prevQueueMessagesRef = useRef({});
@@ -140,7 +141,7 @@ export default function VersionDashboard() {
     localStorage.setItem("watink_update_ok", "0");
     setOpenUpdateModal(false);
     try {
-      await api.post("/system/update", { version: frontendVersion !== "-" ? frontendVersion : "latest" });
+      await api.post("/system/update", { version: availableVersion !== "-" ? availableVersion : "latest" });
       toast.info("Processo de atualização iniciado. O sistema entrará em manutenção.");
 
       const checkInterval = setInterval(async () => {
@@ -169,15 +170,43 @@ export default function VersionDashboard() {
       .then((v) => {
         if (v?.version) setFrontendVersion(v.version);
         if (v?.lastUpdated) setFrontendUpdatedAt(v.lastUpdated);
-        if (Array.isArray(v?.changelog)) {
-          setChangelog(v.changelog.filter(Boolean));
-        } else if (typeof v?.changelog === "string" && v.changelog.trim()) {
-          setChangelog([v.changelog.trim()]);
+      })
+      .catch(() => {});
+
+    fetch("https://api.github.com/repos/alltomatos/watink-bussines/releases/latest", { cache: "no-store" })
+      .then((r) => r.json())
+      .then(async (release) => {
+        const tag = String(release?.tag_name || "").trim();
+        if (tag) setAvailableVersion(tag.replace(/^v/i, ""));
+
+        const manifestAsset = (release?.assets || []).find((a) => a?.name === "manifest.json");
+        if (manifestAsset?.browser_download_url) {
+          try {
+            const manifest = await fetch(manifestAsset.browser_download_url, { cache: "no-store" }).then((r) => r.json());
+            if (manifest?.version) setAvailableVersion(String(manifest.version));
+            if (Array.isArray(manifest?.changelog) && manifest.changelog.length > 0) {
+              setChangelog(manifest.changelog.filter(Boolean));
+              return;
+            }
+          } catch (_) {
+            // fallback para body
+          }
+        }
+
+        const body = String(release?.body || "").trim();
+        if (body) {
+          const lines = body
+            .split("\n")
+            .map((l) => l.replace(/^[-*]\s*/, "").trim())
+            .filter(Boolean);
+          setChangelog(lines.length ? lines : [body]);
         } else {
           setChangelog([]);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setAvailableVersion("-");
+      });
 
     return () => clearInterval(id);
   }, [fetchStats]);
@@ -379,7 +408,10 @@ export default function VersionDashboard() {
         <DialogContent>
           <DialogContentText component="div">
             <Typography variant="body2" gutterBottom>
-              Versão disponível: <b>v{frontendVersion !== "-" ? frontendVersion : "latest"}</b>
+              Versão disponível: <b>v{availableVersion !== "-" ? availableVersion : "latest"}</b>
+            </Typography>
+            <Typography variant="body2" color="textSecondary" gutterBottom>
+              Versão atual: v{frontendVersion}
             </Typography>
 
             {changelog.length > 0 ? (
