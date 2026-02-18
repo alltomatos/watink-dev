@@ -30,9 +30,31 @@ const Swagger = () => {
     const classes = useStyles();
     const { user } = useContext(AuthContext);
     const [url, setUrl] = useState("");
+    const [error, setError] = useState("");
 
     useEffect(() => {
-        setUrl(getSwaggerUrl());
+        const resolveSwagger = async () => {
+            const targetUrl = getSwaggerUrl();
+            setUrl(targetUrl);
+
+            try {
+                const res = await fetch(targetUrl, { credentials: "include" });
+                const text = await res.text();
+
+                const looksLikeAppShell =
+                    text.includes("<title>Watink") ||
+                    text.includes("id=\"root\"") ||
+                    text.includes("build/assets");
+
+                if (!res.ok || looksLikeAppShell) {
+                    setError("Swagger não publicado no backend. Endpoint esperado: /api/docs");
+                }
+            } catch (e) {
+                setError("Falha ao carregar Swagger do backend.");
+            }
+        };
+
+        resolveSwagger();
     }, []);
 
     const hasSwaggerPermission = (user?.permissions || []).includes("view_swagger");
@@ -44,6 +66,16 @@ const Swagger = () => {
                     <Typography variant="h6" color="error">
                         Você não tem permissão para visualizar esta página.
                     </Typography>
+                </Paper>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className={classes.root}>
+                <Paper className={classes.paper}>
+                    <Typography variant="h6" color="error">{error}</Typography>
                 </Paper>
             </div>
         );

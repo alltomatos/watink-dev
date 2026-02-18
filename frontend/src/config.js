@@ -30,16 +30,14 @@ export function getPluginManagerUrl() {
 }
 
 export function getSwaggerUrl() {
-  const explicitSwaggerUrl = getConfig("VITE_SWAGGER_URL");
-  if (explicitSwaggerUrl) return explicitSwaggerUrl;
-
-  const backendUrl = getBackendUrl() || "";
+  const backendUrl = getBackendUrl() || (typeof window !== "undefined" ? window.location.origin : "");
   const base = backendUrl.endsWith("/") ? backendUrl.slice(0, -1) : backendUrl;
 
-  // Se backend aponta para o mesmo host do frontend, evitar /docs (SPA) e tentar /api/docs
+  // Watink Business (binário único): prioriza docs no backend sob /api/docs
   if (typeof window !== "undefined" && base === window.location.origin) {
     return `${base}/api/docs`;
   }
 
+  // Cenário backend separado
   return `${base}/docs`;
 }
