@@ -419,8 +419,17 @@ app.get("/api/v1/admin/licenses", adminAuth, async (req, res) => {
   try {
     const instanceId = req.query.instance_id;
     const filter = instanceId ? `&instance_id=eq.${encodeURIComponent(instanceId)}` : "";
-    const out = await sbGet("licenses", `?select=id,instance_id,plugin_slug,status,updated_at&order=updated_at.desc${filter}&limit=200`);
-    return res.json({ items: out.data || [], total: out.count });
+
+    try {
+      const out = await sbGet("licenses", `?select=id,instance_id,plugin_slug,status,updated_at&order=updated_at.desc${filter}&limit=200`);
+      return res.json({ items: out.data || [], total: out.count });
+    } catch (e) {
+      // Compatibilidade com schemas antigos sem coluna updated_at
+      if (e?.response?.data?.code !== "42703") throw e;
+      const out = await sbGet("licenses", `?select=id,instance_id,plugin_slug,status,created_at&order=created_at.desc${filter}&limit=200`);
+      const items = (out.data || []).map((row) => ({ ...row, updated_at: row.updated_at || row.created_at || null }));
+      return res.json({ items, total: out.count });
+    }
   } catch (e) {
     return res.status(500).json({ error: e?.response?.data || e.message });
   }
@@ -431,8 +440,16 @@ app.post("/api/v1/admin/licenses/upsert", adminAuth, async (req, res) => {
     const { instance_id, plugin_slug, status } = req.body || {};
     if (!instance_id || !plugin_slug || !status) return res.status(400).json({ error: "instance_id, plugin_slug, status são obrigatórios" });
 
-    const rows = [{ instance_id, plugin_slug, status, updated_at: new Date().toISOString() }];
-    const data = await sbUpsert("licenses", rows, "instance_id,plugin_slug");
+    let data;
+    try {
+      const rows = [{ instance_id, plugin_slug, status, updated_at: new Date().toISOString() }];
+      data = await sbUpsert("licenses", rows, "instance_id,plugin_slug");
+    } catch (e) {
+      // Compatibilidade com schemas antigos sem coluna updated_at
+      if (e?.response?.data?.code !== "42703") throw e;
+      const rows = [{ instance_id, plugin_slug, status }];
+      data = await sbUpsert("licenses", rows, "instance_id,plugin_slug");
+    }
 
     audit("license_upsert", actorFromReq(req), { instance_id, plugin_slug, status });
 
