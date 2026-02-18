@@ -322,20 +322,38 @@ app.get("/api/v1/hub/plans", (_req, res) => {
 });
 
 app.post("/api/v1/hub/register", (req, res) => {
-  const { instanceId, version, ownerEmail, ownerName, document, tenantName } = req.body || {};
+  const {
+    instanceId,
+    version,
+    ownerEmail,
+    superAdminEmail,
+    ownerName,
+    document,
+    tenantName,
+    instanceUrl
+  } = req.body || {};
   if (!instanceId) return res.status(400).json({ error: "instanceId obrigatório" });
+
+  const resolvedAdminEmail = superAdminEmail || ownerEmail || null;
 
   upsertLocalInstance(instanceId, {
     version: version || "-",
-    ownerEmail: ownerEmail || null,
+    ownerEmail: ownerEmail || resolvedAdminEmail,
+    superAdminEmail: resolvedAdminEmail,
     ownerName: ownerName || null,
     document: document || null,
     tenantName: tenantName || null,
+    instanceUrl: instanceUrl || null,
     last_seen: new Date().toISOString(),
     status: "active"
   });
 
-  audit("instance_register", "runtime", { instanceId, ownerEmail: ownerEmail || null, tenantName: tenantName || null });
+  audit("instance_register", "runtime", {
+    instanceId,
+    superAdminEmail: resolvedAdminEmail,
+    tenantName: tenantName || null,
+    instanceUrl: instanceUrl || null
+  });
   return res.json({ ok: true, instanceId });
 });
 
@@ -453,6 +471,10 @@ app.get("/api/v1/admin/instances", adminAuth, async (req, res) => {
       status: r.status || "active",
       last_seen: r.last_seen || r.updated_at || r.created_at || null,
       version: r.version || "-",
+      super_admin_email: r.superAdminEmail || r.ownerEmail || null,
+      owner_name: r.ownerName || null,
+      tenant_name: r.tenantName || null,
+      instance_url: r.instanceUrl || null,
       unlock_all: isInstanceUnlockAll(r.instanceId),
       source: "local"
     }))
@@ -482,7 +504,8 @@ app.get("/api/v1/admin/instances", adminAuth, async (req, res) => {
     [...remote, ...localItems].forEach((r) => {
       const key = r.instance_uuid || r.instanceId || r.id;
       if (!key) return;
-      if (!map.has(key)) map.set(key, r);
+      const prev = map.get(key) || {};
+      map.set(key, { ...prev, ...r });
     });
 
     const items = Array.from(map.values())
