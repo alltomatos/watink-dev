@@ -25,3 +25,17 @@ engine-go
 #dist_plugins/
 #rule/
 #plugins/
+
+# Runtime / build artifacts
+release/
+bussines/backend-go
+bussines/watink-core
+frontend/build/
+
+# User uploads (do not version)
+backend/public/**
+!backend/public/assets/
+!backend/public/assets/**
+!backend/public/plugins/
+!backend/public/plugins/**
+!backend/public/webchat.js
