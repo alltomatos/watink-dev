@@ -48,6 +48,9 @@ func Migrate() {
 		&models.Group{},
 		&models.Permission{},
 		&models.Flow{},
+		&models.QuickAnswer{},
+		&models.Pipeline{},
+		&models.PipelineStage{},
 	)
 
 	if err != nil {
