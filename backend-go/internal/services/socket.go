@@ -3,6 +3,7 @@ package services
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	socketio "github.com/googollee/go-socket.io"
 )
@@ -34,7 +35,14 @@ func StartSocket() *socketio.Server {
 	})
 
 	server.OnError("/", func(s socketio.Conn, e error) {
-		log.Println("meet error:", e)
+		// Avoid noisy logs for expected websocket read timeouts/disconnect churn.
+		if e != nil {
+			msg := strings.ToLower(e.Error())
+			if strings.Contains(msg, "i/o timeout") || strings.Contains(msg, "timeout") {
+				return
+			}
+		}
+		log.Println("socket error:", e)
 	})
 
 	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
