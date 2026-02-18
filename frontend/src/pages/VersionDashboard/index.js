@@ -1,10 +1,10 @@
 /* @jsxImportSource react */
-import React, { useEffect, useState, useCallback, useContext } from "react";
-import { 
-  Container, 
-  Typography, 
-  Grid, 
-  Paper, 
+import React, { useEffect, useState, useCallback, useContext, useRef } from "react";
+import {
+  Container,
+  Typography,
+  Grid,
+  Paper,
   CircularProgress,
   LinearProgress,
   Box,
@@ -18,7 +18,8 @@ import {
   TableHead,
   TableRow,
   TableCell,
-  TableBody
+  TableBody,
+  Chip
 } from "@material-ui/core";
 import { SystemUpdate as UpdateIcon, MenuBook as MenuBookIcon } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
@@ -36,9 +37,6 @@ const useStyles = makeStyles((theme) => ({
     display: "flex",
     flexDirection: "column",
     height: "100%",
-  },
-  title: {
-    marginBottom: theme.spacing(2),
   },
   statLabel: {
     color: theme.palette.text.secondary,
@@ -60,21 +58,34 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const formatBytes = (bytes, decimals = 2) => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return "0 Bytes";
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 };
 
 const formatUptime = (seconds) => {
-  const d = Math.floor(seconds / (3600*24));
-  const h = Math.floor(seconds % (3600*24) / 3600);
-  const m = Math.floor(seconds % 3600 / 60);
+  const d = Math.floor(seconds / (3600 * 24));
+  const h = Math.floor((seconds % (3600 * 24)) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
   return `${d}d ${h}h ${m}m ${s}s`;
 };
+
+function queueAlert(queue, prevMessages) {
+  if (queue?.error) return { level: "error", label: "Erro" };
+  if ((queue?.consumers || 0) === 0 && (queue?.messages || 0) > 0) {
+    return { level: "error", label: "Sem consumidor" };
+  }
+  if ((queue?.messages || 0) >= 50) return { level: "error", label: "Fila alta" };
+  if ((queue?.messages || 0) >= 20) return { level: "warning", label: "Atenção" };
+  if ((queue?.messages || 0) > (prevMessages || 0) && (queue?.messages || 0) >= 10) {
+    return { level: "warning", label: "Subindo" };
+  }
+  return { level: "ok", label: "OK" };
+}
 
 export default function VersionDashboard() {
   const classes = useStyles();
@@ -85,10 +96,21 @@ export default function VersionDashboard() {
   const [updating, setUpdating] = useState(false);
   const [openUpdateModal, setOpenUpdateModal] = useState(false);
   const [error, setError] = useState(null);
+  const [queueAlerts, setQueueAlerts] = useState({});
+  const prevQueueMessagesRef = useRef({});
 
   const fetchStats = useCallback(async () => {
     try {
       const { data } = await api.get("/system/stats");
+
+      const nextAlerts = {};
+      (data?.rabbitmq?.queues || []).forEach((q) => {
+        const prev = prevQueueMessagesRef.current[q.name] || 0;
+        nextAlerts[q.name] = queueAlert(q, prev);
+        prevQueueMessagesRef.current[q.name] = q.messages || 0;
+      });
+      setQueueAlerts(nextAlerts);
+
       setStats(data);
       setError(null);
     } catch (e) {
@@ -104,16 +126,16 @@ export default function VersionDashboard() {
     try {
       await api.post("/system/update", { version: "2.1.0" });
       toast.info("Processo de atualização iniciado. O sistema entrará em manutenção.");
-      
-      // Monitorar manutenção
+
       const checkInterval = setInterval(async () => {
         try {
           const { data } = await api.get("/system/maintenance");
           if (data.enabled) {
-            window.location.reload(); // Vai cair no SplashScreen/StatusCheck
+            clearInterval(checkInterval);
+            window.location.reload();
           }
         } catch (e) {
-          // Servidor pode estar reiniciando
+          // servidor reiniciando
         }
       }, 2000);
     } catch (err) {
@@ -124,7 +146,7 @@ export default function VersionDashboard() {
 
   useEffect(() => {
     fetchStats();
-    const id = setInterval(fetchStats, 5000); // Atualiza a cada 5 segundos
+    const id = setInterval(fetchStats, 5000);
     return () => clearInterval(id);
   }, [fetchStats]);
 
@@ -149,23 +171,19 @@ export default function VersionDashboard() {
   return (
     <Container maxWidth="lg" className={classes.root}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h5">
-          Monitor do Sistema (Business)
-        </Typography>
+        <Typography variant="h5">Monitor do Sistema (Business)</Typography>
         <Box display="flex" gridGap={8}>
-          {isSuperAdmin && (
-            <Button
-              variant="outlined"
-              color="default"
-              startIcon={<MenuBookIcon />}
-              component="a"
-              href="/api/docs"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Swagger
-            </Button>
-          )}
+          <Button
+            variant="outlined"
+            color="default"
+            startIcon={<MenuBookIcon />}
+            component="a"
+            href="/api/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Swagger
+          </Button>
           <Button
             variant="contained"
             color="primary"
@@ -185,7 +203,6 @@ export default function VersionDashboard() {
       )}
 
       <Grid container spacing={3}>
-        {/* CPU Geral */}
         <Grid item xs={12} md={4}>
           <Paper className={classes.paper}>
             <Typography variant="subtitle1" gutterBottom>CPU do Sistema</Typography>
@@ -196,7 +213,6 @@ export default function VersionDashboard() {
           </Paper>
         </Grid>
 
-        {/* Memória Geral */}
         <Grid item xs={12} md={4}>
           <Paper className={classes.paper}>
             <Typography variant="subtitle1" gutterBottom>Memória RAM</Typography>
@@ -204,9 +220,9 @@ export default function VersionDashboard() {
               {formatBytes(stats?.memoryUsed)} / {formatBytes(stats?.memoryTotal)}
             </Typography>
             <Box className={classes.progressBox}>
-              <LinearProgress 
-                variant="determinate" 
-                value={(stats?.memoryUsed / stats?.memoryTotal) * 100 || 0} 
+              <LinearProgress
+                variant="determinate"
+                value={(stats?.memoryUsed / stats?.memoryTotal) * 100 || 0}
                 color={(stats?.memoryUsed / stats?.memoryTotal) > 0.8 ? "secondary" : "primary"}
               />
             </Box>
@@ -214,16 +230,16 @@ export default function VersionDashboard() {
           </Paper>
         </Grid>
 
-        {/* Uptime */}
         <Grid item xs={12} md={4}>
           <Paper className={classes.paper}>
             <Typography variant="subtitle1" gutterBottom>Uptime do Backend</Typography>
             <Typography className={classes.statValue}>{formatUptime(stats?.uptime || 0)}</Typography>
-            <Typography variant="caption" style={{ marginTop: 'auto' }}>Desde: {new Date((stats?.timestamp - stats?.uptime) * 1000).toLocaleString()}</Typography>
+            <Typography variant="caption" style={{ marginTop: "auto" }}>
+              Desde: {new Date((stats?.timestamp - stats?.uptime) * 1000).toLocaleString()}
+            </Typography>
           </Paper>
         </Grid>
 
-        {/* Processo Go */}
         <Grid item xs={12} md={6}>
           <Paper className={classes.paper}>
             <Typography variant="h6" gutterBottom>Processo Backend (Go)</Typography>
@@ -255,25 +271,28 @@ export default function VersionDashboard() {
               Status: {stats?.rabbitmq?.connected ? "Online" : "Offline"}
             </Typography>
             <Box mt={2}>
-              {(stats?.rabbitmq?.queues || []).map((q) => (
-                <Box key={q.name} mb={1.5}>
-                  <Box display="flex" justifyContent="space-between">
-                    <Typography variant="caption">{q.name}</Typography>
-                    <Typography variant="caption">
-                      msgs: {q.messages || 0} • consumers: {q.consumers || 0}
-                    </Typography>
+              {(stats?.rabbitmq?.queues || []).map((q) => {
+                const alert = queueAlerts[q.name] || { level: "ok", label: "OK" };
+                const chipColor = alert.level === "error" ? "secondary" : alert.level === "warning" ? "default" : "primary";
+                return (
+                  <Box key={q.name} mb={1.5}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Typography variant="caption">{q.name}</Typography>
+                      <Box display="flex" alignItems="center" gridGap={8}>
+                        <Typography variant="caption">msgs: {q.messages || 0} • consumers: {q.consumers || 0}</Typography>
+                        <Chip size="small" label={alert.label} color={chipColor} />
+                      </Box>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={Math.min(100, (q.messages || 0) * 5)}
+                      color={alert.level === "error" || alert.level === "warning" ? "secondary" : "primary"}
+                      style={{ marginTop: 4 }}
+                    />
+                    {!!q.error && <Typography variant="caption" color="error">{q.error}</Typography>}
                   </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={Math.min(100, (q.messages || 0) * 5)}
-                    color={(q.messages || 0) > 20 ? "secondary" : "primary"}
-                    style={{ marginTop: 4 }}
-                  />
-                  {!!q.error && (
-                    <Typography variant="caption" color="error">{q.error}</Typography>
-                  )}
-                </Box>
-              ))}
+                );
+              })}
             </Box>
           </Paper>
         </Grid>
@@ -310,9 +329,7 @@ export default function VersionDashboard() {
       </Grid>
 
       <div className={classes.footer}>
-        <Typography variant="caption">
-          Watink Business v2.0 • Build ID: {stats?.timestamp}
-        </Typography>
+        <Typography variant="caption">Watink Business v2.0 • Build ID: {stats?.timestamp}</Typography>
       </div>
 
       <Dialog open={openUpdateModal} onClose={() => setOpenUpdateModal(false)}>
