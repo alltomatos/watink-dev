@@ -301,15 +301,23 @@ const messages = {
       mainDrawer: {
         listItems: {
           dashboard: "Dashboard",
-          connections: "Conexões",
+          pipelines: "Pipelines",
           tickets: "Chats",
+          myActivities: "Minhas Atividades",
           contacts: "Contatos",
           quickAnswers: "Respostas Rápidas",
-          queues: "Filas",
+          flowBuilder: "Flow Builder",
+          clients: "Clientes",
+          helpdesk: "Helpdesk",
           administration: "Administração",
-          users: "Usuários",
+          tags: "Tags",
           groups: "Grupos",
+          connections: "Conexões",
+          users: "Usuários",
+          queues: "Filas",
+          knowledgeBase: "Base de Conhecimento",
           settings: "Configurações",
+          swagger: "Swagger",
         },
         appBar: {
           user: {
@@ -425,6 +433,14 @@ const messages = {
             options: {
               enabled: "Ativado",
               disabled: "Desativado",
+            },
+          },
+          language: {
+            name: "Idioma",
+            options: {
+              pt: "Português",
+              en: "English",
+              es: "Español",
             },
           },
         },
