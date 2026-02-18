@@ -67,6 +67,14 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.GET("/quickAnswers/", controllers.ListQuickAnswers)
 		protected.GET("/quickAnswers/:quickAnswerId", controllers.ShowQuickAnswer)
 
+		// Knowledge Bases
+		protected.GET("/knowledge-bases", controllers.ListKnowledgeBases)
+		protected.GET("/knowledge-bases/", controllers.ListKnowledgeBases)
+		protected.GET("/knowledge-bases/:knowledgeBaseId", controllers.ShowKnowledgeBase)
+		protected.POST("/knowledge-bases", controllers.CreateKnowledgeBase)
+		protected.PUT("/knowledge-bases/:knowledgeBaseId", controllers.UpdateKnowledgeBase)
+		protected.DELETE("/knowledge-bases/:knowledgeBaseId", controllers.DeleteKnowledgeBase)
+
 		// Users
 		protected.GET("/users", controllers.ListUsers)
 		protected.GET("/users/", controllers.ListUsers)
