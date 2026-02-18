@@ -21,13 +21,20 @@ const FILES = {
   plugins: path.join(DATA_DIR, "plugins.json"),
   coupons: path.join(DATA_DIR, "coupons.json"),
   audits: path.join(DATA_DIR, "audits.json"),
-  instances: path.join(DATA_DIR, "instances.json")
+  instances: path.join(DATA_DIR, "instances.json"),
+  instanceOverrides: path.join(DATA_DIR, "instance-overrides.json")
+};
+
+const PLAN_DEFINITIONS = {
+  start: { key: "start", name: "Start", price: 69.9, monthly: true, premium_limit: 4 },
+  bussines_1: { key: "bussines_1", name: "Bussines 1", price: 99.99, monthly: true, premium_limit: 6 },
+  saas_plugin: { key: "saas_plugin", name: "SaaS Plugin", price: 199.99, monthly: true, standalone: true }
 };
 
 const DEFAULT_PLUGINS = [
   { id: "1", slug: "helpdesk", name: "Helpdesk", description: "Gestão de protocolos e SLA", version: "2.0.0", type: "business", category: "support", price: 49.9, iconUrl: "/public/plugins/helpdesk.png", active: true },
   { id: "2", slug: "clientes", name: "Clientes", description: "Gestão de clientes e vínculos", version: "2.0.0", type: "business", category: "crm", price: 49.9, iconUrl: "/public/plugins/clientes.png", active: true },
-  { id: "3", slug: "webchat", name: "Webchat", description: "Widget webchat para site", version: "2.0.0", type: "free", category: "channel", price: 0, iconUrl: "/public/plugins/webchat.png", active: true },
+  { id: "3", slug: "webchat", name: "Webchat", description: "Widget webchat para site", version: "2.0.0", type: "premium", category: "channel", price: 49.9, iconUrl: "/public/plugins/webchat.png", active: true },
   { id: "4", slug: "saas-plugin", name: "SaaS Manager", description: "Recursos SaaS avançados", version: "2.0.0", type: "business", category: "saas", price: 199.9, iconUrl: "/public/plugins/saas-plugin.png", active: true }
 ];
 
@@ -37,6 +44,7 @@ function ensureDataFiles() {
   if (!fs.existsSync(FILES.coupons)) fs.writeFileSync(FILES.coupons, JSON.stringify([], null, 2));
   if (!fs.existsSync(FILES.audits)) fs.writeFileSync(FILES.audits, JSON.stringify([], null, 2));
   if (!fs.existsSync(FILES.instances)) fs.writeFileSync(FILES.instances, JSON.stringify([], null, 2));
+  if (!fs.existsSync(FILES.instanceOverrides)) fs.writeFileSync(FILES.instanceOverrides, JSON.stringify({}, null, 2));
 }
 
 function readJson(file, fallback) {
@@ -53,6 +61,26 @@ function writeJson(file, data) {
 
 function getCatalog() {
   return readJson(FILES.plugins, DEFAULT_PLUGINS).filter((p) => p.active !== false);
+}
+
+function getInstanceOverrides() {
+  return readJson(FILES.instanceOverrides, {});
+}
+
+function isInstanceUnlockAll(instanceId) {
+  const overrides = getInstanceOverrides();
+  return Boolean(overrides?.[instanceId]?.unlock_all === true);
+}
+
+function setInstanceUnlockAll(instanceId, enabled) {
+  const overrides = getInstanceOverrides();
+  overrides[instanceId] = {
+    ...(overrides[instanceId] || {}),
+    unlock_all: Boolean(enabled),
+    updated_at: new Date().toISOString()
+  };
+  writeJson(FILES.instanceOverrides, overrides);
+  return overrides[instanceId];
 }
 
 function upsertLocalInstance(instanceId, patch = {}) {
@@ -252,6 +280,10 @@ app.get("/api/v1/hub/catalog", (_req, res) => {
   res.json({ plugins: getCatalog() });
 });
 
+app.get("/api/v1/hub/plans", (_req, res) => {
+  return res.json({ plans: PLAN_DEFINITIONS });
+});
+
 app.post("/api/v1/hub/register", (req, res) => {
   const { instanceId, version, ownerEmail, ownerName, document, tenantName } = req.body || {};
   if (!instanceId) return res.status(400).json({ error: "instanceId obrigatório" });
@@ -328,6 +360,12 @@ app.post("/api/v1/hub/heartbeat", async (req, res) => {
     const licenses = {};
     active.forEach((slug) => { licenses[slug] = "active"; });
 
+    if (isInstanceUnlockAll(instanceId)) {
+      getCatalog().forEach((p) => {
+        if (p?.slug) licenses[p.slug] = "active";
+      });
+    }
+
     return res.json({ ok: true, licenses });
   } catch (_e) {
     return res.status(200).json({ ok: false, licenses: {} });
@@ -373,6 +411,7 @@ app.get("/api/v1/admin/instances", adminAuth, async (req, res) => {
       status: r.status || "active",
       last_seen: r.last_seen || r.updated_at || r.created_at || null,
       version: r.version || "-",
+      unlock_all: isInstanceUnlockAll(r.instanceId),
       source: "local"
     }))
     .sort((a, b) => String(b.last_seen || "").localeCompare(String(a.last_seen || "")));
@@ -405,6 +444,7 @@ app.get("/api/v1/admin/instances", adminAuth, async (req, res) => {
     });
 
     const items = Array.from(map.values())
+      .map((r) => ({ ...r, unlock_all: isInstanceUnlockAll(r.instance_uuid || r.instanceId || r.id) }))
       .sort((a, b) => String(b.last_seen || "").localeCompare(String(a.last_seen || "")))
       .slice(0, limit);
 
@@ -413,6 +453,26 @@ app.get("/api/v1/admin/instances", adminAuth, async (req, res) => {
     const items = localItems.slice(0, limit);
     return res.json({ items, total: items.length });
   }
+});
+
+app.post("/api/v1/admin/instances/:instanceId/unlock-all", adminAuth, (req, res) => {
+  try {
+    const instanceId = req.params.instanceId;
+    if (!instanceId) return res.status(400).json({ error: "instanceId obrigatório" });
+
+    const enabled = Boolean(req.body?.enabled === true || req.body?.enabled === "true" || req.body?.enabled === 1 || req.body?.enabled === "1");
+    const out = setInstanceUnlockAll(instanceId, enabled);
+
+    audit("instance_unlock_all_set", actorFromReq(req), { instanceId, enabled });
+
+    return res.json({ ok: true, instanceId, unlock_all: out.unlock_all, updated_at: out.updated_at });
+  } catch (e) {
+    return res.status(500).json({ error: e?.message || "erro ao atualizar override" });
+  }
+});
+
+app.get("/api/v1/admin/plans", adminAuth, (_req, res) => {
+  return res.json({ plans: PLAN_DEFINITIONS });
 });
 
 app.get("/api/v1/admin/licenses", adminAuth, async (req, res) => {

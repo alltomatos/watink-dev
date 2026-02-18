@@ -59,7 +59,7 @@
       </div>
       <div class="panel">
         <h3>Instâncias recentes</h3>
-        <table id="instances"><thead><tr><th>UUID</th><th>Status</th><th>Versão</th><th>Last seen</th></tr></thead><tbody></tbody></table>
+        <table id="instances"><thead><tr><th>UUID</th><th>Status</th><th>Versão</th><th>Last seen</th><th>Override</th></tr></thead><tbody></tbody></table>
       </div>
     </section>
 
@@ -192,7 +192,7 @@ async function loadAll(){
     document.getElementById('kpi-subs').textContent=ov.subscriptions;
     document.getElementById('kpi-mrr').textContent=Number(fin.mrr||0).toFixed(2);
 
-    fillTable('instances',inst.items||[],r=>`<td>${r.instance_uuid||''}</td><td>${r.status||''}</td><td>${r.version||''}</td><td>${r.last_seen||''}</td>`);
+    fillTable('instances',inst.items||[],r=>`<td>${r.instance_uuid||''}</td><td>${r.status||''}</td><td>${r.version||''}</td><td>${r.last_seen||''}</td><td><button class='btn ${r.unlock_all?"danger":"ok"}' onclick="toggleUnlockAll('${r.instance_uuid||''}', ${r.unlock_all ? 'false' : 'true'})">${r.unlock_all?'Liberação total: ON':'Liberação total: OFF'}</button></td>`);
     fillTable('licenses',lic.items||[],r=>`<td>${r.instance_id||''}</td><td>${r.plugin_slug||''}</td><td class='ok'>${r.status||''}</td><td>${r.updated_at||''}</td>`);
     fillTable('subscriptions',subs.items||[],r=>`<td>${r.id||''}</td><td>${r.status||''}</td><td>${r.plan_id||''}</td><td>${r.customer_id||''}</td><td>${r.created_at||''}</td><td>${r.expires_at||''}</td>`);
     fillTable('byplan',byplan.items||[],r=>`<td>${r.plan||''}</td><td>${r.total||0}</td><td>${r.active||0}</td><td>${r.pending||0}</td><td>${r.overdue||0}</td><td>${r.canceled||0}</td><td>${Number(r.mrr||0).toFixed(2)}</td>`);
@@ -238,6 +238,14 @@ async function createCoupon(){
 }
 
 async function deleteCoupon(id){ if(!confirm('Excluir cupom?')) return; await api(`/api/v1/admin/coupons/${id}`,{method:'DELETE'}); loadAll(); }
+
+async function toggleUnlockAll(instanceId, enabled){
+  if(!instanceId) return;
+  const ok = confirm(`${enabled ? 'Ativar' : 'Desativar'} liberação total para ${instanceId}?`);
+  if(!ok) return;
+  await api(`/api/v1/admin/instances/${encodeURIComponent(instanceId)}/unlock-all`,{method:'POST',body:JSON.stringify({enabled})});
+  loadAll();
+}
 
 function val(id){ return (document.getElementById(id)?.value||'').trim(); }
 
