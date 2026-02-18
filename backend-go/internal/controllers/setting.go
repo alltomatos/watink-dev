@@ -12,7 +12,7 @@ import (
 
 func ListSettings(c *gin.Context) {
 	tenantID, _ := c.Get("tenantId")
-	
+
 	var settings []models.Setting
 	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Find(&settings).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch settings"})
@@ -25,7 +25,7 @@ func ListSettings(c *gin.Context) {
 func GetPublicSettings(c *gin.Context) {
 	var settings []models.Setting
 	publicKeys := []string{"systemLogo", "login_backgroundImage", "login_layout", "systemFavicon"}
-	
+
 	if err := database.DB.Where("key IN ?", publicKeys).Find(&settings).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch public settings"})
 		return
@@ -35,9 +35,13 @@ func GetPublicSettings(c *gin.Context) {
 }
 
 func UpdateSetting(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantIDRaw, exists := c.Get("tenantId")
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId is required"})
+		return
+	}
 	key := c.Param("key")
-	
+
 	var req struct {
 		Value string `json:"value" binding:"required"`
 	}
@@ -46,12 +50,29 @@ func UpdateSetting(c *gin.Context) {
 		return
 	}
 
-	setting := models.Setting{
-		Key:      key,
-		TenantID: tenantID.(uuid.UUID),
+	var tenantUUID uuid.UUID
+	switch v := tenantIDRaw.(type) {
+	case uuid.UUID:
+		tenantUUID = v
+	case string:
+		parsed, err := uuid.Parse(v)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+			return
+		}
+		tenantUUID = parsed
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID type"})
+		return
 	}
 
-	if err := database.DB.Model(&setting).Update("value", req.Value).Error; err != nil {
+	setting := models.Setting{
+		Key:      key,
+		TenantID: tenantUUID,
+		Value:    req.Value,
+	}
+
+	if err := database.DB.Where("key = ? AND \"tenantId\" = ?", key, tenantUUID).Assign(models.Setting{Value: req.Value}).FirstOrCreate(&setting).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update setting"})
 		return
 	}
