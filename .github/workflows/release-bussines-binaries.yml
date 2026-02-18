@@ -76,33 +76,35 @@ jobs:
           WIN_SHA=$(sha256sum release/watink-core-windows-amd64-v${VERSION}.zip | awk '{print $1}')
           export LINUX_SHA WIN_SHA
 
-          python3 - <<PY
-import json, os
-version=os.environ['VERSION']
-changelog=os.environ.get('CHANGELOG','').strip()
-if changelog:
-    changelog_items=[line.strip('- ').strip() for line in changelog.splitlines() if line.strip()]
-else:
-    changelog_items=[]
-manifest={
-  "service":"watink-bussines",
-  "version":version,
-  "tag":f"v{version}",
-  "artifacts":{
-    "linux_amd64":{
-      "file":f"watink-core-linux-amd64-v{version}.tar.gz",
-      "sha256":os.environ['LINUX_SHA']
-    },
-    "windows_amd64":{
-      "file":f"watink-core-windows-amd64-v{version}.zip",
-      "sha256":os.environ['WIN_SHA']
-    }
-  },
-  "changelog":changelog_items
-}
-with open('release/manifest.json','w') as f:
-    json.dump(manifest,f,indent=2)
-PY
+          python3 - <<'PY'
+          import json, os
+          version = os.environ['VERSION']
+          changelog = os.environ.get('CHANGELOG', '').strip()
+          if changelog:
+              changelog_items = [line.strip('- ').strip() for line in changelog.splitlines() if line.strip()]
+          else:
+              changelog_items = []
+
+          manifest = {
+              "service": "watink-bussines",
+              "version": version,
+              "tag": f"v{version}",
+              "artifacts": {
+                  "linux_amd64": {
+                      "file": f"watink-core-linux-amd64-v{version}.tar.gz",
+                      "sha256": os.environ['LINUX_SHA']
+                  },
+                  "windows_amd64": {
+                      "file": f"watink-core-windows-amd64-v{version}.zip",
+                      "sha256": os.environ['WIN_SHA']
+                  }
+              },
+              "changelog": changelog_items
+          }
+
+          with open('release/manifest.json', 'w') as f:
+              json.dump(manifest, f, indent=2)
+          PY
 
       - name: Publish release assets to alltomatos/watink-bussines
         env:
@@ -125,7 +127,6 @@ PY
             CHANGELOG="Release automática de binários a partir do watinkdev (${GITHUB_SHA})."
           fi
 
-          # Cria release se não existir
           if gh release view "$TAG" --repo alltomatos/watink-bussines >/dev/null 2>&1; then
             echo "Release ${TAG} já existe, fazendo upload/replace dos assets..."
           else
