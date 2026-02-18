@@ -325,8 +325,32 @@ app.get("/api/v1/admin/overview", adminAuth, async (_req, res) => {
 app.get("/api/v1/admin/instances", adminAuth, async (req, res) => {
   try {
     const limit = Number(req.query.limit || 50);
-    const out = await sbGet("instances", `?select=id,instance_uuid,status,last_seen,version&order=last_seen.desc&limit=${limit}`);
-    return res.json({ items: out.data || [], total: out.count });
+
+    // Tentativa 1: schema novo
+    try {
+      const out = await sbGet("instances", `?select=id,instance_uuid,status,last_seen,version&order=last_seen.desc&limit=${limit}`);
+      return res.json({ items: out.data || [], total: out.count });
+    } catch (_e1) {
+      // Tentativa 2: schema alternativo (sem last_seen/version)
+      try {
+        const out2 = await sbGet("instances", `?select=id,instance_uuid,status,updated_at,created_at&order=updated_at.desc&limit=${limit}`);
+        const items = (out2.data || []).map((r) => ({
+          ...r,
+          last_seen: r.last_seen || r.updated_at || r.created_at || null,
+          version: r.version || "-"
+        }));
+        return res.json({ items, total: out2.count });
+      } catch (_e2) {
+        // Tentativa 3: schema mínimo (apenas created_at)
+        const out3 = await sbGet("instances", `?select=id,instance_uuid,status,created_at&order=created_at.desc&limit=${limit}`);
+        const items = (out3.data || []).map((r) => ({
+          ...r,
+          last_seen: r.last_seen || r.created_at || null,
+          version: r.version || "-"
+        }));
+        return res.json({ items, total: out3.count });
+      }
+    }
   } catch (e) {
     return res.status(500).json({ error: e?.response?.data || e.message });
   }
