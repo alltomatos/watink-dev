@@ -75,7 +75,7 @@ const formatUptime = (seconds) => {
 export default function VersionDashboard() {
   const classes = useStyles();
   const { user } = useContext(AuthContext);
-  const isAdmin = ["admin", "superadmin"].includes((user?.profile || "").toLowerCase());
+  const isSuperAdmin = (user?.profile || "").toLowerCase() === "superadmin";
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -126,6 +126,14 @@ export default function VersionDashboard() {
     return () => clearInterval(id);
   }, [fetchStats]);
 
+  if (!isSuperAdmin) {
+    return (
+      <Container className={classes.root}>
+        <Typography color="error">Acesso restrito ao superadmin.</Typography>
+      </Container>
+    );
+  }
+
   if (loading && !stats) {
     return (
       <Container className={classes.root}>
@@ -143,7 +151,7 @@ export default function VersionDashboard() {
           Monitoramento do Sistema (Business)
         </Typography>
         <Box display="flex" gridGap={8}>
-          {isAdmin && (
+          {isSuperAdmin && (
             <Button
               variant="outlined"
               color="default"

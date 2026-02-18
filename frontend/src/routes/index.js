@@ -42,6 +42,7 @@ import { WhatsAppsProvider } from "../context/WhatsApp/WhatsAppsContext";
 import { ThemeProvider } from "../context/DarkMode";
 import { TicketsProvider } from "../context/Tickets/TicketsContext";
 import Route from "./Route";
+import StatusCheck from "../components/StatusCheck";
 
 const PrivateRoutes = () => {
   return (
@@ -78,6 +79,7 @@ const PrivateRoutes = () => {
             <Route exact path="/helpdesk/tv" component={HelpdeskTvMode} isPrivate />
             <Route exact path="/helpdesk/:protocolId" component={ProtocolDetails} isPrivate />
             <Route exact path="/saas-manager" component={SaaSAdmin} isPrivate />
+            <Route exact path="/monitor" component={VersionDashboard} isPrivate />
             <Route exact path="/versions" component={VersionDashboard} isPrivate />
           </Switch>
         </LoggedInLayout>
@@ -91,18 +93,20 @@ import PublicProtocol from "../pages/PublicProtocol";
 const Routes = () => {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <ThemeProvider>
-          <Switch>
-            <Route exact path="/initial-setup" component={InitialSetup} />
-            <Route exact path="/login" component={Login} />
-            <Route exact path="/signup" component={Signup} />
-            <Route exact path="/public/protocols/:token" component={PublicProtocol} isPublic />
-            <Route path="/" component={PrivateRoutes} isPrivate />
-          </Switch>
-          <ToastContainer autoClose={3000} />
-        </ThemeProvider>
-      </AuthProvider>
+      <StatusCheck>
+        <AuthProvider>
+          <ThemeProvider>
+            <Switch>
+              <Route exact path="/initial-setup" component={InitialSetup} />
+              <Route exact path="/login" component={Login} />
+              <Route exact path="/signup" component={Signup} />
+              <Route exact path="/public/protocols/:token" component={PublicProtocol} isPublic />
+              <Route path="/" component={PrivateRoutes} isPrivate />
+            </Switch>
+            <ToastContainer autoClose={3000} />
+          </ThemeProvider>
+        </AuthProvider>
+      </StatusCheck>
     </BrowserRouter>
   );
 };
