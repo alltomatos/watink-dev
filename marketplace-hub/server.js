@@ -16,6 +16,9 @@ const ADMIN_USER = process.env.ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const MP_WEBHOOK_URL = process.env.MP_WEBHOOK_URL || `${APP_BASE_URL}/api/v1/hub/webhook/mp`;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
+const GITHUB_PLUGIN_REPO = process.env.GITHUB_PLUGIN_REPO || "alltomatos/watink-bussines";
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.WATINK_BUSSINES_PAT || "";
+const DOWNLOAD_SIGNING_SECRET = process.env.DOWNLOAD_SIGNING_SECRET || ADMIN_TOKEN || "change_me_download_secret";
 
 const FILES = {
   plugins: path.join(DATA_DIR, "plugins.json"),
@@ -277,6 +280,61 @@ function applyCouponRules(coupon, baseAmount, pluginSlug) {
   return { ok: true, discount, finalAmount };
 }
 
+function signDownloadToken(payload) {
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const sig = crypto.createHmac("sha256", DOWNLOAD_SIGNING_SECRET).update(body).digest("base64url");
+  return `${body}.${sig}`;
+}
+
+function verifyDownloadToken(token) {
+  if (!token || !token.includes(".")) return null;
+  const [body, sig] = token.split(".");
+  const expected = crypto.createHmac("sha256", DOWNLOAD_SIGNING_SECRET).update(body).digest("base64url");
+  if (sig !== expected) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+    if (!payload?.exp || Date.now() > payload.exp) return null;
+    return payload;
+  } catch (_e) {
+    return null;
+  }
+}
+
+async function githubGetJson(pathname) {
+  if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN não configurado no Hub");
+  const { data } = await axios.get(`https://api.github.com${pathname}`, {
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28"
+    },
+    timeout: 20000
+  });
+  return data;
+}
+
+async function githubGetRaw(pathname) {
+  if (!GITHUB_TOKEN) throw new Error("GITHUB_TOKEN não configurado no Hub");
+  const { data, headers } = await axios.get(`https://api.github.com${pathname}`, {
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Accept: "application/vnd.github.raw",
+      "X-GitHub-Api-Version": "2022-11-28"
+    },
+    responseType: "stream",
+    timeout: 30000
+  });
+  return { stream: data, headers };
+}
+
+function pluginGithubManifestPath(slug) {
+  return `/repos/${GITHUB_PLUGIN_REPO}/contents/plugin/${encodeURIComponent(slug)}/manifest.json`;
+}
+
+function pluginGithubArtifactPath(slug) {
+  return `/repos/${GITHUB_PLUGIN_REPO}/contents/plugin/${encodeURIComponent(slug)}/artifact/plugin.zip`;
+}
+
 async function callSupabaseFunction(fn, payload) {
   ensureSupabase();
   const url = `${SUPABASE_URL}/functions/v1/${fn}`;
@@ -332,6 +390,75 @@ app.get("/api/v1/hub/catalog", (_req, res) => {
 
 app.get("/api/v1/hub/plans", (_req, res) => {
   return res.json({ plans: getPlans() });
+});
+
+app.get("/api/v1/hub/plugins/:slug/artifact/token", async (req, res) => {
+  try {
+    const slug = String(req.params.slug || "").trim();
+    const instanceId = String(req.query.instanceId || "").trim();
+    if (!slug || !instanceId) return res.status(400).json({ error: "slug e instanceId são obrigatórios" });
+
+    const catalog = getCatalog();
+    const plugin = catalog.find((p) => p.slug === slug);
+    if (!plugin) return res.status(404).json({ error: "plugin não encontrado" });
+
+    const data = await callSupabaseFunction("validate-license", { instanceUuid: instanceId });
+    const active = new Set(Array.isArray(data?.active) ? data.active : []);
+    const unlockAll = isInstanceUnlockAll(instanceId);
+
+    if (!unlockAll && !active.has(slug)) {
+      return res.status(403).json({ error: "plugin não licenciado para esta instância" });
+    }
+
+    const token = signDownloadToken({
+      instanceId,
+      slug,
+      exp: Date.now() + 5 * 60 * 1000
+    });
+
+    return res.json({
+      ok: true,
+      token,
+      downloadUrl: `${APP_BASE_URL}/api/v1/hub/plugins/${encodeURIComponent(slug)}/artifact/download?token=${encodeURIComponent(token)}`
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e?.message || "erro gerando token de download" });
+  }
+});
+
+app.get("/api/v1/hub/plugins/:slug/artifact/download", async (req, res) => {
+  try {
+    const token = String(req.query.token || "");
+    const payload = verifyDownloadToken(token);
+    if (!payload) return res.status(401).json({ error: "token inválido/expirado" });
+
+    const slug = String(req.params.slug || "").trim();
+    if (payload.slug !== slug) return res.status(401).json({ error: "token inválido para este plugin" });
+
+    let artifactPath = pluginGithubArtifactPath(slug);
+
+    try {
+      const manifestPath = pluginGithubManifestPath(slug);
+      const manifestData = await githubGetJson(manifestPath);
+      if (manifestData?.content) {
+        const manifestJson = JSON.parse(Buffer.from(String(manifestData.content), "base64").toString("utf8"));
+        const customArtifact = manifestJson?.distribution?.artifactFile || manifestJson?.artifactFile;
+        if (customArtifact && typeof customArtifact === "string") {
+          const safe = customArtifact.replace(/^\/+/, "");
+          artifactPath = `/repos/${GITHUB_PLUGIN_REPO}/contents/${safe}`;
+        }
+      }
+    } catch (_e) {
+      // usa caminho padrão plugin/<slug>/artifact/plugin.zip
+    }
+
+    const { stream, headers } = await githubGetRaw(artifactPath);
+    res.setHeader("Content-Type", headers["content-type"] || "application/octet-stream");
+    res.setHeader("Content-Disposition", `attachment; filename=\"${slug}.zip\"`);
+    stream.pipe(res);
+  } catch (e) {
+    return res.status(500).json({ error: e?.response?.data?.message || e?.message || "erro ao baixar artifact" });
+  }
 });
 
 app.post("/api/v1/hub/register", (req, res) => {
