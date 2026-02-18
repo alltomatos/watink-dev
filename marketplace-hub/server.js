@@ -17,6 +17,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const MP_WEBHOOK_URL = process.env.MP_WEBHOOK_URL || `${APP_BASE_URL}/api/v1/hub/webhook/mp`;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const GITHUB_PLUGIN_REPO = process.env.GITHUB_PLUGIN_REPO || "alltomatos/watink-bussines";
+const GITHUB_BIN_REPO = process.env.GITHUB_BIN_REPO || GITHUB_PLUGIN_REPO;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.WATINK_BUSSINES_PAT || "";
 const DOWNLOAD_SIGNING_SECRET = process.env.DOWNLOAD_SIGNING_SECRET || ADMIN_TOKEN || "change_me_download_secret";
 
@@ -335,6 +336,37 @@ function pluginGithubArtifactPath(slug) {
   return `/repos/${GITHUB_PLUGIN_REPO}/contents/plugin/${encodeURIComponent(slug)}/artifact/plugin.zip`;
 }
 
+async function githubGetRelease(tag = "latest") {
+  const suffix = tag === "latest" ? "latest" : `tags/${encodeURIComponent(tag)}`;
+  return githubGetJson(`/repos/${GITHUB_BIN_REPO}/releases/${suffix}`);
+}
+
+function findLinuxAsset(release) {
+  const assets = Array.isArray(release?.assets) ? release.assets : [];
+  return (
+    assets.find((a) => /watink-core-linux-amd64-v.*\.tar\.gz$/i.test(String(a?.name || ""))) ||
+    assets.find((a) => /linux.*\.tar\.gz$/i.test(String(a?.name || ""))) ||
+    assets.find((a) => /watink-core/i.test(String(a?.name || ""))) ||
+    assets[0] ||
+    null
+  );
+}
+
+async function getReleaseManifest(release) {
+  const assets = Array.isArray(release?.assets) ? release.assets : [];
+  const manifestAsset = assets.find((a) => String(a?.name || "") === "manifest.json");
+  if (!manifestAsset?.browser_download_url) return null;
+  const { data } = await axios.get(manifestAsset.browser_download_url, {
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Accept: "application/vnd.github.raw",
+      "X-GitHub-Api-Version": "2022-11-28"
+    },
+    timeout: 20000
+  });
+  return data || null;
+}
+
 async function callSupabaseFunction(fn, payload) {
   ensureSupabase();
   const url = `${SUPABASE_URL}/functions/v1/${fn}`;
@@ -458,6 +490,56 @@ app.get("/api/v1/hub/plugins/:slug/artifact/download", async (req, res) => {
     stream.pipe(res);
   } catch (e) {
     return res.status(500).json({ error: e?.response?.data?.message || e?.message || "erro ao baixar artifact" });
+  }
+});
+
+app.get("/api/v1/hub/binaries/latest", async (_req, res) => {
+  try {
+    const release = await githubGetRelease("latest");
+    const asset = findLinuxAsset(release);
+    const manifest = await getReleaseManifest(release);
+
+    return res.json({
+      ok: true,
+      repo: GITHUB_BIN_REPO,
+      tag: release?.tag_name || "",
+      version: String(manifest?.version || release?.tag_name || "").replace(/^v/i, ""),
+      manifest: manifest || null,
+      asset: asset
+        ? {
+            name: asset.name,
+            size: asset.size,
+            updated_at: asset.updated_at
+          }
+        : null
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e?.response?.data?.message || e?.message || "erro ao consultar release" });
+  }
+});
+
+app.get("/api/v1/hub/binaries/latest/download", async (_req, res) => {
+  try {
+    const release = await githubGetRelease("latest");
+    const asset = findLinuxAsset(release);
+    if (!asset?.id) return res.status(404).json({ error: "asset linux não encontrado" });
+
+    const { data, headers } = await axios.get(`https://api.github.com/repos/${GITHUB_BIN_REPO}/releases/assets/${asset.id}`, {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/octet-stream",
+        "X-GitHub-Api-Version": "2022-11-28"
+      },
+      responseType: "stream",
+      timeout: 120000,
+      maxRedirects: 5
+    });
+
+    res.setHeader("Content-Type", headers["content-type"] || "application/gzip");
+    res.setHeader("Content-Disposition", `attachment; filename=\"${asset.name || "watink-core-linux.tar.gz"}\"`);
+    data.pipe(res);
+  } catch (e) {
+    return res.status(500).json({ error: e?.response?.data?.message || e?.message || "erro ao baixar binário" });
   }
 });
 
