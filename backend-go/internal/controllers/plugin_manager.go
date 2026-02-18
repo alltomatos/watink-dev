@@ -77,7 +77,7 @@ func PluginsInstalled(c *gin.Context) {
 
 	tenantID := strings.TrimSpace(getTenantID(c))
 	if tenantID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId is required"})
+		c.JSON(http.StatusOK, gin.H{"active": []string{}, "statuses": map[string]string{}})
 		return
 	}
 
