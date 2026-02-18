@@ -1,11 +1,14 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/alltomatos/watinkdev/backend-go/internal/plugins"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type checkoutRequest struct {
@@ -21,7 +24,39 @@ func getTenantID(c *gin.Context) string {
 			}
 		}
 	}
-	return c.GetHeader("x-tenant-id")
+
+	if tenantID := strings.TrimSpace(c.GetHeader("x-tenant-id")); tenantID != "" {
+		return tenantID
+	}
+
+	authHeader := c.GetHeader("Authorization")
+	parts := strings.Split(authHeader, " ")
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return ""
+	}
+
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		secret = "default_secret"
+	}
+
+	token, err := jwt.Parse(parts[1], func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(secret), nil
+	})
+	if err != nil || !token.Valid {
+		return ""
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return ""
+	}
+
+	tenantID, _ := claims["tenantId"].(string)
+	return strings.TrimSpace(tenantID)
 }
 
 func PluginsCatalog(c *gin.Context) {
