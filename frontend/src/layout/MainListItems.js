@@ -110,9 +110,9 @@ const MainListItems = (props) => {
         const activeSlugs = installed.active || [];
         setActivePlugins(activeSlugs);
 
-        const { data: manifests } = await api.get("/custom-plugins/manifests");
-        // Filter only active manifests
-        setPluginManifests(manifests.filter(m => activeSlugs.includes(m.slug)));
+        // Endpoint legado /custom-plugins/manifests não existe no backend-go integrado.
+        // Mantemos menu dinâmico vazio até existir um catálogo com metadados de menu.
+        setPluginManifests([]);
       } catch (err) {
         console.error("Failed to fetch plugins", err);
       }
