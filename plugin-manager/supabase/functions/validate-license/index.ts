@@ -1,6 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
+const PLAN_LIMITS: Record<string, number> = {
+  start: 4,
+  bussines_1: 6,
+  business_1: 6,
+  pro: 6,
+  saas: 0,
+}
+
+const isSubscriptionActive = (status: string | null | undefined): boolean => {
+  const st = String(status || "").toLowerCase()
+  return st === "active"
+}
+
+const normalizePlanKey = (name: string | null | undefined): string =>
+  String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+
 serve(async (req) => {
   try {
     const { instanceUuid } = await req.json()
@@ -14,7 +33,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // 1. Buscar a instância
     const { data: instance, error: instError } = await supabaseAdmin
       .from('instances')
       .select('id, status')
@@ -22,14 +40,13 @@ serve(async (req) => {
       .single()
 
     if (instError || !instance) {
-      return new Response(JSON.stringify({ active: [] }), { status: 200 })
+      return new Response(JSON.stringify({ active: [], entitlements: {} }), { status: 200 })
     }
 
     if (instance.status !== 'active') {
-      return new Response(JSON.stringify({ active: [], blocked: true }), { status: 200 })
+      return new Response(JSON.stringify({ active: [], blocked: true, entitlements: {} }), { status: 200 })
     }
 
-    // 2. Buscar licenças ativas
     const { data: licenses, error: licError } = await supabaseAdmin
       .from('licenses')
       .select('plugin_slug')
@@ -38,9 +55,36 @@ serve(async (req) => {
 
     if (licError) throw licError
 
-    const activePlugins = licenses.map(l => l.plugin_slug)
+    const activePlugins = (licenses || []).map((l: { plugin_slug: string }) => l.plugin_slug)
 
-    return new Response(JSON.stringify({ active: activePlugins }), {
+    const { data: subscriptions, error: subError } = await supabaseAdmin
+      .from('subscriptions')
+      .select('status, expires_at, plans(name, pluginQuota)')
+      .eq('instance_id', instance.id)
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    if (subError) throw subError
+
+    const activeSub = (subscriptions || []).find((row: any) => isSubscriptionActive(row?.status))
+    const plan = Array.isArray(activeSub?.plans) ? activeSub?.plans?.[0] : activeSub?.plans
+    const planName = String(plan?.name || '')
+    const normalizedPlan = normalizePlanKey(planName)
+
+    const quotaFromPlan = Number(plan?.pluginQuota || 0)
+    const premiumLimit = quotaFromPlan > 0 ? quotaFromPlan : (PLAN_LIMITS[normalizedPlan] || 0)
+    const saasEnabled = activePlugins.includes('saas-plugin') || normalizedPlan === 'saas'
+
+    const entitlements = {
+      instance_status: instance.status,
+      plan_name: planName || null,
+      plan_key: normalizedPlan || null,
+      premium_limit: premiumLimit,
+      saas_enabled: saasEnabled,
+      source: 'supabase-validate-license'
+    }
+
+    return new Response(JSON.stringify({ active: activePlugins, entitlements }), {
       headers: { 'Content-Type': 'application/json' },
       status: 200,
     })
