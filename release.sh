@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Watink Industrial Release Script 🦞
+# Watink Bussines Release Script 🦞
 set -e
 
-echo "📦 Starting Watink Industrial Release Process..."
+echo "📦 Starting Watink Bussines Release Process..."
 
 # 1. Clean up old builds
 rm -rf release/
@@ -35,11 +35,11 @@ cd bussines
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o ../release/windows/watink.exe cmd/server/main.go
 cd ..
 
-# 6. Build Docker Industrial Image
+# 6. Build Docker Bussines Image
 if command -v docker &> /dev/null; then
-    echo "🐳 Building Docker Industrial Image..."
-    docker build -t watink/industrial:latest -f Dockerfile.industrial .
-    echo "✅ Docker image built: watink/industrial:latest"
+    echo "🐳 Building Docker Bussines Image..."
+    docker build -t watink/bussines:latest -f Dockerfile.bussines .
+    echo "✅ Docker image built: watink/bussines:latest"
 fi
 
 # 7. Finalize
