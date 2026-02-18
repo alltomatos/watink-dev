@@ -4,47 +4,36 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"sort"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
 )
 
-// Structures for JSON responses
-type Plugin struct {
+// Structures for Hub Communication
+type HubPlugin struct {
 	ID          string  `json:"id"`
 	Slug        string  `json:"slug"`
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Version     string  `json:"version"`
-	Type        string  `json:"type"`     // free, premium
-	Category    string  `json:"category"` // utility, channel, etc
+	Type        string  `json:"type"`
+	Category    string  `json:"category"`
 	Price       float64 `json:"price"`
+	IconURL     string  `json:"iconUrl"`
 }
 
 type CatalogResponse struct {
-	Offline bool     `json:"offline"`
-	Plugins []Plugin `json:"plugins"`
+	Offline bool        `json:"offline"`
+	Plugins []HubPlugin `json:"plugins"`
 }
 
 type InstalledResponse struct {
-	Active []string `json:"active"`
-}
-
-type VersionResponse struct {
-	Service     string `json:"service"`
-	Version     string `json:"version"`
-	LastUpdated string `json:"lastUpdated"`
-}
-
-type LicenseCheckRequest struct {
-	InstanceUuid string `json:"instanceUuid"`
+	Active   []string          `json:"active"`
+	Statuses map[string]string `json:"statuses"`
 }
 
 type CheckoutRequest struct {
@@ -52,257 +41,99 @@ type CheckoutRequest struct {
 }
 
 type CreateCheckoutPayload struct {
-	Plan       string `json:"plan"`
 	Slug       string `json:"slug"`
 	InstanceID string `json:"instanceId"`
-	Email      string `json:"email"`
-	Name       string `json:"name"`
 }
 
 type CreateCheckoutResponse struct {
 	CheckoutURL string `json:"checkoutUrl"`
 }
 
-// Global Config (Hardcoded for Security)
+// Global Config
 const (
-	SupabaseURL      = "https://quxtkdxrafulqibwbqld.supabase.co"
-	SupabaseAnonKey  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHRrZHhyYWZ1bHFpYndicWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwODkwNDEsImV4cCI6MjA4NjY2NTA0MX0.cg2YNyUB47yRW7g4pUBAHNF4SUt479savrmkVajYvD4"
-	InstanceFile     = ".instance_id"
+	HubURL            = "http://localhost:8090/api/v1/hub"
+	InstanceFile      = ".instance_id"
 	TenantPluginsFile = ".tenant_plugins.json"
+	LicenseStatusFile = ".license_status.json"
+	CoreVersion       = "2.0.0-bussines"
 )
 
-var tenantPluginsMu sync.Mutex
+var (
+	tenantPluginsMu sync.Mutex
+	licenseStatusMu sync.Mutex
+)
 
 type tenantPluginsStore map[string][]string
+type licenseStatusStore map[string]string
 
 func readTenantPlugins() tenantPluginsStore {
 	data, err := os.ReadFile(TenantPluginsFile)
 	if err != nil {
 		return tenantPluginsStore{}
 	}
-
 	var store tenantPluginsStore
-	if err := json.Unmarshal(data, &store); err != nil {
-		return tenantPluginsStore{}
-	}
+	json.Unmarshal(data, &store)
 	if store == nil {
 		return tenantPluginsStore{}
 	}
 	return store
 }
 
-func writeTenantPlugins(store tenantPluginsStore) error {
-	if store == nil {
-		store = tenantPluginsStore{}
-	}
-	payload, err := json.MarshalIndent(store, "", "  ")
+func readLicenseStatus() licenseStatusStore {
+	data, err := os.ReadFile(LicenseStatusFile)
 	if err != nil {
-		return err
+		return licenseStatusStore{}
 	}
-	return os.WriteFile(TenantPluginsFile, payload, 0644)
+	var store licenseStatusStore
+	json.Unmarshal(data, &store)
+	if store == nil {
+		return licenseStatusStore{}
+	}
+	return store
 }
 
-func normalizePlugins(input []string) []string {
-	set := map[string]struct{}{}
-	for _, slug := range input {
-		s := strings.TrimSpace(strings.ToLower(slug))
-		if s == "" {
-			continue
-		}
-		set[s] = struct{}{}
-	}
-	out := make([]string, 0, len(set))
-	for slug := range set {
-		out = append(out, slug)
-	}
-	sort.Strings(out)
-	return out
-}
-
-func isSaaS(slug string) bool {
-	return strings.EqualFold(strings.TrimSpace(slug), "saas-plugin")
-}
-
-func resolveTenantLimit(r *http.Request, entitled []string) int {
-	// 1. Prioridade para o header do backend (quota real do tenant)
-	quotaHeader := r.Header.Get("x-tenant-quota")
-	if quotaHeader != "" {
-		var q int
-		fmt.Sscanf(quotaHeader, "%d", &q)
-		if q > 0 {
-			return q
-		}
-	}
-
-	// 2. Fallback para limite do plano da instância
-	set := map[string]struct{}{}
-	for _, s := range entitled {
-		set[strings.ToLower(strings.TrimSpace(s))] = struct{}{}
-	}
-
-	if _, ok := set["papi"]; ok {
-		return 6
-	}
-	if _, ok := set["whatsmeow"]; ok {
-		return 6
-	}
-	if _, ok := set["helpdesk"]; ok {
-		return 4
-	}
-	if _, ok := set["clientes"]; ok {
-		return 4
-	}
-	if _, ok := set["smtp"]; ok {
-		return 4
-	}
-	if _, ok := set["plugin-smtp"]; ok {
-		return 4
-	}
-	if _, ok := set["webchat"]; ok {
-		return 4
-	}
-	return 0
-}
-
-func containsSlug(list []string, slug string) bool {
-	target := strings.ToLower(strings.TrimSpace(slug))
-	for _, item := range list {
-		if strings.ToLower(strings.TrimSpace(item)) == target {
-			return true
-		}
-	}
-	return false
-}
-
-func countNonSaaS(list []string) int {
-	total := 0
-	for _, slug := range list {
-		if !isSaaS(slug) {
-			total++
-		}
-	}
-	return total
-}
-
-func getTenantActivePlugins(tenantID string) []string {
-	tenantPluginsMu.Lock()
-	defer tenantPluginsMu.Unlock()
-
-	store := readTenantPlugins()
-	return normalizePlugins(store[tenantID])
-}
-
-func setTenantActivePlugins(tenantID string, plugins []string) error {
-	tenantPluginsMu.Lock()
-	defer tenantPluginsMu.Unlock()
-
-	store := readTenantPlugins()
-	store[tenantID] = normalizePlugins(plugins)
-	return writeTenantPlugins(store)
+func writeLicenseStatus(store licenseStatusStore) error {
+	payload, _ := json.MarshalIndent(store, "", "  ")
+	return os.WriteFile(LicenseStatusFile, payload, 0644)
 }
 
 func getInstanceID() string {
-	// 1. Try to read existing ID
-	data, err := ioutil.ReadFile(InstanceFile)
+	data, err := os.ReadFile(InstanceFile)
 	if err == nil {
 		return string(data)
 	}
-
-	// 2. Generate new if not exists (Simple UUID-like string)
-	newID := fmt.Sprintf("%d-%x", time.Now().UnixNano(), time.Now().UnixNano())
-	_ = ioutil.WriteFile(InstanceFile, []byte(newID), 0644)
+	newID := fmt.Sprintf("INST-%d-%x", time.Now().Unix(), time.Now().UnixNano())
+	os.WriteFile(InstanceFile, []byte(newID), 0644)
 	return newID
 }
 
-func getActivePluginsFromSupabase(instanceID string) ([]string, error) {
-	url := fmt.Sprintf("%s/functions/v1/validate-license", SupabaseURL)
-
-	reqBody, _ := json.Marshal(LicenseCheckRequest{InstanceUuid: instanceID})
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return []string{}, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+SupabaseAnonKey)
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return []string{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return []string{}, fmt.Errorf("supabase returned status: %d", resp.StatusCode)
-	}
-
-	var result InstalledResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return []string{}, err
-	}
-
-	return result.Active, nil
-}
-
-func planFromSlug(slug string) string {
-	slug = strings.ToLower(strings.TrimSpace(slug))
-	switch slug {
-	case "smtp", "plugin-smtp", "clientes", "helpdesk", "webchat":
-		return "Start"
-	case "papi", "whatsmeow":
-		return "Pro"
-	case "saas-plugin":
-		return "SaaS"
-	default:
-		return ""
-	}
-}
-
-func createCheckoutLink(instanceID, email, name, slug string) (string, error) {
-	plan := planFromSlug(slug)
-	if plan == "" {
-		return "", fmt.Errorf("plugin não elegível para checkout: %s", slug)
-	}
-
-	url := fmt.Sprintf("%s/functions/v1/create-checkout", SupabaseURL)
-	payload, _ := json.Marshal(CreateCheckoutPayload{
-		Plan:       plan,
-		Slug:       slug,
-		InstanceID: instanceID,
-		Email:      email,
-		Name:       name,
-	})
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
-	if err != nil {
-		return "", err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+SupabaseAnonKey)
-
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return "", fmt.Errorf("erro create-checkout (%d): %s", resp.StatusCode, string(body))
-	}
-
-	var result CreateCheckoutResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
-	}
-	if strings.TrimSpace(result.CheckoutURL) == "" {
-		return "", fmt.Errorf("checkoutUrl vazio na resposta")
-	}
-
-	return result.CheckoutURL, nil
+// StartHeartbeat inicia a rotina de sinal vital para o Hub
+func StartHeartbeat(instanceID string) {
+	go func() {
+		for {
+			payload, _ := json.Marshal(map[string]string{
+				"instanceId": instanceID,
+				"version":    CoreVersion,
+			})
+			resp, err := http.Post(HubURL+"/heartbeat", "application/json", bytes.NewBuffer(payload))
+			if err == nil {
+				defer resp.Body.Close()
+				var hubResp struct {
+					InstanceStatus string            `json:"instanceStatus"`
+					Licenses       map[string]string `json:"licenses"`
+				}
+				if err := json.NewDecoder(resp.Body).Decode(&hubResp); err == nil {
+					licenseStatusMu.Lock()
+					writeLicenseStatus(hubResp.Licenses)
+					licenseStatusMu.Unlock()
+					log.Printf("💓 Heartbeat OK. Syncing %d license statuses.", len(hubResp.Licenses))
+				}
+			} else {
+				log.Printf("⚠️ Hub heartbeat failed: %v", err)
+			}
+			time.Sleep(15 * time.Minute)
+		}
+	}()
 }
 
 func main() {
@@ -312,214 +143,69 @@ func main() {
 	}
 
 	instanceID := getInstanceID()
-	log.Printf("Instance ID: %s", instanceID)
+	log.Printf("🦞 Local Plugin Manager starting with ID: %s", instanceID)
+
+	// Inicia telemetria bussines
+	StartHeartbeat(instanceID)
 
 	r := mux.NewRouter()
 
-	// Health Check
-	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	}).Methods("GET")
-
-	// Version Endpoint
-	r.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
-		currentVersion := "1.1.0" // Updated for Marketplace Alpha
-		data, err := os.ReadFile("VERSION")
-		if err == nil {
-			currentVersion = string(data)
-		}
-
-		resp := VersionResponse{
-			Service:     "plugin-manager",
-			Version:     currentVersion,
-			LastUpdated: time.Now().Format(time.RFC3339),
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
-	}).Methods("GET")
-
-	// API V1 Routes
-	api := r.PathPrefix("/api/v1/plugins").Subrouter()
-
-	// Catalog Handler (Still returning fixed catalog, but can be dynamic later)
-	api.HandleFunc("/catalog", func(w http.ResponseWriter, r *http.Request) {
-		catalog := CatalogResponse{
-			Offline: false,
-			Plugins: []Plugin{
-				{ID: "1", Slug: "plugin-smtp", Name: "SMTP Plugin", Description: "Envio de e-mails via RabbitMQ", Version: "1.0.0", Type: "premium", Category: "utility", Price: 49.99},
-				{ID: "2", Slug: "clientes", Name: "Gestão de Clientes", Description: "CRM Básico", Version: "1.2.0", Type: "premium", Category: "crm", Price: 49.99},
-				{ID: "3", Slug: "helpdesk", Name: "Helpdesk Pro", Description: "Tickets e Atendimento", Version: "2.0.0", Type: "premium", Category: "support", Price: 49.99},
-				{ID: "4", Slug: "webchat", Name: "Webchat Widget", Description: "Chat em tempo real no site", Version: "1.0.0", Type: "premium", Category: "channel", Price: 49.99},
-				{ID: "5", Slug: "whatsmeow", Name: "Engine WhatsMeow (Go)", Description: "Motor ultra rápido em Go", Version: "1.0.0", Type: "premium", Category: "engine", Price: 99.99},
-				{ID: "6", Slug: "papi", Name: "Engine PAPI", Description: "Integração via Cloud API", Version: "1.0.0", Type: "premium", Category: "engine", Price: 99.99},
-				{ID: "7", Slug: "saas-plugin", Name: "SaaS Add-on", Description: "Habilita operação multi-tenant com franquia por tenant", Version: "1.0.0", Type: "premium", Category: "saas", Price: 199.99},
-			},
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(catalog)
-	}).Methods("GET")
-
-	// Installed Handler (tenant-aware)
-	api.HandleFunc("/installed", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		tenantID := strings.TrimSpace(r.Header.Get("x-tenant-id"))
-		if tenantID == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "x-tenant-id ausente"})
+	// 1. Proxy Catalog from Hub
+	r.HandleFunc("/api/v1/plugins/catalog", func(w http.ResponseWriter, r *http.Request) {
+		resp, err := http.Get(HubURL + "/catalog")
+		if err != nil {
+			json.NewEncoder(w).Encode(CatalogResponse{Offline: true, Plugins: []HubPlugin{}})
 			return
 		}
-
-		entitled, err := getActivePluginsFromSupabase(instanceID)
-		if err != nil {
-			log.Printf("Error fetching licenses: %v", err)
-			entitled = []string{}
+		defer resp.Body.Close()
+		w.Header().Set("Content-Type", "application/json")
+		var hubResp struct {
+			Plugins []HubPlugin `json:"plugins"`
 		}
-
-		tenantActive := getTenantActivePlugins(tenantID)
-		final := []string{}
-		for _, slug := range tenantActive {
-			if containsSlug(entitled, slug) {
-				final = append(final, slug)
-			}
-		}
-
-		_ = json.NewEncoder(w).Encode(InstalledResponse{Active: normalizePlugins(final)})
+		json.NewDecoder(resp.Body).Decode(&hubResp)
+		json.NewEncoder(w).Encode(CatalogResponse{Offline: false, Plugins: hubResp.Plugins})
 	}).Methods("GET")
 
-	// Instance Info Helper (to show the user their ID for licensing)
-	api.HandleFunc("/instance", func(w http.ResponseWriter, r *http.Request) {
+	// 2. Installed plugins
+	r.HandleFunc("/api/v1/plugins/installed", func(w http.ResponseWriter, r *http.Request) {
+		tenantID := r.Header.Get("x-tenant-id")
+		store := readTenantPlugins()
+		active := store[tenantID]
+		if active == nil {
+			active = []string{}
+		}
+		statuses := readLicenseStatus()
+		json.NewEncoder(w).Encode(InstalledResponse{
+			Active:   active,
+			Statuses: statuses,
+		})
+	}).Methods("GET")
+
+	// 3. Checkout
+	r.HandleFunc("/api/v1/plugins/checkout", func(w http.ResponseWriter, r *http.Request) {
+		var req CheckoutRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		payload, _ := json.Marshal(CreateCheckoutPayload{
+			Slug:       req.Slug,
+			InstanceID: instanceID,
+		})
+		resp, err := http.Post(HubURL+"/checkout", "application/json", bytes.NewBuffer(payload))
+		if err != nil {
+			http.Error(w, "Hub unavailable", 502)
+			return
+		}
+		defer resp.Body.Close()
 		w.Header().Set("Content-Type", "application/json")
+		var checkoutResp CreateCheckoutResponse
+		json.NewDecoder(resp.Body).Decode(&checkoutResp)
+		json.NewEncoder(w).Encode(checkoutResp)
+	}).Methods("POST")
+
+	// 4. Instance Info
+	r.HandleFunc("/api/v1/plugins/instance", func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"instanceId": instanceID})
 	}).Methods("GET")
 
-	// Activate plugin per tenant with quota enforcement
-	api.HandleFunc("/{slug}/activate", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		tenantID := strings.TrimSpace(r.Header.Get("x-tenant-id"))
-		if tenantID == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "x-tenant-id ausente"})
-			return
-		}
-
-		slug := strings.ToLower(strings.TrimSpace(mux.Vars(r)["slug"]))
-		if slug == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "slug inválido"})
-			return
-		}
-
-		// Validar status do tenant
-		tenantStatus := r.Header.Get("x-tenant-status")
-		if tenantStatus == "overdue" {
-			w.WriteHeader(http.StatusPaymentRequired)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "assinatura do tenant pendente ou atrasada"})
-			return
-		}
-
-		entitled, err := getActivePluginsFromSupabase(instanceID)
-		if err != nil {
-			w.WriteHeader(http.StatusBadGateway)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "falha ao validar licenças"})
-			return
-		}
-
-		if !containsSlug(entitled, slug) {
-			w.WriteHeader(http.StatusPaymentRequired)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "plugin não contratado para esta instância"})
-			return
-		}
-
-		limit := resolveTenantLimit(r, entitled)
-		current := getTenantActivePlugins(tenantID)
-		if containsSlug(current, slug) {
-			_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "active": normalizePlugins(current), "limit": limit})
-			return
-		}
-
-		if !isSaaS(slug) && limit > 0 && countNonSaaS(current) >= limit {
-			w.WriteHeader(http.StatusPaymentRequired)
-			_ = json.NewEncoder(w).Encode(map[string]any{"error": fmt.Sprintf("limite do plano atingido (%d plugins por tenant)", limit), "limit": limit})
-			return
-		}
-
-		current = append(current, slug)
-		if err := setTenantActivePlugins(tenantID, current); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "falha ao persistir ativação"})
-			return
-		}
-
-		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "active": normalizePlugins(current), "limit": limit})
-	}).Methods("POST")
-
-	// Install alias (compatibilidade com front antigo)
-	api.HandleFunc("/{slug}/install", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "message": "use /activate"})
-	}).Methods("POST")
-
-	api.HandleFunc("/{slug}/deactivate", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		tenantID := strings.TrimSpace(r.Header.Get("x-tenant-id"))
-		if tenantID == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "x-tenant-id ausente"})
-			return
-		}
-
-		slug := strings.ToLower(strings.TrimSpace(mux.Vars(r)["slug"]))
-		current := getTenantActivePlugins(tenantID)
-		next := []string{}
-		for _, s := range current {
-			if strings.ToLower(strings.TrimSpace(s)) != slug {
-				next = append(next, s)
-			}
-		}
-		if err := setTenantActivePlugins(tenantID, next); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "falha ao persistir desativação"})
-			return
-		}
-
-		_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "active": normalizePlugins(next)})
-	}).Methods("POST")
-
-	// Checkout link (proxy seguro para função central; sem token MP na instância do cliente)
-	api.HandleFunc("/checkout", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		var reqBody CheckoutRequest
-		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "payload inválido"})
-			return
-		}
-
-		email := strings.TrimSpace(r.Header.Get("x-user-email"))
-		name := strings.TrimSpace(r.Header.Get("x-user-name"))
-		if email == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "email do usuário ausente"})
-			return
-		}
-
-		checkoutURL, err := createCheckoutLink(instanceID, email, name, reqBody.Slug)
-		if err != nil {
-			log.Printf("checkout error: %v", err)
-			w.WriteHeader(http.StatusBadGateway)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]string{"checkoutUrl": checkoutURL})
-	}).Methods("POST")
-
-	log.Printf("Plugin Manager (Marketplace Enabled) running on port %s", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
-		log.Fatal(err)
-	}
+	log.Printf("🚀 Local Plugin Manager running on port %s", port)
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }

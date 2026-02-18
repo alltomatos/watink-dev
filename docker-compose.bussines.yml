@@ -2,10 +2,10 @@ version: '3.8'
 
 services:
   watink:
-    image: watink/industrial:latest
+    image: watink/bussines:latest
     build:
       context: .
-      dockerfile: Dockerfile.industrial
+      dockerfile: Dockerfile.bussines
     ports:
       - "80:8082"
     environment:
