@@ -201,10 +201,8 @@ export default function VersionDashboard() {
             variant="outlined"
             color="default"
             startIcon={<MenuBookIcon />}
-            component="a"
-            href="/api/docs"
-            target="_blank"
-            rel="noopener noreferrer"
+            component={RouterLink}
+            to="/swagger"
           >
             Swagger
           </Button>

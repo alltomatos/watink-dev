@@ -10,7 +10,7 @@ const useStyles = makeStyles((theme) => ({
     root: {
         display: "flex",
         flexDirection: "column",
-        height: "calc(100vh - 100px)", // Adjust for header
+        height: "calc(100vh - 100px)",
         padding: theme.spacing(2),
     },
     paper: {
@@ -30,18 +30,18 @@ const Swagger = () => {
     const classes = useStyles();
     const { user } = useContext(AuthContext);
     const [url, setUrl] = useState("");
-    const [error, setError] = useState("");
 
-    const hasSwaggerPermission = (user?.permissions || []).includes("view_swagger");
+    const profile = (user?.profile || "").toLowerCase();
+    const perms = user?.permissions || [];
+    const hasSwaggerPermission = profile === "superadmin" || perms.includes("view_swagger") || perms.includes("view:swagger");
 
     useEffect(() => {
         if (!hasSwaggerPermission) return;
 
         const targetUrl = getSwaggerUrl();
-        setUrl(targetUrl);
-
-        // Fluxo definitivo: /swagger funciona como atalho e redireciona para docs reais no backend
-        window.location.replace(targetUrl);
+        const token = JSON.parse(localStorage.getItem("token") || sessionStorage.getItem("token") || "null");
+        const withToken = token ? `${targetUrl}${targetUrl.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}` : targetUrl;
+        setUrl(withToken);
     }, [hasSwaggerPermission]);
 
     if (!hasSwaggerPermission) {
@@ -49,18 +49,8 @@ const Swagger = () => {
             <div className={classes.root}>
                 <Paper className={classes.paper}>
                     <Typography variant="h6" color="error">
-                        Você não tem permissão para visualizar esta página.
+                        Você não tem permissão para visualizar o Swagger.
                     </Typography>
-                </Paper>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className={classes.root}>
-                <Paper className={classes.paper}>
-                    <Typography variant="h6" color="error">{error}</Typography>
                 </Paper>
             </div>
         );
@@ -69,7 +59,7 @@ const Swagger = () => {
     return (
         <div className={classes.root}>
             <Paper className={classes.paper}>
-                <h2>Documentação API</h2>
+                <Typography variant="h6">Documentação API (interna)</Typography>
             </Paper>
             <iframe src={url} className={classes.iframe} title="Swagger UI" />
         </div>

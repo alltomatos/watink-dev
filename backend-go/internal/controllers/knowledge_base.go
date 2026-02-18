@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"path/filepath"
 
 	"github.com/alltomatos/watinkdev/backend-go/internal/database"
 	"github.com/alltomatos/watinkdev/backend-go/internal/models"
@@ -26,7 +27,7 @@ func ShowKnowledgeBase(c *gin.Context) {
 	id := c.Param("knowledgeBaseId")
 
 	var knowledgeBase models.KnowledgeBase
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&knowledgeBase).Error; err != nil {
+	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Preload("Sources").First(&knowledgeBase).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Knowledge base not found"})
 		return
 	}
@@ -89,4 +90,64 @@ func DeleteKnowledgeBase(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Knowledge base deleted"})
+}
+
+func CreateKnowledgeBaseSource(c *gin.Context) {
+	tenantID, _ := c.Get("tenantId")
+	knowledgeBaseID := c.Param("knowledgeBaseId")
+
+	var kb models.KnowledgeBase
+	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", knowledgeBaseID, tenantID).First(&kb).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Knowledge base not found"})
+		return
+	}
+
+	sourceType := c.PostForm("type")
+	urlValue := c.PostForm("url")
+	name := c.PostForm("name")
+	if sourceType == "" {
+		sourceType = "url"
+	}
+
+	if file, err := c.FormFile("file"); err == nil && file != nil {
+		name = file.Filename
+		if sourceType == "" || sourceType == "file" {
+			sourceType = filepath.Ext(file.Filename)
+		}
+	}
+
+	source := models.KnowledgeBaseSource{
+		KnowledgeBaseID: kb.ID,
+		TenantID:        kb.TenantID,
+		Type:            sourceType,
+		URL:             urlValue,
+		FileName:        name,
+		Status:          "ready",
+	}
+
+	if err := database.DB.Create(&source).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create source"})
+		return
+	}
+
+	c.JSON(http.StatusOK, source)
+}
+
+func DeleteKnowledgeBaseSource(c *gin.Context) {
+	tenantID, _ := c.Get("tenantId")
+	knowledgeBaseID := c.Param("knowledgeBaseId")
+	sourceID := c.Param("sourceId")
+
+	var source models.KnowledgeBaseSource
+	if err := database.DB.Where("id = ? AND \"knowledgeBaseId\" = ? AND \"tenantId\" = ?", sourceID, knowledgeBaseID, tenantID).First(&source).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Source not found"})
+		return
+	}
+
+	if err := database.DB.Delete(&source).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete source"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Source deleted"})
 }

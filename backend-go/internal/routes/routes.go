@@ -85,6 +85,8 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.POST("/knowledge-bases", controllers.CreateKnowledgeBase)
 		protected.PUT("/knowledge-bases/:knowledgeBaseId", controllers.UpdateKnowledgeBase)
 		protected.DELETE("/knowledge-bases/:knowledgeBaseId", controllers.DeleteKnowledgeBase)
+		protected.POST("/knowledge-bases/:knowledgeBaseId/sources", controllers.CreateKnowledgeBaseSource)
+		protected.DELETE("/knowledge-bases/:knowledgeBaseId/sources/:sourceId", controllers.DeleteKnowledgeBaseSource)
 
 		// Users
 		protected.GET("/users", controllers.ListUsers)
@@ -113,5 +115,9 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.GET("/pipelines", controllers.ListPipelines)
 		protected.GET("/pipelines/", controllers.ListPipelines)
 		protected.POST("/pipelines", controllers.CreatePipeline)
+		protected.PUT("/pipelines/:pipelineId", controllers.UpdatePipeline)
+		protected.POST("/pipelines/import", controllers.ImportPipeline)
+		protected.GET("/pipelines/export/:pipelineId", controllers.ExportPipeline)
+		protected.POST("/pipelines/ai-suggest", controllers.AISuggestPipeline)
 	}
 }

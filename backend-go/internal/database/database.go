@@ -50,6 +50,7 @@ func Migrate() {
 		&models.Flow{},
 		&models.QuickAnswer{},
 		&models.KnowledgeBase{},
+		&models.KnowledgeBaseSource{},
 		&models.Pipeline{},
 		&models.PipelineStage{},
 	)
@@ -72,6 +73,7 @@ func Seed() {
 		{Resource: "settings", Action: "view", Description: "Gerenciar Configurações (Admin)"},
 		{Resource: "groups", Action: "view", Description: "Gerenciar Grupos de Usuários"},
 		{Resource: "users", Action: "view", Description: "Gerenciar Usuários"},
+		{Resource: "view", Action: "swagger", Description: "Visualizar documentação Swagger"},
 	}
 
 	for _, p := range permissions {
