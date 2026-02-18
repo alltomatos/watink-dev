@@ -1,7 +1,14 @@
 package services
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"os"
+	"sort"
 	"strings"
+	"time"
 )
 
 type QueueMetrics struct {
@@ -10,7 +17,19 @@ type QueueMetrics struct {
 	Consumers      int    `json:"consumers"`
 	Ready          int    `json:"ready"`
 	Unacknowledged int    `json:"unacknowledged"`
+	Vhost          string `json:"vhost,omitempty"`
+	State          string `json:"state,omitempty"`
 	Error          string `json:"error,omitempty"`
+}
+
+type rabbitMgmtQueue struct {
+	Name                   string `json:"name"`
+	Vhost                  string `json:"vhost"`
+	Messages               int    `json:"messages"`
+	MessagesReady          int    `json:"messages_ready"`
+	MessagesUnacknowledged int    `json:"messages_unacknowledged"`
+	Consumers              int    `json:"consumers"`
+	State                  string `json:"state"`
 }
 
 func (s *RabbitMQService) IsConnected() bool {
@@ -60,4 +79,104 @@ func ParseQueueList(raw string) []string {
 		queues = []string{"api.events.process.go", "flow.worker.queue"}
 	}
 	return queues
+}
+
+func deriveManagementURL(amqpURL string) string {
+	if amqpURL == "" {
+		return ""
+	}
+	u, err := url.Parse(amqpURL)
+	if err != nil {
+		return ""
+	}
+	host := u.Hostname()
+	if host == "" {
+		return ""
+	}
+	return fmt.Sprintf("http://%s:15672/api/queues", host)
+}
+
+func (s *RabbitMQService) listQueuesViaManagementAPI() ([]QueueMetrics, error) {
+	managementURL := strings.TrimSpace(os.Getenv("RABBITMQ_MANAGEMENT_URL"))
+	if managementURL == "" {
+		managementURL = deriveManagementURL(s.url)
+	}
+	if managementURL == "" {
+		return nil, fmt.Errorf("management url not configured")
+	}
+
+	username := strings.TrimSpace(os.Getenv("RABBITMQ_MANAGEMENT_USER"))
+	password := strings.TrimSpace(os.Getenv("RABBITMQ_MANAGEMENT_PASS"))
+
+	if username == "" || password == "" {
+		if parsed, err := url.Parse(s.url); err == nil && parsed.User != nil {
+			username = parsed.User.Username()
+			if p, ok := parsed.User.Password(); ok {
+				password = p
+			}
+		}
+	}
+
+	req, err := http.NewRequest(http.MethodGet, managementURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	if username != "" {
+		req.SetBasicAuth(username, password)
+	}
+
+	client := &http.Client{Timeout: 4 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("management api returned %d", resp.StatusCode)
+	}
+
+	var raw []rabbitMgmtQueue
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, err
+	}
+
+	queues := make([]QueueMetrics, 0, len(raw))
+	for _, q := range raw {
+		queues = append(queues, QueueMetrics{
+			Name:           q.Name,
+			Vhost:          q.Vhost,
+			Messages:       q.Messages,
+			Ready:          q.MessagesReady,
+			Unacknowledged: q.MessagesUnacknowledged,
+			Consumers:      q.Consumers,
+			State:          q.State,
+		})
+	}
+
+	sort.Slice(queues, func(i, j int) bool {
+		if queues[i].Messages == queues[j].Messages {
+			return queues[i].Name < queues[j].Name
+		}
+		return queues[i].Messages > queues[j].Messages
+	})
+
+	return queues, nil
+}
+
+func (s *RabbitMQService) ListAllQueues() ([]QueueMetrics, error) {
+	if s == nil {
+		return nil, fmt.Errorf("rabbitmq not initialized")
+	}
+
+	if queues, err := s.listQueuesViaManagementAPI(); err == nil && len(queues) > 0 {
+		return queues, nil
+	}
+
+	fallback := ParseQueueList(os.Getenv("MONITOR_RABBIT_QUEUES"))
+	out := make([]QueueMetrics, 0, len(fallback))
+	for _, q := range fallback {
+		out = append(out, s.InspectQueue(q))
+	}
+	return out, nil
 }

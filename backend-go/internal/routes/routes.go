@@ -33,6 +33,7 @@ func SetupRoutes(group *gin.RouterGroup) {
 	{
 		// Update & System
 		protected.GET("/system/stats", controllers.GetSystemStats)
+		protected.GET("/system/rabbitmq/queues", controllers.GetRabbitMQQueues)
 		protected.POST("/system/update", controllers.StartUpdate)
 		// Auth
 		protected.DELETE("/auth/logout", controllers.Logout)
