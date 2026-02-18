@@ -178,15 +178,10 @@ const Settings = () => {
 	useEffect(() => {
 		const checkMarketplace = async () => {
 			try {
-				// Use authenticated 'api' instance that includes session cookies
-				// The route /plugins/version requires authentication via isAuth middleware
-				const { data } = await pluginApi.get("/version");
-				if (data && data.version) {
-					setMarketplaceVisible(true);
-				} else {
-					setMarketplaceVisible(false);
-				}
-			} catch (err) {
+				// Endpoint real no backend Go: /api/v1/plugins/installed
+				const { data } = await pluginApi.get("/plugins/installed");
+				setMarketplaceVisible(Array.isArray(data?.active));
+			} catch (_err) {
 				setMarketplaceVisible(false);
 			}
 		};
@@ -229,7 +224,7 @@ const Settings = () => {
 	useEffect(() => {
 		const fetchPlugins = async () => {
 			try {
-				const { data } = await pluginApi.get("/api/v1/plugins/installed");
+				const { data } = await pluginApi.get("/plugins/installed");
 				setActivePlugins(data.active || []);
 			} catch (err) {
 				console.error("Failed to fetch plugins", err);
