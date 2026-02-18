@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/alltomatos/watinkdev/backend-go/pkg/sdk"
+	"github.com/alltomatos/watinkdev/bussines/pkg/sdk"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )

@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/models"
+	"github.com/alltomatos/watinkdev/bussines/internal/models"
 	"github.com/golang-jwt/jwt/v5"
 )
 

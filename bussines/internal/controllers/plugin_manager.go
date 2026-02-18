@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/plugins"
+	"github.com/alltomatos/watinkdev/bussines/internal/plugins"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )

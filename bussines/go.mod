@@ -1,4 +1,4 @@
-module github.com/alltomatos/watinkdev/backend-go
+module github.com/alltomatos/watinkdev/bussines
 
 go 1.24.0
 

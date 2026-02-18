@@ -113,7 +113,7 @@ const MainListItems = (props) => {
         const activeSlugs = installed.active || [];
         setActivePlugins(activeSlugs);
 
-        // Endpoint legado /custom-plugins/manifests não existe no backend-go integrado.
+        // Endpoint legado /custom-plugins/manifests não existe no Watink Bussines integrado.
         // Mantemos menu dinâmico vazio até existir um catálogo com metadados de menu.
         setPluginManifests([]);
       } catch (err) {

@@ -3,8 +3,8 @@ package controllers
 import (
 	"net/http"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/database"
-	"github.com/alltomatos/watinkdev/backend-go/internal/models"
+	"github.com/alltomatos/watinkdev/bussines/internal/database"
+	"github.com/alltomatos/watinkdev/bussines/internal/models"
 	"github.com/gin-gonic/gin"
 )
 

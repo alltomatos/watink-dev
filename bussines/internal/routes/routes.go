@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"github.com/alltomatos/watinkdev/backend-go/internal/controllers"
-	"github.com/alltomatos/watinkdev/backend-go/internal/middleware"
+	"github.com/alltomatos/watinkdev/bussines/internal/controllers"
+	"github.com/alltomatos/watinkdev/bussines/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 

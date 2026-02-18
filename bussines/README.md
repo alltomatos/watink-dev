@@ -1,4 +1,4 @@
-# Watink Backend Go 🦞
+# Watink Watink Bussines 🦞
 
 Este é o backend de alta performance do Watink, desenvolvido em **Go** para garantir escalabilidade em produção e baixa latência.
 
@@ -28,7 +28,7 @@ Este é o backend de alta performance do Watink, desenvolvido em **Go** para gar
 
 ## Compilação
 ```bash
-go build -o backend-go cmd/server/main.go
+go build -o watink-bussines cmd/server/main.go
 ```
 
 ---

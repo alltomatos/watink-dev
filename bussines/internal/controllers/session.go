@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/database"
-	"github.com/alltomatos/watinkdev/backend-go/internal/models"
-	"github.com/alltomatos/watinkdev/backend-go/pkg/utils"
+	"github.com/alltomatos/watinkdev/bussines/internal/database"
+	"github.com/alltomatos/watinkdev/bussines/internal/models"
+	"github.com/alltomatos/watinkdev/bussines/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )

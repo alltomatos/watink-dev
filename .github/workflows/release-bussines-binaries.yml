@@ -58,10 +58,10 @@ jobs:
         run: |
           if [ -d "bussines" ]; then
             echo "backend_dir=bussines" >> "$GITHUB_OUTPUT"
-          elif [ -d "backend-go" ]; then
-            echo "backend_dir=backend-go" >> "$GITHUB_OUTPUT"
+          elif [ -d "watink-bussines" ]; then
+            echo "backend_dir=watink-bussines" >> "$GITHUB_OUTPUT"
           else
-            echo "Nenhum diretório backend encontrado (bussines/backend-go)." >&2
+            echo "Nenhum diretório backend encontrado (bussines/watink-bussines)." >&2
             exit 1
           fi
 

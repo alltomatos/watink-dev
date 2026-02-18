@@ -4,13 +4,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/database"
+	"github.com/alltomatos/watinkdev/bussines/internal/database"
 	"github.com/gin-gonic/gin"
 )
 
 func GetVersion(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"service": "backend-go",
+		"service": "watink-bussines",
 		"version": "1.3.197", // Consistent with Node for now
 	})
 }
