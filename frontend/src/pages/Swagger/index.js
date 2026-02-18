@@ -1,8 +1,11 @@
 /* @jsxImportSource react */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { getBackendUrl } from "../../config";
 import { makeStyles } from "@material-ui/core/styles";
 import Paper from "@material-ui/core/Paper";
+import Typography from "@material-ui/core/Typography";
+import { AuthContext } from "../../context/Auth/AuthContext";
+import { Can } from "../../components/Can";
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -26,6 +29,7 @@ const useStyles = makeStyles((theme) => ({
 
 const Swagger = () => {
     const classes = useStyles();
+    const { user } = useContext(AuthContext);
     const [url, setUrl] = useState("");
 
     useEffect(() => {
@@ -35,12 +39,27 @@ const Swagger = () => {
     }, []);
 
     return (
-        <div className={classes.root}>
-            <Paper className={classes.paper}>
-                <h2>Documentação API</h2>
-            </Paper>
-            <iframe src={url} className={classes.iframe} title="Swagger UI" />
-        </div>
+        <Can
+            user={user}
+            perform="view_swagger"
+            yes={() => (
+                <div className={classes.root}>
+                    <Paper className={classes.paper}>
+                        <h2>Documentação API</h2>
+                    </Paper>
+                    <iframe src={url} className={classes.iframe} title="Swagger UI" />
+                </div>
+            )}
+            no={() => (
+                <div className={classes.root}>
+                    <Paper className={classes.paper}>
+                        <Typography variant="h6" color="error">
+                            Você não tem permissão para visualizar esta página.
+                        </Typography>
+                    </Paper>
+                </div>
+            )}
+        />
     );
 };
 
