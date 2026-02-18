@@ -2,6 +2,7 @@ const express = require("express");
 const axios = require("axios");
 const path = require("path");
 const crypto = require("crypto");
+const fs = require("fs");
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
@@ -14,13 +15,43 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const MP_WEBHOOK_URL = process.env.MP_WEBHOOK_URL || `${APP_BASE_URL}/api/v1/hub/webhook/mp`;
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 
-const CATALOG = [
-  { id: "1", slug: "helpdesk", name: "Helpdesk", description: "Gestão de protocolos e SLA", version: "2.0.0", type: "business", category: "support", price: 49.9, iconUrl: "/public/plugins/helpdesk.png" },
-  { id: "2", slug: "clientes", name: "Clientes", description: "Gestão de clientes e vínculos", version: "2.0.0", type: "business", category: "crm", price: 49.9, iconUrl: "/public/plugins/clientes.png" },
-  { id: "3", slug: "webchat", name: "Webchat", description: "Widget webchat para site", version: "2.0.0", type: "free", category: "channel", price: 0, iconUrl: "/public/plugins/webchat.png" },
-  { id: "4", slug: "saas-plugin", name: "SaaS Manager", description: "Recursos SaaS avançados", version: "2.0.0", type: "business", category: "saas", price: 199.9, iconUrl: "/public/plugins/saas-plugin.png" }
+const FILES = {
+  plugins: path.join(DATA_DIR, "plugins.json"),
+  coupons: path.join(DATA_DIR, "coupons.json"),
+  audits: path.join(DATA_DIR, "audits.json")
+};
+
+const DEFAULT_PLUGINS = [
+  { id: "1", slug: "helpdesk", name: "Helpdesk", description: "Gestão de protocolos e SLA", version: "2.0.0", type: "business", category: "support", price: 49.9, iconUrl: "/public/plugins/helpdesk.png", active: true },
+  { id: "2", slug: "clientes", name: "Clientes", description: "Gestão de clientes e vínculos", version: "2.0.0", type: "business", category: "crm", price: 49.9, iconUrl: "/public/plugins/clientes.png", active: true },
+  { id: "3", slug: "webchat", name: "Webchat", description: "Widget webchat para site", version: "2.0.0", type: "free", category: "channel", price: 0, iconUrl: "/public/plugins/webchat.png", active: true },
+  { id: "4", slug: "saas-plugin", name: "SaaS Manager", description: "Recursos SaaS avançados", version: "2.0.0", type: "business", category: "saas", price: 199.9, iconUrl: "/public/plugins/saas-plugin.png", active: true }
 ];
+
+function ensureDataFiles() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(FILES.plugins)) fs.writeFileSync(FILES.plugins, JSON.stringify(DEFAULT_PLUGINS, null, 2));
+  if (!fs.existsSync(FILES.coupons)) fs.writeFileSync(FILES.coupons, JSON.stringify([], null, 2));
+  if (!fs.existsSync(FILES.audits)) fs.writeFileSync(FILES.audits, JSON.stringify([], null, 2));
+}
+
+function readJson(file, fallback) {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (_e) {
+    return fallback;
+  }
+}
+
+function writeJson(file, data) {
+  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+}
+
+function getCatalog() {
+  return readJson(FILES.plugins, DEFAULT_PLUGINS).filter((p) => p.active !== false);
+}
 
 function planFromSlug(slug) {
   if (slug === "saas-plugin") return "SaaS";
@@ -34,7 +65,7 @@ function ensureSupabase() {
 }
 
 const SESSION_COOKIE = "mp_admin";
-const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8h
+const SESSION_TTL_SECONDS = 60 * 60 * 8;
 
 function parseCookies(req) {
   const raw = req.headers.cookie || "";
@@ -65,7 +96,6 @@ function verifySession(token) {
   const [body, sig] = token.split(".");
   const expected = crypto.createHmac("sha256", sessionSecret()).update(body).digest("base64url");
   if (sig !== expected) return null;
-
   try {
     const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
     if (!payload?.exp || Date.now() > payload.exp) return null;
@@ -100,6 +130,52 @@ function adminAuth(req, res, next) {
 function webAuth(req, res, next) {
   if (hasValidAdminSession(req)) return next();
   return res.redirect("/login");
+}
+
+function audit(action, actor, payload = {}) {
+  const rows = readJson(FILES.audits, []);
+  rows.unshift({
+    id: crypto.randomUUID(),
+    action,
+    actor: actor || "admin",
+    payload,
+    created_at: new Date().toISOString()
+  });
+  writeJson(FILES.audits, rows.slice(0, 3000));
+}
+
+function actorFromReq(req) {
+  const byHeader = req.header("x-admin-user") || "";
+  return byHeader || ADMIN_USER;
+}
+
+function applyCouponRules(coupon, baseAmount, pluginSlug) {
+  const now = new Date();
+  if (!coupon.active) return { ok: false, reason: "cupom inativo" };
+  if (coupon.startAt && now < new Date(coupon.startAt)) return { ok: false, reason: "cupom ainda não iniciou" };
+  if (coupon.endAt && now > new Date(coupon.endAt)) return { ok: false, reason: "cupom expirado" };
+  if (Number(coupon.usageLimit || 0) > 0 && Number(coupon.usedCount || 0) >= Number(coupon.usageLimit || 0)) {
+    return { ok: false, reason: "limite de uso atingido" };
+  }
+  if (Number(coupon.minAmount || 0) > baseAmount) return { ok: false, reason: "valor mínimo não atingido" };
+
+  const applies = Array.isArray(coupon.appliesToPlugins) ? coupon.appliesToPlugins : [];
+  if (applies.length > 0 && !applies.includes(pluginSlug)) return { ok: false, reason: "cupom não aplicável ao plugin" };
+
+  let discount = 0;
+  if (coupon.type === "percent") {
+    discount = (baseAmount * Number(coupon.value || 0)) / 100;
+  } else {
+    discount = Number(coupon.value || 0);
+  }
+
+  if (Number(coupon.maxDiscount || 0) > 0) {
+    discount = Math.min(discount, Number(coupon.maxDiscount || 0));
+  }
+  discount = Math.max(0, discount);
+
+  const finalAmount = Math.max(0, baseAmount - discount);
+  return { ok: true, discount, finalAmount };
 }
 
 async function callSupabaseFunction(fn, payload) {
@@ -146,30 +222,55 @@ async function sbUpsert(table, rows, onConflict) {
   return data;
 }
 
+// ---------- Runtime ----------
 app.get("/health", (_req, res) => {
   res.json({ ok: true, service: "marketplace-hub", ts: new Date().toISOString() });
 });
 
 app.get("/api/v1/hub/catalog", (_req, res) => {
-  res.json({ plugins: CATALOG });
+  res.json({ plugins: getCatalog() });
 });
 
 app.post("/api/v1/hub/checkout", async (req, res) => {
   try {
-    const { slug, instanceId, email, name } = req.body || {};
+    const { slug, instanceId, email, name, couponCode } = req.body || {};
     if (!slug || !instanceId) return res.status(400).json({ error: "slug e instanceId obrigatórios" });
 
+    const plugin = getCatalog().find((p) => p.slug === slug);
+    if (!plugin) return res.status(404).json({ error: "plugin não encontrado" });
+
+    let couponInfo = null;
+    if (couponCode) {
+      const coupons = readJson(FILES.coupons, []);
+      const coupon = coupons.find((c) => String(c.code || "").toUpperCase() === String(couponCode).toUpperCase());
+      if (coupon) {
+        const result = applyCouponRules(coupon, Number(plugin.price || 0), slug);
+        couponInfo = { code: coupon.code, ...result };
+      }
+    }
+
+    // Mantém fluxo principal no Supabase/MP (source of truth)
     const payload = {
       plan: planFromSlug(slug),
       slug,
       instanceId,
       email: email || `${instanceId}@instance.local`,
-      name: name || `Instance ${instanceId}`
+      name: name || `Instance ${instanceId}`,
+      couponCode: couponCode || null
     };
 
     const data = await callSupabaseFunction("create-checkout", payload);
     if (!data?.checkoutUrl) return res.status(502).json({ error: "checkoutUrl não retornada" });
-    return res.json({ checkoutUrl: data.checkoutUrl });
+
+    audit("checkout_created", "runtime", { slug, instanceId, couponCode: couponCode || null });
+
+    return res.json({
+      checkoutUrl: data.checkoutUrl,
+      pricingPreview: {
+        baseAmount: Number(plugin.price || 0),
+        coupon: couponInfo
+      }
+    });
   } catch (e) {
     return res.status(500).json({ error: e?.response?.data?.error || e.message || "erro checkout" });
   }
@@ -194,13 +295,14 @@ app.post("/api/v1/hub/heartbeat", async (req, res) => {
 app.post("/api/v1/hub/webhook/mp", async (req, res) => {
   try {
     await callSupabaseFunction("mp-webhook", req.body || {});
+    audit("mp_webhook_received", "runtime", { type: req.body?.type || null });
     return res.json({ ok: true });
   } catch (_e) {
     return res.status(200).json({ ok: false });
   }
 });
 
-// -------- Admin API (MVP) --------
+// ---------- Admin / Finance ----------
 app.get("/api/v1/admin/overview", adminAuth, async (_req, res) => {
   try {
     const [instances, licenses, subscriptions] = await Promise.all([
@@ -248,6 +350,9 @@ app.post("/api/v1/admin/licenses/upsert", adminAuth, async (req, res) => {
 
     const rows = [{ instance_id, plugin_slug, status, updated_at: new Date().toISOString() }];
     const data = await sbUpsert("licenses", rows, "instance_id,plugin_slug");
+
+    audit("license_upsert", actorFromReq(req), { instance_id, plugin_slug, status });
+
     return res.json({ ok: true, item: data?.[0] || null });
   } catch (e) {
     return res.status(500).json({ error: e?.response?.data || e.message });
@@ -256,14 +361,10 @@ app.post("/api/v1/admin/licenses/upsert", adminAuth, async (req, res) => {
 
 app.get("/api/v1/admin/finance/summary", adminAuth, async (_req, res) => {
   try {
-    const out = await sbGet("subscriptions", "?select=id,status,created_at,expires_at,plans(name,price)&limit=500");
+    const out = await sbGet("subscriptions", "?select=id,status,created_at,expires_at,plans(name,price)&limit=1000");
     const rows = out.data || [];
 
-    let active = 0;
-    let pending = 0;
-    let overdue = 0;
-    let canceled = 0;
-    let mrr = 0;
+    let active = 0, pending = 0, overdue = 0, canceled = 0, mrr = 0;
 
     rows.forEach((r) => {
       const st = String(r.status || "").toLowerCase();
@@ -291,17 +392,6 @@ app.get("/api/v1/admin/finance/summary", adminAuth, async (_req, res) => {
   }
 });
 
-app.get("/api/v1/admin/subscriptions", adminAuth, async (req, res) => {
-  try {
-    const limit = Number(req.query.limit || 100);
-    // Mantemos seleção mínima para evitar quebra por variação de schema entre projetos
-    const out = await sbGet("subscriptions", `?select=id,status,created_at,expires_at,plan_id,customer_id&order=created_at.desc&limit=${limit}`);
-    return res.json({ items: out.data || [], total: out.count });
-  } catch (e) {
-    return res.status(500).json({ error: e?.response?.data || e.message });
-  }
-});
-
 app.get("/api/v1/admin/finance/by-plan", adminAuth, async (_req, res) => {
   try {
     const out = await sbGet("subscriptions", "?select=id,status,plans(name,price)&limit=1000");
@@ -314,21 +404,12 @@ app.get("/api/v1/admin/finance/by-plan", adminAuth, async (_req, res) => {
       const price = Number(plan?.price || 0);
       const status = String(r.status || "").toLowerCase();
 
-      if (!agg[planName]) {
-        agg[planName] = { plan: planName, total: 0, active: 0, pending: 0, overdue: 0, canceled: 0, mrr: 0 };
-      }
-
+      if (!agg[planName]) agg[planName] = { plan: planName, total: 0, active: 0, pending: 0, overdue: 0, canceled: 0, mrr: 0 };
       agg[planName].total += 1;
-      if (status === "active") {
-        agg[planName].active += 1;
-        agg[planName].mrr += price;
-      } else if (status === "pending") {
-        agg[planName].pending += 1;
-      } else if (status === "overdue") {
-        agg[planName].overdue += 1;
-      } else if (status === "canceled") {
-        agg[planName].canceled += 1;
-      }
+      if (status === "active") { agg[planName].active += 1; agg[planName].mrr += price; }
+      else if (status === "pending") agg[planName].pending += 1;
+      else if (status === "overdue") agg[planName].overdue += 1;
+      else if (status === "canceled") agg[planName].canceled += 1;
     });
 
     return res.json({ items: Object.values(agg).sort((a, b) => b.mrr - a.mrr) });
@@ -355,17 +436,160 @@ app.get("/api/v1/admin/finance/timeline", adminAuth, async (_req, res) => {
       else if (st === "canceled") map[d].canceled += 1;
     });
 
-    const items = Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
-    return res.json({ items });
+    return res.json({ items: Object.values(map).sort((a, b) => a.date.localeCompare(b.date)) });
   } catch (e) {
     return res.status(500).json({ error: e?.response?.data || e.message });
   }
 });
 
-app.post("/api/v1/admin/coupons", adminAuth, async (_req, res) => {
-  return res.status(501).json({ error: "cupons ainda não implementado (MVP stub)" });
+app.get("/api/v1/admin/subscriptions", adminAuth, async (req, res) => {
+  try {
+    const limit = Number(req.query.limit || 100);
+    const out = await sbGet("subscriptions", `?select=id,status,created_at,expires_at,plan_id,customer_id&order=created_at.desc&limit=${limit}`);
+    return res.json({ items: out.data || [], total: out.count });
+  } catch (e) {
+    return res.status(500).json({ error: e?.response?.data || e.message });
+  }
 });
 
+// ---------- Admin / Plugins CRUD ----------
+app.get("/api/v1/admin/plugins", adminAuth, (_req, res) => {
+  const items = readJson(FILES.plugins, DEFAULT_PLUGINS);
+  return res.json({ items });
+});
+
+app.post("/api/v1/admin/plugins", adminAuth, (req, res) => {
+  const body = req.body || {};
+  if (!body.slug || !body.name) return res.status(400).json({ error: "slug e name são obrigatórios" });
+
+  const items = readJson(FILES.plugins, DEFAULT_PLUGINS);
+  if (items.some((p) => p.slug === body.slug)) return res.status(409).json({ error: "slug já existe" });
+
+  const row = {
+    id: crypto.randomUUID(),
+    slug: String(body.slug).trim(),
+    name: String(body.name).trim(),
+    description: String(body.description || ""),
+    version: String(body.version || "1.0.0"),
+    type: body.type === "free" ? "free" : "business",
+    category: String(body.category || "other"),
+    price: Number(body.price || 0),
+    iconUrl: String(body.iconUrl || ""),
+    active: body.active !== false
+  };
+
+  items.push(row);
+  writeJson(FILES.plugins, items);
+  audit("plugin_create", actorFromReq(req), row);
+  return res.json({ ok: true, item: row });
+});
+
+app.put("/api/v1/admin/plugins/:id", adminAuth, (req, res) => {
+  const id = req.params.id;
+  const items = readJson(FILES.plugins, DEFAULT_PLUGINS);
+  const idx = items.findIndex((p) => p.id === id);
+  if (idx < 0) return res.status(404).json({ error: "plugin não encontrado" });
+
+  items[idx] = { ...items[idx], ...req.body, id: items[idx].id };
+  writeJson(FILES.plugins, items);
+  audit("plugin_update", actorFromReq(req), { id, changes: req.body || {} });
+  return res.json({ ok: true, item: items[idx] });
+});
+
+app.delete("/api/v1/admin/plugins/:id", adminAuth, (req, res) => {
+  const id = req.params.id;
+  const items = readJson(FILES.plugins, DEFAULT_PLUGINS);
+  const idx = items.findIndex((p) => p.id === id);
+  if (idx < 0) return res.status(404).json({ error: "plugin não encontrado" });
+
+  const row = items[idx];
+  items.splice(idx, 1);
+  writeJson(FILES.plugins, items);
+  audit("plugin_delete", actorFromReq(req), row);
+  return res.json({ ok: true });
+});
+
+// ---------- Admin / Coupons CRUD + Rules + Audit ----------
+app.get("/api/v1/admin/coupons", adminAuth, (_req, res) => {
+  const items = readJson(FILES.coupons, []);
+  return res.json({ items });
+});
+
+app.post("/api/v1/admin/coupons", adminAuth, (req, res) => {
+  const body = req.body || {};
+  const code = String(body.code || "").trim().toUpperCase();
+  if (!code) return res.status(400).json({ error: "code é obrigatório" });
+
+  const items = readJson(FILES.coupons, []);
+  if (items.some((c) => c.code === code)) return res.status(409).json({ error: "cupom já existe" });
+
+  const row = {
+    id: crypto.randomUUID(),
+    code,
+    type: body.type === "fixed" ? "fixed" : "percent",
+    value: Number(body.value || 0),
+    maxDiscount: Number(body.maxDiscount || 0),
+    minAmount: Number(body.minAmount || 0),
+    usageLimit: Number(body.usageLimit || 0),
+    usedCount: Number(body.usedCount || 0),
+    startAt: body.startAt || null,
+    endAt: body.endAt || null,
+    appliesToPlugins: Array.isArray(body.appliesToPlugins) ? body.appliesToPlugins : [],
+    active: body.active !== false,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  items.push(row);
+  writeJson(FILES.coupons, items);
+  audit("coupon_create", actorFromReq(req), row);
+  return res.json({ ok: true, item: row });
+});
+
+app.put("/api/v1/admin/coupons/:id", adminAuth, (req, res) => {
+  const id = req.params.id;
+  const items = readJson(FILES.coupons, []);
+  const idx = items.findIndex((c) => c.id === id);
+  if (idx < 0) return res.status(404).json({ error: "cupom não encontrado" });
+
+  const patch = { ...req.body, updated_at: new Date().toISOString() };
+  if (patch.code) patch.code = String(patch.code).toUpperCase();
+  items[idx] = { ...items[idx], ...patch, id: items[idx].id };
+  writeJson(FILES.coupons, items);
+  audit("coupon_update", actorFromReq(req), { id, changes: patch });
+  return res.json({ ok: true, item: items[idx] });
+});
+
+app.delete("/api/v1/admin/coupons/:id", adminAuth, (req, res) => {
+  const id = req.params.id;
+  const items = readJson(FILES.coupons, []);
+  const idx = items.findIndex((c) => c.id === id);
+  if (idx < 0) return res.status(404).json({ error: "cupom não encontrado" });
+
+  const row = items[idx];
+  items.splice(idx, 1);
+  writeJson(FILES.coupons, items);
+  audit("coupon_delete", actorFromReq(req), row);
+  return res.json({ ok: true });
+});
+
+app.post("/api/v1/admin/coupons/validate", adminAuth, (req, res) => {
+  const { code, amount, pluginSlug } = req.body || {};
+  const coupons = readJson(FILES.coupons, []);
+  const coupon = coupons.find((c) => String(c.code).toUpperCase() === String(code || "").toUpperCase());
+  if (!coupon) return res.status(404).json({ ok: false, reason: "cupom não encontrado" });
+
+  const out = applyCouponRules(coupon, Number(amount || 0), pluginSlug || "");
+  return res.json({ ok: out.ok, ...out, coupon });
+});
+
+app.get("/api/v1/admin/audits", adminAuth, (req, res) => {
+  const limit = Number(req.query.limit || 200);
+  const rows = readJson(FILES.audits, []);
+  return res.json({ items: rows.slice(0, limit) });
+});
+
+// ---------- Login web ----------
 app.get("/login", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
@@ -377,17 +601,23 @@ app.post("/login", (req, res) => {
     return res.status(401).json({ error: "Credenciais inválidas" });
   }
   setSessionCookie(res);
+  audit("login", username || "unknown", {});
   return res.json({ ok: true });
 });
 
-app.post("/logout", (_req, res) => {
+app.post("/logout", (req, res) => {
   clearSessionCookie(res);
+  audit("logout", actorFromReq(req), {});
   return res.json({ ok: true });
 });
 
 app.get("/", webAuth, (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
+
+app.use("/public", express.static(path.join(__dirname, "public")));
+
+ensureDataFiles();
 
 app.listen(PORT, () => {
   console.log(`Marketplace Hub listening on :${PORT}`);

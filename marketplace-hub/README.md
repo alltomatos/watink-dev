@@ -13,7 +13,7 @@ Serviço central do Marketplace para instâncias Watink em escala.
 - `POST /api/v1/hub/heartbeat`
 - `POST /api/v1/hub/webhook/mp`
 
-## Endpoints admin (MVP)
+## Endpoints admin (MVP+)
 - `GET /api/v1/admin/overview`
 - `GET /api/v1/admin/instances`
 - `GET /api/v1/admin/licenses`
@@ -22,7 +22,16 @@ Serviço central do Marketplace para instâncias Watink em escala.
 - `GET /api/v1/admin/finance/by-plan`
 - `GET /api/v1/admin/finance/timeline`
 - `GET /api/v1/admin/subscriptions`
-- `POST /api/v1/admin/coupons` (stub)
+- `GET /api/v1/admin/plugins`
+- `POST /api/v1/admin/plugins`
+- `PUT /api/v1/admin/plugins/:id`
+- `DELETE /api/v1/admin/plugins/:id`
+- `GET /api/v1/admin/coupons`
+- `POST /api/v1/admin/coupons`
+- `PUT /api/v1/admin/coupons/:id`
+- `DELETE /api/v1/admin/coupons/:id`
+- `POST /api/v1/admin/coupons/validate`
+- `GET /api/v1/admin/audits`
 
 Admin API usa sessão de login (`/login`) e aceita também header `x-admin-token` para automação.
 
