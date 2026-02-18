@@ -31,9 +31,13 @@ const App = () => {
   );
 
   useEffect(() => {
-    const i18nlocale = localStorage.getItem("i18nextLng");
-    const browserLocale =
-      i18nlocale.substring(0, 2) + i18nlocale.substring(3, 5);
+    const i18nlocale = localStorage.getItem("i18nextLng") || "pt-BR";
+    const normalized = String(i18nlocale);
+
+    // Evita crash quando i18nextLng estiver ausente/corrompido
+    const browserLocale = normalized.includes("-")
+      ? normalized.substring(0, 2) + normalized.substring(3, 5)
+      : normalized;
 
     if (browserLocale === "ptBR") {
       setLocale(ptBR);
