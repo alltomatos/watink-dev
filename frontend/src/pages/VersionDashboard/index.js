@@ -100,6 +100,7 @@ export default function VersionDashboard() {
   const [queueAlerts, setQueueAlerts] = useState({});
   const [frontendVersion, setFrontendVersion] = useState("-");
   const [frontendUpdatedAt, setFrontendUpdatedAt] = useState(null);
+  const [changelog, setChangelog] = useState([]);
   const [updateStatus, setUpdateStatus] = useState(() => (localStorage.getItem("watink_update_ok") === "1" ? "ok" : "idle"));
   const prevQueueMessagesRef = useRef({});
 
@@ -139,7 +140,7 @@ export default function VersionDashboard() {
     localStorage.setItem("watink_update_ok", "0");
     setOpenUpdateModal(false);
     try {
-      await api.post("/system/update", { version: "2.1.0" });
+      await api.post("/system/update", { version: frontendVersion !== "-" ? frontendVersion : "latest" });
       toast.info("Processo de atualização iniciado. O sistema entrará em manutenção.");
 
       const checkInterval = setInterval(async () => {
@@ -168,6 +169,13 @@ export default function VersionDashboard() {
       .then((v) => {
         if (v?.version) setFrontendVersion(v.version);
         if (v?.lastUpdated) setFrontendUpdatedAt(v.lastUpdated);
+        if (Array.isArray(v?.changelog)) {
+          setChangelog(v.changelog.filter(Boolean));
+        } else if (typeof v?.changelog === "string" && v.changelog.trim()) {
+          setChangelog([v.changelog.trim()]);
+        } else {
+          setChangelog([]);
+        }
       })
       .catch(() => {});
 
@@ -367,15 +375,38 @@ export default function VersionDashboard() {
       </div>
 
       <Dialog open={openUpdateModal} onClose={() => setOpenUpdateModal(false)}>
-        <DialogTitle>🚀 Nova Atualização Disponível</DialogTitle>
+        <DialogTitle>🚀 Verificar Atualização</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            Uma nova versão (v2.1.0) está disponível. Ao clicar em atualizar, o sistema irá:
-            <br /><br />
-            1. Entrar em <b>Modo Manutenção</b> (deslogando usuários).<br />
-            2. Realizar um <b>Backup Automático</b> do banco de dados.<br />
-            3. Aplicar os novos arquivos e reiniciar os serviços.<br /><br />
-            Deseja prosseguir agora?
+          <DialogContentText component="div">
+            <Typography variant="body2" gutterBottom>
+              Versão disponível: <b>v{frontendVersion !== "-" ? frontendVersion : "latest"}</b>
+            </Typography>
+
+            {changelog.length > 0 ? (
+              <>
+                <Typography variant="body2" gutterBottom style={{ marginTop: 8 }}>
+                  Changelog desta versão:
+                </Typography>
+                <ul style={{ marginTop: 4, paddingLeft: 20 }}>
+                  {changelog.map((item, idx) => (
+                    <li key={`${idx}-${item}`}>
+                      <Typography variant="body2">{item}</Typography>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <Typography variant="body2" color="textSecondary" gutterBottom>
+                Changelog não informado para esta versão.
+              </Typography>
+            )}
+
+            <Typography variant="body2" style={{ marginTop: 12 }}>
+              Ao atualizar, o sistema irá entrar em manutenção e reiniciar os serviços.
+            </Typography>
+            <Typography variant="body2" style={{ marginTop: 8 }}>
+              Deseja prosseguir agora?
+            </Typography>
           </DialogContentText>
         </DialogContent>
         <DialogActions>

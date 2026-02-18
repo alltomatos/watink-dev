@@ -35,12 +35,27 @@ const versionJsonPath = path.join(publicDir, 'version.json');
 
 try {
     const packageJson = require(packageJsonPath);
+
+    let existing = {};
+    if (fs.existsSync(versionJsonPath)) {
+        try {
+            existing = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
+        } catch (_) {
+            existing = {};
+        }
+    }
+
+    const envChangelog = process.env.WATINK_CHANGELOG
+        ? process.env.WATINK_CHANGELOG.split('|').map(s => s.trim()).filter(Boolean)
+        : null;
+
     const versionData = {
         service: "frontend",
         version: packageJson.version,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        changelog: envChangelog || existing.changelog || []
     };
-    
+
     fs.writeFileSync(versionJsonPath, JSON.stringify(versionData, null, 2));
     console.log(`Updated version.json to ${packageJson.version}`);
 } catch (error) {
