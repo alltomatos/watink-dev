@@ -13,11 +13,15 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions
+  DialogActions,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody
 } from "@material-ui/core";
 import { SystemUpdate as UpdateIcon, MenuBook as MenuBookIcon } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
-import { getBackendUrl } from "../../helpers/urlUtils";
 import api from "../../services/api";
 import { toast } from "react-toastify";
 import { AuthContext } from "../../context/Auth/AuthContext";
@@ -84,13 +88,11 @@ export default function VersionDashboard() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch(getBackendUrl("/api/system/stats"));
-      if (!res.ok) throw new Error("Falha ao carregar estatísticas");
-      const json = await res.json();
-      setStats(json);
+      const { data } = await api.get("/system/stats");
+      setStats(data);
       setError(null);
     } catch (e) {
-      setError(e.message);
+      setError(e?.response?.data?.error || e.message || "Falha ao carregar estatísticas");
     } finally {
       setLoading(false);
     }
@@ -148,7 +150,7 @@ export default function VersionDashboard() {
     <Container maxWidth="lg" className={classes.root}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h5">
-          Monitoramento do Sistema (Business)
+          Monitor do Sistema (Business)
         </Typography>
         <Box display="flex" gridGap={8}>
           {isSuperAdmin && (
@@ -257,6 +259,36 @@ export default function VersionDashboard() {
               <Typography variant="caption">Status: Online</Typography>
               <LinearProgress variant="query" style={{ marginTop: 8 }} />
             </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12}>
+          <Paper className={classes.paper}>
+            <Typography variant="h6" gutterBottom>Consumo por Tenant</Typography>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Tenant</TableCell>
+                  <TableCell align="right">Usuários</TableCell>
+                  <TableCell align="right">Contatos</TableCell>
+                  <TableCell align="right">Tickets</TableCell>
+                  <TableCell align="right">Tickets Abertos</TableCell>
+                  <TableCell align="right">WhatsApps</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {(stats?.tenantConsumption || []).slice(0, 20).map((t) => (
+                  <TableRow key={t.tenantId}>
+                    <TableCell>{t.tenantName}</TableCell>
+                    <TableCell align="right">{t.users}</TableCell>
+                    <TableCell align="right">{t.contacts}</TableCell>
+                    <TableCell align="right">{t.tickets}</TableCell>
+                    <TableCell align="right">{t.openTickets}</TableCell>
+                    <TableCell align="right">{t.whatsapps}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </Paper>
         </Grid>
       </Grid>

@@ -13,7 +13,6 @@ func SetupRoutes(group *gin.RouterGroup) {
 	group.GET("/public-settings", controllers.GetPublicSettings)
 	group.GET("/initial-setup/check", controllers.CheckSetup)
 	group.POST("/initial-setup", controllers.InitialSetup)
-	group.GET("/system/stats", controllers.GetSystemStats)
 	group.GET("/system/maintenance", controllers.GetMaintenanceStatus)
 
 	// Swagger / API docs
@@ -33,6 +32,7 @@ func SetupRoutes(group *gin.RouterGroup) {
 	protected.Use(middleware.TenantMiddleware())
 	{
 		// Update & System
+		protected.GET("/system/stats", controllers.GetSystemStats)
 		protected.POST("/system/update", controllers.StartUpdate)
 		// Auth
 		protected.DELETE("/auth/logout", controllers.Logout)
