@@ -29,6 +29,11 @@ import { getBackendUrl } from "../../helpers/urlUtils";
 const useStyles = makeStyles(theme => ({
 	ticket: {
 		position: "relative",
+		borderRadius: 14,
+		marginBottom: 8,
+		backgroundColor: theme.palette.background.paper,
+		border: `1px solid ${theme.palette.type === "dark" ? "rgba(255,255,255,0.08)" : "#e8e8f3"}`,
+		boxShadow: theme.palette.type === "dark" ? "none" : "0 1px 3px rgba(17,24,39,0.05)",
 	},
 
 	ticketSaas: {
@@ -44,6 +49,11 @@ const useStyles = makeStyles(theme => ({
 
 	pendingTicket: {
 		cursor: "unset",
+	},
+
+	selectedTicket: {
+		borderColor: theme.palette.primary.main,
+		boxShadow: theme.palette.type === "dark" ? "0 0 0 1px rgba(59,130,246,0.4)" : "0 0 0 2px rgba(59,130,246,0.18)",
 	},
 
 	noTicketsDiv: {
@@ -181,6 +191,7 @@ const TicketListItem = ({ ticket }) => {
 				className={clsx(classes.ticket, {
 					[classes.pendingTicket]: ticket.status === "pending",
 					[classes.ticketSaas]: appTheme === "saas",
+					[classes.selectedTicket]: ticketId && +ticketId === ticket.id,
 				})}
 			>
 				<Tooltip

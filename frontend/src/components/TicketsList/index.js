@@ -28,7 +28,9 @@ const useStyles = makeStyles(theme => ({
 		flex: 1,
 		overflowY: "scroll",
 		...theme.scrollbarStyles,
-		borderTop: "2px solid rgba(0, 0, 0, 0.12)",
+		borderTop: "1px solid rgba(0, 0, 0, 0.08)",
+		padding: theme.spacing(0.75),
+		background: theme.palette.type === "dark" ? theme.palette.background.default : "#f7f6fc",
 	},
 
 	ticketsListHeader: {
