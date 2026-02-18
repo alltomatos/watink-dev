@@ -34,10 +34,14 @@ const useStyles = makeStyles((theme) => ({
     borderBottomRightRadius: 0,
     backgroundColor: theme.palette.background.default,
     color: theme.palette.text.primary,
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: 14,
   },
   tabsHeader: {
     flex: "none",
     backgroundColor: theme.palette.background.paper,
+    padding: theme.spacing(0.5),
+    borderBottom: `1px solid ${theme.palette.divider}`,
   },
   settingsIcon: {
     alignSelf: "center",
@@ -47,6 +51,23 @@ const useStyles = makeStyles((theme) => ({
   tab: {
     minWidth: 120,
     width: 120,
+    minHeight: 56,
+    borderRadius: 10,
+    margin: "0 2px",
+    textTransform: "none",
+    fontWeight: 600,
+  },
+  tabSelected: {
+    backgroundColor: theme.palette.type === "dark" ? "rgba(59,130,246,0.14)" : "rgba(59,130,246,0.10)",
+    color: theme.palette.primary.main,
+  },
+  ticketsSubTab: {
+    textTransform: "none",
+    minHeight: 44,
+    fontWeight: 600,
+  },
+  ticketsSubTabSelected: {
+    color: theme.palette.primary.main,
   },
   ticketOptionsBox: {
     display: "flex",
@@ -54,14 +75,19 @@ const useStyles = makeStyles((theme) => ({
     alignItems: "center",
     background: theme.palette.background.paper,
     padding: theme.spacing(1),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    gap: 8,
+    flexWrap: "wrap",
   },
   serachInputWrapper: {
     flex: 1,
     background: theme.palette.background.default,
     display: "flex",
-    borderRadius: 40,
-    padding: 4,
+    borderRadius: 999,
+    padding: 6,
     marginRight: theme.spacing(1),
+    border: `1px solid ${theme.palette.divider}`,
+    minHeight: 40,
   },
   searchIcon: {
     color: "grey",
@@ -78,6 +104,22 @@ const useStyles = makeStyles((theme) => ({
   },
   badge: {
     right: "-10px",
+  },
+  newTicketButton: {
+    borderRadius: 12,
+    textTransform: "none",
+    fontWeight: 700,
+    padding: "8px 16px",
+  },
+  closeAllButton: {
+    borderRadius: 12,
+    textTransform: "none",
+    fontWeight: 700,
+    padding: "8px 16px",
+  },
+  queueSelectWrap: {
+    marginLeft: 6,
+    borderRadius: 12,
   },
   show: {
     display: "block",
@@ -198,19 +240,19 @@ const TicketsManager = () => {
             value={"open"}
             icon={<MoveToInboxIcon />}
             label={i18n.t("tickets.tabs.open.title")}
-            classes={{ root: classes.tab }}
+            classes={{ root: classes.tab, selected: classes.tabSelected }}
           />
           <Tab
             value={"closed"}
             icon={<CheckBoxIcon />}
             label={i18n.t("tickets.tabs.closed.title")}
-            classes={{ root: classes.tab }}
+            classes={{ root: classes.tab, selected: classes.tabSelected }}
           />
           <Tab
             value={"search"}
             icon={<SearchIcon />}
             label={i18n.t("tickets.tabs.search.title")}
-            classes={{ root: classes.tab }}
+            classes={{ root: classes.tab, selected: classes.tabSelected }}
           />
 
         </Tabs>
@@ -232,6 +274,7 @@ const TicketsManager = () => {
             <Button
               variant="outlined"
               color="primary"
+              className={classes.newTicketButton}
               onClick={() => setNewTicketModalOpen(true)}
             >
               {i18n.t("ticketsManager.buttons.newTicket")}
@@ -243,6 +286,7 @@ const TicketsManager = () => {
                 <Button
                   variant="outlined"
                   color="secondary"
+                  className={classes.closeAllButton}
                   style={{ marginLeft: 6 }}
                   onClick={() => setCloseAllModalOpen(true)}
                 >
@@ -275,6 +319,7 @@ const TicketsManager = () => {
         )}
         <TicketsQueueSelect
           style={{ marginLeft: 6 }}
+          className={classes.queueSelectWrap}
           selectedQueueIds={selectedQueueIds}
           userQueues={user?.queues}
           onChange={(values) => setSelectedQueueIds(values)}
@@ -299,6 +344,7 @@ const TicketsManager = () => {
               </Badge>
             }
             value={"open"}
+            classes={{ root: classes.ticketsSubTab, selected: classes.ticketsSubTabSelected }}
           />
           <Tab
             label={
@@ -311,6 +357,7 @@ const TicketsManager = () => {
               </Badge>
             }
             value={"pending"}
+            classes={{ root: classes.ticketsSubTab, selected: classes.ticketsSubTabSelected }}
           />
           <Tab
             label={
@@ -323,6 +370,7 @@ const TicketsManager = () => {
               </Badge>
             }
             value={"groups"}
+            classes={{ root: classes.ticketsSubTab, selected: classes.ticketsSubTabSelected }}
           />
         </Tabs>
         <Paper className={classes.ticketsWrapper}>
