@@ -13,9 +13,12 @@ const StatusCheck = ({ children }) => {
     const checkBackend = async () => {
       try {
         const backendUrl = getBackendUrl();
-        const testUrl = backendUrl ? `${backendUrl}health` : "/api/health";
-        const setupCheckUrl = backendUrl ? `${backendUrl}initial-setup/check` : "/api/initial-setup/check";
-        
+        const base = backendUrl ? backendUrl.replace(/\/+$/, "") : "";
+
+        // Health/setup sempre no namespace /api para evitar concat incorreto (ex: https://hosthealth)
+        const testUrl = base ? `${base}/api/health` : "/api/health";
+        const setupCheckUrl = base ? `${base}/api/initial-setup/check` : "/api/initial-setup/check";
+
         // 1. Check health (Fully initialized backend)
         await axios.get(testUrl, { timeout: 5000 });
         
