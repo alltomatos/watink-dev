@@ -29,6 +29,9 @@ Inputs:
 - `prerelease` (`true/false`)
 - `changelog` (opcional)
 - `environment_name` (ex: `production`, para ler o secret `WATINK_BUSSINES_PAT`)
+- `breaking_release` (`true/false`) — marca release com quebra
+- `min_compatible_from` (ex: `0.7.120`) — bloqueio de upgrade direto em versões antigas
+- `migration_notes` (opcional) — instrução de migração obrigatória
 
 ### 2) Promote Bussines Release
 Arquivo: `.github/workflows/promote-bussines-release.yml`

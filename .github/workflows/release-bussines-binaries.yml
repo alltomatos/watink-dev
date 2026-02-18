@@ -17,6 +17,16 @@ on:
         description: "Environment para ler secrets (ex: production)"
         required: true
         default: "production"
+      breaking_release:
+        description: "Release com quebra de compatibilidade?"
+        required: true
+        default: "false"
+      min_compatible_from:
+        description: "Versão mínima compatível para upgrade direto (ex: 0.7.120)"
+        required: false
+      migration_notes:
+        description: "Notas de migração obrigatória (DB/scripts/etc)"
+        required: false
 
 jobs:
   build-and-publish:
@@ -68,6 +78,9 @@ jobs:
         env:
           VERSION: ${{ github.event.inputs.version }}
           CHANGELOG: ${{ github.event.inputs.changelog }}
+          BREAKING_RELEASE: ${{ github.event.inputs.breaking_release }}
+          MIN_COMPATIBLE_FROM: ${{ github.event.inputs.min_compatible_from }}
+          MIGRATION_NOTES: ${{ github.event.inputs.migration_notes }}
         run: |
           set -e
           mkdir -p release/linux release/windows release/checksums
@@ -97,10 +110,17 @@ jobs:
           else:
               changelog_items = []
 
+          breaking = str(os.environ.get('BREAKING_RELEASE', 'false')).lower() == 'true'
+          min_compatible_from = os.environ.get('MIN_COMPATIBLE_FROM', '').strip()
+          migration_notes = os.environ.get('MIGRATION_NOTES', '').strip()
+
           manifest = {
               "service": "watink-bussines",
               "version": version,
               "tag": f"v{version}",
+              "breaking": breaking,
+              "min_compatible_from": min_compatible_from,
+              "migration_notes": migration_notes,
               "artifacts": {
                   "linux_amd64": {
                       "file": f"watink-core-linux-amd64-v{version}.tar.gz",
@@ -124,6 +144,9 @@ jobs:
           VERSION: ${{ github.event.inputs.version }}
           PRERELEASE: ${{ github.event.inputs.prerelease }}
           CHANGELOG: ${{ github.event.inputs.changelog }}
+          BREAKING_RELEASE: ${{ github.event.inputs.breaking_release }}
+          MIN_COMPATIBLE_FROM: ${{ github.event.inputs.min_compatible_from }}
+          MIGRATION_NOTES: ${{ github.event.inputs.migration_notes }}
         run: |
           set -e
 
@@ -137,6 +160,16 @@ jobs:
 
           if [ -z "${CHANGELOG}" ]; then
             CHANGELOG="Release automática de binários a partir do watinkdev (${GITHUB_SHA})."
+          fi
+
+          if [ "${BREAKING_RELEASE}" = "true" ]; then
+            CHANGELOG="⚠️ BREAKING RELEASE\n\n${CHANGELOG}"
+            if [ -n "${MIN_COMPATIBLE_FROM}" ]; then
+              CHANGELOG="${CHANGELOG}\n\nVersão mínima compatível para upgrade direto: v${MIN_COMPATIBLE_FROM}"
+            fi
+            if [ -n "${MIGRATION_NOTES}" ]; then
+              CHANGELOG="${CHANGELOG}\n\nMigração obrigatória: ${MIGRATION_NOTES}"
+            fi
           fi
 
           if gh release view "$TAG" --repo alltomatos/watink-bussines >/dev/null 2>&1; then

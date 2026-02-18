@@ -75,6 +75,21 @@ const formatUptime = (seconds) => {
   return `${d}d ${h}h ${m}m ${s}s`;
 };
 
+const normalizeVersion = (v) => String(v || "").replace(/^v/i, "").trim();
+
+const compareVersions = (a, b) => {
+  const aa = normalizeVersion(a).split(".").map((n) => parseInt(n || "0", 10));
+  const bb = normalizeVersion(b).split(".").map((n) => parseInt(n || "0", 10));
+  const len = Math.max(aa.length, bb.length, 3);
+  for (let i = 0; i < len; i++) {
+    const av = Number.isFinite(aa[i]) ? aa[i] : 0;
+    const bv = Number.isFinite(bb[i]) ? bb[i] : 0;
+    if (av > bv) return 1;
+    if (av < bv) return -1;
+  }
+  return 0;
+};
+
 function queueAlert(queue, prevMessages) {
   if (queue?.error) return { level: "error", label: "Erro" };
   if ((queue?.consumers || 0) === 0 && (queue?.messages || 0) > 0) {
@@ -102,8 +117,19 @@ export default function VersionDashboard() {
   const [frontendUpdatedAt, setFrontendUpdatedAt] = useState(null);
   const [availableVersion, setAvailableVersion] = useState("-");
   const [changelog, setChangelog] = useState([]);
+  const [releaseMeta, setReleaseMeta] = useState({
+    breaking: false,
+    minCompatibleFrom: "",
+    migrationNotes: "",
+  });
   const [updateStatus, setUpdateStatus] = useState(() => (localStorage.getItem("watink_update_ok") === "1" ? "ok" : "idle"));
   const prevQueueMessagesRef = useRef({});
+
+  const hasUpdateAvailable = availableVersion !== "-" && compareVersions(availableVersion, frontendVersion) > 0;
+  const blockedByCompatibility =
+    !!releaseMeta?.breaking &&
+    !!releaseMeta?.minCompatibleFrom &&
+    compareVersions(frontendVersion, releaseMeta.minCompatibleFrom) < 0;
 
   const fetchStats = useCallback(async () => {
     try {
@@ -184,6 +210,11 @@ export default function VersionDashboard() {
           try {
             const manifest = await fetch(manifestAsset.browser_download_url, { cache: "no-store" }).then((r) => r.json());
             if (manifest?.version) setAvailableVersion(String(manifest.version));
+            setReleaseMeta({
+              breaking: !!manifest?.breaking,
+              minCompatibleFrom: String(manifest?.min_compatible_from || ""),
+              migrationNotes: String(manifest?.migration_notes || ""),
+            });
             if (Array.isArray(manifest?.changelog) && manifest.changelog.length > 0) {
               setChangelog(manifest.changelog.filter(Boolean));
               return;
@@ -192,6 +223,8 @@ export default function VersionDashboard() {
             // fallback para body
           }
         }
+
+        setReleaseMeta({ breaking: false, minCompatibleFrom: "", migrationNotes: "" });
 
         const body = String(release?.body || "").trim();
         if (body) {
@@ -206,6 +239,7 @@ export default function VersionDashboard() {
       })
       .catch(() => {
         setAvailableVersion("-");
+        setReleaseMeta({ breaking: false, minCompatibleFrom: "", migrationNotes: "" });
       });
 
     return () => clearInterval(id);
@@ -233,7 +267,7 @@ export default function VersionDashboard() {
     <Container maxWidth="lg" className={classes.root}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h5">Monitor do Sistema (Business)</Typography>
-        <Box display="flex" gridGap={8}>
+        <Box display="flex" gridGap={8} alignItems="center">
           <Button
             variant="outlined"
             color="default"
@@ -243,6 +277,7 @@ export default function VersionDashboard() {
           >
             Swagger
           </Button>
+          {hasUpdateAvailable && <Chip color="secondary" size="small" label={`Nova versão v${availableVersion}`} />}
           <Button
             variant="contained"
             color={updateStatus === "ok" ? "default" : "primary"}
@@ -414,6 +449,22 @@ export default function VersionDashboard() {
               Versão atual: v{frontendVersion}
             </Typography>
 
+            {!!releaseMeta?.breaking && (
+              <Box mt={1} mb={1}>
+                <Chip size="small" color="secondary" label="Release com quebra de compatibilidade" />
+                {!!releaseMeta?.minCompatibleFrom && (
+                  <Typography variant="body2" color="error" style={{ marginTop: 6 }}>
+                    Compatível apenas a partir de v{releaseMeta.minCompatibleFrom}.
+                  </Typography>
+                )}
+                {!!releaseMeta?.migrationNotes && (
+                  <Typography variant="body2" color="textSecondary" style={{ marginTop: 4 }}>
+                    Migração necessária: {releaseMeta.migrationNotes}
+                  </Typography>
+                )}
+              </Box>
+            )}
+
             {changelog.length > 0 ? (
               <>
                 <Typography variant="body2" gutterBottom style={{ marginTop: 8 }}>
@@ -439,11 +490,23 @@ export default function VersionDashboard() {
             <Typography variant="body2" style={{ marginTop: 8 }}>
               Deseja prosseguir agora?
             </Typography>
+            {blockedByCompatibility && (
+              <Typography variant="body2" color="error" style={{ marginTop: 8 }}>
+                Atualização bloqueada por compatibilidade. Atualize para uma versão intermediária compatível ou execute a migração indicada antes de prosseguir.
+              </Typography>
+            )}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenUpdateModal(false)}>Agora não</Button>
-          <Button onClick={handleUpdate} color="primary" variant="contained">Sim, Atualizar Agora</Button>
+          <Button
+            onClick={handleUpdate}
+            color="primary"
+            variant="contained"
+            disabled={blockedByCompatibility}
+          >
+            {blockedByCompatibility ? "Release incompatível" : "Sim, Atualizar Agora"}
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>
