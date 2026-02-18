@@ -238,6 +238,66 @@ app.get("/api/v1/admin/subscriptions", adminAuth, async (req, res) => {
   }
 });
 
+app.get("/api/v1/admin/finance/by-plan", adminAuth, async (_req, res) => {
+  try {
+    const out = await sbGet("subscriptions", "?select=id,status,plans(name,price)&limit=1000");
+    const rows = out.data || [];
+
+    const agg = {};
+    rows.forEach((r) => {
+      const plan = Array.isArray(r.plans) ? r.plans[0] : r.plans;
+      const planName = String(plan?.name || "Sem plano");
+      const price = Number(plan?.price || 0);
+      const status = String(r.status || "").toLowerCase();
+
+      if (!agg[planName]) {
+        agg[planName] = { plan: planName, total: 0, active: 0, pending: 0, overdue: 0, canceled: 0, mrr: 0 };
+      }
+
+      agg[planName].total += 1;
+      if (status === "active") {
+        agg[planName].active += 1;
+        agg[planName].mrr += price;
+      } else if (status === "pending") {
+        agg[planName].pending += 1;
+      } else if (status === "overdue") {
+        agg[planName].overdue += 1;
+      } else if (status === "canceled") {
+        agg[planName].canceled += 1;
+      }
+    });
+
+    return res.json({ items: Object.values(agg).sort((a, b) => b.mrr - a.mrr) });
+  } catch (e) {
+    return res.status(500).json({ error: e?.response?.data || e.message });
+  }
+});
+
+app.get("/api/v1/admin/finance/timeline", adminAuth, async (_req, res) => {
+  try {
+    const out = await sbGet("subscriptions", "?select=id,status,created_at&order=created_at.desc&limit=1000");
+    const rows = out.data || [];
+
+    const map = {};
+    rows.forEach((r) => {
+      const d = (r.created_at || "").slice(0, 10);
+      if (!d) return;
+      if (!map[d]) map[d] = { date: d, created: 0, active: 0, pending: 0, overdue: 0, canceled: 0 };
+      map[d].created += 1;
+      const st = String(r.status || "").toLowerCase();
+      if (st === "active") map[d].active += 1;
+      else if (st === "pending") map[d].pending += 1;
+      else if (st === "overdue") map[d].overdue += 1;
+      else if (st === "canceled") map[d].canceled += 1;
+    });
+
+    const items = Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+    return res.json({ items });
+  } catch (e) {
+    return res.status(500).json({ error: e?.response?.data || e.message });
+  }
+});
+
 app.post("/api/v1/admin/coupons", adminAuth, async (_req, res) => {
   return res.status(501).json({ error: "cupons ainda não implementado (MVP stub)" });
 });
