@@ -19,6 +19,8 @@ Serviço central do Marketplace para instâncias Watink em escala.
 - `GET /api/v1/admin/licenses`
 - `POST /api/v1/admin/licenses/upsert`
 - `GET /api/v1/admin/finance/summary`
+- `GET /api/v1/admin/finance/by-plan`
+- `GET /api/v1/admin/finance/timeline`
 - `GET /api/v1/admin/subscriptions`
 - `POST /api/v1/admin/coupons` (stub)
 

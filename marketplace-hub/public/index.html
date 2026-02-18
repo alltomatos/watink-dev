@@ -49,6 +49,12 @@
   <h3>Assinaturas (últimas)</h3>
   <table id="subscriptions"><thead><tr><th>id</th><th>status</th><th>plan_id</th><th>customer_id</th><th>created_at</th><th>expires_at</th></tr></thead><tbody></tbody></table>
 
+  <h3>Financeiro por Plano</h3>
+  <table id="byplan"><thead><tr><th>Plano</th><th>Total</th><th>Ativos</th><th>Pendentes</th><th>Inadimplentes</th><th>Cancelados</th><th>MRR</th></tr></thead><tbody></tbody></table>
+
+  <h3>Timeline (cadastros por dia)</h3>
+  <table id="timeline"><thead><tr><th>Data</th><th>Criadas</th><th>Ativas</th><th>Pendentes</th><th>Inadimplentes</th><th>Canceladas</th></tr></thead><tbody></tbody></table>
+
   <p class="muted">Cupom/desconto: endpoint stub criado (próxima fase).</p>
 
 <script>
@@ -85,12 +91,14 @@ function fillTable(id, rows, mapFn){
 
 async function loadAll(){
   try{
-    const [ov, inst, lic, fin, subs] = await Promise.all([
+    const [ov, inst, lic, fin, subs, byplan, timeline] = await Promise.all([
       api('/api/v1/admin/overview'),
       api('/api/v1/admin/instances?limit=20'),
       api('/api/v1/admin/licenses'),
       api('/api/v1/admin/finance/summary'),
-      api('/api/v1/admin/subscriptions?limit=20')
+      api('/api/v1/admin/subscriptions?limit=20'),
+      api('/api/v1/admin/finance/by-plan'),
+      api('/api/v1/admin/finance/timeline')
     ]);
 
     document.getElementById('kpi-instances').textContent = ov.instances;
@@ -101,6 +109,8 @@ async function loadAll(){
     fillTable('instances', inst.items || [], (r)=>`<td>${r.instance_uuid||''}</td><td>${r.status||''}</td><td>${r.version||''}</td><td>${r.last_seen||''}</td>`);
     fillTable('licenses', lic.items || [], (r)=>`<td>${r.instance_id||''}</td><td>${r.plugin_slug||''}</td><td class='ok'>${r.status||''}</td><td>${r.updated_at||''}</td>`);
     fillTable('subscriptions', subs.items || [], (r)=>`<td>${r.id||''}</td><td>${r.status||''}</td><td>${r.plan_id||''}</td><td>${r.customer_id||''}</td><td>${r.created_at||''}</td><td>${r.expires_at||''}</td>`);
+    fillTable('byplan', byplan.items || [], (r)=>`<td>${r.plan||''}</td><td>${r.total||0}</td><td>${r.active||0}</td><td>${r.pending||0}</td><td>${r.overdue||0}</td><td>${r.canceled||0}</td><td>${Number(r.mrr||0).toFixed(2)}</td>`);
+    fillTable('timeline', timeline.items || [], (r)=>`<td>${r.date||''}</td><td>${r.created||0}</td><td>${r.active||0}</td><td>${r.pending||0}</td><td>${r.overdue||0}</td><td>${r.canceled||0}</td>`);
   }catch(e){
     alert('Erro: '+e.message);
   }
