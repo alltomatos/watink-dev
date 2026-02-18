@@ -23,6 +23,7 @@ import {
 } from "@material-ui/core";
 import { SystemUpdate as UpdateIcon, MenuBook as MenuBookIcon } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
+import { Link as RouterLink } from "react-router-dom";
 import api from "../../services/api";
 import { toast } from "react-toastify";
 import { AuthContext } from "../../context/Auth/AuthContext";
@@ -266,12 +267,15 @@ export default function VersionDashboard() {
 
         <Grid item xs={12} md={6}>
           <Paper className={classes.paper}>
-            <Typography variant="h6" gutterBottom>Fila de Mensagens (RabbitMQ)</Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6" gutterBottom>Fila de Mensagens (RabbitMQ)</Typography>
+              <Button size="small" component={RouterLink} to="/monitor/queues">Ver filas</Button>
+            </Box>
             <Typography variant="body2" color="textSecondary">
-              Status: {stats?.rabbitmq?.connected ? "Online" : "Offline"}
+              Status: {stats?.rabbitmq?.connected ? "Online" : "Offline"} • exibindo {Math.min((stats?.rabbitmq?.queues || []).length, 8)} de {(stats?.rabbitmq?.queues || []).length}
             </Typography>
             <Box mt={2}>
-              {(stats?.rabbitmq?.queues || []).map((q) => {
+              {(stats?.rabbitmq?.queues || []).slice(0, 8).map((q) => {
                 const alert = queueAlerts[q.name] || { level: "ok", label: "OK" };
                 const chipColor = alert.level === "error" ? "secondary" : alert.level === "warning" ? "default" : "primary";
                 return (

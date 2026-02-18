@@ -35,6 +35,7 @@ import HelpdeskKanban from "../pages/Helpdesk/HelpdeskKanban";
 import HelpdeskTvMode from "../pages/Helpdesk/HelpdeskTvMode";
 import Swagger from "../pages/Swagger/";
 import VersionDashboard from "../pages/VersionDashboard/";
+import MonitorQueues from "../pages/MonitorQueues/";
 import SaaSAdmin from "../pages/SaaS/";
 import InitialSetup from "../pages/InitialSetup/";
 import { AuthProvider } from "../context/Auth/AuthContext";
@@ -80,6 +81,7 @@ const PrivateRoutes = () => {
             <Route exact path="/helpdesk/:protocolId" component={ProtocolDetails} isPrivate />
             <Route exact path="/saas-manager" component={SaaSAdmin} isPrivate />
             <Route exact path="/monitor" component={VersionDashboard} isPrivate />
+            <Route exact path="/monitor/queues" component={MonitorQueues} isPrivate />
             <Route exact path="/versions" component={VersionDashboard} isPrivate />
           </Switch>
         </LoggedInLayout>

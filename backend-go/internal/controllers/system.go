@@ -47,6 +47,22 @@ type SystemStats struct {
 
 var startTime = time.Now()
 
+func GetRabbitMQQueues(c *gin.Context) {
+	rabbit := services.GetRabbitMQService()
+	if rabbit == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "RabbitMQ service not initialized"})
+		return
+	}
+
+	queues, err := rabbit.ListAllQueues()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"connected": rabbit.IsConnected(), "queues": queues, "total": len(queues)})
+}
+
 func GetSystemStats(c *gin.Context) {
 	var stats SystemStats
 
@@ -92,12 +108,10 @@ func GetSystemStats(c *gin.Context) {
 
 	rabbit := services.GetRabbitMQService()
 	stats.RabbitMQ.Connected = rabbit != nil && rabbit.IsConnected()
-	for _, q := range services.ParseQueueList(os.Getenv("MONITOR_RABBIT_QUEUES")) {
-		if rabbit == nil {
-			stats.RabbitMQ.Queues = append(stats.RabbitMQ.Queues, services.QueueMetrics{Name: q, Error: "not_initialized"})
-			continue
+	if rabbit != nil {
+		if queues, err := rabbit.ListAllQueues(); err == nil {
+			stats.RabbitMQ.Queues = queues
 		}
-		stats.RabbitMQ.Queues = append(stats.RabbitMQ.Queues, rabbit.InspectQueue(q))
 	}
 
 	stats.Timestamp = time.Now().Unix()
