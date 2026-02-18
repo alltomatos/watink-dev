@@ -7,10 +7,13 @@
 - **Stack:** Docker Compose (`marketplace-hub`)
 
 ## Acesso Admin (MVP)
-- **Header obrigatório:** `x-admin-token`
+- **Tela de login:** `https://marketplace.alltomatos.dev.br/login`
+- **Usuário:** `admin`
+- **Senha atual:** `nuQfvd50W1oSUJtQQS`
+- **Token integração (opcional para API):** `x-admin-token`
 - **Token atual:** `9327753ba742a5b811d9ed7e3b8e1046`
 
-> Recomendado: rotacionar token após alinhamento final do painel.
+> Recomendado: rotacionar senha e token após homologação.
 
 ## Endpoints Runtime (instâncias Watink)
 - `GET /api/v1/hub/catalog`
