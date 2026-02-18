@@ -228,6 +228,57 @@ export const ThemeProvider = ({ children }) => {
 			}, locale);
 		}
 
+		// Apple Premium Theme
+		if (appTheme === "apple") {
+			return createMuiTheme({
+				palette: {
+					type: darkMode ? "dark" : "light",
+					primary: { main: "#0A84FF", contrastText: "#FFFFFF" },
+					secondary: { main: darkMode ? "#2C2C2E" : "#F2F2F7" },
+					background: {
+						default: darkMode ? "#1C1C1E" : "#F5F5F7",
+						paper: darkMode ? "#2C2C2E" : "#FFFFFF",
+					},
+					text: {
+						primary: darkMode ? "#F2F2F7" : "#1D1D1F",
+						secondary: darkMode ? "#A1A1AA" : "#6E6E73",
+					},
+					divider: darkMode ? "#3A3A3C" : "#D2D2D7",
+				},
+				typography: {
+					fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', sans-serif",
+					button: { textTransform: "none", fontWeight: 600 },
+				},
+				shape: { borderRadius: 14 },
+				overrides: {
+					MuiButton: {
+						root: { borderRadius: 12, textTransform: "none", boxShadow: "none" },
+						containedPrimary: {
+							background: "linear-gradient(180deg, #0A84FF 0%, #007AFF 100%)",
+							"&:hover": { background: "linear-gradient(180deg, #007AFF 0%, #0066D6 100%)" },
+						},
+					},
+					MuiPaper: {
+						root: { backgroundImage: "none" },
+						rounded: { borderRadius: 14 },
+					},
+					MuiCard: {
+						root: {
+							borderRadius: 14,
+							border: darkMode ? "1px solid #3A3A3C" : "1px solid #E5E5EA",
+							boxShadow: darkMode ? "none" : "0 4px 24px rgba(0,0,0,0.06)",
+						},
+					},
+					MuiOutlinedInput: {
+						root: {
+							borderRadius: 12,
+							backgroundColor: darkMode ? "#1C1C1E" : "#FAFAFC",
+						},
+					},
+				},
+			}, locale);
+		}
+
 		// Corporate Theme
 		if (appTheme === "corporate") {
 			return createMuiTheme({
