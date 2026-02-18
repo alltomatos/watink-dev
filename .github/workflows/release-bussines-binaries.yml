@@ -43,11 +43,23 @@ jobs:
           npm ci
           npm run build
 
-      - name: Embed frontend in bussines
+      - name: Detect backend directory
+        id: backenddir
         run: |
-          rm -rf bussines/internal/web/build
-          mkdir -p bussines/internal/web/build
-          cp -r frontend/build/* bussines/internal/web/build/
+          if [ -d "bussines" ]; then
+            echo "backend_dir=bussines" >> "$GITHUB_OUTPUT"
+          elif [ -d "backend-go" ]; then
+            echo "backend_dir=backend-go" >> "$GITHUB_OUTPUT"
+          else
+            echo "Nenhum diretório backend encontrado (bussines/backend-go)." >&2
+            exit 1
+          fi
+
+      - name: Embed frontend in backend
+        run: |
+          rm -rf "${{ steps.backenddir.outputs.backend_dir }}/internal/web/build"
+          mkdir -p "${{ steps.backenddir.outputs.backend_dir }}/internal/web/build"
+          cp -r frontend/build/* "${{ steps.backenddir.outputs.backend_dir }}/internal/web/build/"
 
       - name: Install packaging tools
         run: sudo apt-get update && sudo apt-get install -y zip
@@ -60,7 +72,7 @@ jobs:
           set -e
           mkdir -p release/linux release/windows release/checksums
 
-          cd bussines
+          cd "${{ steps.backenddir.outputs.backend_dir }}"
           go mod tidy
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../release/linux/watink-core cmd/server/main.go
           CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o ../release/windows/watink-core.exe cmd/server/main.go
