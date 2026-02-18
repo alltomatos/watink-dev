@@ -397,13 +397,18 @@ app.post("/api/v1/hub/heartbeat", async (req, res) => {
     const licenses = {};
     active.forEach((slug) => { licenses[slug] = "active"; });
 
-    if (isInstanceUnlockAll(instanceId)) {
+    const entitlements = {
+      ...(data?.entitlements || {}),
+      unlock_all: isInstanceUnlockAll(instanceId)
+    };
+
+    if (entitlements.unlock_all) {
       getCatalog().forEach((p) => {
         if (p?.slug) licenses[p.slug] = "active";
       });
     }
 
-    return res.json({ ok: true, licenses });
+    return res.json({ ok: true, licenses, entitlements });
   } catch (_e) {
     return res.status(200).json({ ok: false, licenses: {} });
   }
