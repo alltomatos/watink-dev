@@ -22,13 +22,14 @@ const FILES = {
   coupons: path.join(DATA_DIR, "coupons.json"),
   audits: path.join(DATA_DIR, "audits.json"),
   instances: path.join(DATA_DIR, "instances.json"),
-  instanceOverrides: path.join(DATA_DIR, "instance-overrides.json")
+  instanceOverrides: path.join(DATA_DIR, "instance-overrides.json"),
+  plans: path.join(DATA_DIR, "plans.json")
 };
 
-const PLAN_DEFINITIONS = {
+const DEFAULT_PLAN_DEFINITIONS = {
   start: { key: "start", name: "Start", price: 69.9, monthly: true, premium_limit: 4 },
   bussines_1: { key: "bussines_1", name: "Bussines 1", price: 99.99, monthly: true, premium_limit: 6 },
-  saas_plugin: { key: "saas_plugin", name: "SaaS Plugin", price: 199.99, monthly: true, standalone: true }
+  saas: { key: "saas", name: "SaaS", price: 199.99, monthly: true, standalone: true }
 };
 
 const DEFAULT_PLUGINS = [
@@ -45,6 +46,7 @@ function ensureDataFiles() {
   if (!fs.existsSync(FILES.audits)) fs.writeFileSync(FILES.audits, JSON.stringify([], null, 2));
   if (!fs.existsSync(FILES.instances)) fs.writeFileSync(FILES.instances, JSON.stringify([], null, 2));
   if (!fs.existsSync(FILES.instanceOverrides)) fs.writeFileSync(FILES.instanceOverrides, JSON.stringify({}, null, 2));
+  if (!fs.existsSync(FILES.plans)) fs.writeFileSync(FILES.plans, JSON.stringify(DEFAULT_PLAN_DEFINITIONS, null, 2));
 }
 
 function readJson(file, fallback) {
@@ -57,6 +59,41 @@ function readJson(file, fallback) {
 
 function writeJson(file, data) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2));
+}
+
+function normalizePlans(input) {
+  const out = {};
+  const entries = Object.entries(input || {});
+  entries.forEach(([key, plan]) => {
+    if (!plan || typeof plan !== "object") return;
+    const normalizedKey = String(plan.key || key || "").trim().toLowerCase();
+    if (!normalizedKey) return;
+    out[normalizedKey] = {
+      key: normalizedKey,
+      name: String(plan.name || normalizedKey).trim(),
+      price: Number(plan.price || 0),
+      monthly: plan.monthly !== false,
+      premium_limit: Math.max(0, Number(plan.premium_limit || 0)),
+      standalone: Boolean(plan.standalone)
+    };
+  });
+  return out;
+}
+
+function getPlans() {
+  const raw = readJson(FILES.plans, DEFAULT_PLAN_DEFINITIONS);
+  const normalized = normalizePlans(raw);
+  if (Object.keys(normalized).length === 0) return normalizePlans(DEFAULT_PLAN_DEFINITIONS);
+  return normalized;
+}
+
+function savePlans(plans) {
+  const normalized = normalizePlans(plans);
+  if (Object.keys(normalized).length === 0) {
+    throw new Error("pelo menos um plano deve existir");
+  }
+  writeJson(FILES.plans, normalized);
+  return normalized;
 }
 
 function getCatalog() {
@@ -281,7 +318,7 @@ app.get("/api/v1/hub/catalog", (_req, res) => {
 });
 
 app.get("/api/v1/hub/plans", (_req, res) => {
-  return res.json({ plans: PLAN_DEFINITIONS });
+  return res.json({ plans: getPlans() });
 });
 
 app.post("/api/v1/hub/register", (req, res) => {
@@ -472,7 +509,74 @@ app.post("/api/v1/admin/instances/:instanceId/unlock-all", adminAuth, (req, res)
 });
 
 app.get("/api/v1/admin/plans", adminAuth, (_req, res) => {
-  return res.json({ plans: PLAN_DEFINITIONS });
+  return res.json({ plans: getPlans() });
+});
+
+app.post("/api/v1/admin/plans", adminAuth, (req, res) => {
+  try {
+    const body = req.body || {};
+    const key = String(body.key || body.name || "").trim().toLowerCase().replace(/\s+/g, "_");
+    if (!key) return res.status(400).json({ error: "key ou name obrigatório" });
+
+    const plans = getPlans();
+    plans[key] = {
+      key,
+      name: String(body.name || key).trim(),
+      price: Number(body.price || 0),
+      monthly: body.monthly !== false,
+      premium_limit: Math.max(0, Number(body.premium_limit || 0)),
+      standalone: Boolean(body.standalone)
+    };
+
+    const saved = savePlans(plans);
+    audit("plan_upsert", actorFromReq(req), { key, plan: saved[key] });
+    return res.json({ ok: true, plan: saved[key], plans: saved });
+  } catch (e) {
+    return res.status(500).json({ error: e?.message || "erro ao salvar plano" });
+  }
+});
+
+app.put("/api/v1/admin/plans/:key", adminAuth, (req, res) => {
+  try {
+    const key = String(req.params.key || "").trim().toLowerCase();
+    if (!key) return res.status(400).json({ error: "key obrigatório" });
+
+    const plans = getPlans();
+    if (!plans[key]) return res.status(404).json({ error: "plano não encontrado" });
+
+    const patch = req.body || {};
+    plans[key] = {
+      ...plans[key],
+      name: String(patch.name ?? plans[key].name).trim(),
+      price: Number(patch.price ?? plans[key].price),
+      monthly: patch.monthly === undefined ? plans[key].monthly : patch.monthly !== false,
+      premium_limit: Math.max(0, Number(patch.premium_limit ?? plans[key].premium_limit)),
+      standalone: patch.standalone === undefined ? plans[key].standalone : Boolean(patch.standalone)
+    };
+
+    const saved = savePlans(plans);
+    audit("plan_update", actorFromReq(req), { key, patch: plans[key] });
+    return res.json({ ok: true, plan: saved[key], plans: saved });
+  } catch (e) {
+    return res.status(500).json({ error: e?.message || "erro ao atualizar plano" });
+  }
+});
+
+app.delete("/api/v1/admin/plans/:key", adminAuth, (req, res) => {
+  try {
+    const key = String(req.params.key || "").trim().toLowerCase();
+    if (!key) return res.status(400).json({ error: "key obrigatório" });
+
+    const plans = getPlans();
+    if (!plans[key]) return res.status(404).json({ error: "plano não encontrado" });
+
+    delete plans[key];
+    const saved = savePlans(plans);
+    audit("plan_delete", actorFromReq(req), { key });
+    return res.json({ ok: true, plans: saved });
+  } catch (e) {
+    return res.status(500).json({ error: e?.message || "erro ao remover plano" });
+  }
 });
 
 app.get("/api/v1/admin/licenses", adminAuth, async (req, res) => {

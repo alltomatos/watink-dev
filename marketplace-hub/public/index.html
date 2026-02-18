@@ -37,6 +37,7 @@
       <button class="active" data-tab="dashboard" onclick="switchTab('dashboard',this)">Dashboard</button>
       <button data-tab="financeiro" onclick="switchTab('financeiro',this)">Financeiro</button>
       <button data-tab="plugins" onclick="switchTab('plugins',this)">Plugins</button>
+      <button data-tab="planos" onclick="switchTab('planos',this)">Planos</button>
       <button data-tab="cupons" onclick="switchTab('cupons',this)">Cupons</button>
       <button data-tab="licencas" onclick="switchTab('licencas',this)">Licenças</button>
       <button data-tab="auditoria" onclick="switchTab('auditoria',this)">Auditoria</button>
@@ -99,6 +100,28 @@
       </div>
     </section>
 
+    <section id="planos" class="tab hidden">
+      <div class="panel">
+        <h3>Cadastro de plano</h3>
+        <div class="row2">
+          <input id="plan_key" placeholder="key (ex: start)" />
+          <input id="plan_name" placeholder="nome (ex: Start)" />
+          <input id="plan_price" type="number" step="0.01" placeholder="preço" value="0" />
+          <input id="plan_premium_limit" type="number" placeholder="limite premium" value="0" />
+          <select id="plan_monthly"><option value="true">mensal</option><option value="false">não mensal</option></select>
+          <select id="plan_standalone"><option value="false">complementar</option><option value="true">standalone</option></select>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="createOrUpdatePlan()">Salvar plano</button>
+          <button class="btn" onclick="clearPlanForm()">Limpar</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Planos cadastrados</h3>
+        <table id="plansTable"><thead><tr><th>key</th><th>nome</th><th>preço</th><th>premium_limit</th><th>mensal</th><th>standalone</th><th>Ações</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
     <section id="cupons" class="tab hidden">
       <div class="panel">
         <h3>Novo cupom (regras)</h3>
@@ -148,12 +171,14 @@
 </div>
 
 <script>
+let _plansCache = {};
+
 function switchTab(tab, el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.add('hidden'));
   document.getElementById(tab).classList.remove('hidden');
   document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));
   if(el) el.classList.add('active');
-  const title = {dashboard:'Visão Executiva', financeiro:'Financeiro', plugins:'Cadastro de Plugins', cupons:'Cupons e Regras', licencas:'Gestão de Licenças', auditoria:'Auditoria'};
+  const title = {dashboard:'Visão Executiva', financeiro:'Financeiro', plugins:'Cadastro de Plugins', planos:'Planos do Marketplace', cupons:'Cupons e Regras', licencas:'Gestão de Licenças', auditoria:'Auditoria'};
   document.getElementById('screenTitle').textContent = title[tab] || 'Marketplace Admin';
 }
 
@@ -174,7 +199,7 @@ function fillTable(id, rows, mapFn){
 
 async function loadAll(){
   try{
-    const [ov,inst,lic,fin,subs,byplan,timeline,plugins,coupons,audits]=await Promise.all([
+    const [ov,inst,lic,fin,subs,byplan,timeline,plugins,plans,coupons,audits]=await Promise.all([
       api('/api/v1/admin/overview'),
       api('/api/v1/admin/instances?limit=20'),
       api('/api/v1/admin/licenses'),
@@ -183,6 +208,7 @@ async function loadAll(){
       api('/api/v1/admin/finance/by-plan'),
       api('/api/v1/admin/finance/timeline'),
       api('/api/v1/admin/plugins'),
+      api('/api/v1/admin/plans'),
       api('/api/v1/admin/coupons'),
       api('/api/v1/admin/audits?limit=80')
     ]);
@@ -199,6 +225,10 @@ async function loadAll(){
     fillTable('timeline',timeline.items||[],r=>`<td>${r.date||''}</td><td>${r.created||0}</td><td>${r.active||0}</td><td>${r.pending||0}</td><td>${r.overdue||0}</td><td>${r.canceled||0}</td>`);
 
     fillTable('pluginsTable',plugins.items||[],r=>`<td>${r.name||''}</td><td>${r.slug||''}</td><td>${r.type||''}</td><td>${Number(r.price||0).toFixed(2)}</td><td>${r.active?'sim':'não'}</td><td><button class='btn danger' onclick="deletePlugin('${r.id}')">Excluir</button></td>`);
+
+    _plansCache = plans.plans || {};
+    const plansItems = Object.values(_plansCache);
+    fillTable('plansTable',plansItems,r=>`<td>${r.key||''}</td><td>${r.name||''}</td><td>${Number(r.price||0).toFixed(2)}</td><td>${Number(r.premium_limit||0)}</td><td>${r.monthly?'sim':'não'}</td><td>${r.standalone?'sim':'não'}</td><td><button class='btn' onclick="editPlan('${r.key}')">Editar</button> <button class='btn danger' onclick="deletePlan('${r.key}')">Excluir</button></td>`);
 
     fillTable('couponsTable',coupons.items||[],r=>`<td>${r.code}</td><td>${r.type} ${r.value} ${r.minAmount?`• min ${r.minAmount}`:''}</td><td>${r.usedCount||0}/${r.usageLimit||'∞'}</td><td>${r.startAt||'-'}<br>${r.endAt||'-'}</td><td>${r.active?'sim':'não'}</td><td><button class='btn danger' onclick="deleteCoupon('${r.id}')">Excluir</button></td>`);
 
@@ -244,6 +274,59 @@ async function toggleUnlockAll(instanceId, enabled){
   const ok = confirm(`${enabled ? 'Ativar' : 'Desativar'} liberação total para ${instanceId}?`);
   if(!ok) return;
   await api(`/api/v1/admin/instances/${encodeURIComponent(instanceId)}/unlock-all`,{method:'POST',body:JSON.stringify({enabled})});
+  loadAll();
+}
+
+function clearPlanForm(){
+  document.getElementById('plan_key').value='';
+  document.getElementById('plan_name').value='';
+  document.getElementById('plan_price').value='0';
+  document.getElementById('plan_premium_limit').value='0';
+  document.getElementById('plan_monthly').value='true';
+  document.getElementById('plan_standalone').value='false';
+}
+
+function editPlan(key){
+  const p = _plansCache?.[key];
+  if(!p) return;
+  document.getElementById('plan_key').value=p.key||'';
+  document.getElementById('plan_name').value=p.name||'';
+  document.getElementById('plan_price').value=Number(p.price||0);
+  document.getElementById('plan_premium_limit').value=Number(p.premium_limit||0);
+  document.getElementById('plan_monthly').value=p.monthly ? 'true' : 'false';
+  document.getElementById('plan_standalone').value=p.standalone ? 'true' : 'false';
+  switchTab('planos', document.querySelector(".menu button[data-tab='planos']"));
+}
+
+async function createOrUpdatePlan(){
+  const key = val('plan_key').toLowerCase().replace(/\s+/g,'_');
+  if(!key){ alert('Informe key do plano'); return; }
+
+  const payload = {
+    key,
+    name: val('plan_name') || key,
+    price: Number(val('plan_price')||0),
+    premium_limit: Number(val('plan_premium_limit')||0),
+    monthly: document.getElementById('plan_monthly').value === 'true',
+    standalone: document.getElementById('plan_standalone').value === 'true'
+  };
+
+  if(_plansCache?.[key]){
+    await api(`/api/v1/admin/plans/${encodeURIComponent(key)}`,{method:'PUT',body:JSON.stringify(payload)});
+    alert('Plano atualizado');
+  }else{
+    await api('/api/v1/admin/plans',{method:'POST',body:JSON.stringify(payload)});
+    alert('Plano criado');
+  }
+
+  clearPlanForm();
+  loadAll();
+}
+
+async function deletePlan(key){
+  if(!key) return;
+  if(!confirm(`Excluir plano ${key}?`)) return;
+  await api(`/api/v1/admin/plans/${encodeURIComponent(key)}`,{method:'DELETE'});
   loadAll();
 }
 
