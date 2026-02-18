@@ -36,12 +36,25 @@ const DEFAULT_PLUGINS = [
   { id: "1", slug: "helpdesk", name: "Helpdesk", description: "Gestão de protocolos e SLA", version: "2.0.0", type: "business", category: "support", price: 49.9, iconUrl: "/public/plugins/helpdesk.png", active: true },
   { id: "2", slug: "clientes", name: "Clientes", description: "Gestão de clientes e vínculos", version: "2.0.0", type: "business", category: "crm", price: 49.9, iconUrl: "/public/plugins/clientes.png", active: true },
   { id: "3", slug: "webchat", name: "Webchat", description: "Widget webchat para site", version: "2.0.0", type: "premium", category: "channel", price: 49.9, iconUrl: "/public/plugins/webchat.png", active: true },
-  { id: "4", slug: "saas-plugin", name: "SaaS Manager", description: "Recursos SaaS avançados", version: "2.0.0", type: "business", category: "saas", price: 199.9, iconUrl: "/public/plugins/saas-plugin.png", active: true }
+  { id: "4", slug: "saas-plugin", name: "SaaS Manager", description: "Recursos SaaS avançados", version: "2.0.0", type: "business", category: "saas", price: 199.9, iconUrl: "/public/plugins/saas-plugin.png", active: true },
+  { id: "5", slug: "smtp", name: "SMTP", description: "Envio de e-mail e SMTP transacional", version: "2.0.0", type: "premium", category: "integration", price: 49.9, iconUrl: "/public/plugins/smtp.png", active: true },
+  { id: "6", slug: "papi", name: "Papi", description: "Integrações Papi para automações", version: "2.0.0", type: "premium", category: "integration", price: 49.9, iconUrl: "/public/plugins/papi.png", active: true }
 ];
 
 function ensureDataFiles() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(FILES.plugins)) fs.writeFileSync(FILES.plugins, JSON.stringify(DEFAULT_PLUGINS, null, 2));
+
+  if (!fs.existsSync(FILES.plugins)) {
+    fs.writeFileSync(FILES.plugins, JSON.stringify(DEFAULT_PLUGINS, null, 2));
+  } else {
+    const current = readJson(FILES.plugins, []);
+    const bySlug = new Map((current || []).map((p) => [p.slug, p]));
+    DEFAULT_PLUGINS.forEach((p) => {
+      if (!bySlug.has(p.slug)) bySlug.set(p.slug, p);
+    });
+    writeJson(FILES.plugins, Array.from(bySlug.values()));
+  }
+
   if (!fs.existsSync(FILES.coupons)) fs.writeFileSync(FILES.coupons, JSON.stringify([], null, 2));
   if (!fs.existsSync(FILES.audits)) fs.writeFileSync(FILES.audits, JSON.stringify([], null, 2));
   if (!fs.existsSync(FILES.instances)) fs.writeFileSync(FILES.instances, JSON.stringify([], null, 2));

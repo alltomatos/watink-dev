@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -70,7 +71,7 @@ func NewHubManager() *HubManager {
 
 	return &HubManager{
 		HubURL:                 getenv("PLUGIN_HUB_URL", "http://localhost:8090/api/v1/hub"),
-		CoreVersion:            getenv("WATINK_CORE_VERSION", "2.0.0-business"),
+		CoreVersion:            resolveCoreVersion(baseDir),
 		InstanceIDFile:         filepath.Join(baseDir, ".instance_id"),
 		TenantPluginsFile:      filepath.Join(baseDir, ".tenant_plugins.json"),
 		LicenseStatusFile:      filepath.Join(baseDir, ".license_status.json"),
@@ -289,6 +290,45 @@ func (m *HubManager) writeEntitlementsStatus(store map[string]interface{}) error
 	}
 	payload, _ := json.MarshalIndent(store, "", "  ")
 	return os.WriteFile(m.EntitlementsStatusFile, payload, 0644)
+}
+
+func resolveCoreVersion(baseDir string) string {
+	if v := getenv("WATINK_CORE_VERSION", ""); v != "" {
+		return v
+	}
+
+	candidates := []string{
+		getenv("WATINK_VERSION_FILE", ""),
+		filepath.Join(baseDir, "VERSION"),
+		filepath.Join(baseDir, "..", "frontend", "public", "version.json"),
+		"/opt/watink/app/VERSION",
+	}
+
+	for _, p := range candidates {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if b, err := os.ReadFile(p); err == nil {
+			raw := strings.TrimSpace(string(b))
+			if raw == "" {
+				continue
+			}
+
+			if strings.HasSuffix(p, ".json") {
+				var payload map[string]interface{}
+				if err := json.Unmarshal(b, &payload); err == nil {
+					if vv, ok := payload["version"].(string); ok && strings.TrimSpace(vv) != "" {
+						return strings.TrimPrefix(strings.TrimSpace(vv), "v")
+					}
+				}
+			}
+
+			return strings.TrimPrefix(raw, "v")
+		}
+	}
+
+	return "2.0.0-business"
 }
 
 func getenv(k, d string) string {
