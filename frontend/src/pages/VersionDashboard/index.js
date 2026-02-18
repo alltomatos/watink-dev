@@ -98,6 +98,9 @@ export default function VersionDashboard() {
   const [openUpdateModal, setOpenUpdateModal] = useState(false);
   const [error, setError] = useState(null);
   const [queueAlerts, setQueueAlerts] = useState({});
+  const [frontendVersion, setFrontendVersion] = useState("-");
+  const [frontendUpdatedAt, setFrontendUpdatedAt] = useState(null);
+  const [updateStatus, setUpdateStatus] = useState(() => (localStorage.getItem("watink_update_ok") === "1" ? "ok" : "idle"));
   const prevQueueMessagesRef = useRef({});
 
   const fetchStats = useCallback(async () => {
@@ -112,6 +115,14 @@ export default function VersionDashboard() {
       });
       setQueueAlerts(nextAlerts);
 
+      const pending = localStorage.getItem("watink_update_pending") === "1";
+      if (pending && (data?.uptime || 999999) < 180) {
+        setUpdateStatus("ok");
+        localStorage.removeItem("watink_update_pending");
+        localStorage.setItem("watink_update_ok", "1");
+        toast.success("✅ Atualização concluída com sucesso");
+      }
+
       setStats(data);
       setError(null);
     } catch (e) {
@@ -123,6 +134,9 @@ export default function VersionDashboard() {
 
   const handleUpdate = async () => {
     setUpdating(true);
+    setUpdateStatus("updating");
+    localStorage.setItem("watink_update_pending", "1");
+    localStorage.setItem("watink_update_ok", "0");
     setOpenUpdateModal(false);
     try {
       await api.post("/system/update", { version: "2.1.0" });
@@ -148,6 +162,15 @@ export default function VersionDashboard() {
   useEffect(() => {
     fetchStats();
     const id = setInterval(fetchStats, 5000);
+
+    fetch(`/version.json?ts=${Date.now()}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((v) => {
+        if (v?.version) setFrontendVersion(v.version);
+        if (v?.lastUpdated) setFrontendUpdatedAt(v.lastUpdated);
+      })
+      .catch(() => {});
+
     return () => clearInterval(id);
   }, [fetchStats]);
 
@@ -187,12 +210,13 @@ export default function VersionDashboard() {
           </Button>
           <Button
             variant="contained"
-            color="primary"
+            color={updateStatus === "ok" ? "default" : "primary"}
             startIcon={updating ? <CircularProgress size={20} color="inherit" /> : <UpdateIcon />}
-            disabled={updating}
+            disabled={updating || updateStatus === "ok"}
             onClick={() => setOpenUpdateModal(true)}
+            style={updateStatus === "ok" ? { backgroundColor: "#2e7d32", color: "#fff" } : undefined}
           >
-            {updating ? "Atualizando..." : "Verificar Atualização"}
+            {updateStatus === "ok" ? "Atualização OK" : updating ? "Atualizando..." : "Verificar Atualização"}
           </Button>
         </Box>
       </Box>
@@ -332,8 +356,16 @@ export default function VersionDashboard() {
         </Grid>
       </Grid>
 
+      {updateStatus === "ok" && (
+        <Box mt={2}>
+          <Typography style={{ color: "#2e7d32", fontWeight: 600 }}>
+            ✅ Atualização concluída com sucesso. Sistema 100% atualizado.
+          </Typography>
+        </Box>
+      )}
+
       <div className={classes.footer}>
-        <Typography variant="caption">Watink Business v2.0 • Build ID: {stats?.timestamp}</Typography>
+        <Typography variant="caption">Watink Business v{frontendVersion} • Build ID: {stats?.timestamp} {frontendUpdatedAt ? `• Updated: ${new Date(frontendUpdatedAt).toLocaleString()}` : ""}</Typography>
       </div>
 
       <Dialog open={openUpdateModal} onClose={() => setOpenUpdateModal(false)}>
