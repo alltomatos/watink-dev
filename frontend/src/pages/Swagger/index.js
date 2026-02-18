@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect, useContext } from "react";
-import { getBackendUrl } from "../../config";
+import { getSwaggerUrl } from "../../config";
 import { makeStyles } from "@material-ui/core/styles";
 import Paper from "@material-ui/core/Paper";
 import Typography from "@material-ui/core/Typography";
@@ -32,9 +32,7 @@ const Swagger = () => {
     const [url, setUrl] = useState("");
 
     useEffect(() => {
-        const backendUrl = getBackendUrl() || "";
-        const base = backendUrl.endsWith("/") ? backendUrl.slice(0, -1) : backendUrl;
-        setUrl(`${base}/docs`);
+        setUrl(getSwaggerUrl());
     }, []);
 
     const hasSwaggerPermission = (user?.permissions || []).includes("view_swagger");
