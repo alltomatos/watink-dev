@@ -20,9 +20,8 @@
 <body>
   <h1>Marketplace Admin</h1>
   <div class="row">
-    <input id="token" placeholder="x-admin-token" style="min-width:320px" />
-    <button onclick="saveToken()">Salvar token</button>
     <button onclick="loadAll()">Atualizar</button>
+    <button onclick="logout()">Sair</button>
   </div>
 
   <div class="row">
@@ -58,25 +57,27 @@
   <p class="muted">Cupom/desconto: endpoint stub criado (próxima fase).</p>
 
 <script>
-const tokenInput = document.getElementById('token');
-const tokenSaved = localStorage.getItem('marketplace_admin_token') || '';
-tokenInput.value = tokenSaved;
-
-function getToken(){ return tokenInput.value.trim(); }
-function saveToken(){ localStorage.setItem('marketplace_admin_token', getToken()); alert('Token salvo'); }
-
 async function api(path, opts={}){
   const res = await fetch(path, {
     ...opts,
+    credentials: 'include',
     headers: {
       'content-type':'application/json',
-      'x-admin-token': getToken(),
       ...(opts.headers||{})
     }
   });
   const data = await res.json().catch(()=>({}));
+  if(res.status === 401){
+    window.location.href = '/login';
+    return;
+  }
   if(!res.ok) throw new Error(data.error ? JSON.stringify(data.error) : res.statusText);
   return data;
+}
+
+async function logout(){
+  await fetch('/logout', { method:'POST', credentials:'include' });
+  window.location.href = '/login';
 }
 
 function fillTable(id, rows, mapFn){
