@@ -1,7 +1,7 @@
 {
   "service": "frontend",
   "version": "0.7.123-dev",
-  "lastUpdated": "2026-02-19T14:48:39.668Z",
+  "lastUpdated": "2026-02-19T14:55:31.325Z",
   "changelog": [
     "Versão de desenvolvimento acima da release pública",
     "Refatorações visuais em andamento (Tickets/Flow)",

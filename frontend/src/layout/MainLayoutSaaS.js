@@ -305,7 +305,11 @@ const MainLayoutSaaS = ({ children }) => {
 
                     <div className={classes.userActions}>
                         <Tooltip title={`Frontend v${frontendVersion}`} arrow>
-                            <IconButton color="inherit" size="small">
+                            <IconButton
+                                size="small"
+                                aria-label="frontend-version"
+                                style={{ color: "#007AFF" }}
+                            >
                                 <InfoOutlinedIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>

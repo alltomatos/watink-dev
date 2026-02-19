@@ -258,7 +258,11 @@ const MainLayoutDefault = ({ children }) => {
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Tooltip title={`Frontend v${frontendVersion}`} arrow>
-                            <IconButton color="inherit" size="small">
+                            <IconButton
+                                size="small"
+                                aria-label="frontend-version"
+                                style={{ color: "#007AFF" }}
+                            >
                                 <InfoOutlinedIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
