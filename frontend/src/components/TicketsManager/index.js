@@ -41,7 +41,7 @@ const useStyles = makeStyles((theme) => ({
   tabsHeader: {
     flex: "none",
     backgroundColor: theme.palette.background.paper,
-    padding: theme.spacing(0.75),
+    padding: theme.spacing(0.5),
     borderBottom: `1px solid ${theme.palette.divider}`,
     borderTopLeftRadius: 14,
     borderTopRightRadius: 14,
@@ -49,26 +49,34 @@ const useStyles = makeStyles((theme) => ({
   settingsIcon: {
     alignSelf: "center",
     marginLeft: "auto",
-    padding: 8,
+    padding: 4,
   },
   tab: {
-    minWidth: 120,
-    width: 120,
-    minHeight: 56,
-    borderRadius: 10,
+    minWidth: 80,
+    minHeight: 40,
+    borderRadius: 8,
     margin: "0 2px",
     textTransform: "none",
     fontWeight: 600,
+    fontSize: "0.85rem",
+    "& .MuiTab-wrapper > .MuiSvgIcon-root": {
+      fontSize: "1.2rem",
+      marginBottom: "0 !important",
+      marginRight: 4,
+    },
+    "& .MuiTab-wrapper": {
+      flexDirection: "row",
+    },
   },
   tabSelected: {
     backgroundColor: theme.palette.type === "dark" ? "rgba(59,130,246,0.18)" : "#e9f1ff",
     color: theme.palette.primary.main,
-    boxShadow: theme.palette.type === "dark" ? "none" : "0 1px 0 rgba(255,255,255,0.7) inset",
   },
   ticketsSubTab: {
     textTransform: "none",
-    minHeight: 44,
+    minHeight: 36,
     fontWeight: 600,
+    fontSize: "0.8rem",
   },
   ticketsSubTabSelected: {
     color: theme.palette.primary.main,
@@ -78,48 +86,56 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: "space-between",
     alignItems: "center",
     background: theme.palette.background.paper,
-    padding: theme.spacing(1.25),
+    padding: "4px 8px",
     borderBottom: `1px solid ${theme.palette.divider}`,
-    gap: 8,
-    flexWrap: "wrap",
+    gap: 4,
+    flexWrap: "nowrap",
   },
   serachInputWrapper: {
     flex: 1,
     background: theme.palette.background.default,
     display: "flex",
-    borderRadius: 999,
-    padding: 6,
-    marginRight: theme.spacing(1),
+    borderRadius: 10,
+    padding: "2px 8px",
     border: `1px solid ${theme.palette.divider}`,
-    minHeight: 40,
+    minHeight: 32,
   },
   searchIcon: {
     color: "grey",
-    marginLeft: 6,
-    marginRight: 6,
+    fontSize: "1.1rem",
     alignSelf: "center",
   },
   searchInput: {
     flex: 1,
     border: "none",
-    borderRadius: 30,
+    fontSize: "0.85rem",
     color: theme.palette.text.primary,
     backgroundColor: theme.palette.background.default,
   },
   badge: {
-    right: "-10px",
+    right: "-4px",
+    "& .MuiBadge-badge": {
+      height: 16,
+      minWidth: 16,
+      padding: "0 4px",
+      fontSize: "0.65rem",
+    }
   },
   newTicketButton: {
-    borderRadius: 12,
+    borderRadius: 8,
     textTransform: "none",
-    fontWeight: 700,
-    padding: "8px 16px",
+    fontWeight: 600,
+    padding: "4px 10px",
+    fontSize: "0.75rem",
+    minWidth: "fit-content",
   },
   closeAllButton: {
-    borderRadius: 12,
+    borderRadius: 8,
     textTransform: "none",
-    fontWeight: 700,
-    padding: "8px 16px",
+    fontWeight: 600,
+    padding: "4px 10px",
+    fontSize: "0.75rem",
+    minWidth: "fit-content",
   },
   queueSelectWrap: {
     marginLeft: 6,
@@ -291,7 +307,6 @@ const TicketsManager = () => {
                   variant="outlined"
                   color="secondary"
                   className={classes.closeAllButton}
-                  style={{ marginLeft: 6 }}
                   onClick={() => setCloseAllModalOpen(true)}
                 >
                   Fechar Todos
@@ -303,8 +318,10 @@ const TicketsManager = () => {
               perform="tickets-manager:showall"
               yes={() => (
                 <FormControlLabel
+                  classes={{ label: classes.ticketsSubTab }}
                   label={i18n.t("tickets.buttons.showAll")}
                   labelPlacement="start"
+                  style={{ margin: 0 }}
                   control={
                     <Switch
                       size="small"
@@ -322,7 +339,6 @@ const TicketsManager = () => {
           </>
         )}
         <TicketsQueueSelect
-          style={{ marginLeft: 6 }}
           className={classes.queueSelectWrap}
           selectedQueueIds={selectedQueueIds}
           userQueues={user?.queues}

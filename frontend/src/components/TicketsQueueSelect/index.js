@@ -17,7 +17,7 @@ const TicketsQueueSelect = ({
 	};
 
 	return (
-		<div style={{ width: 120, marginTop: -4 }}>
+		<div style={{ width: 90 }}>
 			<FormControl fullWidth margin="dense">
 				<Select
 					multiple
@@ -25,6 +25,7 @@ const TicketsQueueSelect = ({
 					variant="outlined"
 					value={selectedQueueIds}
 					onChange={handleChange}
+					style={{ height: 32, fontSize: "0.75rem" }}
 					MenuProps={{
 						anchorOrigin: {
 							vertical: "bottom",
