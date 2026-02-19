@@ -55,6 +55,9 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.GET("/whatsapp", controllers.ListWhatsapps)
 		protected.GET("/whatsapp/", controllers.ListWhatsapps)
 		protected.GET("/whatsapp/:id", controllers.ShowWhatsapp)
+		protected.POST("/whatsapp", controllers.CreateWhatsapp)
+		protected.PUT("/whatsapp/:id", controllers.UpdateWhatsapp)
+		protected.DELETE("/whatsapp/:id", controllers.DeleteWhatsapp)
 
 		// WhatsApp Sessions
 		protected.POST("/whatsappsession/all", controllers.RestartAllSessions)
