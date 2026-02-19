@@ -13,8 +13,9 @@ export const ThemeProvider = ({ children }) => {
 
 	useEffect(() => {
 		const storedTheme = localStorage.getItem("appTheme");
-		if (storedTheme && ["whaticket", "whatsapp", "google", "apple"].includes(storedTheme)) {
-			setAppTheme(storedTheme);
+		const supportedThemes = ["default", "whaticket", "whatsapp", "google", "apple"];
+		if (storedTheme && supportedThemes.includes(storedTheme)) {
+			setAppTheme(storedTheme === "default" ? "whaticket" : storedTheme);
 		} else {
 			localStorage.setItem("appTheme", "apple");
 			setAppTheme("apple");
@@ -554,7 +555,91 @@ export const ThemeProvider = ({ children }) => {
 			}, locale);
 		}
 
-		// Fallback (whaticket)
+		if (appTheme === "whaticket" || appTheme === "default") {
+			const palette = {
+				type: darkMode ? "dark" : "light",
+				primary: { main: darkMode ? "#4A90E2" : "#2B6CB0", contrastText: "#FFFFFF" },
+				secondary: { main: darkMode ? "#90CDF4" : "#4A5568" },
+				background: {
+					default: darkMode ? "#111827" : "#F7FAFC",
+					paper: darkMode ? "#1F2937" : "#FFFFFF",
+				},
+				text: {
+					primary: darkMode ? "#F9FAFB" : "#1A202C",
+					secondary: darkMode ? "#CBD5E1" : "#4A5568",
+				},
+				action: {
+					hover: darkMode ? "rgba(148, 163, 184, 0.14)" : "rgba(43, 108, 176, 0.08)",
+					selected: darkMode ? "rgba(74, 144, 226, 0.22)" : "rgba(43, 108, 176, 0.12)",
+					focus: darkMode ? "rgba(74, 144, 226, 0.34)" : "rgba(43, 108, 176, 0.26)",
+				},
+				divider: darkMode ? "#374151" : "#E2E8F0",
+			};
+
+			return createTheme({
+				palette,
+				typography: premiumTypography,
+				shape: { borderRadius: 12 },
+				overrides: {
+					...premiumOverrides(palette, darkMode),
+					MuiAppBar: {
+						colorPrimary: {
+							backgroundColor: palette.background.paper,
+							color: palette.text.primary,
+							borderBottom: `1px solid ${palette.divider}`,
+							boxShadow: "none",
+						},
+					},
+					MuiDrawer: {
+						paper: {
+							backgroundColor: palette.background.paper,
+							color: palette.text.primary,
+							borderRight: `1px solid ${palette.divider}`,
+						},
+					},
+					MuiListItem: {
+						root: {
+							borderRadius: 10,
+							margin: "3px 8px",
+							padding: "10px 12px",
+							color: palette.text.secondary,
+							"& .MuiListItemIcon-root": { color: "inherit" },
+							"&:hover": {
+								backgroundColor: palette.action.hover,
+								color: palette.text.primary,
+							},
+							"&.Mui-selected": {
+								backgroundColor: palette.action.selected,
+								color: palette.text.primary,
+								"& .MuiListItemIcon-root": { color: palette.primary.main },
+								"&:hover": { backgroundColor: palette.action.selected },
+							},
+						},
+					},
+					MuiPaper: {
+						root: {
+							backgroundColor: palette.background.paper,
+						},
+						rounded: { borderRadius: 12 },
+						elevation1: {
+							boxShadow: darkMode ? "0 2px 10px rgba(0,0,0,0.2)" : "0 2px 8px rgba(15, 23, 42, 0.08)",
+							border: `1px solid ${palette.divider}`,
+						},
+					},
+					MuiOutlinedInput: {
+						root: {
+							borderRadius: 10,
+							backgroundColor: darkMode ? "#111827" : "#FFFFFF",
+							"& fieldset": { borderColor: palette.divider },
+							"&:hover fieldset": { borderColor: palette.secondary.main },
+							"&.Mui-focused fieldset": { borderColor: palette.primary.main, borderWidth: 2 },
+						},
+					},
+				},
+			}, locale);
+		}
+
+		// Fallback
 		const fallbackPalette = {
 			type: darkMode ? "dark" : "light",
 			primary: { main: "#2576d2" },

@@ -24,9 +24,7 @@ import {
 import {
     ArrowBack,
     SignalCellular4Bar,
-    SyncAlt,
     CropFree,
-    DeleteOutline,
     PowerSettingsNew,
     PhoneIphone,
     Edit
@@ -103,7 +101,6 @@ const ConnectionConfig = () => {
     const classes = useStyles();
     const history = useHistory();
     const { whatsappId } = useParams();
-    console.log("ConnectionConfig Render. WhatsappID:", whatsappId);
     const [whatsapp, setWhatsapp] = useState(null);
     const [loading, setLoading] = useState(true);
     const [pairingModalOpen, setPairingModalOpen] = useState(false);
@@ -115,18 +112,9 @@ const ConnectionConfig = () => {
     const [pairingCode, setPairingCode] = useState("");
     const [pairingLoading, setPairingLoading] = useState(false);
     const [showPairingInput, setShowPairingInput] = useState(false);
-    const [connectionStarted, setConnectionStarted] = useState(false);
     const [showQrCode, setShowQrCode] = useState(false);
     const [inputPairingModalOpen, setInputPairingModalOpen] = useState(false);
     const [connecting, setConnecting] = useState(false);
-
-    console.log("ConnectionConfig State:", {
-        status: whatsapp?.status,
-        showQrCode,
-        showPairingInput,
-        loading,
-        connectionStarted
-    });
 
     const fetchWhatsapp = useCallback(async () => {
         try {
@@ -160,12 +148,9 @@ const ConnectionConfig = () => {
                     setPairingCode("");
                     setPhoneNumber("");
                     setPairingLoading(false);
-                    setConnectionStarted(false); // Reset for next time if needed, or keep true? 
-                    // Actually if connected, we don't see the buttons anymore, so it doesn't matter much.
                 }
                 // Handle disconnection
                 if (data.session.status === "DISCONNECTED" || data.session.status === "TIMEOUT") {
-                    setConnectionStarted(false);
                     setShowQrCode(false);
                     setShowPairingInput(false);
                 }
@@ -186,17 +171,14 @@ const ConnectionConfig = () => {
     useEffect(() => {
         if (whatsapp?.status && whatsapp.status === "QRCODE") {
             // Enable buttons and SHOW QR Code container (which has the disconnect button)
-            setConnectionStarted(true);
             setShowQrCode(true); // Force show QR code container so Disconnect button is visible
             setShowPairingInput(false);
         } else if (whatsapp?.status === "CONNECTED") {
             // If connected, reset everything
-            setConnectionStarted(false);
             setShowQrCode(false);
             setShowPairingInput(false);
         } else if (whatsapp?.status === "DISCONNECTED" || whatsapp?.status === "TIMEOUT") {
             // If disconnected, reset
-            setConnectionStarted(false);
             setShowQrCode(false);
             setShowPairingInput(false);
         }
@@ -220,10 +202,6 @@ const ConnectionConfig = () => {
         }
     };
 
-    const handleShowQrCode = () => {
-        setShowQrCode(true);
-        setShowPairingInput(false);
-    };
 
     const handleShowPairing = () => {
         setInputPairingModalOpen(true);
@@ -413,7 +391,7 @@ const ConnectionConfig = () => {
                                         disabled={connecting}
                                         startIcon={connecting ? <CircularProgress size={20} color="inherit" /> : <CropFree />}
                                     >
-                                        {connecting ? "Iniciando Conexão..." : "QR CODE"}
+                                        {connecting ? "Iniciando Conexão..." : "CONECTAR COM QR CODE"}
                                     </Button>
                                     <Button
                                         variant="contained"
@@ -421,9 +399,8 @@ const ConnectionConfig = () => {
                                         className={classes.actionButton}
                                         onClick={handleShowPairing}
                                         startIcon={<PhoneIphone />}
-                                        style={{ display: "none" }}
                                     >
-                                        CÓDIGO DE PAREAMENTO
+                                        CONECTAR COM CÓDIGO
                                     </Button>
                                     <Button
                                         variant="outlined"
@@ -481,7 +458,7 @@ const ConnectionConfig = () => {
                             {/* Actions for OPENING (only show if not in pairing mode) */}
                             {whatsapp.status === "OPENING" && !showPairingInput && (
                                 <Typography variant="body1">
-                                    Iniciando sessão... Aguarde o status mudar para QR Code ou Código de Pareamento.
+                                    Iniciando sessão... aguarde alguns segundos.
                                 </Typography>
                             )}
 
