@@ -13,9 +13,8 @@ export const ThemeProvider = ({ children }) => {
 
 	useEffect(() => {
 		const storedTheme = localStorage.getItem("appTheme");
-		const supportedThemes = ["default", "whaticket", "whatsapp", "google", "apple"];
-		if (storedTheme && supportedThemes.includes(storedTheme)) {
-			setAppTheme(storedTheme === "default" ? "whaticket" : storedTheme);
+		if (storedTheme && ["whaticket", "whatsapp", "google", "apple"].includes(storedTheme)) {
+			setAppTheme(storedTheme);
 		} else {
 			localStorage.setItem("appTheme", "apple");
 			setAppTheme("apple");
@@ -555,25 +554,25 @@ export const ThemeProvider = ({ children }) => {
 			}, locale);
 		}
 
-		if (appTheme === "whaticket" || appTheme === "default") {
+		if (appTheme === "whaticket") {
 			const palette = {
 				type: darkMode ? "dark" : "light",
-				primary: { main: darkMode ? "#4A90E2" : "#2B6CB0", contrastText: "#FFFFFF" },
-				secondary: { main: darkMode ? "#90CDF4" : "#4A5568" },
+				primary: { main: darkMode ? "#4B9BFF" : "#2576D2", contrastText: "#FFFFFF" },
+				secondary: { main: darkMode ? "#7E8FA8" : "#5E738E" },
 				background: {
-					default: darkMode ? "#111827" : "#F7FAFC",
-					paper: darkMode ? "#1F2937" : "#FFFFFF",
+					default: darkMode ? "#0F1724" : "#F4F7FC",
+					paper: darkMode ? "#172235" : "#FFFFFF",
 				},
 				text: {
-					primary: darkMode ? "#F9FAFB" : "#1A202C",
-					secondary: darkMode ? "#CBD5E1" : "#4A5568",
+					primary: darkMode ? "#E6EDF7" : "#1C2533",
+					secondary: darkMode ? "#9FB0C9" : "#5F7088",
 				},
 				action: {
-					hover: darkMode ? "rgba(148, 163, 184, 0.14)" : "rgba(43, 108, 176, 0.08)",
-					selected: darkMode ? "rgba(74, 144, 226, 0.22)" : "rgba(43, 108, 176, 0.12)",
-					focus: darkMode ? "rgba(74, 144, 226, 0.34)" : "rgba(43, 108, 176, 0.26)",
+					hover: darkMode ? "rgba(230, 237, 247, 0.08)" : "rgba(28, 37, 51, 0.05)",
+					selected: darkMode ? "rgba(75, 155, 255, 0.2)" : "rgba(37, 118, 210, 0.14)",
+					focus: darkMode ? "rgba(75, 155, 255, 0.36)" : "rgba(37, 118, 210, 0.3)",
 				},
-				divider: darkMode ? "#374151" : "#E2E8F0",
+				divider: darkMode ? "#23324C" : "#D6E0EE",
 			};
 
 			return createTheme({
@@ -582,17 +581,34 @@ export const ThemeProvider = ({ children }) => {
 				shape: { borderRadius: 12 },
 				overrides: {
 					...premiumOverrides(palette, darkMode),
+					MuiCssBaseline: {
+						"@global": {
+							body: {
+								backgroundColor: palette.background.default,
+								backgroundImage: darkMode
+									? "linear-gradient(180deg, #101A29 0%, #0F1724 100%)"
+									: "linear-gradient(180deg, #F6F8FD 0%, #EDF3FB 100%)",
+								backgroundAttachment: "fixed",
+								backgroundSize: "cover",
+							},
+							"*:focus-visible": {
+								outline: `2px solid ${palette.primary.main}`,
+								outlineOffset: 2,
+							},
+						},
+					},
 					MuiAppBar: {
 						colorPrimary: {
-							backgroundColor: palette.background.paper,
+							backgroundColor: darkMode ? "rgba(23, 34, 53, 0.9)" : "rgba(255, 255, 255, 0.92)",
 							color: palette.text.primary,
+							backdropFilter: "blur(12px)",
 							borderBottom: `1px solid ${palette.divider}`,
-							boxShadow: "none",
+							boxShadow: darkMode ? "0 1px 0 rgba(255,255,255,0.03)" : "0 1px 0 rgba(0,0,0,0.05)",
 						},
 					},
 					MuiDrawer: {
 						paper: {
-							backgroundColor: palette.background.paper,
+							backgroundColor: darkMode ? "#172235" : "#F9FBFF",
 							color: palette.text.primary,
 							borderRight: `1px solid ${palette.divider}`,
 						},
@@ -600,46 +616,65 @@ export const ThemeProvider = ({ children }) => {
 					MuiListItem: {
 						root: {
 							borderRadius: 10,
-							margin: "3px 8px",
+							margin: "4px 8px",
 							padding: "10px 12px",
 							color: palette.text.secondary,
+							transition: "background-color .2s ease, color .2s ease, box-shadow .2s ease",
 							"& .MuiListItemIcon-root": { color: "inherit" },
-							"&:hover": {
-								backgroundColor: palette.action.hover,
-								color: palette.text.primary,
-							},
 							"&.Mui-selected": {
 								backgroundColor: palette.action.selected,
 								color: palette.text.primary,
 								"& .MuiListItemIcon-root": { color: palette.primary.main },
 								"&:hover": { backgroundColor: palette.action.selected },
 							},
+							"&:hover": { backgroundColor: palette.action.hover, color: palette.text.primary },
+							"&.Mui-focusVisible": { boxShadow: `0 0 0 2px ${palette.action.focus}` },
+						},
+					},
+					MuiListItemIcon: { root: { minWidth: 38 } },
+					MuiButton: {
+						root: {
+							borderRadius: 10,
+							textTransform: "none",
+							fontWeight: 600,
+							"&.Mui-focusVisible": { boxShadow: `0 0 0 3px ${palette.action.focus}` },
+						},
+						containedPrimary: {
+							backgroundColor: palette.primary.main,
+							color: palette.primary.contrastText,
+							boxShadow: darkMode ? "0 8px 18px rgba(75, 155, 255, 0.24)" : "0 8px 16px rgba(37, 118, 210, 0.2)",
+							"&:hover": { backgroundColor: darkMode ? "#3F8EEA" : "#1F66B8" },
 						},
 					},
 					MuiPaper: {
-						root: {
-							backgroundColor: palette.background.paper,
-						},
-						rounded: { borderRadius: 12 },
+						rounded: { borderRadius: 14 },
 						elevation1: {
-							boxShadow: darkMode ? "0 2px 10px rgba(0,0,0,0.2)" : "0 2px 8px rgba(15, 23, 42, 0.08)",
+							boxShadow: darkMode ? "0 2px 14px rgba(0, 0, 0, 0.24)" : "0 2px 12px rgba(15, 37, 53, 0.08)",
 							border: `1px solid ${palette.divider}`,
+						},
+					},
+					MuiCard: {
+						root: {
+							borderRadius: 14,
+							border: `1px solid ${palette.divider}`,
+							boxShadow: darkMode ? "0 4px 18px rgba(0,0,0,0.2)" : "0 6px 20px rgba(15, 37, 53, 0.08)",
 						},
 					},
 					MuiOutlinedInput: {
 						root: {
 							borderRadius: 10,
-							backgroundColor: darkMode ? "#111827" : "#FFFFFF",
+							backgroundColor: darkMode ? "#1D2B43" : "#FFFFFF",
 							"& fieldset": { borderColor: palette.divider },
-							"&:hover fieldset": { borderColor: palette.secondary.main },
+							"&:hover fieldset": { borderColor: palette.text.secondary },
 							"&.Mui-focused fieldset": { borderColor: palette.primary.main, borderWidth: 2 },
 						},
 					},
+					MuiDivider: { root: { backgroundColor: palette.divider } },
 				},
 			}, locale);
 		}
 
-		// Fallback
+		// Fallback (unknown theme)
 		const fallbackPalette = {
 			type: darkMode ? "dark" : "light",
 			primary: { main: "#2576d2" },
