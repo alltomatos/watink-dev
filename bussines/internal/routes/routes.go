@@ -110,6 +110,9 @@ func SetupRoutes(group *gin.RouterGroup) {
 		// Flows
 		protected.GET("/flows", controllers.ListFlows)
 		protected.POST("/flows", controllers.CreateFlow)
+		protected.GET("/flows/:flowId", controllers.ShowFlow)
+		protected.PUT("/flows/:flowId", controllers.UpdateFlow)
+		protected.DELETE("/flows/:flowId", controllers.DeleteFlow)
 
 		// Pipelines
 		protected.GET("/pipelines", controllers.ListPipelines)
