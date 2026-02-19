@@ -15,9 +15,11 @@ import {
     Menu,
     Box,
     Avatar,
+    Tooltip,
 } from "@material-ui/core";
 import MenuIcon from "@material-ui/icons/Menu";
 import AccountCircle from "@material-ui/icons/AccountCircle";
+import InfoOutlinedIcon from "@material-ui/icons/InfoOutlined";
 
 import MainListItems from "./MainListItems";
 import NotificationsPopOver from "../components/NotificationsPopOver";
@@ -129,6 +131,7 @@ const MainLayoutDefault = ({ children }) => {
     const { appTheme } = useThemeContext();
     const [systemLogo, setSystemLogo] = useState("");
     const [systemTitle, setSystemTitle] = useState("Watink");
+    const [frontendVersion, setFrontendVersion] = useState("-");
 
     useEffect(() => {
         if (document.body.offsetWidth > 600) {
@@ -156,6 +159,20 @@ const MainLayoutDefault = ({ children }) => {
     useEffect(() => {
         setDrawerVariant(document.body.offsetWidth < 600 ? "temporary" : "permanent");
     }, [drawerOpen]);
+
+    useEffect(() => {
+        const loadFrontendVersion = async () => {
+            try {
+                const res = await fetch("/version.json", { cache: "no-store" });
+                if (!res.ok) return;
+                const data = await res.json();
+                const version = data?.version || data?.frontendVersion;
+                if (version) setFrontendVersion(version);
+            } catch (err) {}
+        };
+
+        loadFrontendVersion();
+    }, []);
 
     const handleMenu = (event) => {
         setAnchorEl(event.currentTarget);
@@ -240,6 +257,12 @@ const MainLayoutDefault = ({ children }) => {
                     <div style={{ flexGrow: 1 }} />
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Tooltip title={`Frontend v${frontendVersion}`} arrow>
+                            <IconButton color="inherit" size="small">
+                                <InfoOutlinedIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+
                         {user.id && <NotificationsPopOver />}
 
                         <IconButton
