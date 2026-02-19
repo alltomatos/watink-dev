@@ -18,100 +18,78 @@ const useStyles = makeStyles((theme) => ({
         }
     },
     nodeCard: {
-        width: 50,
-        height: 50,
-        borderRadius: 12,
+        width: 60,
+        height: 60,
+        borderRadius: 18,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        transition: 'all 0.2s ease',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
+        border: '1px solid rgba(255,255,255,0.1)'
     },
     icon: {
-        fontSize: 24,
+        fontSize: 28,
         color: '#fff'
     },
     label: {
-        marginTop: 6,
-        fontSize: 11,
-        fontWeight: 500,
-        color: '#333',
+        marginTop: 8,
+        fontSize: 12,
+        fontWeight: 600,
+        color: '#1a1a1a',
         textAlign: 'center',
-        maxWidth: 90,
+        maxWidth: 100,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
         lineHeight: 1.2
     },
     sublabel: {
-        fontSize: 9,
-        color: '#888',
+        fontSize: 10,
+        color: '#8E8E93',
         textAlign: 'center',
         marginTop: 2
     },
     handle: {
-        width: 8,
-        height: 8,
-        background: '#555',
-        border: '2px solid #fff',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+        width: 10,
+        height: 10,
+        background: '#ffffff',
+        border: '2px solid #007AFF',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        transition: 'all 0.2s ease',
+        '&:hover': {
+            transform: 'scale(1.2)',
+            background: '#007AFF'
+        }
     },
     handleLeft: {
-        left: -4
+        left: -5
     },
     handleRight: {
-        right: -4
+        right: -5
     },
     handleTop: {
-        top: -4
+        top: -5
     },
     handleBottom: {
-        bottom: -4
+        bottom: -5
     },
-    // Variantes de cor
-    colorTrigger: {
-        background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)'
-    },
-    colorTicket: {
-        background: 'linear-gradient(135deg, #f06292 0%, #c2185b 100%)' // Rosa/Magenta para Ticket
-    },
-    colorMessage: {
-        background: 'linear-gradient(135deg, #2196f3 0%, #1565c0 100%)'
-    },
-    colorMenu: {
-        background: 'linear-gradient(135deg, #ff9800 0%, #e65100 100%)'
-    },
-    colorSwitch: {
-        background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)'
-    },
-    colorDatabase: {
-        background: 'linear-gradient(135deg, #795548 0%, #4e342e 100%)'
-    },
-    colorFilter: {
-        background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)'
-    },
-    colorPipeline: {
-        background: 'linear-gradient(135deg, #00bcd4 0%, #0097a7 100%)'
-    },
-    colorKnowledge: {
-        background: 'linear-gradient(135deg, #e91e63 0%, #ad1457 100%)'
-    },
-    colorEnd: {
-        background: 'linear-gradient(135deg, #f44336 0%, #c62828 100%)'
-    },
-    colorDefault: {
-        background: 'linear-gradient(135deg, #607d8b 0%, #455a64 100%)'
-    },
-    colorWebhook: {
-        background: 'linear-gradient(135deg, #ff5722 0%, #e64a19 100%)' // Deep Orange
-    },
-    colorApi: {
-        background: 'linear-gradient(135deg, #3f51b5 0%, #283593 100%)' // Indigo
-    },
-    colorHelpdesk: {
-        background: 'linear-gradient(135deg, #009688 0%, #00695c 100%)' // Teal
-    },
+    // Modern gradients
+    colorTrigger: { background: 'linear-gradient(180deg, #34C759 0%, #28A745 100%)' },
+    colorMessage: { background: 'linear-gradient(180deg, #007AFF 0%, #0056B3 100%)' },
+    colorMenu: { background: 'linear-gradient(180deg, #FF9500 0%, #E68600 100%)' },
+    colorSwitch: { background: 'linear-gradient(180deg, #AF52DE 0%, #8E44AD 100%)' },
+    colorDatabase: { background: 'linear-gradient(180deg, #A2845E 0%, #846C4D 100%)' },
+    colorFilter: { background: 'linear-gradient(180deg, #5856D6 0%, #4745B1 100%)' },
+    colorPipeline: { background: 'linear-gradient(180deg, #5AC8FA 0%, #48A1C9 100%)' },
+    colorWebhook: { background: 'linear-gradient(180deg, #FF3B30 0%, #D63027 100%)' },
+    colorApi: { background: 'linear-gradient(180deg, #5856D6 0%, #4745B1 100%)' },
+    colorKnowledge: { background: 'linear-gradient(180deg, #FF2D55 0%, #D62548 100%)' },
+    colorEnd: { background: 'linear-gradient(180deg, #FF3B30 0%, #D63027 100%)' },
+    colorDefault: { background: 'linear-gradient(180deg, #8E8E93 0%, #636366 100%)' },
+    colorTicket: { background: 'linear-gradient(180deg, #FF2D55 0%, #D62548 100%)' },
+    colorHelpdesk: { background: 'linear-gradient(180deg, #00C7BE 0%, #00A39C 100%)' },
     // Badge para indicadores
     badge: {
         position: 'absolute',

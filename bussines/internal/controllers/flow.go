@@ -38,3 +38,51 @@ func CreateFlow(c *gin.Context) {
 
 	c.JSON(http.StatusOK, flow)
 }
+
+func ShowFlow(c *gin.Context) {
+	tenantID, _ := c.Get("tenantId")
+	id := c.Param("flowId")
+
+	var flow models.Flow
+	if err := database.DB.Where("\"tenantId\" = ? AND id = ?", tenantID, id).First(&flow).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Flow not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, flow)
+}
+
+func UpdateFlow(c *gin.Context) {
+	tenantID, _ := c.Get("tenantId")
+	id := c.Param("flowId")
+
+	var flow models.Flow
+	if err := database.DB.Where("\"tenantId\" = ? AND id = ?", tenantID, id).First(&flow).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Flow not found"})
+		return
+	}
+
+	if err := c.ShouldBindJSON(&flow); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := database.DB.Save(&flow).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update flow"})
+		return
+	}
+
+	c.JSON(http.StatusOK, flow)
+}
+
+func DeleteFlow(c *gin.Context) {
+	tenantID, _ := c.Get("tenantId")
+	id := c.Param("flowId")
+
+	if err := database.DB.Where("\"tenantId\" = ? AND id = ?", tenantID, id).Delete(&models.Flow{}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete flow"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Flow deleted successfully"})
+}
