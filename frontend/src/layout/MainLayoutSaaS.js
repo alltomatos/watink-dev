@@ -13,9 +13,11 @@ import {
     Menu,
     IconButton,
     Box,
+    Tooltip,
 } from "@material-ui/core";
 import AccountCircle from "@material-ui/icons/AccountCircle";
 import MenuIcon from "@material-ui/icons/Menu";
+import InfoOutlinedIcon from "@material-ui/icons/InfoOutlined";
 
 import MainListItems from "./MainListItems";
 import NotificationsPopOver from "../components/NotificationsPopOver";
@@ -141,6 +143,7 @@ const MainLayoutSaaS = ({ children }) => {
     const [systemLogo, setSystemLogo] = useState("");
     const [systemTitle, setSystemTitle] = useState("Watink");
     const [logoEnabled, setLogoEnabled] = useState(true);
+    const [frontendVersion, setFrontendVersion] = useState("-");
 
     useEffect(() => {
         if (document.body.offsetWidth > 600) {
@@ -190,6 +193,20 @@ const MainLayoutSaaS = ({ children }) => {
             }
         };
         fetchSettings();
+    }, []);
+
+    useEffect(() => {
+        const loadFrontendVersion = async () => {
+            try {
+                const res = await fetch("/version.json", { cache: "no-store" });
+                if (!res.ok) return;
+                const data = await res.json();
+                const version = data?.version || data?.frontendVersion;
+                if (version) setFrontendVersion(version);
+            } catch (_) {}
+        };
+
+        loadFrontendVersion();
     }, []);
 
     const handleMenu = (event) => {
@@ -287,6 +304,12 @@ const MainLayoutSaaS = ({ children }) => {
                     </div>
 
                     <div className={classes.userActions}>
+                        <Tooltip title={`Frontend v${frontendVersion}`} arrow>
+                            <IconButton color="inherit" size="small">
+                                <InfoOutlinedIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+
                         {user.id && <NotificationsPopOver />}
 
                         <IconButton
