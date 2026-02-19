@@ -22,14 +22,15 @@ const useStyles = makeStyles(theme => ({
 		overflow: "hidden",
 		borderTopRightRadius: 0,
 		borderBottomRightRadius: 0,
+		backgroundColor: "transparent",
 	},
 
 	ticketsList: {
 		flex: 1,
 		overflowY: "scroll",
 		...theme.scrollbarStyles,
-		padding: theme.spacing(0.75),
-		background: theme.palette.type === "dark" ? theme.palette.background.default : "white",
+		padding: "16px 0",
+		background: "transparent",
 	},
 
 	ticketsListHeader: {
