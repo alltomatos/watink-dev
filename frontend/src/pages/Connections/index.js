@@ -109,7 +109,7 @@ const Connections = () => {
 	const classes = useStyles();
 	const history = useHistory();
 
-	const { whatsApps, loading } = useContext(WhatsAppsContext);
+	const { whatsApps, loading, reloadWhatsApps } = useContext(WhatsAppsContext);
 	const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
 	const [webchatModalOpen, setWebchatModalOpen] = useState(false);
 	const [confirmationOpen, setConfirmationOpen] = useState(false);
@@ -271,11 +271,13 @@ const Connections = () => {
 			<WhatsAppModal
 				open={whatsAppModalOpen}
 				onClose={handleCloseWhatsAppModal}
+				onSaved={reloadWhatsApps}
 				whatsAppId={selectedWhatsApp?.id}
 			/>
 			<WebchatModal
 				open={webchatModalOpen}
 				onClose={handleCloseWebchatModal}
+				onSaved={reloadWhatsApps}
 				whatsAppId={selectedWhatsApp?.id}
 			/>
 
