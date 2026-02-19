@@ -101,10 +101,12 @@ func handleQrCode(payload json.RawMessage) {
 	}
 
 	sessionID := getSessionID(p.SessionID)
-	database.DB.Model(&models.Whatsapp{}).Where("id = ?", sessionID).Updates(map[string]interface{}{
+	if err := database.DB.Model(&models.Whatsapp{}).Where("id = ?", sessionID).Updates(map[string]interface{}{
 		"qrcode": p.QrCode,
 		"status": "QRCODE",
-	})
+	}).Error; err != nil {
+		log.Printf("Error updating qrcode/status for session %d: %v", sessionID, err)
+	}
 
 	EmitToNamespace("/", "whatsappSession", map[string]interface{}{
 		"action": "update",

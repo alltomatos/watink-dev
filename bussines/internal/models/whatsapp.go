@@ -9,7 +9,7 @@ import (
 type Whatsapp struct {
 	ID              int       `gorm:"primaryKey" json:"id"`
 	Session         string    `json:"session"`
-	Qrcode          string    `json:"qrcode"`
+	Qrcode          string    `gorm:"type:text" json:"qrcode"`
 	Status          string    `json:"status"`
 	Battery         string    `json:"battery"`
 	Plugged         bool      `json:"plugged"`
