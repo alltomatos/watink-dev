@@ -248,7 +248,10 @@ const MainLayoutDefault = ({ children }) => {
                         noWrap
                         className={classes.title}
                     >
-                        {i18n.t("mainDrawer.appBar.user.tickets") || "Tickets"}
+                        {(() => {
+                            const t = i18n.t("mainDrawer.appBar.user.tickets");
+                            return t && t !== "mainDrawer.appBar.user.tickets" ? t : "Tickets";
+                        })()}
                     </Typography>
 
                     {/* Integrated dynamic header content can be injected via context or portal if needed, 

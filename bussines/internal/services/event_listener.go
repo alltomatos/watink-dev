@@ -24,6 +24,12 @@ type QrCodePayload struct {
 	QrCode    string `json:"qrcode"`
 }
 
+type PairingCodePayload struct {
+	SessionID   string `json:"sessionId"`
+	PairingCode string `json:"pairingCode"`
+	Status      string `json:"status"`
+}
+
 type SessionStatusPayload struct {
 	SessionID     string `json:"sessionId"`
 	Status        string `json:"status"`
@@ -56,6 +62,7 @@ func getSessionID(id string) int {
 func StartEventListener(rabbitMQ *RabbitMQService) {
 	routingKeys := []string{
 		"wbot.*.*.session.qrcode",
+		"wbot.*.*.session.pairing_code",
 		"wbot.*.*.session.status",
 		"wbot.*.*.message.received",
 		"wbot.*.*.message.ack",
@@ -77,6 +84,8 @@ func StartEventListener(rabbitMQ *RabbitMQService) {
 		switch env.Type {
 		case "session.qrcode":
 			handleQrCode(env.Payload)
+		case "session.pairing_code":
+			handlePairingCode(env.Payload)
 		case "session.status":
 			handleSessionStatus(env.Payload)
 		case "message.received":
@@ -114,6 +123,33 @@ func handleQrCode(payload json.RawMessage) {
 			"id":     sessionID,
 			"qrcode": p.QrCode,
 			"status": "QRCODE",
+		},
+	})
+}
+
+func handlePairingCode(payload json.RawMessage) {
+	var p PairingCodePayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		log.Printf("Error unmarshaling PairingCodePayload: %v", err)
+		return
+	}
+
+	sessionID := getSessionID(p.SessionID)
+	status := p.Status
+	if status == "" {
+		status = "QRCODE"
+	}
+
+	database.DB.Model(&models.Whatsapp{}).Where("id = ?", sessionID).Updates(map[string]interface{}{
+		"status": status,
+	})
+
+	EmitToNamespace("/", "whatsappSession", map[string]interface{}{
+		"action": "update",
+		"session": map[string]interface{}{
+			"id":          sessionID,
+			"status":      status,
+			"pairingCode": p.PairingCode,
 		},
 	})
 }
