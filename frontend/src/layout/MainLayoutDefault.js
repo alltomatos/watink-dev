@@ -27,6 +27,7 @@ import { i18n } from "../translate/i18n";
 import VersionFooter from "../components/VersionFooter";
 import api from "../services/api";
 import { getBackendUrl } from "../helpers/urlUtils";
+import { useThemeContext } from "../context/DarkMode";
 
 const drawerWidth = 240;
 
@@ -54,6 +55,12 @@ const useStyles = makeStyles((theme) => ({
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
         }),
+    },
+    appBarLight: {
+        backgroundColor: theme.palette.type === "dark" ? theme.palette.background.paper : "#f3f2fb",
+        color: theme.palette.text.primary,
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        boxShadow: "none",
     },
     appBarShift: {
         marginLeft: drawerWidth,
@@ -146,6 +153,7 @@ const MainLayoutDefault = ({ children }) => {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [drawerVariant, setDrawerVariant] = useState("permanent");
     const { user } = useContext(AuthContext);
+    const { appTheme } = useThemeContext();
     const [systemLogo, setSystemLogo] = useState("");
     const [systemTitle, setSystemTitle] = useState("Watink");
     const [logoEnabled, setLogoEnabled] = useState(true);
@@ -271,7 +279,11 @@ const MainLayoutDefault = ({ children }) => {
             />
             <AppBar
                 position="absolute"
-                className={clsx(classes.appBar, drawerOpen && classes.appBarShift)}
+                className={clsx(
+                    classes.appBar,
+                    drawerOpen && classes.appBarShift,
+                    (appTheme === "apple" || appTheme === "whaticket") && classes.appBarLight
+                )}
             >
                 <Toolbar variant="dense" className={classes.toolbar}>
                     <IconButton
