@@ -93,7 +93,7 @@ const SessionSchema = Yup.object().shape({
 		.required("Required"),
 });
 
-const WebchatModal = ({ open, onClose, whatsAppId }) => {
+const WebchatModal = ({ open, onClose, whatsAppId, onSaved }) => {
 	const classes = useStyles();
 	const initialState = {
 		name: "",
@@ -155,6 +155,9 @@ const WebchatModal = ({ open, onClose, whatsAppId }) => {
 				await api.post("/whatsapp", whatsappData);
 			}
 			toast.success(i18n.t("whatsappModal.success"));
+			if (onSaved) {
+				await onSaved();
+			}
 			onClose();
 		} catch (err) {
 			toastError(err);

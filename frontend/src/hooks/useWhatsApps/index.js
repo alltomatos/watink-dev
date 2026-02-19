@@ -1,5 +1,5 @@
 /* @jsxImportSource react */
-import { useState, useEffect, useReducer } from "react";
+import { useState, useEffect, useReducer, useCallback } from "react";
 import openSocket from "../../services/socket-io";
 import toastError from "../../errors/toastError";
 
@@ -58,20 +58,21 @@ const useWhatsApps = () => {
 	const [whatsApps, dispatch] = useReducer(reducer, []);
 	const [loading, setLoading] = useState(true);
 
-	useEffect(() => {
+	const reloadWhatsApps = useCallback(async () => {
 		setLoading(true);
-		const fetchSession = async () => {
-			try {
-				const { data } = await api.get("/whatsapp/");
-				dispatch({ type: "LOAD_WHATSAPPS", payload: data });
-				setLoading(false);
-			} catch (err) {
-				setLoading(false);
-				toastError(err);
-			}
-		};
-		fetchSession();
+		try {
+			const { data } = await api.get("/whatsapp/");
+			dispatch({ type: "LOAD_WHATSAPPS", payload: data });
+		} catch (err) {
+			toastError(err);
+		} finally {
+			setLoading(false);
+		}
 	}, []);
+
+	useEffect(() => {
+		reloadWhatsApps();
+	}, [reloadWhatsApps]);
 
 	useEffect(() => {
 		const socket = openSocket();
@@ -102,7 +103,7 @@ const useWhatsApps = () => {
 		};
 	}, []);
 
-	return { whatsApps, loading };
+	return { whatsApps, loading, reloadWhatsApps };
 };
 
 export default useWhatsApps;

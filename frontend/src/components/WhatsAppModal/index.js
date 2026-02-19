@@ -58,7 +58,7 @@ const SessionSchema = Yup.object().shape({
 		.required("Required"),
 });
 
-const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
+const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }) => {
 	const classes = useStyles();
 	const initialState = {
 		name: "",
@@ -99,6 +99,9 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 				await api.post("/whatsapp", whatsappData);
 			}
 			toast.success(i18n.t("whatsappModal.success"));
+			if (onSaved) {
+				await onSaved();
+			}
 			handleClose();
 		} catch (err) {
 			toastError(err);
