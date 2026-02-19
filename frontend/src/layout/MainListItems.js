@@ -134,7 +134,7 @@ const MainListItems = (props) => {
     // Fetch active plugins using pluginApi (has JWT interceptor)
     const fetchPlugins = async () => {
       try {
-        const { data } = await pluginApi.get("/api/v1/plugins/installed");
+        const { data } = await pluginApi.get("/plugins/installed");
         setActivePlugins(data.active || []);
       } catch (err) {
         // Silent error for offline/502/CORS to avoid user disruption
