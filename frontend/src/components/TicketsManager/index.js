@@ -31,69 +31,134 @@ const useStyles = makeStyles((theme) => ({
     height: "100%",
     flexDirection: "column",
     overflow: "hidden",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f9fafb", // Light background for the sidebar feel
     color: theme.palette.text.primary,
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
   headerContainer: {
-    padding: "8px 16px",
-    borderBottom: "1px solid rgba(0,0,0,0.05)",
+    padding: "20px 24px 12px 24px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 16,
+    backgroundColor: "#ffffff",
+    borderBottom: "1px solid #f1f5f9",
+  },
+  headerTop: {
     display: "flex",
     alignItems: "center",
-    gap: 12,
-    minHeight: 56,
+    justifyContent: "space-between",
   },
-  tabPill: {
-    minWidth: 80,
-    minHeight: 36,
-    borderRadius: 18,
-    textTransform: "none",
-    fontWeight: 600,
-    fontSize: "0.85rem",
-    margin: "0 4px",
-    transition: "all 0.2s",
+  title: {
+    fontSize: "1.25rem",
+    fontWeight: 700,
+    color: "#111827",
+    letterSpacing: "-0.025em",
   },
-  tabSelected: {
-    backgroundColor: "#007AFF !important",
-    color: "#ffffff !important",
+  tabSegmented: {
+    display: "inline-flex",
+    backgroundColor: "#f1f5f9",
+    padding: 2,
+    borderRadius: 8,
+    gap: 2,
+  },
+  tabItem: {
+    padding: "6px 12px",
+    borderRadius: 6,
+    fontSize: "0.8125rem",
+    fontWeight: 500,
+    cursor: "pointer",
+    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+    userSelect: "none",
+    color: "#64748b",
+    "&:hover": {
+      color: "#1e293b",
+    },
+    "&.active": {
+      backgroundColor: "#ffffff",
+      color: "#111827",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)",
+    }
   },
   searchWrapper: {
+    position: "relative",
     display: "flex",
     alignItems: "center",
-    backgroundColor: "#f0f2f5",
-    borderRadius: 20,
-    padding: "4px 12px",
-    flex: 1,
-    maxWidth: 240,
+    width: "100%",
   },
   searchInput: {
-    marginLeft: 8,
-    flex: 1,
-    fontSize: "0.85rem",
+    width: "100%",
+    backgroundColor: "#f1f5f9",
+    borderRadius: 8,
+    padding: "8px 12px 8px 36px",
+    fontSize: "0.875rem",
+    border: "1px solid transparent",
+    transition: "all 0.2s",
+    "&:focus-within": {
+      backgroundColor: "#ffffff",
+      borderColor: "#3b82f6",
+      boxShadow: "0 0 0 4px rgba(59, 130, 246, 0.1)",
+    }
+  },
+  searchIcon: {
+    position: "absolute",
+    left: 10,
+    color: "#94a3b8",
+    fontSize: "1.2rem",
   },
   subTabContainer: {
     display: "flex",
-    padding: "10px 16px",
-    gap: 8,
+    padding: "8px 20px",
+    gap: 4,
     backgroundColor: "#ffffff",
-    overflowX: "auto",
+    borderBottom: "1px solid #f1f5f9",
   },
-  subTabChip: {
-    padding: "6px 14px",
-    borderRadius: 20,
-    fontSize: "0.8rem",
-    fontWeight: 600,
+  subTabItem: {
+    padding: "6px 10px",
+    borderRadius: 6,
+    fontSize: "0.8125rem",
+    fontWeight: 500,
     cursor: "pointer",
-    whiteSpace: "nowrap",
-    backgroundColor: "#f0f2f5",
-    color: "#666",
+    color: "#64748b",
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    transition: "all 0.2s",
+    "&:hover": {
+      backgroundColor: "#f8fafc",
+      color: "#1e293b",
+    },
     "&.active": {
-      backgroundColor: "#e9f1ff",
-      color: "#007AFF",
+      color: "#3b82f6",
+      backgroundColor: "rgba(59, 130, 246, 0.05)",
     }
   },
-  badge: {
-    right: -4,
-    top: 4,
+  badgeCount: {
+    fontSize: "0.75rem",
+    backgroundColor: "#f1f5f9",
+    color: "#64748b",
+    padding: "1px 6px",
+    borderRadius: 10,
+    minWidth: 20,
+    textAlign: "center",
+    fontWeight: 600,
+    ".active &": {
+      backgroundColor: "#3b82f6",
+      color: "#ffffff",
+    }
+  },
+  actionsWrapper: {
+    display: "flex",
+    gap: 8,
+  },
+  actionButton: {
+    padding: 6,
+    borderRadius: 6,
+    color: "#64748b",
+    backgroundColor: "#f1f5f9",
+    "&:hover": {
+      backgroundColor: "#e2e8f0",
+      color: "#1e293b",
+    }
   }
 }));
 
@@ -134,52 +199,53 @@ const TicketsManager = () => {
         onClose={() => setNewTicketModalOpen(false)}
       />
 
-      <div className={classes.headerContainer}>
-        <Tabs
-          value={tab === "search" ? "open" : tab}
-          onChange={(e, v) => setTab(v)}
-          indicatorColor="none"
-          textColor="primary"
-        >
-          <Tab
-            value={"open"}
-            label="Inbox"
-            classes={{ root: classes.tabPill, selected: classes.tabSelected }}
-            disableRipple
-          />
-          <Tab
-            value={"closed"}
-            label="Resolvidos"
-            classes={{ root: classes.tabPill, selected: classes.tabSelected }}
-            disableRipple
-          />
-        </Tabs>
-
-        <div style={{ flex: 1 }} />
+      <header className={classes.headerContainer}>
+        <div className={classes.headerTop}>
+          <div className={classes.tabSegmented}>
+            <div 
+              className={clsx(classes.tabItem, (tab === "open" || tab === "search") && "active")}
+              onClick={() => setTab("open")}
+            >
+              Inbox
+            </div>
+            <div 
+              className={clsx(classes.tabItem, tab === "closed" && "active")}
+              onClick={() => setTab("closed")}
+            >
+              Resolvidos
+            </div>
+          </div>
+          
+          <div className={classes.actionsWrapper}>
+            <Tooltip title="Filtrar Filas">
+              <IconButton size="small" className={classes.actionButton} onClick={(e) => setAnchorElQueue(e.currentTarget)}>
+                <FilterListIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            
+            <Tooltip title="Novo Ticket">
+              <IconButton size="small" className={classes.actionButton} color="primary" onClick={() => setNewTicketModalOpen(true)}>
+                <AddIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </div>
+        </div>
 
         <div className={classes.searchWrapper}>
-          <SearchIcon fontSize="small" color="disabled" />
+          <SearchIcon className={classes.searchIcon} />
           <InputBase
             className={classes.searchInput}
-            placeholder="Buscar..."
+            placeholder="Buscar por nome ou mensagem..."
             onChange={handleSearch}
           />
         </div>
-
-        <IconButton size="small" color="primary" onClick={() => setNewTicketModalOpen(true)}>
-          <AddIcon />
-        </IconButton>
-
-        <IconButton size="small" onClick={(e) => setAnchorElQueue(e.currentTarget)}>
-          <FilterListIcon fontSize="small" />
-        </IconButton>
 
         <Popover
           open={Boolean(anchorElQueue)}
           anchorEl={anchorElQueue}
           onClose={() => setAnchorElQueue(null)}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-          PaperProps={{ style: { padding: 16, borderRadius: 12, minWidth: 250 } }}
+          PaperProps={{ style: { padding: 16, borderRadius: 12, minWidth: 250, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)' } }}
         >
           <TicketsQueueSelect
             selectedQueueIds={selectedQueueIds}
@@ -187,34 +253,31 @@ const TicketsManager = () => {
             onChange={(values) => setSelectedQueueIds(values)}
           />
         </Popover>
-      </div>
+      </header>
 
-      <div className={classes.subTabContainer}>
+      <nav className={classes.subTabContainer}>
         <div 
-          className={clsx(classes.subTabChip, tabOpen === "open" && "active")}
+          className={clsx(classes.subTabItem, tabOpen === "open" && "active")}
           onClick={() => setTabOpen("open")}
         >
-          <Badge badgeContent={openCount} color="primary" className={classes.badge}>
-            Abertos
-          </Badge>
+          Abertos
+          <span className={classes.badgeCount}>{openCount}</span>
         </div>
         <div 
-          className={clsx(classes.subTabChip, tabOpen === "pending" && "active")}
+          className={clsx(classes.subTabItem, tabOpen === "pending" && "active")}
           onClick={() => setTabOpen("pending")}
         >
-          <Badge badgeContent={pendingCount} color="secondary" className={classes.badge}>
-            Aguardando
-          </Badge>
+          Aguardando
+          <span className={classes.badgeCount}>{pendingCount}</span>
         </div>
         <div 
-          className={clsx(classes.subTabChip, tabOpen === "groups" && "active")}
+          className={clsx(classes.subTabItem, tabOpen === "groups" && "active")}
           onClick={() => setTabOpen("groups")}
         >
-          <Badge badgeContent={groupsCount} color="secondary" className={classes.badge}>
-            Grupos
-          </Badge>
+          Grupos
+          <span className={classes.badgeCount}>{groupsCount}</span>
         </div>
-      </div>
+      </nav>
 
       <div style={{ flex: 1, overflow: 'hidden' }}>
         <TabPanel value={tab} name="open" className={classes.ticketsWrapper}>
