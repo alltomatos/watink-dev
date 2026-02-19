@@ -27,7 +27,8 @@ import {
     CropFree,
     PowerSettingsNew,
     PhoneIphone,
-    Edit
+    Edit,
+    CheckCircle
 } from "@material-ui/icons";
 import { green, red, orange } from "@material-ui/core/colors";
 import QRCode from "qrcode.react";
@@ -42,6 +43,8 @@ import PairingCodeModal from "../../components/PairingCodeModal";
 import WhatsAppModal from "../../components/WhatsAppModal";
 import openSocket from "../../services/socket-io";
 import ConfirmationModal from "../../components/ConfirmationModal";
+import { WhatsAppsContext } from "../../context/WhatsApp/WhatsAppsContext";
+import { getBackendUrl } from "../../helpers/urlUtils";
 
 const useStyles = makeStyles(theme => ({
     root: {
@@ -101,6 +104,7 @@ const ConnectionConfig = () => {
     const classes = useStyles();
     const history = useHistory();
     const { whatsappId } = useParams();
+    const { reloadWhatsApps } = useContext(WhatsAppsContext);
     const [whatsapp, setWhatsapp] = useState(null);
     const [loading, setLoading] = useState(true);
     const [pairingModalOpen, setPairingModalOpen] = useState(false);
@@ -240,6 +244,7 @@ const ConnectionConfig = () => {
     const handleDelete = async () => {
         try {
             await api.delete(`/whatsapp/${whatsappId}`);
+            await reloadWhatsApps();
             history.push("/connections");
         } catch (err) {
             toastError(err);
@@ -249,21 +254,21 @@ const ConnectionConfig = () => {
 
     const renderStatus = () => {
         const statusMap = {
-            CONNECTED: { text: "Conectado", color: green[500], icon: <SignalCellular4Bar fontSize="large" style={{ color: green[500] }} /> },
-            DISCONNECTED: { text: "Desconectado", color: red[500], icon: <PowerSettingsNew fontSize="large" color="error" /> },
-            QRCODE: { text: "Aguardando Leitura do QR Code", color: orange[500], icon: <CropFree fontSize="large" style={{ color: orange[500] }} /> },
-            PAIRING: { text: "Aguardando Pareamento", color: orange[500], icon: <PhoneIphone fontSize="large" style={{ color: orange[500] }} /> },
-            OPENING: { text: "Iniciando...", color: orange[500], icon: <CircularProgress size={30} /> },
-            TIMEOUT: { text: "Tempo Esgotado", color: red[500], icon: <PowerSettingsNew fontSize="large" color="error" /> },
+            CONNECTED: { text: "Conectado", color: "#10b981", icon: <CheckCircle fontSize="large" style={{ color: "#10b981" }} /> },
+            DISCONNECTED: { text: "Desconectado", color: "#ef4444", icon: <PowerSettingsNew fontSize="large" style={{ color: "#ef4444" }} /> },
+            QRCODE: { text: "Aguardando QR Code", color: "#f59e0b", icon: <CropFree fontSize="large" style={{ color: "#f59e0b" }} /> },
+            PAIRING: { text: "Aguardando Pareamento", color: "#8b5cf6", icon: <PhoneIphone fontSize="large" style={{ color: "#8b5cf6" }} /> },
+            OPENING: { text: "Iniciando...", color: "#3b82f6", icon: <CircularProgress size={30} style={{ color: "#3b82f6" }} /> },
+            TIMEOUT: { text: "Tempo Esgotado", color: "#6b7280", icon: <PowerSettingsNew fontSize="large" style={{ color: "#6b7280" }} /> },
         };
 
         const current = statusMap[whatsapp?.status] || statusMap["DISCONNECTED"];
 
         return (
-            <Paper className={classes.statusContainer} variant="outlined">
+            <Paper className={classes.statusContainer} elevation={0} style={{ backgroundColor: current.color + "10", border: `1px solid ${current.color}30` }}>
                 {current.icon}
-                <Box>
-                    <Typography variant="h5" style={{ color: current.color }}>
+                <Box ml={2}>
+                    <Typography variant="h5" style={{ color: current.color, fontWeight: 700 }}>
                         {current.text}
                     </Typography>
                     <Typography variant="body2" color="textSecondary">
@@ -273,9 +278,9 @@ const ConnectionConfig = () => {
                     {whatsapp?.status === "CONNECTED" && whatsapp?.number && (
                         <Box display="flex" alignItems="center" mt={2}>
                             <Avatar
-                                src={whatsapp.profilePicUrl}
+                                src={getBackendUrl(whatsapp.profilePicUrl)}
                                 alt={whatsapp.name}
-                                style={{ width: 50, height: 50, marginRight: 15 }}
+                                style={{ width: 50, height: 50, marginRight: 15, borderRadius: 12 }}
                             />
                             <Box>
                                 <Typography variant="subtitle1" style={{ fontWeight: 600 }}>
@@ -532,6 +537,18 @@ const ConnectionConfig = () => {
                             <Box mb={2}>
                                 <Typography variant="subtitle2" color="textSecondary">Nome da Sessão</Typography>
                                 <Typography variant="body1">{whatsapp.name}</Typography>
+                            </Box>
+                            <Box mb={2}>
+                                <Typography variant="subtitle2" color="textSecondary">Conectado desde</Typography>
+                                <Typography variant="body1">
+                                    {whatsapp.updatedAt ? new Date(whatsapp.updatedAt).toLocaleString() : "Nunca"}
+                                </Typography>
+                            </Box>
+                            <Box mb={2}>
+                                <Typography variant="subtitle2" color="textSecondary">Data da 1ª Conexão</Typography>
+                                <Typography variant="body1">
+                                    {whatsapp.createdAt ? new Date(whatsapp.createdAt).toLocaleDateString() : "N/A"}
+                                </Typography>
                             </Box>
                             <Box mb={2}>
                                 <Typography variant="subtitle2" color="textSecondary">Status Oficial</Typography>
