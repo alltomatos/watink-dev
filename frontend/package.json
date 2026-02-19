@@ -36,6 +36,7 @@
     "dev": "vite",
     "start": "vite",
     "build": "node copy-assets.js && vite build",
+    "postbuild": "node sync-embed-go.js",
     "preview": "vite preview"
   },
   "browserslist": {
