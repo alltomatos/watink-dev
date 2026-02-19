@@ -8,7 +8,7 @@ import Tabs from "@material-ui/core/Tabs";
 import Tab from "@material-ui/core/Tab";
 import Badge from "@material-ui/core/Badge";
 import MoveToInboxIcon from "@material-ui/icons/MoveToInbox";
-import CheckBoxIcon from "@material-ui/icons/CheckBox";
+import IconButton from "@material-ui/core/IconButton";
 import FormControlLabel from "@material-ui/core/FormControlLabel";
 import Switch from "@material-ui/core/Switch";
 import NewTicketModal from "../NewTicketModal";
@@ -30,42 +30,22 @@ const useStyles = makeStyles((theme) => ({
     height: "100%",
     flexDirection: "column",
     overflow: "hidden",
-    borderTopRightRadius: 0,
-    borderBottomRightRadius: 0,
     backgroundColor: theme.palette.type === "dark" ? theme.palette.background.default : "#f3f2fb",
     color: theme.palette.text.primary,
   },
-  tabsHeader: {
-    flex: "none",
-    backgroundColor: theme.palette.background.paper,
-    padding: theme.spacing(0.5),
-    borderBottom: `1px solid ${theme.palette.divider}`,
-  },
-  settingsIcon: {
-    alignSelf: "center",
-    marginLeft: "auto",
-    padding: 4,
-  },
   tab: {
-    minWidth: 80,
-    minHeight: 40,
-    borderRadius: 10,
+    minWidth: 70,
+    minHeight: 32,
+    borderRadius: 8,
     margin: "0 2px",
     textTransform: "none",
     fontWeight: 600,
-    fontSize: "0.85rem",
-    "& .MuiTab-wrapper > .MuiSvgIcon-root": {
-      fontSize: "1.2rem",
-      marginBottom: "0 !important",
-      marginRight: 4,
-    },
-    "& .MuiTab-wrapper": {
-      flexDirection: "row",
-    },
+    fontSize: "0.8rem",
+    padding: "4px 8px",
   },
   tabSelected: {
-    backgroundColor: theme.palette.type === "dark" ? "rgba(59,130,246,0.18)" : "#e9f1ff",
-    color: theme.palette.primary.main,
+    backgroundColor: theme.palette.type === "dark" ? "rgba(59,130,246,0.18)" : "#f0f2f5",
+    color: theme.palette.text.primary,
   },
   ticketsSubTab: {
     textTransform: "none",
@@ -86,10 +66,9 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: "space-between",
     alignItems: "center",
     background: theme.palette.background.paper,
-    padding: "4px 12px",
+    padding: "4px 8px",
     borderBottom: `1px solid ${theme.palette.divider}`,
-    gap: 4,
-    flexWrap: "nowrap",
+    minHeight: 48,
   },
   serachInputWrapper: {
     flex: 1,
@@ -109,7 +88,7 @@ const useStyles = makeStyles((theme) => ({
     border: "none",
     fontSize: "0.85rem",
     color: theme.palette.text.primary,
-    backgroundColor: theme.palette.background.default,
+    backgroundColor: "transparent",
   },
   badge: {
     right: "-4px",
@@ -139,12 +118,6 @@ const useStyles = makeStyles((theme) => ({
   queueSelectWrap: {
     marginLeft: 6,
     borderRadius: 12,
-  },
-  show: {
-    display: "block",
-  },
-  hide: {
-    display: "none !important",
   },
 }));
 
@@ -181,7 +154,6 @@ const TicketsManager = () => {
         localStorage.setItem("showAllTickets", JSON.stringify(true));
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -190,7 +162,9 @@ const TicketsManager = () => {
 
   useEffect(() => {
     if (tab === "search") {
-      searchInputRef.current.focus();
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
       setSearchParam("");
     }
   }, [tab]);
@@ -199,15 +173,12 @@ const TicketsManager = () => {
 
   const handleSearch = (e) => {
     const searchedTerm = e.target.value.toLowerCase();
-
     clearTimeout(searchTimeout);
-
     if (searchedTerm === "") {
       setSearchParam(searchedTerm);
       setTab("open");
       return;
     }
-
     searchTimeout = setTimeout(() => {
       setSearchParam(searchedTerm);
     }, 500);
@@ -223,8 +194,9 @@ const TicketsManager = () => {
 
   const applyPanelStyle = (status) => {
     if (tabOpen !== status) {
-      return { width: 0, height: 0 };
+      return { width: 0, height: 0, overflow: "hidden", display: "none" };
     }
+    return { flex: 1 };
   };
 
   const handleCloseAllTickets = async () => {
@@ -241,41 +213,11 @@ const TicketsManager = () => {
   };
 
   return (
-    <Paper elevation={0} variant="outlined" className={classes.ticketsWrapper}>
+    <Paper elevation={0} square className={classes.ticketsWrapper}>
       <NewTicketModal
         modalOpen={newTicketModalOpen}
         onClose={(e) => setNewTicketModalOpen(false)}
       />
-      <Paper elevation={0} square className={classes.tabsHeader}>
-        <Tabs
-          value={tab}
-          onChange={handleChangeTab}
-          variant="fullWidth"
-          indicatorColor="primary"
-          textColor="primary"
-          aria-label="icon label tabs example"
-        >
-          <Tab
-            value={"open"}
-            icon={<MoveToInboxIcon />}
-            label={i18n.t("tickets.tabs.open.title")}
-            classes={{ root: classes.tab, selected: classes.tabSelected }}
-          />
-          <Tab
-            value={"closed"}
-            icon={<CheckBoxIcon />}
-            label={i18n.t("tickets.tabs.closed.title")}
-            classes={{ root: classes.tab, selected: classes.tabSelected }}
-          />
-          <Tab
-            value={"search"}
-            icon={<SearchIcon />}
-            label={i18n.t("tickets.tabs.search.title")}
-            classes={{ root: classes.tab, selected: classes.tabSelected }}
-          />
-
-        </Tabs>
-      </Paper>
       <Paper square elevation={0} className={classes.ticketOptionsBox}>
         {tab === "search" ? (
           <div className={classes.serachInputWrapper}>
@@ -289,63 +231,43 @@ const TicketsManager = () => {
             />
           </div>
         ) : (
-          <>
-            <Button
-              variant="outlined"
+          <div style={{ display: "flex", width: "100%", alignItems: "center", gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <Tabs
+                value={tab}
+                onChange={handleChangeTab}
+                indicatorColor="primary"
+                textColor="primary"
+                variant="scrollable"
+                scrollButtons="off"
+              >
+                <Tab
+                  value={"open"}
+                  label={i18n.t("tickets.tabs.open.title")}
+                  classes={{ root: classes.tab, selected: classes.tabSelected }}
+                />
+                <Tab
+                  value={"closed"}
+                  label={i18n.t("tickets.tabs.closed.title")}
+                  classes={{ root: classes.tab, selected: classes.tabSelected }}
+                />
+              </Tabs>
+            </div>
+            <IconButton size="small" onClick={() => setTab("search")}>
+              <SearchIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
               color="primary"
-              className={classes.newTicketButton}
               onClick={() => setNewTicketModalOpen(true)}
             >
-              {i18n.t("ticketsManager.buttons.newTicket")}
-            </Button>
-            <Can
-              role={user.profile}
-              perform="tickets-manager:showall"
-              yes={() => (
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  className={classes.closeAllButton}
-                  onClick={() => setCloseAllModalOpen(true)}
-                >
-                  Fechar Todos
-                </Button>
-              )}
-            />
-            <Can
-              role={user.profile}
-              perform="tickets-manager:showall"
-              yes={() => (
-                <FormControlLabel
-                  classes={{ label: classes.ticketsSubTab }}
-                  label={i18n.t("tickets.buttons.showAll")}
-                  labelPlacement="start"
-                  style={{ margin: 0 }}
-                  control={
-                    <Switch
-                      size="small"
-                      checked={showAllTickets}
-                      onChange={() =>
-                        setShowAllTickets((prevState) => !prevState)
-                      }
-                      name="showAllTickets"
-                      color="primary"
-                    />
-                  }
-                />
-              )}
-            />
-          </>
+              <MoveToInboxIcon fontSize="small" />
+            </IconButton>
+          </div>
         )}
-        <TicketsQueueSelect
-          className={classes.queueSelectWrap}
-          selectedQueueIds={selectedQueueIds}
-          userQueues={user?.queues}
-          onChange={(values) => setSelectedQueueIds(values)}
-        />
       </Paper>
       <TabPanel value={tab} name="open" className={classes.ticketsWrapper}>
-        <div style={{ backgroundColor: "white", padding: "8px 0" }}>
+        <div style={{ backgroundColor: "white", padding: "8px 0", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
           <Tabs
             value={tabOpen}
             onChange={handleChangeTabOpen}
@@ -395,7 +317,7 @@ const TicketsManager = () => {
             />
           </Tabs>
         </div>
-        <Paper className={classes.ticketsWrapper}>
+        <div className={classes.ticketsWrapper} style={{ flex: 1 }}>
           <TicketsList
             status="open"
             showAll={showAllTickets}
@@ -418,7 +340,7 @@ const TicketsManager = () => {
             isGroup="true"
             style={applyPanelStyle("groups")}
           />
-        </Paper>
+        </div>
       </TabPanel>
       <TabPanel value={tab} name="closed" className={classes.ticketsWrapper}>
         <TicketsList
@@ -479,20 +401,10 @@ const TicketsManager = () => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => setCloseAllModalOpen(false)}
-            color="secondary"
-            disabled={closeAllLoading}
-          >
+          <Button onClick={() => setCloseAllModalOpen(false)} color="secondary" disabled={closeAllLoading}>
             Cancelar
           </Button>
-          <Button
-            onClick={handleCloseAllTickets}
-            color="primary"
-            variant="contained"
-            disabled={closeAllLoading}
-            startIcon={closeAllLoading ? <CircularProgress size={20} /> : null}
-          >
+          <Button onClick={handleCloseAllTickets} color="primary" variant="contained" disabled={closeAllLoading} startIcon={closeAllLoading ? <CircularProgress size={20} /> : null}>
             Fechar Todos
           </Button>
         </DialogActions>
