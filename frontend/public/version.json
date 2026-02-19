@@ -1,10 +1,10 @@
 {
   "service": "frontend",
-  "version": "0.7.120",
-  "lastUpdated": "2026-02-19T14:40:30.498Z",
+  "version": "0.7.123-dev",
+  "lastUpdated": "2026-02-19T14:46:02.283Z",
   "changelog": [
-    "Correções no Monitor e Swagger interno",
-    "Ajustes de permissões (superadmin/RBAC)",
-    "Melhorias de estabilidade e observabilidade"
+    "Versão de desenvolvimento acima da release pública",
+    "Refatorações visuais em andamento (Tickets/Flow)",
+    "Ajustes de estabilidade para ambiente dev (PM2 hot reload)"
   ]
 }
