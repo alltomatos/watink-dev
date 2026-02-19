@@ -34,17 +34,12 @@ const useStyles = makeStyles((theme) => ({
     borderBottomRightRadius: 0,
     backgroundColor: theme.palette.type === "dark" ? theme.palette.background.default : "#f3f2fb",
     color: theme.palette.text.primary,
-    border: `1px solid ${theme.palette.divider}`,
-    borderRadius: 16,
-    boxShadow: theme.palette.type === "dark" ? "none" : "inset 0 0 0 1px rgba(255,255,255,0.4)",
   },
   tabsHeader: {
     flex: "none",
     backgroundColor: theme.palette.background.paper,
     padding: theme.spacing(0.5),
     borderBottom: `1px solid ${theme.palette.divider}`,
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
   },
   settingsIcon: {
     alignSelf: "center",
@@ -54,7 +49,7 @@ const useStyles = makeStyles((theme) => ({
   tab: {
     minWidth: 80,
     minHeight: 40,
-    borderRadius: 8,
+    borderRadius: 10,
     margin: "0 2px",
     textTransform: "none",
     fontWeight: 600,
@@ -77,8 +72,13 @@ const useStyles = makeStyles((theme) => ({
     minHeight: 36,
     fontWeight: 600,
     fontSize: "0.8rem",
+    minWidth: 0,
+    padding: "6px 12px",
+    borderRadius: 18,
+    margin: "0 4px",
   },
   ticketsSubTabSelected: {
+    backgroundColor: theme.palette.type === "dark" ? "rgba(59,130,246,0.18)" : "#e9f1ff",
     color: theme.palette.primary.main,
   },
   ticketOptionsBox: {
@@ -86,19 +86,18 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: "space-between",
     alignItems: "center",
     background: theme.palette.background.paper,
-    padding: "4px 8px",
+    padding: "4px 12px",
     borderBottom: `1px solid ${theme.palette.divider}`,
     gap: 4,
     flexWrap: "nowrap",
   },
   serachInputWrapper: {
     flex: 1,
-    background: theme.palette.background.default,
+    background: theme.palette.type === "dark" ? "rgba(255,255,255,0.05)" : "#f0f2f5",
     display: "flex",
-    borderRadius: 10,
-    padding: "2px 8px",
-    border: `1px solid ${theme.palette.divider}`,
-    minHeight: 32,
+    borderRadius: 8,
+    padding: "2px 10px",
+    minHeight: 34,
   },
   searchIcon: {
     color: "grey",
@@ -346,53 +345,56 @@ const TicketsManager = () => {
         />
       </Paper>
       <TabPanel value={tab} name="open" className={classes.ticketsWrapper}>
-        <Tabs
-          value={tabOpen}
-          onChange={handleChangeTabOpen}
-          indicatorColor="primary"
-          textColor="primary"
-          variant="fullWidth"
-        >
-          <Tab
-            label={
-              <Badge
-                className={classes.badge}
-                badgeContent={openCount}
-                color="primary"
-              >
-                {i18n.t("ticketsList.assignedHeader")}
-              </Badge>
-            }
-            value={"open"}
-            classes={{ root: classes.ticketsSubTab, selected: classes.ticketsSubTabSelected }}
-          />
-          <Tab
-            label={
-              <Badge
-                className={classes.badge}
-                badgeContent={pendingCount}
-                color="secondary"
-              >
-                {i18n.t("ticketsList.pendingHeader")}
-              </Badge>
-            }
-            value={"pending"}
-            classes={{ root: classes.ticketsSubTab, selected: classes.ticketsSubTabSelected }}
-          />
-          <Tab
-            label={
-              <Badge
-                className={classes.badge}
-                badgeContent={groupsCount}
-                color="secondary"
-              >
-                {i18n.t("tickets.tabs.group.title") || "Grupos"}
-              </Badge>
-            }
-            value={"groups"}
-            classes={{ root: classes.ticketsSubTab, selected: classes.ticketsSubTabSelected }}
-          />
-        </Tabs>
+        <div style={{ backgroundColor: "white", padding: "8px 0" }}>
+          <Tabs
+            value={tabOpen}
+            onChange={handleChangeTabOpen}
+            indicatorColor="transparent"
+            textColor="primary"
+            variant="scrollable"
+            scrollButtons="off"
+          >
+            <Tab
+              label={
+                <Badge
+                  className={classes.badge}
+                  badgeContent={openCount}
+                  color="primary"
+                >
+                  {i18n.t("ticketsList.assignedHeader")}
+                </Badge>
+              }
+              value={"open"}
+              classes={{ root: classes.ticketsSubTab, selected: classes.ticketsSubTabSelected }}
+            />
+            <Tab
+              label={
+                <Badge
+                  className={classes.badge}
+                  badgeContent={pendingCount}
+                  color="secondary"
+                >
+                  {i18n.t("ticketsList.pendingHeader")}
+                </Badge>
+              }
+              value={"pending"}
+              classes={{ root: classes.ticketsSubTab, selected: classes.ticketsSubTabSelected }}
+            />
+            <Tab
+              label={
+                <Badge
+                  className={classes.badge}
+                  badgeContent={groupsCount}
+                  color="secondary"
+                >
+                  {i18n.t("tickets.tabs.group.title") || "Grupos"}
+                </Badge>
+              }
+              value={"groups"}
+              classes={{ root: classes.ticketsSubTab, selected: classes.ticketsSubTabSelected }}
+            />
+          </Tabs>
+        </div>
         <Paper className={classes.ticketsWrapper}>
           <TicketsList
             status="open"
