@@ -1,5 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useContext, useEffect } from "react";
+import { useHistory } from "react-router-dom";
 import clsx from "clsx";
 import {
     makeStyles,
@@ -13,9 +14,9 @@ import {
     IconButton,
     Menu,
     Box,
+    Avatar,
 } from "@material-ui/core";
 import MenuIcon from "@material-ui/icons/Menu";
-import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
 import AccountCircle from "@material-ui/icons/AccountCircle";
 
 import MainListItems from "./MainListItems";
@@ -35,19 +36,13 @@ const useStyles = makeStyles((theme) => ({
     root: {
         display: "flex",
         height: "100vh",
-        [theme.breakpoints.down("sm")]: {
-            height: "calc(100vh - 56px)",
-        },
+        backgroundColor: "#f5f6f8",
     },
     toolbar: {
-        paddingRight: 24, // keep right padding when drawer closed
-    },
-    toolbarIcon: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-end",
-        padding: "0 8px",
-        minHeight: "48px",
+        paddingRight: 24, 
+        backgroundColor: "#ffffff",
+        color: "#333",
+        borderBottom: "1px solid rgba(0,0,0,0.05)",
     },
     appBar: {
         zIndex: theme.zIndex.drawer + 1,
@@ -55,12 +50,9 @@ const useStyles = makeStyles((theme) => ({
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
         }),
-    },
-    appBarLight: {
-        backgroundColor: theme.palette.type === "dark" ? theme.palette.background.paper : "#f3f2fb",
-        color: theme.palette.text.primary,
-        borderBottom: `1px solid ${theme.palette.divider}`,
+        backgroundColor: "#ffffff",
         boxShadow: "none",
+        borderBottom: "1px solid rgba(0,0,0,0.05)",
     },
     appBarShift: {
         marginLeft: drawerWidth,
@@ -71,13 +63,12 @@ const useStyles = makeStyles((theme) => ({
         }),
     },
     menuButton: {
-        marginRight: 36,
-    },
-    menuButtonHidden: {
-        display: "none",
+        marginRight: 16,
     },
     title: {
-        flexGrow: 1,
+        flexGrow: 0,
+        fontWeight: 700,
+        marginRight: 24,
     },
     drawerPaper: {
         position: "relative",
@@ -89,6 +80,8 @@ const useStyles = makeStyles((theme) => ({
         }),
         display: "flex",
         flexDirection: "column",
+        backgroundColor: "#ffffff",
+        borderRight: "1px solid rgba(0,0,0,0.05)",
     },
     drawerPaperClose: {
         overflowX: "hidden",
@@ -96,57 +89,37 @@ const useStyles = makeStyles((theme) => ({
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
         }),
-        width: theme.spacing(7),
-        [theme.breakpoints.up("sm")]: {
-            width: theme.spacing(9),
-        },
+        width: 72,
         display: "flex",
         flexDirection: "column",
     },
     appBarSpacer: {
-        minHeight: "48px",
+        minHeight: "64px",
     },
     content: {
         flex: 1,
-        overflow: "auto",
-    },
-    container: {
-        paddingTop: theme.spacing(4),
-        paddingBottom: theme.spacing(4),
-    },
-    paper: {
-        padding: theme.spacing(2),
+        overflow: "hidden",
+        height: "100vh",
         display: "flex",
-        overflow: "auto",
         flexDirection: "column",
-    },
-    iconButton: {
-        color: "inherit",
     },
     logoContainer: {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "16px",
+        padding: "24px 16px",
         minHeight: 80,
-        width: "100%",
     },
     systemLogo: {
         maxWidth: "80%",
-        maxHeight: 80,
+        maxHeight: 50,
         objectFit: "contain",
-    },
-    systemTitle: {
-        fontWeight: 600,
-        fontSize: "1.1rem",
-        textAlign: "center",
-        padding: "0 8px",
     },
 }));
 
 const MainLayoutDefault = ({ children }) => {
     const classes = useStyles();
-    const [userModalOpen, setUserModalOpen] = useState(false);
+    const history = useHistory();
     const [anchorEl, setAnchorEl] = useState(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const { handleLogout, loading } = useContext(AuthContext);
@@ -156,56 +129,32 @@ const MainLayoutDefault = ({ children }) => {
     const { appTheme } = useThemeContext();
     const [systemLogo, setSystemLogo] = useState("");
     const [systemTitle, setSystemTitle] = useState("Watink");
-    const [logoEnabled, setLogoEnabled] = useState(true);
 
     useEffect(() => {
         if (document.body.offsetWidth > 600) {
-            setDrawerOpen(true);
+            setDrawerOpen(false); // Start collapsed for modern look
         }
     }, []);
 
-    // Fetch system settings for logo and title
     useEffect(() => {
         const fetchSettings = async () => {
             try {
                 const { data } = await api.get("/settings");
                 const settingsData = Array.isArray(data) ? data : [];
-
                 const logoSetting = settingsData.find(s => s.key === "systemLogo");
                 const titleSetting = settingsData.find(s => s.key === "systemTitle");
-                const logoEnabledSetting = settingsData.find(s => s.key === "systemLogoEnabled");
-                const faviconSetting = settingsData.find(s => s.key === "systemFavicon");
-
-                if (logoSetting && logoSetting.value) {
-                    setSystemLogo(logoSetting.value);
-                }
-                if (titleSetting && titleSetting.value) {
+                if (logoSetting?.value) setSystemLogo(logoSetting.value);
+                if (titleSetting?.value) {
                     setSystemTitle(titleSetting.value);
                     document.title = titleSetting.value;
                 }
-                if (logoEnabledSetting) {
-                    setLogoEnabled(logoEnabledSetting.value === "true");
-                }
-                // Update browser favicon dynamically
-                if (faviconSetting && faviconSetting.value) {
-                    const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
-                    link.rel = 'icon';
-                    link.href = getBackendUrl(faviconSetting.value);
-                    document.head.appendChild(link);
-                }
-            } catch (err) {
-                console.error("Error fetching settings:", err);
-            }
+            } catch (err) {}
         };
         fetchSettings();
     }, []);
 
     useEffect(() => {
-        if (document.body.offsetWidth < 600) {
-            setDrawerVariant("temporary");
-        } else {
-            setDrawerVariant("permanent");
-        }
+        setDrawerVariant(document.body.offsetWidth < 600 ? "temporary" : "permanent");
     }, [drawerOpen]);
 
     const handleMenu = (event) => {
@@ -216,11 +165,6 @@ const MainLayoutDefault = ({ children }) => {
     const handleCloseMenu = () => {
         setAnchorEl(null);
         setMenuOpen(false);
-    };
-
-    const handleOpenUserModal = () => {
-        setUserModalOpen(true);
-        handleCloseMenu();
     };
 
     const handleClickLogout = () => {
@@ -251,88 +195,76 @@ const MainLayoutDefault = ({ children }) => {
                 }}
                 open={drawerOpen}
             >
-                {/* Logo and Title Section */}
                 <Box className={classes.logoContainer}>
-                    {drawerOpen && systemLogo && logoEnabled ? (
+                    {systemLogo ? (
                         <img
                             src={getBackendUrl(systemLogo)}
                             alt="Logo"
                             className={classes.systemLogo}
                         />
-                    ) : drawerOpen && systemTitle ? (
-                        <Typography className={classes.systemTitle} noWrap>
-                            {systemTitle}
-                        </Typography>
-                    ) : null}
+                    ) : (
+                        <Typography variant="h6" style={{fontWeight:800}}>{systemTitle}</Typography>
+                    )}
                 </Box>
-                <Divider />
                 <List style={{ flexGrow: 1, overflowY: "auto", overflowX: "hidden" }}>
                     <MainListItems drawerClose={drawerClose} collapsed={!drawerOpen} />
                 </List>
                 <Divider />
                 <VersionFooter collapsed={!drawerOpen} />
             </Drawer>
-            <UserModal
-                open={userModalOpen}
-                onClose={() => setUserModalOpen(false)}
-                userId={user?.id}
-            />
+            
             <AppBar
                 position="absolute"
-                className={clsx(
-                    classes.appBar,
-                    drawerOpen && classes.appBarShift,
-                    (appTheme === "apple" || appTheme === "whaticket") && classes.appBarLight
-                )}
+                className={clsx(classes.appBar, drawerOpen && classes.appBarShift)}
             >
-                <Toolbar variant="dense" className={classes.toolbar}>
+                <Toolbar variant="regular" className={classes.toolbar}>
                     <IconButton
                         edge="start"
-                        color="inherit"
-                        aria-label="toggle drawer"
                         onClick={() => setDrawerOpen(!drawerOpen)}
                         className={classes.menuButton}
                     >
                         <MenuIcon />
                     </IconButton>
+                    
                     <Typography
-                        component="h1"
                         variant="h6"
-                        color="inherit"
                         noWrap
                         className={classes.title}
                     >
-                        {systemTitle}
+                        {i18n.t("mainDrawer.appBar.user.tickets") || "Tickets"}
                     </Typography>
 
-                    {user.id && <NotificationsPopOver />}
+                    {/* Integrated dynamic header content can be injected via context or portal if needed, 
+                        but for now we'll keep the AppBar generic and the TicketsManager specific. */}
+                    
+                    <div style={{ flexGrow: 1 }} />
 
-                    <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {user.id && <NotificationsPopOver />}
+
                         <IconButton
-                            aria-label="account of current user"
-                            aria-controls="menu-appbar"
-                            aria-haspopup="true"
                             onClick={handleMenu}
                             color="inherit"
                         >
-                            <AccountCircle />
+                            {user.profileImage ? (
+                                <Avatar
+                                    alt={user.name}
+                                    src={getBackendUrl(user.profileImage)}
+                                    style={{ width: 32, height: 32 }}
+                                />
+                            ) : (
+                                <AccountCircle />
+                            )}
                         </IconButton>
                         <Menu
-                            id="menu-appbar"
                             anchorEl={anchorEl}
                             getContentAnchorEl={null}
-                            anchorOrigin={{
-                                vertical: "bottom",
-                                horizontal: "right",
-                            }}
-                            transformOrigin={{
-                                vertical: "top",
-                                horizontal: "right",
-                            }}
+                            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                            transformOrigin={{ vertical: "top", horizontal: "right" }}
                             open={menuOpen}
                             onClose={handleCloseMenu}
                         >
-                            <MenuItem onClick={handleOpenUserModal}>
+                            <MenuItem onClick={() => { handleCloseMenu(); history.push("/profile"); }}>
                                 {i18n.t("mainDrawer.appBar.user.profile")}
                             </MenuItem>
                             <MenuItem onClick={handleClickLogout}>
@@ -344,7 +276,7 @@ const MainLayoutDefault = ({ children }) => {
             </AppBar>
             <main className={classes.content}>
                 <div className={classes.appBarSpacer} />
-                {children ? children : null}
+                {children}
             </main>
         </div>
     );

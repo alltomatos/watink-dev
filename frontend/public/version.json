@@ -1,7 +1,7 @@
 {
   "service": "frontend",
   "version": "0.7.120",
-  "lastUpdated": "2026-02-19T13:00:12.209Z",
+  "lastUpdated": "2026-02-19T13:49:59.900Z",
   "changelog": [
     "Correções no Monitor e Swagger interno",
     "Ajustes de permissões (superadmin/RBAC)",
