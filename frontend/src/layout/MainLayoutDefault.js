@@ -57,7 +57,7 @@ const useStyles = makeStyles((theme) => ({
         }),
     },
     appBarLight: {
-        backgroundColor: theme.palette.background.paper,
+        backgroundColor: theme.palette.type === "dark" ? theme.palette.background.paper : "#f3f2fb",
         color: theme.palette.text.primary,
         borderBottom: `1px solid ${theme.palette.divider}`,
         boxShadow: "none",
@@ -153,7 +153,7 @@ const MainLayoutDefault = ({ children }) => {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [drawerVariant, setDrawerVariant] = useState("permanent");
     const { user } = useContext(AuthContext);
-    const { appTheme, darkMode } = useThemeContext();
+    const { appTheme } = useThemeContext();
     const [systemLogo, setSystemLogo] = useState("");
     const [systemTitle, setSystemTitle] = useState("Watink");
     const [logoEnabled, setLogoEnabled] = useState(true);
@@ -282,7 +282,7 @@ const MainLayoutDefault = ({ children }) => {
                 className={clsx(
                     classes.appBar,
                     drawerOpen && classes.appBarShift,
-                    !darkMode && (appTheme === "apple" || appTheme === "whaticket" || appTheme === "default") && classes.appBarLight
+                    (appTheme === "apple" || appTheme === "whaticket") && classes.appBarLight
                 )}
             >
                 <Toolbar variant="dense" className={classes.toolbar}>
