@@ -34,6 +34,7 @@ func SetupRoutes(group *gin.RouterGroup) {
 		// Update & System
 		protected.GET("/system/stats", controllers.GetSystemStats)
 		protected.GET("/system/rabbitmq/queues", controllers.GetRabbitMQQueues)
+		protected.GET("/system/latest-release", controllers.GetLatestRelease)
 		protected.POST("/system/update", controllers.StartUpdate)
 		// Auth
 		protected.DELETE("/auth/logout", controllers.Logout)
@@ -116,6 +117,14 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.GET("/flows/:flowId", controllers.ShowFlow)
 		protected.PUT("/flows/:flowId", controllers.UpdateFlow)
 		protected.DELETE("/flows/:flowId", controllers.DeleteFlow)
+
+		// Tags
+		protected.GET("/tags", controllers.ListTags)
+		protected.POST("/tags", controllers.CreateTag)
+		protected.PUT("/tags/:id", controllers.UpdateTag)
+		protected.DELETE("/tags/:id", controllers.DeleteTag)
+		protected.GET("/tag-groups", controllers.ListTagGroups)
+		protected.PUT("/entities/:entityType/:id/tags/sync", controllers.SyncEntityTags)
 
 		// Pipelines
 		protected.GET("/pipelines", controllers.ListPipelines)

@@ -53,6 +53,9 @@ func Migrate() {
 		&models.KnowledgeBaseSource{},
 		&models.Pipeline{},
 		&models.PipelineStage{},
+		&models.TagGroup{},
+		&models.Tag{},
+		&models.EntityTag{},
 	)
 
 	if err != nil {

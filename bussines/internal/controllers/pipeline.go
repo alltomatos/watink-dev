@@ -7,7 +7,6 @@ import (
 	"github.com/alltomatos/watinkdev/bussines/internal/database"
 	"github.com/alltomatos/watinkdev/bussines/internal/models"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 func ListPipelines(c *gin.Context) {
@@ -23,7 +22,11 @@ func ListPipelines(c *gin.Context) {
 }
 
 func CreatePipeline(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var pipeline models.Pipeline
 	if err := c.ShouldBindJSON(&pipeline); err != nil {
@@ -31,7 +34,7 @@ func CreatePipeline(c *gin.Context) {
 		return
 	}
 
-	pipeline.TenantID = tenantID.(uuid.UUID)
+	pipeline.TenantID = tenantID
 	if err := database.DB.Create(&pipeline).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create pipeline"})
 		return

@@ -6,7 +6,6 @@ import (
 	"github.com/alltomatos/watinkdev/bussines/internal/database"
 	"github.com/alltomatos/watinkdev/bussines/internal/models"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 func ListFlows(c *gin.Context) {
@@ -22,7 +21,11 @@ func ListFlows(c *gin.Context) {
 }
 
 func CreateFlow(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var flow models.Flow
 	if err := c.ShouldBindJSON(&flow); err != nil {
@@ -30,7 +33,7 @@ func CreateFlow(c *gin.Context) {
 		return
 	}
 
-	flow.TenantID = tenantID.(uuid.UUID)
+	flow.TenantID = tenantID
 	if err := database.DB.Create(&flow).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create flow"})
 		return

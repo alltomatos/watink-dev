@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +12,86 @@ import (
 
 type UpdateRequest struct {
 	Version string `json:"version"`
+}
+
+type githubRelease struct {
+	TagName string `json:"tag_name"`
+	Body    string `json:"body"`
+	Assets  []struct {
+		Name               string `json:"name"`
+		BrowserDownloadURL string `json:"browser_download_url"`
+	} `json:"assets"`
+}
+
+func GetLatestRelease(c *gin.Context) {
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	resp, err := client.Get("https://api.github.com/repos/alltomatos/watink-bussines/releases/latest")
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"version": "-", "changelog": []string{}, "breaking": false})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		c.JSON(http.StatusOK, gin.H{"version": "-", "changelog": []string{}, "breaking": false})
+		return
+	}
+
+	var rel githubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+		c.JSON(http.StatusOK, gin.H{"version": "-", "changelog": []string{}, "breaking": false})
+		return
+	}
+
+	result := gin.H{
+		"version":            rel.TagName,
+		"changelog":          []string{},
+		"breaking":           false,
+		"min_compatible_from": "",
+		"migration_notes":    "",
+	}
+
+	for _, a := range rel.Assets {
+		if a.Name != "manifest.json" || a.BrowserDownloadURL == "" {
+			continue
+		}
+		mResp, mErr := client.Get(a.BrowserDownloadURL)
+		if mErr != nil || mResp.StatusCode >= 400 {
+			if mResp != nil {
+				mResp.Body.Close()
+			}
+			break
+		}
+		var manifest map[string]interface{}
+		if err := json.NewDecoder(mResp.Body).Decode(&manifest); err == nil {
+			if v, ok := manifest["version"].(string); ok && v != "" {
+				result["version"] = v
+			}
+			if b, ok := manifest["breaking"].(bool); ok {
+				result["breaking"] = b
+			}
+			if m, ok := manifest["min_compatible_from"].(string); ok {
+				result["min_compatible_from"] = m
+			}
+			if notes, ok := manifest["migration_notes"].(string); ok {
+				result["migration_notes"] = notes
+			}
+			if cl, ok := manifest["changelog"].([]interface{}); ok {
+				lines := make([]string, 0, len(cl))
+				for _, it := range cl {
+					if s, ok := it.(string); ok && s != "" {
+						lines = append(lines, s)
+					}
+				}
+				result["changelog"] = lines
+			}
+		}
+		mResp.Body.Close()
+		break
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 func StartUpdate(c *gin.Context) {

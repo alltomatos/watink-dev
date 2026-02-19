@@ -6,7 +6,6 @@ import (
 	"github.com/alltomatos/watinkdev/bussines/internal/database"
 	"github.com/alltomatos/watinkdev/bussines/internal/models"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 func ListWhatsapps(c *gin.Context) {
@@ -35,7 +34,11 @@ func ShowWhatsapp(c *gin.Context) {
 }
 
 func CreateWhatsapp(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var input models.Whatsapp
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -43,7 +46,7 @@ func CreateWhatsapp(c *gin.Context) {
 		return
 	}
 
-	input.TenantID = tenantID.(uuid.UUID)
+	input.TenantID = tenantID
 	if input.Status == "" {
 		input.Status = "DISCONNECTED"
 	}
@@ -63,7 +66,11 @@ func CreateWhatsapp(c *gin.Context) {
 }
 
 func UpdateWhatsapp(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	id := c.Param("id")
 
 	var whatsapp models.Whatsapp
@@ -85,7 +92,7 @@ func UpdateWhatsapp(c *gin.Context) {
 	}
 
 	input.ID = whatsapp.ID
-	input.TenantID = tenantID.(uuid.UUID)
+	input.TenantID = tenantID
 
 	if err := database.DB.Model(&whatsapp).Updates(input).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

@@ -199,40 +199,19 @@ export default function VersionDashboard() {
       })
       .catch(() => {});
 
-    fetch("https://api.github.com/repos/alltomatos/watink-bussines/releases/latest", { cache: "no-store" })
-      .then((r) => r.json())
-      .then(async (release) => {
-        const tag = String(release?.tag_name || "").trim();
-        if (tag) setAvailableVersion(tag.replace(/^v/i, ""));
+    api.get("/system/latest-release")
+      .then(({ data }) => {
+        const version = String(data?.version || "").trim().replace(/^v/i, "");
+        if (version) setAvailableVersion(version);
 
-        const manifestAsset = (release?.assets || []).find((a) => a?.name === "manifest.json");
-        if (manifestAsset?.browser_download_url) {
-          try {
-            const manifest = await fetch(manifestAsset.browser_download_url, { cache: "no-store" }).then((r) => r.json());
-            if (manifest?.version) setAvailableVersion(String(manifest.version));
-            setReleaseMeta({
-              breaking: !!manifest?.breaking,
-              minCompatibleFrom: String(manifest?.min_compatible_from || ""),
-              migrationNotes: String(manifest?.migration_notes || ""),
-            });
-            if (Array.isArray(manifest?.changelog) && manifest.changelog.length > 0) {
-              setChangelog(manifest.changelog.filter(Boolean));
-              return;
-            }
-          } catch (_) {
-            // fallback para body
-          }
-        }
+        setReleaseMeta({
+          breaking: !!data?.breaking,
+          minCompatibleFrom: String(data?.min_compatible_from || ""),
+          migrationNotes: String(data?.migration_notes || ""),
+        });
 
-        setReleaseMeta({ breaking: false, minCompatibleFrom: "", migrationNotes: "" });
-
-        const body = String(release?.body || "").trim();
-        if (body) {
-          const lines = body
-            .split("\n")
-            .map((l) => l.replace(/^[-*]\s*/, "").trim())
-            .filter(Boolean);
-          setChangelog(lines.length ? lines : [body]);
+        if (Array.isArray(data?.changelog) && data.changelog.length > 0) {
+          setChangelog(data.changelog.filter(Boolean));
         } else {
           setChangelog([]);
         }

@@ -22,6 +22,7 @@ import UserEdit from "../pages/UserEdit";
 import Contacts from "../pages/Contacts/";
 import QuickAnswers from "../pages/QuickAnswers/";
 import Groups from "../pages/Groups";
+import TagManager from "../pages/TagManager/";
 import Queues from "../pages/Queues/";
 import KnowledgeBase from "../pages/KnowledgeBase/";
 import KnowledgeBaseConfig from "../pages/KnowledgeBase/KnowledgeBaseConfig";
@@ -67,6 +68,7 @@ const PrivateRoutes = () => {
             <Route exact path="/quickAnswers" component={QuickAnswers} isPrivate />
             <Route exact path="/Settings" component={Settings} isPrivate />
             <Route exact path="/groups" component={Groups} isPrivate />
+            <Route exact path="/tags" component={TagManager} isPrivate />
             <Route exact path="/queues" component={Queues} isPrivate />
             <Route exact path="/knowledge-bases" component={KnowledgeBase} isPrivate />
             <Route exact path="/knowledge-bases/:knowledgeBaseId" component={KnowledgeBaseConfig} isPrivate />
