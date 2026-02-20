@@ -14,54 +14,48 @@ import Hidden from "@material-ui/core/Hidden";
 const useStyles = makeStyles((theme) => ({
   chatContainer: {
     flex: 1,
-    // // backgroundColor: "#eee",
-    // padding: theme.spacing(4),
-    height: `calc(100% - 48px)`,
-    overflowY: "hidden",
-    backgroundColor: theme.palette.background.default,
+    height: "100%",
+    overflow: "hidden",
+    backgroundColor: "#ffffff",
   },
 
   chatPapper: {
-    // backgroundColor: "red",
     display: "flex",
     height: "100%",
-    backgroundColor: theme.palette.background.paper,
+    backgroundColor: "#ffffff",
   },
 
   contactsWrapper: {
     display: "flex",
     height: "100%",
     flexDirection: "column",
-    overflowY: "hidden",
+    overflow: "hidden",
+    borderRight: "1px solid rgba(0,0,0,0.05)",
   },
   contactsWrapperSmall: {
     display: "flex",
     height: "100%",
     flexDirection: "column",
-    overflowY: "hidden",
+    overflow: "hidden",
     [theme.breakpoints.down("sm")]: {
       display: "none",
     },
+    borderRight: "1px solid rgba(0,0,0,0.05)",
   },
   messagessWrapper: {
     display: "flex",
     height: "100%",
     flexDirection: "column",
+    backgroundColor: "#f5f6f8",
   },
   welcomeMsg: {
-    backgroundColor: theme.palette.background.paper,
+    backgroundColor: "#f5f6f8",
     display: "flex",
     justifyContent: "space-evenly",
     alignItems: "center",
     height: "100%",
     textAlign: "center",
     borderRadius: 0,
-  },
-  ticketsManager: {},
-  ticketsManagerClosed: {
-    [theme.breakpoints.down("sm")]: {
-      display: "none",
-    },
   },
 }));
 
@@ -72,28 +66,26 @@ const Chat = () => {
   return (
     <div className={classes.chatContainer}>
       <div className={classes.chatPapper}>
-        <Grid container spacing={0}>
-          {/* <Grid item xs={4} className={classes.contactsWrapper}> */}
+        <Grid container spacing={0} style={{height: '100%'}}>
           <Grid
             item
             xs={12}
             md={4}
+            lg={3}
             className={
               ticketId ? classes.contactsWrapperSmall : classes.contactsWrapper
             }
           >
             <TicketsManager />
           </Grid>
-          <Grid item xs={12} md={8} className={classes.messagessWrapper}>
-            {/* <Grid item xs={8} className={classes.messagessWrapper}> */}
+          <Grid item xs={12} md={8} lg={9} className={classes.messagessWrapper}>
             {ticketId ? (
               <>
                 <Ticket />
               </>
             ) : (
               <Hidden only={["sm", "xs"]}>
-                <Paper className={classes.welcomeMsg}>
-                  {/* <Paper square variant="outlined" className={classes.welcomeMsg}> */}
+                <Paper className={classes.welcomeMsg} elevation={0}>
                   <span>{i18n.t("chat.noTicketMessage")}</span>
                 </Paper>
               </Hidden>

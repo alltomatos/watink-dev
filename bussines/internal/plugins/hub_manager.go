@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -30,8 +31,9 @@ type CatalogResponse struct {
 }
 
 type InstalledResponse struct {
-	Active   []string          `json:"active"`
-	Statuses map[string]string `json:"statuses"`
+	Active       []string               `json:"active"`
+	Statuses     map[string]string      `json:"statuses"`
+	Entitlements map[string]interface{} `json:"entitlements,omitempty"`
 }
 
 type CreateCheckoutResponse struct {
@@ -43,16 +45,18 @@ type tenantPluginsStore map[string][]string
 type licenseStatusStore map[string]string
 
 type HubManager struct {
-	HubURL            string
-	CoreVersion       string
-	InstanceIDFile    string
-	TenantPluginsFile string
-	LicenseStatusFile string
+	HubURL                 string
+	CoreVersion            string
+	InstanceIDFile         string
+	TenantPluginsFile      string
+	LicenseStatusFile      string
+	EntitlementsStatusFile string
 
 	httpClient *http.Client
 
-	tenantPluginsMu sync.Mutex
-	licenseStatusMu sync.Mutex
+	tenantPluginsMu      sync.Mutex
+	licenseStatusMu      sync.Mutex
+	entitlementsStatusMu sync.Mutex
 
 	instanceID string
 }
@@ -66,12 +70,13 @@ func NewHubManager() *HubManager {
 	}
 
 	return &HubManager{
-		HubURL:            getenv("PLUGIN_HUB_URL", "http://localhost:8090/api/v1/hub"),
-		CoreVersion:       getenv("WATINK_CORE_VERSION", "2.0.0-business"),
-		InstanceIDFile:    filepath.Join(baseDir, ".instance_id"),
-		TenantPluginsFile: filepath.Join(baseDir, ".tenant_plugins.json"),
-		LicenseStatusFile: filepath.Join(baseDir, ".license_status.json"),
-		httpClient:        &http.Client{Timeout: 12 * time.Second},
+		HubURL:                 getenv("PLUGIN_HUB_URL", "http://localhost:8090/api/v1/hub"),
+		CoreVersion:            resolveCoreVersion(baseDir),
+		InstanceIDFile:         filepath.Join(baseDir, ".instance_id"),
+		TenantPluginsFile:      filepath.Join(baseDir, ".tenant_plugins.json"),
+		LicenseStatusFile:      filepath.Join(baseDir, ".license_status.json"),
+		EntitlementsStatusFile: filepath.Join(baseDir, ".entitlements_status.json"),
+		httpClient:             &http.Client{Timeout: 12 * time.Second},
 	}
 }
 
@@ -115,7 +120,8 @@ func (m *HubManager) GetInstalled(tenantID string) InstalledResponse {
 		active = []string{}
 	}
 	statuses := m.readLicenseStatus()
-	return InstalledResponse{Active: active, Statuses: statuses}
+	entitlements := m.readEntitlementsStatus()
+	return InstalledResponse{Active: active, Statuses: statuses, Entitlements: entitlements}
 }
 
 func (m *HubManager) CreateCheckout(slug string) (CreateCheckoutResponse, int, error) {
@@ -139,6 +145,28 @@ func (m *HubManager) CreateCheckout(slug string) (CreateCheckoutResponse, int, e
 		return CreateCheckoutResponse{}, http.StatusBadGateway, err
 	}
 	return out, http.StatusOK, nil
+}
+
+func (m *HubManager) RegisterInstance(meta map[string]string) error {
+	payload := map[string]string{
+		"instanceId": m.instanceID,
+		"version":    m.CoreVersion,
+	}
+	for k, v := range meta {
+		payload[k] = v
+	}
+
+	body, _ := json.Marshal(payload)
+	resp, err := m.httpClient.Post(m.HubURL+"/register", "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("hub register status %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func (m *HubManager) startHeartbeat() {
@@ -172,17 +200,24 @@ func (m *HubManager) sendHeartbeat() {
 	}
 
 	var hubResp struct {
-		Licenses map[string]string `json:"licenses"`
+		Licenses     map[string]string      `json:"licenses"`
+		Entitlements map[string]interface{} `json:"entitlements"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&hubResp); err != nil {
 		return
 	}
 
 	m.licenseStatusMu.Lock()
-	defer m.licenseStatusMu.Unlock()
 	if err := m.writeLicenseStatus(hubResp.Licenses); err != nil {
 		log.Printf("⚠️ failed writing license status: %v", err)
 	}
+	m.licenseStatusMu.Unlock()
+
+	m.entitlementsStatusMu.Lock()
+	if err := m.writeEntitlementsStatus(hubResp.Entitlements); err != nil {
+		log.Printf("⚠️ failed writing entitlements status: %v", err)
+	}
+	m.entitlementsStatusMu.Unlock()
 }
 
 func (m *HubManager) getInstanceID() string {
@@ -230,6 +265,70 @@ func (m *HubManager) readLicenseStatus() licenseStatusStore {
 func (m *HubManager) writeLicenseStatus(store licenseStatusStore) error {
 	payload, _ := json.MarshalIndent(store, "", "  ")
 	return os.WriteFile(m.LicenseStatusFile, payload, 0644)
+}
+
+func (m *HubManager) readEntitlementsStatus() map[string]interface{} {
+	m.entitlementsStatusMu.Lock()
+	defer m.entitlementsStatusMu.Unlock()
+
+	data, err := os.ReadFile(m.EntitlementsStatusFile)
+	if err != nil {
+		return map[string]interface{}{}
+	}
+
+	var store map[string]interface{}
+	_ = json.Unmarshal(data, &store)
+	if store == nil {
+		return map[string]interface{}{}
+	}
+	return store
+}
+
+func (m *HubManager) writeEntitlementsStatus(store map[string]interface{}) error {
+	if store == nil {
+		store = map[string]interface{}{}
+	}
+	payload, _ := json.MarshalIndent(store, "", "  ")
+	return os.WriteFile(m.EntitlementsStatusFile, payload, 0644)
+}
+
+func resolveCoreVersion(baseDir string) string {
+	if v := getenv("WATINK_CORE_VERSION", ""); v != "" {
+		return v
+	}
+
+	candidates := []string{
+		getenv("WATINK_VERSION_FILE", ""),
+		filepath.Join(baseDir, "VERSION"),
+		filepath.Join(baseDir, "..", "frontend", "public", "version.json"),
+		"/opt/watink/app/VERSION",
+	}
+
+	for _, p := range candidates {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if b, err := os.ReadFile(p); err == nil {
+			raw := strings.TrimSpace(string(b))
+			if raw == "" {
+				continue
+			}
+
+			if strings.HasSuffix(p, ".json") {
+				var payload map[string]interface{}
+				if err := json.Unmarshal(b, &payload); err == nil {
+					if vv, ok := payload["version"].(string); ok && strings.TrimSpace(vv) != "" {
+						return strings.TrimPrefix(strings.TrimSpace(vv), "v")
+					}
+				}
+			}
+
+			return strings.TrimPrefix(raw, "v")
+		}
+	}
+
+	return "2.0.0-business"
 }
 
 func getenv(k, d string) string {

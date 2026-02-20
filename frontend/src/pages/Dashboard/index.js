@@ -10,6 +10,7 @@ import { ArrowUpward, ArrowDownward } from "@material-ui/icons";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import TicketsInfo from "../../components/Dashboard/Widgets/TicketsInfo";
 import AttendanceChart from "../../components/Dashboard/Widgets/AttendanceChart";
+import PerformanceMetrics from "../../components/Dashboard/Widgets/PerformanceMetrics";
 import api from "../../services/api";
 import { toast } from "react-toastify";
 
@@ -17,28 +18,61 @@ const useStyles = makeStyles((theme) => ({
   container: {
     paddingTop: theme.spacing(4),
     paddingBottom: theme.spacing(4),
+    backgroundColor: "#f5f6f8",
+    minHeight: "100%",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing(4),
+  },
+  title: {
+    fontSize: "1.75rem",
+    fontWeight: 700,
+    color: "#1a1a1a",
+  },
+  customizeButton: {
+    borderRadius: 20,
+    textTransform: "none",
+    fontWeight: 600,
+    backgroundColor: "#ffffff",
+    color: "#007AFF",
+    border: "1px solid rgba(0,122,255,0.2)",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+    "&:hover": {
+      backgroundColor: "#f0f7ff",
+    }
   },
   modalPaper: {
     position: 'absolute',
-    width: 400,
+    width: 450,
     backgroundColor: theme.palette.background.paper,
     border: 'none',
-    boxShadow: theme.shadows[5],
-    padding: theme.spacing(2, 4, 3),
+    boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
+    padding: theme.spacing(4),
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    borderRadius: 8,
+    borderRadius: 20,
   },
   widgetConfigItem: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: theme.spacing(1),
-    padding: theme.spacing(1),
-    backgroundColor: theme.palette.background.default,
-    borderRadius: 4,
+    marginBottom: theme.spacing(2),
+    padding: theme.spacing(2),
+    backgroundColor: "#f9fafb",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.03)",
   },
+  saveButton: {
+    borderRadius: 12,
+    textTransform: "none",
+    fontWeight: 600,
+    padding: "12px",
+    marginTop: theme.spacing(2),
+  }
 }));
 
 const Dashboard = () => {
@@ -52,8 +86,9 @@ const Dashboard = () => {
       setWidgets(user.configs.dashboard.widgets);
     } else {
       setWidgets([
-        { id: "tickets_info", visible: true, width: 12, order: 1 },
-        { id: "attendance_chart", visible: true, width: 12, order: 2 },
+        { id: "performance_metrics", visible: true, width: 12, order: 1 },
+        { id: "tickets_info", visible: true, width: 12, order: 2 },
+        { id: "attendance_chart", visible: true, width: 12, order: 3 },
       ]);
     }
   }, [user]);
@@ -100,14 +135,16 @@ const Dashboard = () => {
   };
 
   let userQueueIds = [];
-  if (user.queues && user.queues.length > 0) {
-    userQueueIds = user.queues.map((q) => q.id);
+  if (user?.queues && user.queues.length > 0) {
+    userQueueIds = user.queues?.map((q) => q.id) || [];
   }
 
   const renderWidget = (widget) => {
     if (!widget.visible) return null;
 
     switch (widget.id) {
+      case "performance_metrics":
+        return <PerformanceMetrics key={widget.id} />;
       case "tickets_info":
         return <TicketsInfo key={widget.id} userQueueIds={userQueueIds} />;
       case "attendance_chart":
@@ -120,20 +157,19 @@ const Dashboard = () => {
   const sortedWidgets = [...widgets].sort((a, b) => a.order - b.order);
 
   return (
-    <div>
+    <div style={{ backgroundColor: "#f5f6f8", minHeight: "100vh" }}>
       <Container maxWidth="lg" className={classes.container}>
-        <Grid container spacing={3} style={{ marginBottom: 20 }}>
-          <Grid item xs={12} style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<SettingsIcon />}
-              onClick={() => setModalOpen(true)}
-            >
-              Customize Dashboard
-            </Button>
-          </Grid>
-        </Grid>
+        <div className={classes.header}>
+          <Typography className={classes.title}>Dashboard</Typography>
+          <Button
+            variant="contained"
+            className={classes.customizeButton}
+            startIcon={<SettingsIcon />}
+            onClick={() => setModalOpen(true)}
+          >
+            Personalizar
+          </Button>
+        </div>
 
         <Grid container spacing={3}>
           {sortedWidgets.map(renderWidget)}
@@ -144,7 +180,7 @@ const Dashboard = () => {
           onClose={() => setModalOpen(false)}
         >
           <div className={classes.modalPaper}>
-            <Typography variant="h6" gutterBottom>Customize Dashboard</Typography>
+            <Typography variant="h5" style={{ fontWeight: 700, marginBottom: 24 }}>Configurações do Dashboard</Typography>
             {sortedWidgets.map((widget, index) => (
               <div key={widget.id} className={classes.widgetConfigItem}>
                 <FormControlLabel
@@ -155,7 +191,12 @@ const Dashboard = () => {
                       color="primary"
                     />
                   }
-                  label={widget.id === 'tickets_info' ? 'Tickets Info' : 'Attendance Chart'}
+                  label={
+                    <Typography style={{ fontWeight: 600 }}>
+                      {widget.id === 'performance_metrics' ? 'Métricas de Performance (TMR/TME)' : 
+                       widget.id === 'tickets_info' ? 'Resumo de Tickets' : 'Gráfico de Atendimentos'}
+                    </Typography>
+                  }
                 />
                 <div>
                   <IconButton
@@ -178,11 +219,11 @@ const Dashboard = () => {
             <Button
               variant="contained"
               color="primary"
+              className={classes.saveButton}
               onClick={handleSaveConfigs}
-              style={{ marginTop: 20 }}
               fullWidth
             >
-              Save Preferences
+              Salvar Preferências
             </Button>
           </div>
         </Modal>

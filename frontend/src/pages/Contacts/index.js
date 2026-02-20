@@ -8,8 +8,7 @@ import { makeStyles } from "@material-ui/core/styles";
 import {
   Box,
   Button,
-  TextField,
-  InputAdornment,
+  InputBase,
   Grid,
   CircularProgress,
   IconButton,
@@ -20,6 +19,7 @@ import {
   TableRow,
   Paper,
   Avatar,
+  Typography,
 } from "@material-ui/core";
 import SearchIcon from "@material-ui/icons/Search";
 import WhatsAppIcon from "@material-ui/icons/WhatsApp";
@@ -91,12 +91,55 @@ const reducer = (state, action) => {
 };
 
 const useStyles = makeStyles((theme) => ({
+  mainContainer: {
+    backgroundColor: "#f5f6f8",
+    height: "100%",
+  },
+  header: {
+    backgroundColor: "#ffffff",
+    borderBottom: "1px solid rgba(0,0,0,0.05)",
+    padding: "12px 24px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  title: {
+    fontSize: "1.25rem",
+    fontWeight: 700,
+    color: "#1a1a1a",
+  },
+  searchWrapper: {
+    display: "flex",
+    alignItems: "center",
+    backgroundColor: "#f0f2f5",
+    borderRadius: 20,
+    padding: "4px 16px",
+    width: "100%",
+    maxWidth: 320,
+  },
+  searchInput: {
+    marginLeft: 8,
+    flex: 1,
+    fontSize: "0.9rem",
+  },
   mainPaper: {
     flex: 1,
-    padding: theme.spacing(2),
+    padding: theme.spacing(3),
     overflowY: "auto",
     ...theme.scrollbarStyles,
   },
+  actionButton: {
+    borderRadius: 20,
+    textTransform: "none",
+    fontWeight: 600,
+    padding: "6px 16px",
+    marginLeft: theme.spacing(1),
+  },
+  tablePaper: {
+    borderRadius: 12,
+    overflow: "hidden",
+    border: "1px solid rgba(0,0,0,0.05)",
+  }
 }));
 
 // Status baseado na presença de LID
@@ -254,7 +297,7 @@ const Contacts = () => {
   };
 
   return (
-    <MainContainer className={classes.mainContainer}>
+    <div className={classes.mainContainer}>
       <ContactModal
         open={contactModalOpen}
         onClose={handleCloseContactModal}
@@ -286,33 +329,36 @@ const Contacts = () => {
           ? `${i18n.t("contacts.confirmationModal.deleteMessage")}`
           : `${i18n.t("contacts.confirmationModal.importMessage")}`}
       </ConfirmationModal>
-      <MainHeader>
-        <Title>{i18n.t("contacts.title")}</Title>
-        <MainHeaderButtonsWrapper>
-          <TextField
+      
+      <div className={classes.header}>
+        <Typography className={classes.title}>{i18n.t("contacts.title")}</Typography>
+        
+        <div className={classes.searchWrapper}>
+          <SearchIcon fontSize="small" color="disabled" />
+          <InputBase
+            className={classes.searchInput}
             placeholder={i18n.t("contacts.searchPlaceholder")}
-            type="search"
             value={searchParam}
             onChange={handleSearch}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon style={{ color: "gray" }} />
-                </InputAdornment>
-              ),
-            }}
           />
+        </div>
+
+        <div style={{ display: 'flex' }}>
           <Button
             variant="contained"
-            color="primary"
+            color="default"
+            className={classes.actionButton}
             onClick={(e) => setConfirmOpen(true)}
+            startIcon={<AddIcon />}
           >
             {i18n.t("contacts.buttons.import")}
           </Button>
           <Button
             variant="contained"
             color="primary"
+            className={classes.actionButton}
             onClick={handleOpenContactModal}
+            startIcon={<AddIcon />}
           >
             {i18n.t("contacts.buttons.add")}
           </Button>
@@ -321,12 +367,12 @@ const Contacts = () => {
           >
             {view === "card" ? <ViewListIcon /> : <ViewModuleIcon />}
           </IconButton>
-        </MainHeaderButtonsWrapper>
-      </MainHeader>
+        </div>
+      </div>
 
-      <Box className={classes.mainPaper} onScroll={handleScroll}>
+      <div className={classes.mainPaper} onScroll={handleScroll}>
         {view === "card" ? (
-          <Grid container spacing={2}>
+          <Grid container spacing={3}>
             {contacts.map((contact) => (
               <Grid item xs={12} sm={6} md={4} lg={3} key={contact.id}>
                 <ListItemCard
@@ -380,32 +426,32 @@ const Contacts = () => {
             ))}
           </Grid>
         ) : (
-          <Paper elevation={0}>
-            <Table size="small">
+          <Paper elevation={0} className={classes.tablePaper}>
+            <Table size="medium">
               <TableHead>
-                <TableRow>
+                <TableRow style={{ backgroundColor: "#fafafa" }}>
                   <TableCell padding="checkbox" />
-                  <TableCell>{i18n.t("contacts.table.name")}</TableCell>
-                  <TableCell align="center">
+                  <TableCell style={{ fontWeight: 600 }}>{i18n.t("contacts.table.name")}</TableCell>
+                  <TableCell align="center" style={{ fontWeight: 600 }}>
                     {i18n.t("contacts.table.whatsapp")}
                   </TableCell>
-                  <TableCell align="center">
+                  <TableCell align="center" style={{ fontWeight: 600 }}>
                     {i18n.t("contacts.table.email")}
                   </TableCell>
-                  <TableCell align="center">
+                  <TableCell align="center" style={{ fontWeight: 600 }}>
                     {i18n.t("contacts.table.actions")}
                   </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {contacts.map((contact) => (
-                  <TableRow key={contact.id}>
+                  <TableRow key={contact.id} hover>
                     <TableCell style={{ paddingRight: 0 }}>
                       {<Avatar src={getBackendUrl(contact.profilePicUrl)} />}
                     </TableCell>
-                    <TableCell>{contact.name}</TableCell>
+                    <TableCell style={{ fontWeight: 500 }}>{contact.name}</TableCell>
                     <TableCell align="center">{contact.number}</TableCell>
-                    <TableCell align="center">{contact.email}</TableCell>
+                    <TableCell align="center">{contact.email || "-"}</TableCell>
                     <TableCell align="center">
                       <IconButton
                         size="small"
@@ -454,8 +500,8 @@ const Contacts = () => {
             <CircularProgress />
           </Box>
         )}
-      </Box>
-    </MainContainer>
+      </div>
+    </div>
   );
 };
 

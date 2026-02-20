@@ -13,15 +13,14 @@ const RabbitMQService_1 = __importDefault(require("../services/RabbitMQService")
 const getConfig = async (req, res) => {
     const { whatsappId } = req.params;
     const whatsapp = await Whatsapp_1.default.findByPk(whatsappId);
-    const channelType = whatsapp?.type;
-    if (!whatsapp || channelType !== "webchat") {
+    if (!whatsapp || whatsapp.type !== "webchat") {
         return res.status(404).json({ error: "Webchat not found" });
     }
     return res.json({
         name: whatsapp.name,
         greetingMessage: whatsapp.greetingMessage,
         farewellMessage: whatsapp.farewellMessage,
-        chatConfig: whatsapp?.chatConfig
+        chatConfig: whatsapp.chatConfig
     });
 };
 exports.getConfig = getConfig;
@@ -29,8 +28,7 @@ const createTicket = async (req, res) => {
     const { whatsappId } = req.params;
     const { name, email, phone, message } = req.body;
     const whatsapp = await Whatsapp_1.default.findByPk(whatsappId);
-    const channelType = whatsapp?.type;
-    if (!whatsapp || channelType !== "webchat") {
+    if (!whatsapp || whatsapp.type !== "webchat") {
         return res.status(404).json({ error: "Webchat not found" });
     }
     // Find or Create Contact

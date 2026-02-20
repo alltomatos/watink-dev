@@ -93,12 +93,10 @@ const SessionSchema = Yup.object().shape({
 		.required("Required"),
 });
 
-const WebchatModal = ({ open, onClose, whatsAppId }) => {
+const WebchatModal = ({ open, onClose, whatsAppId, onSaved }) => {
 	const classes = useStyles();
 	const initialState = {
 		name: "",
-		greetingMessage: "",
-		farewellMessage: "",
 		isDefault: false,
         type: "webchat",
         chatConfig: {
@@ -157,6 +155,9 @@ const WebchatModal = ({ open, onClose, whatsAppId }) => {
 				await api.post("/whatsapp", whatsappData);
 			}
 			toast.success(i18n.t("whatsappModal.success"));
+			if (onSaved) {
+				await onSaved();
+			}
 			onClose();
 		} catch (err) {
 			toastError(err);
@@ -255,34 +256,6 @@ const WebchatModal = ({ open, onClose, whatsAppId }) => {
                                                 />
                                             }
                                             label={i18n.t("whatsappModal.form.isDefault")}
-                                        />
-                                    </div>
-                                    <div className={classes.multFieldLine}>
-                                        <Field
-                                            as={TextField}
-                                            label={i18n.t("whatsappModal.form.greetingMessage")}
-                                            name="greetingMessage"
-                                            error={touched.greetingMessage && Boolean(errors.greetingMessage)}
-                                            helperText={touched.greetingMessage && errors.greetingMessage}
-                                            variant="outlined"
-                                            margin="dense"
-                                            fullWidth
-                                            multiline
-                                            rows={4}
-                                        />
-                                    </div>
-                                    <div className={classes.multFieldLine}>
-                                        <Field
-                                            as={TextField}
-                                            label={i18n.t("whatsappModal.form.farewellMessage")}
-                                            name="farewellMessage"
-                                            error={touched.farewellMessage && Boolean(errors.farewellMessage)}
-                                            helperText={touched.farewellMessage && errors.farewellMessage}
-                                            variant="outlined"
-                                            margin="dense"
-                                            fullWidth
-                                            multiline
-                                            rows={4}
                                         />
                                     </div>
                                     <QueueSelect

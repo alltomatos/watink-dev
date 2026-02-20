@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/models"
+	"github.com/alltomatos/watinkdev/bussines/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -38,6 +38,7 @@ func Migrate() {
 	err := DB.AutoMigrate(
 		&models.Plan{},
 		&models.Tenant{},
+		&models.TenantSubscription{},
 		&models.User{},
 		&models.Setting{},
 		&models.Contact{},
@@ -47,12 +48,18 @@ func Migrate() {
 		&models.Message{},
 		&models.Group{},
 		&models.Permission{},
+		&models.Role{},
+		&models.RolePermission{},
 		&models.Flow{},
 		&models.QuickAnswer{},
 		&models.KnowledgeBase{},
 		&models.KnowledgeBaseSource{},
 		&models.Pipeline{},
 		&models.PipelineStage{},
+		&models.TagGroup{},
+		&models.Tag{},
+		&models.EntityTag{},
+		&models.TicketLog{},
 	)
 
 	if err != nil {

@@ -92,8 +92,14 @@ app.get("/test", async (req, res) => {
     }
 });
 // Plugin Routes
-app.use("/plugins/custom", PluginLoader_1.default.getInstance().getRouter());
+const pluginRouter = PluginLoader_1.default.getInstance().getRouter();
+app.use("/plugins/custom", pluginRouter);
+app.use("/api/plugins/custom", pluginRouter);
+// Backward/forward compatibility:
+// - Legacy clients hit routes without prefix (/whatsapp)
+// - New clients (frontend) hit /api/*
 app.use(routes_1.default);
+app.use("/api", routes_1.default);
 app.use(Sentry.Handlers.errorHandler());
 app.use(async (err, req, res, _) => {
     if (err instanceof AppError_1.default) {

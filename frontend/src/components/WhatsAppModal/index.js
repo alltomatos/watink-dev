@@ -58,12 +58,10 @@ const SessionSchema = Yup.object().shape({
 		.required("Required"),
 });
 
-const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
+const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }) => {
 	const classes = useStyles();
 	const initialState = {
 		name: "",
-		greetingMessage: "",
-		farewellMessage: "",
 		isDefault: false,
 		syncHistory: false,
 		syncPeriod: "",
@@ -71,6 +69,27 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 	};
 	const [whatsApp, setWhatsApp] = useState(initialState);
 	const [selectedQueueIds, setSelectedQueueIds] = useState([]);
+
+	const findQueue = (id, list) => {
+		if (!list || !id) return null;
+		return list.find(q => q.id === parseInt(id));
+	};
+
+	const [allQueues, setAllQueues] = useState([]);
+
+	useEffect(() => {
+		const fetchQueues = async () => {
+			try {
+				const { data } = await api.get("/queue");
+				setAllQueues(data);
+			} catch (err) {
+				toastError(err);
+			}
+		};
+		if (open) {
+			fetchQueues();
+		}
+	}, [open]);
 
 	useEffect(() => {
 		const fetchSession = async () => {
@@ -80,7 +99,7 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 				const { data } = await api.get(`whatsapp/${whatsAppId}`);
 				setWhatsApp(data);
 
-				const whatsQueueIds = data.queues?.map(queue => queue.id);
+				const whatsQueueIds = data.queues?.map(queue => queue.id) || [];
 				setSelectedQueueIds(whatsQueueIds);
 			} catch (err) {
 				toastError(err);
@@ -101,6 +120,9 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 				await api.post("/whatsapp", whatsappData);
 			}
 			toast.success(i18n.t("whatsappModal.success"));
+			if (onSaved) {
+				await onSaved();
+			}
 			handleClose();
 		} catch (err) {
 			toastError(err);
@@ -205,46 +227,8 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 										/>
 									)}
 								</div>
-								<div>
-									<Field
-										as={TextField}
-										label={i18n.t("queueModal.form.greetingMessage")}
-										type="greetingMessage"
-										multiline
-										rows={5}
-										fullWidth
-										name="greetingMessage"
-										error={
-											touched.greetingMessage && Boolean(errors.greetingMessage)
-										}
-										helperText={
-											touched.greetingMessage && errors.greetingMessage
-										}
-										variant="outlined"
-										margin="dense"
-									/>
-								</div>
-								<div>
-									<Field
-										as={TextField}
-										label={i18n.t("whatsappModal.form.farewellMessage")}
-										type="farewellMessage"
-										multiline
-										rows={5}
-										fullWidth
-										name="farewellMessage"
-										error={
-											touched.farewellMessage && Boolean(errors.farewellMessage)
-										}
-										helperText={
-											touched.farewellMessage && errors.farewellMessage
-										}
-										variant="outlined"
-										margin="dense"
-									/>
-								</div>
 								<QueueSelect
-									selectedQueueIds={selectedQueueIds}
+									selectedQueueIds={selectedQueueIds?.filter(id => findQueue(id, allQueues)) || []}
 									onChange={selectedIds => setSelectedQueueIds(selectedIds)}
 								/>
 							</DialogContent>

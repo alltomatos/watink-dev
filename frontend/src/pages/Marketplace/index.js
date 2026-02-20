@@ -121,6 +121,7 @@ const Marketplace = () => {
     const [offline, setOffline] = useState(false);
 
     const [instanceId, setInstanceId] = useState("");
+    const [entitlements, setEntitlements] = useState(null);
 
     useEffect(() => {
         loadPlugins();
@@ -142,6 +143,7 @@ const Marketplace = () => {
             const { data: catalogRes } = await pluginApi.get("/plugins/catalog");
             setOffline(Boolean(catalogRes?.offline));
             const { data: installedRes } = await pluginApi.get("/plugins/installed");
+            setEntitlements(installedRes?.entitlements || null);
             const activeSlugs = new Set(Array.isArray(installedRes?.active) ? installedRes.active : []);
             const all = Array.isArray(catalogRes?.plugins) ? catalogRes.plugins : [];
             const normalized = all.map(p => ({
@@ -340,6 +342,16 @@ const Marketplace = () => {
                                 }>
                                     <Typography variant="body2">
                                         <strong>Instance ID:</strong> {instanceId} (Use este ID para gerenciar suas licenças)
+                                    </Typography>
+                                </Alert>
+                            </Box>
+                        )}
+
+                        {entitlements && (
+                            <Box mb={2}>
+                                <Alert severity="success">
+                                    <Typography variant="body2">
+                                        <strong>Plano:</strong> {entitlements.plan_name || "-"} • <strong>Limite premium por tenant (SaaS):</strong> {Number(entitlements.premium_limit || 0)} • <strong>SaaS:</strong> {entitlements.saas_enabled ? "ativo" : "inativo"} {entitlements.unlock_all ? "• liberação total ativa" : ""}
                                     </Typography>
                                 </Alert>
                             </Box>

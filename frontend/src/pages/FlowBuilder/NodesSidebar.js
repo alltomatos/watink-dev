@@ -23,84 +23,83 @@ import api from '../../services/api';
 
 const useStyles = makeStyles((theme) => ({
     sidebar: {
-        width: '280px', // Aumentado um pouco para caber 3 colunas se necessário ou 2 mais folgadas
-        padding: '15px',
-        borderRight: '1px solid #eee',
-        background: '#fcfcfc',
+        width: '280px',
+        padding: '20px',
+        borderRight: '1px solid rgba(0,0,0,0.05)',
+        background: '#ffffff',
         display: 'flex',
         flexDirection: 'column',
-        gap: '10px',
-        overflowY: 'auto'
+        gap: '12px',
+        overflowY: 'auto',
+        ...theme.scrollbarStyles,
     },
     categoryTitle: {
-        marginTop: '15px',
-        marginBottom: '10px',
-        fontWeight: 'bold',
-        color: '#666',
-        fontSize: '12px',
+        marginTop: '20px',
+        marginBottom: '12px',
+        fontWeight: 700,
+        color: '#1a1a1a',
+        fontSize: '0.75rem',
         textTransform: 'uppercase',
-        letterSpacing: '1px'
+        letterSpacing: '0.05em',
+        opacity: 0.6
     },
     gridContainer: {
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)', // 3 Colunas
-        gap: '12px'
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '16px'
     },
-    // Estilos do Card (Copiados/Adaptados de BaseNode)
+    // Estilos do Card
     nodeWrapper: {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         cursor: 'grab',
-        transition: 'transform 0.2s',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
         '&:hover': {
-            transform: 'scale(1.05)'
+            transform: 'translateY(-2px)'
         },
         '&:active': {
             cursor: 'grabbing'
         }
     },
     nodeCard: {
-        width: 45, // Um pouco menor que no canvas (50) para ficar harmonioso no sidebar
-        height: 45,
-        borderRadius: 10,
+        width: 48,
+        height: 48,
+        borderRadius: 14,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        marginBottom: 6
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        marginBottom: 8,
+        transition: 'all 0.2s ease',
     },
     icon: {
-        fontSize: 22,
+        fontSize: 24,
         color: '#fff'
     },
     label: {
-        fontSize: 10,
-        fontWeight: 500,
-        color: '#333',
+        fontSize: '0.7rem',
+        fontWeight: 600,
+        color: '#4b5563',
         textAlign: 'center',
-        lineHeight: 1.1,
+        lineHeight: 1.2,
         maxWidth: '100%'
     },
-    // Gradientes (Mesmos do BaseNode)
-    colorTrigger: { background: 'linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)' },
-    colorMessage: { background: 'linear-gradient(135deg, #2196f3 0%, #1565c0 100%)' },
-    colorMenu: { background: 'linear-gradient(135deg, #ff9800 0%, #e65100 100%)' },
-    colorSwitch: { background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)' },
-    colorDatabase: { background: 'linear-gradient(135deg, #795548 0%, #4e342e 100%)' },
-    colorFilter: { background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)' },
-    colorPipeline: { background: 'linear-gradient(135deg, #00bcd4 0%, #0097a7 100%)' },
-    colorWebhook: {
-        background: 'linear-gradient(135deg, #ff5722 0%, #e64a19 100%)' // Deep Orange
-    },
-    colorApi: {
-        background: 'linear-gradient(135deg, #3f51b5 0%, #283593 100%)' // Indigo
-    },
-    colorKnowledge: { background: 'linear-gradient(135deg, #e91e63 0%, #ad1457 100%)' },
-    colorEnd: { background: 'linear-gradient(135deg, #f44336 0%, #c62828 100%)' },
-    colorDefault: { background: 'linear-gradient(135deg, #607d8b 0%, #455a64 100%)' },
-    colorTicket: { background: 'linear-gradient(135deg, #f06292 0%, #c2185b 100%)' },
-    colorHelpdesk: { background: 'linear-gradient(135deg, #009688 0%, #00695c 100%)' }
+    // Apple-like gradients
+    colorTrigger: { background: 'linear-gradient(180deg, #34C759 0%, #28A745 100%)' },
+    colorMessage: { background: 'linear-gradient(180deg, #007AFF 0%, #0056B3 100%)' },
+    colorMenu: { background: 'linear-gradient(180deg, #FF9500 0%, #E68600 100%)' },
+    colorSwitch: { background: 'linear-gradient(180deg, #AF52DE 0%, #8E44AD 100%)' },
+    colorDatabase: { background: 'linear-gradient(180deg, #A2845E 0%, #846C4D 100%)' },
+    colorFilter: { background: 'linear-gradient(180deg, #5856D6 0%, #4745B1 100%)' },
+    colorPipeline: { background: 'linear-gradient(180deg, #5AC8FA 0%, #48A1C9 100%)' },
+    colorWebhook: { background: 'linear-gradient(180deg, #FF3B30 0%, #D63027 100%)' },
+    colorApi: { background: 'linear-gradient(180deg, #5856D6 0%, #4745B1 100%)' },
+    colorKnowledge: { background: 'linear-gradient(180deg, #FF2D55 0%, #D62548 100%)' },
+    colorEnd: { background: 'linear-gradient(180deg, #FF3B30 0%, #D63027 100%)' },
+    colorDefault: { background: 'linear-gradient(180deg, #8E8E93 0%, #636366 100%)' },
+    colorTicket: { background: 'linear-gradient(180deg, #FF2D55 0%, #D62548 100%)' },
+    colorHelpdesk: { background: 'linear-gradient(180deg, #00C7BE 0%, #00A39C 100%)' }
 }));
 
 const onDragStart = (event, nodeType, label) => {

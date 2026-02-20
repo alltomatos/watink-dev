@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login • Marketplace Admin</title>
+  <style>
+    body{font-family:Inter,Arial,sans-serif;background:#0b1220;color:#e5e7eb;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .card{width:360px;background:#111827;border:1px solid #1f2937;border-radius:12px;padding:20px}
+    h1{margin:0 0 14px;font-size:22px}
+    input,button{width:100%;box-sizing:border-box;background:#0f172a;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:10px;margin-bottom:10px}
+    button{cursor:pointer;font-weight:600}
+    .err{color:#fca5a5;font-size:13px;min-height:18px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Marketplace Admin</h1>
+    <input id="username" placeholder="Usuário" autocomplete="username" />
+    <input id="password" type="password" placeholder="Senha" autocomplete="current-password" />
+    <button onclick="login()">Entrar</button>
+    <div id="err" class="err"></div>
+  </div>
+
+<script>
+async function login(){
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const err = document.getElementById('err');
+  err.textContent = '';
+
+  const res = await fetch('/login', {
+    method:'POST',
+    credentials:'include',
+    headers:{'content-type':'application/json'},
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok){
+    err.textContent = data.error || 'Falha no login';
+    return;
+  }
+
+  window.location.href = '/';
+}
+</script>
+</body>
+</html>

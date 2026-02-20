@@ -109,7 +109,7 @@ const Connections = () => {
 	const classes = useStyles();
 	const history = useHistory();
 
-	const { whatsApps, loading } = useContext(WhatsAppsContext);
+	const { whatsApps, loading, reloadWhatsApps } = useContext(WhatsAppsContext);
 	const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
 	const [webchatModalOpen, setWebchatModalOpen] = useState(false);
 	const [confirmationOpen, setConfirmationOpen] = useState(false);
@@ -163,7 +163,8 @@ const Connections = () => {
 			}
 
 			await api.delete(`/whatsapp/${menuTargetId}`);
-			toast.success(i18n.t("whatsappModal.success"));
+			await reloadWhatsApps();
+			toast.warn(i18n.t("connections.toasts.deleted"));
 		} catch (err) {
 			toastError(err);
 		}
@@ -184,32 +185,43 @@ const Connections = () => {
 
 	const getStatusColor = (status) => {
 		switch (status) {
-			case "CONNECTED": return green[600];
-			case "DISCONNECTED": return red[600];
-			case "qrcode": return orange[600];
-			case "PAIRING": return orange[400];
+			case "CONNECTED": return "#10b981"; // Modern emerald-500
+			case "DISCONNECTED": return "#ef4444"; // Modern red-500
+			case "QRCODE": return "#f59e0b"; // Modern amber-500
+			case "PAIRING": return "#8b5cf6"; // Modern violet-500
+			case "OPENING": return "#3b82f6"; // Modern blue-500
+			case "TIMEOUT": return "#6b7280"; // Modern gray-500
 			default: return "#9ca3af";
 		}
 	};
 
 	const getStatusBackgroundColor = (status) => {
 		switch (status) {
-			case "CONNECTED": return "#E8F5E9";
-			case "DISCONNECTED": return "#FFEBEE";
-			case "qrcode": return "#FFF3E0";
-			default: return "#F3F4F6";
+			case "CONNECTED": return "#ecfdf5";
+			case "DISCONNECTED": return "#fef2f2";
+			case "QRCODE": return "#fffbeb";
+			case "PAIRING": return "#f5f3ff";
+			case "OPENING": return "#eff6ff";
+			default: return "#f9fafb";
 		}
 	};
 
 	const renderStatusIcon = status => {
-		return <SignalCellular4Bar fontSize="default" />;
+		switch (status) {
+			case "CONNECTED": return <CheckCircle fontSize="default" />;
+			case "DISCONNECTED": return <SignalCellularConnectedNoInternet0Bar fontSize="default" />;
+			case "QRCODE": return <CropFree fontSize="default" />;
+			case "PAIRING": return <SignalCellularConnectedNoInternet2Bar fontSize="default" />;
+			case "OPENING": return <Autorenew fontSize="default" className="MuiIcon-spin" />;
+			default: return <SignalCellular4Bar fontSize="default" />;
+		}
 	};
 
 	const renderStatusLabel = status => {
 		switch (status) {
 			case "DISCONNECTED": return "Desconectado";
 			case "OPENING": return "Iniciando...";
-			case "qrcode": return "Escanear QR Code";
+			case "QRCODE": return "Escanear QR Code";
 			case "CONNECTED": return "Conectado";
 			case "TIMEOUT": return "Tempo Esgotado";
 			case "PAIRING": return "Pareando";
@@ -271,11 +283,13 @@ const Connections = () => {
 			<WhatsAppModal
 				open={whatsAppModalOpen}
 				onClose={handleCloseWhatsAppModal}
+				onSaved={reloadWhatsApps}
 				whatsAppId={selectedWhatsApp?.id}
 			/>
 			<WebchatModal
 				open={webchatModalOpen}
 				onClose={handleCloseWebchatModal}
+				onSaved={reloadWhatsApps}
 				whatsAppId={selectedWhatsApp?.id}
 			/>
 
@@ -330,14 +344,15 @@ const Connections = () => {
 											title={whatsApp.name}
 											subtitle={
 												<Box>
-													<span style={{ fontSize: 13, fontWeight: 400, color: '#8e8e8e', display: 'flex', gap: 4 }}>
-														Atualizado em {whatsApp.updatedAt
-															? format(parseISO(whatsApp.updatedAt), "dd/MM")
+													<span style={{ fontSize: 13, fontWeight: 400, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+														<Autorenew style={{ fontSize: 14 }} />
+														{whatsApp.updatedAt
+															? format(parseISO(whatsApp.updatedAt), "dd/MM 'às' HH:mm")
 															: "N/A"
 														}
 													</span>
 													{whatsApp.status === "CONNECTED" && whatsApp.number && (
-														<Typography variant="body2" color="textSecondary" style={{ marginTop: 4 }}>
+														<Typography variant="body2" style={{ marginTop: 4, color: '#64748b', fontWeight: 500 }}>
 															+{whatsApp.number}
 														</Typography>
 													)}
@@ -349,7 +364,7 @@ const Connections = () => {
 													<Avatar
 														src={getBackendUrl(whatsApp.profilePicUrl)}
 														alt={whatsApp.name}
-														style={{ width: 56, height: 56 }}
+														style={{ width: 48, height: 48, borderRadius: 12 }}
 													/>
 												) : (
 													React.cloneElement(renderStatusIcon(whatsApp.status), { style: { color: statusColor, fontSize: 24 } })

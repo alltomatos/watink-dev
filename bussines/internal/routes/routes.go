@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"github.com/alltomatos/watinkdev/backend-go/internal/controllers"
-	"github.com/alltomatos/watinkdev/backend-go/internal/middleware"
+	"github.com/alltomatos/watinkdev/bussines/internal/controllers"
+	"github.com/alltomatos/watinkdev/bussines/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -34,6 +34,7 @@ func SetupRoutes(group *gin.RouterGroup) {
 		// Update & System
 		protected.GET("/system/stats", controllers.GetSystemStats)
 		protected.GET("/system/rabbitmq/queues", controllers.GetRabbitMQQueues)
+		protected.GET("/system/latest-release", controllers.GetLatestRelease)
 		protected.POST("/system/update", controllers.StartUpdate)
 		// Auth
 		protected.DELETE("/auth/logout", controllers.Logout)
@@ -46,6 +47,11 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.GET("/tickets", controllers.ListTickets)
 		protected.GET("/tickets/", controllers.ListTickets)
 		protected.GET("/tickets/:ticketId", controllers.ShowTicket)
+		protected.PUT("/tickets/:ticketId", controllers.UpdateTicket)
+		protected.GET("/tickets/:ticketId/logs", controllers.ListTicketLogs)
+
+		// Dashboard
+		protected.GET("/dashboard", controllers.GetDashboardData)
 
 		// Messages
 		protected.GET("/messages/:ticketId", controllers.ListMessages)
@@ -55,6 +61,9 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.GET("/whatsapp", controllers.ListWhatsapps)
 		protected.GET("/whatsapp/", controllers.ListWhatsapps)
 		protected.GET("/whatsapp/:id", controllers.ShowWhatsapp)
+		protected.POST("/whatsapp", controllers.CreateWhatsapp)
+		protected.PUT("/whatsapp/:id", controllers.UpdateWhatsapp)
+		protected.DELETE("/whatsapp/:id", controllers.DeleteWhatsapp)
 
 		// WhatsApp Sessions
 		protected.POST("/whatsappsession/all", controllers.RestartAllSessions)
@@ -67,16 +76,27 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.GET("/contacts/", controllers.ListContacts)
 		protected.GET("/contacts/:contactId", controllers.ShowContact)
 		protected.POST("/contacts", controllers.CreateContact)
+		protected.POST("/contacts/", controllers.CreateContact)
+		protected.PUT("/contacts/:contactId", controllers.UpdateContact)
+		protected.DELETE("/contacts/:contactId", controllers.DeleteContact)
 
 		// Queues
 		protected.GET("/queue", controllers.ListQueues)
 		protected.GET("/queue/", controllers.ListQueues)
 		protected.GET("/queue/:queueId", controllers.ShowQueue)
+		protected.POST("/queue", controllers.CreateQueue)
+		protected.POST("/queue/", controllers.CreateQueue)
+		protected.PUT("/queue/:queueId", controllers.UpdateQueue)
+		protected.DELETE("/queue/:queueId", controllers.DeleteQueue)
 
 		// Quick Answers
 		protected.GET("/quickAnswers", controllers.ListQuickAnswers)
 		protected.GET("/quickAnswers/", controllers.ListQuickAnswers)
 		protected.GET("/quickAnswers/:quickAnswerId", controllers.ShowQuickAnswer)
+		protected.POST("/quickAnswers", controllers.CreateQuickAnswer)
+		protected.POST("/quickAnswers/", controllers.CreateQuickAnswer)
+		protected.PUT("/quickAnswers/:quickAnswerId", controllers.UpdateQuickAnswer)
+		protected.DELETE("/quickAnswers/:quickAnswerId", controllers.DeleteQuickAnswer)
 
 		// Knowledge Bases
 		protected.GET("/knowledge-bases", controllers.ListKnowledgeBases)
@@ -105,11 +125,32 @@ func SetupRoutes(group *gin.RouterGroup) {
 		// RBAC
 		protected.GET("/groups", controllers.ListGroups)
 		protected.POST("/groups", controllers.CreateGroup)
+		protected.GET("/groups/:groupId", controllers.ShowGroup)
+		protected.PUT("/groups/:groupId", controllers.UpdateGroup)
+		protected.DELETE("/groups/:groupId", controllers.DeleteGroup)
 		protected.GET("/permissions", controllers.ListPermissions)
+
+		// Roles
+		protected.GET("/roles", controllers.ListRoles)
+		protected.POST("/roles", controllers.CreateRole)
+		protected.GET("/roles/:roleId", controllers.ShowRole)
+		protected.PUT("/roles/:roleId", controllers.UpdateRole)
+		protected.DELETE("/roles/:roleId", controllers.DeleteRole)
 
 		// Flows
 		protected.GET("/flows", controllers.ListFlows)
 		protected.POST("/flows", controllers.CreateFlow)
+		protected.GET("/flows/:flowId", controllers.ShowFlow)
+		protected.PUT("/flows/:flowId", controllers.UpdateFlow)
+		protected.DELETE("/flows/:flowId", controllers.DeleteFlow)
+
+		// Tags
+		protected.GET("/tags", controllers.ListTags)
+		protected.POST("/tags", controllers.CreateTag)
+		protected.PUT("/tags/:id", controllers.UpdateTag)
+		protected.DELETE("/tags/:id", controllers.DeleteTag)
+		protected.GET("/tag-groups", controllers.ListTagGroups)
+		protected.PUT("/entities/:entityType/:id/tags/sync", controllers.SyncEntityTags)
 
 		// Pipelines
 		protected.GET("/pipelines", controllers.ListPipelines)

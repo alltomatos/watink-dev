@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/database"
-	"github.com/alltomatos/watinkdev/backend-go/internal/services"
+	"github.com/alltomatos/watinkdev/bussines/internal/database"
+	"github.com/alltomatos/watinkdev/bussines/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"

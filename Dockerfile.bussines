@@ -6,7 +6,7 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
-# Etapa 2: Build do Backend Go (com Frontend embutido)
+# Etapa 2: Build do Watink Bussines (com Frontend embutido)
 FROM golang:1.24-alpine AS backend-builder
 RUN apk add --no-cache gcc musl-dev
 WORKDIR /app

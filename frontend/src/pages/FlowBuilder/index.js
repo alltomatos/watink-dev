@@ -53,17 +53,19 @@ const useStyles = makeStyles((theme) => ({
     root: {
         display: 'flex',
         height: 'calc(100vh - 64px)',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        backgroundColor: '#f8f9fa'
     },
     flowPane: {
         flexGrow: 1,
         height: '100%',
-        position: 'relative'
+        position: 'relative',
+        backgroundColor: '#ffffff',
     },
     sidebar: {
         width: 350,
         borderLeft: '1px solid #e0e0e0',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#ffffff',
         display: 'flex',
         flexDirection: 'column',
         zIndex: 10,
@@ -77,22 +79,35 @@ const useStyles = makeStyles((theme) => ({
     },
     toggleButton: {
         position: 'absolute',
-        top: 10,
-        right: 20,
+        top: 16,
+        right: 24,
         zIndex: 15,
         backgroundColor: '#fff',
-        boxShadow: '0px 2px 4px -1px rgb(0 0 0 / 20%)',
+        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
         '&:hover': {
-            backgroundColor: '#eee',
+            backgroundColor: '#f5f5f5',
         }
     },
     toolbar: {
         position: 'absolute',
-        top: 10,
-        right: 70,
+        top: 16,
+        right: 80,
         zIndex: 15,
         display: 'flex',
-        gap: '8px'
+        gap: '12px',
+        padding: '8px 16px',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        backdropFilter: 'blur(8px)',
+        borderRadius: 30,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+        border: '1px solid rgba(0,0,0,0.05)'
+    },
+    toolbarButton: {
+        borderRadius: 20,
+        textTransform: 'none',
+        fontWeight: 600,
+        padding: '6px 16px',
+        minWidth: 'auto'
     },
     fileInput: {
         display: 'none'
@@ -413,43 +428,38 @@ const FlowBuilder = () => {
                             />
 
                             <Tooltip title="Validar Fluxo">
-                                <Button
-                                    variant="contained"
-                                    color="secondary"
+                                <IconButton
                                     size="small"
                                     onClick={validateFlow}
-                                    style={{ backgroundColor: '#4caf50', color: '#fff' }}
+                                    style={{ color: '#4caf50' }}
                                 >
                                     <CheckIcon />
-                                </Button>
+                                </IconButton>
                             </Tooltip>
 
                             <Tooltip title="Importar JSON">
-                                <Button
-                                    variant="contained"
-                                    color="default"
+                                <IconButton
                                     size="small"
                                     onClick={() => fileInputRef.current.click()}
                                 >
                                     <ImportIcon />
-                                </Button>
+                                </IconButton>
                             </Tooltip>
 
                             <Tooltip title="Exportar JSON">
-                                <Button
-                                    variant="contained"
-                                    color="default"
+                                <IconButton
                                     size="small"
                                     onClick={handleExport}
                                 >
                                     <ExportIcon />
-                                </Button>
+                                </IconButton>
                             </Tooltip>
 
                             <Button
                                 variant="contained"
                                 color="primary"
                                 size="small"
+                                className={classes.toolbarButton}
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave(false)}
                             >
@@ -457,33 +467,31 @@ const FlowBuilder = () => {
                             </Button>
 
                             {/* Botão Simular */}
-                            <Tooltip title="Simular Fluxo">
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => setSimulatorOpen(true)}
-                                    style={{ backgroundColor: '#9c27b0', color: '#fff' }}
-                                    startIcon={<PlayIcon />}
-                                >
-                                    Simular
-                                </Button>
-                            </Tooltip>
+                            <Button
+                                variant="outlined"
+                                color="primary"
+                                size="small"
+                                className={classes.toolbarButton}
+                                onClick={() => setSimulatorOpen(true)}
+                                startIcon={<PlayIcon />}
+                            >
+                                Simular
+                            </Button>
 
                             {/* Toggle Ativo/Inativo */}
-                            <Tooltip title={flowInfo.isActive ? "Clique para desativar" : "Clique para ativar"}>
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={handleToggle}
-                                    style={{
-                                        backgroundColor: flowInfo.isActive ? '#4caf50' : '#9e9e9e',
-                                        color: '#fff'
-                                    }}
-                                    startIcon={<PowerIcon />}
-                                >
-                                    {flowInfo.isActive ? 'Ativo' : 'Inativo'}
-                                </Button>
-                            </Tooltip>
+                            <Button
+                                variant="contained"
+                                size="small"
+                                className={classes.toolbarButton}
+                                onClick={handleToggle}
+                                style={{
+                                    backgroundColor: flowInfo.isActive ? '#34C759' : '#8E8E93',
+                                    color: '#fff'
+                                }}
+                                startIcon={<PowerIcon />}
+                            >
+                                {flowInfo.isActive ? 'Ativo' : 'Inativo'}
+                            </Button>
                         </div>
 
                         {!isChatOpen && aiEnabled && (

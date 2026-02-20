@@ -3,10 +3,11 @@ import axios from "axios";
 import { getBackendUrl } from "../config";
 
 const backendUrl = getBackendUrl();
-const baseURL = backendUrl ? backendUrl + 'api' : '/api'; // Fallback to relative path if null
+const normalizedBase = backendUrl ? backendUrl.replace(/\/+$/, "") : "";
+const baseURL = normalizedBase ? `${normalizedBase}/api` : "/api";
 
 const api = axios.create({
-	baseURL: baseURL,
+	baseURL,
 	withCredentials: true,
 });
 

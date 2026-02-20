@@ -9,7 +9,7 @@ import (
 type Whatsapp struct {
 	ID              int       `gorm:"primaryKey" json:"id"`
 	Session         string    `json:"session"`
-	Qrcode          string    `json:"qrcode"`
+	Qrcode          string    `gorm:"type:text" json:"qrcode"`
 	Status          string    `json:"status"`
 	Battery         string    `json:"battery"`
 	Plugged         bool      `json:"plugged"`
@@ -26,9 +26,12 @@ type Whatsapp struct {
 	KeepAlive       bool      `gorm:"column:keepAlive;default:false" json:"keepAlive"`
 	CreatedAt       time.Time `gorm:"column:createdAt" json:"createdAt"`
 	UpdatedAt       time.Time `gorm:"column:updatedAt" json:"updatedAt"`
+	FirstConnection *time.Time `gorm:"column:firstConnection" json:"firstConnection"`
+	EngineType      string     `gorm:"column:engineType;default:'whatsmeow'" json:"engineType"`
 
 	// Relations
 	Tickets []Ticket `gorm:"foreignKey:WhatsappID" json:"tickets,omitempty"`
+	Queues  []Queue  `gorm:"many2many:WhatsappQueues;" json:"queues,omitempty"`
 }
 
 func (Whatsapp) TableName() string {

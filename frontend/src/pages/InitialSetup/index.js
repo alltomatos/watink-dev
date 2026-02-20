@@ -63,7 +63,8 @@ const InitialSetup = () => {
     lastName: "",
     email: "",
     password: "",
-    document: ""
+    document: "",
+    backendUrl: typeof window !== "undefined" ? window.location.origin : ""
   });
 
   const handleChangeInput = (e) => {

@@ -5,6 +5,7 @@ set -euo pipefail
 # Uso: sudo bash watink-bussines.sh
 
 GITHUB_BIN_REPO="alltomatos/watink-bussines"
+HUB_BASE_URL_DEFAULT="https://marketplace.alltomatos.dev.br"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -61,6 +62,11 @@ gen_secret() {
   tr -dc 'A-Za-z0-9!@#$%&_+=' </dev/urandom | head -c 32
 }
 
+hub_latest_binary_url() {
+  local hub_base="${HUB_BASE_URL:-$HUB_BASE_URL_DEFAULT}"
+  curl -fsSL "${hub_base}/api/v1/hub/binaries/latest" | jq -r '.ok as $ok | if $ok then "'"${hub_base}"'" + "/api/v1/hub/binaries/latest/download" else "" end' 2>/dev/null || echo ""
+}
+
 github_release_asset_url() {
   local repo="$1"
   local ref="${2:-latest}"
@@ -100,7 +106,12 @@ resolve_binary_source() {
   local source="$input"
 
   if [[ -z "$source" || "$source" == "latest" ]]; then
-    source="$(github_release_asset_url "$GITHUB_BIN_REPO" "latest")"
+    # Preferência: Hub broker (funciona com repo privado)
+    source="$(hub_latest_binary_url)"
+    if [[ -z "$source" ]]; then
+      # Fallback: release pública no GitHub
+      source="$(github_release_asset_url "$GITHUB_BIN_REPO" "latest")"
+    fi
   elif [[ "$source" =~ ^v[0-9] ]]; then
     source="$(github_release_asset_url "$GITHUB_BIN_REPO" "$source")"
   fi
@@ -328,7 +339,7 @@ main() {
 
   domain="$(ask 'Domínio público do painel (ex: watinkdev.alltomatos.dev.br)')"
   email="$(ask 'E-mail para SSL (Certbot)' 'ronaldodavi@gmail.com')"
-  binary_source="$(ask "URL/caminho do binário (ou 'latest' / 'vX.Y.Z' do repo ${GITHUB_BIN_REPO})" "latest")"
+  binary_source="$(ask "URL/caminho do binário (ou 'latest' via Hub broker / 'vX.Y.Z' do repo ${GITHUB_BIN_REPO})" "latest")"
   binary_source="$(resolve_binary_source "$binary_source")"
 
   if [[ -z "$binary_source" ]]; then

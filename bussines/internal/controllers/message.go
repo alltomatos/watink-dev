@@ -10,19 +10,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/database"
-	"github.com/alltomatos/watinkdev/backend-go/internal/models"
-	"github.com/alltomatos/watinkdev/backend-go/internal/services"
+	"github.com/alltomatos/watinkdev/bussines/internal/database"
+	"github.com/alltomatos/watinkdev/bussines/internal/models"
+	"github.com/alltomatos/watinkdev/bussines/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 func ListMessages(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
 	ticketID := c.Param("ticketId")
 
+	// Ensure user has access to the ticket
+	var ticket models.Ticket
+	if err := getScopedDB(c, "Tickets").Where("id = ?", ticketID).First(&ticket).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to ticket messages"})
+		return
+	}
+
 	var messages []models.Message
-	if err := database.DB.Where("\"ticketId\" = ? AND \"tenantId\" = ?", ticketID, tenantID).
+	if err := database.DB.Where("\"ticketId\" = ? AND \"tenantId\" = ?", ticket.ID, ticket.TenantID).
 		Order("\"createdAt\" ASC").
 		Find(&messages).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch messages"})
@@ -35,15 +41,14 @@ func ListMessages(c *gin.Context) {
 }
 
 func SendMessage(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
 	ticketID := c.Param("ticketId")
 
-	// 1. Get Ticket
+	// 1. Get Ticket with Scope check
 	var ticket models.Ticket
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", ticketID, tenantID).
+	if err := getScopedDB(c, "Tickets").Where("id = ?", ticketID).
 		Preload("Contact").
 		First(&ticket).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Ticket not found"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Ticket not found or access denied"})
 		return
 	}
 
@@ -64,7 +69,7 @@ func SendMessage(c *gin.Context) {
 
 			// Save file
 			filename := fmt.Sprintf("%d-%s", time.Now().UnixNano(), file.Filename)
-			tenantDir := filepath.Join("public", tenantID.(uuid.UUID).String())
+			tenantDir := filepath.Join("public", ticket.TenantID.String())
 			_ = os.MkdirAll(tenantDir, 0755)
 			dst := filepath.Join(tenantDir, filename)
 			if err := c.SaveUploadedFile(file, dst); err != nil {
@@ -84,7 +89,7 @@ func SendMessage(c *gin.Context) {
 				mediaType = "document"
 			}
 
-			createMessage(ticket, caption, mediaType, fmt.Sprintf("%s/%s", tenantID.(uuid.UUID).String(), filename))
+			createMessage(ticket, caption, mediaType, fmt.Sprintf("%s/%s", ticket.TenantID.String(), filename))
 		}
 	} else {
 		// Simple JSON (text only)

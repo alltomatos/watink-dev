@@ -7,11 +7,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/database"
-	"github.com/alltomatos/watinkdev/backend-go/internal/plugins"
-	"github.com/alltomatos/watinkdev/backend-go/internal/routes"
-	"github.com/alltomatos/watinkdev/backend-go/internal/services"
-	"github.com/alltomatos/watinkdev/backend-go/internal/web"
+	"github.com/alltomatos/watinkdev/bussines/internal/database"
+	"github.com/alltomatos/watinkdev/bussines/internal/plugins"
+	"github.com/alltomatos/watinkdev/bussines/internal/routes"
+	"github.com/alltomatos/watinkdev/bussines/internal/services"
+	"github.com/alltomatos/watinkdev/bussines/internal/web"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )

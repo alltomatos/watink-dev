@@ -3,9 +3,9 @@ package controllers
 import (
 	"net/http"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/database"
-	"github.com/alltomatos/watinkdev/backend-go/internal/models"
-	"github.com/alltomatos/watinkdev/backend-go/internal/services"
+	"github.com/alltomatos/watinkdev/bussines/internal/database"
+	"github.com/alltomatos/watinkdev/bussines/internal/models"
+	"github.com/alltomatos/watinkdev/bussines/internal/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -43,10 +43,20 @@ func StopSession(c *gin.Context) {
 		return
 	}
 
+	// Update Status locally first to give immediate feedback
+	whatsapp.Status = "DISCONNECTED"
+	database.DB.Model(&whatsapp).Update("status", "DISCONNECTED")
+
 	if err := services.StopWhatsAppSession(whatsapp); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stop session"})
 		return
 	}
+
+	// Emit via Socket
+	services.EmitToNamespace("/", "whatsappSession", map[string]interface{}{
+		"action":  "update",
+		"session": whatsapp,
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Session disconnected."})
 }

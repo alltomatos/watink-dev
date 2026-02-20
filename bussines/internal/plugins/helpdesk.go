@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/alltomatos/watinkdev/backend-go/pkg/sdk"
+	"github.com/alltomatos/watinkdev/bussines/pkg/sdk"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/database"
-	"github.com/alltomatos/watinkdev/backend-go/internal/models"
+	"github.com/alltomatos/watinkdev/bussines/internal/database"
+	"github.com/alltomatos/watinkdev/bussines/internal/models"
 	"github.com/google/uuid"
 )
 

@@ -286,14 +286,23 @@ const messages = {
       mainDrawer: {
         listItems: {
           dashboard: "Dashboard",
-          connections: "Connections",
+          pipelines: "Pipelines",
           tickets: "Tickets",
+          myActivities: "My Activities",
           contacts: "Contacts",
           quickAnswers: "Quick Answers",
-          queues: "Queues",
+          flowBuilder: "Flow Builder",
+          clients: "Clients",
+          helpdesk: "Helpdesk",
           administration: "Administration",
+          tags: "Tags",
+          groups: "Groups",
+          connections: "Connections",
           users: "Users",
+          queues: "Queues",
+          knowledgeBase: "Knowledge Base",
           settings: "Settings",
+          swagger: "Swagger",
         },
         appBar: {
           user: {
@@ -374,6 +383,14 @@ const messages = {
             options: {
               enabled: "Enabled",
               disabled: "Disabled",
+            },
+          },
+          language: {
+            name: "Language",
+            options: {
+              pt: "Portuguese",
+              en: "English",
+              es: "Spanish",
             },
           },
         },

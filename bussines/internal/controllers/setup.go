@@ -1,17 +1,23 @@
 package controllers
 
 import (
+	"log"
 	"net/http"
+	"os"
+	"strings"
 
-	"github.com/alltomatos/watinkdev/backend-go/internal/database"
-	"github.com/alltomatos/watinkdev/backend-go/internal/models"
+	"github.com/alltomatos/watinkdev/bussines/internal/database"
+	"github.com/alltomatos/watinkdev/bussines/internal/models"
+	"github.com/alltomatos/watinkdev/bussines/internal/plugins"
 	"github.com/gin-gonic/gin"
 )
 
 func CheckSetup(c *gin.Context) {
-	var count int64
-	database.DB.Model(&models.User{}).Count(&count)
-	c.JSON(http.StatusOK, gin.H{"needsSetup": count == 0})
+	var usersCount int64
+	var tenantsCount int64
+	database.DB.Model(&models.User{}).Count(&usersCount)
+	database.DB.Model(&models.Tenant{}).Count(&tenantsCount)
+	c.JSON(http.StatusOK, gin.H{"needsSetup": usersCount == 0 && tenantsCount == 0})
 }
 
 type SetupRequest struct {
@@ -24,9 +30,11 @@ type SetupRequest struct {
 }
 
 func InitialSetup(c *gin.Context) {
-	var count int64
-	database.DB.Model(&models.User{}).Count(&count)
-	if count > 0 {
+	var usersCount int64
+	var tenantsCount int64
+	database.DB.Model(&models.User{}).Count(&usersCount)
+	database.DB.Model(&models.Tenant{}).Count(&tenantsCount)
+	if usersCount > 0 || tenantsCount > 0 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "System already initialized"})
 		return
 	}
@@ -91,12 +99,35 @@ func InitialSetup(c *gin.Context) {
 		{Key: "login_layout", Value: "centered", TenantID: tenant.ID},
 		{Key: "login_backgroundImage", Value: "", TenantID: tenant.ID},
 	}
-	
+
 	if req.BackendURL != "" {
 		settings = append(settings, models.Setting{Key: "backendUrl", Value: req.BackendURL, TenantID: tenant.ID})
 	}
-	
+
 	database.DB.Create(&settings)
+
+	// 8. Register instance in Marketplace Hub (best effort)
+	if hm := plugins.GetHubManager(); hm != nil {
+		instanceURL := strings.TrimSpace(req.BackendURL)
+		if instanceURL == "" {
+			instanceURL = strings.TrimSpace(os.Getenv("FRONTEND_URL"))
+		}
+		if instanceURL == "" {
+			instanceURL = strings.TrimSpace(os.Getenv("BACKEND_URL"))
+		}
+
+		err := hm.RegisterInstance(map[string]string{
+			"ownerEmail":      req.Email,
+			"superAdminEmail": req.Email,
+			"ownerName":       user.Name,
+			"document":        req.Document,
+			"tenantName":      tenant.Name,
+			"instanceUrl":     instanceURL,
+		})
+		if err != nil {
+			log.Printf("⚠️ marketplace hub register failed: %v", err)
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "System initialized successfully"})
 }

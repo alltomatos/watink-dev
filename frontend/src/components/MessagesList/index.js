@@ -850,9 +850,18 @@ const MessagesList = ({ ticketId, isGroup }) => {
   };
 
   const renderMessageReactions = (message) => {
-    if (!message.reactions || message.reactions.length === 0) return null;
+    let reactions = message.reactions;
+    if (typeof reactions === "string") {
+      try {
+        reactions = JSON.parse(reactions);
+      } catch (e) {
+        reactions = [];
+      }
+    }
 
-    const aggregated = message.reactions.reduce((acc, curr) => {
+    if (!Array.isArray(reactions) || reactions.length === 0) return null;
+
+    const aggregated = reactions.reduce((acc, curr) => {
       const emoji = curr.text || curr.emoji;
       if (!emoji) return acc;
 

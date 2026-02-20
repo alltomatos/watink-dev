@@ -1,10 +1,8 @@
 {
   "service": "frontend",
-  "version": "0.7.120",
-  "lastUpdated": "2026-02-18T14:05:44.155Z",
+  "version": "0.8.1",
+  "lastUpdated": "2026-02-20T18:14:57.207Z",
   "changelog": [
-    "Correções no Monitor e Swagger interno",
-    "Ajustes de permissões (superadmin/RBAC)",
-    "Melhorias de estabilidade e observabilidade"
+    "Implementação da Regra de Versionamento e Automação de Release"
   ]
 }

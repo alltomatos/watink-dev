@@ -1,9 +1,9 @@
 module.exports = {
   apps: [
     {
-      name: "backend-go",
+      name: "watink-bussines",
       cwd: "./bussines",
-      script: "./backend-go",
+      script: "./backend-go", // binário local legado; nome lógico do serviço agora é watink-bussines
       env: {
         PORT_GO: 8082,
         DB_HOST: "localhost",
@@ -15,6 +15,7 @@ module.exports = {
         REDIS_URL: "redis://localhost:6379",
         JWT_SECRET: "watink_secret_key_2026",
         JWT_REFRESH_SECRET: "***REMOVED_JWT_REFRESH_SECRET***",
+        PLUGIN_HUB_URL: "https://marketplace.alltomatos.dev.br/api/v1/hub",
       },
     },
     {
