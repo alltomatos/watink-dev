@@ -16,7 +16,13 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "windows:check": "powershell -ExecutionPolicy Bypass -File ./scripts/windows-business-check.ps1",
     "windows:business": "start.bat",
-    "windows:business:check": "npm run windows:check ; npm run windows:business"
+    "windows:business:check": "npm run windows:check ; npm run windows:business",
+    "windows:opencore": "start.bat",
+    "windows:business:server": "start-business-windows.bat",
+    "windows:stack": "npm run windows:check ; npm run windows:business:server",
+    "linux:docker:business": "bash ./scripts/linux-docker-business.sh up",
+    "linux:docker:business:down": "bash ./scripts/linux-docker-business.sh down",
+    "linux:docker:business:rebuild": "bash ./scripts/linux-docker-business.sh rebuild"
   },
   "repository": {
     "type": "git",
