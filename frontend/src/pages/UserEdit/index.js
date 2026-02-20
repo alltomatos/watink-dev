@@ -105,24 +105,33 @@ const UserEdit = () => {
     const [user, setUser] = useState(initialState);
     const [selectedQueueIds, setSelectedQueueIds] = useState([]);
     const [showPassword, setShowPassword] = useState(false);
-    const [whatsappId, setWhatsappId] = useState(false);
+    const [whatsappId, setWhatsappId] = useState("");
     const { loading, whatsApps } = useWhatsApps();
     const [tab, setTab] = useState(0);
     const [groups, setGroups] = useState([]);
     const [allPermissions, setAllPermissions] = useState([]);
     const [selectedPermissions, setSelectedPermissions] = useState([]);
 
+    const findWhatsApp = (id) => {
+        if (!whatsApps || !id) return null;
+        return whatsApps.find(w => w.id === parseInt(id));
+    };
+
     useEffect(() => {
         const fetchUser = async () => {
             try {
                 const { data } = await api.get(`/users/${userId}`);
-                setUser((prevState) => {
-                    return { ...prevState, ...data };
-                });
-                const userQueueIds = data.queues?.map((queue) => queue.id);
+                const userQueueIds = data.queues?.map((queue) => queue.id) || [];
                 setSelectedQueueIds(userQueueIds);
-                setWhatsappId(data.whatsappId ? data.whatsappId : "");
+                setWhatsappId(data.whatsappId || "");
                 setSelectedPermissions(data.permissions?.map(p => p.id) || []);
+                setUser({
+                    name: data.name || "",
+                    email: data.email || "",
+                    password: "",
+                    profile: data.profile || "user",
+                    groupId: data.groupId || ""
+                });
             } catch (err) {
                 toastError(err);
             }
@@ -268,8 +277,9 @@ const UserEdit = () => {
                                                         id="profile-selection"
                                                         required
                                                     >
-                                                        <MenuItem value="admin">Admin</MenuItem>
                                                         <MenuItem value="user">User</MenuItem>
+                                                        <MenuItem value="admin">Admin</MenuItem>
+                                                        <MenuItem value="superadmin">Super Admin</MenuItem>
                                                     </Field>
                                                 </>
                                             )}
@@ -293,7 +303,7 @@ const UserEdit = () => {
                                             id="group-selection"
                                         >
                                             <MenuItem value=""><em>None</em></MenuItem>
-                                            {groups.map(group => (
+                                            {Array.isArray(groups) && groups.map(group => (
                                                 <MenuItem key={group.id} value={group.id}>{group.name}</MenuItem>
                                             ))}
                                         </Field>
@@ -305,8 +315,8 @@ const UserEdit = () => {
                                     perform="user-modal:editQueues"
                                     yes={() => (
                                         <QueueSelect
-                                            selectedQueueIds={selectedQueueIds}
-                                            onChange={(values) => setSelectedQueueIds(values)}
+                                            selectedQueueIds={selectedQueueIds || []}
+                                            onChange={(values) => setSelectedQueueIds(values || [])}
                                         />
                                     )}
                                 />
@@ -322,19 +332,18 @@ const UserEdit = () => {
                                                 fullWidth
                                             >
                                                 <InputLabel>{i18n.t("userModal.form.whatsapp")}</InputLabel>
-                                                <Field
-                                                    as={Select}
-                                                    value={whatsappId}
+                                                <Select
+                                                    value={findWhatsApp(whatsappId) ? parseInt(whatsappId) : ""}
                                                     onChange={(e) => setWhatsappId(e.target.value)}
                                                     label={i18n.t("userModal.form.whatsapp")}
                                                 >
                                                     <MenuItem value={""}>&nbsp;</MenuItem>
-                                                    {whatsApps.map((whatsapp) => (
+                                                    {Array.isArray(whatsApps) && whatsApps.map((whatsapp) => (
                                                         <MenuItem key={whatsapp.id} value={whatsapp.id}>
                                                             {whatsapp.name}
                                                         </MenuItem>
                                                     ))}
-                                                </Field>
+                                                </Select>
                                             </FormControl>
                                         )
                                     )}
@@ -367,7 +376,7 @@ const UserEdit = () => {
                         perform="user-modal:editProfile"
                         yes={() => (
                             <Grid container spacing={2}>
-                                {allPermissions.map(permission => (
+                                {Array.isArray(allPermissions) && allPermissions.map(permission => (
                                     <Grid item xs={12} sm={6} md={4} key={permission.id}>
                                         <FormControlLabel
                                             control={

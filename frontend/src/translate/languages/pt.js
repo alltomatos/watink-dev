@@ -207,6 +207,8 @@ const messages = {
           name: "Nome",
           color: "Cor",
           greetingMessage: "Mensagem de saudação",
+          connection: "Conexão",
+          selectConnection: "Selecione uma conexão",
         },
         buttons: {
           okAdd: "Adicionar",
@@ -302,13 +304,7 @@ const messages = {
         listItems: {
           dashboard: "Dashboard",
           pipelines: "Pipelines",
-          tickets: "Chats",
-          myActivities: "Minhas Atividades",
-          contacts: "Contatos",
-          quickAnswers: "Respostas Rápidas",
-          flowBuilder: "Flow Builder",
-          clients: "Clientes",
-          helpdesk: "Helpdesk",
+          tickets: "Tickets",
           administration: "Administração",
           tags: "Tags",
           groups: "Grupos",
@@ -321,6 +317,7 @@ const messages = {
         },
         appBar: {
           user: {
+            tickets: "Tickets",
             profile: "Perfil",
             logout: "Sair",
           },
@@ -531,6 +528,7 @@ const messages = {
         },
       },
       backendErrors: {
+        ERR_SESSION_STARTING_ALREADY: "Já existe um processo de inicialização em curso para esta conexão.",
         ERR_NO_OTHER_WHATSAPP: "Deve haver pelo menos um WhatsApp padrão.",
         ERR_NO_DEF_WAPP_FOUND:
           "Nenhum WhatsApp padrão encontrado. Verifique a página de conexões.",

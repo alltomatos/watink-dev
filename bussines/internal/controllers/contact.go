@@ -6,7 +6,6 @@ import (
 	"github.com/alltomatos/watinkdev/bussines/internal/database"
 	"github.com/alltomatos/watinkdev/bussines/internal/models"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 func ListContacts(c *gin.Context) {
@@ -44,7 +43,11 @@ func ShowContact(c *gin.Context) {
 }
 
 func CreateContact(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var contact models.Contact
 	if err := c.ShouldBindJSON(&contact); err != nil {
@@ -52,11 +55,54 @@ func CreateContact(c *gin.Context) {
 		return
 	}
 
-	contact.TenantID = tenantID.(uuid.UUID)
+	contact.TenantID = tenantID
 	if err := database.DB.Create(&contact).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create contact"})
 		return
 	}
 
 	c.JSON(http.StatusOK, contact)
+}
+
+func UpdateContact(c *gin.Context) {
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
+	id := c.Param("contactId")
+
+	var contact models.Contact
+	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&contact).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Contact not found"})
+		return
+	}
+
+	if err := c.ShouldBindJSON(&contact); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := database.DB.Save(&contact).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update contact"})
+		return
+	}
+
+	c.JSON(http.StatusOK, contact)
+}
+
+func DeleteContact(c *gin.Context) {
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
+	id := c.Param("contactId")
+
+	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Delete(&models.Contact{}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete contact"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Contact deleted successfully"})
 }

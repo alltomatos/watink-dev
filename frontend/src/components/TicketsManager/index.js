@@ -180,7 +180,7 @@ const TicketsManager = () => {
   const [openCount, setOpenCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [groupsCount, setGroupsCount] = useState(0);
-  const userQueueIds = user.queues.map((q) => q.id);
+  const userQueueIds = user?.queues?.map((q) => q.id) || [];
   const [selectedQueueIds, setSelectedQueueIds] = useState(userQueueIds || []);
   const [selectedTags, setSelectedTags] = useState([]);
   

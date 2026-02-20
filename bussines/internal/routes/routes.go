@@ -71,16 +71,27 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.GET("/contacts/", controllers.ListContacts)
 		protected.GET("/contacts/:contactId", controllers.ShowContact)
 		protected.POST("/contacts", controllers.CreateContact)
+		protected.POST("/contacts/", controllers.CreateContact)
+		protected.PUT("/contacts/:contactId", controllers.UpdateContact)
+		protected.DELETE("/contacts/:contactId", controllers.DeleteContact)
 
 		// Queues
 		protected.GET("/queue", controllers.ListQueues)
 		protected.GET("/queue/", controllers.ListQueues)
 		protected.GET("/queue/:queueId", controllers.ShowQueue)
+		protected.POST("/queue", controllers.CreateQueue)
+		protected.POST("/queue/", controllers.CreateQueue)
+		protected.PUT("/queue/:queueId", controllers.UpdateQueue)
+		protected.DELETE("/queue/:queueId", controllers.DeleteQueue)
 
 		// Quick Answers
 		protected.GET("/quickAnswers", controllers.ListQuickAnswers)
 		protected.GET("/quickAnswers/", controllers.ListQuickAnswers)
 		protected.GET("/quickAnswers/:quickAnswerId", controllers.ShowQuickAnswer)
+		protected.POST("/quickAnswers", controllers.CreateQuickAnswer)
+		protected.POST("/quickAnswers/", controllers.CreateQuickAnswer)
+		protected.PUT("/quickAnswers/:quickAnswerId", controllers.UpdateQuickAnswer)
+		protected.DELETE("/quickAnswers/:quickAnswerId", controllers.DeleteQuickAnswer)
 
 		// Knowledge Bases
 		protected.GET("/knowledge-bases", controllers.ListKnowledgeBases)
