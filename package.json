@@ -13,7 +13,10 @@
     "playwright": "^1.58.2"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "windows:check": "powershell -ExecutionPolicy Bypass -File ./scripts/windows-business-check.ps1",
+    "windows:business": "start.bat",
+    "windows:business:check": "npm run windows:check ; npm run windows:business"
   },
   "repository": {
     "type": "git",
