@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/alltomatos/watinkdev/bussines/internal/plugins"
+	"github.com/alltomatos/watinkdev/bussines/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -88,6 +89,19 @@ func PluginsCheckout(c *gin.Context) {
 	hm := plugins.GetHubManager()
 	if hm == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "plugin hub not initialized"})
+		return
+	}
+
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant"})
+		return
+	}
+
+	// SaaS Limit Check for Plugins
+	limitService := services.NewPlanLimitService()
+	if err := limitService.CheckLimit(tenantID, "plugins"); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
 

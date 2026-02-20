@@ -7,6 +7,7 @@ import (
 
 	"github.com/alltomatos/watinkdev/bussines/internal/database"
 	"github.com/alltomatos/watinkdev/bussines/internal/models"
+	"github.com/alltomatos/watinkdev/bussines/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -40,6 +41,14 @@ func ShowUser(c *gin.Context) {
 
 func CreateUser(c *gin.Context) {
 	tenantID, _ := c.Get("tenantId")
+	tid, _ := uuid.Parse(tenantID.(string))
+
+	// SaaS Limit Check
+	limitService := services.NewPlanLimitService()
+	if err := limitService.CheckLimit(tid, "users"); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		return
+	}
 
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -47,7 +56,7 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	user.TenantID = tenantID.(uuid.UUID)
+	user.TenantID = tid
 	if err := database.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return

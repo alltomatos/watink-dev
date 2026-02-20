@@ -1,4 +1,3 @@
-/* @jsxImportSource react */
 import React, { useEffect, useReducer, useState } from "react";
 
 import openSocket from "../../services/socket-io";
@@ -24,7 +23,7 @@ import Title from "../../components/Title";
 import { i18n } from "../../translate/i18n";
 import toastError from "../../errors/toastError";
 import api from "../../services/api";
-import { DeleteOutline, Edit } from "@material-ui/icons";
+import { DeleteOutline, Edit, AccountTreeOutlined } from "@material-ui/icons";
 import QueueModal from "../../components/QueueModal";
 import { toast } from "react-toastify";
 import ConfirmationModal from "../../components/ConfirmationModal";
@@ -46,18 +45,7 @@ const useStyles = makeStyles((theme) => ({
 const reducer = (state, action) => {
   if (action.type === "LOAD_QUEUES") {
     const queues = action.payload;
-    const newQueues = [];
-
-    queues.forEach((queue) => {
-      const queueIndex = state.findIndex((q) => q.id === queue.id);
-      if (queueIndex !== -1) {
-        state[queueIndex] = queue;
-      } else {
-        newQueues.push(queue);
-      }
-    });
-
-    return [...state, ...newQueues];
+    return [...queues]; // Simplificado para manter a ordem do backend
   }
 
   if (action.type === "UPDATE_QUEUES") {
@@ -113,6 +101,8 @@ const Queues = () => {
 
   useEffect(() => {
     const socket = openSocket();
+
+    if (!socket) return;
 
     socket.on("queue", (data) => {
       if (data.action === "update" || data.action === "create") {
@@ -204,6 +194,9 @@ const Queues = () => {
                 {i18n.t("queues.table.greeting")}
               </TableCell>
               <TableCell align="center">
+                {i18n.t("queueModal.form.connection") || "Conexões"}
+              </TableCell>
+              <TableCell align="center">
                 {i18n.t("queues.table.actions")}
               </TableCell>
             </TableRow>
@@ -212,7 +205,14 @@ const Queues = () => {
             <>
               {queues.map((queue) => (
                 <TableRow key={queue.id}>
-                  <TableCell align="center">{queue.name}</TableCell>
+                  <TableCell align="center">
+                    <Box display="flex" alignItems="center" justifyContent="center">
+                      {queue.parentId && <AccountTreeOutlined style={{ marginRight: 8, fontSize: 18, color: "#888" }} />}
+                      <span style={{ fontWeight: queue.parentId ? 400 : 600 }}>
+                        {queue.name}
+                      </span>
+                    </Box>
+                  </TableCell>
                   <TableCell align="center">
                     <div className={classes.customTableCell}>
                       <span
@@ -233,6 +233,19 @@ const Queues = () => {
                         variant="body2"
                       >
                         {queue.greetingMessage}
+                      </Typography>
+                    </div>
+                  </TableCell>
+                  <TableCell align="center">
+                    <div className={classes.customTableCell}>
+                      <Typography
+                        style={{ width: 150, align: "center" }}
+                        noWrap
+                        variant="body2"
+                      >
+                        {queue.whatsapps && queue.whatsapps.length > 0
+                          ? queue.whatsapps.map(w => w.name).join(", ")
+                          : "-"}
                       </Typography>
                     </div>
                   </TableCell>

@@ -19,10 +19,16 @@ import ConnectionConfig from "../pages/Connections/ConnectionConfig";
 import Settings from "../pages/Settings/";
 import Users from "../pages/Users";
 import UserEdit from "../pages/UserEdit";
+import UserProfile from "../pages/UserProfile";
+import ResetPassword from "../pages/ResetPassword";
+import MyActivities from "../pages/MyActivities";
+import GroupEdit from "../pages/GroupEdit";
 import Contacts from "../pages/Contacts/";
 import QuickAnswers from "../pages/QuickAnswers/";
 import Groups from "../pages/Groups";
 import TagManager from "../pages/TagManager/";
+import Roles from "../pages/Roles";
+import RoleEdit from "../pages/RoleEdit";
 import Queues from "../pages/Queues/";
 import KnowledgeBase from "../pages/KnowledgeBase/";
 import KnowledgeBaseConfig from "../pages/KnowledgeBase/KnowledgeBaseConfig";
@@ -65,10 +71,16 @@ const PrivateRoutes = () => {
             <Route exact path="/contacts" component={Contacts} isPrivate />
             <Route exact path="/users" component={Users} isPrivate />
             <Route exact path="/users/:userId" component={UserEdit} isPrivate />
+            <Route exact path="/profile" component={UserProfile} isPrivate />
+            <Route exact path="/reset-password" component={ResetPassword} isPrivate />
+            <Route exact path="/my-activities" component={MyActivities} isPrivate />
+            <Route exact path="/groups/:groupId" component={GroupEdit} isPrivate />
             <Route exact path="/quickAnswers" component={QuickAnswers} isPrivate />
             <Route exact path="/Settings" component={Settings} isPrivate />
             <Route exact path="/groups" component={Groups} isPrivate />
             <Route exact path="/tags" component={TagManager} isPrivate />
+            <Route exact path="/roles" component={Roles} isPrivate />
+            <Route exact path="/roles/:roleId" component={RoleEdit} isPrivate />
             <Route exact path="/queues" component={Queues} isPrivate />
             <Route exact path="/knowledge-bases" component={KnowledgeBase} isPrivate />
             <Route exact path="/knowledge-bases/:knowledgeBaseId" component={KnowledgeBaseConfig} isPrivate />

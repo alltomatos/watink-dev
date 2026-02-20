@@ -94,10 +94,16 @@ func main() {
 				}
 			}
 		case "session.stop":
+			// Attempt to stop the client if it's in our memory map
 			err := waService.StopClient(sessionID)
 			if err != nil {
 				log.Printf("Error stopping client %d: %v", sessionID, err)
 			}
+			
+			// Always ensure we try to logout from the store if it's a persistent session
+			// that we don't have in memory (e.g. after a restart)
+			// This is a safety measure to ensure 'Disconnect' really clears things.
+			_ = waService.ForceLogout(sessionID)
 		}
 
 		d.Ack(false)

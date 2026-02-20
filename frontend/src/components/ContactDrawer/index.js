@@ -39,6 +39,7 @@ import ClientModal from "../../pages/Clients/ClientModal"; // Import ClientModal
 import ContactDrawerSkeleton from "../ContactDrawerSkeleton";
 import MarkdownWrapper from "../MarkdownWrapper";
 import ContactAIInsights from "../ContactAIInsights";
+import TicketHistory from "../TicketHistory";
 import ProtocolDrawer from "../../pages/Helpdesk/ProtocolDrawer";
 import { getBackendUrl } from "../../helpers/urlUtils";
 
@@ -295,6 +296,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 						style={{ borderBottom: '1px solid rgba(0,0,0,0.12)' }}
 					>
 						<Tab label="📋 Dados" />
+						<Tab label="🕒 Histórico" />
 						{aiEnabled && aiAssistantEnabled && !contact.isGroup && (
 							<Tab label="🤖 IA" />
 						)}
@@ -504,8 +506,15 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 						</div>
 					)}
 
-					{/* Tab 1: Assistente IA */}
-					{activeTab === 1 && aiEnabled && aiAssistantEnabled && !contact.isGroup && (
+					{/* Tab 1: Histórico do Ticket */}
+					{activeTab === 1 && (
+						<div className={classes.content}>
+							<TicketHistory ticketId={ticketId} />
+						</div>
+					)}
+
+					{/* Tab 2: Assistente IA */}
+					{activeTab === 2 && aiEnabled && aiAssistantEnabled && !contact.isGroup && (
 						<div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 							<ContactAIInsights contactId={contact.id} ticketId={ticketId} />
 						</div>

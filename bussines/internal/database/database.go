@@ -38,6 +38,7 @@ func Migrate() {
 	err := DB.AutoMigrate(
 		&models.Plan{},
 		&models.Tenant{},
+		&models.TenantSubscription{},
 		&models.User{},
 		&models.Setting{},
 		&models.Contact{},
@@ -58,6 +59,7 @@ func Migrate() {
 		&models.TagGroup{},
 		&models.Tag{},
 		&models.EntityTag{},
+		&models.TicketLog{},
 	)
 
 	if err != nil {

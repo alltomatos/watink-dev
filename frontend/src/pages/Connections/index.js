@@ -164,7 +164,7 @@ const Connections = () => {
 
 			await api.delete(`/whatsapp/${menuTargetId}`);
 			await reloadWhatsApps();
-			toast.success(i18n.t("whatsappModal.success"));
+			toast.warn(i18n.t("connections.toasts.deleted"));
 		} catch (err) {
 			toastError(err);
 		}

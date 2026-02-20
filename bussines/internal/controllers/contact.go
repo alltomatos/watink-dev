@@ -9,10 +9,8 @@ import (
 )
 
 func ListContacts(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
-
 	var contacts []models.Contact
-	query := database.DB.Where("\"tenantId\" = ?", tenantID).Order("name ASC")
+	query := getScopedDB(c, "Contacts").Order("name ASC")
 
 	searchParam := c.Query("searchParam")
 	if searchParam != "" {
@@ -30,12 +28,11 @@ func ListContacts(c *gin.Context) {
 }
 
 func ShowContact(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
 	id := c.Param("contactId")
 
 	var contact models.Contact
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&contact).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Contact not found"})
+	if err := getScopedDB(c, "Contacts").Where("id = ?", id).First(&contact).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Contact not found or access denied"})
 		return
 	}
 
@@ -65,16 +62,11 @@ func CreateContact(c *gin.Context) {
 }
 
 func UpdateContact(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
-		return
-	}
 	id := c.Param("contactId")
 
 	var contact models.Contact
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&contact).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Contact not found"})
+	if err := getScopedDB(c, "Contacts").Where("id = ?", id).First(&contact).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Contact not found or access denied"})
 		return
 	}
 
@@ -92,14 +84,9 @@ func UpdateContact(c *gin.Context) {
 }
 
 func DeleteContact(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
-		return
-	}
 	id := c.Param("contactId")
 
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Delete(&models.Contact{}).Error; err != nil {
+	if err := getScopedDB(c, "Contacts").Where("id = ?", id).Delete(&models.Contact{}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete contact"})
 		return
 	}

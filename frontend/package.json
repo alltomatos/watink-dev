@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "0.7.124-dev",
+  "version": "0.8.1",
   "private": true,
   "dependencies": {
     "@material-ui/core": "^4.11.0",
@@ -25,6 +25,7 @@
     "react-dom": "^17.0.2",
     "react-modal-image": "^2.5.0",
     "react-router-dom": "^5.2.0",
+    "react-signature-canvas": "^1.1.0-alpha.2",
     "react-toastify": "^6.0.9",
     "reactflow": "^11.10.1",
     "recharts": "^2.0.2",

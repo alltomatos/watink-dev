@@ -301,15 +301,26 @@ func processMessage(tx *gorm.DB, p MessagePayload, rawSessionID string, tenantID
 
 	// 2. Find or Create Ticket
 	var ticket models.Ticket
-	if err := tx.Where("\"tenantId\" = ? AND \"contactId\" = ? AND \"whatsappId\" = ? AND status = 'open'", tid, contact.ID, sessionID).First(&ticket).Error; err != nil {
+	if err := tx.Where("\"tenantId\" = ? AND \"contactId\" = ? AND \"whatsappId\" = ? AND status IN ('open', 'pending')", tid, contact.ID, sessionID).First(&ticket).Error; err != nil {
 		ticket = models.Ticket{
 			ContactID:  contact.ID,
-			Status:     "open",
+			Status:     "pending",
 			TenantID:   tid,
 			WhatsappID: sessionID,
 		}
-		if createErr := tx.Where(models.Ticket{ContactID: contact.ID, WhatsappID: sessionID, Status: "open", TenantID: tid}).FirstOrCreate(&ticket).Error; createErr != nil {
+
+		// Se o WhatsApp tiver uma fila padrão, poderíamos atribuir aqui.
+		// No momento, vamos ver se o sistema já atribui uma fila padrão em algum lugar.
+		// Se não, vamos deixar como está.
+		
+		if createErr := tx.Where(models.Ticket{ContactID: contact.ID, WhatsappID: sessionID, Status: "pending", TenantID: tid}).FirstOrCreate(&ticket).Error; createErr != nil {
 			return fmt.Errorf("failed to ensure ticket: %v", createErr)
+		}
+
+		// Se o ticket acabou de ser criado e tem uma fila, distribuir
+		if ticket.QueueID != nil {
+			distService := NewDistributionService()
+			distService.DistributeTicket(ticket.ID, *ticket.QueueID, tid)
 		}
 	}
 

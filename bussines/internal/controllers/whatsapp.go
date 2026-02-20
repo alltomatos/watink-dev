@@ -5,7 +5,9 @@ import (
 
 	"github.com/alltomatos/watinkdev/bussines/internal/database"
 	"github.com/alltomatos/watinkdev/bussines/internal/models"
+	"github.com/alltomatos/watinkdev/bussines/internal/services"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func ListWhatsapps(c *gin.Context) {
@@ -37,6 +39,13 @@ func CreateWhatsapp(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
+
+	// SaaS Limit Check
+	limitService := services.NewPlanLimitService()
+	if err := limitService.CheckLimit(tenantID, "connections"); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -111,10 +120,56 @@ func DeleteWhatsapp(c *gin.Context) {
 	tenantID, _ := c.Get("tenantId")
 	id := c.Param("id")
 
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Delete(&models.Whatsapp{}).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var whatsapp models.Whatsapp
+	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&whatsapp).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "WhatsApp connection not found"})
 		return
 	}
+
+	// 1. Stop session if active
+	_ = services.StopWhatsAppSession(whatsapp)
+
+	// 2. Clear related data using a transaction
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		// Set whatsappId to null in Tickets
+		if err := tx.Model(&models.Ticket{}).Where("\"whatsappId\" = ?", id).Update("whatsappId", nil).Error; err != nil {
+			return err
+		}
+
+		// Set whatsappId to null in Users
+		if err := tx.Model(&models.User{}).Where("\"whatsappId\" = ?", id).Update("whatsappId", nil).Error; err != nil {
+			return err
+		}
+
+		// Set whatsappId to null in Flows
+		if err := tx.Model(&models.Flow{}).Where("\"whatsappId\" = ?", id).Update("whatsappId", nil).Error; err != nil {
+			return err
+		}
+
+		// Delete associations in WhatsappQueues (many2many)
+		// We use the raw table name since there might not be a model for it
+		if err := tx.Exec("DELETE FROM \"WhatsappQueues\" WHERE \"whatsappId\" = ?", id).Error; err != nil {
+			return err
+		}
+
+		// Finally delete the WhatsApp connection
+		if err := tx.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Delete(&models.Whatsapp{}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to delete connection: " + err.Error()})
+		return
+	}
+
+	// Notify via socket
+	services.EmitToNamespace("/", "whatsapp", gin.H{
+		"action":     "delete",
+		"whatsappId": whatsapp.ID,
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "WhatsApp connection deleted"})
 }

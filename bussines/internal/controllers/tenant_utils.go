@@ -35,3 +35,24 @@ func getDB(c *gin.Context) *gorm.DB {
 	}
 	return database.DB
 }
+
+func getScopedDB(c *gin.Context, table string) *gorm.DB {
+	db := getDB(c)
+	userProfile, _ := c.Get("userProfile")
+	userID, _ := c.Get("userId")
+	tenantID, _ := c.Get("tenantId")
+
+	if userProfile == "admin" {
+		return db.Where("\"tenantId\" = ?", tenantID)
+	}
+
+	switch table {
+	case "Tickets":
+		return db.Where("\"tenantId\" = ? AND ( \"userId\" = ? OR \"queueId\" IN (SELECT \"queueId\" FROM \"UserQueues\" WHERE \"userId\" = ?) )", tenantID, userID, userID)
+	case "Contacts":
+		// User sees contacts in their wallet OR contacts that have tickets in their scoped queues/ownership
+		return db.Where("\"tenantId\" = ? AND ( \"walletUserId\" = ? OR id IN (SELECT \"contactId\" FROM \"Tickets\" WHERE \"userId\" = ? OR \"queueId\" IN (SELECT \"queueId\" FROM \"UserQueues\" WHERE \"userId\" = ?)) )", tenantID, userID, userID, userID)
+	default:
+		return db.Where("\"tenantId\" = ?", tenantID)
+	}
+}

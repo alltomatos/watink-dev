@@ -10,6 +10,7 @@ import { ArrowUpward, ArrowDownward } from "@material-ui/icons";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import TicketsInfo from "../../components/Dashboard/Widgets/TicketsInfo";
 import AttendanceChart from "../../components/Dashboard/Widgets/AttendanceChart";
+import PerformanceMetrics from "../../components/Dashboard/Widgets/PerformanceMetrics";
 import api from "../../services/api";
 import { toast } from "react-toastify";
 
@@ -85,8 +86,9 @@ const Dashboard = () => {
       setWidgets(user.configs.dashboard.widgets);
     } else {
       setWidgets([
-        { id: "tickets_info", visible: true, width: 12, order: 1 },
-        { id: "attendance_chart", visible: true, width: 12, order: 2 },
+        { id: "performance_metrics", visible: true, width: 12, order: 1 },
+        { id: "tickets_info", visible: true, width: 12, order: 2 },
+        { id: "attendance_chart", visible: true, width: 12, order: 3 },
       ]);
     }
   }, [user]);
@@ -141,6 +143,8 @@ const Dashboard = () => {
     if (!widget.visible) return null;
 
     switch (widget.id) {
+      case "performance_metrics":
+        return <PerformanceMetrics key={widget.id} />;
       case "tickets_info":
         return <TicketsInfo key={widget.id} userQueueIds={userQueueIds} />;
       case "attendance_chart":
@@ -189,7 +193,8 @@ const Dashboard = () => {
                   }
                   label={
                     <Typography style={{ fontWeight: 600 }}>
-                      {widget.id === 'tickets_info' ? 'Resumo de Tickets' : 'Gráfico de Atendimentos'}
+                      {widget.id === 'performance_metrics' ? 'Métricas de Performance (TMR/TME)' : 
+                       widget.id === 'tickets_info' ? 'Resumo de Tickets' : 'Gráfico de Atendimentos'}
                     </Typography>
                   }
                 />

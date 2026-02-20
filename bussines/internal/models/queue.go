@@ -19,7 +19,8 @@ type Queue struct {
 	UpdatedAt            time.Time `gorm:"column:updatedAt" json:"updatedAt"`
 
 	// Relations
-	Parent *Queue `gorm:"foreignKey:ParentID" json:"parent,omitempty"`
+	Parent    *Queue     `gorm:"foreignKey:ParentID" json:"parent,omitempty"`
+	Whatsapps []Whatsapp `gorm:"many2many:WhatsappQueues;" json:"whatsapps,omitempty"`
 }
 
 func (Queue) TableName() string {

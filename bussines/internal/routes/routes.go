@@ -47,6 +47,11 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.GET("/tickets", controllers.ListTickets)
 		protected.GET("/tickets/", controllers.ListTickets)
 		protected.GET("/tickets/:ticketId", controllers.ShowTicket)
+		protected.PUT("/tickets/:ticketId", controllers.UpdateTicket)
+		protected.GET("/tickets/:ticketId/logs", controllers.ListTicketLogs)
+
+		// Dashboard
+		protected.GET("/dashboard", controllers.GetDashboardData)
 
 		// Messages
 		protected.GET("/messages/:ticketId", controllers.ListMessages)
@@ -120,7 +125,17 @@ func SetupRoutes(group *gin.RouterGroup) {
 		// RBAC
 		protected.GET("/groups", controllers.ListGroups)
 		protected.POST("/groups", controllers.CreateGroup)
+		protected.GET("/groups/:groupId", controllers.ShowGroup)
+		protected.PUT("/groups/:groupId", controllers.UpdateGroup)
+		protected.DELETE("/groups/:groupId", controllers.DeleteGroup)
 		protected.GET("/permissions", controllers.ListPermissions)
+
+		// Roles
+		protected.GET("/roles", controllers.ListRoles)
+		protected.POST("/roles", controllers.CreateRole)
+		protected.GET("/roles/:roleId", controllers.ShowRole)
+		protected.PUT("/roles/:roleId", controllers.UpdateRole)
+		protected.DELETE("/roles/:roleId", controllers.DeleteRole)
 
 		// Flows
 		protected.GET("/flows", controllers.ListFlows)
