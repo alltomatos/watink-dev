@@ -1,59 +1,72 @@
-# Watink Business for Windows — Compatibility Baseline
+# Watink Windows + Linux Compatibility (OpenCore + Business)
 
-## Objective
-Enable **Watink Business for Windows** with full compatibility across:
-- watink opencore
-- watink business
+## Objetivo
+Deixar o ambiente **100% organizado** para execução em dois cenários oficiais:
 
-Without breaking the current Linux/VPS workflows.
+1. **Windows**
+   - Watink OpenCore (Node)
+   - Watink Business Server (Windows + Docker)
+2. **Linux Docker**
+   - Watink OpenCore (Node em host Linux)
+   - Watink Business (Docker via compose)
 
-## Current baseline (today)
-- Main development and deploy flow is Linux-first (.sh, systemd, docker-compose variants).
-- Windows entrypoint exists (start.bat), but there is no unified validation/bootstrap flow for Windows Business.
-- Multiple packages/services (backend, business backend, frontend, plugin/engine) require deterministic startup order.
+Sem quebrar os fluxos atuais de produção e desenvolvimento.
 
-## Compatibility principles
-1. **No regression on Linux**: existing shell scripts remain valid.
-2. **Windows-first wrappers**: add .ps1 helpers for validation/bootstrap.
-3. **Contract compatibility**: preserve API, auth, queue/ticket, and tenant behavior across OpenCore and Business.
-4. **Deterministic startup checks**: verify env, paths, ports, Node/Go availability before launch.
+---
 
-## Compatibility matrix (initial)
-| Area | OpenCore | Business | Windows status | Action |
+## Arquitetura-alvo
+
+### A) Windows
+- **OpenCore (Node):** via `start.bat`
+- **Business Server (Docker):** via `start-business-windows.bat`
+- **Pré-checks:** via `scripts/windows-business-check.ps1`
+
+### B) Linux
+- **Business Docker:** via `scripts/linux-docker-business.sh`
+- Comandos: `up | down | rebuild | logs | status`
+
+---
+
+## Scripts NPM padronizados (raiz)
+
+- `npm run windows:check`
+- `npm run windows:opencore`
+- `npm run windows:business:server`
+- `npm run windows:stack`
+- `npm run linux:docker:business`
+- `npm run linux:docker:business:down`
+- `npm run linux:docker:business:rebuild`
+
+---
+
+## Matriz de compatibilidade
+
+| Camada | OpenCore | Business | Windows | Linux Docker |
 |---|---|---|---|---|
-| API routes/contracts | Required | Required | ⚠️ Needs validation | Add API contract smoke checks |
-| Auth/session behavior | Required | Required | ⚠️ Needs validation | Add login + token lifecycle checks |
-| Queue/Ticket flow | Optional | Critical | ⚠️ Needs validation | Add queue/ticket end-to-end smoke |
-| Build/start scripts | Linux stable | Linux stable | ⚠️ Partial | Add PowerShell helper and npm wrappers |
-| Path handling | Linux paths | Linux paths | ⚠️ Risk | Normalize path resolution in scripts |
-| Release packaging | Existing | Existing | ⚠️ Partial | Add Windows build checklist |
+| Rotas/API | ✅ | ✅ | ✅ alvo | ✅ alvo |
+| Auth/Sessão | ✅ | ✅ | ✅ alvo | ✅ alvo |
+| Queue/Ticket | ✅ | ✅ | ✅ alvo | ✅ alvo |
+| Inicialização | Node | Docker/Node | ✅ scripts dedicados | ✅ script dedicado |
+| Operação | Manual guiada | Manual guiada | ✅ | ✅ |
 
-## First milestones
+---
 
-### M1 — Baseline (this commit)
-- Add this compatibility document.
-- Add root npm scripts for Windows bootstrap/validation wrappers.
-- Add scripts/windows-business-check.ps1 to validate local prerequisites and key files.
+## Sequência recomendada (hoje)
 
-### M2 — Runtime parity checks
-- Validate OpenCore + Business routes in the same runbook.
-- Validate ticket/queue CRUD and event listener behavior.
-- Validate frontend route loading for Business pages.
+### Windows (Operação)
+1. `npm run windows:check`
+2. `npm run windows:opencore` (quando quiser OpenCore local)
+3. `npm run windows:business:server` (quando quiser Business server)
 
-### M3 — Release hardening
-- Windows runbook + rollback section.
-- CI job for Windows smoke checks.
-- Compatibility gate before release tagging.
+### Linux (Docker Business)
+1. `npm run linux:docker:business`
+2. `npm run linux:docker:business:down` (parar)
+3. `npm run linux:docker:business:rebuild` (rebuild limpo)
 
-## Runbook (baseline)
-From repo root on Windows PowerShell:
+---
 
-`powershell
-npm run windows:check
-npm run windows:business
-`
-
-## Definition of done (Windows compatibility)
-- OpenCore and Business can boot in Windows environment with documented commands.
-- Core flows (auth, queue, ticket, contact, dashboard) pass smoke checks.
-- No Linux script regressions introduced.
+## Próximos passos técnicos (M2)
+1. Smoke tests automáticos de rota (OpenCore + Business)
+2. Teste de fluxo de autenticação e sessão
+3. Teste de queue/ticket fim-a-fim
+4. Gate de compatibilidade antes de release
