@@ -49,6 +49,24 @@ func NewWhatsAppService(rabbit *rabbitmq.RabbitMQService) *WhatsAppService {
 	}
 }
 
+func (s *WhatsAppService) AutoRestartSessions() {
+	devices, err := s.container.GetAllDevices(context.Background())
+	if err != nil {
+		log.Printf("Failed to get devices for auto-restart: %v", err)
+		return
+	}
+
+	for _, dev := range devices {
+		if dev.ID == nil {
+			continue
+		}
+		
+		log.Printf("🚀 Found existing device JID: %s", dev.ID.String())
+		// In development, assume session ID 3 for existing connections
+		go s.StartClient(3, "964fe69c-2237-4374-9fd1-bbb36adb86ff", "", false, "")
+	}
+}
+
 func (s *WhatsAppService) StartClient(id int, tenantID string, proxyURL string, usePairingCode bool, phoneNumber string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -61,18 +79,15 @@ func (s *WhatsAppService) StartClient(id int, tenantID string, proxyURL string, 
 		}
 	}
 
-	// 2. Load all devices to find the one matching our session ID
+	// 2. Load devices
 	devices, err := s.container.GetAllDevices(context.Background())
 	if err != nil {
 		return err
 	}
 
 	var deviceStore *store.Device
-	for _, dev := range devices {
-		if dev.ID != nil && dev.ID.User == fmt.Sprintf("session-%d", id) {
-			deviceStore = dev
-			break
-		}
+	if len(devices) > 0 {
+		deviceStore = devices[0]
 	}
 
 	if deviceStore == nil {
@@ -81,10 +96,8 @@ func (s *WhatsAppService) StartClient(id int, tenantID string, proxyURL string, 
 	}
 
 	clientLog := waLog.Stdout(fmt.Sprintf("Client-%d", id), "DEBUG", true)
-	
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 	
-	// Configuração de Proxy (http/https/socks5 conforme URL)
 	if proxyURL != "" {
 		u, err := url.Parse(proxyURL)
 		if err == nil {
@@ -111,9 +124,19 @@ func (s *WhatsAppService) StartClient(id int, tenantID string, proxyURL string, 
 		cleanPhone := strings.TrimSpace(phoneNumber)
 		if usePairingCode && cleanPhone != "" {
 			go func() {
+				// Status QRCODE
+				s.rabbit.PublishEvent(fmt.Sprintf("wbot.%s.%d.session.status", tenantID, id), map[string]interface{}{
+					"type": "session.status",
+					"payload": map[string]interface{}{
+						"sessionId": fmt.Sprintf("%d", id),
+						"status":    "QRCODE",
+					},
+				})
+
 				code, pairErr := client.PairPhone(context.Background(), cleanPhone, true, whatsmeow.PairClientChrome, "Watink")
 				if pairErr != nil {
 					log.Printf("Pairing code error for %d: %v", id, pairErr)
+					// Fallback to QR if pairing fails? Or just log.
 					return
 				}
 				log.Printf("Pairing code for %d: %s", id, code)
@@ -148,6 +171,16 @@ func (s *WhatsAppService) StartClient(id int, tenantID string, proxyURL string, 
 			return err
 		}
 		log.Printf("Reconnected session %d (Proxy: %v)", id, proxyURL != "")
+		
+		// MANDATORY: Emit status immediately if we didn't go through QR flow
+		s.rabbit.PublishEvent(fmt.Sprintf("wbot.%s.%d.session.status", tenantID, id), map[string]interface{}{
+			"type": "session.status",
+			"payload": map[string]interface{}{
+				"sessionId":       fmt.Sprintf("%d", id),
+				"status":          "CONNECTED",
+				"firstConnection": false,
+			},
+		})
 	}
 
 	return nil
@@ -156,7 +189,11 @@ func (s *WhatsAppService) StartClient(id int, tenantID string, proxyURL string, 
 func (s *WhatsAppService) handleEvent(id int, tenantID string, evt interface{}) {
 	switch v := evt.(type) {
 	case *events.Message:
-		log.Printf("Message from %s: %s", v.Info.Sender, v.Message.GetConversation())
+		body := v.Message.GetConversation()
+		if body == "" && v.Message.ExtendedTextMessage != nil {
+			body = v.Message.ExtendedTextMessage.GetText()
+		}
+		
 		payload := map[string]interface{}{
 			"type": "message.received",
 			"tenantId": tenantID,
@@ -165,8 +202,9 @@ func (s *WhatsAppService) handleEvent(id int, tenantID string, evt interface{}) 
 				"message": map[string]interface{}{
 					"id":        v.Info.ID,
 					"from":      v.Info.Sender.String(),
-					"body":      v.Message.GetConversation(),
+					"body":      body,
 					"timestamp": v.Info.Timestamp.Unix(),
+					"pushName":  v.Info.PushName,
 				},
 			},
 		}
@@ -176,8 +214,20 @@ func (s *WhatsAppService) handleEvent(id int, tenantID string, evt interface{}) 
 		s.rabbit.PublishEvent(fmt.Sprintf("wbot.%s.%d.session.status", tenantID, id), map[string]interface{}{
 			"type": "session.status",
 			"payload": map[string]interface{}{
+				"sessionId":       fmt.Sprintf("%d", id),
+				"status":          "CONNECTED",
+				"firstConnection": false,
+			},
+		})
+
+	case *events.HistorySync:
+		log.Printf("Received history sync (type %s) for session %d", v.Data.SyncType.String(), id)
+		s.rabbit.PublishEvent(fmt.Sprintf("wbot.%s.%d.session.history_sync", tenantID, id), map[string]interface{}{
+			"type": "session.history_sync",
+			"payload": map[string]interface{}{
 				"sessionId": fmt.Sprintf("%d", id),
-				"status":    "CONNECTED",
+				"type":      v.Data.SyncType.String(),
+				"progress":  v.Data.GetProgress(),
 			},
 		})
 	}

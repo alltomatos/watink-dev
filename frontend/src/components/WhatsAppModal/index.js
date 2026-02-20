@@ -70,6 +70,27 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }) => {
 	const [whatsApp, setWhatsApp] = useState(initialState);
 	const [selectedQueueIds, setSelectedQueueIds] = useState([]);
 
+	const findQueue = (id, list) => {
+		if (!list || !id) return null;
+		return list.find(q => q.id === parseInt(id));
+	};
+
+	const [allQueues, setAllQueues] = useState([]);
+
+	useEffect(() => {
+		const fetchQueues = async () => {
+			try {
+				const { data } = await api.get("/queue");
+				setAllQueues(data);
+			} catch (err) {
+				toastError(err);
+			}
+		};
+		if (open) {
+			fetchQueues();
+		}
+	}, [open]);
+
 	useEffect(() => {
 		const fetchSession = async () => {
 			if (!whatsAppId) return;
@@ -78,7 +99,7 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }) => {
 				const { data } = await api.get(`whatsapp/${whatsAppId}`);
 				setWhatsApp(data);
 
-				const whatsQueueIds = data.queues?.map(queue => queue.id);
+				const whatsQueueIds = data.queues?.map(queue => queue.id) || [];
 				setSelectedQueueIds(whatsQueueIds);
 			} catch (err) {
 				toastError(err);
@@ -207,7 +228,7 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }) => {
 									)}
 								</div>
 								<QueueSelect
-									selectedQueueIds={selectedQueueIds}
+									selectedQueueIds={selectedQueueIds?.filter(id => findQueue(id, allQueues)) || []}
 									onChange={selectedIds => setSelectedQueueIds(selectedIds)}
 								/>
 							</DialogContent>

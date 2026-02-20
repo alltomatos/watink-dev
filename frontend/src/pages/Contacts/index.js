@@ -19,6 +19,7 @@ import {
   TableRow,
   Paper,
   Avatar,
+  Typography,
 } from "@material-ui/core";
 import SearchIcon from "@material-ui/icons/Search";
 import WhatsAppIcon from "@material-ui/icons/WhatsApp";

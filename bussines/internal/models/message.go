@@ -17,7 +17,7 @@ type Message struct {
 	FromMe      bool      `gorm:"column:fromMe;not null;default:false" json:"fromMe"`
 	IsDeleted   bool      `gorm:"column:isDeleted;not null;default:false" json:"isDeleted"`
 	ContactID   *int      `gorm:"column:contactId" json:"contactId"`
-	QuotedMsgID string    `gorm:"column:quotedMsgId" json:"quotedMsgId"`
+	QuotedMsgID *string   `gorm:"column:quotedMsgId" json:"quotedMsgId"`
 	TenantID    uuid.UUID `gorm:"column:tenantId;type:uuid" json:"tenantId"`
 	Reactions   string    `gorm:"type:jsonb;default:'[]'" json:"reactions"`
 	DataJson    string    `gorm:"column:dataJson;type:jsonb;default:'{}'" json:"dataJson"`

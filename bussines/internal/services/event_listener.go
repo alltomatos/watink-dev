@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/alltomatos/watinkdev/bussines/internal/models"
 	"github.com/google/uuid"
 	"github.com/streadway/amqp"
+	"gorm.io/gorm"
 )
 
 type EventEnvelope struct {
@@ -31,21 +33,22 @@ type PairingCodePayload struct {
 }
 
 type SessionStatusPayload struct {
-	SessionID     string `json:"sessionId"`
-	Status        string `json:"status"`
-	Number        string `json:"number"`
-	ProfilePicUrl string `json:"profilePicUrl"`
+	SessionID       string `json:"sessionId"`
+	Status          string `json:"status"`
+	Number          string `json:"number"`
+	ProfilePicUrl   string `json:"profilePicUrl"`
+	FirstConnection bool   `json:"firstConnection"`
 }
 
 type MessagePayload struct {
-	ID        string `json:"id"`
-	Body      string `json:"body"`
-	Type      string `json:"type"`
-	FromMe    bool   `json:"fromMe"`
-	Timestamp int64  `json:"timestamp"`
-	TicketID  int    `json:"ticketId"`
-	ContactID int    `json:"contactId"`
-	TenantID  string `json:"tenantId"`
+	ID          string `json:"id"`
+	From        string `json:"from"`
+	Body        string `json:"body"`
+	Type        string `json:"type"`
+	FromMe      bool   `json:"fromMe"`
+	Timestamp   int64  `json:"timestamp"`
+	PushName    string `json:"pushName"`
+	QuotedMsgId string `json:"quotedMsgId"`
 }
 
 type MessageReceivedPayload struct {
@@ -53,9 +56,20 @@ type MessageReceivedPayload struct {
 	SessionID string         `json:"sessionId"`
 }
 
+type HistorySyncPayload struct {
+	SessionID string          `json:"sessionId"`
+	Type      string          `json:"type"`
+	Progress  uint32          `json:"progress"`
+	Messages  []MessagePayload `json:"messages"`
+}
+
 func getSessionID(id string) int {
-	parts := strings.Split(id, "-")
-	val, _ := strconv.Atoi(parts[0])
+	if strings.Contains(id, "-") {
+		parts := strings.Split(id, "-")
+		val, _ := strconv.Atoi(parts[len(parts)-1])
+		return val
+	}
+	val, _ := strconv.Atoi(id)
 	return val
 }
 
@@ -64,6 +78,7 @@ func StartEventListener(rabbitMQ *RabbitMQService) {
 		"wbot.*.*.session.qrcode",
 		"wbot.*.*.session.pairing_code",
 		"wbot.*.*.session.status",
+		"wbot.*.*.session.history_sync",
 		"wbot.*.*.message.received",
 		"wbot.*.*.message.ack",
 		"wbot.*.*.message.revoke",
@@ -79,19 +94,37 @@ func StartEventListener(rabbitMQ *RabbitMQService) {
 			return
 		}
 
-		log.Printf("[EventListener] Event received: %s", env.Type)
+		log.Printf("[EventListener] Event received: %s (Tenant: %s)", env.Type, env.TenantID)
 
-		switch env.Type {
-		case "session.qrcode":
-			handleQrCode(env.Payload)
-		case "session.pairing_code":
-			handlePairingCode(env.Payload)
-		case "session.status":
-			handleSessionStatus(env.Payload)
-		case "message.received":
-			handleMessageReceived(env.Payload, env.TenantID)
-		case "message.ack":
-			handleMessageAck(env.Payload, env.TenantID)
+		err := database.DB.Transaction(func(tx *gorm.DB) error {
+			if env.TenantID != "" {
+				tx.Exec(fmt.Sprintf("SET app.current_tenant = '%s'", env.TenantID))
+			}
+
+			switch env.Type {
+			case "session.qrcode":
+				return handleQrCode(tx, env.Payload)
+			case "session.pairing_code":
+				return handlePairingCode(tx, env.Payload)
+			case "session.status":
+				return handleSessionStatus(tx, env.Payload)
+			case "session.history_sync":
+				return handleHistorySync(tx, env.Payload, env.TenantID)
+			case "message.received":
+				var p MessageReceivedPayload
+				if err := json.Unmarshal(env.Payload, &p); err != nil {
+					return err
+				}
+				return processMessage(tx, p.Message, p.SessionID, env.TenantID)
+			case "message.ack":
+				return handleMessageAck(tx, env.Payload, env.TenantID)
+			default:
+				return nil
+			}
+		})
+
+		if err != nil {
+			log.Printf("Error processing event %s: %v", env.Type, err)
 		}
 
 		d.Ack(false)
@@ -102,19 +135,19 @@ func StartEventListener(rabbitMQ *RabbitMQService) {
 	}
 }
 
-func handleQrCode(payload json.RawMessage) {
+func handleQrCode(tx *gorm.DB, payload json.RawMessage) error {
 	var p QrCodePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
-		log.Printf("Error unmarshaling QrCodePayload: %v", err)
-		return
+		return err
 	}
 
 	sessionID := getSessionID(p.SessionID)
-	if err := database.DB.Model(&models.Whatsapp{}).Where("id = ?", sessionID).Updates(map[string]interface{}{
+	if err := tx.Model(&models.Whatsapp{}).Where("id = ?", sessionID).Updates(map[string]interface{}{
 		"qrcode": p.QrCode,
 		"status": "QRCODE",
 	}).Error; err != nil {
 		log.Printf("Error updating qrcode/status for session %d: %v", sessionID, err)
+		return err
 	}
 
 	EmitToNamespace("/", "whatsappSession", map[string]interface{}{
@@ -125,13 +158,13 @@ func handleQrCode(payload json.RawMessage) {
 			"status": "QRCODE",
 		},
 	})
+	return nil
 }
 
-func handlePairingCode(payload json.RawMessage) {
+func handlePairingCode(tx *gorm.DB, payload json.RawMessage) error {
 	var p PairingCodePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
-		log.Printf("Error unmarshaling PairingCodePayload: %v", err)
-		return
+		return err
 	}
 
 	sessionID := getSessionID(p.SessionID)
@@ -140,9 +173,11 @@ func handlePairingCode(payload json.RawMessage) {
 		status = "QRCODE"
 	}
 
-	database.DB.Model(&models.Whatsapp{}).Where("id = ?", sessionID).Updates(map[string]interface{}{
+	if err := tx.Model(&models.Whatsapp{}).Where("id = ?", sessionID).Updates(map[string]interface{}{
 		"status": status,
-	})
+	}).Error; err != nil {
+		return err
+	}
 
 	EmitToNamespace("/", "whatsappSession", map[string]interface{}{
 		"action": "update",
@@ -152,13 +187,13 @@ func handlePairingCode(payload json.RawMessage) {
 			"pairingCode": p.PairingCode,
 		},
 	})
+	return nil
 }
 
-func handleSessionStatus(payload json.RawMessage) {
+func handleSessionStatus(tx *gorm.DB, payload json.RawMessage) error {
 	var p SessionStatusPayload
 	if err := json.Unmarshal(payload, &p); err != nil {
-		log.Printf("Error unmarshaling SessionStatusPayload: %v", err)
-		return
+		return err
 	}
 
 	sessionID := getSessionID(p.SessionID)
@@ -172,66 +207,145 @@ func handleSessionStatus(payload json.RawMessage) {
 	if p.ProfilePicUrl != "" {
 		updates["profilePicUrl"] = p.ProfilePicUrl
 	}
+	if p.FirstConnection {
+		now := time.Now()
+		updates["firstConnection"] = &now
+	}
 
-	database.DB.Model(&models.Whatsapp{}).Where("id = ?", sessionID).Updates(updates)
+	if err := tx.Model(&models.Whatsapp{}).Where("id = ?", sessionID).Updates(updates).Error; err != nil {
+		return err
+	}
 
 	EmitToNamespace("/", "whatsappSession", map[string]interface{}{
 		"action": "update",
 		"session": map[string]interface{}{
-			"id":            sessionID,
-			"status":        p.Status,
-			"number":        p.Number,
-			"profilePicUrl": p.ProfilePicUrl,
+			"id":              sessionID,
+			"status":          p.Status,
+			"number":          p.Number,
+			"profilePicUrl":   p.ProfilePicUrl,
+			"firstConnection": updates["firstConnection"],
 		},
 	})
+	return nil
 }
 
-func handleMessageReceived(payload json.RawMessage, tenantID string) {
-	var p MessageReceivedPayload
+func handleHistorySync(tx *gorm.DB, payload json.RawMessage, tenantID string) error {
+	var p HistorySyncPayload
 	if err := json.Unmarshal(payload, &p); err != nil {
-		log.Printf("Error unmarshaling MessageReceivedPayload: %v", err)
-		return
+		return err
 	}
 
+	log.Printf("[EventListener] Processing History Sync for session %s, type %s", p.SessionID, p.Type)
+
+	for _, msgPayload := range p.Messages {
+		if err := processMessage(tx, msgPayload, p.SessionID, tenantID); err != nil {
+			log.Printf("Error processing history message %s: %v", msgPayload.ID, err)
+		}
+	}
+
+	return nil
+}
+
+func processMessage(tx *gorm.DB, p MessagePayload, rawSessionID string, tenantID string) error {
 	tid, _ := uuid.Parse(tenantID)
+	sessionID := getSessionID(rawSessionID)
+
+	// 1. Find or Create Contact
+	number := strings.Split(p.From, "@")[0]
+	if number == "" {
+		return fmt.Errorf("empty sender number")
+	}
+
+	var contact models.Contact
+	if err := tx.Where("\"tenantId\" = ? AND number = ?", tid, number).First(&contact).Error; err != nil {
+		contact = models.Contact{
+			Name:     p.PushName,
+			Number:   number,
+			TenantID: tid,
+		}
+		if contact.Name == "" {
+			contact.Name = number
+		}
+		if createErr := tx.Create(&contact).Error; createErr != nil {
+			return fmt.Errorf("failed to create contact: %v", createErr)
+		}
+	}
+
+	// 2. Find or Create Ticket
+	var ticket models.Ticket
+	if err := tx.Where("\"tenantId\" = ? AND \"contactId\" = ? AND \"whatsappId\" = ? AND status = 'open'", tid, contact.ID, sessionID).First(&ticket).Error; err != nil {
+		ticket = models.Ticket{
+			ContactID:  contact.ID,
+			Status:     "open",
+			TenantID:   tid,
+			WhatsappID: sessionID,
+		}
+		if createErr := tx.Create(&ticket).Error; createErr != nil {
+			return fmt.Errorf("failed to create ticket: %v", createErr)
+		}
+	}
+
+	// 3. Save Message
 	msg := models.Message{
-		ID:        p.Message.ID,
-		Body:      p.Message.Body,
-		TicketID:  p.Message.TicketID,
-		ContactID: &p.Message.ContactID,
-		FromMe:    p.Message.FromMe,
-		TenantID:  tid,
-		MediaType: p.Message.Type,
-		CreatedAt: time.Unix(p.Message.Timestamp, 0),
-		UpdatedAt: time.Now(),
+		ID:          p.ID,
+		Body:        p.Body,
+		TicketID:    ticket.ID,
+		ContactID:   &contact.ID,
+		FromMe:      p.FromMe,
+		TenantID:    tid,
+		MediaType:   p.Type,
+		CreatedAt:   time.Unix(p.Timestamp, 0),
+		UpdatedAt:   time.Now(),
 	}
 
-	if err := database.DB.Create(&msg).Error; err != nil {
-		log.Printf("Error saving message: %v", err)
-		return
+	// Only set QuotedMsgId if it exists in DB to avoid FK violation
+	if p.QuotedMsgId != "" {
+		var exists int64
+		tx.Model(&models.Message{}).Where("id = ?", p.QuotedMsgId).Count(&exists)
+		if exists > 0 {
+			msg.QuotedMsgID = &p.QuotedMsgId
+		}
 	}
 
-	room := strconv.Itoa(msg.TicketID)
+	if err := tx.Create(&msg).Error; err != nil {
+		return fmt.Errorf("failed to save message: %v", err)
+	}
+
+	// Update Ticket LastMessage
+	tx.Model(&ticket).Updates(map[string]interface{}{
+		"lastMessage":    msg.Body,
+		"updatedAt":      time.Now(),
+		"unreadMessages": ticket.UnreadMessages + 1,
+	})
+
+	room := strconv.Itoa(ticket.ID)
 	EmitToRoom("/", room, "appMessage", map[string]interface{}{
 		"action":  "create",
 		"message": msg,
 	})
+
+	EmitToNamespace("/", "ticket", map[string]interface{}{
+		"action": "update",
+		"ticket": ticket,
+	})
+
+	return nil
 }
 
-func handleMessageAck(payload json.RawMessage, tenantID string) {
+func handleMessageAck(tx *gorm.DB, payload json.RawMessage, tenantID string) error {
 	var p struct {
 		MessageID string `json:"messageId"`
 		Ack       int    `json:"ack"`
 	}
 	if err := json.Unmarshal(payload, &p); err != nil {
-		return
+		return err
 	}
 
 	tid, _ := uuid.Parse(tenantID)
 	var msg models.Message
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", p.MessageID, tid).First(&msg).Error; err == nil {
+	if err := tx.Where("id = ? AND \"tenantId\" = ?", p.MessageID, tid).First(&msg).Error; err == nil {
 		if p.Ack > msg.Ack {
-			database.DB.Model(&msg).Update("ack", p.Ack)
+			tx.Model(&msg).Update("ack", p.Ack)
 			
 			room := strconv.Itoa(msg.TicketID)
 			EmitToRoom("/", room, "appMessage", map[string]interface{}{
@@ -240,4 +354,5 @@ func handleMessageAck(payload json.RawMessage, tenantID string) {
 			})
 		}
 	}
+	return nil
 }

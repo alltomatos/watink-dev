@@ -26,6 +26,7 @@ type Whatsapp struct {
 	KeepAlive       bool      `gorm:"column:keepAlive;default:false" json:"keepAlive"`
 	CreatedAt       time.Time `gorm:"column:createdAt" json:"createdAt"`
 	UpdatedAt       time.Time `gorm:"column:updatedAt" json:"updatedAt"`
+	FirstConnection *time.Time `gorm:"column:firstConnection" json:"firstConnection"`
 
 	// Relations
 	Tickets []Ticket `gorm:"foreignKey:WhatsappID" json:"tickets,omitempty"`

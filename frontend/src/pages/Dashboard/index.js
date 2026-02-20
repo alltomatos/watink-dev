@@ -133,8 +133,8 @@ const Dashboard = () => {
   };
 
   let userQueueIds = [];
-  if (user.queues && user.queues.length > 0) {
-    userQueueIds = user.queues.map((q) => q.id);
+  if (user?.queues && user.queues.length > 0) {
+    userQueueIds = user.queues?.map((q) => q.id) || [];
   }
 
   const renderWidget = (widget) => {

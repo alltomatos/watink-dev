@@ -52,6 +52,8 @@ const reducer = (state, action) => {
 	if (action.type === "RESET") {
 		return [];
 	}
+
+	return state;
 };
 
 const useWhatsApps = () => {

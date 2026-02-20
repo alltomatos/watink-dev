@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/alltomatos/watinkdev/engine-go/internal/rabbitmq"
 	"github.com/alltomatos/watinkdev/engine-go/internal/whatsapp"
@@ -39,7 +40,14 @@ func main() {
 	// 2. Setup WhatsApp Service (Postgres Store)
 	waService := whatsapp.NewWhatsAppService(rabbit)
 
-	// 3. Listen for Commands
+	// 3. Auto-restart sessions after a small delay
+	go func() {
+		time.Sleep(5 * time.Second)
+		log.Println("🔄 Auto-restarting existing sessions...")
+		waService.AutoRestartSessions()
+	}()
+
+	// 4. Listen for Commands
 	routingKeys := []string{
 		"wbot.*.*.session.start",
 		"wbot.*.*.session.stop",
@@ -63,15 +71,19 @@ func main() {
 		case "session.start":
 			var envelope CommandEnvelope
 			if err := json.Unmarshal(d.Body, &envelope); err != nil {
-				log.Printf("Invalid command payload for session.start (%d): %v", sessionID, err)
-				d.Ack(false)
-				return
-			}
-
-			payload := envelope.Payload
-			err := waService.StartClient(sessionID, tenantID, payload.ProxyURL, payload.UsePairingCode, payload.PhoneNumber)
-			if err != nil {
-				log.Printf("Error starting client %d: %v", sessionID, err)
+				// Fallback for direct payload if envelope is missing
+				var payload StartCommandPayload
+				if errJson := json.Unmarshal(d.Body, &payload); errJson == nil {
+					_ = waService.StartClient(sessionID, tenantID, payload.ProxyURL, payload.UsePairingCode, payload.PhoneNumber)
+				} else {
+					log.Printf("Invalid command payload for session.start (%d): %v", sessionID, err)
+				}
+			} else {
+				payload := envelope.Payload
+				err := waService.StartClient(sessionID, tenantID, payload.ProxyURL, payload.UsePairingCode, payload.PhoneNumber)
+				if err != nil {
+					log.Printf("Error starting client %d: %v", sessionID, err)
+				}
 			}
 		case "session.stop":
 			err := waService.StopClient(sessionID)
