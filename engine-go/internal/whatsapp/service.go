@@ -62,12 +62,10 @@ func (s *WhatsAppService) AutoRestartSessions() {
 		}
 		
 		log.Printf("🚀 Found existing device JID: %s", dev.ID.String())
-		// In development, assume session ID 3 for existing connections
-		go s.StartClient(3, "964fe69c-2237-4374-9fd1-bbb36adb86ff", "", false, "")
 	}
 }
 
-func (s *WhatsAppService) StartClient(id int, tenantID string, proxyURL string, usePairingCode bool, phoneNumber string) error {
+func (s *WhatsAppService) StartClient(id int, tenantID, name string, timestamp int64, proxyURL string, usePairingCode bool, phoneNumber string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -75,6 +73,7 @@ func (s *WhatsAppService) StartClient(id int, tenantID string, proxyURL string, 
 	if client, ok := s.clients[id]; ok {
 		if client.IsConnected() {
 			log.Printf("Client %d already connected", id)
+			s.emitStatus(id, tenantID, "CONNECTED")
 			return nil
 		}
 	}
@@ -85,6 +84,7 @@ func (s *WhatsAppService) StartClient(id int, tenantID string, proxyURL string, 
 		return err
 	}
 
+	// 3. Find device or create new
 	var deviceStore *store.Device
 	if len(devices) > 0 {
 		deviceStore = devices[0]
@@ -95,7 +95,10 @@ func (s *WhatsAppService) StartClient(id int, tenantID string, proxyURL string, 
 		log.Printf("Created new device store for session %d", id)
 	}
 
-	clientLog := waLog.Stdout(fmt.Sprintf("Client-%d", id), "DEBUG", true)
+	// CONVENÇÃO BACKEND-STANDARD: nome-tenantId-id-timestamp
+	sessionName := fmt.Sprintf("%s-%s-%d-%d", name, tenantID, id, timestamp)
+	clientLog := waLog.Stdout(sessionName, "DEBUG", true)
+	
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 	
 	if proxyURL != "" {
@@ -124,19 +127,11 @@ func (s *WhatsAppService) StartClient(id int, tenantID string, proxyURL string, 
 		cleanPhone := strings.TrimSpace(phoneNumber)
 		if usePairingCode && cleanPhone != "" {
 			go func() {
-				// Status QRCODE
-				s.rabbit.PublishEvent(fmt.Sprintf("wbot.%s.%d.session.status", tenantID, id), map[string]interface{}{
-					"type": "session.status",
-					"payload": map[string]interface{}{
-						"sessionId": fmt.Sprintf("%d", id),
-						"status":    "QRCODE",
-					},
-				})
+				s.emitStatus(id, tenantID, "QRCODE")
 
 				code, pairErr := client.PairPhone(context.Background(), cleanPhone, true, whatsmeow.PairClientChrome, "Watink")
 				if pairErr != nil {
 					log.Printf("Pairing code error for %d: %v", id, pairErr)
-					// Fallback to QR if pairing fails? Or just log.
 					return
 				}
 				log.Printf("Pairing code for %d: %s", id, code)
@@ -172,53 +167,65 @@ func (s *WhatsAppService) StartClient(id int, tenantID string, proxyURL string, 
 		}
 		log.Printf("Reconnected session %d (Proxy: %v)", id, proxyURL != "")
 		
-		// MANDATORY: Emit status immediately if we didn't go through QR flow
-		s.rabbit.PublishEvent(fmt.Sprintf("wbot.%s.%d.session.status", tenantID, id), map[string]interface{}{
-			"type": "session.status",
-			"payload": map[string]interface{}{
-				"sessionId":       fmt.Sprintf("%d", id),
-				"status":          "CONNECTED",
-				"firstConnection": false,
-			},
-		})
+		if client.IsLoggedIn() {
+			s.emitStatus(id, tenantID, "CONNECTED")
+		}
 	}
 
 	return nil
 }
 
+func (s *WhatsAppService) emitStatus(id int, tenantID string, status string) {
+	s.rabbit.PublishEvent(fmt.Sprintf("wbot.%s.%d.session.status", tenantID, id), map[string]interface{}{
+		"type": "session.status",
+		"payload": map[string]interface{}{
+			"sessionId": fmt.Sprintf("%d", id),
+			"status":    status,
+		},
+	})
+}
+
 func (s *WhatsAppService) handleEvent(id int, tenantID string, evt interface{}) {
+	client, ok := s.clients[id]
+	if !ok {
+		return
+	}
+
 	switch v := evt.(type) {
 	case *events.Message:
 		body := v.Message.GetConversation()
 		if body == "" && v.Message.ExtendedTextMessage != nil {
 			body = v.Message.ExtendedTextMessage.GetText()
 		}
-		
+
+		// Enriquecimento: Buscar Avatar se possível
+		profilePic := ""
+		if !v.Info.IsFromMe {
+			if info, err := client.GetProfilePictureInfo(context.Background(), v.Info.Sender, &whatsmeow.GetProfilePictureParams{}); err == nil {
+				profilePic = info.URL
+			}
+		}
+
 		payload := map[string]interface{}{
-			"type": "message.received",
+			"type":     "message.received",
 			"tenantId": tenantID,
 			"payload": map[string]interface{}{
 				"sessionId": fmt.Sprintf("%d", id),
 				"message": map[string]interface{}{
-					"id":        v.Info.ID,
-					"from":      v.Info.Sender.String(),
-					"body":      body,
-					"timestamp": v.Info.Timestamp.Unix(),
-					"pushName":  v.Info.PushName,
+					"id":            v.Info.ID,
+					"from":          v.Info.Sender.String(),
+					"body":          body,
+					"timestamp":     v.Info.Timestamp.Unix(),
+					"pushName":      v.Info.PushName,
+					"profilePicUrl": profilePic,
+					"isLid":         v.Info.Sender.Server == "lid",
 				},
 			},
 		}
 		s.rabbit.PublishEvent(fmt.Sprintf("wbot.%s.%d.message.received", tenantID, id), payload)
 
 	case *events.Connected:
-		s.rabbit.PublishEvent(fmt.Sprintf("wbot.%s.%d.session.status", tenantID, id), map[string]interface{}{
-			"type": "session.status",
-			"payload": map[string]interface{}{
-				"sessionId":       fmt.Sprintf("%d", id),
-				"status":          "CONNECTED",
-				"firstConnection": false,
-			},
-		})
+		s.emitStatus(id, tenantID, "CONNECTED")
 
 	case *events.HistorySync:
 		log.Printf("Received history sync (type %s) for session %d", v.Data.SyncType.String(), id)

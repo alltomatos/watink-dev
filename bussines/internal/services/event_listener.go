@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/streadway/amqp"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type EventEnvelope struct {
@@ -41,14 +42,16 @@ type SessionStatusPayload struct {
 }
 
 type MessagePayload struct {
-	ID          string `json:"id"`
-	From        string `json:"from"`
-	Body        string `json:"body"`
-	Type        string `json:"type"`
-	FromMe      bool   `json:"fromMe"`
-	Timestamp   int64  `json:"timestamp"`
-	PushName    string `json:"pushName"`
-	QuotedMsgId string `json:"quotedMsgId"`
+	ID            string `json:"id"`
+	From          string `json:"from"`
+	Body          string `json:"body"`
+	Type          string `json:"type"`
+	FromMe        bool   `json:"fromMe"`
+	Timestamp     int64  `json:"timestamp"`
+	PushName      string `json:"pushName"`
+	QuotedMsgId   string `json:"quotedMsgId"`
+	ProfilePicUrl string `json:"profilePicUrl"`
+	IsLid         bool   `json:"isLid"`
 }
 
 type MessageReceivedPayload struct {
@@ -257,17 +260,42 @@ func processMessage(tx *gorm.DB, p MessagePayload, rawSessionID string, tenantID
 	}
 
 	var contact models.Contact
-	if err := tx.Where("\"tenantId\" = ? AND number = ?", tid, number).First(&contact).Error; err != nil {
+	query := tx.Where("\"tenantId\" = ?", tid)
+	if p.IsLid {
+		query = query.Where("lid = ?", p.From)
+	} else {
+		query = query.Where("number = ?", number)
+	}
+
+	if err := query.First(&contact).Error; err != nil {
 		contact = models.Contact{
 			Name:     p.PushName,
 			Number:   number,
 			TenantID: tid,
 		}
+		if p.IsLid {
+			contact.Lid = &p.From
+		}
 		if contact.Name == "" {
 			contact.Name = number
 		}
-		if createErr := tx.Create(&contact).Error; createErr != nil {
-			return fmt.Errorf("failed to create contact: %v", createErr)
+		if p.ProfilePicUrl != "" {
+			contact.ProfilePicUrl = p.ProfilePicUrl
+		}
+		if err := tx.Create(&contact).Error; err != nil {
+			return fmt.Errorf("failed to create contact: %v", err)
+		}
+	} else {
+		// Enriquecimento: Atualizar push name ou avatar se mudou
+		updates := make(map[string]interface{})
+		if p.PushName != "" && (contact.Name == "" || contact.Name == contact.Number) {
+			updates["name"] = p.PushName
+		}
+		if p.ProfilePicUrl != "" && contact.ProfilePicUrl == "" {
+			updates["profilePicUrl"] = p.ProfilePicUrl
+		}
+		if len(updates) > 0 {
+			tx.Model(&contact).Updates(updates)
 		}
 	}
 
@@ -280,8 +308,8 @@ func processMessage(tx *gorm.DB, p MessagePayload, rawSessionID string, tenantID
 			TenantID:   tid,
 			WhatsappID: sessionID,
 		}
-		if createErr := tx.Create(&ticket).Error; createErr != nil {
-			return fmt.Errorf("failed to create ticket: %v", createErr)
+		if createErr := tx.Where(models.Ticket{ContactID: contact.ID, WhatsappID: sessionID, Status: "open", TenantID: tid}).FirstOrCreate(&ticket).Error; createErr != nil {
+			return fmt.Errorf("failed to ensure ticket: %v", createErr)
 		}
 	}
 
@@ -307,7 +335,7 @@ func processMessage(tx *gorm.DB, p MessagePayload, rawSessionID string, tenantID
 		}
 	}
 
-	if err := tx.Create(&msg).Error; err != nil {
+	if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&msg).Error; err != nil {
 		return fmt.Errorf("failed to save message: %v", err)
 	}
 

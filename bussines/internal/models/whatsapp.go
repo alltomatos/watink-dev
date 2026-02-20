@@ -27,6 +27,7 @@ type Whatsapp struct {
 	CreatedAt       time.Time `gorm:"column:createdAt" json:"createdAt"`
 	UpdatedAt       time.Time `gorm:"column:updatedAt" json:"updatedAt"`
 	FirstConnection *time.Time `gorm:"column:firstConnection" json:"firstConnection"`
+	EngineType      string     `gorm:"column:engineType;default:'whatsmeow'" json:"engineType"`
 
 	// Relations
 	Tickets []Ticket `gorm:"foreignKey:WhatsappID" json:"tickets,omitempty"`

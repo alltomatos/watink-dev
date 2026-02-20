@@ -9,6 +9,7 @@ import (
 	"github.com/alltomatos/watinkdev/bussines/internal/database"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"gorm.io/gorm"
 )
 
 func IsAuth() gin.HandlerFunc {
@@ -61,9 +62,12 @@ func IsAuth() gin.HandlerFunc {
 		c.Set("userProfile", claims["profile"])
 		c.Set("tenantId", tenantID)
 
-		// Support for Row Level Security (RLS)
-		// Run SET app.current_tenant = tenantID on the DB connection for this request
-		database.DB.Exec(fmt.Sprintf("SET app.current_tenant = '%s'", tenantID))
+		// ✅ CORE UPGRADE: RLS-Aware Session
+		// We create a scoped database session for this request
+		// This session will have the tenant ID set for all its queries
+		tx := database.DB.Session(&gorm.Session{})
+		tx.Exec(fmt.Sprintf("SET app.current_tenant = '%s'", tenantID))
+		c.Set("db", tx)
 
 		c.Next()
 	}

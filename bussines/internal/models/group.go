@@ -15,6 +15,7 @@ type Group struct {
 
 	// Relations
 	Permissions []Permission `gorm:"many2many:GroupPermissions;joinForeignKey:groupId;joinReferences:permissionId" json:"permissions,omitempty"`
+	Roles       []Role       `gorm:"many2many:GroupRoles;joinForeignKey:groupId;joinReferences:roleId" json:"roles,omitempty"`
 }
 
 func (Group) TableName() string {

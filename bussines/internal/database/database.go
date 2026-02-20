@@ -47,6 +47,8 @@ func Migrate() {
 		&models.Message{},
 		&models.Group{},
 		&models.Permission{},
+		&models.Role{},
+		&models.RolePermission{},
 		&models.Flow{},
 		&models.QuickAnswer{},
 		&models.KnowledgeBase{},

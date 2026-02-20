@@ -20,11 +20,13 @@ type StartCommandPayload struct {
 	ProxyURL       string `json:"proxyUrl"`
 	UsePairingCode bool   `json:"usePairingCode"`
 	PhoneNumber    string `json:"phoneNumber"`
+	Name           string `json:"name"`
 }
 
 type CommandEnvelope struct {
-	Type    string              `json:"type"`
-	Payload StartCommandPayload `json:"payload"`
+	Type      string              `json:"type"`
+	Timestamp int64               `json:"timestamp"`
+	Payload   StartCommandPayload `json:"payload"`
 }
 
 func main() {
@@ -74,13 +76,19 @@ func main() {
 				// Fallback for direct payload if envelope is missing
 				var payload StartCommandPayload
 				if errJson := json.Unmarshal(d.Body, &payload); errJson == nil {
-					_ = waService.StartClient(sessionID, tenantID, payload.ProxyURL, payload.UsePairingCode, payload.PhoneNumber)
+					// Use current time as fallback timestamp
+					ts := time.Now().Unix()
+					_ = waService.StartClient(sessionID, tenantID, payload.Name, ts, payload.ProxyURL, payload.UsePairingCode, payload.PhoneNumber)
 				} else {
 					log.Printf("Invalid command payload for session.start (%d): %v", sessionID, err)
 				}
 			} else {
 				payload := envelope.Payload
-				err := waService.StartClient(sessionID, tenantID, payload.ProxyURL, payload.UsePairingCode, payload.PhoneNumber)
+				ts := envelope.Timestamp
+				if ts == 0 {
+					ts = time.Now().Unix()
+				}
+				err := waService.StartClient(sessionID, tenantID, payload.Name, ts, payload.ProxyURL, payload.UsePairingCode, payload.PhoneNumber)
 				if err != nil {
 					log.Printf("Error starting client %d: %v", sessionID, err)
 				}
