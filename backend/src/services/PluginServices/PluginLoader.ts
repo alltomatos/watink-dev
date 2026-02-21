@@ -29,6 +29,11 @@ class PluginLoader {
     }
 
     public async init(core: IWatinkCore) {
+        if (process.env.OPENCORE_DISABLE_PLUGINS === "true") {
+            logger.info("Plugin Loader disabled by OPENCORE_DISABLE_PLUGINS=true");
+            return;
+        }
+
         logger.info("Initializing Plugin Loader...");
         
         PluginBridge.getInstance().setCore(core);
