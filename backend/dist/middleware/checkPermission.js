@@ -7,6 +7,7 @@ const AppError_1 = __importDefault(require("../errors/AppError"));
 const User_1 = __importDefault(require("../models/User"));
 const Group_1 = __importDefault(require("../models/Group"));
 const Permission_1 = __importDefault(require("../models/Permission"));
+const Role_1 = __importDefault(require("../models/Role"));
 const checkPermission = (permission) => {
     return async (req, res, next) => {
         const { id } = req.user;
@@ -15,6 +16,11 @@ const checkPermission = (permission) => {
                 {
                     model: Group_1.default,
                     as: "group",
+                    include: [{ model: Permission_1.default, as: "permissions" }]
+                },
+                {
+                    model: Role_1.default,
+                    as: "roles",
                     include: [{ model: Permission_1.default, as: "permissions" }]
                 },
                 {
@@ -30,10 +36,15 @@ const checkPermission = (permission) => {
         if (user.profile === "admin" || user.profile === "superadmin") {
             return next();
         }
-        const groupPermissions = user.group?.permissions?.map(p => p.name) || [];
+        const legacyPermissions = user.group?.permissions?.map(p => p.name) || [];
         const individualPermissions = user.permissions?.map(p => p.name) || [];
-        // Merge permissions
-        const allPermissions = [...new Set([...groupPermissions, ...individualPermissions])];
+        const rolePermissions = user.roles?.flatMap(role => role.permissions?.map(p => p.name) || []) || [];
+        // Merge all permissions
+        const allPermissions = [...new Set([
+                ...legacyPermissions,
+                ...individualPermissions,
+                ...rolePermissions
+            ])];
         if (!allPermissions.includes(permission)) {
             throw new AppError_1.default("ERR_NO_PERMISSION", 403);
         }

@@ -45,12 +45,15 @@ func main() {
 
 	r := gin.Default()
 
+	// 5. Global Middleware
+	r.Use(middleware.CORSMiddleware())
+
 	// Socket.IO Routes
 	r.GET("/socket.io/*any", gin.WrapH(server))
 	r.POST("/socket.io/*any", gin.WrapH(server))
 
 	// API Group
-	apiGroup := r.Group("/api")
+	apiGroup := r.Group("/api/v1")
 	{
 		apiGroup.GET("/health", func(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "OK", "service": "watink-business"})

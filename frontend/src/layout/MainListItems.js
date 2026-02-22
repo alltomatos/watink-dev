@@ -5,7 +5,7 @@ import ListItem from "@material-ui/core/ListItem";
 import ListItemIcon from "@material-ui/core/ListItemIcon";
 import ListItemText from "@material-ui/core/ListItemText";
 import Divider from "@material-ui/core/Divider";
-import { Badge, Tooltip } from "@material-ui/core";
+import { Badge, Tooltip, ListSubheader } from "@material-ui/core";
 import DashboardOutlinedIcon from "@material-ui/icons/DashboardOutlined";
 import ListAltIcon from "@material-ui/icons/ListAlt";
 import WhatsAppIcon from "@material-ui/icons/WhatsApp";
@@ -22,6 +22,7 @@ import PersonOutlineIcon from "@material-ui/icons/PersonOutline";
 import HeadsetMicIcon from "@material-ui/icons/HeadsetMic";
 import LocalOfferIcon from "@material-ui/icons/LocalOffer";
 import AssignmentIcon from "@material-ui/icons/Assignment";
+import MenuBookIcon from "@material-ui/icons/MenuBook";
 
 import { i18n } from "../translate/i18n";
 import { WhatsAppsContext } from "../context/WhatsApp/WhatsAppsContext";
@@ -127,7 +128,6 @@ const MainListItems = (props) => {
   const { user } = useContext(AuthContext);
   const [connectionWarning, setConnectionWarning] = useState(false);
   const [activePlugins, setActivePlugins] = useState([]);
-  const [pluginManifests, setPluginManifests] = useState([]);
 
   useEffect(() => {
     // Fetch active plugins using pluginApi (has JWT interceptor)
@@ -144,7 +144,7 @@ const MainListItems = (props) => {
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      if (whatsApps.length > 0) {
+      if (whatsApps && whatsApps.length > 0) {
         const offlineWhats = whatsApps.filter((whats) => {
           return (
             whats.status === "qrcode" ||
@@ -351,20 +351,6 @@ const MainListItems = (props) => {
             to="/users"
             primary={i18n.t("mainDrawer.listItems.users")}
             icon={<PeopleAltOutlinedIcon />}
-            iconColor={googleColors.blue}
-            collapsed={collapsed}
-          />
-        )}
-      />
-
-      <Can
-        user={user}
-        perform="roles:read"
-        yes={() => (
-          <ListItemLink
-            to="/roles"
-            primary={i18n.t("mainDrawer.listItems.roles")}
-            icon={<PersonOutlineIcon />}
             iconColor={googleColors.blue}
             collapsed={collapsed}
           />

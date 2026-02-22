@@ -19,11 +19,11 @@ func SetupRoutes(group *gin.RouterGroup) {
 	group.GET("/docs", controllers.SwaggerUI)
 	group.GET("/swagger.json", controllers.SwaggerJSON)
 
-	// Business Marketplace Support (V1)
-	group.GET("/v1/plugins/catalog", controllers.PluginsCatalog)
-	group.GET("/v1/plugins/installed", controllers.PluginsInstalled)
-	group.POST("/v1/plugins/checkout", controllers.PluginsCheckout)
-	group.GET("/v1/plugins/instance", controllers.PluginsInstance)
+	// Business Marketplace Support
+	group.GET("/plugins/catalog", controllers.PluginsCatalog)
+	group.GET("/plugins/installed", controllers.PluginsInstalled)
+	group.POST("/plugins/checkout", controllers.PluginsCheckout)
+	group.GET("/plugins/instance", controllers.PluginsInstance)
 
 	// Protected Routes
 	protected := group.Group("/")

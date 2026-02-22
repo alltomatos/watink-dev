@@ -24,6 +24,9 @@ import Group from "../models/Group";
 import GroupPermission from "../models/GroupPermission";
 import Permission from "../models/Permission";
 import UserPermission from "../models/UserPermission";
+import Role from "../models/Role";
+import RolePermission from "../models/RolePermission";
+import UserRole from "../models/UserRole";
 import Client from "../models/Client";
 import ClientAddress from "../models/ClientAddress";
 import ClientContact from "../models/ClientContact";
@@ -65,6 +68,9 @@ const models = [
   GroupPermission,
   Permission,
   UserPermission,
+  Role,
+  RolePermission,
+  UserRole,
   Client,
   ClientAddress,
   ClientContact,

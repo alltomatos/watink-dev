@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/alltomatos/watinkdev/bussines/internal/models"
 	"gorm.io/driver/postgres"
@@ -60,10 +61,15 @@ func Migrate() {
 		&models.Tag{},
 		&models.EntityTag{},
 		&models.TicketLog{},
+		&models.ConversationEmbedding{},
 	)
 
 	if err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
+	}
+
+	if err := applyRLS(); err != nil {
+		log.Printf("Warning: failed to apply RLS policies: %v", err)
 	}
 
 	fmt.Println("Database migration completed")
@@ -88,4 +94,30 @@ func Seed() {
 	}
 
 	fmt.Println("Database seeding completed")
+}
+
+func applyRLS() error {
+	tables := []string{"Users", "Tickets", "Messages", "Contacts", "Settings", "ConversationEmbeddings"}
+
+	for _, t := range tables {
+		if err := DB.Exec(fmt.Sprintf("ALTER TABLE \"%s\" ENABLE ROW LEVEL SECURITY", t)).Error; err != nil {
+			return fmt.Errorf("enable rls %s: %w", t, err)
+		}
+		if err := DB.Exec(fmt.Sprintf("ALTER TABLE \"%s\" FORCE ROW LEVEL SECURITY", t)).Error; err != nil {
+			return fmt.Errorf("force rls %s: %w", t, err)
+		}
+
+		policy := fmt.Sprintf("%s_tenant_isolation", strings.ToLower(t))
+		if err := DB.Exec(fmt.Sprintf("DROP POLICY IF EXISTS \"%s\" ON \"%s\"", policy, t)).Error; err != nil {
+			return fmt.Errorf("drop policy %s: %w", t, err)
+		}
+		if err := DB.Exec(fmt.Sprintf(
+			"CREATE POLICY \"%s\" ON \"%s\" USING ((\"tenantId\")::text = current_setting('app.current_tenant', true))",
+			policy, t,
+		)).Error; err != nil {
+			return fmt.Errorf("policy %s: %w", t, err)
+		}
+	}
+
+	return nil
 }

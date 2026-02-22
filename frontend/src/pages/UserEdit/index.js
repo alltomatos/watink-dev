@@ -1,5 +1,5 @@
 /* @jsxImportSource react */
-import React, { useState, useEffect, useReducer, useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import * as Yup from "yup";
 import { Formik, Form, Field } from "formik";
 import { toast } from "react-toastify";
@@ -23,10 +23,9 @@ import {
     Grid,
     Checkbox,
     FormControlLabel,
-    FormGroup
 } from "@material-ui/core";
 
-import { Visibility, VisibilityOff } from "@material-ui/icons";
+import { Visibility, VisibilityOff, ArrowBack } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
 import { green } from "@material-ui/core/colors";
 
@@ -51,6 +50,7 @@ const useStyles = makeStyles((theme) => ({
         display: "flex",
         overflow: "auto",
         flexDirection: "column",
+        borderRadius: 16,
     },
     multFieldLine: {
         display: "flex",
@@ -60,6 +60,7 @@ const useStyles = makeStyles((theme) => ({
     },
     btnWrapper: {
         position: "relative",
+        marginTop: theme.spacing(2),
     },
     buttonProgress: {
         color: green[500],
@@ -75,16 +76,19 @@ const useStyles = makeStyles((theme) => ({
     },
     tabContent: {
         padding: theme.spacing(2)
+    },
+    backButton: {
+        marginRight: theme.spacing(2),
     }
 }));
 
 const UserSchema = Yup.object().shape({
     name: Yup.string()
-        .min(2, "Too Short!")
-        .max(50, "Too Long!")
-        .required("Required"),
-    password: Yup.string().min(5, "Too Short!").max(50, "Too Long!"),
-    email: Yup.string().email("Invalid email").required("Required"),
+        .min(2, "Muito curto!")
+        .max(50, "Muito longo!")
+        .required("Obrigatório"),
+    password: Yup.string().min(5, "Muito curto!").max(50, "Muito longo!"),
+    email: Yup.string().email("Email inválido").required("Obrigatório"),
 });
 
 const UserEdit = () => {
@@ -92,12 +96,14 @@ const UserEdit = () => {
     const { userId } = useParams();
     const history = useHistory();
 
+    const isNew = userId === "new";
+
     const initialState = {
         name: "",
         email: "",
         password: "",
         profile: "user",
-        groupId: ""
+        roleId: ""
     };
 
     const { user: loggedInUser } = useContext(AuthContext);
@@ -106,11 +112,12 @@ const UserEdit = () => {
     const [selectedQueueIds, setSelectedQueueIds] = useState([]);
     const [showPassword, setShowPassword] = useState(false);
     const [whatsappId, setWhatsappId] = useState("");
-    const { loading, whatsApps } = useWhatsApps();
+    const { loading: loadingWapps, whatsApps } = useWhatsApps();
     const [tab, setTab] = useState(0);
-    const [groups, setGroups] = useState([]);
+    const [roles, setRoles] = useState([]);
     const [allPermissions, setAllPermissions] = useState([]);
     const [selectedPermissions, setSelectedPermissions] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const findWhatsApp = (id) => {
         if (!whatsApps || !id) return null;
@@ -118,53 +125,71 @@ const UserEdit = () => {
     };
 
     useEffect(() => {
-        const fetchUser = async () => {
+        const fetchData = async () => {
+            setLoading(true);
             try {
-                const { data } = await api.get(`/users/${userId}`);
-                const userQueueIds = data.queues?.map((queue) => queue.id) || [];
-                setSelectedQueueIds(userQueueIds);
-                setWhatsappId(data.whatsappId || "");
-                setSelectedPermissions(data.permissions?.map(p => p.id) || []);
-                setUser({
-                    name: data.name || "",
-                    email: data.email || "",
-                    password: "",
-                    profile: data.profile || "user",
-                    groupId: data.groupId || ""
-                });
+                const requests = [
+                    api.get("/roles"),
+                    api.get("/permissions")
+                ];
+
+                if (!isNew) {
+                    requests.push(api.get(`/users/${userId}`));
+                }
+
+                const responses = await Promise.all(requests);
+                
+                const [rolesRes, permissionsRes, userRes] = responses;
+                
+                setRoles(Array.isArray(rolesRes.data) ? rolesRes.data : rolesRes.data.roles || []);
+                setAllPermissions(permissionsRes.data);
+
+                if (!isNew && userRes) {
+                    const data = userRes.data;
+                    const userQueueIds = data.queues?.map((queue) => queue.id) || [];
+                    setSelectedQueueIds(userQueueIds);
+                    setWhatsappId(data.whatsappId || "");
+                    
+                    // Suporte a ambos os formatos de permissões
+                    const perms = data.permissions || [];
+                    setSelectedPermissions(perms.map(p => p.id || p));
+                    
+                    setUser({
+                        name: data.name || "",
+                        email: data.email || "",
+                        password: "",
+                        profile: data.profile || "user",
+                        roleId: data.roleId || ""
+                    });
+                }
             } catch (err) {
                 toastError(err);
+            } finally {
+                setLoading(false);
             }
         };
 
-        const fetchGroups = async () => {
-            try {
-                const { data } = await api.get("/groups");
-                setGroups(data);
-            } catch (err) {
-                toastError(err);
-            }
-        };
-
-        const fetchPermissions = async () => {
-            try {
-                const { data } = await api.get("/permissions");
-                setAllPermissions(data);
-            } catch (err) {
-                toastError(err);
-            }
-        };
-
-        fetchUser();
-        fetchGroups();
-        fetchPermissions();
-    }, [userId]);
+        fetchData();
+    }, [userId, isNew]);
 
     const handleSaveUser = async (values) => {
-        const userData = { ...values, whatsappId, queueIds: selectedQueueIds, permissions: selectedPermissions };
+        const userData = { 
+            ...values, 
+            whatsappId, 
+            queueIds: selectedQueueIds, 
+            permissionIds: selectedPermissions, // Formato Go
+            permissions: selectedPermissions // Formato Legado
+        };
+        
         try {
-            await api.put(`/users/${userId}`, userData);
-            toast.success(i18n.t("userModal.success"));
+            if (isNew) {
+                await api.post("/users", userData);
+                toast.success(i18n.t("userModal.success"));
+            } else {
+                await api.put(`/users/${userId}`, userData);
+                toast.success(i18n.t("userModal.success"));
+            }
+            history.push("/users");
         } catch (err) {
             toastError(err);
         }
@@ -176,23 +201,39 @@ const UserEdit = () => {
 
     const handlePermissionChange = (permissionId) => {
         setSelectedPermissions(prevState => {
-            if (prevState.includes(permissionId)) {
-                return prevState.filter(id => id !== permissionId);
+            const id = typeof permissionId === 'object' ? permissionId.id : permissionId;
+            if (prevState.includes(id)) {
+                return prevState.filter(pId => pId !== id);
             } else {
-                return [...prevState, permissionId];
+                return [...prevState, id];
             }
         });
     };
 
+    if (loading) {
+        return (
+            <MainContainer>
+                <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+                    <CircularProgress />
+                </Box>
+            </MainContainer>
+        );
+    }
+
     return (
         <MainContainer>
             <MainHeader>
-                <Title>{user.name}</Title>
+                <Box display="flex" alignItems="center">
+                    <IconButton onClick={() => history.push("/users")} className={classes.backButton}>
+                        <ArrowBack />
+                    </IconButton>
+                    <Title>{isNew ? i18n.t("userModal.title.add") : user.name}</Title>
+                </Box>
             </MainHeader>
             <Paper className={classes.paper}>
                 <Tabs value={tab} onChange={handleTabChange} indicatorColor="primary" textColor="primary">
                     <Tab label="Dados do Usuário" />
-                    <Tab label="Permissões" />
+                    <Tab label="Permissões Adicionais" />
                 </Tabs>
 
                 <Box hidden={tab !== 0} className={classes.tabContent}>
@@ -201,10 +242,8 @@ const UserEdit = () => {
                         enableReinitialize={true}
                         validationSchema={UserSchema}
                         onSubmit={(values, actions) => {
-                            setTimeout(() => {
-                                handleSaveUser(values);
-                                actions.setSubmitting(false);
-                            }, 400);
+                            handleSaveUser(values);
+                            actions.setSubmitting(false);
                         }}
                     >
                         {({ touched, errors, isSubmitting }) => (
@@ -259,6 +298,7 @@ const UserEdit = () => {
                                         variant="outlined"
                                         className={classes.formControl}
                                         margin="dense"
+                                        fullWidth
                                     >
                                         <Can
                                             role={loggedInUser.profile}
@@ -292,19 +332,19 @@ const UserEdit = () => {
                                         margin="dense"
                                         fullWidth
                                     >
-                                        <InputLabel id="group-selection-input-label">
-                                            {i18n.t("userModal.form.group")}
+                                        <InputLabel id="role-selection-input-label">
+                                            {i18n.t("userModal.form.role") || "Papel (RBAC)"}
                                         </InputLabel>
                                         <Field
                                             as={Select}
-                                            label={i18n.t("userModal.form.group")}
-                                            name="groupId"
-                                            labelId="group-selection-label"
-                                            id="group-selection"
+                                            label={i18n.t("userModal.form.role") || "Papel (RBAC)"}
+                                            name="roleId"
+                                            labelId="role-selection-label"
+                                            id="role-selection"
                                         >
-                                            <MenuItem value=""><em>None</em></MenuItem>
-                                            {Array.isArray(groups) && groups.map(group => (
-                                                <MenuItem key={group.id} value={group.id}>{group.name}</MenuItem>
+                                            <MenuItem value=""><em>Nenhum</em></MenuItem>
+                                            {roles.map(role => (
+                                                <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>
                                             ))}
                                         </Field>
                                     </FormControl>
@@ -324,21 +364,21 @@ const UserEdit = () => {
                                     role={loggedInUser.profile}
                                     perform="user-modal:editQueues"
                                     yes={() => (
-                                        !loading && (
+                                        !loadingWapps && (
                                             <FormControl
                                                 variant="outlined"
                                                 margin="dense"
-                                                className={classes.maxWidth}
                                                 fullWidth
+                                                style={{ marginTop: 8 }}
                                             >
                                                 <InputLabel>{i18n.t("userModal.form.whatsapp")}</InputLabel>
                                                 <Select
-                                                    value={findWhatsApp(whatsappId) ? parseInt(whatsappId) : ""}
+                                                    value={whatsappId}
                                                     onChange={(e) => setWhatsappId(e.target.value)}
                                                     label={i18n.t("userModal.form.whatsapp")}
                                                 >
                                                     <MenuItem value={""}>&nbsp;</MenuItem>
-                                                    {Array.isArray(whatsApps) && whatsApps.map((whatsapp) => (
+                                                    {whatsApps.map((whatsapp) => (
                                                         <MenuItem key={whatsapp.id} value={whatsapp.id}>
                                                             {whatsapp.name}
                                                         </MenuItem>
@@ -375,35 +415,40 @@ const UserEdit = () => {
                         role={loggedInUser.profile}
                         perform="user-modal:editProfile"
                         yes={() => (
-                            <Grid container spacing={2}>
-                                {Array.isArray(allPermissions) && allPermissions.map(permission => (
-                                    <Grid item xs={12} sm={6} md={4} key={permission.id}>
-                                        <FormControlLabel
-                                            control={
-                                                <Checkbox
-                                                    checked={selectedPermissions.includes(permission.id)}
-                                                    onChange={() => handlePermissionChange(permission.id)}
-                                                    name={`permission-${permission.id}`}
-                                                    color="primary"
-                                                />
-                                            }
-                                            label={permission.description || permission.name}
-                                        />
-                                    </Grid>
-                                ))}
-                            </Grid>
+                            <>
+                                <Typography variant="subtitle2" gutterBottom>
+                                    As permissões selecionadas aqui serão adicionadas às permissões já concedidas pelo Papel (Role) do usuário.
+                                </Typography>
+                                <Grid container spacing={1} style={{ marginTop: 16 }}>
+                                    {allPermissions.map(permission => (
+                                        <Grid item xs={12} sm={6} md={4} key={permission.id}>
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={selectedPermissions.includes(permission.id)}
+                                                        onChange={() => handlePermissionChange(permission.id)}
+                                                        name={`permission-${permission.id}`}
+                                                        color="primary"
+                                                    />
+                                                }
+                                                label={permission.description || permission.name}
+                                            />
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                                <div className={classes.btnWrapper}>
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        onClick={() => handleSaveUser(user)}
+                                    >
+                                        Salvar Alterações
+                                    </Button>
+                                </div>
+                            </>
                         )}
                         no={() => <Typography variant="h6" color="error">Você não tem permissão para editar permissões.</Typography>}
                     />
-                    <div className={classes.btnWrapper}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleSaveUser(user)}
-                        >
-                            Salvar Permissões
-                        </Button>
-                    </div>
                 </Box>
 
             </Paper>

@@ -29,6 +29,9 @@ const Group_1 = __importDefault(require("../models/Group"));
 const GroupPermission_1 = __importDefault(require("../models/GroupPermission"));
 const Permission_1 = __importDefault(require("../models/Permission"));
 const UserPermission_1 = __importDefault(require("../models/UserPermission"));
+const Role_1 = __importDefault(require("../models/Role"));
+const RolePermission_1 = __importDefault(require("../models/RolePermission"));
+const UserRole_1 = __importDefault(require("../models/UserRole"));
 const Client_1 = __importDefault(require("../models/Client"));
 const ClientAddress_1 = __importDefault(require("../models/ClientAddress"));
 const ClientContact_1 = __importDefault(require("../models/ClientContact"));
@@ -67,6 +70,9 @@ const models = [
     GroupPermission_1.default,
     Permission_1.default,
     UserPermission_1.default,
+    Role_1.default,
+    RolePermission_1.default,
+    UserRole_1.default,
     Client_1.default,
     ClientAddress_1.default,
     ClientContact_1.default,

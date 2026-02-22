@@ -10,6 +10,7 @@ As implementações de SaaS (DB), Microserviços (Engine) e Frontend (Admin) for
 ### Fase 4: DevOps, Infraestrutura e Deploy
 - [ ] **[OPS-003] Pipelines de CI/CD**: Automatizar testes e build no GitHub Actions/GitLab CI.
 - [ ] **[OPS-004] Procedimentos de Rollback e Monitoramento**: Painel Grafana/Prometheus e scripts de reversão rápida.
+- [ ] **[OPS-005] Pareamento Migrations/Seeds OpenCore ↔ Business**: Execução conjunta Robot+Tinker com checklist obrigatório de compatibilidade e smoke tests em ambos os lados.
 
 ### Fase 5: Flow Engine Scalability (Novo)
 Objetivo: Desacoplar a execução de fluxos do Backend principal e garantir performance.

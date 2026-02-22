@@ -3,6 +3,31 @@ const messages = {
   pt: {
     translations: {
       role: {
+        title: "Papéis",
+        buttons: {
+          add: "Adicionar Papel",
+        },
+        table: {
+          name: "Nome",
+          description: "Descrição",
+          actions: "Ações",
+        },
+        form: {
+          name: "Nome",
+          description: "Descrição",
+        },
+        title: {
+          add: "Adicionar Papel",
+          edit: "Editar Papel",
+        },
+        success: "Papel salvo com sucesso!",
+        toasts: {
+          deleted: "Papel excluído com sucesso.",
+        },
+        confirmationModal: {
+          deleteTitle: "Deletar Papel",
+          deleteMessage: "Tem certeza que deseja deletar este papel? Esta ação não pode ser revertida.",
+        },
         permissions: {
           available: "Permissões Disponíveis",
           assigned: "Permissões Atribuídas",
@@ -106,7 +131,7 @@ const messages = {
             "Tem certeza? Você precisará ler o QR Code novamente.",
         },
         buttons: {
-          add: "Adicionar Whaileys",
+          add: "Adicionar WhatsApp",
           addWhatsmeow: "Adicionar WhatsMeow",
           disconnect: "desconectar",
           tryAgain: "Tentar novamente",

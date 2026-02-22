@@ -14,6 +14,7 @@ import {
   IconButton,
   InputAdornment,
   TextField,
+  TablePagination,
 } from "@material-ui/core";
 
 import {
@@ -48,9 +49,10 @@ const Roles = () => {
 
   const [loading, setLoading] = useState(false);
   const [pageNumber, setPageNumber] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [count, setCount] = useState(0);
   const [roles, setRoles] = useState([]);
   const [searchParam, setSearchParam] = useState("");
-  const [hasMore, setHasMore] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
   const [deletingRole, setDeletingRole] = useState(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -60,10 +62,17 @@ const Roles = () => {
       setLoading(true);
       try {
         const { data } = await api.get("/roles", {
-          params: { searchParam, pageNumber },
+          params: { searchParam, pageNumber, limit: rowsPerPage },
         });
-        setRoles(data.roles || data); // Adjust based on API response structure
-        setHasMore(data.hasMore || false);
+        
+        // Suporte a diferentes formatos de resposta
+        if (Array.isArray(data)) {
+            setRoles(data);
+            setCount(data.length);
+        } else {
+            setRoles(data.roles || []);
+            setCount(data.count || 0);
+        }
       } catch (err) {
         toastError(err);
       } finally {
@@ -71,10 +80,11 @@ const Roles = () => {
       }
     };
     fetchRoles();
-  }, [searchParam, pageNumber]);
+  }, [searchParam, pageNumber, rowsPerPage]);
 
   const handleSearch = (event) => {
     setSearchParam(event.target.value);
+    setPageNumber(1);
   };
 
   const handleEditRole = (roleId) => {
@@ -90,7 +100,15 @@ const Roles = () => {
       toastError(err);
     }
     setDeletingRole(null);
-    setSearchParam("");
+    setConfirmModalOpen(false);
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPageNumber(newPage + 1);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
     setPageNumber(1);
   };
 
@@ -99,14 +117,14 @@ const Roles = () => {
       <ConfirmationModal
         title={deletingRole && `${i18n.t("role.confirmationModal.deleteTitle")} ${deletingRole.name}?`}
         open={confirmModalOpen}
-        onClose={setConfirmModalOpen}
+        onClose={() => setConfirmModalOpen(false)}
         onConfirm={() => handleDeleteRole(deletingRole.id)}
       >
         {i18n.t("role.confirmationModal.deleteMessage")}
       </ConfirmationModal>
 
       <MainHeader>
-        <Title>{i18n.t("role.title") || "Roles"}</Title>
+        <Title>{i18n.t("role.title") || "Papéis"}</Title>
         <MainHeaderButtonsWrapper>
           <TextField
             placeholder={i18n.t("contacts.searchPlaceholder")}
@@ -127,7 +145,7 @@ const Roles = () => {
             onClick={() => handleEditRole("new")}
           >
             <AddCircleOutline />
-            <span style={{ marginLeft: 8 }}>{i18n.t("role.buttons.add") || "Adicionar Role"}</span>
+            <span style={{ marginLeft: 8 }}>{i18n.t("role.buttons.add") || "Adicionar Papel"}</span>
           </Button>
         </MainHeaderButtonsWrapper>
       </MainHeader>
@@ -170,6 +188,16 @@ const Roles = () => {
             </>
           </TableBody>
         </Table>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={count}
+          rowsPerPage={rowsPerPage}
+          page={pageNumber - 1}
+          onChangePage={handleChangePage}
+          onChangeRowsPerPage={handleChangeRowsPerPage}
+          labelRowsPerPage={i18n.t("common.rowsPerPage") || "Linhas por página"}
+        />
       </Paper>
     </MainContainer>
   );

@@ -3,6 +3,8 @@ import AppError from "../errors/AppError";
 import User from "../models/User";
 import Group from "../models/Group";
 import Permission from "../models/Permission";
+import Role from "../models/Role";
+import RolePermission from "../models/RolePermission";
 
 const checkPermission = (permission: string) => {
     return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -13,6 +15,11 @@ const checkPermission = (permission: string) => {
                 {
                     model: Group,
                     as: "group",
+                    include: [{ model: Permission, as: "permissions" }]
+                },
+                {
+                    model: Role,
+                    as: "roles",
                     include: [{ model: Permission, as: "permissions" }]
                 },
                 {
@@ -31,11 +38,16 @@ const checkPermission = (permission: string) => {
             return next();
         }
 
-        const groupPermissions = user.group?.permissions?.map(p => p.name) || [];
+        const legacyPermissions = user.group?.permissions?.map(p => p.name) || [];
         const individualPermissions = user.permissions?.map(p => p.name) || [];
+        const rolePermissions = user.roles?.flatMap(role => role.permissions?.map(p => p.name) || []) || [];
 
-        // Merge permissions
-        const allPermissions = [...new Set([...groupPermissions, ...individualPermissions])];
+        // Merge all permissions
+        const allPermissions = [...new Set([
+            ...legacyPermissions, 
+            ...individualPermissions, 
+            ...rolePermissions
+        ])];
 
         if (!allPermissions.includes(permission)) {
             throw new AppError("ERR_NO_PERMISSION", 403);

@@ -2,6 +2,38 @@
 const messages = {
   en: {
     translations: {
+      roles: {
+        title: "Roles",
+        buttons: {
+          add: "Add Role",
+        },
+        table: {
+          name: "Name",
+          description: "Description",
+          actions: "Actions",
+        },
+        form: {
+          name: "Name",
+          description: "Description",
+        },
+        title: {
+          add: "Add Role",
+          edit: "Edit Role",
+        },
+        success: "Role saved successfully!",
+        toasts: {
+          deleted: "Role deleted successfully.",
+        },
+        confirmationModal: {
+          deleteTitle: "Delete Role",
+          deleteMessage: "Are you sure you want to delete this role? This action cannot be undone.",
+        },
+        permissions: {
+          available: "Available Permissions",
+          assigned: "Assigned Permissions",
+          noPermissions: "No permissions found",
+        },
+      },
       signup: {
         title: "Sign up",
         toasts: {

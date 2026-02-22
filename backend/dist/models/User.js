@@ -22,6 +22,8 @@ const Tenant_1 = __importDefault(require("./Tenant"));
 const Group_1 = __importDefault(require("./Group"));
 const Permission_1 = __importDefault(require("./Permission"));
 const UserPermission_1 = __importDefault(require("./UserPermission"));
+const Role_1 = __importDefault(require("./Role"));
+const UserRole_1 = __importDefault(require("./UserRole"));
 let User = class User extends sequelize_typescript_1.Model {
     constructor() {
         super(...arguments);
@@ -110,6 +112,14 @@ __decorate([
     (0, sequelize_typescript_1.BelongsTo)(() => Group_1.default),
     __metadata("design:type", Group_1.default)
 ], User.prototype, "group", void 0);
+__decorate([
+    (0, sequelize_typescript_1.Column)(sequelize_typescript_1.DataType.JSON),
+    __metadata("design:type", Object)
+], User.prototype, "configs", void 0);
+__decorate([
+    (0, sequelize_typescript_1.BelongsToMany)(() => Role_1.default, () => UserRole_1.default),
+    __metadata("design:type", Array)
+], User.prototype, "roles", void 0);
 __decorate([
     (0, sequelize_typescript_1.BelongsToMany)(() => Permission_1.default, () => UserPermission_1.default),
     __metadata("design:type", Array)

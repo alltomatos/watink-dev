@@ -131,7 +131,7 @@ const RoleEdit = () => {
 
     const isNew = roleId === "new";
 
-    const [loading, setLoading] = useState(!isNew);
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [role, setRole] = useState({ name: "", description: "", permissions: [] });
     const [allPermissions, setAllPermissions] = useState([]);
@@ -155,11 +155,13 @@ const RoleEdit = () => {
                 if (!isNew) {
                     const [, roleRes] = responses;
                     setRole(roleRes.data);
-                    setSelectedPermissions(roleRes.data.permissions?.map(p => p.id) || []);
+                    // Suporte a ambos os formatos de backend (Legado vs Go Business)
+                    const perms = roleRes.data.permissions || roleRes.data.RolePermissions || [];
+                    setSelectedPermissions(perms.map(p => p.permissionId || p.id) || []);
                 }
             } catch (err) {
                 toastError(err);
-                // history.push("/roles"); // Commented out until Roles list is implemented
+                history.push("/roles");
             } finally {
                 setLoading(false);
             }
@@ -175,16 +177,17 @@ const RoleEdit = () => {
                 name: values.name,
                 description: values.description,
                 permissionIds: selectedPermissions,
+                permissions: selectedPermissions, // Paridade com o legado se necessário
             };
 
             if (isNew) {
                 await api.post("/roles", roleData);
-                toast.success(i18n.t("role.success")); // Ensure translation exists or use default string
+                toast.success(i18n.t("role.success"));
             } else {
                 await api.put(`/roles/${roleId}`, roleData);
                 toast.success(i18n.t("role.success"));
             }
-            // history.push("/roles"); // Commented out until Roles list is implemented
+            history.push("/roles");
         } catch (err) {
             toastError(err);
         } finally {
@@ -218,13 +221,13 @@ const RoleEdit = () => {
                                     <div className={classes.headerLeft}>
                                         <IconButton
                                             className={classes.backButton}
-                                            onClick={() => history.goBack()}
+                                            onClick={() => history.push("/roles")}
                                         >
                                             <ArrowBack />
                                         </IconButton>
                                         <div>
                                             <Typography variant="h5" style={{ fontWeight: 600 }}>
-                                                {isNew ? (i18n.t("role.title.add") || "Adicionar Role") : (i18n.t("role.title.edit") || "Editar Role")}
+                                                {isNew ? (i18n.t("role.title.add") || "Adicionar Papel") : (i18n.t("role.title.edit") || "Editar Papel")}
                                             </Typography>
                                             {!isNew && (
                                                 <Typography variant="body2" color="textSecondary">
@@ -241,7 +244,7 @@ const RoleEdit = () => {
                                         type="submit"
                                         disabled={saving}
                                     >
-                                        {isNew ? (i18n.t("common.save") || "Salvar") : (i18n.t("common.save") || "Salvar")}
+                                        {i18n.t("common.save") || "Salvar"}
                                     </Button>
                                 </div>
 
