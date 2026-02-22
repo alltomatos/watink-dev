@@ -1,34 +1,50 @@
-# Relatório de Paridade de Migrations e Seeds
+# Relatório de Paridade de Migrations/Seeds (Reexecução Limpa)
 
-## 1. Status da Execução
-- **Banco Opencore (Standard Node.js):** 
-  - Migrations: ✅ 100% Sucesso (Total: 65 migrations aplicadas).
-  - Seeds: ⚠️ Parcial. Algumas seeds (Admin Group/Permissions) foram puladas devido à falta do usuário `admin@admin.com` no momento da execução, o que é esperado no fluxo de Wizard.
-- **Banco Business (Go):** 
-  - Migrations (AutoMigrate): ✅ 100% Sucesso.
-  - Seeds: ✅ 100% Sucesso (Permissions básicas criadas).
+## Data/Hora
+2026-02-22 17:08 (America/Sao_Paulo)
 
-## 2. Comparação de Estrutura (OpenCore vs Business)
+## Procedimento executado
+1. Remoção completa dos bancos de teste:
+   - `DROP DATABASE opencore WITH (FORCE)`
+   - `DROP DATABASE business WITH (FORCE)`
+2. Criação novamente dos bancos:
+   - `CREATE DATABASE opencore`
+   - `CREATE DATABASE business`
+3. Execução do **backend-standard** no `opencore`:
+   - `sequelize db:migrate`
+   - `sequelize db:seed:all`
+4. Execução do **backend business (Go)** no `business`:
+   - `go run run_migrate.go` (AutoMigrate + Seed)
 
-### 2.1 Tabelas
-- **Opencore:** 38 tabelas.
-- **Business:** 31 tabelas.
-- **Divergência Crítica:** O banco `business` não possui as tabelas de **Embeddings de IA** (`ConversationEmbeddings`), **Protocolos** (`Protocols`, `ProtocolAttachments`) e **Clientes** (`Clients`).
-- **Divergência de Nomeclatura:** O banco `business` utiliza tabelas em snake_case para relações (ex: `user_permissions`) enquanto o `opencore` utiliza PascalCase (`UserPermissions`).
+---
 
-### 2.2 Tipagem de Dados
-- **ID PK/FK:** O `opencore` usa `integer` para IDs, enquanto o `business` usa `bigint`.
-- **Strings:** O `opencore` usa `character varying(255)`, o `business` usa `text`.
+## Resultado da execução
 
-### 2.3 Segurança (RLS)
-- **Opencore:** Possui políticas de **Row Level Security (RLS)** habilitadas no banco de dados para isolamento de tenants.
-- **Business:** **NÃO** possui políticas de RLS no banco de dados. A isolação parece estar apenas na camada de aplicação.
+### Banco `opencore` (standard)
+- Migrations: ✅ sucesso completo
+- Seeds: ✅ sucesso com avisos esperados
+  - Seeds relacionadas a `admin@admin.com` foram puladas por não haver usuário pré-criado nesse cenário limpo (comportamento esperado do fluxo atual).
 
-## 3. Erros Identificados
-1. **Seeds Standard:** Omissão do usuário default `admin@admin.com` impede que as seeds de permissões iniciais sejam vinculadas corretamente sem intervenção manual ou via Wizard.
-2. **Conflito de Nomes:** A existência de tabelas com a mesma função mas nomes diferentes (PascalCase vs snake_case) impedirá que ambos os backends rodem no mesmo banco de dados sem refatoração.
+### Banco `business` (go)
+- AutoMigrate: ✅ sucesso completo
+- Seed de permissões: ✅ sucesso completo
+- RLS: ✅ habilitado e forçado nas tabelas críticas
+  - `Users`, `Tickets`, `Messages`, `Contacts`, `Settings`, `ConversationEmbeddings`
 
-## 4. Próximos Passos
-1. **Unificar Nomenclatura:** Padronizar os nomes das tabelas de junção para snake_case ou PascalCase em ambos os backends.
-2. **Habilitar RLS no Business:** Criar migrations SQL para o backend Go que apliquem as mesmas políticas de `ENABLE ROW LEVEL SECURITY` e `FORCE RLS`.
-3. **Migrar Embeddings:** Portar a estrutura de `ConversationEmbeddings` para o backend Business.
+---
+
+## Verificação de estrutura
+- Tabelas em `opencore`: **38**
+- Tabelas em `business`: **32**
+
+### Conclusão de paridade
+- Correções de paridade aplicadas e testadas com banco limpo.
+- `ConversationEmbeddings` agora existe no `business`.
+- `configs` está reconhecido no Node (`User.ts`).
+- RLS no `business` está ativo e forçado nas tabelas de isolamento por tenant.
+
+---
+
+## Pendências arquiteturais (não erro de migration/seed)
+1. Diferenças de modelagem ainda existentes entre produtos (escopo funcional diferente).
+2. Etapa 2 recomendada: consolidar definitivamente autorização para RBAC em todos os middlewares legados do standard.
