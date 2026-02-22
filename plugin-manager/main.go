@@ -1,40 +1,139 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
 )
 
-// Structures for JSON responses
-type Plugin struct {
+// Structures for Hub Communication
+type HubPlugin struct {
 	ID          string  `json:"id"`
 	Slug        string  `json:"slug"`
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Version     string  `json:"version"`
-	Type        string  `json:"type"`     // free, premium
-	Category    string  `json:"category"` // utility, channel, etc
+	Type        string  `json:"type"`
+	Category    string  `json:"category"`
 	Price       float64 `json:"price"`
+	IconURL     string  `json:"iconUrl"`
 }
 
 type CatalogResponse struct {
-	Offline bool     `json:"offline"`
-	Plugins []Plugin `json:"plugins"`
+	Offline bool        `json:"offline"`
+	Plugins []HubPlugin `json:"plugins"`
 }
 
 type InstalledResponse struct {
-	Active []string `json:"active"`
+	Active   []string          `json:"active"`
+	Statuses map[string]string `json:"statuses"`
 }
 
-type VersionResponse struct {
-	Service     string `json:"service"`
-	Version     string `json:"version"`
-	LastUpdated string `json:"lastUpdated"`
+type CheckoutRequest struct {
+	Slug string `json:"slug"`
+}
+
+type CreateCheckoutPayload struct {
+	Slug       string `json:"slug"`
+	InstanceID string `json:"instanceId"`
+}
+
+type CreateCheckoutResponse struct {
+	CheckoutURL string `json:"checkoutUrl"`
+}
+
+// Global Config
+const (
+	HubURL            = "http://localhost:8090/api/v1/hub"
+	InstanceFile      = ".instance_id"
+	TenantPluginsFile = ".tenant_plugins.json"
+	LicenseStatusFile = ".license_status.json"
+	CoreVersion       = "2.0.0-bussines"
+)
+
+var (
+	tenantPluginsMu sync.Mutex
+	licenseStatusMu sync.Mutex
+)
+
+type tenantPluginsStore map[string][]string
+type licenseStatusStore map[string]string
+
+func readTenantPlugins() tenantPluginsStore {
+	data, err := os.ReadFile(TenantPluginsFile)
+	if err != nil {
+		return tenantPluginsStore{}
+	}
+	var store tenantPluginsStore
+	json.Unmarshal(data, &store)
+	if store == nil {
+		return tenantPluginsStore{}
+	}
+	return store
+}
+
+func readLicenseStatus() licenseStatusStore {
+	data, err := os.ReadFile(LicenseStatusFile)
+	if err != nil {
+		return licenseStatusStore{}
+	}
+	var store licenseStatusStore
+	json.Unmarshal(data, &store)
+	if store == nil {
+		return licenseStatusStore{}
+	}
+	return store
+}
+
+func writeLicenseStatus(store licenseStatusStore) error {
+	payload, _ := json.MarshalIndent(store, "", "  ")
+	return os.WriteFile(LicenseStatusFile, payload, 0644)
+}
+
+func getInstanceID() string {
+	data, err := os.ReadFile(InstanceFile)
+	if err == nil {
+		return string(data)
+	}
+	newID := fmt.Sprintf("INST-%d-%x", time.Now().Unix(), time.Now().UnixNano())
+	os.WriteFile(InstanceFile, []byte(newID), 0644)
+	return newID
+}
+
+// StartHeartbeat inicia a rotina de sinal vital para o Hub
+func StartHeartbeat(instanceID string) {
+	go func() {
+		for {
+			payload, _ := json.Marshal(map[string]string{
+				"instanceId": instanceID,
+				"version":    CoreVersion,
+			})
+			resp, err := http.Post(HubURL+"/heartbeat", "application/json", bytes.NewBuffer(payload))
+			if err == nil {
+				defer resp.Body.Close()
+				var hubResp struct {
+					InstanceStatus string            `json:"instanceStatus"`
+					Licenses       map[string]string `json:"licenses"`
+				}
+				if err := json.NewDecoder(resp.Body).Decode(&hubResp); err == nil {
+					licenseStatusMu.Lock()
+					writeLicenseStatus(hubResp.Licenses)
+					licenseStatusMu.Unlock()
+					log.Printf("💓 Heartbeat OK. Syncing %d license statuses.", len(hubResp.Licenses))
+				}
+			} else {
+				log.Printf("⚠️ Hub heartbeat failed: %v", err)
+			}
+			time.Sleep(15 * time.Minute)
+		}
+	}()
 }
 
 func main() {
@@ -43,90 +142,70 @@ func main() {
 		port = "8081"
 	}
 
+	instanceID := getInstanceID()
+	log.Printf("🦞 Local Plugin Manager starting with ID: %s", instanceID)
+
+	// Inicia telemetria bussines
+	StartHeartbeat(instanceID)
+
 	r := mux.NewRouter()
 
-	// Health Check
-	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	}).Methods("GET")
-
-	// Version Endpoint (used by VersionDashboard)
-	// Frontend calls /plugins/version -> Traefik strips /plugins -> Backend sees /version
-	r.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
-		currentVersion := "1.0.32"
-		// Try to read from VERSION file if exists
-		data, err := os.ReadFile("VERSION")
-		if err == nil {
-			currentVersion = string(data)
+	// 1. Proxy Catalog from Hub
+	r.HandleFunc("/api/v1/plugins/catalog", func(w http.ResponseWriter, r *http.Request) {
+		resp, err := http.Get(HubURL + "/catalog")
+		if err != nil {
+			json.NewEncoder(w).Encode(CatalogResponse{Offline: true, Plugins: []HubPlugin{}})
+			return
 		}
-
-		resp := VersionResponse{
-			Service:     "plugin-manager",
-			Version:     currentVersion,
-			LastUpdated: time.Now().Format(time.RFC3339),
-		}
+		defer resp.Body.Close()
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
-	}).Methods("GET")
-
-	// API V1 Routes
-	api := r.PathPrefix("/api/v1/plugins").Subrouter()
-
-	// Catalog Handler
-	api.HandleFunc("/catalog", func(w http.ResponseWriter, r *http.Request) {
-		// Mock Catalog
-		catalog := CatalogResponse{
-			Offline: false,
-			Plugins: []Plugin{
-				{
-					ID:          "1",
-					Slug:        "plugin-smtp",
-					Name:        "SMTP Plugin",
-					Description: "Envio de e-mails transacionais via RabbitMQ",
-					Version:     "1.0.0",
-					Type:        "free",
-					Category:    "utility",
-					Price:       0,
-				},
-				{
-					ID:          "2",
-					Slug:        "clientes",
-					Name:        "Gestão de Clientes",
-					Description: "CRM Básico para gestão de contatos",
-					Version:     "1.2.0",
-					Type:        "free",
-					Category:    "crm",
-					Price:       0,
-				},
-				{
-					ID:          "3",
-					Slug:        "helpdesk",
-					Name:        "Helpdesk Pro",
-					Description: "Sistema de tickets e atendimento",
-					Version:     "2.0.0",
-					Type:        "premium",
-					Category:    "support",
-					Price:       49.90,
-				},
-			},
+		var hubResp struct {
+			Plugins []HubPlugin `json:"plugins"`
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(catalog)
+		json.NewDecoder(resp.Body).Decode(&hubResp)
+		json.NewEncoder(w).Encode(CatalogResponse{Offline: false, Plugins: hubResp.Plugins})
 	}).Methods("GET")
 
-	// Installed Handler
-	api.HandleFunc("/installed", func(w http.ResponseWriter, r *http.Request) {
-		// Mock Installed (Assuming SMTP is installed as we recovered it)
-		installed := InstalledResponse{
-			Active: []string{"plugin-smtp"},
+	// 2. Installed plugins
+	r.HandleFunc("/api/v1/plugins/installed", func(w http.ResponseWriter, r *http.Request) {
+		tenantID := r.Header.Get("x-tenant-id")
+		store := readTenantPlugins()
+		active := store[tenantID]
+		if active == nil {
+			active = []string{}
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(installed)
+		statuses := readLicenseStatus()
+		json.NewEncoder(w).Encode(InstalledResponse{
+			Active:   active,
+			Statuses: statuses,
+		})
 	}).Methods("GET")
 
-	log.Printf("Plugin Manager running on port %s", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
-		log.Fatal(err)
-	}
+	// 3. Checkout
+	r.HandleFunc("/api/v1/plugins/checkout", func(w http.ResponseWriter, r *http.Request) {
+		var req CheckoutRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		payload, _ := json.Marshal(CreateCheckoutPayload{
+			Slug:       req.Slug,
+			InstanceID: instanceID,
+		})
+		resp, err := http.Post(HubURL+"/checkout", "application/json", bytes.NewBuffer(payload))
+		if err != nil {
+			http.Error(w, "Hub unavailable", 502)
+			return
+		}
+		defer resp.Body.Close()
+		w.Header().Set("Content-Type", "application/json")
+		var checkoutResp CreateCheckoutResponse
+		json.NewDecoder(resp.Body).Decode(&checkoutResp)
+		json.NewEncoder(w).Encode(checkoutResp)
+	}).Methods("POST")
+
+	// 4. Instance Info
+	r.HandleFunc("/api/v1/plugins/instance", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]string{"instanceId": instanceID})
+	}).Methods("GET")
+
+	log.Printf("🚀 Local Plugin Manager running on port %s", port)
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }

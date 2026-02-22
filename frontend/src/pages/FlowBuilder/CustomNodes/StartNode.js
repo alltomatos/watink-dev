@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from 'react';
 import { Position } from 'reactflow';
 import { PlayArrow as PlayIcon } from '@material-ui/icons';

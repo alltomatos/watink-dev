@@ -387,3 +387,13 @@ Seguimos estritamente o **Semantic Versioning (SemVer)** (ex: `1.0.0`).
     ```bash
     docker service update --image watink/backend:1.2.0 watink_backend
     ```
+
+---
+
+## 🧩 Paridade OpenCore ↔ Business (Migrations + Seeds)
+
+Toda alteração de schema deve seguir checklist obrigatório de compatibilidade.
+
+- Guia oficial: [parity_migrations_seeds.md](./parity_migrations_seeds.md)
+- Regra: colunas/tabelas extras no Business **não podem quebrar** o OpenCore.
+- Merge só com checklist completo + smoke tests dos dois lados.

@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from "react";
 
 const TabPanel = ({ children, value, name, ...rest }) => {

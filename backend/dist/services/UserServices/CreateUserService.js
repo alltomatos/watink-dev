@@ -32,15 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -50,44 +41,43 @@ const AppError_1 = __importDefault(require("../../errors/AppError"));
 const SerializeUser_1 = require("../../helpers/SerializeUser");
 const User_1 = __importDefault(require("../../models/User"));
 const Permission_1 = __importDefault(require("../../models/Permission"));
-const CreateUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ email, password, name, queueIds = [], profile = "admin", whatsappId, tenantId }) {
+const CreateUserService = async ({ email, password, name, queueIds = [], profile = "admin", whatsappId }) => {
     const schema = Yup.object().shape({
         name: Yup.string().required().min(2),
         email: Yup.string()
             .email()
             .required()
-            .test("Check-email", "An user with this email already exists.", (value) => __awaiter(void 0, void 0, void 0, function* () {
+            .test("Check-email", "An user with this email already exists.", async (value) => {
             if (!value)
                 return false;
-            const emailExists = yield User_1.default.findOne({
+            const emailExists = await User_1.default.findOne({
                 where: { email: value }
             });
             return !emailExists;
-        })),
+        }),
         password: Yup.string().required().min(5)
     });
     try {
-        yield schema.validate({ email, password, name });
+        await schema.validate({ email, password, name });
     }
     catch (err) {
         throw new AppError_1.default(err.message);
     }
-    const user = yield User_1.default.create({
+    const user = await User_1.default.create({
         email,
         password,
         name,
         profile,
-        whatsappId: whatsappId ? whatsappId : null,
-        tenantId
+        whatsappId: whatsappId ? whatsappId : null
     }, { include: ["queues", "whatsapp"] });
     if (profile === "superadmin") {
-        const allPermissions = yield Permission_1.default.findAll();
-        yield user.$set("permissions", allPermissions);
+        const allPermissions = await Permission_1.default.findAll();
+        await user.$set("permissions", allPermissions);
     }
     else {
-        yield user.$set("queues", queueIds);
+        await user.$set("queues", queueIds);
     }
-    yield user.reload();
+    await user.reload();
     return (0, SerializeUser_1.SerializeUser)(user);
-});
+};
 exports.default = CreateUserService;

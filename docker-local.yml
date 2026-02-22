@@ -108,26 +108,27 @@ services:
     image: ronaldodavi/pgvectorgis:latest
     environment:
       - POSTGRES_DB=watink
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=strongpassword
     volumes:
       - postgres_data_local:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     networks:
       - watink_private
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
     networks:
       - watink_private
 
   redis:
     image: redis:alpine
+    command: redis-server --requirepass strongredispass --bind 0.0.0.0 --protected-mode yes
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data_local:/data
     networks:

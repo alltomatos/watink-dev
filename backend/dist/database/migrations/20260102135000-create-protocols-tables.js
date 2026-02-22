@@ -1,19 +1,10 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 module.exports = {
-    up: (queryInterface) => __awaiter(void 0, void 0, void 0, function* () {
+    up: async (queryInterface) => {
         // Create Protocols table
-        yield queryInterface.createTable("Protocols", {
+        await queryInterface.createTable("Protocols", {
             id: {
                 type: sequelize_1.DataTypes.INTEGER,
                 autoIncrement: true,
@@ -98,7 +89,7 @@ module.exports = {
             }
         });
         // Create ProtocolHistory table
-        yield queryInterface.createTable("ProtocolHistories", {
+        await queryInterface.createTable("ProtocolHistories", {
             id: {
                 type: sequelize_1.DataTypes.INTEGER,
                 autoIncrement: true,
@@ -142,15 +133,15 @@ module.exports = {
             }
         });
         // Add indexes
-        yield queryInterface.addIndex("Protocols", ["tenantId"]);
-        yield queryInterface.addIndex("Protocols", ["protocolNumber"]);
-        yield queryInterface.addIndex("Protocols", ["ticketId"]);
-        yield queryInterface.addIndex("Protocols", ["contactId"]);
-        yield queryInterface.addIndex("Protocols", ["status"]);
-        yield queryInterface.addIndex("ProtocolHistories", ["protocolId"]);
-    }),
-    down: (queryInterface) => __awaiter(void 0, void 0, void 0, function* () {
-        yield queryInterface.dropTable("ProtocolHistories");
-        yield queryInterface.dropTable("Protocols");
-    })
+        await queryInterface.addIndex("Protocols", ["tenantId"]);
+        await queryInterface.addIndex("Protocols", ["protocolNumber"]);
+        await queryInterface.addIndex("Protocols", ["ticketId"]);
+        await queryInterface.addIndex("Protocols", ["contactId"]);
+        await queryInterface.addIndex("Protocols", ["status"]);
+        await queryInterface.addIndex("ProtocolHistories", ["protocolId"]);
+    },
+    down: async (queryInterface) => {
+        await queryInterface.dropTable("ProtocolHistories");
+        await queryInterface.dropTable("Protocols");
+    }
 };

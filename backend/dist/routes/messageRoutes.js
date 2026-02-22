@@ -39,7 +39,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const multer_1 = __importDefault(require("multer"));
 const isAuth_1 = __importDefault(require("../middleware/isAuth"));
-const isAuditor_1 = __importDefault(require("../middleware/isAuditor"));
 const upload_1 = __importDefault(require("../config/upload"));
 const MessageController = __importStar(require("../controllers/MessageController"));
 const messageRoutes = (0, express_1.Router)();
@@ -164,7 +163,7 @@ messageRoutes.get("/messages/:ticketId", isAuth_1.default, MessageController.ind
  *             schema:
  *               $ref: '#/components/schemas/Message'
  */
-messageRoutes.post("/messages/:ticketId", isAuth_1.default, isAuditor_1.default, upload.array("medias"), MessageController.store);
+messageRoutes.post("/messages/:ticketId", isAuth_1.default, upload.array("medias"), MessageController.store);
 /**
  * @swagger
  * /messages/{messageId}:

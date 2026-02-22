@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState, useContext, useEffect } from "react";
 import clsx from "clsx";
 import {
@@ -12,9 +13,11 @@ import {
     Menu,
     IconButton,
     Box,
+    Tooltip,
 } from "@material-ui/core";
 import AccountCircle from "@material-ui/icons/AccountCircle";
 import MenuIcon from "@material-ui/icons/Menu";
+import InfoOutlinedIcon from "@material-ui/icons/InfoOutlined";
 
 import MainListItems from "./MainListItems";
 import NotificationsPopOver from "../components/NotificationsPopOver";
@@ -24,7 +27,7 @@ import BackdropLoading from "../components/BackdropLoading";
 import { i18n } from "../translate/i18n";
 import VersionFooter from "../components/VersionFooter";
 import api from "../services/api";
-import { getBackendUrl } from "../config";
+import { getBackendUrl } from "../helpers/urlUtils";
 
 const drawerWidth = 260;
 const drawerWidthClosed = 72;
@@ -140,6 +143,7 @@ const MainLayoutSaaS = ({ children }) => {
     const [systemLogo, setSystemLogo] = useState("");
     const [systemTitle, setSystemTitle] = useState("Watink");
     const [logoEnabled, setLogoEnabled] = useState(true);
+    const [frontendVersion, setFrontendVersion] = useState("-");
 
     useEffect(() => {
         if (document.body.offsetWidth > 600) {
@@ -179,12 +183,9 @@ const MainLayoutSaaS = ({ children }) => {
                 }
                 // Update browser favicon dynamically
                 if (faviconSetting && faviconSetting.value) {
-                    const faviconPath = faviconSetting.value.startsWith('/')
-                        ? faviconSetting.value.slice(1)
-                        : faviconSetting.value;
                     const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
                     link.rel = 'icon';
-                    link.href = `${getBackendUrl()}${faviconPath}`;
+                    link.href = getBackendUrl(faviconSetting.value);
                     document.head.appendChild(link);
                 }
             } catch (err) {
@@ -192,6 +193,20 @@ const MainLayoutSaaS = ({ children }) => {
             }
         };
         fetchSettings();
+    }, []);
+
+    useEffect(() => {
+        const loadFrontendVersion = async () => {
+            try {
+                const res = await fetch("/version.json", { cache: "no-store" });
+                if (!res.ok) return;
+                const data = await res.json();
+                const version = data?.version || data?.frontendVersion;
+                if (version) setFrontendVersion(version);
+            } catch (_) {}
+        };
+
+        loadFrontendVersion();
     }, []);
 
     const handleMenu = (event) => {
@@ -241,7 +256,7 @@ const MainLayoutSaaS = ({ children }) => {
                 <Box className={classes.logoContainer}>
                     {drawerOpen && systemLogo && logoEnabled ? (
                         <img
-                            src={`${getBackendUrl()}${systemLogo.startsWith('/') ? systemLogo.slice(1) : systemLogo}`}
+                            src={getBackendUrl(systemLogo)}
                             alt="Logo"
                             className={classes.systemLogo}
                         />
@@ -289,6 +304,16 @@ const MainLayoutSaaS = ({ children }) => {
                     </div>
 
                     <div className={classes.userActions}>
+                        <Tooltip title={`Frontend v${frontendVersion}`} arrow>
+                            <IconButton
+                                size="small"
+                                aria-label="frontend-version"
+                                style={{ color: "#007AFF" }}
+                            >
+                                <InfoOutlinedIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+
                         {user.id && <NotificationsPopOver />}
 
                         <IconButton

@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -16,7 +7,7 @@ const Ticket_1 = __importDefault(require("../../models/Ticket"));
 const UpdateTicketService_1 = __importDefault(require("./UpdateTicketService"));
 const logger_1 = require("../../utils/logger");
 const sequelize_1 = require("sequelize");
-const CloseAllTicketsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ tenantId, userId, statusOpen = true, statusPending = true, includeGroups = false }) {
+const CloseAllTicketsService = async ({ tenantId, userId, statusOpen = true, statusPending = true, includeGroups = false }) => {
     const statusFilter = [];
     if (statusOpen)
         statusFilter.push("open");
@@ -34,13 +25,13 @@ const CloseAllTicketsService = (_a) => __awaiter(void 0, [_a], void 0, function*
     if (!includeGroups) {
         whereCondition.isGroup = false;
     }
-    const tickets = yield Ticket_1.default.findAll({
+    const tickets = await Ticket_1.default.findAll({
         where: whereCondition
     });
     let closedCount = 0;
     for (const ticket of tickets) {
         try {
-            yield (0, UpdateTicketService_1.default)({
+            await (0, UpdateTicketService_1.default)({
                 ticketData: {
                     status: "closed",
                     userId
@@ -54,5 +45,5 @@ const CloseAllTicketsService = (_a) => __awaiter(void 0, [_a], void 0, function*
         }
     }
     return closedCount;
-});
+};
 exports.default = CloseAllTicketsService;

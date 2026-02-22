@@ -28,8 +28,11 @@ import groupRoutes from "./groupRoutes";
 import knowledgeRoutes from "./knowledgeRoutes";
 import clientRoutes from "./clientRoutes";
 import protocolRoutes from "./protocolRoutes";
+import saasRoutes from "./saasRoutes";
+import initialSetupRoutes from "./initialSetupRoutes";
 
 import pluginRoutes from "./pluginRoutes";
+import customPluginRoutes from "./customPluginRoutes";
 import aiRoutes from "./aiRoutes";
 import webchatRoutes from "./WebchatRoutes";
 
@@ -61,7 +64,10 @@ routes.use(flowRoutes);
 routes.use(knowledgeRoutes);
 routes.use(clientRoutes);
 routes.use(protocolRoutes);
+routes.use(saasRoutes);
+routes.use(initialSetupRoutes);
 routes.use(pluginRoutes);
+routes.use(customPluginRoutes);
 routes.use(aiRoutes);
 routes.use("/users", userRoutes);
 

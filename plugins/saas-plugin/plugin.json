@@ -1,0 +1,32 @@
+{
+  "slug": "saas-plugin",
+  "name": "SaaS Add-on",
+  "version": "1.0.0",
+  "description": "Habilita operação multi-tenant com franquia por tenant e gestão de planos.",
+  "type": "premium",
+  "category": "saas",
+  "backend": {
+    "permissions": [
+      { "name": "view_tenants", "description": "Visualizar gestão de tenants" },
+      { "name": "edit_tenants", "description": "Editar planos de tenants" }
+    ],
+    "hooks": ["tenant_created", "subscription_updated"],
+    "main": "src/index"
+  },
+  "frontend": {
+    "menuItems": [
+      {
+        "name": "Gestão SaaS",
+        "icon": "Business",
+        "path": "/saas-manager",
+        "permission": "view_tenants"
+      }
+    ],
+    "routes": [
+      {
+        "path": "/saas-manager",
+        "component": "SaaSAdmin"
+      }
+    ]
+  }
+}

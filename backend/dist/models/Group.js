@@ -17,7 +17,6 @@ const User_1 = __importDefault(require("./User"));
 const Permission_1 = __importDefault(require("./Permission"));
 const GroupPermission_1 = __importDefault(require("./GroupPermission"));
 const Tenant_1 = __importDefault(require("./Tenant"));
-const UserGroup_1 = __importDefault(require("./UserGroup"));
 let Group = class Group extends sequelize_typescript_1.Model {
 };
 __decorate([
@@ -40,7 +39,7 @@ __decorate([
     __metadata("design:type", Tenant_1.default)
 ], Group.prototype, "tenant", void 0);
 __decorate([
-    (0, sequelize_typescript_1.BelongsToMany)(() => User_1.default, () => UserGroup_1.default),
+    (0, sequelize_typescript_1.HasMany)(() => User_1.default, { sourceKey: "id", foreignKey: "groupId", as: "users" }),
     __metadata("design:type", Array)
 ], Group.prototype, "users", void 0);
 __decorate([

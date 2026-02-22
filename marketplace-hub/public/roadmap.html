@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Roadmap Marketplace</title>
+  <style>
+    body{font-family:Inter,Arial,sans-serif;background:#0b1220;color:#e6edf7;margin:0;padding:24px}
+    .wrap{max-width:920px;margin:0 auto}
+    h1{margin:0 0 8px}
+    .muted{color:#9fb1cc}
+    .card{background:#111c2e;border:1px solid #22304a;border-radius:12px;padding:16px;margin:14px 0}
+    a{color:#8ab4ff;text-decoration:none}
+    a:hover{text-decoration:underline}
+    ul{margin:8px 0 0 18px}
+    li{margin:8px 0}
+    .tag{display:inline-block;background:#173256;border:1px solid #2f5b91;padding:2px 8px;border-radius:999px;font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Roadmap Marketplace / SaaS</h1>
+    <div class="muted">Página simples de acompanhamento operacional</div>
+
+    <div class="card">
+      <div class="tag">Amanhã</div>
+      <ul>
+        <li>Unificar versão exibida entre instância e Hub.</li>
+        <li>Adicionar upload de imagem de plugin no Hub (salvar no GitHub).</li>
+        <li>Adicionar estrutura de pasta de plugins no GitHub para arquivos de instalação.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <strong>Repositório de distribuição</strong>
+      <ul>
+        <li><a href="https://github.com/alltomatos/watink-bussines" target="_blank" rel="noopener">alltomatos/watink-bussines</a></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <strong>Padrão de pastas (GitHub)</strong>
+      <ul>
+        <li><code>plugins/images/&lt;slug&gt;.&lt;ext&gt;</code> (imagens dos plugins)</li>
+        <li><code>plugins/artifacts/&lt;slug&gt;/&lt;version&gt;/plugin.zip</code> (arquivo instalável)</li>
+        <li><code>plugins/artifacts/&lt;slug&gt;/manifest.json</code> (metadados/sha256)</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <strong>Roadmap detalhado no código</strong>
+      <ul>
+        <li><code>watinkdev/ROADMAP_MARKETPLACE_SAAS.md</code></li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

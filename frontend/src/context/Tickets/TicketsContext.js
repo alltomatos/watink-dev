@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { createContext, useState, useContext } from "react";
 
 const TicketsContext = createContext();

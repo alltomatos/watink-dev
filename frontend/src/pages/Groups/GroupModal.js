@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState, useEffect } from "react";
 import * as Yup from "yup";
 import { Formik, Form, Field } from "formik";
@@ -76,7 +77,7 @@ const GroupModal = ({ open, onClose, groupId }) => {
         const fetchPermissions = async () => {
             try {
                 const { data } = await api.get("/permissions");
-                setAllPermissions(data);
+                setAllPermissions(Array.isArray(data) ? data : []);
             } catch (err) {
                 toastError(err);
             }
@@ -92,7 +93,7 @@ const GroupModal = ({ open, onClose, groupId }) => {
                 setGroup(prevState => {
                     return { ...prevState, ...data };
                 });
-                setSelectedPermissions(data.permissions.map(p => p.id));
+                setSelectedPermissions(Array.isArray(data?.permissions) ? data.permissions.map(p => p.id) : []);
             } catch (err) {
                 toastError(err);
             }
@@ -156,20 +157,20 @@ const GroupModal = ({ open, onClose, groupId }) => {
         const grouped = {};
 
         permissions.forEach(permission => {
+            const permissionName = typeof permission?.name === "string" ? permission.name : "";
             let category = "Outros";
             for (const [key, label] of Object.entries(categories)) {
-                if (permission.name.includes(key) || permission.name.includes(key.replace("es", ""))) { // simple check
+                if (permissionName.includes(key) || permissionName.includes(key.replace("es", ""))) { // simple check
                     category = label;
-                    if (permission.name.includes("admin_queues")) category = "Filas"; // prioritize specific
-                    if (permission.name.includes("admin_settings")) category = "Configurações";
+                    if (permissionName.includes("admin_queues")) category = "Filas"; // prioritize specific
+                    if (permissionName.includes("admin_settings")) category = "Configurações";
                     break;
                 }
             }
 
             // Clean up fallback for specific cases if loop didn't catch correctly
-            if (permission.name.includes("admin_queues")) category = "Filas";
-            if (permission.name.includes("admin_settings")) category = "Configurações";
-
+            if (permissionName.includes("admin_queues")) category = "Filas";
+            if (permissionName.includes("admin_settings")) category = "Configurações";
 
             if (!grouped[category]) {
                 grouped[category] = [];

@@ -32,26 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __rest = (this && this.__rest) || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
-                t[p[i]] = s[p[i]];
-        }
-    return t;
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -63,9 +43,9 @@ const User_1 = __importDefault(require("../../models/User"));
 const Ticket_1 = __importDefault(require("../../models/Ticket"));
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const CreateProtocolAttachmentService_1 = __importDefault(require("./CreateProtocolAttachmentService"));
-const UpdateProtocolService = (data, updatedByUserId) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id, tenantId, comment, files } = data, updateData = __rest(data, ["id", "tenantId", "comment", "files"]);
-    const protocol = yield Protocol_1.default.findOne({ where: { id, tenantId } });
+const UpdateProtocolService = async (data, updatedByUserId) => {
+    const { id, tenantId, comment, files, ...updateData } = data;
+    const protocol = await Protocol_1.default.findOne({ where: { id, tenantId } });
     if (!protocol) {
         throw new AppError_1.default("ERR_PROTOCOL_NOT_FOUND", 404);
     }
@@ -80,10 +60,10 @@ const UpdateProtocolService = (data, updatedByUserId) => __awaiter(void 0, void 
             updateData["closedAt"] = new Date();
         }
     }
-    yield protocol.update(updateData);
+    await protocol.update(updateData);
     // Create history entries for changes
     if (updateData.status && updateData.status !== previousStatus) {
-        yield ProtocolHistory_1.default.create({
+        await ProtocolHistory_1.default.create({
             protocolId: id,
             userId: updatedByUserId,
             action: "status_changed",
@@ -93,7 +73,7 @@ const UpdateProtocolService = (data, updatedByUserId) => __awaiter(void 0, void 
         });
     }
     if (updateData.priority && updateData.priority !== previousPriority) {
-        yield ProtocolHistory_1.default.create({
+        await ProtocolHistory_1.default.create({
             protocolId: id,
             userId: updatedByUserId,
             action: "priority_changed",
@@ -102,7 +82,7 @@ const UpdateProtocolService = (data, updatedByUserId) => __awaiter(void 0, void 
         });
     }
     if (comment && !updateData.status) {
-        yield ProtocolHistory_1.default.create({
+        await ProtocolHistory_1.default.create({
             protocolId: id,
             userId: updatedByUserId,
             action: "commented",
@@ -111,14 +91,14 @@ const UpdateProtocolService = (data, updatedByUserId) => __awaiter(void 0, void 
     }
     // Handle file attachments if present
     if (files && files.length > 0) {
-        yield (0, CreateProtocolAttachmentService_1.default)({
+        await (0, CreateProtocolAttachmentService_1.default)({
             protocolId: id,
             tenantId,
             userId: updatedByUserId,
             files
         });
     }
-    const fullProtocol = yield Protocol_1.default.findByPk(id, {
+    const fullProtocol = await Protocol_1.default.findByPk(id, {
         include: [
             { model: Contact_1.default, as: "contact" },
             { model: User_1.default, as: "user" },
@@ -128,7 +108,7 @@ const UpdateProtocolService = (data, updatedByUserId) => __awaiter(void 0, void 
     });
     // Emit socket event for real-time Kanban updates
     try {
-        const { getIO } = yield Promise.resolve().then(() => __importStar(require("../../libs/socket")));
+        const { getIO } = await Promise.resolve().then(() => __importStar(require("../../libs/socket")));
         const io = getIO();
         io.to("helpdesk-kanban").emit("protocol", {
             action: "update",
@@ -141,5 +121,5 @@ const UpdateProtocolService = (data, updatedByUserId) => __awaiter(void 0, void 
         console.error("Error emitting protocol socket event:", err);
     }
     return fullProtocol;
-});
+};
 exports.default = UpdateProtocolService;

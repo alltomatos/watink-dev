@@ -2,6 +2,8 @@ import { QueryInterface } from "sequelize";
 
 module.exports = {
   up: async (queryInterface: QueryInterface) => {
+    // Disabled for Initial Setup Wizard implementation
+    /*
     const existing = await queryInterface.sequelize.query(
       `SELECT * FROM "Users" WHERE email = 'admin@admin.com'`
     );
@@ -23,6 +25,8 @@ module.exports = {
         {}
       );
     }
+    */
+    return Promise.resolve();
   },
 
   down: (queryInterface: QueryInterface) => {

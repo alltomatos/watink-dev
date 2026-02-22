@@ -1,0 +1,38 @@
+{
+  "name": "watinkdev",
+  "version": "1.0.0",
+  "description": "<p align=\"center\">   <img src=\"images/logo.png\" alt=\"Watink Logo\" width=\"200\" /> </p>",
+  "main": "ecosystem.config.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.58.2"
+  },
+  "devDependencies": {
+    "playwright": "^1.58.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "windows:check": "powershell -ExecutionPolicy Bypass -File ./scripts/windows-business-check.ps1",
+    "windows:business": "start.bat",
+    "windows:business:check": "npm run windows:check ; npm run windows:business",
+    "windows:opencore": "start.bat",
+    "windows:business:server": "start-business-windows.bat",
+    "windows:stack": "npm run windows:check ; npm run windows:business:server",
+    "linux:docker:business": "bash ./scripts/linux-docker-business.sh up",
+    "linux:docker:business:down": "bash ./scripts/linux-docker-business.sh down",
+    "linux:docker:business:rebuild": "bash ./scripts/linux-docker-business.sh rebuild"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alltomatos/watinkdev.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/alltomatos/watinkdev/issues"
+  },
+  "homepage": "https://github.com/alltomatos/watinkdev#readme"
+}

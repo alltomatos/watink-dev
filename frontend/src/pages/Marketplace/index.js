@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React, { useState, useEffect } from "react";
 import {
     Container,
@@ -84,7 +85,7 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: theme.palette.success.main,
         color: "#fff",
     },
-    chipPremium: {
+    chipBusiness: {
         backgroundColor: theme.palette.warning.main,
         color: "#fff",
     },
@@ -119,20 +120,33 @@ const Marketplace = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [offline, setOffline] = useState(false);
 
+    const [instanceId, setInstanceId] = useState("");
+    const [entitlements, setEntitlements] = useState(null);
+
     useEffect(() => {
         loadPlugins();
+        loadInstanceId();
     }, []);
+
+    const loadInstanceId = async () => {
+        try {
+            const { data } = await pluginApi.get("/plugins/instance");
+            setInstanceId(data.instanceId);
+        } catch (err) {
+            console.error("Erro ao carregar Instance ID");
+        }
+    };
 
     const loadPlugins = async () => {
         try {
             setLoading(true);
-            const { data: catalogRes } = await pluginApi.get("/api/v1/plugins/catalog");
+            const { data: catalogRes } = await pluginApi.get("/plugins/catalog");
             setOffline(Boolean(catalogRes?.offline));
-            const { data: installedRes } = await pluginApi.get("/api/v1/plugins/installed");
+            const { data: installedRes } = await pluginApi.get("/plugins/installed");
+            setEntitlements(installedRes?.entitlements || null);
             const activeSlugs = new Set(Array.isArray(installedRes?.active) ? installedRes.active : []);
             const all = Array.isArray(catalogRes?.plugins) ? catalogRes.plugins : [];
-            const filtered = all.filter(p => ["clientes", "helpdesk"].includes(p.slug));
-            const normalized = filtered.map(p => ({
+            const normalized = all.map(p => ({
                 id: p.id,
                 slug: p.slug,
                 name: p.name,
@@ -140,6 +154,7 @@ const Marketplace = () => {
                 version: p.version,
                 type: p.type,
                 category: p.category,
+                price: p.price,
                 // Force use of local icons based on slug, as user is managing them manually in backend/public
                 iconUrl: `/public/plugins/${p.slug}.png`,
                 installed: activeSlugs.has(p.slug),
@@ -194,7 +209,7 @@ const Marketplace = () => {
                                 <Chip
                                     label={plugin.type === "free" ? "Gratuito" : `R$ ${plugin.price}`}
                                     size="small"
-                                    className={plugin.type === "free" ? classes.chipFree : classes.chipPremium}
+                                    className={plugin.type === "free" ? classes.chipFree : classes.chipBusiness}
                                 />
                                 {plugin.installed && (
                                     <Chip label="Instalado" size="small" className={classes.chipInstalled} />
@@ -256,7 +271,7 @@ const Marketplace = () => {
                                 <Chip
                                     label={plugin.type === "free" ? "Gratuito" : `R$ ${plugin.price}`}
                                     size="small"
-                                    className={plugin.type === "free" ? classes.chipFree : classes.chipPremium}
+                                    className={plugin.type === "free" ? classes.chipFree : classes.chipBusiness}
                                 />
                             </TableCell>
                             <TableCell>{plugin.version}</TableCell>
@@ -311,6 +326,33 @@ const Marketplace = () => {
                             <Box mb={2}>
                                 <Alert severity="warning">
                                     Modo offline: exibindo catálogo local. Conexão com Marketplace remoto indisponível.
+                                </Alert>
+                            </Box>
+                        )}
+
+                        {instanceId && (
+                            <Box mb={3}>
+                                <Alert severity="info" action={
+                                    <Button color="inherit" size="small" onClick={() => {
+                                        navigator.clipboard.writeText(instanceId);
+                                        toast.success("ID copiado!");
+                                    }}>
+                                        Copiar ID
+                                    </Button>
+                                }>
+                                    <Typography variant="body2">
+                                        <strong>Instance ID:</strong> {instanceId} (Use este ID para gerenciar suas licenças)
+                                    </Typography>
+                                </Alert>
+                            </Box>
+                        )}
+
+                        {entitlements && (
+                            <Box mb={2}>
+                                <Alert severity="success">
+                                    <Typography variant="body2">
+                                        <strong>Plano:</strong> {entitlements.plan_name || "-"} • <strong>Limite premium por tenant (SaaS):</strong> {Number(entitlements.premium_limit || 0)} • <strong>SaaS:</strong> {entitlements.saas_enabled ? "ativo" : "inativo"} {entitlements.unlock_all ? "• liberação total ativa" : ""}
+                                    </Typography>
                                 </Alert>
                             </Box>
                         )}

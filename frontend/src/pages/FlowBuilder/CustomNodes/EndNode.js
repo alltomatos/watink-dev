@@ -1,3 +1,4 @@
+/* @jsxImportSource react */
 import React from 'react';
 import { Position } from 'reactflow';
 import { Stop as StopIcon } from '@material-ui/icons';

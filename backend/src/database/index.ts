@@ -24,6 +24,9 @@ import Group from "../models/Group";
 import GroupPermission from "../models/GroupPermission";
 import Permission from "../models/Permission";
 import UserPermission from "../models/UserPermission";
+import Role from "../models/Role";
+import RolePermission from "../models/RolePermission";
+import UserRole from "../models/UserRole";
 import Client from "../models/Client";
 import ClientAddress from "../models/ClientAddress";
 import ClientContact from "../models/ClientContact";
@@ -31,6 +34,8 @@ import Protocol from "../models/Protocol";
 import ProtocolHistory from "../models/ProtocolHistory";
 import ProtocolAttachment from "../models/ProtocolAttachment";
 import ConversationEmbedding from "../models/ConversationEmbedding";
+import TenantSubscription from "../models/TenantSubscription";
+import Plan from "../models/Plan";
 
 // eslint-disable-next-line
 const dbConfig = require("../config/database");
@@ -63,13 +68,18 @@ const models = [
   GroupPermission,
   Permission,
   UserPermission,
+  Role,
+  RolePermission,
+  UserRole,
   Client,
   ClientAddress,
   ClientContact,
   Protocol,
   ProtocolHistory,
   ProtocolAttachment,
-  ConversationEmbedding
+  ConversationEmbedding,
+  TenantSubscription,
+  Plan
 ];
 
 sequelize.addModels(models);
