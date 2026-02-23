@@ -53,7 +53,7 @@ func main() {
 	r.GET("/socket.io/*any", gin.WrapH(server))
 	r.POST("/socket.io/*any", gin.WrapH(server))
 
-	// API Group - Unified to /v1/api
+	// API Group - Unified to /v1/api (Legacy /api removed)
 	apiGroup := r.Group("/v1/api")
 	{
 		apiGroup.GET("/health", func(c *gin.Context) {
@@ -73,12 +73,6 @@ func main() {
 		pluginManager.Register(&plugins.SaaSPlugin{})
 
 		routes.SetupRoutes(apiGroup)
-	}
-
-	// Legacy Support for /api (Forward to /v1/api)
-	legacyGroup := r.Group("/api")
-	{
-		routes.SetupRoutes(legacyGroup)
 	}
 
 	// Serve Frontend (Embed)
