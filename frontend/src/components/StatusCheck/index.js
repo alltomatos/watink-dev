@@ -10,33 +10,38 @@ const StatusCheck = ({ children }) => {
   const history = useHistory();
 
   useEffect(() => {
+    let isMounted = true;
     const checkBackend = async () => {
       try {
         const backendUrl = getBackendUrl();
         const base = backendUrl ? backendUrl.replace(/\/+$/, "") : "";
 
-        // Health/setup sempre no namespace /api para evitar concat incorreto (ex: https://hosthealth)
         const testUrl = base ? `${base}/api/health` : "/api/health";
         const setupCheckUrl = base ? `${base}/api/initial-setup/check` : "/api/initial-setup/check";
 
-        // 1. Check health (Fully initialized backend)
         await axios.get(testUrl, { timeout: 5000 });
-        
-        // 2. Check if setup is needed
         const { data } = await axios.get(setupCheckUrl);
         
+        if (!isMounted) return;
+
         if (data.needsSetup && window.location.pathname !== "/initial-setup") {
-          history.push("/initial-setup");
+          if (history && history.push) {
+            history.push("/initial-setup");
+          } else {
+            window.location.href = "/initial-setup";
+          }
         }
         
         setIsBackendReady(true);
       } catch (err) {
+        if (!isMounted) return;
         console.error("Backend not ready or setup check failed, retrying...", err);
         setTimeout(checkBackend, 2000);
       }
     };
 
     checkBackend();
+    return () => { isMounted = false; };
   }, [history]);
 
   if (!isBackendReady) {

@@ -30,6 +30,7 @@ import clientRoutes from "./clientRoutes";
 import protocolRoutes from "./protocolRoutes";
 import saasRoutes from "./saasRoutes";
 import initialSetupRoutes from "./initialSetupRoutes";
+import healthRoutes from "./healthRoutes";
 
 import pluginRoutes from "./pluginRoutes";
 import customPluginRoutes from "./customPluginRoutes";
@@ -66,6 +67,7 @@ routes.use(clientRoutes);
 routes.use(protocolRoutes);
 routes.use(saasRoutes);
 routes.use(initialSetupRoutes);
+routes.use(healthRoutes);
 routes.use(pluginRoutes);
 routes.use(customPluginRoutes);
 routes.use(aiRoutes);
