@@ -39,38 +39,43 @@ import webchatRoutes from "./WebchatRoutes";
 
 const routes = Router();
 
-// routes.use(userRoutes); // Moved to bottom
-routes.use("/auth", authRoutes);
-routes.use(settingRoutes);
-routes.use(contactRoutes);
-routes.use(ticketRoutes);
-routes.use(whatsappRoutes);
-routes.use(messageRoutes);
-routes.use(whatsappSessionRoutes);
-routes.use(queueRoutes);
-routes.use(quickAnswerRoutes);
-routes.use(apiRoutes);
-routes.use(microserviceRoutes);
-routes.use(tenantRoutes);
-routes.use(groupRoutes);
-routes.use("/version", versionRoutes);
-routes.use(postgresVersionRoutes);
-routes.use(rabbitmqVersionRoutes);
-routes.use(redisVersionRoutes);
-routes.use(engineVersionRoutes);
-routes.use(flowVersionRoutes);
-routes.use(pipelineRoutes);
-routes.use(dealRoutes);
-routes.use(flowRoutes);
-routes.use(knowledgeRoutes);
-routes.use(clientRoutes);
-routes.use(protocolRoutes);
-routes.use(saasRoutes);
-routes.use(initialSetupRoutes);
-routes.use(healthRoutes);
-routes.use(pluginRoutes);
-routes.use(customPluginRoutes);
-routes.use(aiRoutes);
-routes.use("/users", userRoutes);
+// Todas as rotas agora respondem exclusivamente sob o prefixo /v1/api
+const v1Router = Router();
+
+v1Router.use("/auth", authRoutes);
+v1Router.use(settingRoutes);
+v1Router.use(contactRoutes);
+v1Router.use(ticketRoutes);
+v1Router.use(whatsappRoutes);
+v1Router.use(messageRoutes);
+v1Router.use(whatsappSessionRoutes);
+v1Router.use(queueRoutes);
+v1Router.use(quickAnswerRoutes);
+v1Router.use(apiRoutes);
+v1Router.use(microserviceRoutes);
+v1Router.use(tenantRoutes);
+v1Router.use(groupRoutes);
+v1Router.use("/version", versionRoutes);
+v1Router.use(postgresVersionRoutes);
+v1Router.use(rabbitmqVersionRoutes);
+v1Router.use(redisVersionRoutes);
+v1Router.use(engineVersionRoutes);
+v1Router.use(flowVersionRoutes);
+v1Router.use(pipelineRoutes);
+v1Router.use(dealRoutes);
+v1Router.use(flowRoutes);
+v1Router.use(knowledgeRoutes);
+v1Router.use(clientRoutes);
+v1Router.use(protocolRoutes);
+v1Router.use(saasRoutes);
+v1Router.use(initialSetupRoutes);
+v1Router.use(healthRoutes);
+v1Router.use(pluginRoutes);
+v1Router.use(customPluginRoutes);
+v1Router.use(aiRoutes);
+v1Router.use("/users", userRoutes);
+
+// Aplica o prefixo único
+routes.use("/v1/api", v1Router);
 
 export default routes;
