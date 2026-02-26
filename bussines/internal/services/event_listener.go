@@ -321,6 +321,8 @@ func processMessage(tx *gorm.DB, p MessagePayload, rawSessionID string, tenantID
 		if ticket.QueueID != nil {
 			distService := NewDistributionService()
 			distService.DistributeTicket(ticket.ID, *ticket.QueueID, tid)
+			// Recarregar o ticket após a distribuição para refletir o novo dono nas atualizações
+			tx.First(&ticket, ticket.ID)
 		}
 	}
 

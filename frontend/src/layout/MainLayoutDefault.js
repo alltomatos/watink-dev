@@ -124,10 +124,9 @@ const MainLayoutDefault = ({ children }) => {
     const history = useHistory();
     const [anchorEl, setAnchorEl] = useState(null);
     const [menuOpen, setMenuOpen] = useState(false);
-    const { handleLogout, loading } = useContext(AuthContext);
+    const { handleLogout, loading, user } = useContext(AuthContext);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [drawerVariant, setDrawerVariant] = useState("permanent");
-    const { user } = useContext(AuthContext);
     const { appTheme } = useThemeContext();
     const [systemLogo, setSystemLogo] = useState("");
     const [systemTitle, setSystemTitle] = useState("Watink");
@@ -198,6 +197,9 @@ const MainLayoutDefault = ({ children }) => {
     if (loading) {
         return <BackdropLoading />;
     }
+
+    // Defensive check to avoid crash if user is still loading
+    const safeUser = user || {};
 
     return (
         <div className={classes.root}>
@@ -270,16 +272,16 @@ const MainLayoutDefault = ({ children }) => {
                             </IconButton>
                         </Tooltip>
 
-                        {user.id && <NotificationsPopOver />}
+                        {safeUser.id && <NotificationsPopOver />}
 
                         <IconButton
                             onClick={handleMenu}
                             color="inherit"
                         >
-                            {user.profileImage ? (
+                            {safeUser.profileImage ? (
                                 <Avatar
-                                    alt={user.name}
-                                    src={getBackendUrl(user.profileImage)}
+                                    alt={safeUser.name}
+                                    src={getBackendUrl(safeUser.profileImage)}
                                     style={{ width: 32, height: 32 }}
                                 />
                             ) : (

@@ -2,6 +2,7 @@ package services
 
 import (
 	"log"
+	"strings"
 
 	"github.com/alltomatos/watinkdev/bussines/internal/database"
 	"github.com/alltomatos/watinkdev/bussines/internal/models"
@@ -19,10 +20,16 @@ func NewDistributionService() *DistributionService {
 	}
 }
 
+// DistributeTicket orquestra a atribuição de um ticket a um usuário baseado na estratégia da fila.
 func (s *DistributionService) DistributeTicket(ticketID int, queueID int, tenantID uuid.UUID) error {
 	var ticket models.Ticket
 	if err := s.db.Where("id = ? AND \"tenantId\" = ?", ticketID, tenantID).First(&ticket).Error; err != nil {
 		return err
+	}
+
+	// Se o ticket já tiver um dono, não redistribui automaticamente
+	if ticket.UserID != nil {
+		return nil
 	}
 
 	var queue models.Queue
@@ -30,14 +37,16 @@ func (s *DistributionService) DistributeTicket(ticketID int, queueID int, tenant
 		return err
 	}
 
-	strategy := queue.DistributionStrategy
+	// Normaliza a estratégia para maiúsculas (compatibilidade Opencore <-> Business)
+	strategy := strings.ToUpper(queue.DistributionStrategy)
 	
 	// 1. Prioridade de Carteira (Wallet)
+	// Se ativado, tenta entregar para o dono do contato antes de qualquer rodízio
 	if queue.PrioritizeWallet {
 		var contact models.Contact
 		if err := s.db.Where("id = ? AND \"tenantId\" = ?", ticket.ContactID, tenantID).First(&contact).Error; err == nil {
 			if contact.WalletUserID != nil {
-				// Verifica se este usuário da carteira está na fila
+				// Verifica se o dono da carteira está vinculado a esta fila
 				var count int64
 				s.db.Table("UserQueues").Where("\"userId\" = ? AND \"queueId\" = ?", *contact.WalletUserID, queueID).Count(&count)
 				
@@ -55,11 +64,15 @@ func (s *DistributionService) DistributeTicket(ticketID int, queueID int, tenant
 		}
 	}
 
-	if strategy == "" || strategy == "MANUAL" {
-		log.Printf("[Distribution] Strategy MANUAL for Ticket %d. No user assigned.", ticketID)
+	// Estratégias que NÃO atribuem dono automaticamente:
+	// MANUAL: O admin/agente atribui manualmente.
+	// FISHER / PESCA: O ticket fica "disponível" para quem quiser pegar primeiro.
+	if strategy == "" || strategy == "MANUAL" || strategy == "FISHER" || strategy == "PESCA" {
+		log.Printf("[Distribution] Strategy %s for Ticket %d. Keeping unassigned for manual/fishing.", strategy, ticketID)
 		return nil
 	}
 
+	// Busca usuários vinculados à fila
 	var users []models.User
 	if err := s.db.Joins("JOIN \"UserQueues\" uq ON uq.\"userId\" = \"Users\".id").
 		Where("uq.\"queueId\" = ? AND \"Users\".\"tenantId\" = ?", queueID, tenantID).
@@ -74,12 +87,14 @@ func (s *DistributionService) DistributeTicket(ticketID int, queueID int, tenant
 
 	var assignedUserID int
 
+	// Mapeamento Bilíngue: Suporte total a strings do Opencore e do Business
 	switch strategy {
-	case "AUTO_ROUND_ROBIN": // Round Robin
+	case "AUTO_ROUND_ROBIN", "ROUND_ROBIN", "RODIZIO":
 		assignedUserID = s.getRoundRobinUser(users, queueID, tenantID)
-	case "AUTO_BALANCED":
+	case "AUTO_BALANCED", "BALANCED", "BALANCEADO":
 		assignedUserID = s.getBalancedUser(users, tenantID)
 	default:
+		log.Printf("[Distribution] Unknown strategy %s for Ticket %d. Defaulting to manual.", strategy, ticketID)
 		return nil
 	}
 
@@ -105,19 +120,20 @@ func (s *DistributionService) emitUpdate(ticket models.Ticket) {
 	})
 }
 
+// getRoundRobinUser implementa o rodízio circular baseado no último ticket atribuído na fila.
 func (s *DistributionService) getRoundRobinUser(users []models.User, queueID int, tenantID uuid.UUID) int {
 	var lastTicket models.Ticket
-	// Busca o último ticket desta fila que teve um usuário atribuído
+	// Busca o último ticket desta fila que teve um usuário atribuído manualmente ou via rodízio
 	err := s.db.Where("\"queueId\" = ? AND \"tenantId\" = ? AND \"userId\" IS NOT NULL", queueID, tenantID).
 		Order("id desc").
 		First(&lastTicket).Error
 
 	if err != nil {
-		// Se não tem ticket anterior, pega o primeiro usuário
+		// Se for o primeiro ticket da fila, começa pelo primeiro usuário da lista
 		return users[0].ID
 	}
 
-	// Encontra a posição do último usuário na lista
+	// Localiza o índice do último usuário sorteado na lista atual da fila
 	lastIdx := -1
 	for i, u := range users {
 		if lastTicket.UserID != nil && u.ID == *lastTicket.UserID {
@@ -126,11 +142,12 @@ func (s *DistributionService) getRoundRobinUser(users []models.User, queueID int
 		}
 	}
 
-	// Próximo usuário (circular)
+	// Seleciona o próximo usuário (volta ao início se chegar ao fim da lista)
 	nextIdx := (lastIdx + 1) % len(users)
 	return users[nextIdx].ID
 }
 
+// getBalancedUser implementa a distribuição por carga (quem tem menos tickets 'open' no momento).
 func (s *DistributionService) getBalancedUser(users []models.User, tenantID uuid.UUID) int {
 	type UserCount struct {
 		UserID int
@@ -142,7 +159,7 @@ func (s *DistributionService) getBalancedUser(users []models.User, tenantID uuid
 		userIDs = append(userIDs, u.ID)
 	}
 
-	// Busca a contagem de tickets 'open' para cada usuário da lista
+	// Contagem em tempo real de tickets abertos para cada agente da fila
 	var results []UserCount
 	s.db.Model(&models.Ticket{}).
 		Select("\"userId\" as user_id, count(*) as count").
@@ -155,7 +172,7 @@ func (s *DistributionService) getBalancedUser(users []models.User, tenantID uuid
 		counts[r.UserID] = r.Count
 	}
 
-	// Encontra o usuário com menos tickets
+	// Algoritmo de menor carga
 	minCount := int64(999999)
 	bestUserID := users[0].ID
 

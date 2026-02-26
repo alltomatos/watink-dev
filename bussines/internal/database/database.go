@@ -97,7 +97,7 @@ func Seed() {
 }
 
 func applyRLS() error {
-	tables := []string{"Users", "Tickets", "Messages", "Contacts", "Settings", "ConversationEmbeddings"}
+	tables := []string{"Users", "Tickets", "Messages", "Contacts", "Settings", "ConversationEmbeddings", "Queues"}
 
 	for _, t := range tables {
 		if err := DB.Exec(fmt.Sprintf("ALTER TABLE \"%s\" ENABLE ROW LEVEL SECURITY", t)).Error; err != nil {
