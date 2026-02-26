@@ -23,8 +23,14 @@ const useStyles = makeStyles(theme => ({
 		"70%": { transform: "scale(1.04)", boxShadow: "0 0 0 6px rgba(59, 130, 246, 0)" },
 		"100%": { transform: "scale(1)", boxShadow: "0 0 0 0 rgba(59, 130, 246, 0)" }
 	},
+	"@keyframes ticketEnter": {
+		"0%": { opacity: 0, transform: "translateY(6px)" },
+		"100%": { opacity: 1, transform: "translateY(0)" }
+	},
 	ticket: {
 		position: "relative",
+		opacity: 0,
+		animation: "$ticketEnter .25s ease forwards",
 		margin: "0 12px 8px 12px",
 		padding: "12px 16px",
 		borderRadius: 12,
@@ -163,7 +169,7 @@ const useStyles = makeStyles(theme => ({
 	},
 }));
 
-const TicketListItem = ({ ticket }) => {
+const TicketListItem = ({ ticket, index = 0 }) => {
 	const classes = useStyles();
 	const history = useHistory();
 	const [loading, setLoading] = useState(false);
@@ -208,6 +214,7 @@ const TicketListItem = ({ ticket }) => {
 			className={clsx(classes.ticket, {
 				[classes.selectedTicket]: ticketId && +ticketId === ticket.id,
 			})}
+			style={{ animationDelay: `${Math.min(index, 20) * 35}ms` }}
 		>
 			<div 
 				className={classes.queueIndicator} 
