@@ -4,7 +4,7 @@ import BaseNode from './BaseNode';
 import { ConfirmationNumber as HelpdeskIcon } from '@material-ui/icons';
 import { Position } from 'reactflow';
 
-const HelpdeskNode = ({ id, data }) => {
+const HelpdeskNode = ({ id, data, isConnectable, selected }) => {
     const actionLabels = {
         'createProtocol': 'Criar Protocolo',
         'checkStatus': 'Verificar Status'
@@ -18,6 +18,8 @@ const HelpdeskNode = ({ id, data }) => {
             colorClass="colorHelpdesk"
             defaultLabel="Helpdesk"
             sublabel={actionLabels[action] || action}
+            isConnectable={isConnectable}
+            selected={selected}
             targetHandles={[{ id: null, position: Position.Left }]}
             sourceHandles={[{ id: null, position: Position.Right }]}
         />

@@ -3,7 +3,7 @@ import React, { memo } from 'react';
 import HttpIcon from '@material-ui/icons/Http';
 import BaseNode from './BaseNode';
 
-const WebhookNode = ({ data, isConnectable }) => {
+const WebhookNode = ({ data, isConnectable, selected }) => {
     return (
         <BaseNode
             data={data}
@@ -12,6 +12,7 @@ const WebhookNode = ({ data, isConnectable }) => {
             defaultLabel="Webhook"
             sublabel={data.method + ' ' + (data.url || '')}
             isConnectable={isConnectable}
+            selected={selected}
         />
     );
 };

@@ -4,7 +4,7 @@ import { Position } from 'reactflow';
 import { List as MenuIcon } from '@material-ui/icons';
 import BaseNode from './BaseNode';
 
-const MenuNode = ({ data, isConnectable }) => {
+const MenuNode = ({ data, isConnectable, selected }) => {
     const optionCount = data?.options?.length || 0;
 
     return (
@@ -15,6 +15,7 @@ const MenuNode = ({ data, isConnectable }) => {
             defaultLabel="Menu"
             sublabel={optionCount > 0 ? `${optionCount} opções` : ''}
             isConnectable={isConnectable}
+            selected={selected}
             badge={optionCount > 0 ? optionCount : null}
         />
     );

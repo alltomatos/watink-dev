@@ -3,7 +3,7 @@ import React from 'react';
 import { Timeline as PipelineIcon } from '@material-ui/icons';
 import BaseNode from './BaseNode';
 
-const PipelineNode = ({ data, isConnectable }) => {
+const PipelineNode = ({ data, isConnectable, selected }) => {
     // Labels para ações do Kanban
     const getActionLabel = (action) => {
         switch (action) {
@@ -22,6 +22,7 @@ const PipelineNode = ({ data, isConnectable }) => {
             defaultLabel="Pipeline"
             sublabel={getActionLabel(data?.kanbanAction)}
             isConnectable={isConnectable}
+            selected={selected}
         />
     );
 };

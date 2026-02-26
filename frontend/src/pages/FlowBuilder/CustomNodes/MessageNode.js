@@ -4,7 +4,7 @@ import { Position } from 'reactflow';
 import { Message as MessageIcon } from '@material-ui/icons';
 import BaseNode from './BaseNode';
 
-const MessageNode = ({ data, isConnectable }) => {
+const MessageNode = ({ data, isConnectable, selected }) => {
     // Mostrar preview da mensagem
     const getPreview = () => {
         if (!data?.content) return '';
@@ -20,6 +20,7 @@ const MessageNode = ({ data, isConnectable }) => {
             defaultLabel="Mensagem"
             sublabel={getPreview()}
             isConnectable={isConnectable}
+            selected={selected}
         />
     );
 };
