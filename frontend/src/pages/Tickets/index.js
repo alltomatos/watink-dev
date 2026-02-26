@@ -10,13 +10,15 @@ import Ticket from "../../components/Ticket/";
 
 import { i18n } from "../../translate/i18n";
 import Hidden from "@material-ui/core/Hidden";
+import Fade from "@material-ui/core/Fade";
+import Slide from "@material-ui/core/Slide";
 
 const useStyles = makeStyles((theme) => ({
   chatContainer: {
     flex: 1,
     height: "100%",
     overflow: "hidden",
-    backgroundColor: "#ffffff",
+    background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
   },
 
   chatPapper: {
@@ -67,27 +69,33 @@ const Chat = () => {
     <div className={classes.chatContainer}>
       <div className={classes.chatPapper}>
         <Grid container spacing={0} style={{height: '100%'}}>
-          <Grid
-            item
-            xs={12}
-            md={4}
-            lg={3}
-            className={
-              ticketId ? classes.contactsWrapperSmall : classes.contactsWrapper
-            }
-          >
-            <TicketsManager />
-          </Grid>
+          <Slide in direction="right" timeout={250} mountOnEnter>
+            <Grid
+              item
+              xs={12}
+              md={4}
+              lg={3}
+              className={
+                ticketId ? classes.contactsWrapperSmall : classes.contactsWrapper
+              }
+            >
+              <TicketsManager />
+            </Grid>
+          </Slide>
           <Grid item xs={12} md={8} lg={9} className={classes.messagessWrapper}>
             {ticketId ? (
-              <>
-                <Ticket />
-              </>
+              <Fade in timeout={220}>
+                <div style={{ height: "100%" }}>
+                  <Ticket />
+                </div>
+              </Fade>
             ) : (
               <Hidden only={["sm", "xs"]}>
-                <Paper className={classes.welcomeMsg} elevation={0}>
-                  <span>{i18n.t("chat.noTicketMessage")}</span>
-                </Paper>
+                <Fade in timeout={240}>
+                  <Paper className={classes.welcomeMsg} elevation={0}>
+                    <span>{i18n.t("chat.noTicketMessage")}</span>
+                  </Paper>
+                </Fade>
               </Hidden>
             )}
           </Grid>
