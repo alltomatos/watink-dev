@@ -30,7 +30,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm install --legacy-peer-deps
+        run: npm install --force --legacy-peer-deps
 
       - run: CI=false npm run build
         working-directory: frontend

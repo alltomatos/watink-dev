@@ -30,7 +30,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: backend
-        run: npm install
+        run: npm install --force --legacy-peer-deps
 
       - run: npm run build
         working-directory: backend
