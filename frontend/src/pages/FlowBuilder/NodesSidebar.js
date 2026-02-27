@@ -22,26 +22,31 @@ import {
 import api from '../../services/api';
 
 const useStyles = makeStyles((theme) => ({
+    "@keyframes fadeInUp": {
+        from: { opacity: 0, transform: 'translateY(10px)' },
+        to: { opacity: 1, transform: 'translateY(0)' }
+    },
     sidebar: {
         width: '280px',
-        padding: '20px',
-        borderRight: '1px solid rgba(0,0,0,0.05)',
-        background: '#ffffff',
+        padding: '24px 20px',
+        borderRight: '1px solid rgba(0,0,0,0.04)',
+        background: 'linear-gradient(180deg, #ffffff 0%, #f9fafb 100%)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px',
         overflowY: 'auto',
         ...theme.scrollbarStyles,
     },
     categoryTitle: {
-        marginTop: '20px',
-        marginBottom: '12px',
+        marginTop: '28px',
+        marginBottom: '16px',
         fontWeight: 700,
-        color: '#1a1a1a',
-        fontSize: '0.75rem',
+        color: '#374151',
+        fontSize: '0.725rem',
         textTransform: 'uppercase',
-        letterSpacing: '0.05em',
-        opacity: 0.6
+        letterSpacing: '0.075em',
+        opacity: 0.8,
+        paddingLeft: '4px',
+        borderLeft: '2px solid #e5e7eb'
     },
     gridContainer: {
         display: 'grid',
@@ -54,6 +59,7 @@ const useStyles = makeStyles((theme) => ({
         flexDirection: 'column',
         alignItems: 'center',
         cursor: 'grab',
+        animation: '$fadeInUp 0.4s ease backwards',
         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
         '&:hover': {
             transform: 'translateY(-2px)'
@@ -63,15 +69,20 @@ const useStyles = makeStyles((theme) => ({
         }
     },
     nodeCard: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
+        width: 52,
+        height: 52,
+        borderRadius: 16,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        boxShadow: '0 8px 16px -4px rgba(0,0,0,0.12)',
         marginBottom: 8,
-        transition: 'all 0.2s ease',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        border: '1px solid rgba(255,255,255,0.2)',
+        "&:hover": {
+            boxShadow: '0 12px 24px -8px rgba(0,0,0,0.2)',
+            transform: 'translateY(-2px)'
+        }
     },
     icon: {
         fontSize: 24,
@@ -108,13 +119,14 @@ const onDragStart = (event, nodeType, label) => {
     event.dataTransfer.effectAllowed = 'move';
 };
 
-const DraggableNode = ({ type, label, icon: Icon, colorClass }) => {
+const DraggableNode = ({ type, label, icon: Icon, colorClass, index = 0 }) => {
     const classes = useStyles();
     return (
         <div
             className={classes.nodeWrapper}
             onDragStart={(event) => onDragStart(event, type, label)}
             draggable
+            style={{ animationDelay: `${index * 50}ms` }}
         >
             <div className={`${classes.nodeCard} ${classes[colorClass]}`}>
                 <Icon className={classes.icon} />
@@ -148,36 +160,39 @@ const NodesSidebar = () => {
 
     return (
         <aside className={classes.sidebar}>
-            <div style={{ marginBottom: '5px', fontWeight: 'bold', color: '#333', fontSize: '16px', paddingLeft: '4px' }}>
-                Blocos Disponíveis
+            <div style={{ marginBottom: '8px', fontWeight: 800, color: '#111827', fontSize: '1.1rem', paddingLeft: '4px', letterSpacing: '-0.02em' }}>
+                Flow Blocks
             </div>
+            <Typography style={{ fontSize: '0.8rem', color: '#6b7280', paddingLeft: '4px', marginBottom: '12px' }}>
+                Construa sua automação arrastando os componentes.
+            </Typography>
 
             {/* Categoria: WhatsApp */}
             <div className={classes.categoryTitle}>WhatsApp</div>
             <div className={classes.gridContainer}>
-                <DraggableNode type="trigger" label="Gatilho" icon={TriggerIcon} colorClass="colorTrigger" />
-                <DraggableNode type="message" label="Mensagem" icon={MessageIcon} colorClass="colorMessage" />
-                <DraggableNode type="menu" label="Menu" icon={MenuIcon} colorClass="colorMenu" />
+                <DraggableNode type="trigger" label="Gatilho" icon={TriggerIcon} colorClass="colorTrigger" index={0} />
+                <DraggableNode type="message" label="Mensagem" icon={MessageIcon} colorClass="colorMessage" index={1} />
+                <DraggableNode type="menu" label="Menu" icon={MenuIcon} colorClass="colorMenu" index={2} />
             </div>
 
             {/* Categoria: Lógica */}
             <div className={classes.categoryTitle}>Lógica</div>
             <div className={classes.gridContainer}>
-                <DraggableNode type="input" label="Início" icon={PlayIcon} colorClass="colorTrigger" />
-                <DraggableNode type="switch" label="Decisão" icon={SwitchIcon} colorClass="colorSwitch" />
-                <DraggableNode type="output" label="Fim" icon={StopIcon} colorClass="colorEnd" />
+                <DraggableNode type="input" label="Início" icon={PlayIcon} colorClass="colorTrigger" index={3} />
+                <DraggableNode type="switch" label="Decisão" icon={SwitchIcon} colorClass="colorSwitch" index={4} />
+                <DraggableNode type="output" label="Fim" icon={StopIcon} colorClass="colorEnd" index={5} />
             </div>
 
             {/* Categoria: Utilitários */}
             <div className={classes.categoryTitle}>Utilitários</div>
             <div className={classes.gridContainer}>
-                <DraggableNode type="pipeline" label="Pipeline" icon={PipelineIcon} colorClass="colorPipeline" />
-                <DraggableNode type="knowledge" label="Conhecimento" icon={KnowledgeIcon} colorClass="colorKnowledge" />
-                <DraggableNode type="database" label="Database" icon={DatabaseIcon} colorClass="colorDatabase" />
-                <DraggableNode type="filter" label="Filtro" icon={FilterIcon} colorClass="colorFilter" />
-                <DraggableNode type="ticket" label="Ticket" icon={TicketIcon} colorClass="colorTicket" />
-                <DraggableNode type="webhook" label="Webhook" icon={HttpIcon} colorClass="colorWebhook" />
-                <DraggableNode type="api" label="API" icon={ApiIcon} colorClass="colorApi" />
+                <DraggableNode type="pipeline" label="Pipeline" icon={PipelineIcon} colorClass="colorPipeline" index={6} />
+                <DraggableNode type="knowledge" label="Conhecimento" icon={KnowledgeIcon} colorClass="colorKnowledge" index={7} />
+                <DraggableNode type="database" label="Database" icon={DatabaseIcon} colorClass="colorDatabase" index={8} />
+                <DraggableNode type="filter" label="Filtro" icon={FilterIcon} colorClass="colorFilter" index={9} />
+                <DraggableNode type="ticket" label="Ticket" icon={TicketIcon} colorClass="colorTicket" index={10} />
+                <DraggableNode type="webhook" label="Webhook" icon={HttpIcon} colorClass="colorWebhook" index={11} />
+                <DraggableNode type="api" label="API" icon={ApiIcon} colorClass="colorApi" index={12} />
             </div>
 
             {/* Categoria: Helpdesk (Condicional) */}
@@ -185,13 +200,13 @@ const NodesSidebar = () => {
                 <>
                     <div className={classes.categoryTitle}>Helpdesk</div>
                     <div className={classes.gridContainer}>
-                        <DraggableNode type="helpdesk" label="Protocolo" icon={HelpdeskIcon} colorClass="colorHelpdesk" />
+                        <DraggableNode type="helpdesk" label="Protocolo" icon={HelpdeskIcon} colorClass="colorHelpdesk" index={13} />
                     </div>
                 </>
             )}
 
-            <div style={{ marginTop: 'auto', fontSize: '11px', color: '#999', textAlign: 'center', padding: '10px' }}>
-                Arraste os ícones para o painel
+            <div style={{ marginTop: '40px', fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center', padding: '16px', borderTop: '1px dashed #e5e7eb' }}>
+                Versão 2.0 Premium UI
             </div>
         </aside>
     );

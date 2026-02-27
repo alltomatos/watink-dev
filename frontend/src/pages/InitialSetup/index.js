@@ -1,5 +1,5 @@
 /* @jsxImportSource react */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useHistory } from "react-router-dom";
 import {
   Button,
@@ -58,6 +58,7 @@ const InitialSetup = () => {
   const classes = useStyles();
   const history = useHistory();
   const [loading, setLoading] = useState(false);
+  const [needsSetup, setNeedsSetup] = useState(true);
   const [setupData, setSetupData] = useState({
     firstName: "",
     lastName: "",
@@ -67,12 +68,32 @@ const InitialSetup = () => {
     backendUrl: typeof window !== "undefined" ? window.location.origin : ""
   });
 
+  useEffect(() => {
+    const checkSetup = async () => {
+      try {
+        const { data } = await api.get("/initial-setup/check");
+        if (data.needsSetup === false) {
+          setNeedsSetup(false);
+          toast.info("Sistema já configurado. Redirecionando...");
+          setTimeout(() => {
+            history.push("/login");
+          }, 2000);
+        }
+      } catch (err) {
+        console.error("Erro ao verificar status do setup", err);
+      }
+    };
+    checkSetup();
+  }, [history]);
+
   const handleChangeInput = (e) => {
     setSetupData({ ...setupData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!needsSetup) return;
+
     if (!setupData.firstName || !setupData.email || !setupData.password) {
       toast.error("Por favor, preencha todos os campos obrigatórios.");
       return;
@@ -115,6 +136,7 @@ const InitialSetup = () => {
                   label="Nome"
                   value={setupData.firstName}
                   onChange={handleChangeInput}
+                  disabled={!needsSetup || loading}
                   autoFocus
                 />
               </Grid>
@@ -126,6 +148,7 @@ const InitialSetup = () => {
                   label="Sobrenome"
                   value={setupData.lastName}
                   onChange={handleChangeInput}
+                  disabled={!needsSetup || loading}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -137,6 +160,7 @@ const InitialSetup = () => {
                   label="E-mail (Super Admin)"
                   value={setupData.email}
                   onChange={handleChangeInput}
+                  disabled={!needsSetup || loading}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -149,6 +173,7 @@ const InitialSetup = () => {
                   type="password"
                   value={setupData.password}
                   onChange={handleChangeInput}
+                  disabled={!needsSetup || loading}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -159,6 +184,7 @@ const InitialSetup = () => {
                   label="CPF/CNPJ (Opcional)"
                   value={setupData.document}
                   onChange={handleChangeInput}
+                  disabled={!needsSetup || loading}
                 />
               </Grid>
             </Grid>
@@ -167,10 +193,10 @@ const InitialSetup = () => {
               fullWidth
               variant="contained"
               color="primary"
-              disabled={loading}
+              disabled={loading || !needsSetup}
               className={classes.submit}
             >
-              {loading ? "Inicializando ambiente..." : "Concluir e Iniciar"}
+              {loading ? "Inicializando ambiente..." : (!needsSetup ? "Sistema já Configurado" : "Concluir e Iniciar")}
             </Button>
           </form>
         </Paper>

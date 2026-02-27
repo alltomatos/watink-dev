@@ -6,29 +6,31 @@ import { parseISO, format, isSameDay } from "date-fns";
 import clsx from "clsx";
 
 import { makeStyles } from "@material-ui/core/styles";
-import { green } from "@material-ui/core/colors";
-import ListItem from "@material-ui/core/ListItem";
-import ListItemText from "@material-ui/core/ListItemText";
-import ListItemAvatar from "@material-ui/core/ListItemAvatar";
-import Typography from "@material-ui/core/Typography";
 import Avatar from "@material-ui/core/Avatar";
-import Divider from "@material-ui/core/Divider";
-import Badge from "@material-ui/core/Badge";
 
 import { i18n } from "../../translate/i18n";
 
 import api from "../../services/api";
 import ButtonWithSpinner from "../ButtonWithSpinner";
 import MarkdownWrapper from "../MarkdownWrapper";
-import { Tooltip } from "@material-ui/core";
 import { AuthContext } from "../../context/Auth/AuthContext";
-import { useThemeContext } from "../../context/DarkMode";
 import toastError from "../../errors/toastError";
 import { getBackendUrl } from "../../helpers/urlUtils";
 
 const useStyles = makeStyles(theme => ({
+	"@keyframes unreadPulse": {
+		"0%": { transform: "scale(1)", boxShadow: "0 0 0 0 rgba(59, 130, 246, 0.4)" },
+		"70%": { transform: "scale(1.04)", boxShadow: "0 0 0 6px rgba(59, 130, 246, 0)" },
+		"100%": { transform: "scale(1)", boxShadow: "0 0 0 0 rgba(59, 130, 246, 0)" }
+	},
+	"@keyframes ticketEnter": {
+		"0%": { opacity: 0, transform: "translateY(6px)" },
+		"100%": { opacity: 1, transform: "translateY(0)" }
+	},
 	ticket: {
 		position: "relative",
+		opacity: 0,
+		animation: "$ticketEnter .25s ease forwards",
 		margin: "0 12px 8px 12px",
 		padding: "12px 16px",
 		borderRadius: 12,
@@ -39,10 +41,13 @@ const useStyles = makeStyles(theme => ({
 		display: "flex",
 		gap: 12,
 		"&:hover": {
-			borderColor: "#e2e8f0",
-			boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
-			transform: "translateY(-1px)",
+			borderColor: "#dbeafe",
+			boxShadow: "0 10px 20px -12px rgba(15, 23, 42, 0.35), 0 2px 8px rgba(59, 130, 246, 0.12)",
+			transform: "translateY(-2px)",
 		},
+		"&:active": {
+			transform: "translateY(0px) scale(0.997)"
+		}
 	},
 
 	selectedTicket: {
@@ -62,7 +67,12 @@ const useStyles = makeStyles(theme => ({
 	avatar: {
 		width: 44,
 		height: 44,
-		borderRadius: 10, // Squircle-ish
+		borderRadius: 10,
+		transition: "transform .2s ease, box-shadow .2s ease",
+		"$ticket:hover &": {
+			transform: "scale(1.04)",
+			boxShadow: "0 6px 14px rgba(15,23,42,.15)"
+		}
 	},
 
 	contentWrapper: {
@@ -121,6 +131,7 @@ const useStyles = makeStyles(theme => ({
 		borderRadius: 6,
 		minWidth: 18,
 		textAlign: "center",
+		animation: "$unreadPulse 1.8s infinite",
 	},
 
 	queueIndicator: {
@@ -158,7 +169,7 @@ const useStyles = makeStyles(theme => ({
 	},
 }));
 
-const TicketListItem = ({ ticket }) => {
+const TicketListItem = ({ ticket, index = 0 }) => {
 	const classes = useStyles();
 	const history = useHistory();
 	const [loading, setLoading] = useState(false);
@@ -203,6 +214,7 @@ const TicketListItem = ({ ticket }) => {
 			className={clsx(classes.ticket, {
 				[classes.selectedTicket]: ticketId && +ticketId === ticket.id,
 			})}
+			style={{ animationDelay: `${Math.min(index, 20) * 35}ms` }}
 		>
 			<div 
 				className={classes.queueIndicator} 

@@ -12,6 +12,11 @@ const Route = ({ component: Component, isPrivate = false, isPublic = false, ...r
     return <BackdropLoading />;
   }
 
+  // Allow initial-setup regardless of auth
+  if (rest.path === "/initial-setup") {
+    return <RouterRoute {...rest} component={Component} />;
+  }
+
   if (!isAuth && isPrivate) {
     return (
       <Redirect to={{ pathname: "/login", state: { from: rest.location } }} />

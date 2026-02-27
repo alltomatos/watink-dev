@@ -6,3 +6,28 @@
     width: auto !important;
     box-shadow: none !important;
 }
+
+.react-flow__handle {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.react-flow__handle:hover {
+    transform: scale(1.18);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+.react-flow__handle-connecting {
+    background-color: #3b82f6 !important;
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.22);
+}
+
+.react-flow__edge-path {
+    transition: stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:focus .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+    stroke: #2563eb;
+    stroke-width: 2.5;
+}

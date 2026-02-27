@@ -319,8 +319,8 @@ const TicketsList = (props) => {
 						</div>
 					) : (
 						<>
-							{filteredTickets.map(ticket => (
-								<TicketListItem ticket={ticket} key={ticket.id} />
+							{filteredTickets.map((ticket, index) => (
+								<TicketListItem ticket={ticket} index={index} key={ticket.id} />
 							))}
 						</>
 					)}

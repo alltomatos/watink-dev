@@ -81,7 +81,7 @@ const useStyles = makeStyles((theme) => ({
     }
 }));
 
-const SwitchNode = ({ data, isConnectable }) => {
+const SwitchNode = ({ data, isConnectable, selected }) => {
     const classes = useStyles();
     const label = data?.label || 'Decisão';
     const conditionCount = data?.conditionsA?.length || 0;

@@ -4,7 +4,7 @@ import { Position } from 'reactflow';
 import { Stop as StopIcon } from '@material-ui/icons';
 import BaseNode from './BaseNode';
 
-const EndNode = ({ data, isConnectable }) => {
+const EndNode = ({ data, isConnectable, selected }) => {
     return (
         <BaseNode
             data={data}
@@ -13,6 +13,7 @@ const EndNode = ({ data, isConnectable }) => {
             defaultLabel="Fim"
             sublabel={data?.endAction || ''}
             isConnectable={isConnectable}
+            selected={selected}
             targetHandles={[{ id: null, position: Position.Left }]}
             sourceHandles={[]} // Sem saída
         />

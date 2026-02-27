@@ -11,7 +11,7 @@ const TRIGGER_LABELS = {
     'event': 'Evento'
 };
 
-const TriggerNode = ({ data, isConnectable }) => {
+const TriggerNode = ({ data, isConnectable, selected }) => {
     const triggerType = data?.triggerType || 'message';
     const triggerLabel = TRIGGER_LABELS[triggerType] || triggerType;
 
@@ -23,6 +23,7 @@ const TriggerNode = ({ data, isConnectable }) => {
             defaultLabel="Gatilho"
             sublabel={triggerLabel}
             isConnectable={isConnectable}
+            selected={selected}
             targetHandles={[]}
             sourceHandles={[{ id: null, position: Position.Right }]}
         />

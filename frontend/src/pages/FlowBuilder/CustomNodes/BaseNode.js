@@ -1,5 +1,6 @@
 /* @jsxImportSource react */
 import React from 'react';
+import clsx from 'clsx';
 import { Handle, Position } from 'reactflow';
 import { makeStyles } from '@material-ui/core/styles';
 import { Typography, Tooltip } from '@material-ui/core';
@@ -24,10 +25,16 @@ const useStyles = makeStyles((theme) => ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
         boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
         border: '1px solid rgba(255,255,255,0.1)'
+    },
+    nodeCardSelected: {
+        transform: 'translateY(-2px) scale(1.05)',
+        boxShadow: '0 12px 28px rgba(37, 99, 235, 0.35)',
+        outline: '2px solid rgba(59, 130, 246, 0.38)',
+        outlineOffset: 2,
     },
     icon: {
         fontSize: 28,
@@ -129,7 +136,8 @@ const BaseNode = ({
     isConnectable = true,
     sourceHandles = [{ id: null, position: Position.Right }],
     targetHandles = [{ id: null, position: Position.Left }],
-    badge = null
+    badge = null,
+    selected = false
 }) => {
     const classes = useStyles();
     const label = data?.label || defaultLabel;
@@ -154,7 +162,9 @@ const BaseNode = ({
                 ))}
 
                 {/* Card do nó */}
-                <div className={`${classes.nodeCard} ${classes[colorClass]}`}>
+                <div className={clsx(classes.nodeCard, classes[colorClass], {
+                    [classes.nodeCardSelected]: selected
+                })}>
                     {Icon && <Icon className={classes.icon} />}
                     {badge && <div className={classes.badge}>{badge}</div>}
                 </div>

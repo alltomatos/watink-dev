@@ -149,7 +149,14 @@ const useAuth = () => {
 		}
 	};
 
-	return { isAuth, user, loading, handleLogin, handleLogout };
+	const hasPermission = (permission) => {
+		if (!user.roles) return false;
+		return user.roles.some(role => 
+			role.permissions && role.permissions.some(p => p.name === permission)
+		);
+	};
+
+	return { isAuth, user, loading, handleLogin, handleLogout, hasPermission };
 };
 
 export default useAuth;

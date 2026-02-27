@@ -11,7 +11,7 @@ const OPERATION_LABELS = {
     'delete': 'Excluir'
 };
 
-const DatabaseNode = ({ data, isConnectable }) => {
+const DatabaseNode = ({ data, isConnectable, selected }) => {
     const operation = data?.operation || 'read';
     const table = data?.tableName || '';
     const opLabel = OPERATION_LABELS[operation] || operation;
@@ -24,6 +24,7 @@ const DatabaseNode = ({ data, isConnectable }) => {
             defaultLabel="Database"
             sublabel={table ? `${opLabel}: ${table}` : opLabel}
             isConnectable={isConnectable}
+            selected={selected}
         />
     );
 };

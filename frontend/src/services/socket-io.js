@@ -16,8 +16,8 @@ function parseToken(rawToken) {
 }
 
 function connectToSocket() {
-  const rawToken = localStorage.getItem("token");
-  if (!rawToken) return;
+  const rawToken = localStorage.getItem("token") || sessionStorage.getItem("token");
+  if (!rawToken) return null;
 
   const parsedToken = parseToken(rawToken);
 

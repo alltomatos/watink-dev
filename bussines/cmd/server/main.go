@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/alltomatos/watinkdev/bussines/internal/database"
+	"github.com/alltomatos/watinkdev/bussines/internal/middleware"
 	"github.com/alltomatos/watinkdev/bussines/internal/plugins"
 	"github.com/alltomatos/watinkdev/bussines/internal/routes"
 	"github.com/alltomatos/watinkdev/bussines/internal/services"
@@ -52,11 +53,11 @@ func main() {
 	r.GET("/socket.io/*any", gin.WrapH(server))
 	r.POST("/socket.io/*any", gin.WrapH(server))
 
-	// API Group
-	apiGroup := r.Group("/api/v1")
+	// API Group - Unified to /v1/api (Legacy /api removed)
+	apiGroup := r.Group("/v1/api")
 	{
 		apiGroup.GET("/health", func(c *gin.Context) {
-			c.JSON(200, gin.H{"status": "OK", "service": "watink-business"})
+			c.JSON(200, gin.H{"status": "UP", "service": "watink-business", "timestamp": services.GetCurrentTimestamp()})
 		})
 
 		// Init integrated marketplace hub manager (replaces standalone plugin-manager service)
@@ -81,7 +82,8 @@ func main() {
 		path := c.Request.URL.Path
 
 		lowerPath := strings.ToLower(path)
-		if strings.HasPrefix(lowerPath, "/api") {
+		// Check for /api prefix correctly to return JSON
+		if strings.HasPrefix(lowerPath, "/api") || strings.HasPrefix(lowerPath, "/v1/api") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "API route not found"})
 			return
 		}

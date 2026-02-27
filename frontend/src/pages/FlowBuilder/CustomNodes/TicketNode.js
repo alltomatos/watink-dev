@@ -3,7 +3,7 @@ import React from 'react';
 import { ConfirmationNumber as TicketIcon } from '@material-ui/icons';
 import BaseNode from './BaseNode';
 
-const TicketNode = ({ data, isConnectable }) => {
+const TicketNode = ({ data, isConnectable, selected }) => {
     // Mapeia ações para labels amigáveis
     const getActionLabel = (action) => {
         switch (action) {
@@ -23,6 +23,7 @@ const TicketNode = ({ data, isConnectable }) => {
             defaultLabel="Ticket"
             sublabel={getActionLabel(data?.ticketAction)}
             isConnectable={isConnectable}
+            selected={selected}
         />
     );
 };

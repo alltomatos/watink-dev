@@ -4,7 +4,7 @@ import { Position } from 'reactflow';
 import { PlayArrow as PlayIcon } from '@material-ui/icons';
 import BaseNode from './BaseNode';
 
-const StartNode = ({ data, isConnectable }) => {
+const StartNode = ({ data, isConnectable, selected }) => {
     return (
         <BaseNode
             data={data}
@@ -13,6 +13,7 @@ const StartNode = ({ data, isConnectable }) => {
             defaultLabel="Início"
             sublabel={data?.triggerType || ''}
             isConnectable={isConnectable}
+            selected={selected}
             targetHandles={[]} // Sem entrada
             sourceHandles={[{ id: null, position: Position.Right }]}
         />
