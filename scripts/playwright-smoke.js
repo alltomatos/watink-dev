@@ -1,8 +1,13 @@
 const { chromium } = require('playwright');
 
-const BASE = 'https://watinkdev.alltomatos.dev.br';
-const EMAIL = 'ronaldodavi@gmail.com';
-const PASS = 'Aadmin@sup09';
+const BASE = process.env.SMOKE_BASE_URL || 'http://localhost:3000';
+const EMAIL = process.env.SMOKE_EMAIL || '';
+const PASS = process.env.SMOKE_PASS || '';
+
+if (!EMAIL || !PASS) {
+  console.error('ERROR: SMOKE_EMAIL and SMOKE_PASS env vars are required.');
+  process.exit(1);
+}
 
 (async () => {
   const browser = await chromium.launch({ headless: true });

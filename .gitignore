@@ -1,38 +1,56 @@
-.docker/
-#dist_plugins/
-logs.txt
-ssl/
+# --- Secrets & Credentials ---
 .env
+*.env
+!.env.example
+backend/.env
+ssl/
+
+# --- Runtime Data ---
+.docker/
+logs.txt
+*.log
 .wwebjs_auth
-node_modules
-backend/node_modules/
-frontend/node_modules//
+.sessions_auth/
+backend/public/uploads/
+
+# --- Dependencies ---
+node_modules/
+**/node_modules/
+
+# --- Build Artifacts ---
 dist/
-sssbuild
-engine-go
-
-# Global ignores
+**/dist/
 **/build/
-**/.DS_Store
-**/*.log
-**/.vscode/
-**/.idea/
-**/coverage/
-
-# Legacy & Obsolete
-#docs/
-#plugin-manager/
-#dist_plugins/
-#rule/
-#plugins/
-
-# Runtime / build artifacts
-release/
-bussines/backend-go
-bussines/watink-core
 frontend/build/
+sssbuild/
+release/
+dist_plugins/
 
-# User uploads (do not version)
+# --- OS / IDE ---
+.DS_Store
+.vscode/
+.idea/
+coverage/
+Thumbs.db
+
+# --- Compiled Binaries ---
+engine-go/
+bussines/backend-go/
+bussines/watink-core
+
+# --- Debug / Temp Scripts ---
+backend/debug_seed.js
+backend/find_all_memory.js
+backend/find_memory.js
+backend/list_all_supabase_tables.js
+backend/list_tables.js
+backend/temp_seed.js
+bussines/internal/web/placeholder.txt
+
+# --- Stub Plugins ---
+plugins/saas-plugin/
+
+# --- User uploads (do not version) ---
 backend/public/**
 !backend/public/assets/
 !backend/public/assets/**

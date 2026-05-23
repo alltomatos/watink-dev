@@ -1,7 +1,7 @@
 {
   "name": "watinkdev",
   "version": "1.0.0",
-  "description": "<p align=\"center\">   <img src=\"images/logo.png\" alt=\"Watink Logo\" width=\"200\" /> </p>",
+  "description": "Watink OpenCore - Plataforma open-source de atendimento e automacao no WhatsApp",
   "main": "ecosystem.config.js",
   "directories": {
     "doc": "docs"
