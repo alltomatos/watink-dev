@@ -11,6 +11,10 @@ As seguintes credenciais foram commitadas no historico do git e **DEVEM ser rota
 - `REDIS_URI` - URI do Redis com senha (`:***REMOVED_DB_PASS***@`)
 - `AMQP_URL` - URL do RabbitMQ com credenciais (`***REMOVED_AMQP_CREDENTIALS***`)
 
+### ecosystem.config.js
+- `DB_PASS`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `AMQP_URL` com credenciais hardcoded
+- Substituidas por `process.env.*` — mas valores reais permanecem no historico
+
 ### scripts/playwright-smoke.js
 - Email e senha de administrador de producao (removidos do codigo, mas presentes no historico)
 
