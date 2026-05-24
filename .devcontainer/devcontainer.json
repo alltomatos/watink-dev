@@ -1,0 +1,48 @@
+{
+  "name": "Watink OpenCore",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "features": {
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.24"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "cweijan.vscode-postgresql-client2",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "go.useLanguageServer": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        }
+      }
+    }
+  },
+  "forwardPorts": [8082, 3000, 8081, 8090, 5432, 5672, 6379, 15672, 16686],
+  "portsAttributes": {
+    "8082": { "label": "Business API", "onAutoForward": "notify" },
+    "3000": { "label": "Frontend", "onAutoForward": "notify" },
+    "8081": { "label": "Plugin Manager", "onAutoForward": "silent" },
+    "8090": { "label": "Marketplace Hub", "onAutoForward": "silent" },
+    "5432": { "label": "PostgreSQL", "onAutoForward": "silent" },
+    "5672": { "label": "RabbitMQ", "onAutoForward": "silent" },
+    "6379": { "label": "Redis", "onAutoForward": "silent" },
+    "15672": { "label": "RabbitMQ Management", "onAutoForward": "silent" },
+    "16686": { "label": "Jaeger UI", "onAutoForward": "notify" }
+  },
+  "postCreateCommand": "cd frontend && npm install",
+  "remoteUser": "vscode"
+}

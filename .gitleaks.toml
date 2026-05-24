@@ -1,0 +1,10 @@
+title = "Watink gitleaks config"
+
+[allowlist]
+  description = "Global allow list"
+  paths = [
+    '''\.env\.example$''',
+    '''SECURITY_NOTICE\.md$''',
+    '''CLAUDE\.md$''',
+    '''docs/''',
+  ]

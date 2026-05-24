@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io/fs"
 	"log"
 	"net/http"
@@ -14,12 +15,21 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/web"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	otelgin "go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func main() {
 	_ = godotenv.Load()
 
-	log.Println("🦞 Watink Business starting...")
+	// 0. Init OpenTelemetry
+	shutdown, err := services.InitTelemetry(context.Background())
+	if err != nil {
+		log.Printf("Warning: OTel init failed: %v", err)
+	} else {
+		defer shutdown(context.Background())
+	}
+
+	log.Println("Watink Business starting...")
 
 	// 1. Connect to Database
 	database.Connect()
@@ -46,6 +56,7 @@ func main() {
 	r := gin.Default()
 
 	// 5. Global Middleware
+	r.Use(otelgin.Middleware("watink-business"))
 	r.Use(middleware.CORSMiddleware())
 
 	// Socket.IO Routes

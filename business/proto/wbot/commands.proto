@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package wbot.commands;
+
+option go_package = "github.com/alltomatos/watinkdev/business/proto/wbot";
+
+// Commands sent from Backend to Engine via wbot.commands exchange
+
+message Envelope {
+  string id = 1;
+  string type = 2;
+  string tenant_id = 3;
+  string session_id = 4;
+  int64 timestamp = 5;
+  bytes payload = 6;
+}
+
+// --- Session Commands ---
+
+message SessionConnect {
+  string session_id = 1;
+  string tenant_id = 2;
+}
+
+message SessionDisconnect {
+  string session_id = 1;
+}
+
+message SessionLogout {
+  string session_id = 1;
+}
+
+// --- Message Commands ---
+
+message MessageSendText {
+  string session_id = 1;
+  string jid = 2; // WhatsApp JID (e.g., 551199999@s.whatsapp.net)
+  string text = 3;
+  string reply_to_id = 4; // optional: message ID to reply to
+}
+
+message MessageSendMedia {
+  string session_id = 1;
+  string jid = 2;
+  string media_type = 3; // image, video, audio, document, sticker
+  bytes media_data = 4;  // base64 encoded media
+  string filename = 5;
+  string caption = 6;
+  string mime_type = 7;
+}
+
+message MessageSendReaction {
+  string session_id = 1;
+  string jid = 2;
+  string message_id = 3;
+  string reaction = 4; // emoji or empty string to remove
+}
+
+// --- Contact Commands ---
+
+message ContactUpdate {
+  string session_id = 1;
+  string jid = 2;
+  string name = 3;
+}
+
+// --- Group Commands ---
+
+message GroupCreate {
+  string session_id = 1;
+  string name = 2;
+  repeated string participant_jids = 3;
+}
+
+message GroupAddParticipants {
+  string session_id = 1;
+  string group_jid = 2;
+  repeated string participant_jids = 3;
+}
+
+message GroupRemoveParticipants {
+  string session_id = 1;
+  string group_jid = 2;
+  repeated string participant_jids = 3;
+}
+
+message GroupUpdateSubject {
+  string session_id = 1;
+  string group_jid = 2;
+  string subject = 3;
+}
+
+// --- Chat Commands ---
+
+message ChatPresence {
+  string session_id = 1;
+  string jid = 2;
+  string presence = 3; // composing, recording, paused
+}
+
+message ChatRead {
+  string session_id = 1;
+  string jid = 2;
+  string message_id = 3;
+}
