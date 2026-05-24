@@ -24,21 +24,21 @@ if "%CHOICE%"=="3" goto :rebuild
 goto :up
 
 :up
-docker compose -f docker-compose.bussines.yml up -d
+docker compose -f docker-compose.business.yml up -d
 if errorlevel 1 goto :erro_start
 echo [OK] Watink Business Server em execucao.
 echo URL esperada: http://localhost (porta 80)
 goto :eof
 
 :down
-docker compose -f docker-compose.bussines.yml down
+docker compose -f docker-compose.business.yml down
 echo [OK] Ambiente Business parado.
 goto :eof
 
 :rebuild
-docker compose -f docker-compose.bussines.yml down -v
-docker compose -f docker-compose.bussines.yml build --no-cache
-docker compose -f docker-compose.bussines.yml up -d
+docker compose -f docker-compose.business.yml down -v
+docker compose -f docker-compose.business.yml build --no-cache
+docker compose -f docker-compose.business.yml up -d
 if errorlevel 1 goto :erro_start
 echo [OK] Rebuild concluido.
 goto :eof

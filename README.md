@@ -56,12 +56,12 @@ O Watink é construído para crescer com você. Funcionalidades avançadas podem
 
 Comece agora com nossos guias oficiais:
 
-1.  **[Instalação e Conexão](userguide/connections/CONNECTING.md)**
-2.  **[Guia do Atendente](userguide/chats/USING_CHATS.md)**
-3.  **[Criando Automações no Flow Builder](userguide/flowbuilder/CREATING_FLOWS.md)**
-4.  **[Gerenciando Filas](userguide/queues/MANAGING_QUEUES.md)**
+1.  **[Instalação e Conexão](docs/user/connections/CONNECTING.md)**
+2.  **[Guia do Atendente](docs/user/chats/USING_CHATS.md)**
+3.  **[Criando Automações no Flow Builder](docs/user/flowbuilder/CREATING_FLOWS.md)**
+4.  **[Gerenciando Filas](docs/user/queues/MANAGING_QUEUES.md)**
 
-👉 **[Acesse a Documentação Completa](userguide/README.md)**
+👉 **[Acesse a Documentação Completa](docs/user/README.md)**
 
 ---
 

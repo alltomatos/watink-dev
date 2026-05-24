@@ -14,15 +14,15 @@
 - **Resultado:** paridade de leitura/escrita do campo `configs` entre Node e Go.
 
 ### 2) Business Go com `ConversationEmbeddings` ✅
-- **Arquivo novo:** `bussines/internal/models/conversation_embedding.go`
+- **Arquivo novo:** `business/internal/models/conversation_embedding.go`
 - **Ajuste:** model criada com colunas compatíveis com o Standard:
   - `ticketId`, `contactId`, `summary`, `topics (jsonb)`, `sentiment`, `messageCount`, `embedding (float8[])`, `metadata (jsonb)`, `processedAt`, `tenantId`.
-- **Arquivo:** `bussines/internal/database/database.go`
+- **Arquivo:** `business/internal/database/database.go`
 - **Ajuste:** model adicionada ao `AutoMigrate`.
 - **Validação:** tabela `ConversationEmbeddings` criada no banco `business`.
 
 ### 3) RLS no Business Go ✅
-- **Arquivo:** `bussines/internal/database/database.go`
+- **Arquivo:** `business/internal/database/database.go`
 - **Ajuste:** função `applyRLS()` criada e executada após `AutoMigrate`.
 - **Tabelas com RLS + FORCE RLS:**
   - `Users`, `Tickets`, `Messages`, `Contacts`, `Settings`, `ConversationEmbeddings`.

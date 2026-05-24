@@ -7,7 +7,7 @@ Owner: Ronaldo + Antigravity
 
 1. Unificar versão exibida (instância x hub).
 2. Hub com gestão de assets de plugin (imagem + pacote de instalação).
-3. Distribuição de plugins via repositório `watink-bussines`.
+3. Distribuição de plugins via repositório `watink-business`.
 4. Garantir fluxo SaaS multi-tenant: licença na instância + ativação por tenant com quota.
 5. Melhorar UX operacional do painel do Hub.
 
@@ -16,7 +16,7 @@ Owner: Ronaldo + Antigravity
 ## Fase 1 — Correções críticas (curto prazo)
 
 ### 1.1 Versão única entre Watink e Hub
-- [ ] Definir **source of truth** da versão do core (release tag `vX.Y.Z` do `watink-bussines`).
+- [ ] Definir **source of truth** da versão do core (release tag `vX.Y.Z` do `watink-business`).
 - [ ] Backend enviar versão real no heartbeat/register (não usar fallback estático `2.0.0-business`).
 - [ ] Hub exibir:
   - versão reportada da instância,
@@ -43,7 +43,7 @@ Owner: Ronaldo + Antigravity
 - [ ] Endpoint de catálogo com `artifact_url` + `sha256`.
 
 ### 2.3 Onde guardar os plugins
-- [ ] Estruturar pasta no repo `alltomatos/watink-bussines`:
+- [ ] Estruturar pasta no repo `alltomatos/watink-business`:
   - `plugins/<slug>/<version>/artifact.zip`
   - `plugins/<slug>/manifest.json`
 - [ ] Integrar publish automático via GitHub Release/Assets.

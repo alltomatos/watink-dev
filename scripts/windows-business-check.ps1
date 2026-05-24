@@ -40,11 +40,11 @@ try {
 }
 
 $requiredFiles = @(
-  "bussines/internal/routes/routes.go",
+  "business/internal/routes/routes.go",
   "engine-go/internal/whatsapp/service.go",
   "frontend/src/routes/index.js",
   "start.bat",
-  "docker-compose.bussines.yml"
+  "docker-compose.business.yml"
 )
 
 $missing = @()

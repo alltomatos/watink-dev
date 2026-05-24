@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const sourceDir = path.resolve(__dirname, "build");
-const targetDir = path.resolve(__dirname, "../bussines/internal/web/build");
+const targetDir = path.resolve(__dirname, "../business/internal/web/build");
 
 function copyRecursive(src, dest) {
   fs.rmSync(dest, { recursive: true, force: true });

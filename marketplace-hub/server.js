@@ -16,9 +16,9 @@ const ADMIN_USER = process.env.ADMIN_USER || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const MP_WEBHOOK_URL = process.env.MP_WEBHOOK_URL || `${APP_BASE_URL}/api/v1/hub/webhook/mp`;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
-const GITHUB_PLUGIN_REPO = process.env.GITHUB_PLUGIN_REPO || "alltomatos/watink-bussines";
+const GITHUB_PLUGIN_REPO = process.env.GITHUB_PLUGIN_REPO || "alltomatos/watink-business";
 const GITHUB_BIN_REPO = process.env.GITHUB_BIN_REPO || GITHUB_PLUGIN_REPO;
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.WATINK_BUSSINES_PAT || "";
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.WATINK_BUSINESS_PAT || "";
 const DOWNLOAD_SIGNING_SECRET = process.env.DOWNLOAD_SIGNING_SECRET || ADMIN_TOKEN || "change_me_download_secret";
 
 const FILES = {
@@ -32,7 +32,7 @@ const FILES = {
 
 const DEFAULT_PLAN_DEFINITIONS = {
   start: { key: "start", name: "Start", price: 69.9, monthly: true, premium_limit: 4 },
-  bussines_1: { key: "bussines_1", name: "Bussines 1", price: 99.99, monthly: true, premium_limit: 6 },
+  business_1: { key: "business_1", name: "Business 1", price: 99.99, monthly: true, premium_limit: 6 },
   saas: { key: "saas", name: "SaaS", price: 199.99, monthly: true, standalone: true }
 };
 
