@@ -9,7 +9,7 @@
 
 2. Configure as variáveis de ambiente (`.env`):
    ```bash
-   AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@localhost:5672
+   AMQP_URL=amqp://guest:guest@localhost:5672
    ```
 
 3. Execute em modo de desenvolvimento:

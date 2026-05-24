@@ -8,8 +8,8 @@ As seguintes credenciais foram commitadas no historico do git e **DEVEM ser rota
 - `DB_PASS` - Senha do banco PostgreSQL
 - `JWT_SECRET` - Chave de assinatura JWT
 - `JWT_REFRESH_SECRET` - Chave de refresh token JWT
-- `REDIS_URI` - URI do Redis com senha (`:***REMOVED_DB_PASS***@`)
-- `AMQP_URL` - URL do RabbitMQ com credenciais (`***REMOVED_AMQP_CREDENTIALS***`)
+- `REDIS_URI` - URI do Redis com senha (`:strongredispass@`)
+- `AMQP_URL` - URL do RabbitMQ com credenciais (`guest:guest`)
 
 ### ecosystem.config.js
 - `DB_PASS`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `AMQP_URL` com credenciais hardcoded
@@ -27,8 +27,12 @@ As seguintes credenciais foram commitadas no historico do git e **DEVEM ser rota
 3. Credenciais hardcoded no `playwright-smoke.js` substituidas por env vars
 4. `.env.example` sanitizado com placeholders
 5. `.gitignore` atualizado para prevenir futuros commits de secrets
+6. **Historico do git purgado com BFG Repo-Cleaner** (2026-05-24)
+   - Todas as strings de credenciais substituidas por `***REMOVED***`
+   - Force push realizado para `origin/main`
+   - Commit IDs reescritos (ex: `3bd7bccde` → `7774d2786`)
 
 ## O que falta fazer
 - [ ] Rotacionar **TODAS** as credenciais listadas acima
-- [ ] Considerar uso de `git filter-repo` ou BFG Repo-Cleaner para purgar secrets do historico
-- [ ] Adicionar pre-commit hook (ex: `detect-secrets` ou `gitleaks`) para prevenir vazamentos futuros
+- [x] ~~Considerar uso de `git filter-repo` ou BFG Repo-Cleaner para purgar secrets do historico~~ (Concluido com BFG)
+- [x] ~~Adicionar pre-commit hook (ex: `detect-secrets` ou `gitleaks`) para prevenir vazamentos futuros~~ (gitleaks instalado)

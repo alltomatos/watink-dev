@@ -6,7 +6,7 @@ import { startHttpServer } from "./http";
 
 dotenv.config();
 
-const AMQP_URL = process.env.AMQP_URL || "amqp://***REMOVED_AMQP_CREDENTIALS***@localhost:5672";
+const AMQP_URL = process.env.AMQP_URL || "amqp://guest:guest@localhost:5672";
 
 const start = async () => {
   logger.info("Starting Watink Engine Standard...");

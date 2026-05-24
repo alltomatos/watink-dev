@@ -12,11 +12,11 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=postgres
-      - DB_PASS=${DB_PASS:-***REMOVED_DB_PASS***}
+      - DB_PASS=${DB_PASS:-watink_secret_pass}
       - DB_NAME=watink
-      - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET:-***REMOVED_JWT_SECRET***}
+      - JWT_SECRET=${JWT_SECRET:-change_me_in_production}
     depends_on:
       - postgres
       - redis
@@ -28,7 +28,7 @@ services:
     image: watink/postgres-postgis-pgvector:16-optimized
     environment:
       - POSTGRES_DB=watink
-      - POSTGRES_PASSWORD=${DB_PASS:-***REMOVED_DB_PASS***}
+      - POSTGRES_PASSWORD=${DB_PASS:-watink_secret_pass}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
