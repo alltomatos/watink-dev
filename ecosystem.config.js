@@ -1,8 +1,8 @@
 module.exports = {
   apps: [
     {
-      name: "watink-bussines",
-      cwd: "./bussines",
+      name: "watink-business",
+      cwd: "./business",
       script: "./backend-go",
       env: {
         PORT_GO: process.env.PORT_GO || 8082,

@@ -18,14 +18,14 @@ Frontend (React/Vite) ←REST/Socket→ Backend Go (Gin/GORM) ←SQL→ PostgreS
 
 | Service | Dir | Stack | Port |
 |---|---|---|---|
-| Backend Go | `bussines/` | Go 1.24 / Gin / GORM | 8082 |
+| Backend Go | `business/` | Go 1.24 / Gin / GORM | 8082 |
 | Engine Go | `engine-go/` | Go 1.21 / whatsmeow | — |
 | Frontend | `frontend/` | React 17 / Vite / MUI v4 | 3000 (vite) |
 | Plugin Manager | `plugin-manager/` | Go 1.21 / gorilla-mux | 8081 |
 | Marketplace Hub | `marketplace-hub/` | Node/Express | 8090 |
 | Plugin SDK | `packages/plugin-sdk/` | TypeScript | — |
-| Backend Node (legacy) | `backend/` | Node/Express/Sequelize | 8080 |
-| Engine Node (legacy) | `engine-standard/` | Node/whaileys | — |
+| Backend Node (legacy) | `legacy/backend/` | Node/Express/Sequelize | 8080 |
+| Engine Node (legacy) | `legacy/engine-standard/` | Node/whaileys | — |
 
 ### Communication Flow
 
@@ -40,10 +40,10 @@ Frontend (React/Vite) ←REST/Socket→ Backend Go (Gin/GORM) ←SQL→ PostgreS
 
 ## Commands
 
-### Backend Go (`bussines/`)
+### Backend Go (`business/`)
 ```bash
-cd bussines && go build ./...          # compile
-cd bussines && go run cmd/server/main.go  # run dev
+cd business && go build ./...          # compile
+cd business && go run cmd/server/main.go  # run dev
 ```
 
 ### Engine Go (`engine-go/`)
@@ -59,21 +59,21 @@ cd frontend && npm run dev       # vite dev server
 cd frontend && npm run build     # production build
 ```
 
-### Backend Node legacy (`backend/`)
+### Backend Node legacy (`legacy/backend/`)
 ```bash
-cd backend && npm install
-cd backend && npm run dev        # ts-node-dev with respawn
-cd backend && npm run build      # tsc
-cd backend && npm run db:migrate # sequelize migrations
-cd backend && npm run db:seed    # sequelize seeds
-cd backend && npm run test       # jest (NODE_ENV=test)
+cd legacy/backend && npm install
+cd legacy/backend && npm run dev        # ts-node-dev with respawn
+cd legacy/backend && npm run build      # tsc
+cd legacy/backend && npm run db:migrate # sequelize migrations
+cd legacy/backend && npm run db:seed    # sequelize seeds
+cd legacy/backend && npm run test       # jest (NODE_ENV=test)
 ```
 
-### Engine Node legacy (`engine-standard/`)
+### Engine Node legacy (`legacy/engine-standard/`)
 ```bash
-cd engine-standard && npm install
-cd engine-standard && npm run dev
-cd engine-standard && npm run build
+cd legacy/engine-standard && npm install
+cd legacy/engine-standard && npm run dev
+cd legacy/engine-standard && npm run build
 ```
 
 ### Full Stack Local (PM2)
@@ -84,7 +84,7 @@ All credentials read from env vars — set `DB_PASS`, `JWT_SECRET`, `JWT_REFRESH
 
 ### Docker
 ```bash
-docker-compose -f docker-compose.bussines.yml up   # Go backend + Postgres + Redis + RabbitMQ
+docker-compose -f docker-compose.business.yml up   # Go backend + Postgres + Redis + RabbitMQ
 ```
 
 ### Smoke Test

@@ -2,7 +2,7 @@
 .env
 *.env
 !.env.example
-backend/.env
+legacy/backend/.env
 ssl/
 
 # --- Runtime Data ---
@@ -35,25 +35,25 @@ Thumbs.db
 
 # --- Compiled Binaries ---
 engine-go/
-bussines/backend-go/
-bussines/watink-core
+business/backend-go/
+business/watink-core
 
-# --- Debug / Temp Scripts ---
-backend/debug_seed.js
-backend/find_all_memory.js
-backend/find_memory.js
-backend/list_all_supabase_tables.js
-backend/list_tables.js
-backend/temp_seed.js
-bussines/internal/web/placeholder.txt
+# --- Debug / Temp Scripts (legacy) ---
+legacy/backend/debug_seed.js
+legacy/backend/find_all_memory.js
+legacy/backend/find_memory.js
+legacy/backend/list_all_supabase_tables.js
+legacy/backend/list_tables.js
+legacy/backend/temp_seed.js
+business/internal/web/placeholder.txt
 
 # --- Stub Plugins ---
 plugins/saas-plugin/
 
 # --- User uploads (do not version) ---
-backend/public/**
-!backend/public/assets/
-!backend/public/assets/**
-!backend/public/plugins/
-!backend/public/plugins/**
-!backend/public/webchat.js
+legacy/backend/public/**
+!legacy/backend/public/assets/
+!legacy/backend/public/assets/**
+!legacy/backend/public/plugins/
+!legacy/backend/public/plugins/**
+!legacy/backend/public/webchat.js

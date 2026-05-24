@@ -7,7 +7,7 @@ cd "$ROOT_DIR/frontend"
 echo "🏗️ Building frontend..."
 npm run build
 
-cd "$ROOT_DIR/bussines"
+cd "$ROOT_DIR/business"
 echo "🧩 Building backend-go with embedded frontend..."
 go build -o backend-go cmd/server/main.go
 

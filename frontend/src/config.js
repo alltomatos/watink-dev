@@ -11,7 +11,7 @@ function getConfig(name, defaultValue = null) {
 }
 
 export function getBackendUrl() {
-  // MODO BUSSINES: Se o backendUrl não estiver definido, 
+  // MODO BUSINESS: Se o backendUrl não estiver definido, 
   // assume que a API está no mesmo domínio (Caminho Relativo)
   const configUrl = getConfig("VITE_BACKEND_URL");
   if (!configUrl) {

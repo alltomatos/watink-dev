@@ -55,7 +55,7 @@ const (
 	InstanceFile      = ".instance_id"
 	TenantPluginsFile = ".tenant_plugins.json"
 	LicenseStatusFile = ".license_status.json"
-	CoreVersion       = "2.0.0-bussines"
+	CoreVersion       = "2.0.0-business"
 )
 
 var (
@@ -145,7 +145,7 @@ func main() {
 	instanceID := getInstanceID()
 	log.Printf("🦞 Local Plugin Manager starting with ID: %s", instanceID)
 
-	// Inicia telemetria bussines
+	// Inicia telemetria business
 	StartHeartbeat(instanceID)
 
 	r := mux.NewRouter()

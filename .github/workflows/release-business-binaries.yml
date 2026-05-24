@@ -1,0 +1,205 @@
+name: Release Business Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versão de release (ex: 0.7.121)"
+        required: true
+      prerelease:
+        description: "Marcar como pre-release?"
+        required: true
+        default: "false"
+      changelog:
+        description: "Notas da versão (texto livre)"
+        required: false
+      environment_name:
+        description: "Environment para ler secrets (ex: production)"
+        required: true
+        default: "production"
+      breaking_release:
+        description: "Release com quebra de compatibilidade?"
+        required: true
+        default: "false"
+      min_compatible_from:
+        description: "Versão mínima compatível para upgrade direto (ex: 0.7.120)"
+        required: false
+      migration_notes:
+        description: "Notas de migração obrigatória (DB/scripts/etc)"
+        required: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment_name }}
+
+    steps:
+      - name: Checkout (watinkdev)
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Detect backend directory
+        id: backenddir
+        run: |
+          if [ -d "business" ]; then
+            echo "backend_dir=business" >> "$GITHUB_OUTPUT"
+          elif [ -d "watink-business" ]; then
+            echo "backend_dir=watink-business" >> "$GITHUB_OUTPUT"
+          else
+            echo "Nenhum diretório backend encontrado (business/watink-business)." >&2
+            exit 1
+          fi
+
+      - name: Embed frontend in backend
+        run: |
+          rm -rf "${{ steps.backenddir.outputs.backend_dir }}/internal/web/build"
+          mkdir -p "${{ steps.backenddir.outputs.backend_dir }}/internal/web/build"
+          cp -r frontend/build/* "${{ steps.backenddir.outputs.backend_dir }}/internal/web/build/"
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Build binaries (linux/windows)
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+          CHANGELOG: ${{ github.event.inputs.changelog }}
+          BREAKING_RELEASE: ${{ github.event.inputs.breaking_release }}
+          MIN_COMPATIBLE_FROM: ${{ github.event.inputs.min_compatible_from }}
+          MIGRATION_NOTES: ${{ github.event.inputs.migration_notes }}
+        run: |
+          set -e
+          mkdir -p release/linux release/windows release/checksums
+
+          cd "${{ steps.backenddir.outputs.backend_dir }}"
+          go mod tidy
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../release/linux/watink-core cmd/server/main.go
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o ../release/windows/watink-core.exe cmd/server/main.go
+          cd ..
+
+          tar -C release/linux -czf release/watink-core-linux-amd64-v${VERSION}.tar.gz watink-core
+          zip -j release/watink-core-windows-amd64-v${VERSION}.zip release/windows/watink-core.exe
+
+          sha256sum release/watink-core-linux-amd64-v${VERSION}.tar.gz > release/checksums/SHA256SUMS.txt
+          sha256sum release/watink-core-windows-amd64-v${VERSION}.zip >> release/checksums/SHA256SUMS.txt
+
+          LINUX_SHA=$(sha256sum release/watink-core-linux-amd64-v${VERSION}.tar.gz | awk '{print $1}')
+          WIN_SHA=$(sha256sum release/watink-core-windows-amd64-v${VERSION}.zip | awk '{print $1}')
+          export LINUX_SHA WIN_SHA
+
+          python3 - <<'PY'
+          import json, os
+          version = os.environ['VERSION']
+          changelog = os.environ.get('CHANGELOG', '').strip()
+          if changelog:
+              changelog_items = [line.strip('- ').strip() for line in changelog.splitlines() if line.strip()]
+          else:
+              changelog_items = []
+
+          breaking = str(os.environ.get('BREAKING_RELEASE', 'false')).lower() == 'true'
+          min_compatible_from = os.environ.get('MIN_COMPATIBLE_FROM', '').strip()
+          migration_notes = os.environ.get('MIGRATION_NOTES', '').strip()
+
+          manifest = {
+              "service": "watink-business",
+              "version": version,
+              "tag": f"v{version}",
+              "breaking": breaking,
+              "min_compatible_from": min_compatible_from,
+              "migration_notes": migration_notes,
+              "artifacts": {
+                  "linux_amd64": {
+                      "file": f"watink-core-linux-amd64-v{version}.tar.gz",
+                      "sha256": os.environ['LINUX_SHA']
+                  },
+                  "windows_amd64": {
+                      "file": f"watink-core-windows-amd64-v{version}.zip",
+                      "sha256": os.environ['WIN_SHA']
+                  }
+              },
+              "changelog": changelog_items
+          }
+
+          with open('release/manifest.json', 'w') as f:
+              json.dump(manifest, f, indent=2)
+          PY
+
+      - name: Publish release assets to alltomatos/watink-business
+        env:
+          GH_TOKEN: ${{ secrets.WATINK_BUSINESS_PAT }}
+          VERSION: ${{ github.event.inputs.version }}
+          PRERELEASE: ${{ github.event.inputs.prerelease }}
+          CHANGELOG: ${{ github.event.inputs.changelog }}
+          BREAKING_RELEASE: ${{ github.event.inputs.breaking_release }}
+          MIN_COMPATIBLE_FROM: ${{ github.event.inputs.min_compatible_from }}
+          MIGRATION_NOTES: ${{ github.event.inputs.migration_notes }}
+        run: |
+          set -e
+
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "Secret WATINK_BUSINESS_PAT não configurado."
+            exit 1
+          fi
+
+          TAG="v${VERSION}"
+          TITLE="Watink Business ${TAG}"
+
+          if [ -z "${CHANGELOG}" ]; then
+            CHANGELOG="Release automática de binários a partir do watinkdev (${GITHUB_SHA})."
+          fi
+
+          if [ "${BREAKING_RELEASE}" = "true" ]; then
+            CHANGELOG="⚠️ BREAKING RELEASE\n\n${CHANGELOG}"
+            if [ -n "${MIN_COMPATIBLE_FROM}" ]; then
+              CHANGELOG="${CHANGELOG}\n\nVersão mínima compatível para upgrade direto: v${MIN_COMPATIBLE_FROM}"
+            fi
+            if [ -n "${MIGRATION_NOTES}" ]; then
+              CHANGELOG="${CHANGELOG}\n\nMigração obrigatória: ${MIGRATION_NOTES}"
+            fi
+          fi
+
+          if gh release view "$TAG" --repo alltomatos/watink-business >/dev/null 2>&1; then
+            echo "Release ${TAG} já existe, fazendo upload/replace dos assets..."
+          else
+            if [ "${PRERELEASE}" = "true" ]; then
+              gh release create "$TAG" \
+                --repo alltomatos/watink-business \
+                --title "$TITLE" \
+                --notes "$CHANGELOG" \
+                --prerelease
+            else
+              gh release create "$TAG" \
+                --repo alltomatos/watink-business \
+                --title "$TITLE" \
+                --notes "$CHANGELOG"
+            fi
+          fi
+
+          gh release upload "$TAG" \
+            release/watink-core-linux-amd64-v${VERSION}.tar.gz \
+            release/watink-core-windows-amd64-v${VERSION}.zip \
+            release/checksums/SHA256SUMS.txt \
+            release/manifest.json \
+            --repo alltomatos/watink-business \
+            --clobber
+
+      - name: Summary
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          echo "✅ Publicado em alltomatos/watink-business: v${VERSION}"
+          ls -lah release

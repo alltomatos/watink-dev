@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Watink Bussines Release Script 🦞
+# Watink Business Release Script 🦞
 set -e
 
-echo "📦 Starting Watink Bussines Release Process..."
+echo "📦 Starting Watink Business Release Process..."
 
 # 1. Clean up old builds
 rm -rf release/
@@ -18,28 +18,28 @@ cd ..
 
 # 3. Prepare Go Web Folder
 echo "🔗 Preparing Go Embed Folder..."
-rm -rf bussines/internal/web/build
-mkdir -p bussines/internal/web/build
-cp -r frontend/build/* bussines/internal/web/build/
+rm -rf business/internal/web/build
+mkdir -p business/internal/web/build
+cp -r frontend/build/* business/internal/web/build/
 
 # 4. Build for Linux (Native Binary)
 echo "🐧 Building Linux Binary..."
-cd bussines
+cd business
 go mod tidy
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../release/linux/watink-linux cmd/server/main.go
 cd ..
 
 # 5. Build for Windows (watink.exe)
 echo "🪟 Building Windows Binary..."
-cd bussines
+cd business
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o ../release/windows/watink.exe cmd/server/main.go
 cd ..
 
-# 6. Build Docker Bussines Image
+# 6. Build Docker Business Image
 if command -v docker &> /dev/null; then
-    echo "🐳 Building Docker Bussines Image..."
-    docker build -t watink/bussines:latest -f Dockerfile.bussines .
-    echo "✅ Docker image built: watink/bussines:latest"
+    echo "🐳 Building Docker Business Image..."
+    docker build -t watink/business:latest -f Dockerfile.business .
+    echo "✅ Docker image built: watink/business:latest"
 fi
 
 # 7. Finalize
