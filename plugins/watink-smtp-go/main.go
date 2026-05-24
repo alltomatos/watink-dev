@@ -11,7 +11,7 @@ import (
 func main() {
 	rabbitURL := os.Getenv("RABBITMQ_URL")
 	if rabbitURL == "" {
-		rabbitURL = "amqp://***REMOVED_AMQP_CREDENTIALS***@localhost:5672/"
+		rabbitURL = "amqp://guest:guest@localhost:5672/"
 	}
 
 	log.Printf("Connecting to RabbitMQ at %s", rabbitURL)

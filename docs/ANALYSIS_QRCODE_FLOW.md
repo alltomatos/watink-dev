@@ -75,7 +75,7 @@ sequenceDiagram
 2. **Ajuste de Recursos**:
    - RabbitMQ: Memória aumentada de 512MB para **1024MB** no `docker-stack.yml`.
    - Engine: Memória aumentada de 1024MB para **2048MB** (preventivo).
-3. **Validação de Rede**: Confirmado que `AMQP_URL` estava correto (`amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672`).
+3. **Validação de Rede**: Confirmado que `AMQP_URL` estava correto (`amqp://guest:guest@rabbitmq:5672`).
 4. **Deploy**: Stack atualizada (`docker stack deploy`).
 
 ### Resultados Pós-Correção

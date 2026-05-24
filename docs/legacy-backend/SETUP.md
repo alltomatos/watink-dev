@@ -32,7 +32,7 @@ DB_NAME=watink
 
 ### Filas (RabbitMQ)
 ```bash
-AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@localhost:5672
+AMQP_URL=amqp://guest:guest@localhost:5672
 ```
 
 ### JWT

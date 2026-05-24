@@ -13,9 +13,9 @@ services:
       - DB_USER=postgres
       - DB_PASS=postgres
       - DB_NAME=watink
-      - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
-      - JWT_SECRET=***REMOVED_JWT_SECRET***
-      - JWT_REFRESH_SECRET=***REMOVED_JWT_REFRESH_SECRET***
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
+      - JWT_SECRET=3123123213123
+      - JWT_REFRESH_SECRET=75756756756
       - FRONTEND_URL=http://app.localhost
       - URL_BACKEND=http://api.localhost
       - PORT=8080
@@ -114,7 +114,7 @@ services:
   whaileys-engine:
     image: watink/engine:1.0.116
     environment:
-      - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
       - REDIS_URL=redis://redis:6379
     networks:
       - watink_private
@@ -140,7 +140,7 @@ services:
       - DB_USER=postgres
       - DB_PASS=postgres
       - DB_NAME=watink
-      - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
       - REDIS_URL=redis://redis:6379
       - DEFAULT_TENANT_UUID=550e8400-e29b-41d4-a716-446655440000
     networks:

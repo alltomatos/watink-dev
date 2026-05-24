@@ -16,7 +16,7 @@ const rabbitRoutes = Router();
  */
 rabbitRoutes.get("/rabbitmq/version", async (req, res) => {
   try {
-    const amqp = process.env.AMQP_URL || "amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672";
+    const amqp = process.env.AMQP_URL || "amqp://guest:guest@rabbitmq:5672";
     const m = amqp.match(/amqp:\/\/([^:]+):([^@]+)@([^:\/]+)(?::(\d+))?/);
     const user = m?.[1] || "guest";
     const pass = m?.[2] || "guest";

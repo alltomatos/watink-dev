@@ -20,7 +20,7 @@ services:
       - DB_USER=postgres
       - DB_PASS=watink_dev
       - DB_NAME=watink
-      - AMQP_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=dev_jwt_secret_change_in_prod
       - JWT_REFRESH_SECRET=dev_refresh_secret_change_in_prod

@@ -27,7 +27,7 @@ services:
     image: watink/plugin-smtp:1.0.0
     build: ./plugins/watink-smtp-go
     environment:
-      - RABBITMQ_URL=amqp://***REMOVED_AMQP_CREDENTIALS***@rabbitmq:5672
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
     networks:
       - watink_network
     deploy:

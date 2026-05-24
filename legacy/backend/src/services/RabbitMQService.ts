@@ -9,7 +9,7 @@ class RabbitMQService {
   private url: string;
 
   constructor() {
-    this.url = process.env.AMQP_URL || "amqp://***REMOVED_AMQP_CREDENTIALS***@localhost:5672";
+    this.url = process.env.AMQP_URL || "amqp://guest:guest@localhost:5672";
   }
 
   async connect(): Promise<void> {
