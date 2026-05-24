@@ -10,7 +10,6 @@ import (
 
 	"github.com/streadway/amqp"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
 )
 
 const (
@@ -80,7 +79,7 @@ func (s *RabbitMQService) setupExchanges() error {
 	}
 	for _, ex := range exchanges {
 		if err := s.channel.ExchangeDeclare(
-			ex.name, true, false, false, false, nil,
+			ex.name, ex.kind, true, false, false, false, nil,
 		); err != nil {
 			return fmt.Errorf("exchange %s: %v", ex.name, err)
 		}
