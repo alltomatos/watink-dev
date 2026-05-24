@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/alltomatos/watinkdev/business/internal/database"
+	"github.com/alltomatos/watinkdev/business/internal/middleware"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/internal/routes"
 	"github.com/alltomatos/watinkdev/business/internal/services"
