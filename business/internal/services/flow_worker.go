@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"time"
+
 	"github.com/streadway/amqp"
 )
 
@@ -16,7 +17,6 @@ type Envelope struct {
 }
 
 func (r *RabbitMQService) StartFlowWorker() {
-	// Worker runs in its own goroutine to handle reconnections
 	go func() {
 		for {
 			if r.conn == nil || r.conn.IsClosed() {
@@ -31,25 +31,17 @@ func (r *RabbitMQService) StartFlowWorker() {
 				continue
 			}
 
-			// Declare exchange (ensure it exists)
-			_ = ch.ExchangeDeclare(
-				"api.events", // name
-				"topic",      // type
-				true,         // durable
-				false,        // auto-deleted
-				false,        // internal
-				false,        // no-wait
-				nil,          // arguments
-			)
+			_ = ch.ExchangeDeclare("api.events", "topic", true, false, false, false, nil)
 
-			// Declare queue
+			// Declare queue with DLQ support
+			args := amqp.Table{
+				"x-dead-letter-exchange":    dlqExchange,
+				"x-dead-letter-routing-key": "flow.worker.queue",
+				"x-message-ttl":             int32(dlqMessageTTL),
+			}
+
 			q, err := ch.QueueDeclare(
-				"flow.worker.queue", // name
-				true,                // durable
-				false,               // delete when unused
-				false,               // exclusive
-				false,               // no-wait
-				nil,                 // arguments
+				"flow.worker.queue", true, false, false, false, args,
 			)
 			if err != nil {
 				log.Printf("[FlowWorker] Failed to declare queue: %v", err)
@@ -58,24 +50,10 @@ func (r *RabbitMQService) StartFlowWorker() {
 				continue
 			}
 
-			// Bind to flow execution events
-			_ = ch.QueueBind(
-				q.Name,
-				"flow.execution.*", // routing key
-				"api.events",       // exchange
-				false,
-				nil,
-			)
+			_ = ch.QueueBind(q.Name, "flow.execution.*", "api.events", false, nil)
 
-			msgs, err := ch.Consume(
-				q.Name,
-				"",    // consumer
-				true,  // auto-ack
-				false, // exclusive
-				false, // no-local
-				false, // no-wait
-				nil,   // args
-			)
+			// Manual ack — prevents message loss on crash
+			msgs, err := ch.Consume(q.Name, "", false, false, false, false, nil)
 			if err != nil {
 				log.Printf("[FlowWorker] Failed to register consumer: %v", err)
 				ch.Close()
@@ -83,24 +61,22 @@ func (r *RabbitMQService) StartFlowWorker() {
 				continue
 			}
 
-			log.Println("🚀 Flow Worker (Go) listening for events...")
-			
-			// Listen for channel closure
+			log.Println("[FlowWorker] Listening for events...")
+
 			closeChan := ch.NotifyClose(make(chan *amqp.Error))
 
-			workerLoop:
+		workerLoop:
 			for {
 				select {
 				case d, ok := <-msgs:
 					if !ok {
 						break workerLoop
 					}
-					var env Envelope
-					if err := json.Unmarshal(d.Body, &env); err != nil {
-						log.Printf("[FlowWorker] Error decoding envelope: %v", err)
-						continue
+					if err := r.processFlowEvent(d); err != nil {
+						r.handleFailedMessage(d, err)
+					} else {
+						d.Ack(false)
 					}
-					log.Printf("[FlowWorker] Received event: %s for Tenant: %s", env.Type, env.TenantID)
 				case err := <-closeChan:
 					log.Printf("[FlowWorker] Channel closed: %v", err)
 					break workerLoop
@@ -109,4 +85,14 @@ func (r *RabbitMQService) StartFlowWorker() {
 			ch.Close()
 		}
 	}()
+}
+
+func (r *RabbitMQService) processFlowEvent(d amqp.Delivery) error {
+	var env Envelope
+	if err := json.Unmarshal(d.Body, &env); err != nil {
+		log.Printf("[FlowWorker] Error decoding envelope: %v", err)
+		return err
+	}
+	log.Printf("[FlowWorker] Event: %s | Tenant: %s", env.Type, env.TenantID)
+	return nil
 }

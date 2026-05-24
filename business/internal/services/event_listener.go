@@ -89,17 +89,16 @@ func StartEventListener(rabbitMQ *RabbitMQService) {
 		"wbot.*.*.contact.update",
 	}
 
-	err := rabbitMQ.ConsumeEvents("api.events.process.go", routingKeys, func(d amqp.Delivery) {
+	err := rabbitMQ.ConsumeEvents("api.events.process.go", routingKeys, func(d amqp.Delivery) error {
 		var env EventEnvelope
 		if err := json.Unmarshal(d.Body, &env); err != nil {
 			log.Printf("Error unmarshaling event: %v", err)
-			d.Nack(false, false)
-			return
+			return err
 		}
 
 		log.Printf("[EventListener] Event received: %s (Tenant: %s)", env.Type, env.TenantID)
 
-		err := database.DB.Transaction(func(tx *gorm.DB) error {
+		return database.DB.Transaction(func(tx *gorm.DB) error {
 			if env.TenantID != "" {
 				tx.Exec(fmt.Sprintf("SET app.current_tenant = '%s'", env.TenantID))
 			}
@@ -125,12 +124,6 @@ func StartEventListener(rabbitMQ *RabbitMQService) {
 				return nil
 			}
 		})
-
-		if err != nil {
-			log.Printf("Error processing event %s: %v", env.Type, err)
-		}
-
-		d.Ack(false)
 	})
 
 	if err != nil {

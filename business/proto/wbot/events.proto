@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package wbot.events;
+
+option go_package = "github.com/alltomatos/watinkdev/business/proto/wbot";
+
+// Events emitted from Engine to Backend via wbot.events exchange
+
+message Envelope {
+  string id = 1;
+  string type = 2;
+  string tenant_id = 3;
+  string session_id = 4;
+  int64 timestamp = 5;
+  bytes payload = 6;
+}
+
+// --- Session Events ---
+
+message SessionQRCode {
+  string session_id = 1;
+  string qrcode = 2; // base64 QR code image
+  string pairing_code = 3; // optional alphanumeric pairing code
+}
+
+message SessionStatus {
+  string session_id = 1;
+  string status = 2; // connected, disconnected, connecting, logged_out
+  string reason = 3; // optional: reason for disconnection
+}
+
+message SessionHistorySync {
+  string session_id = 1;
+  bool is_latest = 2;
+  int32 progress = 3; // 0-100
+}
+
+// --- Message Events ---
+
+message MessageReceived {
+  string session_id = 1;
+  string message_id = 2;
+  string from_jid = 3; // sender JID
+  string chat_jid = 4; // chat (group or individual) JID
+  bool from_me = 5;
+  string text = 6;
+  int64 timestamp = 7;
+  string message_type = 8; // text, image, video, audio, document, sticker, reaction
+  string media_url = 9;    // optional: URL or path to media file
+  string media_mime_type = 10;
+  string reply_to_id = 11; // optional: ID of message being replied to
+  string quoted_text = 12;
+  string push_name = 13; // sender display name
+}
+
+message MessageAck {
+  string session_id = 1;
+  string message_id = 2;
+  string jid = 3; // recipient JID
+  string ack_type = 4; // delivered, read, played
+  int64 timestamp = 5;
+}
+
+message MessageRevoke {
+  string session_id = 1;
+  string message_id = 2;
+  string from_jid = 3; // who revoked
+  bool from_me = 4;
+}
+
+message MessageReaction {
+  string session_id = 1;
+  string message_id = 2;
+  string jid = 3; // reactor JID
+  string reaction = 4;
+  bool from_me = 5;
+}
+
+// --- Contact Events ---
+
+message ContactUpdate {
+  string session_id = 1;
+  string jid = 2;
+  string name = 3;
+  string push_name = 4;
+}
+
+// --- Group Events ---
+
+message GroupUpdate {
+  string session_id = 1;
+  string group_jid = 2;
+  string subject = 3;
+  string subject_owner = 4;
+  int64 subject_timestamp = 5;
+}
+
+message GroupParticipantChange {
+  string session_id = 1;
+  string group_jid = 2;
+  string action = 3; // add, remove, promote, demote
+  repeated string jids = 4;
+  string actor_jid = 5;
+}
