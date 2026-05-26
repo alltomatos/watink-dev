@@ -15,7 +15,7 @@ func NewPlanLimitService() *PlanLimitService {
 }
 
 func (s *PlanLimitService) CheckLimit(tenantID uuid.UUID, resource string) error {
-	// Rule: OpenCore features (users, connections, queues) are free and unlimited.
+	// Core features (users, connections, queues) are free and unlimited.
 	if resource == "users" || resource == "connections" || resource == "queues" {
 		return nil
 	}

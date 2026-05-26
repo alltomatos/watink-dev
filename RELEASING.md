@@ -60,8 +60,8 @@ Basta utilizar o arquivo `docker-compose.industrial.yml` fornecido. Ele sobe aut
 
 ---
 
-## 🌍 Estratégia OpenCore
-- **Watink Core:** O binário gerado aqui contém as funções essenciais de multi-atendimento.
+## 🌍 Estratégia de Distribuição
+- **Watink Business:** O binário gerado aqui contém as funções essenciais de multi-atendimento.
 - **Marketplace:** Plugins de terceiros ou recursos Premium podem ser carregados dinamicamente ou via microserviços externos (ex: Engine Go WhatsMeow), mantendo o núcleo estável e leve.
 
 ---

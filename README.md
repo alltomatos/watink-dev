@@ -2,11 +2,11 @@
   <img src="images/logo.png" alt="Watink Logo" width="200" />
 </p>
 
-# 👋 Bem-vindo ao Watink OpenCore
+# 👋 Bem-vindo ao Watink
 
 **A plataforma open-source definitiva para atendimento e automação no WhatsApp.**
 
-O Watink é um sistema robusto e gratuito para centralizar seu atendimento. Organize filas, distribua conversas e crie automações poderosas com a versão Core, pronta para usar.
+O Watink é um sistema robusto e gratuito para centralizar seu atendimento. Organize filas, distribua conversas e crie automações poderosas, pronto para usar.
 
 ---
 
@@ -48,7 +48,7 @@ O Watink é construído para crescer com você. Funcionalidades avançadas podem
 - **Integrações Oficiais**: Conexões nativas com CRMs e ERPs de mercado.
 - **Campanhas**: Disparos em massa.
 
-> *O foco do projeto é manter um Core leve, rápido e extremamente estável, enquanto permite extensibilidade total via plugins.*
+> *O foco do projeto é manter a plataforma leve, rápida e extremamente estável, enquanto permite extensibilidade total via plugins.*
 
 ---
 
@@ -67,12 +67,12 @@ Comece agora com nossos guias oficiais:
 
 ## 🤝 Comunidade
 
-O Watink é um projeto OpenCore. Contribuições são bem-vindas!
+O Watink é um projeto open-source. Contribuições são bem-vindas!
 
 💬 **[Grupo da Comunidade no WhatsApp](https://chat.whatsapp.com/J7HDHaTvVDr5JUOd0HE1Bj)**
 
 ---
 
 <p align="center">
-  <sub>Watink OpenCore. Simples, Poderoso e Livre.</sub>
+  <sub>Watink. Simples, Poderoso e Livre.</sub>
 </p>

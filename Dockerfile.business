@@ -15,15 +15,15 @@ RUN go mod download
 COPY business/ ./
 # Copia o build do frontend para a pasta de embed do Go
 COPY --from=frontend-builder /app/frontend/build ./internal/web/build
-RUN CGO_ENABLED=1 GOOS=linux go build -o watink-core cmd/server/main.go
+RUN CGO_ENABLED=1 GOOS=linux go build -o watink-business cmd/server/main.go
 
 # Etapa 3: Imagem Final Ultra-Leve
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /root/
-COPY --from=backend-builder /app/watink-core .
+COPY --from=backend-builder /app/watink-business .
 # Pasta public para uploads
 RUN mkdir -p public
 
 EXPOSE 8082
-CMD ["./watink-core"]
+CMD ["./watink-business"]
