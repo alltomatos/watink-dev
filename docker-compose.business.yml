@@ -6,6 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.business
+    user: "1000:1000"
     ports:
       - "80:8082"
     environment:
@@ -21,6 +22,9 @@ services:
       - postgres
       - redis
       - rabbitmq
+    volumes:
+      - uploads_data:/app/public
+      - sessions_data:/app/.sessions_auth
     networks:
       - watink_net
 
@@ -50,3 +54,5 @@ networks:
 
 volumes:
   postgres_data:
+  uploads_data:
+  sessions_data:

@@ -35,13 +35,14 @@ const useAuth = () => {
 		},
 		async error => {
 			const originalRequest = error.config;
-			if (error?.response?.status === 403 && !originalRequest._retry) {
+			const status = error?.response?.status;
+
+			if (status === 401 && !originalRequest._retry) {
 				originalRequest._retry = true;
 
 				try {
 					const { data } = await api.post("/auth/refresh_token");
 					if (data) {
-						// Detect where the token was and update it there
 						if (localStorage.getItem("token")) {
 							localStorage.setItem("token", JSON.stringify(data.token));
 						} else {
@@ -53,9 +54,12 @@ const useAuth = () => {
 					return api(originalRequest);
 				} catch (err) {
 					console.error("RefreshToken failed", err);
+					localStorage.removeItem("token");
+					sessionStorage.removeItem("token");
+					api.defaults.headers.Authorization = undefined;
+					setIsAuth(false);
 				}
-			}
-			if (error?.response?.status === 401) {
+			} else if (status === 401 && originalRequest._retry) {
 				localStorage.removeItem("token");
 				sessionStorage.removeItem("token");
 				api.defaults.headers.Authorization = undefined;
@@ -76,12 +80,11 @@ const useAuth = () => {
 					setUser(data.user);
 				} catch (err) {
 					toastError(err);
-					// Robust Login Failure: Redirect immediately if validation fails
 					localStorage.removeItem("token");
 					sessionStorage.removeItem("token");
 					api.defaults.headers.Authorization = undefined;
 					setIsAuth(false);
-					history.push("/login"); // Force redirect
+					history.push("/login");
 				}
 			}
 			setLoading(false);
@@ -113,10 +116,10 @@ const useAuth = () => {
 			const tokenStr = JSON.stringify(data.token);
 			if (rememberMe) {
 				localStorage.setItem("token", tokenStr);
-				sessionStorage.removeItem("token"); // Cleanup
+				sessionStorage.removeItem("token");
 			} else {
 				sessionStorage.setItem("token", tokenStr);
-				localStorage.removeItem("token"); // Cleanup
+				localStorage.removeItem("token");
 			}
 
 			api.defaults.headers.Authorization = `Bearer ${data.token}`;

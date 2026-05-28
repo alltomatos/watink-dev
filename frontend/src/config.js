@@ -33,9 +33,9 @@ export function getSwaggerUrl() {
   const backendUrl = getBackendUrl() || (typeof window !== "undefined" ? window.location.origin : "");
   const base = backendUrl.endsWith("/") ? backendUrl.slice(0, -1) : backendUrl;
 
-  // Watink Business (binário único): prioriza docs no backend sob /api/docs
+  // Watink Business (binário único): prioriza docs no backend sob /api/v1/docs
   if (typeof window !== "undefined" && base === window.location.origin) {
-    return `${base}/api/docs`;
+    return `${base}/api/v1/docs`;
   }
 
   // Cenário backend separado

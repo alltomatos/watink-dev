@@ -23,7 +23,7 @@ export const initIO = (httpServer: Server): SocketIO => {
 
     let tokenData = null;
     try {
-      tokenData = verify(token, authConfig.secret);
+      tokenData = verify(String(token), authConfig.secret);
       logger.debug(JSON.stringify(tokenData), "io-onConnection: tokenData");
     } catch (err) {
       logger.error(`[Socket Debug] Token verification failed: ${err.message}`);

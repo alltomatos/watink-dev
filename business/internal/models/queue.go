@@ -20,7 +20,7 @@ type Queue struct {
 
 	// Relations
 	Parent    *Queue     `gorm:"foreignKey:ParentID" json:"parent,omitempty"`
-	Whatsapps []Whatsapp `gorm:"many2many:WhatsappQueues;" json:"whatsapps,omitempty"`
+	Whatsapps []Whatsapp `gorm:"many2many:whatsapp_queues;" json:"whatsapps,omitempty"`
 }
 
 func (Queue) TableName() string {

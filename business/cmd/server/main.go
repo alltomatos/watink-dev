@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/alltomatos/watinkdev/business/internal/database"
+	"github.com/alltomatos/watinkdev/business/internal/controllers"
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/internal/routes"
@@ -85,6 +86,13 @@ func main() {
 
 		routes.SetupRoutes(apiGroup)
 	}
+
+	// Compat routes (frontend without /v1 prefix)
+	r.GET("/api/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "OK", "service": "watink-business"})
+	})
+	r.GET("/api/initial-setup/check", controllers.CheckSetup)
+	r.POST("/api/initial-setup", controllers.InitialSetup)
 
 	// Serve Frontend (Embed)
 	publicFS, _ := fs.Sub(web.StaticFiles, "build")

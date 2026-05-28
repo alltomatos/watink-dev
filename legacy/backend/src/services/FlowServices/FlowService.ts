@@ -39,7 +39,7 @@ const CreateFlowService = async ({
         name,
         nodes,
         edges,
-        tenantId,
+        tenantId: String(tenantId),
         userId,
         whatsappId
     });

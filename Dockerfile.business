@@ -2,12 +2,13 @@
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 COPY frontend/ ./
 RUN npm run build
 
 # Etapa 2: Build do Watink Business (com Frontend embutido)
-FROM golang:1.24-alpine AS backend-builder
+FROM golang:1.25rc1-alpine AS backend-builder
+ENV GOTOOLCHAIN=auto
 RUN apk add --no-cache gcc musl-dev
 WORKDIR /app
 COPY business/go.mod business/go.sum ./
@@ -22,8 +23,10 @@ FROM alpine:latest
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /root/
 COPY --from=backend-builder /app/watink-business .
-# Pasta public para uploads
-RUN mkdir -p public
-
+RUN addgroup -g 1000 -S watink &&\
+    adduser -u 1000 -S watink -G watink &&\
+    mkdir -p public &&\
+    chown -R watink:watink /root/
+USER watink
 EXPOSE 8082
 CMD ["./watink-business"]

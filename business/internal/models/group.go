@@ -14,8 +14,8 @@ type Group struct {
 	UpdatedAt time.Time `gorm:"column:updatedAt" json:"updatedAt"`
 
 	// Relations
-	Permissions []Permission `gorm:"many2many:GroupPermissions;joinForeignKey:groupId;joinReferences:permissionId" json:"permissions,omitempty"`
-	Roles       []Role       `gorm:"many2many:GroupRoles;joinForeignKey:groupId;joinReferences:roleId" json:"roles,omitempty"`
+	Permissions []Permission `gorm:"many2many:group_permissions;joinForeignKey:groupId;joinReferences:permissionId" json:"permissions,omitempty"`
+	Roles       []Role       `gorm:"many2many:group_roles;joinForeignKey:groupId;joinReferences:roleId" json:"roles,omitempty"`
 }
 
 func (Group) TableName() string {

@@ -276,7 +276,7 @@ class FlowExecutorService {
 
       try {
         // Baixar mídia da URL e criar arquivo temporário
-        const mediaFile = await this.downloadMedia(processedUrl, Number(ticket.tenantId));
+        const mediaFile = await this.downloadMedia(processedUrl, ticket.tenantId);
         if (mediaFile) {
           await SendWhatsAppMedia({
             media: mediaFile,
@@ -290,10 +290,10 @@ class FlowExecutorService {
     }
   }
 
-  private async downloadMedia(url: string, tenantId: number): Promise<Express.Multer.File | null> {
+  private async downloadMedia(url: string, tenantId: string | number): Promise<Express.Multer.File | null> {
     try {
       const response = await axios.get(url, { responseType: 'arraybuffer' });
-      const contentType = response.headers['content-type'] || 'application/octet-stream';
+      const contentType = String(response.headers['content-type'] || 'application/octet-stream');
       const extension = this.getExtensionFromMimetype(contentType);
       const filename = `${uuidv4()}.${extension}`;
 
@@ -311,7 +311,7 @@ class FlowExecutorService {
         fieldname: 'medias',
         originalname: filename,
         encoding: '7bit',
-        mimetype: contentType,
+        mimetype: contentType as string,
         destination: tempDir,
         filename: filename,
         path: filePath,

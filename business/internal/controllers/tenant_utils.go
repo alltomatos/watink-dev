@@ -48,10 +48,10 @@ func getScopedDB(c *gin.Context, table string) *gorm.DB {
 
 	switch table {
 	case "Tickets":
-		return db.Where("\"tenantId\" = ? AND ( \"userId\" = ? OR \"queueId\" IN (SELECT \"queueId\" FROM \"UserQueues\" WHERE \"userId\" = ?) )", tenantID, userID, userID)
+		return db.Where("\"tenantId\" = ? AND ( \"userId\" = ? OR \"queueId\" IN (SELECT \"queueId\" FROM user_queues WHERE \"userId\" = ?) )", tenantID, userID, userID)
 	case "Contacts":
 		// User sees contacts in their wallet OR contacts that have tickets in their scoped queues/ownership
-		return db.Where("\"tenantId\" = ? AND ( \"walletUserId\" = ? OR id IN (SELECT \"contactId\" FROM \"Tickets\" WHERE \"userId\" = ? OR \"queueId\" IN (SELECT \"queueId\" FROM \"UserQueues\" WHERE \"userId\" = ?)) )", tenantID, userID, userID, userID)
+		return db.Where("\"tenantId\" = ? AND ( \"walletUserId\" = ? OR id IN (SELECT \"contactId\" FROM \"Tickets\" WHERE \"userId\" = ? OR \"queueId\" IN (SELECT \"queueId\" FROM user_queues WHERE \"userId\" = ?)) )", tenantID, userID, userID, userID)
 	default:
 		return db.Where("\"tenantId\" = ?", tenantID)
 	}

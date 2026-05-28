@@ -39,7 +39,7 @@ func (s *DistributionService) DistributeTicket(ticketID int, queueID int, tenant
 			if contact.WalletUserID != nil {
 				// Verifica se este usuário da carteira está na fila
 				var count int64
-				s.db.Table("UserQueues").Where("\"userId\" = ? AND \"queueId\" = ?", *contact.WalletUserID, queueID).Count(&count)
+				s.db.Table("user_queues").Where("\"userId\" = ? AND \"queueId\" = ?", *contact.WalletUserID, queueID).Count(&count)
 				
 				if count > 0 {
 					if err := s.db.Model(&ticket).Updates(map[string]interface{}{
@@ -61,7 +61,7 @@ func (s *DistributionService) DistributeTicket(ticketID int, queueID int, tenant
 	}
 
 	var users []models.User
-	if err := s.db.Joins("JOIN \"UserQueues\" uq ON uq.\"userId\" = \"Users\".id").
+	if err := s.db.Joins("JOIN user_queues uq ON uq.\"userId\" = \"Users\".id").
 		Where("uq.\"queueId\" = ? AND \"Users\".\"tenantId\" = ?", queueID, tenantID).
 		Find(&users).Error; err != nil {
 		return err

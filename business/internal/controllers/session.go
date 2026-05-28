@@ -79,8 +79,9 @@ func Login(c *gin.Context) {
 		TenantID:    user.TenantID.String(),
 	}
 
-	// Set refresh token cookie
-	c.SetCookie("jrt", refreshToken, 3600*24*7, "/", "", true, true)
+	// Set refresh token cookie (Secure flag based on env)
+	secure := os.Getenv("ENVIRONMENT") == "production"
+	c.SetCookie("jrt", refreshToken, 3600*24*7, "/", "", secure, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
@@ -122,10 +123,11 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
+	secure := os.Getenv("ENVIRONMENT") == "production"
 	newToken, _ := utils.GenerateAccessToken(user)
 	newRefreshToken, _ := utils.GenerateRefreshToken(user)
 
-	c.SetCookie("jrt", newRefreshToken, 3600*24*7, "/", "", true, true)
+	c.SetCookie("jrt", newRefreshToken, 3600*24*7, "/", "", secure, true)
 
 	// Fetch permissions
 	var permissions []string
@@ -154,6 +156,7 @@ func RefreshToken(c *gin.Context) {
 }
 
 func Logout(c *gin.Context) {
-	c.SetCookie("jrt", "", -1, "/", "", true, true)
+	secure := os.Getenv("ENVIRONMENT") == "production"
+	c.SetCookie("jrt", "", -1, "/", "", secure, true)
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }

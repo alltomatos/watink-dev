@@ -31,7 +31,7 @@ type Whatsapp struct {
 
 	// Relations
 	Tickets []Ticket `gorm:"foreignKey:WhatsappID" json:"tickets,omitempty"`
-	Queues  []Queue  `gorm:"many2many:WhatsappQueues;" json:"queues,omitempty"`
+	Queues  []Queue  `gorm:"many2many:whatsapp_queues;" json:"queues,omitempty"`
 }
 
 func (Whatsapp) TableName() string {

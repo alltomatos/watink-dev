@@ -4,7 +4,7 @@ import { getBackendUrl } from "../config";
 
 const backendUrl = getBackendUrl();
 const normalizedBase = backendUrl ? backendUrl.replace(/\/+$/, "") : "";
-const baseURL = normalizedBase ? `${normalizedBase}/api` : "/api";
+const baseURL = normalizedBase ? `${normalizedBase}/api/v1` : "/api/v1";
 
 const api = axios.create({
 	baseURL,

@@ -24,9 +24,9 @@ type User struct {
 
 	// Relations
 	Tenant      Tenant       `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
-	Queues      []Queue      `gorm:"many2many:UserQueues;" json:"queues,omitempty"`
-	Permissions []Permission `gorm:"many2many:UserPermissions;" json:"permissions,omitempty"`
-	Roles       []Role       `gorm:"many2many:UserRoles;" json:"roles,omitempty"`
+	Queues      []Queue      `gorm:"many2many:user_queues;" json:"queues,omitempty"`
+	Permissions []Permission `gorm:"many2many:user_permissions;" json:"permissions,omitempty"`
+	Roles       []Role       `gorm:"many2many:user_roles;" json:"roles,omitempty"`
 }
 
 func (User) TableName() string {

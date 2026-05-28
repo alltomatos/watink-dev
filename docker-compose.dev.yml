@@ -1,0 +1,190 @@
+# Watink — Full Stack Development Environment
+# Usage: docker compose -f docker-compose.dev.yml up --build
+#
+# This compose file mirrors the production architecture but with dev-friendly
+# settings: source mounts for hot-reload, exposed debug ports, and seeded DB.
+
+services:
+  # ──────────────────────────────────────────────
+  # Infrastructure
+  # ──────────────────────────────────────────────
+
+  postgres:
+    image: watink/postgres-postgis-pgvector:16-optimized
+    container_name: watink-postgres
+    environment:
+      POSTGRES_DB: watink
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASS:-watink_secret_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - watink_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: watink-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - watink_net
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: watink-rabbitmq
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - watink_net
+
+  # ──────────────────────────────────────────────
+  # Application Services
+  # ──────────────────────────────────────────────
+
+  watink-business:
+    build:
+      context: .
+      dockerfile: Dockerfile.business
+    container_name: watink-business
+    ports:
+      - "8082:8082"
+    environment:
+      - PORT_GO=8082
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS:-watink_secret_pass}
+      - DB_NAME=watink
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_prod}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-dev_jwt_refresh_secret_change_in_prod}
+      - PLUGIN_HUB_URL=http://marketplace-hub:8090/api/v1/hub
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/public
+      - sessions_data:/app/.sessions_auth
+    networks:
+      - watink_net
+    restart: unless-stopped
+
+  engine-go:
+    build:
+      context: ./engine-go
+      dockerfile: Dockerfile
+    container_name: watink-engine
+    environment:
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS:-watink_secret_pass}
+      - DB_NAME=watink
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - engine_sessions:/root/.sessions_auth
+    networks:
+      - watink_net
+    restart: unless-stopped
+
+  marketplace-hub:
+    build:
+      context: ./marketplace-hub
+      dockerfile: Dockerfile
+    container_name: watink-hub
+    ports:
+      - "8090:8090"
+    environment:
+      - HUB_PORT=8090
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:8090}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-dev_admin_token}
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-dev_admin_pass}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - DOWNLOAD_SIGNING_SECRET=${DOWNLOAD_SIGNING_SECRET:-dev_signing_secret}
+    networks:
+      - watink_net
+    restart: unless-stopped
+
+  plugin-manager:
+    build:
+      context: ./plugin-manager
+      dockerfile: Dockerfile
+    container_name: watink-plugin-manager
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - HUB_URL=http://marketplace-hub:8090/api/v1/hub
+    depends_on:
+      - marketplace-hub
+    networks:
+      - watink_net
+    restart: unless-stopped
+
+  # ──────────────────────────────────────────────
+  # Frontend (standalone — only if NOT using the
+  # embedded frontend inside watink-business)
+  # Uncomment the block below for isolated frontend dev.
+  # ──────────────────────────────────────────────
+
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: watink-frontend
+  #   ports:
+  #     - "3000:80"
+  #   environment:
+  #     - VITE_BACKEND_URL=http://localhost:8082
+  #     - VITE_PLUGIN_MANAGER_URL=http://localhost:8081
+  #   depends_on:
+  #     - watink-business
+  #   networks:
+  #     - watink_net
+
+networks:
+  watink_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
+  sessions_data:
+  engine_sessions:

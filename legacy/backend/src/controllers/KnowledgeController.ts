@@ -23,7 +23,7 @@ export const show = async (req: Request, res: Response): Promise<Response> => {
     const { knowledgeBaseId } = req.params;
 
     const knowledgeBase = await KnowledgeBase.findOne({
-        where: { id: knowledgeBaseId, tenantId },
+        where: { id: knowledgeBaseId, tenantId: String(tenantId) },
         include: ["sources"]
     });
 
@@ -40,7 +40,7 @@ export const update = async (req: Request, res: Response): Promise<Response> => 
     const { name, description } = req.body;
 
     const knowledgeBase = await KnowledgeBase.findOne({
-        where: { id: knowledgeBaseId, tenantId }
+        where: { id: knowledgeBaseId, tenantId: String(tenantId) }
     });
 
     if (!knowledgeBase) {
@@ -72,7 +72,7 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     const knowledgeBase = await KnowledgeBase.create({
         name,
         description,
-        tenantId
+        tenantId: String(tenantId)
     });
 
     return res.status(200).json(knowledgeBase);
@@ -83,7 +83,7 @@ export const remove = async (req: Request, res: Response): Promise<Response> => 
     const { knowledgeBaseId } = req.params;
 
     const knowledgeBase = await KnowledgeBase.findOne({
-        where: { id: knowledgeBaseId, tenantId }
+        where: { id: knowledgeBaseId, tenantId: String(tenantId) }
     });
 
     if (!knowledgeBase) {
@@ -136,7 +136,7 @@ export const createSource = async (req: Request, res: Response): Promise<Respons
         type,
         url,
         baseId: parseInt(knowledgeBaseId, 10),
-        tenantId,
+        tenantId: String(tenantId),
         status: "pending"
     });
 

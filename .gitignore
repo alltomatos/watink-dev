@@ -37,6 +37,16 @@ Thumbs.db
 engine-go/
 business/backend-go/
 business/watink-core
+business/watink-business
+business/server
+plugin-manager/plugin-manager
+
+# --- Screenshots & Temp ---
+*.png
+!frontend/public/**/*.png
+
+# --- Dev Container Lock ---
+.devcontainer/devcontainer-lock.json
 
 # --- Debug / Temp Scripts (legacy) ---
 legacy/backend/debug_seed.js

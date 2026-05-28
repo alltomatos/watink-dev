@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -38,7 +39,12 @@ func MaintenanceMiddleware() gin.HandlerFunc {
 		mu.RUnlock()
 
 		// Permitir apenas rotas de status/health e auth durante manutenção
-		if active && c.Request.URL.Path != "/api/system/maintenance" && c.Request.URL.Path != "/api/health" {
+		path := strings.ToLower(c.Request.URL.Path)
+		isHealthOrSetup := path == "/api/health" || path == "/api/initial-setup/check" ||
+		                   path == "/api/v1/health" || path == "/api/v1/initial-setup/check" ||
+		                   path == "/api/system/maintenance" || path == "/api/v1/system/maintenance"
+
+		if active && !isHealthOrSetup {
 			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
 				"error": maintenanceMsg,
 			})
