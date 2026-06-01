@@ -1,0 +1,8 @@
+name: JavaScript CodeQL Config
+
+path-filtering:
+  paths:
+    - frontend/src/**
+  paths-ignore:
+    - frontend/build/**
+    - legacy/**
