@@ -69,8 +69,8 @@ func (s *RabbitMQService) Connect() error {
 
 func (s *RabbitMQService) setupExchanges() error {
 	exchanges := []struct {
-		name    string
-		kind    string
+		name string
+		kind string
 	}{
 		{"wbot.commands", "topic"},
 		{"wbot.events", "topic"},

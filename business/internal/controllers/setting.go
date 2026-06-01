@@ -7,11 +7,14 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 func ListSettings(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var settings []models.Setting
 	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Find(&settings).Error; err != nil {
@@ -23,10 +26,16 @@ func ListSettings(c *gin.Context) {
 }
 
 func GetPublicSettings(c *gin.Context) {
+	var tenant models.Tenant
+	if err := database.DB.Order("id ASC").First(&tenant).Error; err != nil {
+		c.JSON(http.StatusOK, []models.Setting{})
+		return
+	}
+
 	var settings []models.Setting
 	publicKeys := []string{"systemLogo", "login_backgroundImage", "login_layout", "systemFavicon"}
 
-	if err := database.DB.Where("key IN ?", publicKeys).Find(&settings).Error; err != nil {
+	if err := database.DB.Where("key IN ? AND \"tenantId\" = ?", publicKeys, tenant.ID).Find(&settings).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch public settings"})
 		return
 	}
@@ -35,9 +44,9 @@ func GetPublicSettings(c *gin.Context) {
 }
 
 func UpdateSetting(c *gin.Context) {
-	tenantIDRaw, exists := c.Get("tenantId")
-	if !exists {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId is required"})
+	tenantUUID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
 		return
 	}
 	key := c.Param("key")
@@ -47,22 +56,6 @@ func UpdateSetting(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	var tenantUUID uuid.UUID
-	switch v := tenantIDRaw.(type) {
-	case uuid.UUID:
-		tenantUUID = v
-	case string:
-		parsed, err := uuid.Parse(v)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
-			return
-		}
-		tenantUUID = parsed
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID type"})
 		return
 	}
 

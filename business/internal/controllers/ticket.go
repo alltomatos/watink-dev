@@ -4,42 +4,46 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
+	"github.com/alltomatos/watinkdev/business/internal/application/usecases"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/gin-gonic/gin"
 )
 
-func ListTickets(c *gin.Context) {
+type TicketController struct {
+	updateTicket *usecases.UpdateTicketUseCase
+}
+
+func NewTicketController(ut *usecases.UpdateTicketUseCase) *TicketController {
+	return &TicketController{updateTicket: ut}
+}
+
+func (tc *TicketController) ListTickets(c *gin.Context) {
 	userProfile, _ := c.Get("userProfile")
 
 	var tickets []models.Ticket
-	// Start with scoped DB based on profile
 	query := getScopedDB(c, "Tickets").
 		Preload("Contact").
+		Preload("User").
 		Order("\"updatedAt\" DESC")
 
-	// Filter by status if provided
 	status := c.Query("status")
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
 
-	// Filter by searchParam
 	searchParam := c.Query("searchParam")
 	if searchParam != "" {
 		query = query.Joins("JOIN \"Contacts\" ON \"Contacts\".id = \"Tickets\".\"contactId\"").
-			Where("(\"Contacts\".name ILIKE ? OR \"Contacts\".number ILIKE ? OR \"Tickets\".\"lastMessage\" ILIKE ?)", 
+			Where("(\"Contacts\".name ILIKE ? OR \"Contacts\".number ILIKE ? OR \"Tickets\".\"lastMessage\" ILIKE ?)",
 				"%"+searchParam+"%", "%"+searchParam+"%", "%"+searchParam+"%")
 	}
 
-	// Filter by date if provided
 	date := c.Query("date")
 	if date != "" {
 		query = query.Where("CAST(\"Tickets\".\"createdAt\" AS DATE) = ?", date)
 	}
 
-	// Handle Queue IDs
 	queueIdsJson := c.Query("queueIds")
 	var queueIds []int
 	if queueIdsJson != "" && queueIdsJson != "null" && queueIdsJson != "[]" {
@@ -48,13 +52,10 @@ func ListTickets(c *gin.Context) {
 		}
 	}
 
-	// Handle showAll for admins
 	showAll := c.Query("showAll")
 	if userProfile == "admin" && showAll == "true" {
-		// Admins see everything, including null queues (already handled by getScopedDB)
 	}
 
-	// Filter by isGroup
 	isGroup := c.Query("isGroup")
 	if isGroup == "true" {
 		query = query.Where("\"Tickets\".\"isGroup\" = ?", true)
@@ -70,11 +71,11 @@ func ListTickets(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"tickets": tickets,
 		"count":   len(tickets),
-		"hasMore": false, // Pagination not implemented yet
+		"hasMore": false,
 	})
 }
 
-func ShowTicket(c *gin.Context) {
+func (tc *TicketController) ShowTicket(c *gin.Context) {
 	ticketID := c.Param("ticketId")
 
 	var ticket models.Ticket
@@ -89,7 +90,7 @@ func ShowTicket(c *gin.Context) {
 	c.JSON(http.StatusOK, ticket)
 }
 
-func UpdateTicket(c *gin.Context) {
+func (tc *TicketController) UpdateTicket(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
@@ -97,7 +98,6 @@ func UpdateTicket(c *gin.Context) {
 	}
 	id := c.Param("ticketId")
 
-	// Use getScopedDB to ensure the user has permission to update this ticket
 	var ticket models.Ticket
 	if err := getScopedDB(c, "Tickets").Where("id = ?", id).First(&ticket).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ticket not found or access denied"})
@@ -115,50 +115,30 @@ func UpdateTicket(c *gin.Context) {
 		return
 	}
 
-	oldQueueID := ticket.QueueID
-	oldUserID := ticket.UserID
-	oldStatus := ticket.Status
-	
-	if input.Status != "" {
-		ticket.Status = input.Status
+	updateInput := usecases.UpdateTicketInput{
+		TicketID: ticket.ID,
+		TenantID: tenantID,
+		Status:   input.Status,
+		UserID:   input.UserID,
+		QueueID:  input.QueueID,
 	}
-	ticket.UserID = input.UserID
-	ticket.QueueID = input.QueueID
 
-	if err := database.DB.Save(&ticket).Error; err != nil {
+	if userID, exists := c.Get("userId"); exists {
+		userIDInt := int(userID.(float64))
+		updateInput.PerformedBy = &userIDInt
+	}
+
+	updatedTicket, err := tc.updateTicket.Execute(c.Request.Context(), updateInput)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update ticket"})
 		return
 	}
 
-	// Logging
-	ctxUserID, _ := c.Get("userId")
-	userIDInt := int(ctxUserID.(float64))
-	
-	if input.Status != "" && input.Status != oldStatus {
-		services.CreateTicketLog(ticket.ID, &userIDInt, "status", map[string]interface{}{"old": oldStatus, "new": input.Status})
-	}
-	if input.QueueID != nil && (oldQueueID == nil || *oldQueueID != *input.QueueID) {
-		services.CreateTicketLog(ticket.ID, &userIDInt, "transfer", map[string]interface{}{"oldQueueId": oldQueueID, "newQueueId": input.QueueID})
-	}
-	if input.UserID != nil && (oldUserID == nil || *oldUserID != *input.UserID) {
-		services.CreateTicketLog(ticket.ID, &userIDInt, "assign", map[string]interface{}{"oldUserId": oldUserID, "newUserId": input.UserID})
-	}
-
-	// Se a fila mudou ou o ticket foi movido para uma fila (estando sem fila)
-	if input.QueueID != nil && (oldQueueID == nil || *oldQueueID != *input.QueueID) {
-		go func(tID int, qID int) {
-			distService := services.NewDistributionService()
-			distService.DistributeTicket(tID, qID, tenantID)
-		}(ticket.ID, *input.QueueID)
-	}
-
-	// Notificar via Socket
-	services.EmitToNamespace("/", "ticket", gin.H{"action": "update", "ticket": ticket})
-
-	c.JSON(http.StatusOK, ticket)
+	services.EmitToNamespace("/", "ticket", gin.H{"action": "update", "ticket": updatedTicket})
+	c.JSON(http.StatusOK, updatedTicket)
 }
 
-func ListTicketLogs(c *gin.Context) {
+func (tc *TicketController) ListTicketLogs(c *gin.Context) {
 	ticketID := c.Param("ticketId")
 
 	var logs []models.TicketLog

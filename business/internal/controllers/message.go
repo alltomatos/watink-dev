@@ -2,33 +2,30 @@ package controllers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
-	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/database"
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
-	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
-func ListMessages(c *gin.Context) {
+type MessageController struct {
+	rabbit domain.RabbitMQServiceInterface
+}
+
+func NewMessageController(r domain.RabbitMQServiceInterface) *MessageController {
+	return &MessageController{rabbit: r}
+}
+
+// ListMessages returns all messages for a given ticket.
+func (mc *MessageController) ListMessages(c *gin.Context) {
 	ticketID := c.Param("ticketId")
 
-	// Ensure user has access to the ticket
-	var ticket models.Ticket
-	if err := getScopedDB(c, "Tickets").Where("id = ?", ticketID).First(&ticket).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied to ticket messages"})
-		return
-	}
-
 	var messages []models.Message
-	if err := database.DB.Where("\"ticketId\" = ? AND \"tenantId\" = ?", ticket.ID, ticket.TenantID).
+	if err := getScopedDB(c, "Messages").
+		Where("\"ticketId\" = ?", ticketID).
 		Order("\"createdAt\" ASC").
 		Find(&messages).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch messages"})
@@ -37,126 +34,58 @@ func ListMessages(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"messages": messages,
+		"count":    len(messages),
 	})
 }
 
-func SendMessage(c *gin.Context) {
-	ticketID := c.Param("ticketId")
+// SendMessage sends a message through the WhatsApp engine via RabbitMQ.
+func (mc *MessageController) SendMessage(c *gin.Context) {
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
-	// 1. Get Ticket with Scope check
+	ticketIDStr := c.Param("ticketId")
+	ticketID, err := strconv.Atoi(ticketIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ticket ID"})
+		return
+	}
+
 	var ticket models.Ticket
-	if err := getScopedDB(c, "Tickets").Where("id = ?", ticketID).
-		Preload("Contact").
-		First(&ticket).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Ticket not found or access denied"})
+	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", ticketID, tenantID).First(&ticket).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Ticket not found"})
 		return
 	}
 
-	// 2. Handle Medias or Text
-	form, err := c.MultipartForm()
-	if err == nil {
-		// Multipart Form (possibly medias)
-		files := form.File["medias"]
-		bodies := form.Value["body"]
-
-		for i, file := range files {
-			caption := ""
-			if i < len(bodies) {
-				caption = bodies[i]
-			} else if len(bodies) > 0 {
-				caption = bodies[0]
-			}
-
-			// Save file
-			filename := fmt.Sprintf("%d-%s", time.Now().UnixNano(), file.Filename)
-			tenantDir := filepath.Join("public", ticket.TenantID.String())
-			_ = os.MkdirAll(tenantDir, 0755)
-			dst := filepath.Join(tenantDir, filename)
-			if err := c.SaveUploadedFile(file, dst); err != nil {
-				log.Printf("Error saving file: %v", err)
-				continue
-			}
-
-			mediaType := "chat"
-			contentType := file.Header.Get("Content-Type")
-			if strings.Contains(contentType, "image") {
-				mediaType = "image"
-			} else if strings.Contains(contentType, "video") {
-				mediaType = "video"
-			} else if strings.Contains(contentType, "audio") {
-				mediaType = "audio"
-			} else {
-				mediaType = "document"
-			}
-
-			createMessage(ticket, caption, mediaType, fmt.Sprintf("%s/%s", ticket.TenantID.String(), filename))
-		}
-	} else {
-		// Simple JSON (text only)
-		var req struct {
-			Body string `json:"body" binding:"required"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		msg := createMessage(ticket, req.Body, "chat", "")
-		c.JSON(http.StatusOK, msg)
+	var input struct {
+		Body      string `json:"body"`
+		MediaType string `json:"mediaType"`
+		MediaUrl  string `json:"mediaUrl"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.Status(http.StatusOK)
-}
-
-func createMessage(ticket models.Ticket, body string, mediaType string, mediaUrl string) models.Message {
-	msg := models.Message{
-		ID:        uuid.New().String(),
-		Body:      body,
-		TicketID:  ticket.ID,
-		ContactID: &ticket.ContactID,
-		FromMe:    true,
-		Read:      true,
-		MediaType: mediaType,
-		MediaUrl:  mediaUrl,
-		TenantID:  ticket.TenantID,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	database.DB.Create(&msg)
-	database.DB.Model(&ticket).Update("lastMessage", body)
-
-	// Real-time
-	services.EmitToRoom("/", strconv.Itoa(ticket.ID), "appMessage", map[string]interface{}{
-		"action":  "create",
-		"message": msg,
-		"ticket":  ticket,
-		"contact": ticket.Contact,
-	})
-
-	// RabbitMQ
+	// Publish outbound message command via RabbitMQ
 	command := map[string]interface{}{
-		"id":        uuid.New().String(),
-		"timestamp": time.Now().Unix(),
-		"tenantId":  ticket.TenantID,
-		"type":      "message.send.text",
+		"type": "message.send",
 		"payload": map[string]interface{}{
-			"sessionId": ticket.WhatsappID,
-			"messageId": msg.ID,
-			"to":        ticket.Contact.Number + "@s.whatsapp.net",
-			"body":      body,
+			"ticketId":  ticketID,
+			"body":      input.Body,
+			"mediaType": input.MediaType,
+			"mediaUrl":  input.MediaUrl,
 		},
 	}
-	
-	if mediaUrl != "" {
-		command["type"] = "message.send.media"
-		command["payload"].(map[string]interface{})["mediaUrl"] = mediaUrl
-		command["payload"].(map[string]interface{})["mediaType"] = mediaType
+
+	// Use afinidade: wbot.{tenantId}.{sessionId}.command
+	routingKey := fmt.Sprintf("wbot.%s.%d.command", tenantID.String(), ticket.WhatsappID)
+	if err := mc.rabbit.PublishCommand(routingKey, command); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Failed to send message: " + err.Error()})
+		return
 	}
 
-	rabbit := services.NewRabbitMQService()
-	routingKey := fmt.Sprintf("wbot.%s.%d.%s", ticket.TenantID, ticket.WhatsappID, command["type"])
-	_ = rabbit.PublishCommand(routingKey, command)
-
-	return msg
+	c.JSON(http.StatusOK, gin.H{"message": "Message sent"})
 }

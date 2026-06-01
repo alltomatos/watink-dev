@@ -1,5 +1,5 @@
 /* @jsxImportSource react */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useHistory } from "react-router-dom";
 import openSocket from "../../services/socket-io";
 
@@ -15,59 +15,79 @@ const useAuth = () => {
 	const [loading, setLoading] = useState(true);
 	const [user, setUser] = useState({});
 
-	api.interceptors.request.use(
-		config => {
-			const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-			if (token) {
-				config.headers["Authorization"] = `Bearer ${JSON.parse(token)}`;
-				setIsAuth(true);
-			}
-			return config;
-		},
-		error => {
-			Promise.reject(error);
-		}
-	);
+	const clearSession = useCallback(() => {
+		localStorage.removeItem("token");
+		sessionStorage.removeItem("token");
+		api.defaults.headers.Authorization = undefined;
+		setUser({});
+		setIsAuth(false);
+	}, []);
 
-	api.interceptors.response.use(
-		response => {
-			return response;
-		},
-		async error => {
-			const originalRequest = error.config;
-			const status = error?.response?.status;
-
-			if (status === 401 && !originalRequest._retry) {
-				originalRequest._retry = true;
-
-				try {
-					const { data } = await api.post("/auth/refresh_token");
-					if (data) {
-						if (localStorage.getItem("token")) {
-							localStorage.setItem("token", JSON.stringify(data.token));
-						} else {
-							sessionStorage.setItem("token", JSON.stringify(data.token));
-						}
-
-						api.defaults.headers.Authorization = `Bearer ${data.token}`;
-					}
-					return api(originalRequest);
-				} catch (err) {
-					console.error("RefreshToken failed", err);
-					localStorage.removeItem("token");
-					sessionStorage.removeItem("token");
-					api.defaults.headers.Authorization = undefined;
-					setIsAuth(false);
+	useEffect(() => {
+		const requestInterceptor = api.interceptors.request.use(
+			config => {
+				const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+				if (token) {
+					config.headers["Authorization"] = `Bearer ${JSON.parse(token)}`;
+					setIsAuth(true);
 				}
-			} else if (status === 401 && originalRequest._retry) {
-				localStorage.removeItem("token");
-				sessionStorage.removeItem("token");
-				api.defaults.headers.Authorization = undefined;
-				setIsAuth(false);
+				return config;
+			},
+			error => Promise.reject(error)
+		);
+
+		const responseInterceptor = api.interceptors.response.use(
+			response => response,
+			async error => {
+				const originalRequest = error.config || {};
+				const status = error?.response?.status;
+				const isRefreshRequest = originalRequest.url?.includes("/auth/refresh_token");
+
+				if (status === 401 && isRefreshRequest) {
+					clearSession();
+					if (history.location.pathname !== "/login") {
+						history.push("/login");
+					}
+					return Promise.reject(error);
+				}
+
+				if (status === 401 && !originalRequest._retry) {
+					originalRequest._retry = true;
+
+					try {
+						const { data } = await api.post("/auth/refresh_token");
+						if (data) {
+							if (localStorage.getItem("token")) {
+								localStorage.setItem("token", JSON.stringify(data.token));
+							} else {
+								sessionStorage.setItem("token", JSON.stringify(data.token));
+							}
+
+							api.defaults.headers.Authorization = `Bearer ${data.token}`;
+						}
+						return api(originalRequest);
+					} catch (err) {
+						console.error("RefreshToken failed", err);
+						clearSession();
+						if (history.location.pathname !== "/login") {
+							history.push("/login");
+						}
+					}
+				} else if (status === 401 && originalRequest._retry) {
+					clearSession();
+					if (history.location.pathname !== "/login") {
+						history.push("/login");
+					}
+				}
+				return Promise.reject(error);
 			}
-			return Promise.reject(error);
-		}
-	);
+		);
+
+		return () => {
+			api.interceptors.request.eject(requestInterceptor);
+			api.interceptors.response.eject(responseInterceptor);
+		};
+	}, [clearSession, history]);
 
 	useEffect(() => {
 		const token = localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -80,16 +100,13 @@ const useAuth = () => {
 					setUser(data.user);
 				} catch (err) {
 					toastError(err);
-					localStorage.removeItem("token");
-					sessionStorage.removeItem("token");
-					api.defaults.headers.Authorization = undefined;
-					setIsAuth(false);
+					clearSession();
 					history.push("/login");
 				}
 			}
 			setLoading(false);
 		})();
-	}, []);
+	}, [clearSession, history]);
 
 	useEffect(() => {
 		const socket = openSocket();

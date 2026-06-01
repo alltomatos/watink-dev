@@ -6,9 +6,17 @@
 import { spawn } from 'child_process';
 import { promisify } from 'util';
 import { promises as fs } from 'fs';
+import * as fsSync from 'fs';
 import path from 'path';
 import { exec as execAsync } from 'child_process';
 import { fileURLToPath } from 'url';
+
+export function backendHealthCandidates() {
+  return [
+    'http://localhost/api/v1/health',
+    'http://localhost:8082/api/v1/health',
+  ];
+}
 
 const exec = promisify(execAsync);
 const __filename = fileURLToPath(import.meta.url);
@@ -54,9 +62,23 @@ class WatinkDriver {
     return false;
   }
 
+  async _fetchFirstOk(urls) {
+    for (const url of urls) {
+      try {
+        const resp = await fetch(url);
+        if (resp.ok) return { url, resp, body: await resp.text() };
+      } catch {}
+    }
+    return null;
+  }
+
+  async _backendHealth() {
+    return this._fetchFirstOk(backendHealthCandidates());
+  }
+
   _activeComposeFile() {
     // Prefer dev compose if it exists and has been used
-    try { fs.accessSync(this.composeFile); return this.composeFile; }
+    try { fsSync.accessSync(this.composeFile); return this.composeFile; }
     catch { return this.composeBizFile; }
   }
 
@@ -124,7 +146,7 @@ class WatinkDriver {
 
     // Create .env if missing
     const envPath = path.join(ROOT, '.env');
-    try { fs.accessSync(envPath); } catch {
+    try { fsSync.accessSync(envPath); } catch {
       await fs.copyFile(path.join(ROOT, '.env.example'), envPath);
       console.log('Created .env from .env.example');
     }
@@ -148,8 +170,17 @@ class WatinkDriver {
 
     // Wait for backend
     console.log('Waiting for backend...');
-    const backendOk = await this._waitFor('http://localhost:8082/api/v1/health', 'Backend');
-    console.log(backendOk ? '  ✓ Backend healthy' : '  ✗ Backend not responding');
+    let backendOk = false;
+    for (let i = 0; i < 30; i++) {
+      const health = await this._backendHealth();
+      if (health) {
+        backendOk = true;
+        console.log(`  ✓ Backend healthy (${health.url})`);
+        break;
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    if (!backendOk) console.log('  ✗ Backend not responding');
 
     // Wait for marketplace hub
     console.log('Waiting for marketplace hub...');
@@ -162,8 +193,8 @@ class WatinkDriver {
     console.log(pmOk ? '  ✓ Plugin Manager healthy' : '  ✗ Plugin Manager not responding');
 
     console.log('\nServices:');
-    console.log("  Frontend (embedded): http://localhost:8082");
-    console.log('  Backend API:         http://localhost:8082/api/v1');
+    console.log('  Frontend (embedded): http://localhost or http://localhost:8082');
+    console.log('  Backend API:         http://localhost/api/v1 or http://localhost:8082/api/v1');
     console.log('  Plugin Manager:      http://localhost:8081');
     console.log('  Marketplace Hub:     http://localhost:8090');
     console.log('  RabbitMQ Management: http://localhost:15672 (guest/guest)');
@@ -174,6 +205,27 @@ class WatinkDriver {
     console.log('Stopping Docker services...');
     await this._exec(`docker compose -f "${composeFile}" down`, { timeout: 60000 });
     console.log('All services stopped.');
+  }
+
+  async resetDb() {
+    const composeFile = this._activeComposeFile();
+    console.log('Resetting database volume and restarting services...');
+    await this._exec(`docker compose -f "${composeFile}" down -v --remove-orphans`, { timeout: 120000 });
+    await this._exec(`docker compose -f "${composeFile}" up -d`, { timeout: 120000 });
+
+    for (let i = 0; i < 60; i++) {
+      try {
+        const { stdout } = await this._exec(`docker compose -f "${composeFile}" exec -T postgres pg_isready -U postgres`, { timeout: 5000 });
+        if (stdout.includes('accepting connections')) break;
+      } catch {}
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    try {
+      await this._exec(`docker compose -f "${composeFile}" restart watink`, { timeout: 60000 });
+    } catch {}
+
+    console.log('Database reset complete.');
   }
 
   async ss() {
@@ -192,15 +244,19 @@ class WatinkDriver {
       console.log(`  ${line}`);
     }
 
-    // Health endpoints
-    const endpoints = [
-      ['Backend', 'http://localhost:8082/api/v1/health'],
-      ['Plugin Manager', 'http://localhost:8081/api/v1/plugins/instance'],
-      ['Marketplace Hub', 'http://localhost:8090'],
-    ];
-
     console.log('\nHealth Checks:\n');
-    for (const [name, url] of endpoints) {
+    const backend = await this._backendHealth();
+    console.log(backend ? `  Backend: ${backend.resp.status} ${backend.body.substring(0, 80)} (${backend.url})` : '  Backend: FAILED');
+
+    const endpoints = [
+      ['Plugin Manager', 'http://localhost:8081/api/v1/plugins/instance', containers.some(line => line.includes('plugin-manager'))],
+      ['Marketplace Hub', 'http://localhost:8090', containers.some(line => line.includes('hub') || line.includes('marketplace'))],
+    ];
+    for (const [name, url, expected] of endpoints) {
+      if (!expected) {
+        console.log(`  ${name}: SKIPPED (service not in active compose stack)`);
+        continue;
+      }
       try {
         const resp = await fetch(url);
         const body = await resp.text();
@@ -212,20 +268,27 @@ class WatinkDriver {
   }
 
   async health() {
+    const health = await this._backendHealth();
+    if (!health) {
+      console.error('Backend health check failed on all candidate URLs.');
+      process.exitCode = 1;
+      return;
+    }
+
     try {
-      const resp = await fetch('http://localhost:8082/api/v1/health');
-      const data = await resp.json();
-      console.log('Backend Health:', JSON.stringify(data, null, 2));
-    } catch (e) {
-      console.error('Backend health check failed:', e.message);
+      console.log(`Backend Health (${health.url}):`, JSON.stringify(JSON.parse(health.body), null, 2));
+    } catch {
+      console.log(`Backend Health (${health.url}):`, health.body);
     }
   }
 
   async screenshot(filename = 'watink-screenshot.png') {
     const outPath = path.resolve(filename);
-    // Try backend (embedded frontend) first, then Vite dev server
     let url;
-    try { await fetch('http://localhost:8082/api/v1/health'); url = 'http://localhost:8082'; } catch {
+    const health = await this._backendHealth();
+    if (health) {
+      url = health.url.includes(':8082') ? 'http://localhost:8082' : 'http://localhost';
+    } else {
       try { await fetch('http://localhost:3000'); url = 'http://localhost:3000'; } catch {
         console.error('No frontend available. Start the app first.');
         return;
@@ -240,7 +303,7 @@ class WatinkDriver {
           { timeout: 30000 }
         );
         // chromium-browser on snap writes to a private tmp — find the file
-        try { fs.accessSync(outPath); }
+        try { fsSync.accessSync(outPath); }
         catch {
           // Try snap private tmp
           const { stdout } = await this._exec(
@@ -250,7 +313,7 @@ class WatinkDriver {
             await this._exec(`cp "${stdout.trim()}" "${outPath}"`);
           }
         }
-        if (fs.existsSync(outPath)) {
+        if (fsSync.existsSync(outPath)) {
           console.log(`Screenshot saved: ${outPath}`);
           return;
         }
@@ -290,6 +353,42 @@ class WatinkDriver {
     console.log(ok ? 'Frontend dev server ready: http://localhost:3000' : 'Frontend dev server failed to start');
   }
 
+  async verifyStack() {
+    const composeFile = this._activeComposeFile();
+    let failed = false;
+
+    console.log('Watink stack verification\n');
+    await this.ss();
+
+    const backend = await this._backendHealth();
+    if (!backend) {
+      console.log('\nBackend health: FAILED');
+      failed = true;
+    } else {
+      console.log(`\nBackend health: OK (${backend.url})`);
+    }
+
+    try {
+      const { stdout } = await this._exec(`docker compose -f "${composeFile}" exec -T postgres psql -U postgres -d watink -c 'select count(*) as tenants from "Tenants";' -c 'select count(*) as users from "Users";'`, { timeout: 15000 });
+      console.log('\nDatabase checks:\n' + stdout.trim());
+    } catch (e) {
+      failed = true;
+      console.log('\nDatabase checks: FAILED');
+      console.log(e.message.split('\n').slice(-5).join('\n'));
+    }
+
+    try {
+      const { stdout } = await this._exec(`docker compose -f "${composeFile}" exec -T rabbitmq rabbitmqctl list_queues name messages consumers durable`, { timeout: 15000 });
+      console.log('\nRabbitMQ queues:\n' + stdout.trim());
+    } catch (e) {
+      failed = true;
+      console.log('\nRabbitMQ checks: FAILED');
+      console.log(e.message.split('\n').slice(-5).join('\n'));
+    }
+
+    if (failed) process.exitCode = 1;
+  }
+
   async test() {
     console.log('Running test suites...\n');
 
@@ -315,16 +414,19 @@ class WatinkDriver {
 
 // ── CLI ──
 
-const driver = new WatinkDriver();
-const command = process.argv[2];
-const args = process.argv.slice(3);
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const driver = new WatinkDriver();
+  const command = process.argv[2];
+  const args = process.argv.slice(3);
 
-switch (command) {
+  switch (command) {
   case 'init':      driver.init(); break;
   case 'build':     driver.build(); break;
   case 'launch':    driver.launch(); break;
   case 'stop':      driver.stop(); break;
+  case 'reset-db':  driver.resetDb(); break;
   case 'ss':        driver.ss(); break;
+  case 'verify-stack': driver.verifyStack(); break;
   case 'screenshot': driver.screenshot(args[0]); break;
   case 'health':    driver.health(); break;
   case 'dev':       driver.dev(); break;
@@ -340,7 +442,9 @@ Commands:
   build      Build all services (frontend → backend → engine → plugin-manager)
   launch     Start all Docker Compose services
   stop       Stop all Docker Compose services
+  reset-db   Reset database volume and restart services
   ss         Show container status and health checks
+  verify-stack Run container, backend, database, and RabbitMQ checks
   health     Fetch GET /api/v1/health from backend
   screenshot Take screenshot of frontend (default: watink-screenshot.png)
   dev        Start Vite frontend dev server on port 3000
@@ -351,12 +455,13 @@ Prerequisites:
   apt-get install -y chromium-browser
   `);
     process.exit(1);
-}
-
-process.on('SIGINT', async () => {
-  console.log('\nShutting down...');
-  for (const [name, child] of driver.processes) {
-    child.kill('SIGTERM');
   }
-  process.exit(0);
-});
+
+  process.on('SIGINT', async () => {
+    console.log('\nShutting down...');
+    for (const [name, child] of driver.processes) {
+      child.kill('SIGTERM');
+    }
+    process.exit(0);
+  });
+}

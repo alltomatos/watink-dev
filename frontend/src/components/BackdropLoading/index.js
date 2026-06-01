@@ -1,5 +1,5 @@
 /* @jsxImportSource react */
-import React from "react";
+import React, { useRef } from "react";
 
 import Backdrop from "@material-ui/core/Backdrop";
 import CircularProgress from "@material-ui/core/CircularProgress";
@@ -14,10 +14,14 @@ const useStyles = makeStyles(theme => ({
 
 const BackdropLoading = () => {
 	const classes = useStyles();
+	const backdropRef = useRef(null);
+
 	return (
-		<Backdrop className={classes.backdrop} open={true}>
-			<CircularProgress color="inherit" />
-		</Backdrop>
+		<div ref={backdropRef}>
+			<Backdrop className={classes.backdrop} open={true}>
+				<CircularProgress color="inherit" />
+			</Backdrop>
+		</div>
 	);
 };
 

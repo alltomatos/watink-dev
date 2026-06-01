@@ -11,6 +11,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 func extractToken(c *gin.Context) string {
@@ -24,7 +25,7 @@ func extractToken(c *gin.Context) string {
 	return c.Query("token")
 }
 
-func parseUserFromToken(tokenString string) (int, string, error) {
+func parseUserFromToken(tokenString string) (int, string, string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		secret = "default_secret"
@@ -37,15 +38,16 @@ func parseUserFromToken(tokenString string) (int, string, error) {
 		return []byte(secret), nil
 	})
 	if err != nil || !token.Valid {
-		return 0, "", fmt.Errorf("invalid token")
+		return 0, "", "", fmt.Errorf("invalid token")
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return 0, "", fmt.Errorf("invalid token claims")
+		return 0, "", "", fmt.Errorf("invalid token claims")
 	}
 
 	profile, _ := claims["profile"].(string)
+	tenantID, _ := claims["tenantId"].(string)
 	userID := 0
 	switch v := claims["id"].(type) {
 	case float64:
@@ -57,16 +59,21 @@ func parseUserFromToken(tokenString string) (int, string, error) {
 		userID = parsed
 	}
 
-	return userID, strings.ToLower(profile), nil
+	return userID, strings.ToLower(profile), tenantID, nil
 }
 
-func hasSwaggerGroupPermission(userID int) bool {
-	if userID <= 0 {
+func hasSwaggerGroupPermission(userID int, tenantID string) bool {
+	if userID <= 0 || tenantID == "" {
+		return false
+	}
+
+	parsedTenantID, err := uuid.Parse(tenantID)
+	if err != nil {
 		return false
 	}
 
 	var user models.User
-	if err := database.DB.First(&user, userID).Error; err != nil || user.GroupID == nil {
+	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", userID, parsedTenantID).First(&user).Error; err != nil || user.GroupID == nil {
 		return false
 	}
 
@@ -86,13 +93,13 @@ func ensureSwaggerAccess(c *gin.Context) bool {
 		return false
 	}
 
-	userID, profile, err := parseUserFromToken(token)
+	userID, profile, tenantID, err := parseUserFromToken(token)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 		return false
 	}
 
-	if profile == "superadmin" || hasSwaggerGroupPermission(userID) {
+	if profile == "superadmin" || hasSwaggerGroupPermission(userID, tenantID) {
 		return true
 	}
 

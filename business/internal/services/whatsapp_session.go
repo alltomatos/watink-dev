@@ -58,22 +58,38 @@ func StartWhatsAppSession(whatsapp models.Whatsapp, usePairingCode bool, phoneNu
 }
 
 func StopWhatsAppSession(whatsapp models.Whatsapp) error {
-	// RabbitMQ Command
-	rabbit := NewRabbitMQService()
-	if err := rabbit.Connect(); err != nil {
-		return err
-	}
+	routingKey, command := buildSessionCommand(whatsapp, "session.stop")
+	return publishWhatsAppSessionCommand(routingKey, command)
+}
 
+func DeleteWhatsAppSession(whatsapp models.Whatsapp) error {
+	routingKey, command := buildDeleteSessionCommand(whatsapp)
+	return publishWhatsAppSessionCommand(routingKey, command)
+}
+
+func buildDeleteSessionCommand(whatsapp models.Whatsapp) (string, map[string]interface{}) {
+	return buildSessionCommand(whatsapp, "session.delete")
+}
+
+func buildSessionCommand(whatsapp models.Whatsapp, commandType string) (string, map[string]interface{}) {
 	command := map[string]interface{}{
 		"id":        uuid.New().String(),
 		"timestamp": time.Now().UnixMilli(),
 		"tenantId":  whatsapp.TenantID,
-		"type":      "session.stop",
+		"type":      commandType,
 		"payload": map[string]interface{}{
 			"sessionId": whatsapp.ID,
 		},
 	}
 
-	routingKey := fmt.Sprintf("wbot.%s.%d.session.stop", whatsapp.TenantID, whatsapp.ID)
+	routingKey := fmt.Sprintf("wbot.%s.%d.%s", whatsapp.TenantID, whatsapp.ID, commandType)
+	return routingKey, command
+}
+
+func publishWhatsAppSessionCommand(routingKey string, command map[string]interface{}) error {
+	rabbit := NewRabbitMQService()
+	if err := rabbit.Connect(); err != nil {
+		return err
+	}
 	return rabbit.PublishCommand(routingKey, command)
 }

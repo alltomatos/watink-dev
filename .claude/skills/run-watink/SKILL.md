@@ -112,8 +112,14 @@ node .claude/skills/run-watink/driver.mjs launch
 # Show status
 node .claude/skills/run-watink/driver.mjs ss
 
-# Check backend health
+# Check backend health (auto-detects localhost:80 or localhost:8082)
 node .claude/skills/run-watink/driver.mjs health
+
+# Verify containers, backend, database, and RabbitMQ
+node .claude/skills/run-watink/driver.mjs verify-stack
+
+# Reset local database volume and restart services
+node .claude/skills/run-watink/driver.mjs reset-db
 
 # Stop all services
 node .claude/skills/run-watink/driver.mjs stop
@@ -125,7 +131,9 @@ node .claude/skills/run-watink/driver.mjs stop
 | `launch` | Start Docker deps + all 5 services |
 | `stop` | Gracefully stop all services |
 | `ss` | Print status table (process, health, port) |
-| `health` | Fetch `GET /api/v1/health` from backend |
+| `health` | Fetch `GET /api/v1/health` from backend, trying `localhost:80` then `localhost:8082` |
+| `verify-stack` | Check containers, backend health, PostgreSQL counts, and RabbitMQ queues |
+| `reset-db` | Stop services, delete compose volumes, restart, and wait for PostgreSQL |
 | `screenshot` | Take screenshot via chromium-cli or puppeteer |
 
 Screenshots land in the CWD as `watink-screenshot.png`.

@@ -31,7 +31,7 @@ func (s *DistributionService) DistributeTicket(ticketID int, queueID int, tenant
 	}
 
 	strategy := queue.DistributionStrategy
-	
+
 	// 1. Prioridade de Carteira (Wallet)
 	if queue.PrioritizeWallet {
 		var contact models.Contact
@@ -40,7 +40,7 @@ func (s *DistributionService) DistributeTicket(ticketID int, queueID int, tenant
 				// Verifica se este usuário da carteira está na fila
 				var count int64
 				s.db.Table("user_queues").Where("\"userId\" = ? AND \"queueId\" = ?", *contact.WalletUserID, queueID).Count(&count)
-				
+
 				if count > 0 {
 					if err := s.db.Model(&ticket).Updates(map[string]interface{}{
 						"userId": *contact.WalletUserID,
@@ -91,7 +91,7 @@ func (s *DistributionService) DistributeTicket(ticketID int, queueID int, tenant
 			return err
 		}
 		log.Printf("[Distribution] Ticket %d assigned to User %d via %s", ticketID, assignedUserID, strategy)
-		
+
 		s.emitUpdate(ticket)
 	}
 

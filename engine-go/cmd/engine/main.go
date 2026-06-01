@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -24,101 +25,140 @@ type StartCommandPayload struct {
 }
 
 type CommandEnvelope struct {
-	Type      string              `json:"type"`
-	Timestamp int64               `json:"timestamp"`
-	Payload   StartCommandPayload `json:"payload"`
+	Type      string          `json:"type"`
+	Timestamp int64           `json:"timestamp"`
+	Payload   json.RawMessage `json:"payload"`
 }
 
 func main() {
 	_ = godotenv.Load()
 
-	// 1. Setup RabbitMQ
 	rabbit := rabbitmq.NewRabbitMQService()
 	if err := rabbit.Connect(); err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}
 	log.Println("Connected to RabbitMQ")
 
-	// 2. Setup WhatsApp Service (Postgres Store)
 	waService := whatsapp.NewWhatsAppService(rabbit)
 
-	// 3. Auto-restart sessions after a small delay
 	go func() {
 		time.Sleep(5 * time.Second)
-		log.Println("🔄 Auto-restarting existing sessions...")
+		log.Println("Auto-restarting existing sessions...")
 		waService.AutoRestartSessions()
 	}()
 
-	// 4. Listen for Commands
 	routingKeys := []string{
 		"wbot.*.*.session.start",
 		"wbot.*.*.session.stop",
+		"wbot.*.*.session.delete",
+		"wbot.*.*.message.send.text",
+		"wbot.*.*.message.send.media",
+		"wbot.*.*.message.markAsRead",
+		"wbot.*.*.contact.sync",
+		"wbot.*.*.contact.import",
+		"wbot.*.*.history.sync",
 	}
 
 	err := rabbit.ConsumeCommands("engine.go.commands", routingKeys, func(d amqp.Delivery) {
-		log.Printf("Received command: %s", d.RoutingKey)
-		
-		parts := strings.Split(d.RoutingKey, ".")
-		if len(parts) < 4 {
-			log.Printf("Invalid routing key: %s", d.RoutingKey)
-			d.Ack(false)
-			return
+		if err := handleCommand(d, waService); err != nil {
+			log.Printf("Command failed %s: %v", d.RoutingKey, err)
 		}
-
-		tenantID := parts[1]
-		sessionID, _ := strconv.Atoi(parts[2])
-		commandType := strings.Join(parts[3:], ".")
-
-		switch commandType {
-		case "session.start":
-			var envelope CommandEnvelope
-			if err := json.Unmarshal(d.Body, &envelope); err != nil {
-				// Fallback for direct payload if envelope is missing
-				var payload StartCommandPayload
-				if errJson := json.Unmarshal(d.Body, &payload); errJson == nil {
-					// Use current time as fallback timestamp
-					ts := time.Now().Unix()
-					_ = waService.StartClient(sessionID, tenantID, payload.Name, ts, payload.ProxyURL, payload.UsePairingCode, payload.PhoneNumber)
-				} else {
-					log.Printf("Invalid command payload for session.start (%d): %v", sessionID, err)
-				}
-			} else {
-				payload := envelope.Payload
-				ts := envelope.Timestamp
-				if ts == 0 {
-					ts = time.Now().Unix()
-				}
-				err := waService.StartClient(sessionID, tenantID, payload.Name, ts, payload.ProxyURL, payload.UsePairingCode, payload.PhoneNumber)
-				if err != nil {
-					log.Printf("Error starting client %d: %v", sessionID, err)
-				}
-			}
-		case "session.stop":
-			// Attempt to stop the client if it's in our memory map
-			err := waService.StopClient(sessionID)
-			if err != nil {
-				log.Printf("Error stopping client %d: %v", sessionID, err)
-			}
-			
-			// Always ensure we try to logout from the store if it's a persistent session
-			// that we don't have in memory (e.g. after a restart)
-			// This is a safety measure to ensure 'Disconnect' really clears things.
-			_ = waService.ForceLogout(sessionID)
-		}
-
 		d.Ack(false)
 	})
-
 	if err != nil {
 		log.Fatalf("Failed to start command consumer: %v", err)
 	}
 
 	log.Println("Watink Engine Go (WhatsMeow) started with PostgreSQL Store")
 
-	// Wait for termination
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 
 	log.Println("Shutting down...")
+}
+
+func commandTypeFromRoutingKey(d amqp.Delivery) (string, error) {
+	parts := strings.Split(d.RoutingKey, ".")
+	if len(parts) < 4 {
+		return "", fmt.Errorf("invalid routing key: %s", d.RoutingKey)
+	}
+
+	commandType := strings.Join(parts[3:], ".")
+	switch commandType {
+	case "session.start", "session.stop", "session.delete", "message.send.text", "message.send.media", "message.markAsRead", "contact.sync", "contact.import", "history.sync":
+		return commandType, nil
+	default:
+		return "", fmt.Errorf("unknown command type: %s", commandType)
+	}
+}
+
+func handleCommand(d amqp.Delivery, waService *whatsapp.WhatsAppService) error {
+	log.Printf("Received command: %s", d.RoutingKey)
+	parts := strings.Split(d.RoutingKey, ".")
+	if len(parts) < 4 {
+		log.Printf("Invalid routing key: %s", d.RoutingKey)
+		return nil
+	}
+
+	tenantID := parts[1]
+	sessionID, err := strconv.Atoi(parts[2])
+	if err != nil {
+		log.Printf("Invalid session ID in routing key %s: %v", d.RoutingKey, err)
+		return nil
+	}
+	commandType, err := commandTypeFromRoutingKey(d)
+	if err != nil {
+		log.Printf("Failed to parse command type from %s: %v", d.RoutingKey, err)
+		return nil
+	}
+
+	var envelope CommandEnvelope
+	if err := json.Unmarshal(d.Body, &envelope); err != nil {
+		return err
+	}
+
+	switch commandType {
+	case "session.start":
+		var payload StartCommandPayload
+		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+			return err
+		}
+		ts := envelope.Timestamp
+		if ts == 0 {
+			ts = time.Now().UnixMilli()
+		}
+		return waService.StartClient(sessionID, tenantID, payload.Name, ts, payload.ProxyURL, payload.UsePairingCode, payload.PhoneNumber)
+	case "session.stop":
+		return waService.StopClient(sessionID)
+	case "session.delete":
+		if err := waService.StopClient(sessionID); err != nil {
+			log.Printf("Stop client warning for %d: %v", sessionID, err)
+		}
+		return waService.ForceLogout(sessionID)
+	case "message.send.text":
+		var payload whatsapp.TextCommandPayload
+		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+			return err
+		}
+		return waService.SendText(sessionID, tenantID, payload)
+	case "message.send.media":
+		var payload whatsapp.MediaCommandPayload
+		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+			return err
+		}
+		return waService.SendMedia(sessionID, tenantID, payload)
+	case "message.markAsRead":
+		var payload whatsapp.MarkReadCommandPayload
+		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+			return err
+		}
+		return waService.MarkRead(sessionID, payload)
+	case "contact.sync", "contact.import", "history.sync":
+		log.Printf("Command %s received but not implemented in engine-go", commandType)
+		return nil
+	default:
+		log.Printf("Unknown command type: %s", commandType)
+		return nil
+	}
 }

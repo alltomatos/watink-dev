@@ -40,7 +40,19 @@ func getScopedDB(c *gin.Context, table string) *gorm.DB {
 	db := getDB(c)
 	userProfile, _ := c.Get("userProfile")
 	userID, _ := c.Get("userId")
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		// Fallback to validated context value — if middleware set it, use it.
+		// If tenantUUIDFromContext fails, the request should have been rejected upstream.
+		// This preserves backward compat for routes that don't validate early.
+		raw, _ := c.Get("tenantId")
+		switch v := raw.(type) {
+		case uuid.UUID:
+			tenantID = v
+		default:
+			tenantID = uuid.Nil
+		}
+	}
 
 	if userProfile == "admin" {
 		return db.Where("\"tenantId\" = ?", tenantID)

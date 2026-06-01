@@ -253,20 +253,20 @@ const QueueSchema = Yup.object().shape({
 const STRATEGY_OPTIONS = [
 	{
 		value: "MANUAL",
-		label: "Manual (Pesca)",
-		description: "Agentes escolhem quais tickets atender",
+		label: i18n.t("queueModal.strategies.manual"),
+		description: i18n.t("queueModal.strategies.manualDescription"),
 		icon: <PersonOutlined style={{ color: grey[500] }} />,
 	},
 	{
 		value: "AUTO_ROUND_ROBIN",
-		label: "Automático (Circular)",
-		description: "Distribui igualmente entre agentes disponíveis",
+		label: i18n.t("queueModal.strategies.roundRobin"),
+		description: i18n.t("queueModal.strategies.roundRobinDescription"),
 		icon: <AutorenewOutlined style={{ color: blue[500] }} />,
 	},
 	{
 		value: "AUTO_BALANCED",
-		label: "Automático (Balanceado)",
-		description: "Prioriza agentes com menos tickets em aberto",
+		label: i18n.t("queueModal.strategies.balanced"),
+		description: i18n.t("queueModal.strategies.balancedDescription"),
 		icon: <AccountTreeOutlined style={{ color: green[500] }} />,
 	},
 ];

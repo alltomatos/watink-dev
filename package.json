@@ -22,7 +22,10 @@
     "windows:stack": "npm run windows:check ; npm run windows:business:server",
     "linux:docker:business": "bash ./scripts/linux-docker-business.sh up",
     "linux:docker:business:down": "bash ./scripts/linux-docker-business.sh down",
-    "linux:docker:business:rebuild": "bash ./scripts/linux-docker-business.sh rebuild"
+    "linux:docker:business:rebuild": "bash ./scripts/linux-docker-business.sh rebuild",
+    "linux:docker:dev": "docker compose -f docker-compose.dev.yml up",
+    "linux:docker:dev:build": "docker compose -f docker-compose.dev.yml up --build",
+    "linux:docker:dev:down": "docker compose -f docker-compose.dev.yml down"
   },
   "repository": {
     "type": "git",

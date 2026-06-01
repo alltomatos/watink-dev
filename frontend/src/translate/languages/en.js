@@ -2,7 +2,10 @@
 const messages = {
   en: {
     translations: {
-      roles: {
+      common: {
+        rowsPerPage: "Rows per page",
+      },
+      role: {
         title: "Roles",
         buttons: {
           add: "Add Role",
@@ -16,7 +19,7 @@ const messages = {
           name: "Name",
           description: "Description",
         },
-        title: {
+        formTitle: {
           add: "Add Role",
           edit: "Edit Role",
         },
@@ -227,6 +230,24 @@ const messages = {
           name: "Name",
           color: "Color",
           greetingMessage: "Greeting Message",
+          connection: "Connections",
+          selectConnection: "Select connections",
+          hierarchy: "Hierarchy",
+          parentQueue: "Parent queue",
+          none: "None",
+          distributionSection: "Ticket distribution",
+          distributionStrategy: "Distribution strategy",
+          prioritizeWallet: "Prioritize wallet",
+          prioritizeWalletHelp: "Tickets are preferably assigned to the contact wallet owner",
+          prioritizeWalletTooltip: "When enabled, the system checks whether the contact has an assigned salesperson/agent in their wallet. If that agent is online and belongs to this queue, the ticket is automatically assigned to them.",
+        },
+        strategies: {
+          manual: "Manual (Pickup)",
+          manualDescription: "Agents choose which tickets to handle",
+          roundRobin: "Automated (Round Robin)",
+          roundRobinDescription: "Distributes tickets evenly among available agents",
+          balanced: "Automated (Balanced)",
+          balancedDescription: "Prioritizes agents with fewer open tickets",
         },
         buttons: {
           okAdd: "Add",
@@ -352,6 +373,7 @@ const messages = {
           name: "Name",
           color: "Color",
           greeting: "Greeting message",
+          connections: "Connections",
           actions: "Actions",
         },
         buttons: {

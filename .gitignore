@@ -67,3 +67,6 @@ legacy/backend/public/**
 !legacy/backend/public/plugins/
 !legacy/backend/public/plugins/**
 !legacy/backend/public/webchat.js
+
+# --- Claude Code Worktrees ---
+.claude/worktrees/

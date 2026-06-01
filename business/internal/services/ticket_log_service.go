@@ -8,7 +8,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/models"
 )
 
-func CreateTicketLog(ticketID int, userID *int, logType string, payload map[string]interface{}) {
+func CreateTicketLog(ticketID int, tenantID string, userID *int, logType string, payload map[string]interface{}) {
 	payloadStr := ""
 	if payload != nil {
 		b, _ := json.Marshal(payload)
@@ -16,7 +16,7 @@ func CreateTicketLog(ticketID int, userID *int, logType string, payload map[stri
 	}
 
 	var ticket models.Ticket
-	if err := database.DB.First(&ticket, ticketID).Error; err != nil {
+	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", ticketID, tenantID).First(&ticket).Error; err != nil {
 		log.Printf("[TicketLog] Error finding ticket %d: %v", ticketID, err)
 		return
 	}

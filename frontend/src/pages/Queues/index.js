@@ -14,6 +14,7 @@ import {
   TableHead,
   TableRow,
   Typography,
+  Box,
 } from "@material-ui/core";
 
 import MainContainer from "../../components/MainContainer";
@@ -195,7 +196,7 @@ const Queues = () => {
                 {i18n.t("queues.table.greeting")}
               </TableCell>
               <TableCell align="center">
-                {i18n.t("queueModal.form.connection") || "Conexões"}
+                {i18n.t("queues.table.connections")}
               </TableCell>
               <TableCell align="center">
                 {i18n.t("queues.table.actions")}

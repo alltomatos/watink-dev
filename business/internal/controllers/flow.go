@@ -9,7 +9,11 @@ import (
 )
 
 func ListFlows(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var flows []models.Flow
 	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Find(&flows).Error; err != nil {
@@ -43,7 +47,11 @@ func CreateFlow(c *gin.Context) {
 }
 
 func ShowFlow(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	id := c.Param("flowId")
 
 	var flow models.Flow
@@ -56,7 +64,11 @@ func ShowFlow(c *gin.Context) {
 }
 
 func UpdateFlow(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	id := c.Param("flowId")
 
 	var flow models.Flow
@@ -79,7 +91,11 @@ func UpdateFlow(c *gin.Context) {
 }
 
 func DeleteFlow(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	id := c.Param("flowId")
 
 	if err := database.DB.Where("\"tenantId\" = ? AND id = ?", tenantID, id).Delete(&models.Flow{}).Error; err != nil {

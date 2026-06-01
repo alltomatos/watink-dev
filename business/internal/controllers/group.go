@@ -9,7 +9,11 @@ import (
 )
 
 func ListGroups(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var groups []models.Group
 	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Find(&groups).Error; err != nil {
@@ -31,7 +35,11 @@ func ListPermissions(c *gin.Context) {
 }
 
 func ShowGroup(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	id := c.Param("groupId")
 
 	var group models.Group

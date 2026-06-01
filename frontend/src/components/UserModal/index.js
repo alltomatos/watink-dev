@@ -1,7 +1,6 @@
 
 
 import React, { useState, useEffect, useContext } from "react";
-import * as Yup from "yup";
 import { Formik, Form, Field } from "formik";
 import { toast } from "react-toastify";
 
@@ -36,6 +35,7 @@ import QueueSelect from "../QueueSelect";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../Can";
 import useWhatsApps from "../../hooks/useWhatsApps";
+import { UserSchema } from "../../utils/userValidation";
 
 const useStyles = makeStyles(theme => ({
 	root: {
@@ -66,15 +66,6 @@ const useStyles = makeStyles(theme => ({
 		minWidth: 120,
 	},
 }));
-
-const UserSchema = Yup.object().shape({
-	name: Yup.string()
-		.min(2, "Too Short!")
-		.max(50, "Too Long!")
-		.required("Required"),
-	password: Yup.string().min(5, "Too Short!").max(50, "Too Long!"),
-	email: Yup.string().email("Invalid email").required("Required"),
-});
 
 const UserModal = ({ open, onClose, userId }) => {
 	const classes = useStyles();
