@@ -1,0 +1,8 @@
+name: Go CodeQL Config
+
+path-filtering:
+  # Only scan business/ — exclude legacy, worktrees, generated code
+  paths:
+    - business/**
+  paths-ignore:
+    - business/internal/web/build/**

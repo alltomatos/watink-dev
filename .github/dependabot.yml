@@ -1,0 +1,53 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "npm"
+    directory: "/marketplace-hub"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "gomod"
+    directory: "/business"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "gomod"
+    directory: "/plugin-manager"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: "npm"
+    directory: "/legacy/backend"
+    schedule:
+      interval: "monthly"
+    ignore:
+      - dependency-name: "*"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "npm"
+    directory: "/legacy/engine-standard"
+    schedule:
+      interval: "monthly"
+    ignore:
+      - dependency-name: "*"
+    open-pull-requests-limit: 0
