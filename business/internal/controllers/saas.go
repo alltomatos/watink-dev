@@ -6,6 +6,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func ListTenants(c *gin.Context) {
@@ -18,7 +19,11 @@ func ListTenants(c *gin.Context) {
 }
 
 func GetTenantPlan(c *gin.Context) {
-	tenantID := c.Param("tenantId")
+	tenantID, err := uuid.Parse(c.Param("tenantId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var tenant models.Tenant
 	if err := database.DB.Where("id = ?", tenantID).First(&tenant).Error; err != nil {

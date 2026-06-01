@@ -1,0 +1,35 @@
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - misspell
+    - gofmt
+    - goimports
+
+linters-settings:
+  errcheck:
+    check-blank: true
+    check-type-assertions: true
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment
+
+issues:
+  exclude-rules:
+    - linters:
+        - errcheck
+      source: "_ = .*\\.(Publish|Ack|Nack|Marshal|Unmarshal|WriteFile|Atoi|QueueBind|ExchangeDeclare|Connect)\\("
+    - path: ".*_test\\.go"
+      linters:
+        - errcheck
+  max-issues-per-linter: 0
+  max-same-issues: 0

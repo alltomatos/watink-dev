@@ -11,7 +11,11 @@ import (
 )
 
 func ListKnowledgeBases(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var knowledgeBases []models.KnowledgeBase
 	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Find(&knowledgeBases).Error; err != nil {
@@ -23,7 +27,11 @@ func ListKnowledgeBases(c *gin.Context) {
 }
 
 func ShowKnowledgeBase(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	id := c.Param("knowledgeBaseId")
 
 	var knowledgeBase models.KnowledgeBase
@@ -36,7 +44,11 @@ func ShowKnowledgeBase(c *gin.Context) {
 }
 
 func CreateKnowledgeBase(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var knowledgeBase models.KnowledgeBase
 	if err := c.ShouldBindJSON(&knowledgeBase); err != nil {
@@ -44,7 +56,7 @@ func CreateKnowledgeBase(c *gin.Context) {
 		return
 	}
 
-	knowledgeBase.TenantID = tenantID.(uuid.UUID)
+	knowledgeBase.TenantID = tenantID
 	if err := database.DB.Create(&knowledgeBase).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create knowledge base"})
 		return
@@ -54,7 +66,11 @@ func CreateKnowledgeBase(c *gin.Context) {
 }
 
 func UpdateKnowledgeBase(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	id := c.Param("knowledgeBaseId")
 
 	var knowledgeBase models.KnowledgeBase
@@ -81,7 +97,11 @@ func UpdateKnowledgeBase(c *gin.Context) {
 }
 
 func DeleteKnowledgeBase(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	id := c.Param("knowledgeBaseId")
 
 	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Delete(&models.KnowledgeBase{}).Error; err != nil {
@@ -93,7 +113,11 @@ func DeleteKnowledgeBase(c *gin.Context) {
 }
 
 func CreateKnowledgeBaseSource(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	knowledgeBaseID := c.Param("knowledgeBaseId")
 
 	var kb models.KnowledgeBase
@@ -134,7 +158,11 @@ func CreateKnowledgeBaseSource(c *gin.Context) {
 }
 
 func DeleteKnowledgeBaseSource(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	knowledgeBaseID := c.Param("knowledgeBaseId")
 	sourceID := c.Param("sourceId")
 

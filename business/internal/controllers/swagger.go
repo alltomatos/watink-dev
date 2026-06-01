@@ -66,8 +66,13 @@ func hasSwaggerGroupPermission(userID int, tenantID string) bool {
 		return false
 	}
 
+	parsedTenantID, err := uuid.Parse(tenantID)
+	if err != nil {
+		return false
+	}
+
 	var user models.User
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", userID, tenantID).First(&user).Error; err != nil || user.GroupID == nil {
+	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", userID, parsedTenantID).First(&user).Error; err != nil || user.GroupID == nil {
 		return false
 	}
 

@@ -146,6 +146,33 @@ SMOKE_BASE_URL=http://localhost:3000 SMOKE_EMAIL=user@example.com SMOKE_PASS=sec
 - **Redis transient store**: messages cached with TTL 24h at key `wbot:msg:{jid}:{id}` for retry after engine restart
 - **Plugin activation**: no code download — built-in plugins are unlocked by flipping `PluginInstallations.active` in DB after Manager license check
 
+## Skills (Claude Code)
+
+Skills são comandos especializados (`/nome`) que automatizam fluxos recorrentes. Cada skill vive em `.claude/skills/<nome>/` com seu `SKILL.md` e script `.mjs`.
+
+| Skill | Comando | Descrição |
+|---|---|---|
+| **devops-ops** | `/devops-ops` | GitFlow automatizado — cria/termina/aborta branches feature/release/hotfix, status do flow, auto-commit com conventional commits, smart-commit (commit + draft PR), proteção de branch, CI status/logs, health do stack Docker, PR com risk assessment. Guardrails: sem push direto em main/develop, secret scanning, dry-run. |
+| **designer** | `/designer` | Design system do frontend — parseia tokens MUI v4 do `DarkMode/index.js`, audita cores hardcoded e gaps dark-mode em 112+ `makeStyles`, tira screenshots via puppeteer/chromium-cli, modifica tokens no source, lista/compara/alterna temas (apple vs saas). |
+| **run-watink** | `/run-watink` | Build e orquestração do stack completo — gerencia dependências Docker (PostgreSQL, Redis, RabbitMQ), build/start dos 5 serviços, health checks (`/api/v1/health`), status, screenshots, graceful shutdown. |
+| **tenant-guard** | `/tenant-guard` | Auditoria read-only de multitenancy — escaneia controllers e services do backend Go buscando filtros `tenantId` ausentes em queries GORM, operações destrutivas sem escopo tenant, raw SQL sem tenant scoping, e contexto tenant não propagado. Reporta severidade HIGH/MEDIUM/LOW. Use **antes** de alterar qualquer controller/service que toque dados tenant. |
+| **backend** | `/backend` | Diagnóstico e implementação do fluxo command/event (Backend ↔ RabbitMQ ↔ Engine Go/whatsmeow). Rastreamento root-to-cause do ciclo mensagem/QR, comandos Docker/RabbitMQ/psql, checklist de 9 passos do fluxo de mensagem, padrões de falha comuns. Regra: sem fixes especulativos, apenas mudanças mínimas no boundary identificado. |
+
+### Uso
+
+```bash
+# Exemplos de invocação no Claude Code REPL
+/devops-ops feature start user-avatar
+/devops-ops flow status
+/designer tokens
+/designer audit
+/run-watink health
+/tenant-guard scan
+/backend diagnose qr-not-loading
+```
+
+Skills são invocados via `/nome` no REPL do Claude Code. O script associado executa e retorna resultado estruturado. Para detalhes completos de cada skill, consulte `.claude/skills/<nome>/SKILL.md`.
+
 ## Core Engineering & Testing Guidelines
 
 - **Segurança (Multitenancy)**: Em qualquer novo controller do Gin no diretório `business/`, é estritamente obrigatório utilizar o utilitário `tenantUUIDFromContext(c)` para extrair o ID do cliente. Nunca utilize `c.Get("tenantId")` com tipagem genérica ou bruta.

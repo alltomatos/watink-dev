@@ -2,14 +2,14 @@ package controllers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
 
-	"github.com/alltomatos/watinkdev/business/internal/application"
-	"github.com/alltomatos/watinkdev/business/internal/database"
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -39,18 +39,9 @@ func TestUpdateContactDoesNotAcceptTenantIDFromPayload(t *testing.T) {
 	)`).Error; err != nil {
 		t.Fatal(err)
 	}
-	previousDB := database.DB
-	database.DB = db
 
-	// Initialize container for test context
-	previousContainer := appContainer
-	appContainer = &application.Container{
-		ContactRepo: &MockContactRepo{db: db},
-	}
-	t.Cleanup(func() {
-		database.DB = previousDB
-		appContainer = previousContainer
-	})
+	mockRepo := &MockContactRepo{db: db}
+	controller := NewContactController(mockRepo)
 
 	tenantA := uuid.New()
 	tenantB := uuid.New()
@@ -75,7 +66,7 @@ func TestUpdateContactDoesNotAcceptTenantIDFromPayload(t *testing.T) {
 	router.PUT("/contacts/:contactId", func(c *gin.Context) {
 		c.Set("tenantId", tenantA.String())
 		c.Set("userProfile", "admin")
-		UpdateContact(c)
+		controller.UpdateContact(c)
 	})
 
 	req := httptest.NewRequest(http.MethodPut, "/contacts/"+strconv.Itoa(contact.ID), bytes.NewReader(body))
@@ -102,19 +93,31 @@ func TestUpdateContactDoesNotAcceptTenantIDFromPayload(t *testing.T) {
 	}
 }
 
-type MockContactRepo struct { db *gorm.DB }
+type MockContactRepo struct{ db *gorm.DB }
 
 func (m *MockContactRepo) FindByID(ctx context.Context, id int, tenantID uuid.UUID) (*domain.Contact, error) {
 	var c models.Contact
-	if err := m.db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&c).Error; err != nil { return nil, err }
+	if err := m.db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&c).Error; err != nil {
+		return nil, err
+	}
 	return &domain.Contact{ID: c.ID, Name: c.Name, TenantID: c.TenantID}, nil
 }
 func (m *MockContactRepo) Update(ctx context.Context, contact *domain.Contact, fields map[string]interface{}) error {
 	return m.db.Model(&models.Contact{}).Where("id = ? AND \"tenantId\" = ?", contact.ID, contact.TenantID).Updates(fields).Error
 }
-func (m *MockContactRepo) Find(ctx context.Context, tenantID uuid.UUID, search string) ([]domain.Contact, error) { return nil, nil }
-func (m *MockContactRepo) FindByNumber(ctx context.Context, tenantID uuid.UUID, number string, isGroup bool) (*domain.Contact, error) { return nil, nil }
-func (m *MockContactRepo) FindByLID(ctx context.Context, tenantID uuid.UUID, lid string, isGroup bool) (*domain.Contact, error) { return nil, nil }
-func (m *MockContactRepo) FindOrCreate(ctx context.Context, tenantID uuid.UUID, number, pushName, profilePicUrl string, isGroup, isLid bool, lid string) (*domain.Contact, error) { return nil, nil }
+func (m *MockContactRepo) Find(ctx context.Context, tenantID uuid.UUID, search string) ([]domain.Contact, error) {
+	return nil, nil
+}
+func (m *MockContactRepo) FindByNumber(ctx context.Context, tenantID uuid.UUID, number string, isGroup bool) (*domain.Contact, error) {
+	return nil, nil
+}
+func (m *MockContactRepo) FindByLID(ctx context.Context, tenantID uuid.UUID, lid string, isGroup bool) (*domain.Contact, error) {
+	return nil, nil
+}
+func (m *MockContactRepo) FindOrCreate(ctx context.Context, tenantID uuid.UUID, number, pushName, profilePicUrl string, isGroup, isLid bool, lid string) (*domain.Contact, error) {
+	return nil, nil
+}
 func (m *MockContactRepo) Create(ctx context.Context, contact *domain.Contact) error { return nil }
-func (m *MockContactRepo) Delete(ctx context.Context, id int, tenantID uuid.UUID) error { return nil }
+func (m *MockContactRepo) Delete(ctx context.Context, id int, tenantID uuid.UUID) error {
+	return nil
+}

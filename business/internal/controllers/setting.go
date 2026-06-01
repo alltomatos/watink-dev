@@ -11,7 +11,11 @@ import (
 )
 
 func ListSettings(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var settings []models.Setting
 	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Find(&settings).Error; err != nil {
@@ -41,9 +45,9 @@ func GetPublicSettings(c *gin.Context) {
 }
 
 func UpdateSetting(c *gin.Context) {
-	tenantIDRaw, exists := c.Get("tenantId")
-	if !exists {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId is required"})
+	tenantUUID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
 		return
 	}
 	key := c.Param("key")
@@ -53,22 +57,6 @@ func UpdateSetting(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	var tenantUUID uuid.UUID
-	switch v := tenantIDRaw.(type) {
-	case uuid.UUID:
-		tenantUUID = v
-	case string:
-		parsed, err := uuid.Parse(v)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
-			return
-		}
-		tenantUUID = parsed
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID type"})
 		return
 	}
 
