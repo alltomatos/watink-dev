@@ -72,8 +72,12 @@ func InitialSetup(c *gin.Context) {
 	var permissions []models.Permission
 	database.DB.Find(&permissions)
 	for _, p := range permissions {
-		database.DB.Exec("INSERT INTO \"GroupPermissions\" (\"groupId\", \"permissionId\", \"tenantId\", \"createdAt\", \"updatedAt\") VALUES (?, ?, ?, now(), now())",
-			group.ID, p.ID, tenant.ID)
+		err := database.DB.Exec("INSERT INTO group_permissions (group_id, permission_id) VALUES (?, ?)",
+			group.ID, p.ID).Error
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to assign group permissions"})
+			return
+		}
 	}
 
 	// 5. User
