@@ -10,6 +10,8 @@
     "playwright-core": "^1.58.2"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
     "playwright": "^1.58.2"
   },
   "scripts": {
@@ -25,7 +27,17 @@
     "linux:docker:business:rebuild": "bash ./scripts/linux-docker-business.sh rebuild",
     "linux:docker:dev": "docker compose -f docker-compose.dev.yml up",
     "linux:docker:dev:build": "docker compose -f docker-compose.dev.yml up --build",
-    "linux:docker:dev:down": "docker compose -f docker-compose.dev.yml down"
+    "linux:docker:dev:down": "docker compose -f docker-compose.dev.yml down",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "frontend/**/*.{js,jsx,ts,tsx}": [
+      "cd frontend && npx eslint --max-warnings=0"
+    ],
+    "business/**/*.go": [
+      "gofmt -w",
+      "git add"
+    ]
   },
   "repository": {
     "type": "git",
