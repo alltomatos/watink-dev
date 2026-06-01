@@ -83,6 +83,7 @@ jobs:
         with:
           working-directory: business
           version: v2.12.2
+          only-new-issues: true
 
       - name: Run unit tests
         working-directory: business
