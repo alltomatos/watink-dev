@@ -187,9 +187,24 @@ jobs:
           SMOKE_EMAIL: admin@test.com
           SMOKE_PASS: test123
         run: |
-          curl -s -X POST "$SMOKE_BASE_URL/initial-setup" \
-            -H "Content-Type: application/json" \
-            -d '{"firstName":"Admin","lastName":"Test","email":"'"$SMOKE_EMAIL"'","password":"'"$SMOKE_PASS"'","document":"12345678900"}' || echo "Setup already done or failed"
+          python3 - <<'PY'
+          import json
+          import os
+          import requests
+
+          base = os.environ["SMOKE_BASE_URL"]
+          payload = {
+              "firstName": "Admin",
+              "lastName": "Test",
+              "email": os.environ["SMOKE_EMAIL"],
+              "password": os.environ["SMOKE_PASS"],
+              "document": "12345678900",
+          }
+          resp = requests.post(f"{base}/initial-setup", json=payload, timeout=15)
+          print(resp.status_code, resp.text)
+          if resp.status_code not in (200, 403):
+              raise SystemExit("initial-setup failed")
+          PY
 
       - name: Run smoke tests
         env:
