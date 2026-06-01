@@ -2,5 +2,5 @@ package web
 
 import "embed"
 
-//go:embed all:build/*
+//go:embed all:placeholder.txt
 var StaticFiles embed.FS
