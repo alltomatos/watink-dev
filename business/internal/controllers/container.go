@@ -5,12 +5,10 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/database"
 )
 
-// appContainer holds the DI container for all controllers.
-// Initialized once at startup via InitContainer.
-var appContainer *application.Container
-
 // InitContainer initializes the dependency injection container.
 // Called once at startup in main.go.
 func InitContainer() {
-	appContainer = application.NewContainer(database.DB)
+	// Legacy global variable removed in favor of DI injection
+	// Use NewController(db) instead of relying on appContainer
+	_ = application.NewContainer(database.DB)
 }

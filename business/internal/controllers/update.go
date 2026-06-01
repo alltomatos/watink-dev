@@ -118,7 +118,7 @@ func performUpdate(version string) {
 
 	// A. Backup do Banco de Dados
 	// Nota: Em ambiente Docker, precisaríamos do pg_dump instalado ou rodar via exec no container do banco
-	// Por simplicidade técnica neste momento, registramos o log.
+	// Temporarily, we only log this step for technical simplicity.
 	// Em produção, usaríamos as envs DB_HOST, DB_USER, etc.
 	fmt.Printf("[Update] Fazendo backup em %s...\n", backupFile)
 
