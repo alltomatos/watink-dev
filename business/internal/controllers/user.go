@@ -10,14 +10,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ListUsers(c *gin.Context) {
+type UserController struct {
+	userRepo domain.UserRepository
+}
+
+func NewUserController(ur domain.UserRepository) *UserController {
+	return &UserController{userRepo: ur}
+}
+
+func (uc *UserController) ListUsers(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
 		return
 	}
 
-	users, err := appContainer.UserRepo.FindAll(c.Request.Context(), tenantID)
+	users, err := uc.userRepo.FindAll(c.Request.Context(), tenantID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
@@ -28,7 +36,7 @@ func ListUsers(c *gin.Context) {
 	})
 }
 
-func ShowUser(c *gin.Context) {
+func (uc *UserController) ShowUser(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
@@ -36,16 +44,52 @@ func ShowUser(c *gin.Context) {
 	}
 	id, _ := strconv.Atoi(c.Param("userId"))
 
-	user, err := appContainer.UserRepo.FindByID(c.Request.Context(), id, tenantID)
-	if err != nil || user == nil {
+	// Usa busca enriquecida com relations
+	userModel, err := uc.userRepo.FindByIDDetail(c.Request.Context(), id, tenantID)
+	if err != nil || userModel == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found or access denied"})
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	// Monta resposta enriquecida
+	response := map[string]interface{}{
+		"id":         userModel.ID,
+		"name":       userModel.Name,
+		"email":      userModel.Email,
+		"profile":    userModel.Profile,
+		"whatsappId": userModel.WhatsappID,
+		"tenantId":   userModel.TenantID,
+		"groupId":    userModel.GroupID,
+		"configs":    userModel.Configs,
+		"createdAt":  userModel.CreatedAt,
+		"updatedAt":  userModel.UpdatedAt,
+	}
+
+	// Adiciona relations apenas se existirem
+	if len(userModel.Queues) > 0 {
+		response["queues"] = userModel.Queues
+	}
+	if len(userModel.Permissions) > 0 {
+		permissions := make([]map[string]interface{}, len(userModel.Permissions))
+		for i, p := range userModel.Permissions {
+			permissions[i] = map[string]interface{}{
+				"id":          p.ID,
+				"name":        p.GetName(),
+				"resource":    p.Resource,
+				"action":      p.Action,
+				"description": p.Description,
+			}
+		}
+		response["permissions"] = permissions
+	}
+	if len(userModel.Roles) > 0 {
+		response["roles"] = userModel.Roles
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
-func CreateUser(c *gin.Context) {
+func (uc *UserController) CreateUser(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
@@ -76,7 +120,7 @@ func CreateUser(c *gin.Context) {
 		Configs:      input.Configs,
 	}
 
-	if err := appContainer.UserRepo.Create(c.Request.Context(), domainUser); err != nil {
+	if err := uc.userRepo.Create(c.Request.Context(), domainUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
 	}
@@ -84,7 +128,7 @@ func CreateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, domainUser)
 }
 
-func UpdateUser(c *gin.Context) {
+func (uc *UserController) UpdateUser(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
@@ -92,7 +136,7 @@ func UpdateUser(c *gin.Context) {
 	}
 	id, _ := strconv.Atoi(c.Param("userId"))
 
-	user, err := appContainer.UserRepo.FindByID(c.Request.Context(), id, tenantID)
+	user, err := uc.userRepo.FindByID(c.Request.Context(), id, tenantID)
 	if err != nil || user == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found or access denied"})
 		return
@@ -143,7 +187,7 @@ func UpdateUser(c *gin.Context) {
 		}
 	}
 
-	if err := appContainer.UserRepo.Update(c.Request.Context(), user, updateMap); err != nil {
+	if err := uc.userRepo.Update(c.Request.Context(), user, updateMap); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
 		return
 	}
@@ -151,7 +195,7 @@ func UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-func DeleteUser(c *gin.Context) {
+func (uc *UserController) DeleteUser(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
@@ -159,7 +203,7 @@ func DeleteUser(c *gin.Context) {
 	}
 	id, _ := strconv.Atoi(c.Param("userId"))
 
-	if err := appContainer.UserRepo.Delete(c.Request.Context(), id, tenantID); err != nil {
+	if err := uc.userRepo.Delete(c.Request.Context(), id, tenantID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return
 	}
@@ -167,7 +211,6 @@ func DeleteUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }
 
-// formatInt converts an interface{} (float64 from JSON or string) to int64.
 func formatInt(v interface{}) int64 {
 	switch n := v.(type) {
 	case float64:

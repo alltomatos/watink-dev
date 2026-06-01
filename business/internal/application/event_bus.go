@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
@@ -32,7 +33,9 @@ func (b *InMemoryEventBus) Publish(ctx context.Context, event domain.DomainEvent
 
 	for _, handler := range handlers {
 		go func(h domain.EventHandler) {
-			_ = h(ctx, event)
+			if err := h(ctx, event); err != nil {
+				log.Printf("eventbus: handler error for event %q: %v", event.EventName(), err)
+			}
 		}(handler)
 	}
 

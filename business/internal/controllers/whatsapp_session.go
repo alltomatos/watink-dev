@@ -10,7 +10,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func StartSession(c *gin.Context) {
+type SessionController struct {
+	sessionRepo domain.ChannelSessionRepository
+}
+
+func NewSessionController(sr domain.ChannelSessionRepository) *SessionController {
+	return &SessionController{sessionRepo: sr}
+}
+
+func (sc *SessionController) StartSession(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
@@ -18,7 +26,7 @@ func StartSession(c *gin.Context) {
 	}
 	whatsappID, _ := strconv.Atoi(c.Param("whatsappId"))
 
-	session, err := appContainer.ChannelSessionRepo.FindByID(c.Request.Context(), whatsappID, tenantID)
+	session, err := sc.sessionRepo.FindByID(c.Request.Context(), whatsappID, tenantID)
 	if err != nil || session == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "WhatsApp connection not found or access denied"})
 		return
@@ -38,7 +46,7 @@ func StartSession(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Starting session."})
 }
 
-func StopSession(c *gin.Context) {
+func (sc *SessionController) StopSession(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
@@ -46,14 +54,13 @@ func StopSession(c *gin.Context) {
 	}
 	whatsappID, _ := strconv.Atoi(c.Param("whatsappId"))
 
-	session, err := appContainer.ChannelSessionRepo.FindByID(c.Request.Context(), whatsappID, tenantID)
+	session, err := sc.sessionRepo.FindByID(c.Request.Context(), whatsappID, tenantID)
 	if err != nil || session == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "WhatsApp connection not found or access denied"})
 		return
 	}
 
-	// Update status locally for immediate feedback
-	if err := appContainer.ChannelSessionRepo.Update(c.Request.Context(), session, map[string]interface{}{"status": "DISCONNECTED"}); err != nil {
+	if err := sc.sessionRepo.Update(c.Request.Context(), session, map[string]interface{}{"status": "DISCONNECTED"}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update session status"})
 		return
 	}
@@ -63,7 +70,6 @@ func StopSession(c *gin.Context) {
 		return
 	}
 
-	// Emit via Socket
 	services.EmitToNamespace("/", "whatsappSession", map[string]interface{}{
 		"action":  "update",
 		"session": session,
@@ -72,14 +78,14 @@ func StopSession(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Session disconnected."})
 }
 
-func RestartAllSessions(c *gin.Context) {
+func (sc *SessionController) RestartAllSessions(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
 		return
 	}
 
-	whatsapps, err := appContainer.ChannelSessionRepo.FindAll(c.Request.Context(), tenantID)
+	whatsapps, err := sc.sessionRepo.FindAll(c.Request.Context(), tenantID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch WhatsApp connections"})
 		return
@@ -92,9 +98,6 @@ func RestartAllSessions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Restarting all sessions."})
 }
 
-// channelSessionToModel converts domain.ChannelSession to models.Whatsapp
-// for compatibility with the services layer that still depends on models.
-// Temporary adapter — remove once services use domain types.
 func channelSessionToModel(s *domain.ChannelSession) models.Whatsapp {
 	return models.Whatsapp{
 		ID:              s.ID,

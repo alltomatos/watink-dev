@@ -10,14 +10,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ListWhatsapps(c *gin.Context) {
+type WhatsappController struct {
+	sessionRepo domain.ChannelSessionRepository
+}
+
+func NewWhatsappController(sr domain.ChannelSessionRepository) *WhatsappController {
+	return &WhatsappController{sessionRepo: sr}
+}
+
+func (wc *WhatsappController) ListWhatsapps(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
 		return
 	}
 
-	whatsapps, err := appContainer.ChannelSessionRepo.FindAll(c.Request.Context(), tenantID)
+	whatsapps, err := wc.sessionRepo.FindAll(c.Request.Context(), tenantID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch WhatsApp connections"})
 		return
@@ -26,7 +34,7 @@ func ListWhatsapps(c *gin.Context) {
 	c.JSON(http.StatusOK, whatsapps)
 }
 
-func ShowWhatsapp(c *gin.Context) {
+func (wc *WhatsappController) ShowWhatsapp(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
@@ -34,23 +42,53 @@ func ShowWhatsapp(c *gin.Context) {
 	}
 	id, _ := strconv.Atoi(c.Param("id"))
 
-	whatsapp, err := appContainer.ChannelSessionRepo.FindByID(c.Request.Context(), id, tenantID)
-	if err != nil || whatsapp == nil {
+	// Usa busca enriquecida com relations
+	whatsappModel, err := wc.sessionRepo.FindByIDDetail(c.Request.Context(), id, tenantID)
+	if err != nil || whatsappModel == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "WhatsApp connection not found or access denied"})
 		return
 	}
 
-	c.JSON(http.StatusOK, whatsapp)
+	// Monta resposta enriquecida
+	response := map[string]interface{}{
+		"id":              whatsappModel.ID,
+		"session":         whatsappModel.Session,
+		"qrcode":          whatsappModel.Qrcode,
+		"status":          whatsappModel.Status,
+		"battery":         whatsappModel.Battery,
+		"plugged":         whatsappModel.Plugged,
+		"name":            whatsappModel.Name,
+		"isDefault":       whatsappModel.IsDefault,
+		"retries":         whatsappModel.Retries,
+		"greetingMessage": whatsappModel.GreetingMessage,
+		"farewellMessage": whatsappModel.FarewellMessage,
+		"tenantId":        whatsappModel.TenantID,
+		"syncHistory":     whatsappModel.SyncHistory,
+		"syncPeriod":      whatsappModel.SyncPeriod,
+		"number":          whatsappModel.Number,
+		"profilePicUrl":   whatsappModel.ProfilePicUrl,
+		"keepAlive":       whatsappModel.KeepAlive,
+		"createdAt":       whatsappModel.CreatedAt,
+		"updatedAt":       whatsappModel.UpdatedAt,
+		"firstConnection": whatsappModel.FirstConnection,
+		"engineType":      whatsappModel.EngineType,
+	}
+
+	// Adiciona relations apenas se existirem
+	if len(whatsappModel.Queues) > 0 {
+		response["queues"] = whatsappModel.Queues
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
-func CreateWhatsapp(c *gin.Context) {
+func (wc *WhatsappController) CreateWhatsapp(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
 		return
 	}
 
-	// SaaS Limit Check
 	limitService := services.NewPlanLimitService()
 	if err := limitService.CheckLimit(tenantID, "connections"); err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
@@ -69,13 +107,13 @@ func CreateWhatsapp(c *gin.Context) {
 	}
 
 	if input.IsDefault {
-		if err := appContainer.ChannelSessionRepo.ResetDefaultFlag(c.Request.Context(), tenantID); err != nil {
+		if err := wc.sessionRepo.ResetDefaultFlag(c.Request.Context(), tenantID); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset default connection"})
 			return
 		}
 	}
 
-	if err := appContainer.ChannelSessionRepo.Create(c.Request.Context(), &input); err != nil {
+	if err := wc.sessionRepo.Create(c.Request.Context(), &input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -83,7 +121,7 @@ func CreateWhatsapp(c *gin.Context) {
 	c.JSON(http.StatusOK, input)
 }
 
-func UpdateWhatsapp(c *gin.Context) {
+func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
@@ -91,7 +129,7 @@ func UpdateWhatsapp(c *gin.Context) {
 	}
 	id, _ := strconv.Atoi(c.Param("id"))
 
-	whatsapp, err := appContainer.ChannelSessionRepo.FindByID(c.Request.Context(), id, tenantID)
+	whatsapp, err := wc.sessionRepo.FindByID(c.Request.Context(), id, tenantID)
 	if err != nil || whatsapp == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "WhatsApp connection not found or access denied"})
 		return
@@ -104,7 +142,7 @@ func UpdateWhatsapp(c *gin.Context) {
 	}
 
 	if input.IsDefault {
-		if err := appContainer.ChannelSessionRepo.ResetDefaultFlag(c.Request.Context(), tenantID); err != nil {
+		if err := wc.sessionRepo.ResetDefaultFlag(c.Request.Context(), tenantID); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset default connection"})
 			return
 		}
@@ -129,12 +167,12 @@ func UpdateWhatsapp(c *gin.Context) {
 		"engineType":      input.EngineType,
 	}
 
-	if err := appContainer.ChannelSessionRepo.Update(c.Request.Context(), whatsapp, fields); err != nil {
+	if err := wc.sessionRepo.Update(c.Request.Context(), whatsapp, fields); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	updated, err := appContainer.ChannelSessionRepo.FindByID(c.Request.Context(), id, tenantID)
+	updated, err := wc.sessionRepo.FindByID(c.Request.Context(), id, tenantID)
 	if err != nil || updated == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "WhatsApp connection not found or access denied"})
 		return
@@ -143,7 +181,7 @@ func UpdateWhatsapp(c *gin.Context) {
 	c.JSON(http.StatusOK, updated)
 }
 
-func DeleteWhatsapp(c *gin.Context) {
+func (wc *WhatsappController) DeleteWhatsapp(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
@@ -151,7 +189,7 @@ func DeleteWhatsapp(c *gin.Context) {
 	}
 	id, _ := strconv.Atoi(c.Param("id"))
 
-	whatsapp, err := appContainer.ChannelSessionRepo.FindByID(c.Request.Context(), id, tenantID)
+	whatsapp, err := wc.sessionRepo.FindByID(c.Request.Context(), id, tenantID)
 	if err != nil || whatsapp == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "WhatsApp connection not found or access denied"})
 		return
@@ -185,12 +223,11 @@ func DeleteWhatsapp(c *gin.Context) {
 		return
 	}
 
-	if err := appContainer.ChannelSessionRepo.DeleteWithRelations(c.Request.Context(), id, tenantID); err != nil {
+	if err := wc.sessionRepo.DeleteWithRelations(c.Request.Context(), id, tenantID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to delete connection: " + err.Error()})
 		return
 	}
 
-	// Notify via socket
 	services.EmitToNamespace("/", "whatsapp", gin.H{
 		"action":     "delete",
 		"whatsappId": whatsapp.ID,

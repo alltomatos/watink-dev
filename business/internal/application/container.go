@@ -85,17 +85,3 @@ func NewContainer(db *gorm.DB) *Container {
 		LogTicketAction:    logTicketAction,
 	}
 }
-
-// Global container instance for services that can't receive it via dependency injection.
-// This is a transitional pattern; prefer explicit DI when possible.
-var globalContainer *Container
-
-// SetGlobalContainer stores the container for global access.
-func SetGlobalContainer(c *Container) {
-	globalContainer = c
-}
-
-// GetGlobalContainer returns the global container instance.
-func GetGlobalContainer() *Container {
-	return globalContainer
-}

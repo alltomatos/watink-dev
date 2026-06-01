@@ -11,6 +11,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 func extractToken(c *gin.Context) string {

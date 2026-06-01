@@ -1,15 +1,24 @@
 package routes
 
 import (
+	"github.com/alltomatos/watinkdev/business/internal/application"
 	"github.com/alltomatos/watinkdev/business/internal/controllers"
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(group *gin.RouterGroup) {
+func SetupRoutes(group *gin.RouterGroup, rabbitMQ domain.RabbitMQServiceInterface, container *application.Container) {
+	messageController := controllers.NewMessageController(rabbitMQ)
+	userController := controllers.NewUserController(container.UserRepo)
+	contactController := controllers.NewContactController(container.ContactRepo)
+	sessionController := controllers.NewSessionController(container.ChannelSessionRepo)
+	ticketController := controllers.NewTicketController(container.UpdateTicket)
+	whatsappController := controllers.NewWhatsappController(container.ChannelSessionRepo)
+	authController := controllers.NewAuthController(container.UserRepo)
 	// Public Routes
-	group.POST("/auth/login", controllers.Login)
-	group.POST("/auth/refresh_token", controllers.RefreshToken)
+	group.POST("/auth/login", authController.Login)
+	group.POST("/auth/refresh_token", authController.RefreshToken)
 	group.GET("/public-settings", controllers.GetPublicSettings)
 	group.GET("/initial-setup/check", controllers.CheckSetup)
 	group.POST("/initial-setup", controllers.InitialSetup)
@@ -37,48 +46,48 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.GET("/system/latest-release", controllers.GetLatestRelease)
 		protected.POST("/system/update", controllers.StartUpdate)
 		// Auth
-		protected.DELETE("/auth/logout", controllers.Logout)
+		protected.DELETE("/auth/logout", authController.Logout)
 
 		// Settings
 		protected.GET("/settings", controllers.ListSettings)
 		protected.PUT("/settings/:key", controllers.UpdateSetting)
 
 		// Tickets
-		protected.GET("/tickets", controllers.ListTickets)
-		protected.GET("/tickets/", controllers.ListTickets)
-		protected.GET("/tickets/:ticketId", controllers.ShowTicket)
-		protected.PUT("/tickets/:ticketId", controllers.UpdateTicket)
-		protected.GET("/tickets/:ticketId/logs", controllers.ListTicketLogs)
+		protected.GET("/tickets", ticketController.ListTickets)
+		protected.GET("/tickets/", ticketController.ListTickets)
+		protected.GET("/tickets/:ticketId", ticketController.ShowTicket)
+		protected.PUT("/tickets/:ticketId", ticketController.UpdateTicket)
+		protected.GET("/tickets/:ticketId/logs", ticketController.ListTicketLogs)
 
 		// Dashboard
 		protected.GET("/dashboard", controllers.GetDashboardData)
 
 		// Messages
-		protected.GET("/messages/:ticketId", controllers.ListMessages)
-		protected.POST("/messages/:ticketId", controllers.SendMessage)
+		protected.GET("/messages/:ticketId", messageController.ListMessages)
+		protected.POST("/messages/:ticketId", messageController.SendMessage)
 
 		// WhatsApp Connections
-		protected.GET("/whatsapp", controllers.ListWhatsapps)
-		protected.GET("/whatsapp/", controllers.ListWhatsapps)
-		protected.GET("/whatsapp/:id", controllers.ShowWhatsapp)
-		protected.POST("/whatsapp", controllers.CreateWhatsapp)
-		protected.PUT("/whatsapp/:id", controllers.UpdateWhatsapp)
-		protected.DELETE("/whatsapp/:id", controllers.DeleteWhatsapp)
+		protected.GET("/whatsapp", whatsappController.ListWhatsapps)
+		protected.GET("/whatsapp/", whatsappController.ListWhatsapps)
+		protected.GET("/whatsapp/:id", whatsappController.ShowWhatsapp)
+		protected.POST("/whatsapp", whatsappController.CreateWhatsapp)
+		protected.PUT("/whatsapp/:id", whatsappController.UpdateWhatsapp)
+		protected.DELETE("/whatsapp/:id", whatsappController.DeleteWhatsapp)
 
 		// WhatsApp Sessions
-		protected.POST("/whatsappsession/all", controllers.RestartAllSessions)
-		protected.POST("/whatsappsession/:whatsappId", controllers.StartSession)
-		protected.PUT("/whatsappsession/:whatsappId", controllers.StartSession)
-		protected.DELETE("/whatsappsession/:whatsappId", controllers.StopSession)
+		protected.POST("/whatsappsession/all", sessionController.RestartAllSessions)
+		protected.POST("/whatsappsession/:whatsappId", sessionController.StartSession)
+		protected.PUT("/whatsappsession/:whatsappId", sessionController.StartSession)
+		protected.DELETE("/whatsappsession/:whatsappId", sessionController.StopSession)
 
 		// Contacts
-		protected.GET("/contacts", controllers.ListContacts)
-		protected.GET("/contacts/", controllers.ListContacts)
-		protected.GET("/contacts/:contactId", controllers.ShowContact)
-		protected.POST("/contacts", controllers.CreateContact)
-		protected.POST("/contacts/", controllers.CreateContact)
-		protected.PUT("/contacts/:contactId", controllers.UpdateContact)
-		protected.DELETE("/contacts/:contactId", controllers.DeleteContact)
+		protected.GET("/contacts", contactController.ListContacts)
+		protected.GET("/contacts/", contactController.ListContacts)
+		protected.GET("/contacts/:contactId", contactController.ShowContact)
+		protected.POST("/contacts", contactController.CreateContact)
+		protected.POST("/contacts/", contactController.CreateContact)
+		protected.PUT("/contacts/:contactId", contactController.UpdateContact)
+		protected.DELETE("/contacts/:contactId", contactController.DeleteContact)
 
 		// Queues
 		protected.GET("/queue", controllers.ListQueues)
@@ -109,12 +118,12 @@ func SetupRoutes(group *gin.RouterGroup) {
 		protected.DELETE("/knowledge-bases/:knowledgeBaseId/sources/:sourceId", controllers.DeleteKnowledgeBaseSource)
 
 		// Users
-		protected.GET("/users", controllers.ListUsers)
-		protected.GET("/users/", controllers.ListUsers)
-		protected.GET("/users/:userId", controllers.ShowUser)
-		protected.POST("/users", controllers.CreateUser)
-		protected.PUT("/users/:userId", controllers.UpdateUser)
-		protected.DELETE("/users/:userId", controllers.DeleteUser)
+		protected.GET("/users", userController.ListUsers)
+		protected.GET("/users/", userController.ListUsers)
+		protected.GET("/users/:userId", userController.ShowUser)
+		protected.POST("/users", userController.CreateUser)
+		protected.PUT("/users/:userId", userController.UpdateUser)
+		protected.DELETE("/users/:userId", userController.DeleteUser)
 
 		// SaaS
 		protected.GET("/saas/tenants", controllers.ListTenants)

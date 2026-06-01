@@ -4,6 +4,21 @@
 
 Watink — plataforma open-source de atendimento e automação no WhatsApp. Arquitetura de microsserviços com comunicação via RabbitMQ, multitenancy via PostgreSQL RLS, e sistema de plugins com licenciamento centralizado.
 
+## Anti-Laziness & Strict Editing Rules
+
+1. **ZERO PSEUDOCÓDIGO (No Code Laziness):** É estritamente proibido o uso de omissões textuais como `// ...`, `// resto do código aqui`, ou `// rotas anteriores` ao utilizar a ferramenta de `Edit` ou `Write`. Você deve fornecer o código real, completo e funcional em todas as substituições.
+2. **EDIÇÕES CIRÚRGICAS (Atomic Edits):** Ao utilizar a ferramenta `Edit`, o bloco `old_string` deve ser o menor possível para isolar a mudança. Nunca inclua uma função inteira no `old_string` se você só precisa alterar a assinatura ou uma única linha interna. Isso evita a deleção acidental de blocos inteiros de código.
+3. **PROIBIDO INVENTAR CONTEXTO:** Nunca tente adivinhar o conteúdo de um bloco `old_string`. Se o compilador apontar um erro, utilize obrigatoriamente a ferramenta `Read` nas linhas específicas do erro ANTES de tentar aplicar um `Edit`.
+4. **DI PURA (Injeção via Construtor):** É proibido criar ou utilizar *Service Locators*, Containers Globais (ex: `appContainer`), ou Singletons para Injeção de Dependência. Todas as dependências devem ser instanciadas no arquivo raiz (`main.go`) e injetadas explicitamente via parâmetros em rotas e construtores.
+5. ciclo (Read -> Edit -> Build)
+
+## File Size Management & Anti-Loop Protocol (Divide and Conquer)
+
+1. **LIMITE DE ARQUIVO (Modularity First):** Arquivos muito extensos causam "cegueira de contexto" e falhas na ferramenta de edição. Sempre prefira dividir estruturas em múltiplos arquivos menores dentro do mesmo pacote (ex: `models.go`, `interfaces.go`, `events.go` em vez de um único `domain.go` gigante). Se um arquivo ultrapassar ~250 linhas, sugira proativamente o seu desmembramento.
+2. **O PODER DO PACOTE GO:** Lembre-se que em Go, arquivos no mesmo diretório compartilham o mesmo pacote (`package xyz`). Dividir arquivos não quebra importações externas. Use isso a nosso favor.
+3. **LEITURA COM OFFSET (Targeted Reads):** Ao editar arquivos que ainda são grandes, NUNCA faça edições cegas baseadas na memória. Use obrigatoriamente a ferramenta `Read` delimitando linhas precisas (`offset` e `limit`) para capturar o estado real do código antes de disparar o `Edit`.
+4. **QUEBRA DE LOOP (Human Takeover):** Se um `Edit failed` ocorrer duas vezes seguidas, ou se o `go build` acusar erros de sintaxe estrutural (como `non-declaration statement outside function body`) repetidamente: PARE IMEDIATAMENTE. Não tente adivinhar. Alerte o desenvolvedor para realizar uma intervenção manual no IDE e aguarde a confirmação de que o arquivo foi corrigido visualmente.
+
 ## Architecture
 
 ```
@@ -179,3 +194,12 @@ Skills são invocados via `/nome` no REPL do Claude Code. O script associado exe
 - **Injeção de Dependência (DI)**: Controllers e Services não devem instanciar dependências globais internamente. Utilize structs receptoras (ex: `type MessageController struct { rabbit domain.RabbitMQServiceInterface }`) e injete interfaces através de construtores. As implementações concretas devem ser mapeadas no arquivo de rotas.
 - **Padrão de Testes (Sem Globais)**: Ao escrever testes de integração no Go (ex: com `httptest`), é proibido o uso de variáveis globais para criar Mocks. Os Mocks devem ser encapsulados em structs locais instanciadas dentro de cada função `Test...` para garantir que o código seja thread-safe e suporte paralelismo.
 - **Prevenção de Perda de Dados**: Ao modificar arquivos grandes ou de domínio (`domain.go`), utilize ferramentas de Edit de forma pontual. O uso de Write sobrescrevendo o arquivo inteiro com resumos ou omissões é estritamente proibido.
+
+## Anti-Laziness & Strict Editing Rules
+
+Para manter a integridade do código e a qualidade arquitetural, as seguintes regras são estritas:
+
+1. **Zero Pseudocódigo**: É proibido substituir código real por comentários, resumos ou pseudocódigo (ex: `// ... rotas anteriores ...`). O código deve ser sempre funcional e completo.
+2. **Edições Atômicas**: Mudanças devem ser cirúrgicas e atômicas. Se um bloco grande falhar, faça edições menores e focadas.
+3. **Proibido Inventar Contexto**: Não assuma comportamentos ou estruturas que não foram previamente lidos através das ferramentas de Read. Na dúvida, leia o arquivo.
+4. **DI Pura (Anti-Singleton)**: É proibido o uso de variáveis globais de estado, Singletons ou Service Locators. Toda dependência deve ser passado explicitamente via construtores (Constructor Injection).

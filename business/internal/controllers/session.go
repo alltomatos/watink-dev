@@ -1,98 +1,81 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
-	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
+
+type AuthController struct {
+	userRepo domain.UserRepository
+}
+
+func NewAuthController(ur domain.UserRepository) *AuthController {
+	return &AuthController{userRepo: ur}
+}
 
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
 }
 
-type SerializedUser struct {
-	ID          int               `json:"id"`
-	Name        string            `json:"name"`
-	Email       string            `json:"email"`
-	Profile     string            `json:"profile"`
-	Queues      []models.Queue    `json:"queues"`
-	Whatsapp    *models.Whatsapp  `json:"whatsapp"`
-	Permissions []string          `json:"permissions"`
-	TenantID    string            `json:"tenantId"`
-}
-
-func Login(c *gin.Context) {
+func (ac *AuthController) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	var user models.User
-	if err := database.DB.Where("email = ?", req.Email).
-		Preload("Tenant").
-		First(&user).Error; err != nil {
+	domainUser, err := ac.userRepo.FindByEmailForAuth(c.Request.Context(), req.Email)
+	if err != nil || domainUser == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "ERR_INVALID_CREDENTIALS"})
 		return
 	}
 
-	if !user.CheckPassword(req.Password) {
+	userModel := domain.User{PasswordHash: domainUser.PasswordHash}
+	if !userModel.CheckPassword(req.Password) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "ERR_INVALID_CREDENTIALS"})
 		return
 	}
 
-	token, err := utils.GenerateAccessToken(user)
+	claims := utils.JWTClaims{
+		Name:         domainUser.Name,
+		ID:           domainUser.ID,
+		Profile:      domainUser.Profile,
+		TenantID:     domainUser.TenantID,
+		TokenVersion: domainUser.TokenVersion,
+	}
+
+	token, err := utils.GenerateAccessToken(claims)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
-	refreshToken, err := utils.GenerateRefreshToken(user)
+	refreshToken, err := utils.GenerateRefreshToken(claims)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
 		return
 	}
 
-	// Fetch permissions
-	var permissions []string
-	if user.GroupID != nil {
-		var group models.Group
-		database.DB.Preload("Permissions").First(&group, *user.GroupID)
-		for _, p := range group.Permissions {
-			permissions = append(permissions, p.GetName())
-		}
-	}
-
-	serializedUser := SerializedUser{
-		ID:          user.ID,
-		Name:        user.Name,
-		Email:       user.Email,
-		Profile:     user.Profile,
-		Queues:      []models.Queue{}, // TODO: Fetch queues
-		Permissions: permissions,
-		TenantID:    user.TenantID.String(),
-	}
-
-	// Set refresh token cookie (Secure flag based on env)
-	secure := os.Getenv("ENVIRONMENT") == "production"
-	c.SetCookie("jrt", refreshToken, 3600*24*7, "/", "", secure, true)
+	c.SetCookie("refreshToken", refreshToken, 3600*24*7, "/", "", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
-		"user":  serializedUser,
+		"user":  domainUser,
 	})
 }
 
-func RefreshToken(c *gin.Context) {
-	tokenString, err := c.Cookie("jrt")
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "ERR_SESSION_EXPIRED"})
+func (ac *AuthController) RefreshToken(c *gin.Context) {
+	refreshTokenStr, err := c.Cookie("refreshToken")
+	if err != nil || refreshTokenStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "No refresh token provided"})
 		return
 	}
 
@@ -101,62 +84,66 @@ func RefreshToken(c *gin.Context) {
 		secret = "default_refresh_secret"
 	}
 
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(refreshTokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
 		return []byte(secret), nil
 	})
 
 	if err != nil || !token.Valid {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "ERR_INVALID_TOKEN"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
 		return
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "ERR_INVALID_TOKEN"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token claims"})
 		return
 	}
 
 	userID := int(claims["id"].(float64))
-	var user models.User
-	if err := database.DB.First(&user, userID).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "ERR_USER_NOT_FOUND"})
+	tenantIDStr := claims["tenantId"].(string)
+	tokenVersion := int(claims["tokenVersion"].(float64))
+
+	tenantUUID, err := uuid.Parse(tenantIDStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid tenant ID in token"})
 		return
 	}
 
-	secure := os.Getenv("ENVIRONMENT") == "production"
-	newToken, _ := utils.GenerateAccessToken(user)
-	newRefreshToken, _ := utils.GenerateRefreshToken(user)
-
-	c.SetCookie("jrt", newRefreshToken, 3600*24*7, "/", "", secure, true)
-
-	// Fetch permissions
-	var permissions []string
-	if user.GroupID != nil {
-		var group models.Group
-		database.DB.Preload("Permissions").First(&group, *user.GroupID)
-		for _, p := range group.Permissions {
-			permissions = append(permissions, p.GetName())
-		}
+	user, err := ac.userRepo.FindByID(c.Request.Context(), userID, tenantUUID)
+	if err != nil || user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		return
 	}
 
-	serializedUser := SerializedUser{
-		ID:          user.ID,
-		Name:        user.Name,
-		Email:       user.Email,
-		Profile:     user.Profile,
-		Queues:      []models.Queue{}, // TODO: Fetch queues
-		Permissions: permissions,
-		TenantID:    user.TenantID.String(),
+	if user.TokenVersion != tokenVersion {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token version mismatch — please re-login"})
+		return
+	}
+
+	newClaims := utils.JWTClaims{
+		Name:         user.Name,
+		ID:           user.ID,
+		Profile:      user.Profile,
+		TenantID:     user.TenantID,
+		TokenVersion: user.TokenVersion,
+	}
+
+	accessToken, err := utils.GenerateAccessToken(newClaims)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"token": newToken,
-		"user":  serializedUser,
+		"token": accessToken,
+		"user":  user,
 	})
 }
 
-func Logout(c *gin.Context) {
-	secure := os.Getenv("ENVIRONMENT") == "production"
-	c.SetCookie("jrt", "", -1, "/", "", secure, true)
+func (ac *AuthController) Logout(c *gin.Context) {
+	c.SetCookie("refreshToken", "", -1, "/", "", false, true)
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }

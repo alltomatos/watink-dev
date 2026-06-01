@@ -7,7 +7,6 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 func ListKnowledgeBases(c *gin.Context) {

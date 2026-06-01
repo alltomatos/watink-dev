@@ -10,22 +10,28 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ListTickets(c *gin.Context) {
+type TicketController struct {
+	updateTicket *usecases.UpdateTicketUseCase
+}
+
+func NewTicketController(ut *usecases.UpdateTicketUseCase) *TicketController {
+	return &TicketController{updateTicket: ut}
+}
+
+func (tc *TicketController) ListTickets(c *gin.Context) {
 	userProfile, _ := c.Get("userProfile")
 
 	var tickets []models.Ticket
-	// Start with scoped DB based on profile
 	query := getScopedDB(c, "Tickets").
 		Preload("Contact").
+		Preload("User").
 		Order("\"updatedAt\" DESC")
 
-	// Filter by status if provided
 	status := c.Query("status")
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
 
-	// Filter by searchParam
 	searchParam := c.Query("searchParam")
 	if searchParam != "" {
 		query = query.Joins("JOIN \"Contacts\" ON \"Contacts\".id = \"Tickets\".\"contactId\"").
@@ -33,13 +39,11 @@ func ListTickets(c *gin.Context) {
 				"%"+searchParam+"%", "%"+searchParam+"%", "%"+searchParam+"%")
 	}
 
-	// Filter by date if provided
 	date := c.Query("date")
 	if date != "" {
 		query = query.Where("CAST(\"Tickets\".\"createdAt\" AS DATE) = ?", date)
 	}
 
-	// Handle Queue IDs
 	queueIdsJson := c.Query("queueIds")
 	var queueIds []int
 	if queueIdsJson != "" && queueIdsJson != "null" && queueIdsJson != "[]" {
@@ -48,13 +52,10 @@ func ListTickets(c *gin.Context) {
 		}
 	}
 
-	// Handle showAll for admins
 	showAll := c.Query("showAll")
 	if userProfile == "admin" && showAll == "true" {
-		// Admins see everything, including null queues (already handled by getScopedDB)
 	}
 
-	// Filter by isGroup
 	isGroup := c.Query("isGroup")
 	if isGroup == "true" {
 		query = query.Where("\"Tickets\".\"isGroup\" = ?", true)
@@ -70,11 +71,11 @@ func ListTickets(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"tickets": tickets,
 		"count":   len(tickets),
-		"hasMore": false, // Pagination not implemented yet
+		"hasMore": false,
 	})
 }
 
-func ShowTicket(c *gin.Context) {
+func (tc *TicketController) ShowTicket(c *gin.Context) {
 	ticketID := c.Param("ticketId")
 
 	var ticket models.Ticket
@@ -89,7 +90,7 @@ func ShowTicket(c *gin.Context) {
 	c.JSON(http.StatusOK, ticket)
 }
 
-func UpdateTicket(c *gin.Context) {
+func (tc *TicketController) UpdateTicket(c *gin.Context) {
 	tenantID, err := tenantUUIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
@@ -97,7 +98,6 @@ func UpdateTicket(c *gin.Context) {
 	}
 	id := c.Param("ticketId")
 
-	// Use getScopedDB to ensure the user has permission to update this ticket
 	var ticket models.Ticket
 	if err := getScopedDB(c, "Tickets").Where("id = ?", id).First(&ticket).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ticket not found or access denied"})
@@ -115,7 +115,6 @@ func UpdateTicket(c *gin.Context) {
 		return
 	}
 
-	// Convert domain ticket to input format for use case
 	updateInput := usecases.UpdateTicketInput{
 		TicketID: ticket.ID,
 		TenantID: tenantID,
@@ -124,26 +123,22 @@ func UpdateTicket(c *gin.Context) {
 		QueueID:  input.QueueID,
 	}
 
-	// Get authenticated user for audit
 	if userID, exists := c.Get("userId"); exists {
 		userIDInt := int(userID.(float64))
 		updateInput.PerformedBy = &userIDInt
 	}
 
-	// Delegate to Use Case
-	updatedTicket, err := appContainer.UpdateTicket.Execute(c.Request.Context(), updateInput)
+	updatedTicket, err := tc.updateTicket.Execute(c.Request.Context(), updateInput)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update ticket"})
 		return
 	}
 
-	// Notificar via Socket (infraestratura de comunicação, não de negócio)
 	services.EmitToNamespace("/", "ticket", gin.H{"action": "update", "ticket": updatedTicket})
-
 	c.JSON(http.StatusOK, updatedTicket)
 }
 
-func ListTicketLogs(c *gin.Context) {
+func (tc *TicketController) ListTicketLogs(c *gin.Context) {
 	ticketID := c.Param("ticketId")
 
 	var logs []models.TicketLog

@@ -50,4 +50,4 @@ const App = () => {
 	);
 };
 
-export default App;
+export default App;// Validação: Frontend Hot Reload Ativo

@@ -24,6 +24,7 @@ func NewGORMUserRepo(db *gorm.DB) *GORMUserRepository {
 }
 
 // FindByID returns the user with the given id under tenantID, or nil if not found.
+// Mantém listagem enxuta (sem relations carregadas).
 func (r *GORMUserRepository) FindByID(ctx context.Context, id int, tenantID uuid.UUID) (*domain.User, error) {
 	var m models.User
 	err := r.db.WithContext(ctx).
@@ -36,6 +37,25 @@ func (r *GORMUserRepository) FindByID(ctx context.Context, id int, tenantID uuid
 		return nil, err
 	}
 	return userModelToDomain(&m), nil
+}
+
+// FindByIDDetail returns the user with relations (Queues, Permissions, Roles) loaded.
+// Usado no endpoint de detalhe enriquecido.
+func (r *GORMUserRepository) FindByIDDetail(ctx context.Context, id int, tenantID uuid.UUID) (*models.User, error) {
+	var m models.User
+	err := r.db.WithContext(ctx).
+		Preload("Queues").
+		Preload("Permissions").
+		Preload("Roles").
+		Where("id = ? AND \"tenantId\" = ?", id, tenantID).
+		First(&m).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &m, nil
 }
 
 // FindByEmail returns the user with the given email under tenantID, or nil if not found.
@@ -89,6 +109,14 @@ func (r *GORMUserRepository) FindAll(ctx context.Context, tenantID uuid.UUID) ([
 func (r *GORMUserRepository) Create(ctx context.Context, user *domain.User) error {
 	m := userDomainToModel(user)
 	return r.db.WithContext(ctx).Create(m).Error
+}
+
+// Save inserts or updates a user record (upsert).
+func (r *GORMUserRepository) Save(ctx context.Context, user *domain.User) error {
+	if user.ID != 0 {
+		return r.Update(ctx, user, nil)
+	}
+	return r.Create(ctx, user)
 }
 
 // Update applies a partial update on the user identified by user.ID + user.TenantID.

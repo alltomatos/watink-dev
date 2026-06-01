@@ -1,0 +1,88 @@
+package services
+
+import (
+	"encoding/json"
+)
+
+type EventEnvelope struct {
+	Type     string          `json:"type"`
+	Payload  json.RawMessage `json:"payload"`
+	TenantID string          `json:"tenantId"`
+}
+
+type QrCodePayload struct {
+	SessionID string `json:"sessionId"`
+	QrCode    string `json:"qrcode"`
+}
+
+type PairingCodePayload struct {
+	SessionID   string `json:"sessionId"`
+	PairingCode string `json:"pairingCode"`
+	Status      string `json:"status"`
+}
+
+type SessionStatusPayload struct {
+	SessionID       string `json:"sessionId"`
+	Status          string `json:"status"`
+	Number          string `json:"number"`
+	ProfilePicUrl   string `json:"profilePicUrl"`
+	FirstConnection bool   `json:"firstConnection"`
+}
+
+type MessagePayload struct {
+	ID            string `json:"id"`
+	From          string `json:"from"`
+	Body          string `json:"body"`
+	Type          string `json:"type"`
+	FromMe        bool   `json:"fromMe"`
+	Timestamp     int64  `json:"timestamp"`
+	PushName      string `json:"pushName"`
+	QuotedMsgId   string `json:"quotedMsgId"`
+	ProfilePicUrl string `json:"profilePicUrl"`
+	IsLid         bool   `json:"isLid"`
+	Participant   string `json:"participant"`
+	IsGroup       bool   `json:"isGroup"`
+	MediaUrl      string `json:"mediaUrl"`
+	MediaData     string `json:"mediaData"`
+	Mimetype      string `json:"mimetype"`
+}
+
+type MessageReceivedPayload struct {
+	Message   MessagePayload `json:"message"`
+	SessionID string         `json:"sessionId"`
+}
+
+type HistorySyncPayload struct {
+	SessionID string           `json:"sessionId"`
+	Type      string           `json:"type"`
+	Progress  uint32           `json:"progress"`
+	Messages  []MessagePayload `json:"messages"`
+}
+
+type MessageReactionPayload struct {
+	SessionID string `json:"sessionId"`
+	MessageID string `json:"messageId"`
+	JID       string `json:"jid"`
+	Reaction  string `json:"reaction"`
+	Sender    string `json:"sender"`
+	FromMe    bool   `json:"fromMe"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+type MessageRevokePayload struct {
+	SessionID string `json:"sessionId"`
+	MessageID string `json:"messageId"`
+	FromJID   string `json:"fromJid"`
+	FromMe    bool   `json:"fromMe"`
+}
+
+type ContactUpdatePayload struct {
+	SessionID     string `json:"sessionId"`
+	JID           string `json:"jid"`
+	Number        string `json:"number"`
+	Name          string `json:"name"`
+	PushName      string `json:"pushName"`
+	ProfilePicUrl string `json:"profilePicUrl"`
+	Lid           string `json:"lid"`
+	IsGroup       bool   `json:"isGroup"`
+}

@@ -24,6 +24,7 @@ func NewGORMChannelSessionRepo(db *gorm.DB) *GORMChannelSessionRepository {
 }
 
 // FindByID returns the channel session with the given id under tenantID, or nil if not found.
+// Mantém retorno enxuto (sem relations carregadas).
 func (r *GORMChannelSessionRepository) FindByID(ctx context.Context, id int, tenantID uuid.UUID) (*domain.ChannelSession, error) {
 	var m models.Whatsapp
 	err := r.db.WithContext(ctx).
@@ -36,6 +37,23 @@ func (r *GORMChannelSessionRepository) FindByID(ctx context.Context, id int, ten
 		return nil, err
 	}
 	return whatsappModelToDomain(&m), nil
+}
+
+// FindByIDDetail returns the channel session with relations loaded.
+// Usado no endpoint de detalhe enriquecido.
+func (r *GORMChannelSessionRepository) FindByIDDetail(ctx context.Context, id int, tenantID uuid.UUID) (*models.Whatsapp, error) {
+	var m models.Whatsapp
+	err := r.db.WithContext(ctx).
+		Preload("Queues").
+		Where("id = ? AND \"tenantId\" = ?", id, tenantID).
+		First(&m).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &m, nil
 }
 
 // FindAll returns all channel sessions under tenantID.
