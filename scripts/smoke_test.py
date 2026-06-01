@@ -81,8 +81,8 @@ def run_smoke(base_url: str, email: str, password: str) -> list:
 def main():
     parser = argparse.ArgumentParser(description="Watink Smoke Tests")
     parser.add_argument("--base-url", default="http://localhost:8082/api/v1")
-    parser.add_argument("--email", default="admin@admin.com")
-    parser.add_argument("--password", default="q1w2e3r4t5")
+    parser.add_argument("--email", default="admin@test.com")
+    parser.add_argument("--password", default="test123")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     args = parser.parse_args()
 
