@@ -47,6 +47,10 @@ func SetupRedisBroadcast() {
 }
 
 func PublishSocketMessage(sm SocketMessage) {
+	if RedisClient == nil {
+		return
+	}
+
 	sm.SourceID = NodeID
 	payload, err := json.Marshal(sm)
 	if err != nil {

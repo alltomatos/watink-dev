@@ -45,11 +45,11 @@ func GetLatestRelease(c *gin.Context) {
 	}
 
 	result := gin.H{
-		"version":            rel.TagName,
-		"changelog":          []string{},
-		"breaking":           false,
+		"version":             rel.TagName,
+		"changelog":           []string{},
+		"breaking":            false,
 		"min_compatible_from": "",
-		"migration_notes":    "",
+		"migration_notes":     "",
 	}
 
 	for _, a := range rel.Assets {
@@ -118,20 +118,20 @@ func performUpdate(version string) {
 
 	// A. Backup do Banco de Dados
 	// Nota: Em ambiente Docker, precisaríamos do pg_dump instalado ou rodar via exec no container do banco
-	// Por simplicidade técnica neste momento, registramos o log. 
+	// Temporarily, we only log this step for technical simplicity.
 	// Em produção, usaríamos as envs DB_HOST, DB_USER, etc.
 	fmt.Printf("[Update] Fazendo backup em %s...\n", backupFile)
-	
+
 	// B. Pull da nova imagem (se estivermos em ambiente de container)
 	// Como o binário é unificado, a atualização geralmente significa um novo pull da imagem
 	// ou substituição do binário.
-	
+
 	// C. Trigger de restart
 	// Em um sistema Business de alta escala, o binário envia um sinal para o orquestrador
 	// ou simplesmente encerra o processo para o Docker/PM2 reiniciar com a nova versão.
-	
+
 	time.Sleep(5 * time.Second) // Simula processo
 
 	fmt.Printf("[Update] Sucesso. Encerrando processo para restart.\n")
-	os.Exit(0) 
+	os.Exit(0)
 }

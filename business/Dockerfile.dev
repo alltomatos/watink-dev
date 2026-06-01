@@ -1,0 +1,12 @@
+FROM golang:1.25rc1-alpine
+
+ENV GOTOOLCHAIN=auto
+
+RUN apk add --no-cache gcc git musl-dev
+RUN go install github.com/air-verse/air@latest
+
+WORKDIR /app
+
+EXPOSE 8082
+
+CMD ["air", "-c", ".air.toml"]

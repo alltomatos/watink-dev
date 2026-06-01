@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext } from "react";
-import * as Yup from "yup";
 import { Formik, Form, Field } from "formik";
 import { toast } from "react-toastify";
 import {
@@ -24,6 +23,7 @@ import { i18n } from "../../translate/i18n";
 import toastError from "../../errors/toastError";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { getBackendUrl } from "../../helpers/urlUtils";
+import { UserProfileSchema } from "../../utils/userValidation";
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -62,19 +62,6 @@ const useStyles = makeStyles((theme) => ({
         position: "relative",
     },
 }));
-
-const UserSchema = Yup.object().shape({
-    name: Yup.string()
-        .min(2, "Too Short!")
-        .max(50, "Too Long!")
-        .required("Required"),
-    email: Yup.string().email("Invalid email").required("Required"),
-    password: Yup.string().min(5, "Too Short!").max(50, "Too Long!"),
-    confirmPassword: Yup.string().oneOf(
-        [Yup.ref("password"), null],
-        "Passwords must match"
-    ),
-});
 
 const UserProfile = () => {
     const classes = useStyles();

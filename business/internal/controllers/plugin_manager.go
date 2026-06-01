@@ -76,13 +76,13 @@ func PluginsInstalled(c *gin.Context) {
 		return
 	}
 
-	tenantID := strings.TrimSpace(getTenantID(c))
-	if tenantID == "" {
-		c.JSON(http.StatusOK, gin.H{"active": []string{}, "statuses": map[string]string{}})
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
 		return
 	}
 
-	c.JSON(http.StatusOK, hm.GetInstalled(tenantID))
+	c.JSON(http.StatusOK, hm.GetInstalled(tenantID.String()))
 }
 
 func PluginsCheckout(c *gin.Context) {

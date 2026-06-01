@@ -227,7 +227,7 @@ const RoleEdit = () => {
                                         </IconButton>
                                         <div>
                                             <Typography variant="h5" style={{ fontWeight: 600 }}>
-                                                {isNew ? (i18n.t("role.title.add") || "Adicionar Papel") : (i18n.t("role.title.edit") || "Editar Papel")}
+                                                {isNew ? (i18n.t("role.formTitle.add") || "Adicionar Papel") : (i18n.t("role.formTitle.edit") || "Editar Papel")}
                                             </Typography>
                                             {!isNew && (
                                                 <Typography variant="body2" color="textSecondary">

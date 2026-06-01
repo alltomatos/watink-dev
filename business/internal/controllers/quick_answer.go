@@ -9,7 +9,11 @@ import (
 )
 
 func ListQuickAnswers(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var quickAnswers []models.QuickAnswer
 	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Order("shortcut ASC").Find(&quickAnswers).Error; err != nil {
@@ -21,7 +25,11 @@ func ListQuickAnswers(c *gin.Context) {
 }
 
 func ShowQuickAnswer(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	id := c.Param("quickAnswerId")
 
 	var quickAnswer models.QuickAnswer

@@ -10,7 +10,11 @@ import (
 )
 
 func ListPipelines(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var pipelines []models.Pipeline
 	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Preload("Stages").Find(&pipelines).Error; err != nil {
@@ -44,7 +48,11 @@ func CreatePipeline(c *gin.Context) {
 }
 
 func UpdatePipeline(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	id := c.Param("pipelineId")
 
 	var pipeline models.Pipeline
@@ -92,7 +100,11 @@ func ImportPipeline(c *gin.Context) {
 }
 
 func ExportPipeline(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	id := c.Param("pipelineId")
 
 	var pipeline models.Pipeline

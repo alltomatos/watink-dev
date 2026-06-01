@@ -1,6 +1,5 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect, useContext } from "react";
-import * as Yup from "yup";
 import { Formik, Form, Field } from "formik";
 import { toast } from "react-toastify";
 import { useParams, useHistory } from "react-router-dom";
@@ -39,6 +38,7 @@ import QueueSelect from "../../components/QueueSelect";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
 import useWhatsApps from "../../hooks/useWhatsApps";
+import { UserSchema } from "../../utils/userValidation";
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -81,15 +81,6 @@ const useStyles = makeStyles((theme) => ({
         marginRight: theme.spacing(2),
     }
 }));
-
-const UserSchema = Yup.object().shape({
-    name: Yup.string()
-        .min(2, "Muito curto!")
-        .max(50, "Muito longo!")
-        .required("Obrigatório"),
-    password: Yup.string().min(5, "Muito curto!").max(50, "Muito longo!"),
-    email: Yup.string().email("Email inválido").required("Obrigatório"),
-});
 
 const UserEdit = () => {
     const classes = useStyles();

@@ -41,8 +41,8 @@ func MaintenanceMiddleware() gin.HandlerFunc {
 		// Permitir apenas rotas de status/health e auth durante manutenção
 		path := strings.ToLower(c.Request.URL.Path)
 		isHealthOrSetup := path == "/api/health" || path == "/api/initial-setup/check" ||
-		                   path == "/api/v1/health" || path == "/api/v1/initial-setup/check" ||
-		                   path == "/api/system/maintenance" || path == "/api/v1/system/maintenance"
+			path == "/api/v1/health" || path == "/api/v1/initial-setup/check" ||
+			path == "/api/system/maintenance" || path == "/api/v1/system/maintenance"
 
 		if active && !isHealthOrSetup {
 			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{

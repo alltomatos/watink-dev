@@ -8,8 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
+	"github.com/alltomatos/watinkdev/business/internal/application"
 	"github.com/alltomatos/watinkdev/business/internal/controllers"
+	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/internal/routes"
@@ -37,6 +38,10 @@ func main() {
 	database.Connect()
 	database.Migrate()
 
+	// 1.1 Initialize application dependency container
+	controllers.InitContainer()
+	container := application.NewContainer(database.DB)
+
 	// 2. Connect to Redis
 	services.ConnectRedis()
 	services.SetupRedisBroadcast()
@@ -47,7 +52,8 @@ func main() {
 	if err := rabbitMQ.Connect(); err == nil {
 		// 4. Start Workers
 		rabbitMQ.StartFlowWorker()
-		services.StartEventListener(rabbitMQ)
+		eventListener := services.NewEventListener(container.ReceiveMessage)
+		services.StartEventListener(rabbitMQ, eventListener)
 	} else {
 		log.Printf("⚠️ Warning: RabbitMQ connection failed: %v", err)
 	}
@@ -59,6 +65,7 @@ func main() {
 
 	// 5. Global Middleware
 	r.Use(otelgin.Middleware("watink-business"))
+	r.Use(middleware.ObservabilityMiddleware())
 	r.Use(middleware.CORSMiddleware())
 
 	// Socket.IO Routes
@@ -84,7 +91,7 @@ func main() {
 		pluginManager.Register(&plugins.ClientesPlugin{})
 		pluginManager.Register(&plugins.SaaSPlugin{})
 
-		routes.SetupRoutes(apiGroup)
+		routes.SetupRoutes(apiGroup, rabbitMQ, container)
 	}
 
 	// Compat routes (frontend without /v1 prefix)

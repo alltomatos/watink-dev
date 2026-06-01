@@ -11,7 +11,11 @@ import (
 )
 
 func ListQueues(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 
 	var queues []models.Queue
 	if err := database.DB.Where("\"tenantId\" = ?", tenantID).
@@ -26,7 +30,11 @@ func ListQueues(c *gin.Context) {
 }
 
 func ShowQueue(c *gin.Context) {
-	tenantID, _ := c.Get("tenantId")
+	tenantID, err := tenantUUIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		return
+	}
 	id := c.Param("queueId")
 
 	var queue models.Queue
@@ -87,6 +95,8 @@ func CreateQueue(c *gin.Context) {
 		return
 	}
 
+	services.EmitToNamespace("/", "queue", gin.H{"action": "create", "queue": queue})
+
 	c.JSON(http.StatusOK, queue)
 }
 
@@ -137,6 +147,8 @@ func UpdateQueue(c *gin.Context) {
 		return
 	}
 
+	services.EmitToNamespace("/", "queue", gin.H{"action": "update", "queue": queue})
+
 	c.JSON(http.StatusOK, queue)
 }
 
@@ -152,6 +164,8 @@ func DeleteQueue(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete queue"})
 		return
 	}
+
+	services.EmitToNamespace("/", "queue", gin.H{"action": "delete", "queueId": id})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Queue deleted successfully"})
 }

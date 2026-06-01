@@ -2,6 +2,41 @@
 const messages = {
   es: {
     translations: {
+      common: {
+        rowsPerPage: "Filas por página",
+      },
+      role: {
+        title: "Roles",
+        buttons: {
+          add: "Agregar rol",
+        },
+        table: {
+          name: "Nombre",
+          description: "Descripción",
+          actions: "Acciones",
+        },
+        form: {
+          name: "Nombre",
+          description: "Descripción",
+        },
+        formTitle: {
+          add: "Agregar rol",
+          edit: "Editar rol",
+        },
+        success: "Rol guardado correctamente!",
+        toasts: {
+          deleted: "Rol eliminado correctamente.",
+        },
+        confirmationModal: {
+          deleteTitle: "Eliminar rol",
+          deleteMessage: "¿Estás seguro de que deseas eliminar este rol? Esta acción no se puede deshacer.",
+        },
+        permissions: {
+          available: "Permisos disponibles",
+          assigned: "Permisos asignados",
+          noPermissions: "No se encontraron permisos",
+        },
+      },
       signup: {
         title: "Registro",
         toasts: {
@@ -198,6 +233,24 @@ const messages = {
           name: "Nombre",
           color: "Color",
           greetingMessage: "Mensaje de saludo",
+          connection: "Conexiones",
+          selectConnection: "Seleccione las conexiones",
+          hierarchy: "Jerarquía",
+          parentQueue: "Cola padre",
+          none: "Ninguna",
+          distributionSection: "Distribución de tickets",
+          distributionStrategy: "Estrategia de distribución",
+          prioritizeWallet: "Priorizar cartera",
+          prioritizeWalletHelp: "Los tickets se asignan preferentemente al dueño de la cartera del contacto",
+          prioritizeWalletTooltip: "Cuando está activo, el sistema verifica si el contacto tiene un vendedor/agente responsable asignado a su cartera. Si ese agente está en línea y pertenece a esta cola, el ticket se asigna automáticamente a él.",
+        },
+        strategies: {
+          manual: "Manual",
+          manualDescription: "Los agentes eligen qué tickets atender",
+          roundRobin: "Automático circular",
+          roundRobinDescription: "Distribuye tickets equitativamente entre agentes disponibles",
+          balanced: "Automático balanceado",
+          balancedDescription: "Prioriza agentes con menos tickets abiertos",
         },
         buttons: {
           okAdd: "Añadir",
@@ -324,6 +377,7 @@ const messages = {
           name: "Nombre",
           color: "Color",
           greeting: "Mensaje de saludo",
+          connections: "Conexiones",
           actions: "Comportamiento",
         },
         buttons: {

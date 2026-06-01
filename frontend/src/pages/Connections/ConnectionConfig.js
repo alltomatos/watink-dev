@@ -36,6 +36,7 @@ import QRCode from "qrcode.react";
 import MainContainer from "../../components/MainContainer";
 import MainHeader from "../../components/MainHeader";
 import Title from "../../components/Title";
+import ConnectionStatusCard from "../../components/ConnectionStatusCard";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import { i18n } from "../../translate/i18n";
@@ -140,23 +141,40 @@ const ConnectionConfig = () => {
         socket.on("whatsappSession", (data) => {
             if (data.action === "update" && data.session.id === parseInt(whatsappId)) {
                 setWhatsapp(prev => ({ ...prev, ...data.session }));
+
+                if (data.session.status === "QRCODE") {
+                    setShowQrCode(true);
+                    setShowPairingInput(false);
+                    setConnecting(false);
+
+                    if (!data.session.qrcode) {
+                        fetchWhatsapp();
+                    }
+                }
+
                 // Handle pairing code received
                 if (data.session.pairingCode) {
                     setPairingCode(data.session.pairingCode);
                     setPairingLoading(false);
                 }
-                // Handle connection success - reset pairing state
+                // Any terminal/interactive status means the initial start request finished.
+                if (["CONNECTED", "QRCODE", "PAIRING", "DISCONNECTED", "TIMEOUT"].includes(data.session.status)) {
+                    setConnecting(false);
+                }
+                // Handle connection success - reset pairing state and reload persisted session data
                 if (data.session.status === "CONNECTED") {
                     setShowPairingInput(false);
                     setShowQrCode(false);
                     setPairingCode("");
                     setPhoneNumber("");
                     setPairingLoading(false);
+                    window.location.reload();
                 }
                 // Handle disconnection
                 if (data.session.status === "DISCONNECTED" || data.session.status === "TIMEOUT") {
                     setShowQrCode(false);
                     setShowPairingInput(false);
+                    setPairingLoading(false);
                 }
             }
         });
@@ -170,24 +188,26 @@ const ConnectionConfig = () => {
         return () => {
             socket.disconnect();
         };
-    }, [whatsappId]);
+    }, [whatsappId, fetchWhatsapp]);
 
     useEffect(() => {
         if (whatsapp?.status && whatsapp.status === "QRCODE") {
-            // Enable buttons and SHOW QR Code container (which has the disconnect button)
-            setShowQrCode(true); // Force show QR code container so Disconnect button is visible
+            setShowQrCode(true);
             setShowPairingInput(false);
+            setConnecting(false);
         } else if (whatsapp?.status === "CONNECTED") {
-            // If connected, reset everything
             setShowQrCode(false);
             setShowPairingInput(false);
+            setConnecting(false);
         } else if (whatsapp?.status === "DISCONNECTED" || whatsapp?.status === "TIMEOUT") {
-            // If disconnected, reset
             setShowQrCode(false);
             setShowPairingInput(false);
+            setConnecting(false);
+        } else if (whatsapp?.status === "PAIRING") {
+            setConnecting(false);
         }
-        // For OPENING, we just wait.
-    }, [whatsapp]);
+        // For OPENING, connecting is already true from the button click
+    }, [whatsapp?.status]);
 
     const handleStartSessionQr = async () => {
         try {
@@ -200,6 +220,18 @@ const ConnectionConfig = () => {
             setConnecting(true);
             setShowPairingInput(false);
             await api.post(`/whatsappsession/${whatsappId}`, { usePairingCode: false });
+
+            // Aguarda o QR code estar disponível via socket/estado antes de recarregar
+            const checkQrCode = setInterval(() => {
+                if (whatsapp.qrcode) {
+                    clearInterval(checkQrCode);
+                    window.location.reload();
+                }
+            }, 1000);
+
+            // Timeout de segurança após 15 segundos caso o socket falhe
+            setTimeout(() => clearInterval(checkQrCode), 15000);
+
         } catch (err) {
             toastError(err);
             setConnecting(false);
@@ -223,9 +255,7 @@ const ConnectionConfig = () => {
                 usePairingCode: true,
                 phoneNumber: phoneNumber.replace(/\D/g, "")
             });
-            setInputPairingModalOpen(false);
-            setShowPairingInput(true);
-            setShowQrCode(false);
+            window.location.reload();
         } catch (err) {
             toastError(err);
             setPairingLoading(false);
@@ -235,6 +265,7 @@ const ConnectionConfig = () => {
     const handleDisconnect = async () => {
         try {
             await api.delete(`/whatsappsession/${whatsappId}`);
+            window.location.reload();
         } catch (err) {
             toastError(err);
         }
@@ -376,7 +407,7 @@ const ConnectionConfig = () => {
 
             <Grid container spacing={3} className={classes.gridContainer}>
                 <Grid item xs={12} md={8}>
-                    {renderStatus()}
+                    <ConnectionStatusCard status={whatsapp.status} />
 
                     <Paper variant="outlined" style={{ padding: 20 }}>
                         <Typography variant="h6" gutterBottom>
@@ -384,7 +415,7 @@ const ConnectionConfig = () => {
                         </Typography>
                         <Divider style={{ marginBottom: 20 }} />
 
-                        <Box display="flex" flexWrap="wrap" alignItems="center">
+                        <Box display="flex" flexWrap="wrap" alignItems="center" justifyContent="center">
                             {/* Actions for DISCONNECTED, TIMEOUT, or invalid status */}
                             {(!whatsapp.status || whatsapp.status === "DISCONNECTED" || whatsapp.status === "TIMEOUT") && !showQrCode && !showPairingInput && (
                                 <>
@@ -397,15 +428,6 @@ const ConnectionConfig = () => {
                                         startIcon={connecting ? <CircularProgress size={20} color="inherit" /> : <CropFree />}
                                     >
                                         {connecting ? "Iniciando Conexão..." : "CONECTAR COM QR CODE"}
-                                    </Button>
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        className={classes.actionButton}
-                                        onClick={handleShowPairing}
-                                        startIcon={<PhoneIphone />}
-                                    >
-                                        CONECTAR COM CÓDIGO
                                     </Button>
                                     <Button
                                         variant="outlined"
@@ -462,9 +484,12 @@ const ConnectionConfig = () => {
 
                             {/* Actions for OPENING (only show if not in pairing mode) */}
                             {whatsapp.status === "OPENING" && !showPairingInput && (
-                                <Typography variant="body1">
-                                    Iniciando sessão... aguarde alguns segundos.
-                                </Typography>
+                                <Box display="flex" alignItems="center" mt={2}>
+                                    <CircularProgress size={20} style={{ marginRight: 10 }} />
+                                    <Typography variant="body1">
+                                        Iniciando sessão... aguarde alguns segundos.
+                                    </Typography>
+                                </Box>
                             )}
 
                             {/* Actions for QRCODE */}
@@ -534,15 +559,16 @@ const ConnectionConfig = () => {
                                 Detalhes
                             </Typography>
                             <Divider style={{ marginBottom: 10 }} />
-                            <Box mb={2}>
-                                <Typography variant="subtitle2" color="textSecondary">Nome da Sessão</Typography>
-                                <Typography variant="body1">{whatsapp.name}</Typography>
+                                                        <Box mb={2} display="flex" alignItems="center">
+                                <Avatar src={whatsapp.profilePicUrl} style={{ width: 60, height: 60, marginRight: 15 }} />
+                                <Box>
+                                    <Typography variant="subtitle2" color="textSecondary">Nome da Sessão</Typography>
+                                    <Typography variant="body1">{whatsapp.name}</Typography>
+                                </Box>
                             </Box>
                             <Box mb={2}>
-                                <Typography variant="subtitle2" color="textSecondary">Conectado desde</Typography>
-                                <Typography variant="body1">
-                                    {whatsapp.updatedAt ? new Date(whatsapp.updatedAt).toLocaleString() : "Nunca"}
-                                </Typography>
+                                <Typography variant="subtitle2" color="textSecondary">Número Conectado</Typography>
+                                <Typography variant="body1">{whatsapp.number || "Não disponível"}</Typography>
                             </Box>
                             <Box mb={2}>
                                 <Typography variant="subtitle2" color="textSecondary">Data da 1ª Conexão</Typography>

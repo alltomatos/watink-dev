@@ -2,6 +2,9 @@
 const messages = {
   pt: {
     translations: {
+      common: {
+        rowsPerPage: "Linhas por página",
+      },
       role: {
         title: "Papéis",
         buttons: {
@@ -16,7 +19,7 @@ const messages = {
           name: "Nome",
           description: "Descrição",
         },
-        title: {
+        formTitle: {
           add: "Adicionar Papel",
           edit: "Editar Papel",
         },
@@ -293,7 +296,10 @@ const messages = {
           color: "Cor",
           greetingMessage: "Mensagem de saudação",
           connection: "Conexões",
-          selectConnection: "Selecione uma conexão",
+          selectConnection: "Selecione as conexões",
+          hierarchy: "Hierarquia",
+          parentQueue: "Fila pai",
+          none: "Nenhuma",
           distributionSection: "Distribuição de Tickets",
           distributionStrategy: "Estratégia de Distribuição",
           prioritizeWallet: "Priorizar Carteira",
@@ -471,6 +477,7 @@ const messages = {
           name: "Nome",
           color: "Cor",
           greeting: "Mensagem de saudação",
+          connections: "Conexões",
           actions: "Ações",
         },
         buttons: {
