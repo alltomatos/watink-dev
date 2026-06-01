@@ -181,6 +181,16 @@ jobs:
           done
           echo "Backend did not become healthy" && tail -n 200 /tmp/watink-backend.log && exit 1
 
+      - name: Run initial setup
+        env:
+          SMOKE_BASE_URL: http://localhost:8082/api/v1
+          SMOKE_EMAIL: admin@test.com
+          SMOKE_PASS: test123
+        run: |
+          curl -s -X POST "$SMOKE_BASE_URL/initial-setup" \
+            -H "Content-Type: application/json" \
+            -d '{"firstName":"Admin","lastName":"Test","email":"'"$SMOKE_EMAIL"'","password":"'"$SMOKE_PASS"'","document":"12345678900"}' || echo "Setup already done or failed"
+
       - name: Run smoke tests
         env:
           SMOKE_BASE_URL: http://localhost:8082/api/v1
