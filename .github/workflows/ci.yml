@@ -82,7 +82,7 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           working-directory: business
-          version: v1.65.0
+          version: v2.12.2
 
       - name: Run unit tests
         working-directory: business
