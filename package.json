@@ -35,8 +35,7 @@
       "cd frontend && npx eslint --max-warnings=0"
     ],
     "business/**/*.go": [
-      "gofmt -w",
-      "git add"
+      "gofmt -w"
     ]
   },
   "repository": {
