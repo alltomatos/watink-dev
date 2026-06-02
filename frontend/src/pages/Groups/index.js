@@ -14,6 +14,7 @@ import {
     TableContainer,
     InputAdornment,
     TextField,
+    Typography,
 } from "@material-ui/core";
 
 import {
@@ -195,6 +196,9 @@ const Groups = () => {
             <MainHeader>
                 <Title>{i18n.t("groups.title")}</Title>
                 <MainHeaderButtonsWrapper>
+                    <Typography variant="body2" color="textSecondary" style={{ marginRight: 16 }}>
+                        {i18n.t("groups.migrateNotice")}
+                    </Typography>
                     <TextField
                         placeholder={i18n.t("contacts.searchPlaceholder")}
                         type="search"

@@ -37,7 +37,7 @@ const useStyles = makeStyles(theme => ({
 		color: "rgb(67, 83, 105)",
 		zIndex: 2,
 		backgroundColor: "white",
-		borderBottom: "1px solid rgba(0, 0, 0, 0.12)",
+		borderBottom: "1px solid var(--border-divider)",
 		display: "flex",
 		alignItems: "center",
 		justifyContent: "space-between",

@@ -224,7 +224,7 @@ const UserEdit = () => {
             <Paper className={classes.paper}>
                 <Tabs value={tab} onChange={handleTabChange} indicatorColor="primary" textColor="primary">
                     <Tab label="Dados do Usuário" />
-                    <Tab label="Permissões Adicionais" />
+                    <Tab label="Avançado (Exceções)" />
                 </Tabs>
 
                 <Box hidden={tab !== 0} className={classes.tabContent}>
@@ -318,27 +318,27 @@ const UserEdit = () => {
                                     </FormControl>
 
                                     <FormControl
-                                        variant="outlined"
-                                        className={classes.formControl}
-                                        margin="dense"
-                                        fullWidth
-                                    >
-                                        <InputLabel id="role-selection-input-label">
-                                            {i18n.t("userModal.form.role") || "Papel (RBAC)"}
-                                        </InputLabel>
-                                        <Field
-                                            as={Select}
-                                            label={i18n.t("userModal.form.role") || "Papel (RBAC)"}
-                                            name="roleId"
-                                            labelId="role-selection-label"
-                                            id="role-selection"
+                                            variant="outlined"
+                                            className={classes.formControl}
+                                            margin="dense"
+                                            fullWidth
                                         >
-                                            <MenuItem value=""><em>Nenhum</em></MenuItem>
-                                            {roles.map(role => (
-                                                <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>
-                                            ))}
-                                        </Field>
-                                    </FormControl>
+                                            <InputLabel id="role-selection-input-label">
+                                                Função
+                                            </InputLabel>
+                                            <Field
+                                                as={Select}
+                                                label="Função"
+                                                name="roleId"
+                                                labelId="role-selection-label"
+                                                id="role-selection"
+                                            >
+                                                <MenuItem value=""><em>Nenhuma</em></MenuItem>
+                                                {roles.map(role => (
+                                                    <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>
+                                                ))}
+                                            </Field>
+                                        </FormControl>
 
                                 </div>
                                 <Can
@@ -407,9 +407,15 @@ const UserEdit = () => {
                         perform="user-modal:editProfile"
                         yes={() => (
                             <>
-                                <Typography variant="subtitle2" gutterBottom>
-                                    As permissões selecionadas aqui serão adicionadas às permissões já concedidas pelo Papel (Role) do usuário.
-                                </Typography>
+                                <Box mb={2} p={2} bgcolor="var(--bg-surface)3e0" border="1px solid #ffe0b2" borderRadius={8}>
+                                    <Typography variant="subtitle2" color="textPrimary" style={{ fontWeight: 600 }}>
+                                        ⚠️ Atenção: Permissões Específicas
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary">
+                                        As permissões marcadas aqui são adicionadas diretamente a este usuário.
+                                        Recomendamos usar Funções (Roles) sempre que possível para manter o acesso organizado.
+                                    </Typography>
+                                </Box>
                                 <Grid container spacing={1} style={{ marginTop: 16 }}>
                                     {allPermissions.map(permission => (
                                         <Grid item xs={12} sm={6} md={4} key={permission.id}>

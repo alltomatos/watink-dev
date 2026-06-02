@@ -62,7 +62,7 @@ const useStyles = makeStyles(theme => ({
         display: "flex",
         flexDirection: "column",
         borderRadius: theme.shape.borderRadius,
-        boxShadow: "0 4px 20px 0 rgba(0,0,0,0.05)",
+        boxShadow: "0 4px 20px 0 var(--border-subtle)",
         transition: "transform 0.2s",
         "&:hover": {
             transform: "translateY(-2px)",

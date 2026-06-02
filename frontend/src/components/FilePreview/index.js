@@ -20,12 +20,12 @@ const useStyles = makeStyles((theme) => ({
     padding: theme.spacing(1),
     maxWidth: '100%',
     width: '300px',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'var(--bg-surface)',
     borderRadius: '8px',
     border: '1px solid #e0e0e0',
     overflow: 'hidden',
     position: 'relative',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    boxShadow: '0 1px 2px var(--border-subtle)',
   },
   iconContainer: {
     marginRight: theme.spacing(1.5),
@@ -35,7 +35,7 @@ const useStyles = makeStyles((theme) => ({
     width: 48,
     height: 48,
     borderRadius: 8,
-    color: '#fff',
+    color: 'var(--bg-surface)',
     fontSize: 28,
   },
   thumbnail: {
@@ -78,7 +78,7 @@ const useStyles = makeStyles((theme) => ({
     backgroundColor: 'transparent',
     color: '#757575',
     '&:hover': {
-        backgroundColor: 'rgba(0,0,0,0.05)',
+        backgroundColor: 'var(--border-subtle)',
         color: '#303030',
     }
   },

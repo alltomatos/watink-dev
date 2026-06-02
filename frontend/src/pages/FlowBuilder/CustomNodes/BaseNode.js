@@ -14,7 +14,7 @@ const useStyles = makeStyles((theme) => ({
         cursor: 'pointer',
         '&:hover $nodeCard': {
             transform: 'scale(1.05)',
-            boxShadow: '0 6px 20px rgba(0,0,0,0.25)'
+            boxShadow: '0 6px 20px var(--overlay-dark)'
         }
     },
     nodeCard: {
@@ -26,12 +26,12 @@ const useStyles = makeStyles((theme) => ({
         justifyContent: 'center',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
-        boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
-        border: '1px solid rgba(255,255,255,0.1)'
+        boxShadow: '0 8px 16px var(--border-divider)',
+        border: '1px solid var(--overlay-dark)'
     },
     icon: {
         fontSize: 28,
-        color: '#fff'
+        color: 'var(--bg-surface)'
     },
     label: {
         marginTop: 8,
@@ -54,13 +54,13 @@ const useStyles = makeStyles((theme) => ({
     handle: {
         width: 10,
         height: 10,
-        background: '#ffffff',
-        border: '2px solid #007AFF',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        background: 'var(--bg-surface)',
+        border: '2px solid var(--action-primary)',
+        boxShadow: '0 2px 4px var(--shadow-appbar)',
         transition: 'all 0.2s ease',
         '&:hover': {
             transform: 'scale(1.2)',
-            background: '#007AFF'
+            background: 'var(--action-primary)'
         }
     },
     handleLeft: {
@@ -77,7 +77,7 @@ const useStyles = makeStyles((theme) => ({
     },
     // Modern gradients
     colorTrigger: { background: 'linear-gradient(180deg, #34C759 0%, #28A745 100%)' },
-    colorMessage: { background: 'linear-gradient(180deg, #007AFF 0%, #0056B3 100%)' },
+    colorMessage: { background: 'linear-gradient(180deg, var(--action-primary) 0%, #0056B3 100%)' },
     colorMenu: { background: 'linear-gradient(180deg, #FF9500 0%, #E68600 100%)' },
     colorSwitch: { background: 'linear-gradient(180deg, #AF52DE 0%, #8E44AD 100%)' },
     colorDatabase: { background: 'linear-gradient(180deg, #A2845E 0%, #846C4D 100%)' },
@@ -98,13 +98,13 @@ const useStyles = makeStyles((theme) => ({
         width: 16,
         height: 16,
         borderRadius: '50%',
-        background: '#fff',
+        background: 'var(--bg-surface)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: 10,
         fontWeight: 'bold',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+        boxShadow: '0 1px 3px var(--overlay-dark)'
     }
 }));
 

@@ -15,7 +15,7 @@ const useStyles = makeStyles((theme) => ({
         cursor: 'pointer',
         '&:hover $nodeCard': {
             transform: 'scale(1.05)',
-            boxShadow: '0 6px 20px rgba(0,0,0,0.25)'
+            boxShadow: '0 6px 20px var(--overlay-dark)'
         }
     },
     nodeCard: {
@@ -27,18 +27,18 @@ const useStyles = makeStyles((theme) => ({
         justifyContent: 'center',
         transition: 'all 0.2s ease',
         position: 'relative',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        boxShadow: '0 4px 12px var(--shadow-strong)',
         background: 'linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%)'
     },
     icon: {
         fontSize: 24,
-        color: '#fff'
+        color: 'var(--bg-surface)'
     },
     label: {
         marginTop: 6,
         fontSize: 11,
         fontWeight: 500,
-        color: '#333',
+        color: 'var(--text-primary)',
         textAlign: 'center',
         maxWidth: 90,
         overflow: 'hidden',
@@ -54,8 +54,8 @@ const useStyles = makeStyles((theme) => ({
     handle: {
         width: 8,
         height: 8,
-        border: '2px solid #fff',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+        border: '2px solid var(--bg-surface)',
+        boxShadow: '0 1px 3px var(--overlay-dark)'
     },
     handleA: {
         background: '#4caf50', // Verde para True

@@ -25,13 +25,13 @@ const useStyles = makeStyles((theme) => ({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        backgroundColor: '#fff'
+        backgroundColor: 'var(--bg-surface)'
     },
     header: {
         padding: theme.spacing(2),
         backgroundColor: theme.palette.primary.main,
-        color: '#fff',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        color: 'var(--bg-surface)',
+        boxShadow: '0 2px 4px var(--shadow-appbar)'
     },
     chatArea: {
         flexGrow: 1,
@@ -44,7 +44,7 @@ const useStyles = makeStyles((theme) => ({
         borderTop: '1px solid #e0e0e0',
         display: 'flex',
         alignItems: 'center',
-        backgroundColor: '#fff'
+        backgroundColor: 'var(--bg-surface)'
     },
     messageBubble: {
         backgroundColor: '#e3f2fd',
@@ -52,7 +52,7 @@ const useStyles = makeStyles((theme) => ({
         padding: theme.spacing(1, 2),
         maxWidth: '85%',
         marginBottom: theme.spacing(1),
-        boxShadow: '0 1px 1px rgba(0,0,0,0.05)'
+        boxShadow: '0 1px 1px var(--border-subtle)'
     },
     userBubble: {
         backgroundColor: '#e8f5e9',
@@ -61,7 +61,7 @@ const useStyles = makeStyles((theme) => ({
         maxWidth: '85%',
         marginBottom: theme.spacing(1),
         alignSelf: 'flex-end',
-        boxShadow: '0 1px 1px rgba(0,0,0,0.05)'
+        boxShadow: '0 1px 1px var(--border-subtle)'
     }
 }));
 

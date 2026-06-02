@@ -82,7 +82,7 @@ const useStyles = makeStyles((theme) => ({
     },
     userMessage: {
         backgroundColor: theme.palette.primary.main,
-        color: "#fff",
+        color: "var(--bg-surface)",
         borderRadius: "12px 12px 0 12px",
         padding: theme.spacing(1, 2),
         marginBottom: theme.spacing(1),

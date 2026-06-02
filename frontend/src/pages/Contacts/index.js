@@ -92,12 +92,12 @@ const reducer = (state, action) => {
 
 const useStyles = makeStyles((theme) => ({
   mainContainer: {
-    backgroundColor: "#f5f6f8",
+    backgroundColor: "var(--bg-default)",
     height: "100%",
   },
   header: {
-    backgroundColor: "#ffffff",
-    borderBottom: "1px solid rgba(0,0,0,0.05)",
+    backgroundColor: "var(--bg-surface)",
+    borderBottom: "1px solid var(--border-subtle)",
     padding: "12px 24px",
     display: "flex",
     alignItems: "center",
@@ -138,7 +138,7 @@ const useStyles = makeStyles((theme) => ({
   tablePaper: {
     borderRadius: 12,
     overflow: "hidden",
-    border: "1px solid rgba(0,0,0,0.05)",
+    border: "1px solid var(--border-subtle)",
   }
 }));
 

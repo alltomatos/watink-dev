@@ -199,7 +199,7 @@ const Connections = () => {
 		switch (status) {
 			case "CONNECTED": return "#ecfdf5";
 			case "DISCONNECTED": return "#fef2f2";
-			case "QRCODE": return "#fffbeb";
+			case "QRCODE": return "var(--bg-surface)beb";
 			case "PAIRING": return "#f5f3ff";
 			case "OPENING": return "#eff6ff";
 			default: return "#f9fafb";

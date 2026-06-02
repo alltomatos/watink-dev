@@ -58,7 +58,7 @@ const useStyles = makeStyles((theme) => ({
   },
   tabPanel: {
     padding: theme.spacing(2),
-    backgroundColor: "#fff",
+    backgroundColor: "var(--bg-surface)",
     borderRadius: 4,
     boxShadow: theme.shadows[1],
     marginBottom: theme.spacing(2)
@@ -296,7 +296,7 @@ const ActivityExecution = ({ open, activityId, onClose }) => {
                 <TabPanel value={tab} index={0} className={classes.tabPanel}>
                     <List>
                         {items.map((item) => (
-                            <Box key={item.id} mb={2} p={1} border="1px solid #eee" borderRadius={4}>
+                            <Box key={item.id} mb={2} p={1} border="1px solid var(--border-default)" borderRadius={4}>
                                 <Box display="flex" alignItems="center" justifyContent="space-between">
                                     <Typography variant="subtitle1" style={{ fontWeight: item.isRequired ? 'bold' : 'normal' }}>
                                         {item.label} {item.isRequired && "*"}
@@ -407,7 +407,7 @@ const ActivityExecution = ({ open, activityId, onClose }) => {
                                     secondary={
                                         <>
                                             <Typography component="span" variant="caption" style={{
-                                                backgroundColor: o.type === 'impediment' ? '#ffcdd2' : o.type === 'delay' ? '#fff9c4' : '#e1f5fe',
+                                                backgroundColor: o.type === 'impediment' ? '#ffcdd2' : o.type === 'delay' ? 'var(--bg-surface)9c4' : '#e1f5fe',
                                                 padding: '2px 6px',
                                                 borderRadius: 4,
                                                 marginRight: 8

@@ -90,7 +90,7 @@ const useStyles = makeStyles((theme) => ({
     userMessage: {
         alignSelf: "flex-end",
         backgroundColor: theme.palette.primary.main,
-        color: "#fff",
+        color: "var(--bg-surface)",
         borderBottomRightRadius: 0,
     },
     aiMessage: {
@@ -114,12 +114,12 @@ const useStyles = makeStyles((theme) => ({
 // Paleta de cores modernas para etapas do Kanban
 const stageColors = [
     { bg: '#e3f2fd', border: '#1976d2', text: '#0d47a1' }, // Azul
-    { bg: '#fff3e0', border: '#f57c00', text: '#e65100' }, // Laranja
+    { bg: 'var(--bg-surface)3e0', border: '#f57c00', text: '#e65100' }, // Laranja
     { bg: '#e8f5e9', border: '#388e3c', text: '#1b5e20' }, // Verde
     { bg: '#fce4ec', border: '#c2185b', text: '#880e4f' }, // Rosa
     { bg: '#ede7f6', border: '#7b1fa2', text: '#4a148c' }, // Roxo
     { bg: '#e0f7fa', border: '#0097a7', text: '#006064' }, // Ciano
-    { bg: '#fff8e1', border: '#ffa000', text: '#ff6f00' }, // Âmbar
+    { bg: 'var(--bg-surface)8e1', border: '#ffa000', text: '#ff6f00' }, // Âmbar
     { bg: '#f3e5f5', border: '#8e24aa', text: '#6a1b9a' }, // Violeta
     { bg: '#e8eaf6', border: '#3f51b5', text: '#283593' }, // Índigo
     { bg: '#ffebee', border: '#d32f2f', text: '#b71c1c' }, // Vermelho
@@ -420,7 +420,7 @@ const PipelineCreator = () => {
                 {/* Right Side: Chat Drawer */}
                 {aiEnabled && (
                     <Paper className={classes.chatArea} elevation={0}>
-                        <Box p={2} borderBottom="1px solid rgba(0,0,0,0.12)" display="flex" alignItems="center" gap={1}>
+                        <Box p={2} borderBottom="1px solid var(--border-divider)" display="flex" alignItems="center" gap={1}>
                             <AndroidIcon color="secondary" />
                             <Typography variant="subtitle1" style={{ fontWeight: 600 }}>IA Assistant</Typography>
                         </Box>

@@ -32,7 +32,7 @@ const useStyles = makeStyles(theme => ({
 		margin: "0 12px 8px 12px",
 		padding: "12px 16px",
 		borderRadius: 12,
-		backgroundColor: "#ffffff",
+		backgroundColor: "var(--bg-surface)",
 		border: "1px solid #f1f5f9",
 		transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
 		cursor: "pointer",
@@ -40,14 +40,14 @@ const useStyles = makeStyles(theme => ({
 		gap: 12,
 		"&:hover": {
 			borderColor: "#e2e8f0",
-			boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)",
+			boxShadow: "0 4px 6px -1px var(--border-subtle), 0 2px 4px -1px var(--border-weak)",
 			transform: "translateY(-1px)",
 		},
 	},
 
 	selectedTicket: {
 		borderColor: "#3b82f6",
-		backgroundColor: "rgba(59, 130, 246, 0.02)",
+		backgroundColor: "var(--action-primary-bg)",
 		boxShadow: "0 0 0 1px #3b82f6",
 		"&:hover": {
 			borderColor: "#3b82f6",
@@ -114,7 +114,7 @@ const useStyles = makeStyles(theme => ({
 
 	unreadBadge: {
 		backgroundColor: "#3b82f6",
-		color: "#ffffff",
+		color: "var(--bg-surface)",
 		fontSize: "0.7rem",
 		fontWeight: 700,
 		padding: "2px 6px",
@@ -146,7 +146,7 @@ const useStyles = makeStyles(theme => ({
 
 	acceptButton: {
 		backgroundColor: "#111827",
-		color: "#ffffff",
+		color: "var(--bg-surface)",
 		fontSize: "0.75rem",
 		fontWeight: 600,
 		textTransform: "none",

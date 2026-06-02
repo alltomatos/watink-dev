@@ -29,8 +29,8 @@ const useStyles = makeStyles((theme) => ({
     alignItems: "center",
     padding: theme.spacing(6),
     borderRadius: 20,
-    boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    boxShadow: "0 10px 25px var(--shadow-appbar)",
+    backgroundColor: "var(--overlay-strong)",
   },
   logo: {
     width: 280,
@@ -49,7 +49,7 @@ const useStyles = makeStyles((theme) => ({
   },
   title: {
     marginBottom: theme.spacing(3),
-    color: "#333",
+    color: "var(--text-primary)",
     fontWeight: 600,
   }
 }));

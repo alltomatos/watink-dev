@@ -25,6 +25,7 @@ import MyActivities from "../pages/MyActivities";
 import GroupEdit from "../pages/GroupEdit";
 import Contacts from "../pages/Contacts/";
 import QuickAnswers from "../pages/QuickAnswers/";
+import Access from "../pages/Access";
 import Groups from "../pages/Groups";
 import TagManager from "../pages/TagManager/";
 import Roles from "../pages/Roles";
@@ -74,6 +75,7 @@ const PrivateRoutes = () => {
             <Route exact path="/profile" component={UserProfile} isPrivate />
             <Route exact path="/reset-password" component={ResetPassword} isPrivate />
             <Route exact path="/my-activities" component={MyActivities} isPrivate />
+            <Route exact path="/access" component={Access} isPrivate />
             <Route exact path="/groups/:groupId" component={GroupEdit} isPrivate />
             <Route exact path="/quickAnswers" component={QuickAnswers} isPrivate />
             <Route exact path="/Settings" component={Settings} isPrivate />

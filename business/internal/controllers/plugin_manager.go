@@ -38,7 +38,7 @@ func getTenantID(c *gin.Context) string {
 
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "default_secret"
+		return ""
 	}
 
 	token, err := jwt.Parse(parts[1], func(token *jwt.Token) (interface{}, error) {

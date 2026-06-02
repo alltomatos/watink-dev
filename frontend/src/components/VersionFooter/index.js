@@ -9,7 +9,7 @@ const useStyles = makeStyles((theme) => ({
         padding: theme.spacing(2),
         textAlign: "center",
         color: theme.palette.text.secondary,
-        borderTop: "1px solid rgba(0, 0, 0, 0.12)",
+        borderTop: "1px solid var(--border-divider)",
         marginTop: "auto",
         fontSize: "0.75rem",
         overflow: "hidden",

@@ -499,6 +499,20 @@ const messages = {
           message: "This action cannot be reverted.",
         },
       },
+      access: {
+        title: "Access and Permissions",
+        metrics: {
+          roles: "Active roles",
+          noRole: "Users without role",
+          total: "Total users",
+        },
+        buttons: {
+          manageRoles: "Manage Roles",
+          manageUsers: "Manage Users",
+          managePermissions: "Manage Permissions",
+          legacyGroups: "Legacy Groups",
+        },
+      },
       backendErrors: {
         ERR_NO_OTHER_WHATSAPP:
           "There must be at lest one default WhatsApp connection.",

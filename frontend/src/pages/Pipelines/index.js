@@ -28,7 +28,7 @@ const useStyles = makeStyles((theme) => ({
         transition: "transform 0.2s",
         "&:hover": {
             transform: "scale(1.02)",
-            boxShadow: "0 4px 20px 0 rgba(0,0,0,0.12)"
+            boxShadow: "0 4px 20px 0 var(--border-divider)"
         }
     }
 }));
@@ -137,7 +137,7 @@ const Pipelines = () => {
                                 </div>
                                 <p>{pipeline.description}</p>
                                 <span style={{
-                                    background: pipeline.type === 'kanban' ? '#e3f2fd' : '#fff3e0',
+                                    background: pipeline.type === 'kanban' ? '#e3f2fd' : 'var(--bg-surface)3e0',
                                     color: pipeline.type === 'kanban' ? '#1976d2' : '#f57c00',
                                     padding: '2px 8px',
                                     borderRadius: '4px',

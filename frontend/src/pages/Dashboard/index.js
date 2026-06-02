@@ -18,7 +18,7 @@ const useStyles = makeStyles((theme) => ({
   container: {
     paddingTop: theme.spacing(4),
     paddingBottom: theme.spacing(4),
-    backgroundColor: "#f5f6f8",
+    backgroundColor: "var(--bg-default)",
     minHeight: "100%",
   },
   header: {
@@ -36,10 +36,10 @@ const useStyles = makeStyles((theme) => ({
     borderRadius: 20,
     textTransform: "none",
     fontWeight: 600,
-    backgroundColor: "#ffffff",
-    color: "#007AFF",
-    border: "1px solid rgba(0,122,255,0.2)",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+    backgroundColor: "var(--bg-surface)",
+    color: "var(--action-primary)",
+    border: "1px solid var(--action-primary-bg)",
+    boxShadow: "0 2px 8px var(--border-subtle)",
     "&:hover": {
       backgroundColor: "#f0f7ff",
     }
@@ -49,7 +49,7 @@ const useStyles = makeStyles((theme) => ({
     width: 450,
     backgroundColor: theme.palette.background.paper,
     border: 'none',
-    boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
+    boxShadow: "0 20px 40px var(--shadow-strong)",
     padding: theme.spacing(4),
     top: '50%',
     left: '50%',
@@ -64,7 +64,7 @@ const useStyles = makeStyles((theme) => ({
     padding: theme.spacing(2),
     backgroundColor: "#f9fafb",
     borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.03)",
+    border: "1px solid var(--border-weak)",
   },
   saveButton: {
     borderRadius: 12,
@@ -157,7 +157,7 @@ const Dashboard = () => {
   const sortedWidgets = [...widgets].sort((a, b) => a.order - b.order);
 
   return (
-    <div style={{ backgroundColor: "#f5f6f8", minHeight: "100vh" }}>
+    <div style={{ backgroundColor: "var(--bg-default)", minHeight: "100vh" }}>
       <Container maxWidth="lg" className={classes.container}>
         <div className={classes.header}>
           <Typography className={classes.title}>Dashboard</Typography>

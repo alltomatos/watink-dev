@@ -5,7 +5,6 @@ import { isSameDay, parseISO, format } from "date-fns";
 import openSocket from "../../services/socket-io";
 import clsx from "clsx";
 
-import { green, blue } from "@material-ui/core/colors";
 import {
   Button,
   CircularProgress,
@@ -21,7 +20,6 @@ import {
 } from "@material-ui/core";
 import { Avatar } from "@material-ui/core";
 import { useTheme } from "@material-ui/core/styles";
-import { lighten, darken } from "@material-ui/core/styles/colorManipulator";
 import {
   AccessTime,
   Block,
@@ -70,7 +68,7 @@ const useStyles = makeStyles((theme) => ({
   },
 
   circleLoading: {
-    color: green[500],
+    color: "var(--status-success)",
     position: "absolute",
     opacity: "70%",
     top: 0,
@@ -95,8 +93,8 @@ const useStyles = makeStyles((theme) => ({
     },
 
     whiteSpace: "pre-wrap",
-    backgroundColor: "#ffffff",
-    color: "#303030",
+    backgroundColor: "var(--message-left-bg)",
+    color: "var(--message-left-text)",
     alignSelf: "flex-start",
     borderTopLeftRadius: 0,
     borderTopRightRadius: 8,
@@ -106,27 +104,27 @@ const useStyles = makeStyles((theme) => ({
     paddingRight: 5,
     paddingTop: 5,
     paddingBottom: 0,
-    boxShadow: "0 1px 1px #b3b3b3",
+    boxShadow: "var(--shadow-sm)",
   },
 
   messageLeftSaas: {
-    backgroundColor: "#f3f4f6",
-    color: "#303030",
+    backgroundColor: "var(--message-saas-bg-alt)",
+    color: "var(--message-left-text)",
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     borderBottomLeftRadius: 0, // Tail on bottom left
     borderBottomRightRadius: 12,
     boxShadow: "none",
-    border: "1px solid #e5e7eb",
+    border: "1px solid var(--border-default)",
   },
 
   quotedContainerLeft: {
-    margin: "-3px -80px 6px -6px",
-    overflow: "hidden",
-    backgroundColor: "#f0f0f0",
-    borderRadius: "7.5px",
-    display: "flex",
-    position: "relative",
+  margin: "-3px -80px 6px -6px",
+  overflow: "hidden",
+  backgroundColor: "var(--message-quote-bg)",
+  borderRadius: "7.5px",
+  display: "flex",
+  position: "relative",
   },
 
   quotedMsg: {
@@ -139,9 +137,9 @@ const useStyles = makeStyles((theme) => ({
   },
 
   quotedSideColorLeft: {
-    flex: "none",
-    width: "4px",
-    backgroundColor: "#6bcbef",
+  flex: "none",
+  width: "4px",
+  backgroundColor: "var(--message-quote-side-left)",
   },
 
   messageRight: {
@@ -163,8 +161,8 @@ const useStyles = makeStyles((theme) => ({
     },
 
     whiteSpace: "pre-wrap",
-    backgroundColor: "#dcf8c6",
-    color: "#303030",
+    backgroundColor: "var(--message-right-bg)",
+    color: "var(--message-right-text)",
     alignSelf: "flex-end",
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
@@ -174,26 +172,26 @@ const useStyles = makeStyles((theme) => ({
     paddingRight: 5,
     paddingTop: 5,
     paddingBottom: 0,
-    boxShadow: "0 1px 1px #b3b3b3",
+    boxShadow: "var(--shadow-sm)",
   },
 
   messageRightSaas: {
-    backgroundColor: theme.palette.primary.main,
-    color: "#ffffff",
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 0, // Tail on bottom right
-    boxShadow: "none",
+  backgroundColor: "var(--message-saas-bg)",
+  color: "var(--message-saas-text)",
+  borderTopLeftRadius: 12,
+  borderTopRightRadius: 12,
+  borderBottomLeftRadius: 12,
+  borderBottomRightRadius: 0, // Tail on bottom right
+  boxShadow: "none",
   },
 
   quotedContainerRight: {
-    margin: "-3px -80px 6px -6px",
-    overflowY: "hidden",
-    backgroundColor: "#cfe9ba",
-    borderRadius: "7.5px",
-    display: "flex",
-    position: "relative",
+  margin: "-3px -80px 6px -6px",
+  overflowY: "hidden",
+  backgroundColor: "var(--message-quote-bg)",
+  borderRadius: "7.5px",
+  display: "flex",
+  position: "relative",
   },
 
   quotedMsgRight: {
@@ -204,25 +202,25 @@ const useStyles = makeStyles((theme) => ({
   },
 
   quotedSideColorRight: {
-    flex: "none",
-    width: "4px",
-    backgroundColor: "#35cd96",
+  flex: "none",
+  width: "4px",
+  backgroundColor: "var(--message-quote-side-right)",
   },
 
   messageActionsButton: {
-    display: "none",
-    position: "relative",
-    color: "#999",
-    zIndex: 1,
-    backgroundColor: "inherit",
-    opacity: "90%",
-    "&:hover, &.Mui-focusVisible": { backgroundColor: "inherit" },
+  display: "none",
+  position: "relative",
+  color: "var(--message-ack-text)",
+  zIndex: 1,
+  backgroundColor: "inherit",
+  opacity: "90%",
+  "&:hover, &.Mui-focusVisible": { backgroundColor: "inherit" },
   },
 
   messageContactName: {
-    display: "flex",
-    color: "#6bcbef",
-    fontWeight: 500,
+  display: "flex",
+  color: "var(--message-quote-side-left)",
+  fontWeight: 500,
   },
 
   textContentItem: {
@@ -231,10 +229,10 @@ const useStyles = makeStyles((theme) => ({
   },
 
   textContentItemDeleted: {
-    fontStyle: "italic",
-    color: "rgba(0, 0, 0, 0.36)",
-    overflowWrap: "break-word",
-    padding: "3px 80px 6px 6px",
+  fontStyle: "italic",
+  color: "var(--text-muted)",
+  overflowWrap: "break-word",
+  padding: "3px 80px 6px 6px",
   },
 
   messageMedia: {
@@ -248,27 +246,27 @@ const useStyles = makeStyles((theme) => ({
   },
 
   timestamp: {
-    fontSize: 11,
-    position: "absolute",
-    bottom: 0,
-    right: 5,
-    color: "#999",
+  fontSize: 11,
+  position: "absolute",
+  bottom: 0,
+  right: 5,
+  color: "var(--message-timestamp-text)",
   },
 
   dailyTimestamp: {
-    alignItems: "center",
-    textAlign: "center",
-    alignSelf: "center",
-    width: "110px",
-    backgroundColor: "#e1f3fb",
-    margin: "10px",
-    borderRadius: "10px",
-    boxShadow: "0 1px 1px #b3b3b3",
+  alignItems: "center",
+  textAlign: "center",
+  alignSelf: "center",
+  width: "110px",
+  backgroundColor: "var(--message-daily-bg)",
+  margin: "10px",
+  borderRadius: "10px",
+  boxShadow: "var(--shadow-sm)",
   },
 
   dailyTimestampText: {
-    color: "#808888",
-    padding: 8,
+  color: "var(--message-daily-text)",
+  padding: 8,
     alignSelf: "center",
     marginLeft: "0px",
   },
@@ -286,8 +284,8 @@ const useStyles = makeStyles((theme) => ({
   },
 
   ackDoneAllIcon: {
-    color: blue[500],
-    fontSize: 18,
+  color: "var(--action-primary)",
+  fontSize: 18,
     verticalAlign: "middle",
     marginLeft: 4,
   },
@@ -301,30 +299,30 @@ const useStyles = makeStyles((theme) => ({
   },
 
   messageReactions: {
-    position: "absolute",
-    bottom: -10,
-    left: 10,
-    backgroundColor: "#fff",
-    borderRadius: "12px",
-    padding: "2px 6px",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-    fontSize: "12px",
-    display: "flex",
-    alignItems: "center",
-    zIndex: 20,
-    cursor: "pointer",
-    border: "1px solid #e0e0e0",
+  position: "absolute",
+  bottom: -10,
+  left: 10,
+  backgroundColor: "var(--message-reaction-bg)",
+  borderRadius: "12px",
+  padding: "2px 6px",
+  boxShadow: "var(--shadow-md)",
+  fontSize: "12px",
+  display: "flex",
+  alignItems: "center",
+  zIndex: 20,
+  cursor: "pointer",
+  border: "1px solid var(--message-reaction-border)",
   },
 
   urlPreviewContainer: {
-    marginTop: 5,
-    marginBottom: 5,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    borderRadius: 8,
-    overflow: "hidden",
-    maxWidth: 300,
-    border: "1px solid rgba(0,0,0,0.1)",
-    cursor: "pointer",
+  marginTop: 5,
+  marginBottom: 5,
+  backgroundColor: "var(--bg-surface-alt)",
+  borderRadius: 8,
+  overflow: "hidden",
+  maxWidth: 300,
+  border: "1px solid var(--border-default)",
+  cursor: "pointer",
   },
   urlPreviewImage: {
     width: "100%",
@@ -343,9 +341,9 @@ const useStyles = makeStyles((theme) => ({
     fontSize: 14,
   },
   urlPreviewDescription: {
-    fontSize: 12,
-    color: "#666",
-    margin: 0,
+  fontSize: 12,
+  color: "var(--message-quote-text)",
+  margin: 0,
     display: "-webkit-box",
     "-webkit-line-clamp": 3,
     "-webkit-box-orient": "vertical",
@@ -632,7 +630,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
           <video
             src={getBackendUrl(message.mediaUrl)}
             controls
-            style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain', backgroundColor: '#000' }}
+            style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain', backgroundColor: 'var(--bg-surface)' }}
           />
         </div>
       );
@@ -646,16 +644,16 @@ const MessagesList = ({ ticketId, isGroup }) => {
         return (
           <div style={{ display: 'flex', overflowX: 'auto', maxWidth: 350, gap: 10, paddingBottom: 10, paddingTop: 5 }}>
             {data.cards.map((card, idx) => (
-              <div key={idx} style={{ minWidth: 220, backgroundColor: '#fff', borderRadius: 8, border: '1px solid #eee', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+              <div key={idx} style={{ minWidth: 220, backgroundColor: 'var(--bg-surface)', borderRadius: 8, border: '1px solid var(--border-default)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
                 {card.headerUrl && <img src={card.headerUrl} style={{ width: '100%', height: 120, objectFit: 'cover' }} alt={card.title} />}
                 <div style={{ padding: 8 }}>
                   <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 4 }}>{card.title}</div>
-                  <div style={{ fontSize: 12, color: '#555', whiteSpace: 'pre-wrap' }}>{card.body}</div>
+                  <div style={{ fontSize: 12, color: 'var(--message-quote-text)', whiteSpace: 'pre-wrap' }}>{card.body}</div>
                 </div>
                 {card.buttons && card.buttons.length > 0 && (
-                  <div style={{ borderTop: '1px solid #f0f0f0', padding: 5 }}>
+                  <div style={{ borderTop: '1px solid var(--border-default)', padding: 5 }}>
                     {card.buttons.map((btn, bIdx) => (
-                      <div key={bIdx} style={{ fontSize: 12, textAlign: 'center', color: '#007bff', padding: '4px 0', cursor: 'pointer' }}
+                      <div key={bIdx} style={{ fontSize: 12, textAlign: 'center', color: 'var(--action-primary)', padding: '4px 0', cursor: 'pointer' }}
                         onClick={() => btn.url ? window.open(btn.url, '_blank') : null}
                       >
                         {btn.text}
@@ -697,7 +695,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
       return <DoneAll fontSize="small" className={classes.ackDoneAllIcon} />;
     }
     if (message.ack === 5) {
-      return <ErrorOutline fontSize="small" className={classes.ackErrorIcon} style={{ color: "#f44336" }} />;
+      return <ErrorOutline fontSize="small" className={classes.ackErrorIcon} style={{ color: "var(--message-error-text)" }} />;
     }
   };
 
@@ -1028,7 +1026,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
         if (!message.isDeleted) return null;
         const deletedBy = getDeletedBy(message);
         return (
-          <div style={{ fontSize: 13, color: "rgba(0, 0, 0, 0.5)", fontStyle: "italic", marginBottom: 5 }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 5 }}>
             <Block fontSize="small" style={{ fontSize: 16, marginRight: 5, verticalAlign: "bottom" }} />
             {deletedBy ? `Mensagem apagada por: ${deletedBy}` : "Mensagem apagada"}
           </div>

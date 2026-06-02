@@ -49,17 +49,17 @@ const useStyles = makeStyles((theme) => ({
     headerCard: {
         marginBottom: theme.spacing(3),
         borderRadius: 16,
-        boxShadow: "0 4px 20px 0 rgba(0,0,0,0.05)",
+        boxShadow: "0 4px 20px 0 var(--border-subtle)",
     },
     detailCard: {
         height: "100%",
         borderRadius: 16,
-        boxShadow: "0 4px 20px 0 rgba(0,0,0,0.05)",
+        boxShadow: "0 4px 20px 0 var(--border-subtle)",
     },
     timelineCard: {
         height: "100%",
         borderRadius: 16,
-        boxShadow: "0 4px 20px 0 rgba(0,0,0,0.05)",
+        boxShadow: "0 4px 20px 0 var(--border-subtle)",
     },
     statusChip: {
         fontWeight: "bold",

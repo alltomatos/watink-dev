@@ -13,7 +13,7 @@ const useStyles = makeStyles((theme) => ({
   metricsTitle: {
     fontWeight: 700,
     marginBottom: theme.spacing(2),
-    color: "#333",
+    color: "var(--text-primary)",
   }
 }));
 

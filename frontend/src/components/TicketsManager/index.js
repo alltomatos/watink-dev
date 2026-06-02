@@ -31,17 +31,17 @@ const useStyles = makeStyles((theme) => ({
     height: "100%",
     flexDirection: "column",
     overflow: "hidden",
-    backgroundColor: "#f9fafb", // Light background for the sidebar feel
-    color: theme.palette.text.primary,
-    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    backgroundColor: "var(--bg-default)",
+    color: "var(--text-primary)",
+    fontFamily: theme.typography.fontFamily,
   },
   headerContainer: {
     padding: "20px 24px 12px 24px",
     display: "flex",
     flexDirection: "column",
     gap: 16,
-    backgroundColor: "#ffffff",
-    borderBottom: "1px solid #f1f5f9",
+    backgroundColor: "var(--bg-surface)",
+    borderBottom: "1px solid var(--border-default)",
   },
   headerTop: {
     display: "flex",
@@ -51,12 +51,12 @@ const useStyles = makeStyles((theme) => ({
   title: {
     fontSize: "1.25rem",
     fontWeight: 700,
-    color: "#111827",
+    color: "var(--text-primary)",
     letterSpacing: "-0.025em",
   },
   tabSegmented: {
     display: "inline-flex",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: "var(--bg-surface-alt)",
     padding: 2,
     borderRadius: 8,
     gap: 2,
@@ -67,16 +67,16 @@ const useStyles = makeStyles((theme) => ({
     fontSize: "0.8125rem",
     fontWeight: 500,
     cursor: "pointer",
-    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+    transition: "all 0.2s var(--ease-out)",
     userSelect: "none",
-    color: "#64748b",
+    color: "var(--text-secondary)",
     "&:hover": {
-      color: "#1e293b",
+      color: "var(--text-primary)",
     },
     "&.active": {
-      backgroundColor: "#ffffff",
-      color: "#111827",
-      boxShadow: "0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)",
+      backgroundColor: "var(--bg-surface)",
+      color: "var(--text-primary)",
+      boxShadow: "var(--shadow-sm)",
     }
   },
   searchWrapper: {
@@ -87,30 +87,30 @@ const useStyles = makeStyles((theme) => ({
   },
   searchInput: {
     width: "100%",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: "var(--bg-surface-alt)",
     borderRadius: 8,
     padding: "8px 12px 8px 36px",
     fontSize: "0.875rem",
     border: "1px solid transparent",
-    transition: "all 0.2s",
+    transition: "all 0.2s var(--ease-out)",
     "&:focus-within": {
-      backgroundColor: "#ffffff",
-      borderColor: "#3b82f6",
-      boxShadow: "0 0 0 4px rgba(59, 130, 246, 0.1)",
+      backgroundColor: "var(--bg-surface)",
+      borderColor: "var(--action-primary)",
+      boxShadow: "0 0 0 4px var(--action-primary-bg)",
     }
   },
   searchIcon: {
     position: "absolute",
     left: 10,
-    color: "#94a3b8",
+    color: "var(--text-muted)",
     fontSize: "1.2rem",
   },
   subTabContainer: {
     display: "flex",
     padding: "8px 20px",
     gap: 4,
-    backgroundColor: "#ffffff",
-    borderBottom: "1px solid #f1f5f9",
+    backgroundColor: "var(--bg-surface)",
+    borderBottom: "1px solid var(--border-default)",
   },
   subTabItem: {
     padding: "6px 10px",
@@ -118,32 +118,32 @@ const useStyles = makeStyles((theme) => ({
     fontSize: "0.8125rem",
     fontWeight: 500,
     cursor: "pointer",
-    color: "#64748b",
+    color: "var(--text-secondary)",
     display: "flex",
     alignItems: "center",
     gap: 6,
-    transition: "all 0.2s",
+    transition: "all 0.2s var(--ease-out)",
     "&:hover": {
-      backgroundColor: "#f8fafc",
-      color: "#1e293b",
+      backgroundColor: "var(--bg-surface-alt)",
+      color: "var(--text-primary)",
     },
     "&.active": {
-      color: "#3b82f6",
-      backgroundColor: "rgba(59, 130, 246, 0.05)",
+      color: "var(--action-primary)",
+      backgroundColor: "var(--action-primary-bg)",
     }
   },
   badgeCount: {
     fontSize: "0.75rem",
-    backgroundColor: "#f1f5f9",
-    color: "#64748b",
+    backgroundColor: "var(--bg-surface-alt)",
+    color: "var(--text-secondary)",
     padding: "1px 6px",
     borderRadius: 10,
     minWidth: 20,
     textAlign: "center",
     fontWeight: 600,
     ".active &": {
-      backgroundColor: "#3b82f6",
-      color: "#ffffff",
+      backgroundColor: "var(--action-primary)",
+      color: "var(--text-inverse)",
     }
   },
   actionsWrapper: {
@@ -151,14 +151,14 @@ const useStyles = makeStyles((theme) => ({
     gap: 8,
   },
   actionButton: {
-    padding: 6,
-    borderRadius: 6,
-    color: "#64748b",
-    backgroundColor: "#f1f5f9",
-    "&:hover": {
-      backgroundColor: "#e2e8f0",
-      color: "#1e293b",
-    }
+  padding: 6,
+  borderRadius: 6,
+  color: "var(--text-tertiary)",
+  backgroundColor: "var(--bg-surface-alt)",
+  "&:hover": {
+  backgroundColor: "var(--border-default)",
+  color: "var(--text-primary)",
+  }
   }
 }));
 
@@ -245,7 +245,7 @@ const TicketsManager = () => {
           anchorEl={anchorElQueue}
           onClose={() => setAnchorElQueue(null)}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-          PaperProps={{ style: { padding: 16, borderRadius: 12, minWidth: 250, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)' } }}
+          PaperProps={{ style: { padding: 16, borderRadius: 12, minWidth: 250, boxShadow: 'var(--shadow-lg)' } }}
         >
           <TicketsQueueSelect
             selectedQueueIds={selectedQueueIds}

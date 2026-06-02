@@ -66,7 +66,7 @@ const useStyles = makeStyles((theme) => ({
     inputArea: {
         padding: theme.spacing(1.5),
         borderTop: '1px solid #e0e0e0',
-        background: '#fff'
+        background: 'var(--bg-surface)'
     },
     logsArea: {
         width: 320,
@@ -108,10 +108,10 @@ const useStyles = makeStyles((theme) => ({
         borderBottomRightRadius: 4
     },
     botBubble: {
-        background: '#fff',
+        background: 'var(--bg-surface)',
         marginRight: 'auto',
         borderBottomLeftRadius: 4,
-        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+        boxShadow: '0 1px 2px var(--shadow-appbar)'
     },
     messageTime: {
         fontSize: 10,
@@ -129,7 +129,7 @@ const useStyles = makeStyles((theme) => ({
         cursor: 'pointer',
         '&:hover': {
             background: theme.palette.primary.light,
-            color: '#fff'
+            color: 'var(--bg-surface)'
         }
     },
     // Log items
@@ -141,8 +141,8 @@ const useStyles = makeStyles((theme) => ({
         marginBottom: theme.spacing(0.5),
         borderRadius: 4,
         fontSize: 12,
-        background: '#fff',
-        border: '1px solid #eee'
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-default)'
     },
     logIcon: {
         marginTop: 2
@@ -152,12 +152,12 @@ const useStyles = makeStyles((theme) => ({
     },
     logError: {
         '& $logIcon': { color: '#f44336' },
-        background: '#fff5f5',
+        background: 'var(--bg-surface)5f5',
         borderColor: '#ffcdd2'
     },
     logWarning: {
         '& $logIcon': { color: '#ff9800' },
-        background: '#fff8e1',
+        background: 'var(--bg-surface)8e1',
         borderColor: '#ffe082'
     },
     logPending: {
@@ -168,7 +168,7 @@ const useStyles = makeStyles((theme) => ({
     },
     logLabel: {
         fontWeight: 600,
-        color: '#333'
+        color: 'var(--text-primary)'
     },
     logMessage: {
         color: '#666',
@@ -193,7 +193,7 @@ const useStyles = makeStyles((theme) => ({
         color: '#1976d2'
     },
     automationBadge: {
-        background: '#fff3e0',
+        background: 'var(--bg-surface)3e0',
         color: '#e65100'
     }
 }));

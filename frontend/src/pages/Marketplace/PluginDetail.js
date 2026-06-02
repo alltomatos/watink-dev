@@ -53,11 +53,11 @@ const useStyles = makeStyles((theme) => ({
     },
     chipFree: {
         backgroundColor: theme.palette.success.main,
-        color: "#fff",
+        color: "var(--bg-surface)",
     },
     chipBusiness: {
         backgroundColor: theme.palette.warning.main,
-        color: "#fff",
+        color: "var(--bg-surface)",
     },
     section: {
         marginTop: theme.spacing(3),

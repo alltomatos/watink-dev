@@ -6,10 +6,10 @@ import clsx from "clsx";
 
 const useStyles = makeStyles((theme) => ({
     root: {
-        backgroundColor: "#FFFFFF",
+        backgroundColor: "var(--bg-surface)",
         borderRadius: 16,
         border: "none",
-        boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.08)",
+        boxShadow: "0px 4px 20px var(--shadow-medium)",
         overflow: "hidden",
     },
     header: {
