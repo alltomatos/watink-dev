@@ -98,7 +98,7 @@ const useStyles = makeStyles(theme => ({
 	},
 	dialogContent: {
 		padding: theme.spacing(3),
-		backgroundColor: "#fafafa",
+		backgroundColor: "var(--bg-surface)",
 	},
 	textField: {
 		marginBottom: theme.spacing(2),

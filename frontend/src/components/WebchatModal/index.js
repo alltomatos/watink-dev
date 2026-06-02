@@ -62,11 +62,11 @@ const useStyles = makeStyles(theme => ({
         backgroundColor: 'transparent'
     },
     previewContainer: {
-        border: '1px solid #ddd',
+        border: '1px solid var(--border-default)',
         borderRadius: 8,
         padding: 16,
         marginTop: 16,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: 'var(--bg-surface-alt)',
         position: 'relative',
         height: 200,
         display: 'flex',

@@ -41,6 +41,10 @@ const EXEMPT_PATTERNS = [
 	/layout\/MainListItems\.js/, // Hex is data format (nav icon tint map)
 	/pages\/FlowBuilder\//,     // Deferred to Phase 2
 	/legacy\//,                  // Frozen legacy code
+	/TicketsList\/index\.js/,    // Dynamic template literals
+	/WebchatModal\/index\.js/,  // WhatsApp brand branding
+	/HelpdeskReports\.js/,       // Chart data colors
+	/PipelineKPIs\.js/,          // Chart data colors
 ];
 
 const RULE_META = {

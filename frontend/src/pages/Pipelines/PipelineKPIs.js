@@ -28,7 +28,7 @@ const useStyles = makeStyles((theme) => ({
     }
 }));
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+const COLORS = ['var(--status-info)', '#00C49F', '#FFBB28', '#FF8042', 'var(--status-default-text)', '#82ca9d'];
 
 const PipelineKPIs = ({ pipeline, deals }) => {
     const classes = useStyles();
@@ -58,7 +58,7 @@ const PipelineKPIs = ({ pipeline, deals }) => {
                             <YAxis />
                             <Tooltip />
                             <Legend />
-                            <Bar dataKey="count" name="Quantidade" fill="#8884d8" />
+                            <Bar dataKey="count" name="Quantidade" fill="var(--status-default-text)" />
                         </BarChart>
                     </ResponsiveContainer>
                 </Paper>
@@ -75,7 +75,7 @@ const PipelineKPIs = ({ pipeline, deals }) => {
                                 labelLine={false}
                                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                                 outerRadius={80}
-                                fill="#8884d8"
+                                fill="var(--status-default-text)"
                                 dataKey="value"
                             >
                                 {dealsByStage.map((entry, index) => (

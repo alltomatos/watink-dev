@@ -407,7 +407,7 @@ const UserEdit = () => {
                         perform="user-modal:editProfile"
                         yes={() => (
                             <>
-                                <Box mb={2} p={2} bgcolor="var(--bg-surface)3e0" border="1px solid #ffe0b2" borderRadius={8}>
+                                <Box mb={2} p={2} bgcolor="var(--bg-surface)3e0" border="1px solid var(--status-warning-bg)" borderRadius={8}>
                                     <Typography variant="subtitle2" color="textPrimary" style={{ fontWeight: 600 }}>
                                         ⚠️ Atenção: Permissões Específicas
                                     </Typography>

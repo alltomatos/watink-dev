@@ -33,10 +33,10 @@ const useStyles = makeStyles((theme) => ({
         maxHeight: "100%",
         boxShadow: '0 1px 3px var(--border-divider), 0 1px 2px var(--overlay-dark)',
         overflow: 'hidden',
-        backgroundColor: '#ebecf0' // Grey background for default
+        backgroundColor: 'var(--border-default)' // Grey background for default
     },
     columnEnterprise: {
-        backgroundColor: '#f4f5f7', // Slightly lighter
+        backgroundColor: 'var(--bg-surface-alt)', // Slightly lighter
     },
     columnHeader: {
         padding: theme.spacing(2),
@@ -57,12 +57,12 @@ const useStyles = makeStyles((theme) => ({
         color: 'var(--text-primary)',
         borderTopWidth: 4,
         borderTopStyle: 'solid',
-        borderBottom: '1px solid #ddd',
+        borderBottom: '1px solid var(--border-default)',
         textShadow: 'none'
     },
     columnSubHeader: {
         fontSize: '0.75rem',
-        color: '#666',
+        color: 'var(--text-muted)',
         marginTop: 4,
         fontWeight: 'normal'
     },
@@ -96,7 +96,7 @@ const useStyles = makeStyles((theme) => ({
     },
     cardValue: {
         fontSize: "0.8rem",
-        color: "#666"
+        color: "var(--text-muted)"
     },
     badge: {
         backgroundColor: 'var(--overlay-light)',
@@ -107,7 +107,7 @@ const useStyles = makeStyles((theme) => ({
         fontSize: '0.75rem'
     },
     badgeEnterprise: {
-        backgroundColor: '#e0e0e0',
+        backgroundColor: 'var(--border-default)',
         color: 'var(--text-primary)',
         padding: '2px 8px',
         borderRadius: 12,
@@ -115,14 +115,14 @@ const useStyles = makeStyles((theme) => ({
         fontSize: '0.75rem'
     },
     stagnantCard: {
-        borderLeft: '4px solid #f44336' // Red indicator
+        borderLeft: '4px solid var(--status-error)' // Red indicator
     },
     valueBadge: {
         position: 'absolute',
         top: 8,
         right: 8,
-        backgroundColor: '#e8f5e9',
-        color: '#2e7d32',
+        backgroundColor: 'var(--status-success-bg)',
+        color: 'var(--status-success)',
         fontSize: '0.7rem',
         padding: '2px 6px',
         borderRadius: 4,
@@ -131,16 +131,16 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const stageColors = [
-    { bg: '#e3f2fd', header: '#1976d2', light: '#bbdefb' },
-    { bg: 'var(--bg-surface)3e0', header: '#f57c00', light: '#ffe0b2' },
-    { bg: '#e8f5e9', header: '#388e3c', light: '#c8e6c9' },
-    { bg: '#fce4ec', header: '#c2185b', light: '#f8bbd9' },
-    { bg: '#ede7f6', header: '#7b1fa2', light: '#d1c4e9' },
-    { bg: '#e0f7fa', header: '#0097a7', light: '#b2ebf2' },
-    { bg: 'var(--bg-surface)8e1', header: '#ffa000', light: '#ffecb3' },
-    { bg: '#f3e5f5', header: '#8e24aa', light: '#e1bee7' },
-    { bg: '#e8eaf6', header: '#3f51b5', light: '#c5cae9' },
-    { bg: '#ffebee', header: '#d32f2f', light: '#ffcdd2' },
+    { bg: 'var(--status-info-bg)', header: 'var(--status-info)', light: 'var(--status-info-8)' },
+    { bg: 'var(--bg-surface)3e0', header: 'var(--status-warning)', light: 'var(--status-warning-bg)' },
+    { bg: 'var(--status-success-bg)', header: 'var(--status-success)', light: 'var(--status-success-10)' },
+    { bg: 'var(--status-error-bg)', header: 'var(--status-error)', light: 'var(--status-error-10)' },
+    { bg: 'var(--status-default-bg)', header: 'var(--status-default-text)', light: 'var(--status-default-bg)' },
+    { bg: 'var(--status-info-bg)', header: 'var(--status-info)', light: 'var(--status-info-8)' },
+    { bg: 'var(--bg-surface)8e1', header: 'var(--status-warning)', light: 'var(--status-warning-bg)' },
+    { bg: 'var(--status-default-bg)', header: 'var(--status-default-text)', light: 'var(--status-default-bg)' },
+    { bg: 'var(--status-info-bg)', header: 'var(--status-info)', light: 'var(--status-info-15)' },
+    { bg: 'var(--status-error-bg)', header: 'var(--status-error)', light: 'var(--status-error-10)' },
 ];
 
 const getStageColor = (index) => stageColors[index % stageColors.length];
@@ -170,7 +170,7 @@ const PipelineKanban = ({ pipeline, columns, setColumns, onDragEnd, isEnterprise
                             key={stage.id}
                             className={`${classes.column} ${isEnterprise ? classes.columnEnterprise : ''}`}
                             style={{
-                                backgroundColor: isEnterprise ? '#f4f5f7' : color.bg
+                                backgroundColor: isEnterprise ? 'var(--bg-surface-alt)' : color.bg
                             }}
                         >
                             {isEnterprise ? (
@@ -204,7 +204,7 @@ const PipelineKanban = ({ pipeline, columns, setColumns, onDragEnd, isEnterprise
                                         className={classes.droppableArea}
                                         style={{
                                             background: isEnterprise
-                                                ? (snapshot.isDraggingOver ? '#e3f2fd' : 'transparent')
+                                                ? (snapshot.isDraggingOver ? 'var(--status-info-bg)' : 'transparent')
                                                 : (snapshot.isDraggingOver ? color.light : color.bg)
                                         }}
                                     >

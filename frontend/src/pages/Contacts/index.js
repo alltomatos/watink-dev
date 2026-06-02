@@ -106,12 +106,12 @@ const useStyles = makeStyles((theme) => ({
   title: {
     fontSize: "1.25rem",
     fontWeight: 700,
-    color: "#1a1a1a",
+    color: "var(--text-primary)",
   },
   searchWrapper: {
     display: "flex",
     alignItems: "center",
-    backgroundColor: "#f0f2f5",
+    backgroundColor: "var(--bg-surface-alt)",
     borderRadius: 20,
     padding: "4px 16px",
     width: "100%",
@@ -387,7 +387,7 @@ const Contacts = () => {
                         onClick={() => handleSaveTicket(contact.id)}
                         title="Iniciar conversa"
                       >
-                        <WhatsAppIcon fontSize="small" style={{ color: "#25D366" }} />
+                        <WhatsAppIcon fontSize="small" style={{ color: "var(--status-success)" }} />
                       </IconButton>
                       <IconButton
                         size="small"
@@ -429,7 +429,7 @@ const Contacts = () => {
           <Paper elevation={0} className={classes.tablePaper}>
             <Table size="medium">
               <TableHead>
-                <TableRow style={{ backgroundColor: "#fafafa" }}>
+                <TableRow style={{ backgroundColor: "var(--bg-surface)" }}>
                   <TableCell padding="checkbox" />
                   <TableCell style={{ fontWeight: 600 }}>{i18n.t("contacts.table.name")}</TableCell>
                   <TableCell align="center" style={{ fontWeight: 600 }}>
@@ -457,7 +457,7 @@ const Contacts = () => {
                         size="small"
                         onClick={() => handleSaveTicket(contact.id)}
                       >
-                        <WhatsAppIcon fontSize="small" style={{ color: "#25D366" }} />
+                        <WhatsAppIcon fontSize="small" style={{ color: "var(--status-success)" }} />
                       </IconButton>
                       <IconButton
                         size="small"

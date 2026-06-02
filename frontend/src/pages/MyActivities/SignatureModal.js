@@ -13,9 +13,9 @@ import SignatureCanvas from "react-signature-canvas";
 
 const useStyles = makeStyles((theme) => ({
   signatureContainer: {
-    border: "1px solid #ccc",
+    border: "1px solid var(--border-default)",
     borderRadius: 4,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "var(--bg-surface-alt)",
     width: "100%",
     height: 300,
     display: "flex",

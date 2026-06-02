@@ -22,7 +22,7 @@ const useStyles = makeStyles((theme) => ({
     width: '300px',
     backgroundColor: 'var(--bg-surface)',
     borderRadius: '8px',
-    border: '1px solid #e0e0e0',
+    border: '1px solid var(--border-default)',
     overflow: 'hidden',
     position: 'relative',
     boxShadow: '0 1px 2px var(--border-subtle)',
@@ -59,11 +59,11 @@ const useStyles = makeStyles((theme) => ({
     textOverflow: 'ellipsis',
     fontSize: '14px',
     lineHeight: '1.4',
-    color: '#303030',
+    color: 'var(--text-primary)',
   },
   meta: {
     fontSize: '11px',
-    color: '#999',
+    color: 'var(--text-muted)',
     marginTop: 2,
     textTransform: 'uppercase',
     fontWeight: 500,
@@ -76,10 +76,10 @@ const useStyles = makeStyles((theme) => ({
     padding: 8,
     borderRadius: '50%',
     backgroundColor: 'transparent',
-    color: '#757575',
+    color: 'var(--text-muted)',
     '&:hover': {
         backgroundColor: 'var(--border-subtle)',
-        color: '#303030',
+        color: 'var(--text-primary)',
     }
   },
 }));
@@ -122,21 +122,21 @@ const getFileIcon = (extension) => {
 const getFileColor = (extension) => {
   switch (extension) {
     case 'pdf':
-      return '#F44336'; // Material Red
+      return 'var(--status-error)'; // Material Red
     case 'doc':
     case 'docx':
-      return '#2196F3'; // Material Blue
+      return 'var(--status-info)'; // Material Blue
     case 'xls':
     case 'xlsx':
     case 'csv':
-      return '#4CAF50'; // Material Green
+      return 'var(--status-success)'; // Material Green
     case 'ppt':
     case 'pptx':
-      return '#FF9800'; // Material Orange
+      return 'var(--status-warning)'; // Material Orange
     case 'txt':
-      return '#9E9E9E'; // Grey
+      return 'var(--text-muted)'; // Grey
     default:
-      return '#7E57C2'; // Material Deep Purple (Generic)
+      return 'var(--status-default-text)'; // Material Deep Purple (Generic)
   }
 };
 

@@ -767,10 +767,10 @@ const MessagesList = ({ ticketId, isGroup }) => {
   const getParticipantColor = (message) => {
     const participantId = message.participant || message.dataJson?.participant || "unknown";
     if (!groupColorCacheRef.current.has(participantId)) {
+      // Semantic tokens replacing palette hexes
       const colors = [
-        "#FF5722", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3",
-        "#03A9F4", "#00BCD4", "#009688", "#4CAF50", "#8BC34A", "#CDDC39",
-        "#FFC107", "#FF9800", "#795548", "#607D8B"
+        "var(--status-warning)", "var(--status-error)", "var(--text-muted)", "var(--action-primary)",
+        "var(--status-success)", "var(--status-info)"
       ];
       const randomColor = colors[Math.floor(Math.random() * colors.length)];
       groupColorCacheRef.current.set(participantId, randomColor);

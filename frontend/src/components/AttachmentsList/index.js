@@ -32,10 +32,10 @@ const useStyles = makeStyles((theme) => ({
         height: 120,
         borderRadius: 8,
         overflow: "hidden",
-        border: "1px solid #e0e0e0",
+        border: "1px solid var(--border-default)",
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "#fafafa",
+        backgroundColor: "var(--bg-surface)",
         cursor: "pointer",
         transition: "all 0.2s ease",
         "&:hover": {
@@ -54,20 +54,20 @@ const useStyles = makeStyles((theme) => ({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "#f0f0f0",
+        backgroundColor: "var(--bg-surface-alt)",
     },
     fileIcon: {
         fontSize: 36,
     },
-    pdfIcon: { color: "#e53935" },
-    docIcon: { color: "#1565c0" },
-    xlsIcon: { color: "#2e7d32" },
-    imgIcon: { color: "#7b1fa2" },
-    defaultIcon: { color: "#757575" },
+    pdfIcon: { color: "var(--status-error)" },
+    docIcon: { color: "var(--status-info)" },
+    xlsIcon: { color: "var(--status-success)" },
+    imgIcon: { color: "var(--status-default-text)" },
+    defaultIcon: { color: "var(--text-muted)" },
     infoBox: {
         padding: theme.spacing(0.5, 1),
         backgroundColor: "var(--bg-surface)",
-        borderTop: "1px solid #e0e0e0",
+        borderTop: "1px solid var(--border-default)",
         flexGrow: 1,
         display: "flex",
         alignItems: "center",
@@ -229,7 +229,7 @@ const AttachmentsList = ({
                                             className={classes.smallButton}
                                             onClick={(e) => handleDelete(attachment, e)}
                                         >
-                                            <DeleteIcon style={{ fontSize: 14, color: "#e53935" }} />
+                                            <DeleteIcon style={{ fontSize: 14, color: "var(--status-error)" }} />
                                         </IconButton>
                                     </Tooltip>
                                 )}

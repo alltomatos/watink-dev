@@ -11,7 +11,7 @@ const useStyles = makeStyles((theme) => ({
         right: 0,
         bottom: 0,
         zIndex: 9999,
-        backgroundColor: "#f5f6fa",
+        backgroundColor: "var(--bg-surface-alt)",
     },
 }));
 

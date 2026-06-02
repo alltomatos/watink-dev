@@ -171,7 +171,7 @@ const UserProfile = () => {
                                         badgeContent={
                                             <IconButton
                                                 component="span"
-                                                style={{ backgroundColor: "#3f51b5", color: "white", width: 32, height: 32 }}
+                                                style={{ backgroundColor: "var(--status-info)", color: "white", width: 32, height: 32 }}
                                             >
                                                 <CameraAlt style={{ fontSize: 20 }} />
                                             </IconButton>

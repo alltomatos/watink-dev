@@ -52,11 +52,11 @@ const useStyles = makeStyles((theme) => ({
     title: {
         fontWeight: 700, // Bolder
         fontSize: "1.25rem", // Larger
-        color: "#1e293b",
+        color: "var(--text-primary)",
         lineHeight: 1.2,
     },
     subtitle: {
-        color: "#94a3b8", // Subtler gray
+        color: "var(--text-secondary)", // Subtler gray
         fontSize: "0.875rem",
         marginTop: 4,
     },

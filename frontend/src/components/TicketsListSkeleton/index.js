@@ -18,7 +18,7 @@ const TicketsSkeleton = () => {
 						marginBottom: 8, 
 						borderRadius: 12, 
 						backgroundColor: "var(--bg-surface)",
-						border: "1px solid #f1f5f9",
+						border: "1px solid var(--bg-surface-alt)",
 						display: "flex",
 						gap: 12
 					}}

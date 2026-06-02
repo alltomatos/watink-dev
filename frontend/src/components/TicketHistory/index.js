@@ -25,14 +25,14 @@ const useStyles = makeStyles((theme) => ({
         flexDirection: "column",
         padding: "16px",
         gap: "16px",
-        backgroundColor: "#f9fafb",
+        backgroundColor: "var(--bg-surface-alt)",
         height: "100%",
     },
     logItem: {
-        padding: "12px",
-        borderRadius: "12px",
-        backgroundColor: "var(--bg-surface)",
-        border: "1px solid #e5e7eb",
+    	padding: "12px",
+    	borderRadius: "12px",
+    	backgroundColor: "var(--bg-surface)",
+    	border: "1px solid var(--border-default)",
         position: "relative",
         "&::before": {
             content: '""',
@@ -41,10 +41,10 @@ const useStyles = makeStyles((theme) => ({
             top: "20px",
             width: "10px",
             height: "1px",
-            backgroundColor: "#e5e7eb",
-        }
-    },
-    timeline: {
+            backgroundColor: "var(--border-default)",
+            }
+            },
+            timeline: {
         position: "relative",
         paddingLeft: "20px",
         "&::before": {
@@ -54,10 +54,10 @@ const useStyles = makeStyles((theme) => ({
             top: "0",
             bottom: "0",
             width: "2px",
-            backgroundColor: "#e5e7eb",
-        }
-    },
-    iconWrapper: {
+            backgroundColor: "var(--border-default)",
+            }
+            },
+            iconWrapper: {
         position: "absolute",
         left: "-20px",
         top: "16px",
@@ -65,7 +65,7 @@ const useStyles = makeStyles((theme) => ({
         height: "24px",
         borderRadius: "50%",
         backgroundColor: "var(--bg-surface)",
-        border: "2px solid #e5e7eb",
+        border: "2px solid var(--border-default)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -80,16 +80,16 @@ const useStyles = makeStyles((theme) => ({
     logType: {
         fontWeight: 600,
         fontSize: "0.85rem",
-        color: "#374151",
+        color: "var(--text-primary)",
         textTransform: "capitalize",
     },
     logDate: {
         fontSize: "0.75rem",
-        color: "#9ca3af",
+        color: "var(--text-muted)",
     },
     logBody: {
         fontSize: "0.8rem",
-        color: "#4b5563",
+        color: "var(--text-secondary)",
     },
     userBadge: {
         display: "inline-flex",
@@ -98,7 +98,7 @@ const useStyles = makeStyles((theme) => ({
         marginTop: "8px",
         padding: "2px 8px",
         borderRadius: "6px",
-        backgroundColor: "#f3f4f6",
+        backgroundColor: "var(--bg-surface-alt)",
     },
     userAvatar: {
         width: "16px",
@@ -113,10 +113,10 @@ const useStyles = makeStyles((theme) => ({
 
 const getLogIcon = (type) => {
     switch (type) {
-        case "transfer": return <TransferIcon style={{ fontSize: 14, color: "#3b82f6" }} />;
-        case "status": return <StatusIcon style={{ fontSize: 14, color: "#10b981" }} />;
-        case "assign": return <AssignIcon style={{ fontSize: 14, color: "#f59e0b" }} />;
-        default: return <MessageIcon style={{ fontSize: 14, color: "#6b7280" }} />;
+        case "transfer": return <TransferIcon style={{ fontSize: 14, color: "var(--status-info)" }} />;
+        case "status": return <StatusIcon style={{ fontSize: 14, color: "var(--status-success)" }} />;
+        case "assign": return <AssignIcon style={{ fontSize: 14, color: "var(--status-warning)" }} />;
+        default: return <MessageIcon style={{ fontSize: 14, color: "var(--text-muted)" }} />;
     }
 };
 

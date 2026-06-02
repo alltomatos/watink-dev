@@ -263,7 +263,7 @@ export default function VersionDashboard() {
             startIcon={updating ? <CircularProgress size={20} color="inherit" /> : <UpdateIcon />}
             disabled={updating || updateStatus === "ok"}
             onClick={() => setOpenUpdateModal(true)}
-            style={updateStatus === "ok" ? { backgroundColor: "#2e7d32", color: "var(--bg-surface)" } : undefined}
+            style={updateStatus === "ok" ? { backgroundColor: "var(--status-success)", color: "var(--bg-surface)" } : undefined}
           >
             {updateStatus === "ok" ? "Atualização OK" : updating ? "Atualizando..." : "Verificar Atualização"}
           </Button>
@@ -407,7 +407,7 @@ export default function VersionDashboard() {
 
       {updateStatus === "ok" && (
         <Box mt={2}>
-          <Typography style={{ color: "#2e7d32", fontWeight: 600 }}>
+          <Typography style={{ color: "var(--status-success)", fontWeight: 600 }}>
             ✅ Atualização concluída com sucesso. Sistema 100% atualizado.
           </Typography>
         </Box>

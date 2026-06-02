@@ -11,7 +11,7 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: "center",
     height: "100vh",
     width: "100vw",
-    backgroundColor: theme.palette.type === "dark" ? "#111B21" : "#f0f2f5",
+    backgroundColor: theme.palette.type === "dark" ? "var(--text-primary)" : "var(--bg-surface-alt)",
     position: "fixed",
     top: 0,
     left: 0,
@@ -27,7 +27,7 @@ const useStyles = makeStyles((theme) => ({
   },
   text: {
     marginTop: 15,
-    color: "#888",
+    color: "var(--text-muted)",
     fontSize: "0.9rem",
     fontWeight: 500,
   },

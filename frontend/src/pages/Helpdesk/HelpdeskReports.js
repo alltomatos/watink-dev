@@ -36,7 +36,7 @@ const useStyles = makeStyles((theme) => ({
     },
 }));
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
+const COLORS = ["var(--status-info)", "#00C49F", "#FFBB28", "#FF8042", "var(--status-default-text)", "#82ca9d"];
 
 const HelpdeskReports = () => {
     const classes = useStyles();
@@ -122,7 +122,7 @@ const HelpdeskReports = () => {
                                 <XAxis dataKey="status" />
                                 <YAxis />
                                 <Tooltip />
-                                <Bar dataKey="count" fill="#8884d8" name="Quantidade" />
+                                <Bar dataKey="count" fill="var(--status-default-text)" name="Quantidade" />
                             </BarChart>
                         </ResponsiveContainer>
                     </Paper>
@@ -141,7 +141,7 @@ const HelpdeskReports = () => {
                                     cx="50%"
                                     cy="50%"
                                     outerRadius={100}
-                                    fill="#8884d8"
+                                    fill="var(--status-default-text)"
                                     dataKey="count"
                                     nameKey="priority"
                                     label

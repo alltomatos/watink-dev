@@ -65,7 +65,7 @@ const useStyles = makeStyles((theme) => ({
         display: "flex",
         flexDirection: "column",
         borderLeft: `1px solid ${theme.palette.divider}`,
-        backgroundColor: theme.palette.type === 'dark' ? '#1e293b' : '#f8fafc',
+        backgroundColor: theme.palette.type === 'dark' ? 'var(--text-primary)' : 'var(--bg-default)',
     },
     chatMessages: {
         flex: 1,
@@ -95,7 +95,7 @@ const useStyles = makeStyles((theme) => ({
     },
     aiMessage: {
         alignSelf: "flex-start",
-        backgroundColor: theme.palette.type === 'dark' ? '#334155' : '#e2e8f0',
+        backgroundColor: theme.palette.type === 'dark' ? 'var(--text-primary)' : 'var(--border-default)',
         color: theme.palette.text.primary,
         borderBottomLeftRadius: 0,
     },
@@ -113,16 +113,16 @@ const useStyles = makeStyles((theme) => ({
 
 // Paleta de cores modernas para etapas do Kanban
 const stageColors = [
-    { bg: '#e3f2fd', border: '#1976d2', text: '#0d47a1' }, // Azul
-    { bg: 'var(--bg-surface)3e0', border: '#f57c00', text: '#e65100' }, // Laranja
-    { bg: '#e8f5e9', border: '#388e3c', text: '#1b5e20' }, // Verde
-    { bg: '#fce4ec', border: '#c2185b', text: '#880e4f' }, // Rosa
-    { bg: '#ede7f6', border: '#7b1fa2', text: '#4a148c' }, // Roxo
-    { bg: '#e0f7fa', border: '#0097a7', text: '#006064' }, // Ciano
-    { bg: 'var(--bg-surface)8e1', border: '#ffa000', text: '#ff6f00' }, // Âmbar
-    { bg: '#f3e5f5', border: '#8e24aa', text: '#6a1b9a' }, // Violeta
-    { bg: '#e8eaf6', border: '#3f51b5', text: '#283593' }, // Índigo
-    { bg: '#ffebee', border: '#d32f2f', text: '#b71c1c' }, // Vermelho
+    { bg: 'var(--status-info-bg)', border: 'var(--status-info)', text: 'var(--status-info)' }, // Azul
+    { bg: 'var(--bg-surface)3e0', border: 'var(--status-warning)', text: 'var(--status-warning)' }, // Laranja
+    { bg: 'var(--status-success-bg)', border: 'var(--status-success)', text: 'var(--status-success)' }, // Verde
+    { bg: 'var(--status-error-bg)', border: 'var(--status-error)', text: 'var(--status-error)' }, // Rosa
+    { bg: 'var(--status-default-bg)', border: 'var(--status-default-text)', text: 'var(--status-default-text)' }, // Roxo
+    { bg: 'var(--status-info-bg)', border: 'var(--status-info)', text: 'var(--status-info)' }, // Ciano
+    { bg: 'var(--bg-surface)8e1', border: 'var(--status-warning)', text: 'var(--status-warning)' }, // Âmbar
+    { bg: 'var(--status-default-bg)', border: 'var(--status-default-text)', text: 'var(--status-default-text)' }, // Violeta
+    { bg: 'var(--status-info-bg)', border: 'var(--status-info)', text: 'var(--status-info)' }, // Índigo
+    { bg: 'var(--status-error-bg)', border: 'var(--status-error)', text: 'var(--status-error)' }, // Vermelho
 ];
 
 const getStageColor = (index) => stageColors[index % stageColors.length];

@@ -44,7 +44,7 @@ const useStyles = makeStyles((theme) => ({
     label: {
         fontSize: "0.875rem",
         fontWeight: 600,
-        color: "#64748b",
+        color: "var(--text-muted)",
         marginBottom: theme.spacing(0.5),
         textTransform: "uppercase",
         letterSpacing: "0.5px",
@@ -52,7 +52,7 @@ const useStyles = makeStyles((theme) => ({
     value: {
         fontSize: "2.5rem",
         fontWeight: 800,
-        color: (props) => props.textColor || "#1e293b",
+        color: (props) => props.textColor || "var(--text-primary)",
         lineHeight: 1.2,
     },
     footer: {
@@ -65,7 +65,7 @@ const useStyles = makeStyles((theme) => ({
         alignItems: "center",
         fontSize: "0.75rem",
         fontWeight: 700,
-        color: "#10b981",
+        color: "var(--status-success)",
         backgroundColor: "var(--status-success-10)",
         padding: "4px 10px",
         borderRadius: 20,
@@ -75,7 +75,7 @@ const useStyles = makeStyles((theme) => ({
         alignItems: "center",
         fontSize: "0.75rem",
         fontWeight: 700,
-        color: "#ef4444",
+        color: "var(--status-error)",
         backgroundColor: "var(--status-error-10)",
         padding: "4px 10px",
         borderRadius: 20,
@@ -89,29 +89,29 @@ const useStyles = makeStyles((theme) => ({
 // Mapeia cores do tema para valores RGB e Gradients
 const colorMap = {
     primary: {
-        bg: "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)",
-        icon: "#1565C0",
-        text: "#0D47A1"
+        bg: "linear-gradient(135deg, var(--status-info-4) 0%, var(--status-info-8) 100%)",
+        icon: "var(--status-info)",
+        text: "var(--status-info)"
     },
     success: {
-        bg: "linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)",
-        icon: "#2E7D32",
-        text: "#1B5E20"
+        bg: "linear-gradient(135deg, var(--status-success-10) 0%, var(--status-success-bg) 100%)",
+        icon: "var(--status-success)",
+        text: "var(--status-success)"
     },
     warning: {
-        bg: "linear-gradient(135deg, var(--bg-surface)3E0 0%, #FFE0B2 100%)",
-        icon: "#EF6C00",
-        text: "#E65100"
+        bg: "linear-gradient(135deg, var(--status-warning-bg) 0%, var(--status-warning-bg) 100%)",
+        icon: "var(--status-warning)",
+        text: "var(--status-warning)"
     },
     error: {
-        bg: "linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%)",
-        icon: "#C62828",
-        text: "#B71C1C"
+        bg: "linear-gradient(135deg, var(--status-error-10) 0%, var(--status-error-bg) 100%)",
+        icon: "var(--status-error)",
+        text: "var(--status-error)"
     },
     info: {
-        bg: "linear-gradient(135deg, #E1F5FE 0%, #B3E5FC 100%)",
-        icon: "#0277BD",
-        text: "#01579B"
+        bg: "linear-gradient(135deg, var(--status-info-4) 0%, var(--status-info-8) 100%)",
+        icon: "var(--status-info)",
+        text: "var(--status-info)"
     },
 };
 

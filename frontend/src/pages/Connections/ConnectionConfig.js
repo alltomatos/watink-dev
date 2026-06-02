@@ -285,12 +285,12 @@ const ConnectionConfig = () => {
 
     const renderStatus = () => {
         const statusMap = {
-            CONNECTED: { text: "Conectado", color: "#10b981", icon: <CheckCircle fontSize="large" style={{ color: "#10b981" }} /> },
-            DISCONNECTED: { text: "Desconectado", color: "#ef4444", icon: <PowerSettingsNew fontSize="large" style={{ color: "#ef4444" }} /> },
-            QRCODE: { text: "Aguardando QR Code", color: "#f59e0b", icon: <CropFree fontSize="large" style={{ color: "#f59e0b" }} /> },
-            PAIRING: { text: "Aguardando Pareamento", color: "#8b5cf6", icon: <PhoneIphone fontSize="large" style={{ color: "#8b5cf6" }} /> },
-            OPENING: { text: "Iniciando...", color: "#3b82f6", icon: <CircularProgress size={30} style={{ color: "#3b82f6" }} /> },
-            TIMEOUT: { text: "Tempo Esgotado", color: "#6b7280", icon: <PowerSettingsNew fontSize="large" style={{ color: "#6b7280" }} /> },
+            CONNECTED: { text: "Conectado", color: "var(--status-success)", icon: <CheckCircle fontSize="large" style={{ color: "var(--status-success)" }} /> },
+            DISCONNECTED: { text: "Desconectado", color: "var(--status-error)", icon: <PowerSettingsNew fontSize="large" style={{ color: "var(--status-error)" }} /> },
+            QRCODE: { text: "Aguardando QR Code", color: "var(--status-warning)", icon: <CropFree fontSize="large" style={{ color: "var(--status-warning)" }} /> },
+            PAIRING: { text: "Aguardando Pareamento", color: "var(--status-default-text)", icon: <PhoneIphone fontSize="large" style={{ color: "var(--status-default-text)" }} /> },
+            OPENING: { text: "Iniciando...", color: "var(--status-info)", icon: <CircularProgress size={30} style={{ color: "var(--status-info)" }} /> },
+            TIMEOUT: { text: "Tempo Esgotado", color: "var(--text-muted)", icon: <PowerSettingsNew fontSize="large" style={{ color: "var(--text-muted)" }} /> },
         };
 
         const current = statusMap[whatsapp?.status] || statusMap["DISCONNECTED"];

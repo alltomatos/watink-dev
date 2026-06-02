@@ -710,7 +710,7 @@ const Settings = () => {
 									className={classes.logoPreview}
 								/>
 							) : (
-								<CloudUploadIcon style={{ fontSize: 48, color: "#9ca3af" }} />
+								<CloudUploadIcon style={{ fontSize: 48, color: "var(--text-muted)" }} />
 							)}
 							<Typography variant="body2" color="textSecondary">
 								{logoPreview ? "Clique para alterar" : "Clique para upload"}
@@ -749,7 +749,7 @@ const Settings = () => {
 									style={{ maxWidth: 64, maxHeight: 64, objectFit: 'contain' }}
 								/>
 							) : (
-								<CloudUploadIcon style={{ fontSize: 48, color: "#9ca3af" }} />
+								<CloudUploadIcon style={{ fontSize: 48, color: "var(--text-muted)" }} />
 							)}
 							<Typography variant="body2" color="textSecondary">
 								{faviconPreview ? "Clique para alterar" : "Clique para upload"}
@@ -791,7 +791,7 @@ const Settings = () => {
 									style={{ maxWidth: 120, maxHeight: 120, objectFit: 'contain' }}
 								/>
 							) : (
-								<CloudUploadIcon style={{ fontSize: 48, color: "#9ca3af" }} />
+								<CloudUploadIcon style={{ fontSize: 48, color: "var(--text-muted)" }} />
 							)}
 							<Typography variant="body2" color="textSecondary">
 								{mobileLogoPreview ? "Clique para alterar" : "Clique para upload"}
@@ -864,7 +864,7 @@ const Settings = () => {
 										style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain' }}
 									/>
 								) : (
-									<CloudUploadIcon style={{ fontSize: 48, color: "#9ca3af" }} />
+									<CloudUploadIcon style={{ fontSize: 48, color: "var(--text-muted)" }} />
 								)}
 								<Typography variant="body2" color="textSecondary" style={{ marginTop: 8 }}>
 									{loginImagePreview ? "Clique para trocar a imagem" : "Clique para fazer upload da imagem de fundo"}
