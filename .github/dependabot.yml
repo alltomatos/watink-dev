@@ -11,12 +11,9 @@ updates:
 
   - package-ecosystem: "npm"
     directory: "/marketplace-hub"
-    schedule:
-      interval: "weekly"
     ignore:
       - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
 
   - package-ecosystem: "gomod"
     directory: "/business"
