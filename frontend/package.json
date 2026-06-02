@@ -12,7 +12,7 @@
     "axios": "^1.16.1",
     "date-fns": "^2.30.0",
     "emoji-mart": "^3.0.1",
-    "formik": "^2.4.5",
+    "formik": "^2.4.9",
     "framer-motion": "6.5.1",
     "i18next": "^22.5.1",
     "i18next-browser-languagedetector": "^7.1.0",
