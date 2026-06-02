@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -25,6 +25,13 @@ func ObservabilityMiddleware() gin.HandlerFunc {
 		clientIP := c.ClientIP()
 		traceID := trace.SpanContextFromContext(c.Request.Context()).TraceID().String()
 
-		log.Printf("event=request method=%s path=%s status=%d latency_ms=%d ip=%s trace_id=%s", method, path, status, latencyMs, clientIP, traceID)
+		slog.Info("request",
+			"method", method,
+			"path", path,
+			"status", status,
+			"latency_ms", latencyMs,
+			"ip", clientIP,
+			"trace_id", traceID,
+		)
 	}
 }
