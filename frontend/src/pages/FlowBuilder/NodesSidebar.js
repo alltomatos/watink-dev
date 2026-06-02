@@ -25,8 +25,8 @@ const useStyles = makeStyles((theme) => ({
     sidebar: {
         width: '280px',
         padding: '20px',
-        borderRight: '1px solid rgba(0,0,0,0.05)',
-        background: '#ffffff',
+        borderRight: '1px solid var(--border-subtle)',
+        background: 'var(--bg-surface)',
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
@@ -69,13 +69,13 @@ const useStyles = makeStyles((theme) => ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        boxShadow: '0 4px 12px var(--shadow-medium)',
         marginBottom: 8,
         transition: 'all 0.2s ease',
     },
     icon: {
         fontSize: 24,
-        color: '#fff'
+        color: 'var(--bg-surface)'
     },
     label: {
         fontSize: '0.7rem',
@@ -87,7 +87,7 @@ const useStyles = makeStyles((theme) => ({
     },
     // Apple-like gradients
     colorTrigger: { background: 'linear-gradient(180deg, #34C759 0%, #28A745 100%)' },
-    colorMessage: { background: 'linear-gradient(180deg, #007AFF 0%, #0056B3 100%)' },
+    colorMessage: { background: 'linear-gradient(180deg, var(--action-primary) 0%, #0056B3 100%)' },
     colorMenu: { background: 'linear-gradient(180deg, #FF9500 0%, #E68600 100%)' },
     colorSwitch: { background: 'linear-gradient(180deg, #AF52DE 0%, #8E44AD 100%)' },
     colorDatabase: { background: 'linear-gradient(180deg, #A2845E 0%, #846C4D 100%)' },
@@ -148,7 +148,7 @@ const NodesSidebar = () => {
 
     return (
         <aside className={classes.sidebar}>
-            <div style={{ marginBottom: '5px', fontWeight: 'bold', color: '#333', fontSize: '16px', paddingLeft: '4px' }}>
+            <div style={{ marginBottom: '5px', fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '16px', paddingLeft: '4px' }}>
                 Blocos Disponíveis
             </div>
 

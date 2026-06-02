@@ -7,14 +7,14 @@ import { getBackendUrl } from "../../helpers/urlUtils";
 const useStyles = makeStyles((theme) => ({
     card: {
         marginBottom: theme.spacing(1),
-        backgroundColor: "#fff",
+        backgroundColor: "var(--bg-surface)",
         borderRadius: 8,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+        boxShadow: "0 1px 3px var(--border-divider)",
         transition: "all 0.3s ease",
         cursor: "pointer",
         "&:hover": {
             transform: "translateY(-2px)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            boxShadow: "0 4px 12px var(--shadow-strong)",
         },
     },
     priorityLow: {
@@ -32,13 +32,13 @@ const useStyles = makeStyles((theme) => ({
     },
     "@keyframes pulse": {
         "0%": {
-            boxShadow: "0 0 0 0 rgba(244, 67, 54, 0.7)",
+            boxShadow: "0 0 0 0 var(--status-error)",
         },
         "70%": {
-            boxShadow: "0 0 0 10px rgba(244, 67, 54, 0)",
+            boxShadow: "0 0 0 10px transparent",
         },
         "100%": {
-            boxShadow: "0 0 0 0 rgba(244, 67, 54, 0)",
+            boxShadow: "0 0 0 0 transparent",
         },
     },
     avatar: {
@@ -72,7 +72,7 @@ const useStyles = makeStyles((theme) => ({
             backgroundColor: "#E3F2FD",
         },
         "100%": {
-            backgroundColor: "#fff",
+            backgroundColor: "var(--bg-surface)",
         },
     },
 }));

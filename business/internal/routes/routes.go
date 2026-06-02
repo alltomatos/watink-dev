@@ -40,11 +40,15 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ domain.RabbitMQServiceInterfac
 	protected.Use(middleware.IsAuth())
 	protected.Use(middleware.TenantMiddleware())
 	{
-		// Update & System
-		protected.GET("/system/stats", controllers.GetSystemStats)
-		protected.GET("/system/rabbitmq/queues", controllers.GetRabbitMQQueues)
-		protected.GET("/system/latest-release", controllers.GetLatestRelease)
-		protected.POST("/system/update", controllers.StartUpdate)
+	// System (superadmin only — exposes cross-tenant stats and infrastructure)
+	system := protected.Group("/system")
+	system.Use(middleware.SuperAdminOnly())
+	{
+		system.GET("/stats", controllers.GetSystemStats)
+		system.GET("/rabbitmq/queues", controllers.GetRabbitMQQueues)
+		system.GET("/latest-release", controllers.GetLatestRelease)
+		system.POST("/update", controllers.StartUpdate)
+	}
 		// Auth
 		protected.DELETE("/auth/logout", authController.Logout)
 
@@ -125,11 +129,15 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ domain.RabbitMQServiceInterfac
 		protected.PUT("/users/:userId", userController.UpdateUser)
 		protected.DELETE("/users/:userId", userController.DeleteUser)
 
-		// SaaS
-		protected.GET("/saas/tenants", controllers.ListTenants)
-		protected.GET("/saas/tenants/:tenantId/plan", controllers.GetTenantPlan)
-		protected.GET("/saas/plans", controllers.ListPlans)
-		protected.POST("/saas/plans", controllers.CreatePlan)
+		// SaaS (superadmin only)
+		saas := protected.Group("/saas")
+		saas.Use(middleware.SuperAdminOnly())
+		{
+			saas.GET("/tenants", controllers.ListTenants)
+			saas.GET("/tenants/:tenantId/plan", controllers.GetTenantPlan)
+			saas.GET("/plans", controllers.ListPlans)
+			saas.POST("/plans", controllers.CreatePlan)
+		}
 
 		// RBAC
 		protected.GET("/groups", controllers.ListGroups)

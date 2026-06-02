@@ -53,16 +53,16 @@ const useStyles = makeStyles(theme => ({
 	drawerPaper: {
 		width: drawerWidth,
 		display: "flex",
-		borderTop: "1px solid rgba(0, 0, 0, 0.12)",
-		borderRight: "1px solid rgba(0, 0, 0, 0.12)",
-		borderBottom: "1px solid rgba(0, 0, 0, 0.12)",
+		borderTop: "1px solid var(--border-divider)",
+		borderRight: "1px solid var(--border-divider)",
+		borderBottom: "1px solid var(--border-divider)",
 		borderTopRightRadius: 4,
 		borderBottomRightRadius: 4,
 	},
 	header: {
 		display: "flex",
-		borderBottom: "1px solid rgba(0, 0, 0, 0.12)",
-		backgroundColor: "#eee",
+		borderBottom: "1px solid var(--border-divider)",
+		backgroundColor: "var(--border-default)",
 		alignItems: "center",
 		padding: theme.spacing(0, 1),
 		minHeight: "73px",
@@ -70,7 +70,7 @@ const useStyles = makeStyles(theme => ({
 	},
 	content: {
 		display: "flex",
-		backgroundColor: "#eee",
+		backgroundColor: "var(--border-default)",
 		flexDirection: "column",
 		padding: "8px 0px 8px 8px",
 		height: "100%",
@@ -123,12 +123,12 @@ const useStyles = makeStyles(theme => ({
 // Paleta de cores (mesma do PipelineBoard para consistência)
 const stageColors = [
 	{ bg: '#e3f2fd', header: '#1976d2', light: '#bbdefb' }, // Azul
-	{ bg: '#fff3e0', header: '#f57c00', light: '#ffe0b2' }, // Laranja
+	{ bg: 'var(--bg-surface)3e0', header: '#f57c00', light: '#ffe0b2' }, // Laranja
 	{ bg: '#e8f5e9', header: '#388e3c', light: '#c8e6c9' }, // Verde
 	{ bg: '#fce4ec', header: '#c2185b', light: '#f8bbd9' }, // Rosa
 	{ bg: '#ede7f6', header: '#7b1fa2', light: '#d1c4e9' }, // Roxo
 	{ bg: '#e0f7fa', header: '#0097a7', light: '#b2ebf2' }, // Ciano
-	{ bg: '#fff8e1', header: '#ffa000', light: '#ffecb3' }, // Âmbar
+	{ bg: 'var(--bg-surface)8e1', header: '#ffa000', light: '#ffecb3' }, // Âmbar
 	{ bg: '#f3e5f5', header: '#8e24aa', light: '#e1bee7' }, // Violeta
 	{ bg: '#e8eaf6', header: '#3f51b5', light: '#c5cae9' }, // Índigo
 	{ bg: '#ffebee', header: '#d32f2f', light: '#ffcdd2' }, // Vermelho
@@ -293,7 +293,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 						indicatorColor="primary"
 						textColor="primary"
 						variant="fullWidth"
-						style={{ borderBottom: '1px solid rgba(0,0,0,0.12)' }}
+						style={{ borderBottom: '1px solid var(--border-divider)' }}
 					>
 						<Tab label="📋 Dados" />
 						<Tab label="🕒 Histórico" />
@@ -397,7 +397,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 														padding: '2px 8px',
 														borderRadius: 4,
 														fontSize: '0.8rem',
-														color: '#333'
+														color: 'var(--text-primary)'
 													}}
 												>
 													{deal.stage?.name}

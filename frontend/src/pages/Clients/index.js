@@ -58,11 +58,11 @@ const useStyles = makeStyles((theme) => ({
     },
     chipPf: {
         backgroundColor: theme.palette.info.main,
-        color: "#fff",
+        color: "var(--bg-surface)",
     },
     chipPj: {
         backgroundColor: theme.palette.secondary.main,
-        color: "#fff",
+        color: "var(--bg-surface)",
     },
 }));
 

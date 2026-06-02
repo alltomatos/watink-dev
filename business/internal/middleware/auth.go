@@ -72,3 +72,15 @@ func IsAuth() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func SuperAdminOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		profile, ok := c.Get("userProfile")
+		if !ok || profile != "superadmin" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: superadmin required"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}

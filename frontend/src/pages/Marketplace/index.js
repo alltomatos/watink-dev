@@ -83,15 +83,15 @@ const useStyles = makeStyles((theme) => ({
     },
     chipFree: {
         backgroundColor: theme.palette.success.main,
-        color: "#fff",
+        color: "var(--bg-surface)",
     },
     chipBusiness: {
         backgroundColor: theme.palette.warning.main,
-        color: "#fff",
+        color: "var(--bg-surface)",
     },
     chipInstalled: {
         backgroundColor: theme.palette.info.main,
-        color: "#fff",
+        color: "var(--bg-surface)",
         marginLeft: theme.spacing(1),
     },
     tableContainer: {

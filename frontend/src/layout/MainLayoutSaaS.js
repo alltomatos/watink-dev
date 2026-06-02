@@ -33,51 +33,48 @@ const drawerWidth = 260;
 const drawerWidthClosed = 72;
 
 const useStyles = makeStyles((theme) => ({
-    root: {
-        display: "flex",
-        height: "100vh",
-        // Fundo claro para área principal (Soft Cloud)
-        backgroundColor: "#F1F5F9",
-    },
-    drawerPaper: {
-        position: "relative",
-        whiteSpace: "nowrap",
-        width: drawerWidth,
-        transition: theme.transitions.create("width", {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-        }),
-        borderRight: "1px solid #334155",
-        // Sidebar com tom intermediário (não muito escuro, não muito claro)
-        backgroundColor: "#1E293B",
-        color: "#E2E8F0",
-        boxShadow: "0 0 20px rgba(0,0,0,0.1)",
-        display: "flex",
-        flexDirection: "column",
-    },
-    drawerPaperClose: {
-        overflowX: "hidden",
-        transition: theme.transitions.create("width", {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-        }),
-        width: drawerWidthClosed,
-        display: "flex",
-        flexDirection: "column",
-    },
-    appBar: {
-        zIndex: theme.zIndex.drawer + 1,
-        transition: theme.transitions.create(["width", "margin"], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-        }),
-        // AppBar branco para contrastar
-        backgroundColor: "#FFFFFF",
-        backdropFilter: "blur(12px)",
-        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
-        borderBottom: "1px solid #E2E8F0",
-        color: "#1E293B",
-    },
+ root: {
+ display: "flex",
+ height: "100vh",
+ backgroundColor: "var(--bg-default)",
+ },
+ drawerPaper: {
+ position: "relative",
+ whiteSpace: "nowrap",
+ width: drawerWidth,
+ transition: theme.transitions.create("width", {
+ easing: theme.transitions.easing.sharp,
+ duration: theme.transitions.duration.enteringScreen,
+ }),
+ borderRight: "1px solid var(--border-sidebar)",
+ backgroundColor: "var(--bg-sidebar)",
+ color: "var(--text-sidebar)",
+ boxShadow: "var(--shadow-sidebar-glow)",
+ display: "flex",
+ flexDirection: "column",
+ },
+ drawerPaperClose: {
+ overflowX: "hidden",
+ transition: theme.transitions.create("width", {
+ easing: theme.transitions.easing.sharp,
+ duration: theme.transitions.duration.leavingScreen,
+ }),
+ width: drawerWidthClosed,
+ display: "flex",
+ flexDirection: "column",
+ },
+ appBar: {
+ zIndex: theme.zIndex.drawer + 1,
+ transition: theme.transitions.create(["width", "margin"], {
+ easing: theme.transitions.easing.sharp,
+ duration: theme.transitions.duration.leavingScreen,
+ }),
+ backgroundColor: "var(--bg-appbar)",
+ backdropFilter: "blur(12px)",
+ boxShadow: "var(--shadow-appbar)",
+ borderBottom: "1px solid var(--border-appbar)",
+ color: "var(--text-appbar)",
+ },
     appBarShift: {
         marginLeft: drawerWidth,
         width: `calc(100% - ${drawerWidth}px)`,
@@ -99,27 +96,26 @@ const useStyles = makeStyles((theme) => ({
         marginRight: 20,
     },
     content: {
-        flexGrow: 1,
-        height: "100vh",
-        overflow: "auto",
-        // Fundo claro para área de conteúdo
-        backgroundColor: "#F1F5F9",
+    flexGrow: 1,
+    height: "100vh",
+    overflow: "auto",
+    backgroundColor: "var(--bg-content)",
     },
     appBarSpacer: {
-        minHeight: 64,
+    minHeight: 64,
     },
     logoContainer: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: 80,
-        padding: "16px",
-        borderBottom: "1px solid rgba(0,0,0,0.05)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 80,
+    padding: "16px",
+    borderBottom: "1px solid var(--border-logo-divider)",
     },
     logoText: {
-        fontWeight: 700,
-        fontSize: "1.2rem",
-        color: theme.palette.primary.main,
+    fontWeight: 700,
+    fontSize: "1.2rem",
+    color: "var(--text-primary)",
     },
     systemLogo: {
         maxWidth: "80%",
@@ -308,7 +304,7 @@ const MainLayoutSaaS = ({ children }) => {
                             <IconButton
                                 size="small"
                                 aria-label="frontend-version"
-                                style={{ color: "#007AFF" }}
+                                style={{ color: "var(--action-primary)" }}
                             >
                                 <InfoOutlinedIcon fontSize="small" />
                             </IconButton>

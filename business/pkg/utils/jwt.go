@@ -1,11 +1,12 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 // JWTClaims holds the fields needed to generate JWT tokens.
@@ -21,7 +22,7 @@ type JWTClaims struct {
 func GenerateAccessToken(claims JWTClaims) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "default_secret"
+		return "", fmt.Errorf("JWT_SECRET must be set — security-critical")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -38,7 +39,7 @@ func GenerateAccessToken(claims JWTClaims) (string, error) {
 func GenerateRefreshToken(claims JWTClaims) (string, error) {
 	secret := os.Getenv("JWT_REFRESH_SECRET")
 	if secret == "" {
-		secret = "default_refresh_secret"
+		return "", fmt.Errorf("JWT_REFRESH_SECRET must be set — security-critical")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{

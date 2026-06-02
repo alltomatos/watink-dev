@@ -83,13 +83,13 @@ const useStyles = makeStyles(theme => ({
 	dialog: {
 		"& .MuiDialog-paper": {
 			borderRadius: 16,
-			boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
+			boxShadow: "0 8px 32px var(--border-divider)",
 			overflow: "hidden",
 		},
 	},
 	dialogTitle: {
 		background: `linear-gradient(135deg, ${blue[600]} 0%, ${purple[600]} 100%)`,
-		color: "#fff",
+		color: "var(--bg-surface)",
 		padding: theme.spacing(2, 3),
 		"& h2": {
 			fontWeight: 600,
@@ -104,13 +104,13 @@ const useStyles = makeStyles(theme => ({
 		marginBottom: theme.spacing(2),
 		"& .MuiOutlinedInput-root": {
 			borderRadius: 10,
-			backgroundColor: "#fff",
+			backgroundColor: "var(--bg-surface)",
 			transition: "all 0.2s ease",
 			"&:hover": {
-				boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+				boxShadow: "0 2px 8px var(--shadow-medium)",
 			},
 			"&.Mui-focused": {
-				boxShadow: "0 4px 12px rgba(33, 150, 243, 0.15)",
+				boxShadow: "0 4px 12px var(--status-info-15)",
 			},
 		},
 	},
@@ -129,7 +129,7 @@ const useStyles = makeStyles(theme => ({
 		width: 24,
 		height: 24,
 		borderRadius: 6,
-		boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+		boxShadow: "0 2px 4px var(--shadow-appbar)",
 	},
 	sectionTitle: {
 		display: "flex",
@@ -150,18 +150,18 @@ const useStyles = makeStyles(theme => ({
 		padding: theme.spacing(2),
 		marginBottom: theme.spacing(2),
 		borderRadius: 12,
-		backgroundColor: "#fff",
+		backgroundColor: "var(--bg-surface)",
 		border: `1px solid ${grey[200]}`,
 		transition: "all 0.2s ease",
 		"&:hover": {
 			borderColor: blue[200],
-			boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+			boxShadow: "0 4px 12px var(--border-subtle)",
 		},
 	},
 	selectField: {
 		"& .MuiOutlinedInput-root": {
 			borderRadius: 10,
-			backgroundColor: "#fff",
+			backgroundColor: "var(--bg-surface)",
 		},
 	},
 	formControl: {
@@ -174,13 +174,13 @@ const useStyles = makeStyles(theme => ({
 		justifyContent: "space-between",
 		padding: theme.spacing(1.5, 2),
 		borderRadius: 12,
-		backgroundColor: "#fff",
+		backgroundColor: "var(--bg-surface)",
 		border: `1px solid ${grey[200]}`,
 		marginBottom: theme.spacing(2),
 		transition: "all 0.2s ease",
 		"&:hover": {
 			borderColor: blue[200],
-			boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+			boxShadow: "0 4px 12px var(--border-subtle)",
 		},
 	},
 	switchLabel: {
@@ -214,7 +214,7 @@ const useStyles = makeStyles(theme => ({
 	},
 	dialogActions: {
 		padding: theme.spacing(2, 3),
-		backgroundColor: "#fff",
+		backgroundColor: "var(--bg-surface)",
 		borderTop: `1px solid ${grey[200]}`,
 	},
 	cancelButton: {
@@ -229,10 +229,10 @@ const useStyles = makeStyles(theme => ({
 		textTransform: "none",
 		fontWeight: 600,
 		background: `linear-gradient(135deg, ${blue[500]} 0%, ${blue[700]} 100%)`,
-		boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+		boxShadow: "0 4px 12px var(--status-info-30)",
 		"&:hover": {
 			background: `linear-gradient(135deg, ${blue[600]} 0%, ${blue[800]} 100%)`,
-			boxShadow: "0 6px 16px rgba(33, 150, 243, 0.4)",
+			boxShadow: "0 6px 16px var(--status-info-40)",
 		},
 	},
 }));

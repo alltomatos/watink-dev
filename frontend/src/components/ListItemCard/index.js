@@ -6,17 +6,16 @@ import clsx from "clsx";
 
 const useStyles = makeStyles((theme) => ({
     root: {
-        backgroundColor: "#FFFFFF",
+        backgroundColor: "var(--bg-surface)",
         borderRadius: 16,
         border: "none",
-        boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.08)",
-        transition: "all 0.3s cubic-bezier(.25,.8,.25,1)",
-        cursor: (props) => props.clickable ? "pointer" : "default",
+        boxShadow: "var(--shadow-md)",
+        transition: "all 0.3s var(--ease-out)",
+        cursor: (props) => (props.clickable ? "pointer" : "default"),
         "&:hover": {
-            transform: (props) => props.clickable ? "translateY(-4px)" : "none",
-            boxShadow: (props) => props.clickable
-                ? "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-                : "0px 4px 20px rgba(0, 0, 0, 0.08)",
+            transform: (props) => (props.clickable ? "translateY(-4px)" : "none"),
+            boxShadow: (props) =>
+                props.clickable ? "var(--shadow-xl)" : "var(--shadow-md)",
         },
     },
     content: {
@@ -35,17 +34,17 @@ const useStyles = makeStyles((theme) => ({
         height: 56,
         fontSize: "1.25rem",
         fontWeight: 600,
-        backgroundColor: "#E3F2FD",
-        color: "#1976d2",
+        backgroundColor: "var(--status-info-bg)",
+        color: "var(--status-info)",
     },
     textWrapper: {
         flex: 1,
-        minWidth: 0, // Permite text-overflow funcionar
+        minWidth: 0,
     },
     title: {
         fontWeight: 600,
         fontSize: "1rem",
-        color: "#1e293b",
+        color: "var(--text-primary)",
         lineHeight: 1.3,
         whiteSpace: "nowrap",
         overflow: "hidden",
@@ -53,7 +52,7 @@ const useStyles = makeStyles((theme) => ({
     },
     subtitle: {
         fontSize: "0.875rem",
-        color: "#64748b",
+        color: "var(--text-secondary)",
         whiteSpace: "nowrap",
         overflow: "hidden",
         textOverflow: "ellipsis",
@@ -76,14 +75,9 @@ const useStyles = makeStyles((theme) => ({
     },
 }));
 
-// Mapeia cores de status
-const statusColorMap = {
-    success: { bg: "#E8F5E9", text: "#2E7D32" },
-    warning: { bg: "#FFF3E0", text: "#E65100" },
-    error: { bg: "#FFEBEE", text: "#C62828" },
-    info: { bg: "#E3F2FD", text: "#1565C0" },
-    default: { bg: "#F3F4F6", text: "#6B7280" },
-};
+// Status token lookup — delegates to CSS variables, zero hardcoded hex.
+const statusTokenKey = (variant, prop) =>
+  `var(--status-${variant}-${prop})`;
 
 /**
  * ListItemCard Component
@@ -112,7 +106,6 @@ const ListItemCard = ({
 }) => {
     const clickable = !!onClick;
     const classes = useStyles({ clickable });
-    const statusColors = status?.color ? statusColorMap[status.color] : statusColorMap.default;
 
     // Gera iniciais do nome para avatar fallback
     const getInitials = (name) => {
@@ -152,8 +145,8 @@ const ListItemCard = ({
                                 label={status.label}
                                 className={classes.statusChip}
                                 style={{
-                                    backgroundColor: statusColors.bg,
-                                    color: statusColors.text,
+                                    backgroundColor: statusTokenKey(status.color || 'default', 'bg'),
+                                    color: statusTokenKey(status.color || 'default', 'text'),
                                 }}
                             />
                         )}

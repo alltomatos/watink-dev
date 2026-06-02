@@ -94,7 +94,7 @@ const useStyles = makeStyles((theme) => ({
     overflowY: "auto",
     ...theme.scrollbarStyles,
     borderRadius: 16,
-    boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+    boxShadow: "0 4px 20px var(--border-subtle)",
     background: theme.palette.background.paper,
   },
   avatar: {

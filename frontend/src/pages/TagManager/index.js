@@ -54,7 +54,7 @@ const useStyles = makeStyles((theme) => ({
         width: 16,
         height: 16,
         borderRadius: 4,
-        border: "1px solid rgba(0,0,0,0.1)",
+        border: "1px solid var(--shadow-appbar)",
     },
     usageCount: {
         backgroundColor: "#f0f0f0",

@@ -82,7 +82,7 @@ const useStyles = makeStyles((theme) => ({
     },
     backButton: {
         background: theme.palette.background.paper,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        boxShadow: "0 2px 8px var(--shadow-appbar)",
         "&:hover": {
             background: theme.palette.background.paper,
             transform: "scale(1.05)",
@@ -93,12 +93,12 @@ const useStyles = makeStyles((theme) => ({
         padding: theme.spacing(2.5),
         borderRadius: 16,
         background: theme.palette.background.paper,
-        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+        boxShadow: "0 4px 20px var(--shadow-medium)",
         border: `1px solid ${theme.palette.divider}`,
         height: "100%",
         transition: "box-shadow 0.3s ease, transform 0.2s ease",
         "&:hover": {
-            boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+            boxShadow: "0 8px 30px var(--border-divider)",
         },
     },
     cardHeader: {
@@ -169,9 +169,9 @@ const useStyles = makeStyles((theme) => ({
         padding: theme.spacing(1, 3),
         textTransform: "none",
         fontWeight: 600,
-        boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
+        boxShadow: "0 4px 14px var(--shadow-strong)",
         "&:hover": {
-            boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
+            boxShadow: "0 6px 20px var(--overlay-dark)",
         },
     },
     emptyState: {

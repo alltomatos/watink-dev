@@ -225,10 +225,10 @@ const Login = () => {
         <Container component="main" maxWidth="sm">
           <Box
             style={{
-              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              backgroundColor: "var(--overlay-strong)",
               padding: 40,
               borderRadius: 16,
-              boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.37)"
+              boxShadow: "var(--shadow-strong)"
             }}
           >
             {renderLoginForm()}
@@ -246,7 +246,7 @@ const Login = () => {
       <CssBaseline />
       {/* Left Side (Image if Right Form, Form if Left Form) */}
       {!isRightForm ? (
-        <Box style={{ flex: "0 0 450px", display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 40px", backgroundColor: "#fff", zIndex: 2, boxShadow: "4px 0 24px rgba(0,0,0,0.1)" }}>
+        <Box style={{ flex: "0 0 450px", display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 40px", backgroundColor: "var(--bg-surface)", zIndex: 2, boxShadow: "4px 0 24px var(--shadow-appbar)" }}>
           {renderLoginForm()}
         </Box>
       ) : (
@@ -287,7 +287,7 @@ const Login = () => {
           )}
         </Box>
       ) : (
-        <Box style={{ flex: "0 0 450px", display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 40px", backgroundColor: "#fff", zIndex: 2, boxShadow: "-4px 0 24px rgba(0,0,0,0.1)" }}>
+        <Box style={{ flex: "0 0 450px", display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 40px", backgroundColor: "var(--bg-surface)", zIndex: 2, boxShadow: "-4px 0 24px var(--shadow-appbar)" }}>
           {renderLoginForm()}
         </Box>
       )}

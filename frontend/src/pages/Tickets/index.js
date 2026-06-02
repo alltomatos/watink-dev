@@ -16,13 +16,13 @@ const useStyles = makeStyles((theme) => ({
     flex: 1,
     height: "100%",
     overflow: "hidden",
-    backgroundColor: "#ffffff",
+    backgroundColor: "var(--bg-surface)",
   },
 
   chatPapper: {
     display: "flex",
     height: "100%",
-    backgroundColor: "#ffffff",
+    backgroundColor: "var(--bg-surface)",
   },
 
   contactsWrapper: {
@@ -30,7 +30,7 @@ const useStyles = makeStyles((theme) => ({
     height: "100%",
     flexDirection: "column",
     overflow: "hidden",
-    borderRight: "1px solid rgba(0,0,0,0.05)",
+    borderRight: "1px solid var(--border-subtle)",
   },
   contactsWrapperSmall: {
     display: "flex",
@@ -40,16 +40,16 @@ const useStyles = makeStyles((theme) => ({
     [theme.breakpoints.down("sm")]: {
       display: "none",
     },
-    borderRight: "1px solid rgba(0,0,0,0.05)",
+    borderRight: "1px solid var(--border-subtle)",
   },
   messagessWrapper: {
     display: "flex",
     height: "100%",
     flexDirection: "column",
-    backgroundColor: "#f5f6f8",
+    backgroundColor: "var(--bg-default)",
   },
   welcomeMsg: {
-    backgroundColor: "#f5f6f8",
+    backgroundColor: "var(--bg-default)",
     display: "flex",
     justifyContent: "space-evenly",
     alignItems: "center",

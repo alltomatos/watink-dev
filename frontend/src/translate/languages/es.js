@@ -506,6 +506,20 @@ const messages = {
           message: "Esta acción no puede ser revertida.",
         },
       },
+      access: {
+        title: "Acceso y Permisos",
+        metrics: {
+          roles: "Funciones activas",
+          noRole: "Usuarios sin función",
+          total: "Total de usuarios",
+        },
+        buttons: {
+          manageRoles: "Gestionar Funciones",
+          manageUsers: "Gestionar Usuarios",
+          managePermissions: "Gestionar Permisos",
+          legacyGroups: "Grupos heredados",
+        },
+      },
       backendErrors: {
         ERR_NO_OTHER_WHATSAPP:
           "Debe haber al menos una conexión de WhatsApp predeterminada.",

@@ -64,7 +64,7 @@ func (ac *AuthController) Login(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refreshToken", refreshToken, 3600*24*7, "/", "", false, true)
+	c.SetCookie("refreshToken", refreshToken, 3600*24*7, "/", "", true, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
@@ -81,7 +81,8 @@ func (ac *AuthController) RefreshToken(c *gin.Context) {
 
 	secret := os.Getenv("JWT_REFRESH_SECRET")
 	if secret == "" {
-		secret = "default_refresh_secret"
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Server misconfiguration — JWT_REFRESH_SECRET not set"})
+		return
 	}
 
 	token, err := jwt.Parse(refreshTokenStr, func(token *jwt.Token) (interface{}, error) {
@@ -144,6 +145,6 @@ func (ac *AuthController) RefreshToken(c *gin.Context) {
 }
 
 func (ac *AuthController) Logout(c *gin.Context) {
-	c.SetCookie("refreshToken", "", -1, "/", "", false, true)
+	c.SetCookie("refreshToken", "", -1, "/", "", true, true)
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }

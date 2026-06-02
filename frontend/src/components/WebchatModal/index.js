@@ -80,8 +80,8 @@ const useStyles = makeStyles(theme => ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-        color: '#fff',
+        boxShadow: '0 4px 8px var(--overlay-dark)',
+        color: 'var(--bg-surface)',
         cursor: 'pointer'
     }
 }));
@@ -301,7 +301,7 @@ const WebchatModal = ({ open, onClose, whatsAppId, onSaved }) => {
                                                 className={classes.previewButton}
                                                 style={{ backgroundColor: values.chatConfig?.buttonColor || "#00E676" }}
                                             >
-                                                <svg style={{ width: 30, height: 30, fill: '#fff' }} viewBox="0 0 24 24">
+                                                <svg style={{ width: 30, height: 30, fill: 'var(--bg-surface)' }} viewBox="0 0 24 24">
                                                     <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
                                                 </svg>
                                             </div>

@@ -7,16 +7,16 @@ import clsx from "clsx";
 
 const useStyles = makeStyles((theme) => ({
     root: {
-        backgroundColor: "#FFFFFF",
+        backgroundColor: "var(--bg-surface)",
         borderRadius: 16,
         border: "none",
-        boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.08)",
+        boxShadow: "0px 4px 20px var(--shadow-medium)",
         transition: "all 0.3s cubic-bezier(.25,.8,.25,1)",
         overflow: "visible",
         height: "100%",
         "&:hover": {
             transform: "translateY(-6px)",
-            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            boxShadow: "0 20px 25px -5px var(--shadow-appbar), 0 10px 10px -5px var(--overlay-weak)",
         },
     },
     content: {
@@ -39,7 +39,7 @@ const useStyles = makeStyles((theme) => ({
         height: 56,
         borderRadius: 16,
         background: (props) => props.bgColor,
-        boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
+        boxShadow: "0 4px 6px var(--border-subtle)",
     },
     label: {
         fontSize: "0.875rem",
@@ -66,7 +66,7 @@ const useStyles = makeStyles((theme) => ({
         fontSize: "0.75rem",
         fontWeight: 700,
         color: "#10b981",
-        backgroundColor: "rgba(16, 185, 129, 0.1)",
+        backgroundColor: "var(--status-success-10)",
         padding: "4px 10px",
         borderRadius: 20,
     },
@@ -76,7 +76,7 @@ const useStyles = makeStyles((theme) => ({
         fontSize: "0.75rem",
         fontWeight: 700,
         color: "#ef4444",
-        backgroundColor: "rgba(239, 68, 68, 0.1)",
+        backgroundColor: "var(--status-error-10)",
         padding: "4px 10px",
         borderRadius: 20,
     },
@@ -99,7 +99,7 @@ const colorMap = {
         text: "#1B5E20"
     },
     warning: {
-        bg: "linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)",
+        bg: "linear-gradient(135deg, var(--bg-surface)3E0 0%, #FFE0B2 100%)",
         icon: "#EF6C00",
         text: "#E65100"
     },

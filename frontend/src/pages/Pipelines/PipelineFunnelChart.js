@@ -24,7 +24,7 @@ const PipelineFunnelChart = ({ pipeline, deals }) => {
         return {
             name: stage.name,
             count: stageDeals.length,
-            fill: `rgba(33, 150, 243, ${1 - index * 0.1})` // Fading blue
+            fill: `rgba(33, 150, 243, ${1 - index * 0.1})` // Fading blue — intentional: dynamic opacity per funnel stage
         };
     });
 

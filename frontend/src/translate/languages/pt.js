@@ -1,4 +1,3 @@
-/* @jsxImportSource react */
 const messages = {
   pt: {
     translations: {
@@ -6,9 +5,9 @@ const messages = {
         rowsPerPage: "Linhas por página",
       },
       role: {
-        title: "Papéis",
+        title: "Funções",
         buttons: {
-          add: "Adicionar Papel",
+          add: "Adicionar Função",
         },
         table: {
           name: "Nome",
@@ -20,16 +19,16 @@ const messages = {
           description: "Descrição",
         },
         formTitle: {
-          add: "Adicionar Papel",
-          edit: "Editar Papel",
+          add: "Adicionar Função",
+          edit: "Editar Função",
         },
-        success: "Papel salvo com sucesso!",
+        success: "Função salva com sucesso!",
         toasts: {
-          deleted: "Papel excluído com sucesso.",
+          deleted: "Função excluída com sucesso.",
         },
         confirmationModal: {
-          deleteTitle: "Deletar Papel",
-          deleteMessage: "Tem certeza que deseja deletar este papel? Esta ação não pode ser revertida.",
+          deleteTitle: "Deletar Função",
+          deleteMessage: "Tem certeza que deseja deletar esta função? Esta ação não pode ser revertida.",
         },
         permissions: {
           available: "Permissões Disponíveis",
@@ -456,7 +455,7 @@ const messages = {
           administration: "Administração",
           groups: "Funções",
           users: "Usuários",
-          roles: "Papéis",
+          roles: "Funções",
           knowledgeBase: "Base Conhecimento",
           settings: "Configurações",
           swagger: "Swagger",
@@ -539,39 +538,40 @@ const messages = {
           warning: "Esta ação não pode ser revertida.",
           confirmCheckbox: "Confirmo que desejo deletar este usuário."
         },
-      },
-      groups: {
-        title: "Funções",
-        table: {
-          name: "Nome",
-          permissions: "Permissões",
-          actions: "Ações",
+        groups: {
+          title: "Funções (Legado)",
+          table: {
+            name: "Nome",
+            permissions: "Permissões",
+            actions: "Ações",
+          },
+          buttons: {
+            add: "Adicionar função",
+          },
+          toasts: {
+            deleted: "Função excluída com sucesso.",
+          },
+          confirmationModal: {
+            deleteTitle: "Excluir",
+            deleteMessage: "Tem certeza? Esta ação não pode ser revertida.",
+          },
+          migrateNotice: "A funcionalidade de Funções foi centralizada em '/roles'. Use esta página apenas para referência.",
         },
-        buttons: {
-          add: "Adicionar função",
-        },
-        toasts: {
-          deleted: "Função excluída com sucesso.",
-        },
-        confirmationModal: {
-          deleteTitle: "Excluir",
-          deleteMessage:
-            "Tem certeza? Essa ação não pode ser revertida.",
-        },
-      },
-      groupModal: {
-        title: {
-          add: "Adicionar função",
-          edit: "Editar função",
-        },
-        form: {
-          name: "Nome",
-          permissions: "Permissões",
-        },
-        buttons: {
-          okAdd: "Adicionar",
-          okEdit: "Salvar",
-          cancel: "Cancelar",
+        groupModal: {
+          title: {
+            add: "Adicionar função (Legado)",
+            edit: "Editar função (Legado)",
+          },
+          form: {
+            name: "Nome",
+            permissions: "Permissões",
+          },
+          buttons: {
+            okAdd: "Adicionar",
+            okEdit: "Salvar",
+            cancel: "Cancelar",
+          },
+          success: "Função salva com sucesso.",
         },
         success: "Grupo salvo com sucesso.",
       },
@@ -696,8 +696,6 @@ const messages = {
         loadError: "Erro ao carregar plugins",
         table: {
           plugin: "Plugin",
-          category: "Categoria",
-          type: "Tipo",
           version: "Versão",
           status: "Status",
           actions: "Ações",
@@ -720,9 +718,23 @@ const messages = {
           deactivateError: "Erro ao desativar plugin",
           invalidLicense: "Chave de licença inválida",
           enterLicense: "Informe a chave de licença",
-        },
-      },
-      emailTemplates: {
+          },
+          },
+          access: {
+            title: "Acesso e Permissões",
+            metrics: {
+              roles: "Funções ativas",
+              noRole: "Usuários sem função",
+              total: "Total de usuários",
+            },
+            buttons: {
+              manageRoles: "Gerenciar Funções",
+              manageUsers: "Gerenciar Usuários",
+              managePermissions: "Gerenciar Permissões",
+              legacyGroups: "Grupos (Legado)",
+            },
+          },
+          emailTemplates: {
         title: "Modelos de Email",
         toasts: {
           loadListError: "Erro ao carregar lista de modelos",

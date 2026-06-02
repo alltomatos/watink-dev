@@ -1,76 +1,101 @@
-/* @jsxImportSource react */
-import React, { createContext, useState, useContext, useMemo, useEffect } from "react";
+/**
+ * ThemeContext — Single orchestrator for CSS tokens + MUI v4 bridge
+ *
+ * MENTOR NOTES:
+ * - applyThemeTokens() sets CSS variables on :root — consumed by var(--token) in components
+ * - createMuiThemeBridge() feeds concrete hex to MUI's createTheme() (MUI can't parse var())
+ * - Both must fire on EVERY mode/appTheme change. The useMemo + useEffect cascade guarantees this.
+ * - System preference detection on init (prefers-color-scheme: dark)
+ * - brand overrides enable white-labeling per tenant
+ */
+
+import React, { createContext, useState, useContext, useMemo, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
-import { createTheme, ThemeProvider as MUIThemeProvider } from "@material-ui/core/styles";
+import { ThemeProvider as MUIThemeProvider } from "@material-ui/core/styles";
 import { CssBaseline } from "@material-ui/core";
-import { zhCN, ptBR, esES } from "@material-ui/core/locale";
+import { ptBR, zhCN, esES } from "@material-ui/core/locale";
+import { applyThemeTokens } from "../../theme/loader";
+import { createMuiThemeBridge } from "../../theme/bridge";
 
 const ThemeContext = createContext();
 
-export const ThemeProvider = ({ children }) => {
-	const [darkMode, setDarkMode] = useState(false);
-	const [appTheme, setAppTheme] = useState("apple");
-	const [locale, setLocale] = useState(ptBR);
+const LOCALE_MAP = {
+	"pt-BR": ptBR,
+	"zh-CN": zhCN,
+	"es-ES": esES,
+};
 
-	useEffect(() => {
-		const storedTheme = localStorage.getItem("appTheme");
-		if (storedTheme) {
-			setAppTheme(storedTheme);
-		} else {
-            setAppTheme("apple");
-            localStorage.setItem("appTheme", "apple");
-        }
+/**
+ * Resolve initial dark mode:
+ * 1. localStorage override (user choice)
+ * 2. System preference (prefers-color-scheme)
+ * 3. Default: light
+ */
+const getInitialDarkMode = () => {
+	const stored = localStorage.getItem("darkMode");
+	if (stored !== null) return stored === "true";
+	if (window.matchMedia?.("(prefers-color-scheme: dark)")?.matches) return true;
+	return false;
+};
+
+/**
+ * Resolve initial app theme:
+ * 1. localStorage override
+ * 2. Default: "apple"
+ */
+const getInitialAppTheme = () => {
+	return localStorage.getItem("appTheme") || "apple";
+};
+
+export const ThemeProvider = ({ children }) => {
+	const [darkMode, setDarkMode] = useState(getInitialDarkMode);
+	const [appTheme, setAppThemeState] = useState(getInitialAppTheme);
+	const [locale, setLocale] = useState(ptBR);
+	const [brand, setBrand] = useState({});
+
+	// ── Persist state changes ──
+	const toggleTheme = useCallback(() => {
+		setDarkMode((prev) => {
+			const next = !prev;
+			localStorage.setItem("darkMode", String(next));
+			return next;
+		});
 	}, []);
 
-	const toggleTheme = () => {
-		setDarkMode(prevMode => !prevMode);
-	};
+	const setAppTheme = useCallback((v) => {
+		setAppThemeState(v);
+		localStorage.setItem("appTheme", v);
+	}, []);
 
+	const setLocaleByKey = useCallback((key) => {
+		setLocale(LOCALE_MAP[key] || ptBR);
+	}, []);
+
+	// ── Apply CSS tokens whenever mode or brand changes ──
+	useEffect(() => {
+		applyThemeTokens({
+			mode: darkMode ? "dark" : "light",
+			brand,
+		});
+	}, [darkMode, brand]);
+
+	// ── Build MUI theme (memoized) — concrete hex for MUI internals ──
 	const theme = useMemo(() => {
-		return createTheme({
-			palette: {
-				type: darkMode ? "dark" : "light",
-				primary: { main: "#007AFF" },
-				secondary: { main: "#8E8E93" },
-				background: {
-					default: darkMode ? "#000000" : "#F2F2F7",
-					paper: darkMode ? "#1C1C1E" : "#FFFFFF",
-				},
-				text: {
-					primary: darkMode ? "#FFFFFF" : "#1D1D1F",
-					secondary: darkMode ? "#A1A1A6" : "#86868B",
-				}
-			},
-			typography: {
-				fontFamily: "'Inter', '-apple-system', sans-serif",
-                button: { textTransform: "none", fontWeight: 600 },
-			},
-			shape: { borderRadius: 12 },
-            overrides: {
-                MuiButton: {
-                    root: { borderRadius: 12, padding: "8px 20px" },
-                    containedPrimary: {
-                        background: "linear-gradient(180deg, #007AFF 0%, #0063E6 100%)",
-                        boxShadow: "0 4px 14px 0 rgba(0,118,255,0.39)",
-                    }
-                },
-                MuiPaper: {
-                    rounded: { borderRadius: 20 },
-                    elevation1: { boxShadow: "0 4px 12px rgba(0,0,0,0.03)" },
-                },
-                MuiTab: {
-                    root: { textTransform: "none", fontWeight: 600 },
-                }
-            }
-		}, locale);
+		return createMuiThemeBridge({ darkMode, locale });
 	}, [darkMode, locale]);
 
-	const contextValue = useMemo(() => ({
-		darkMode,
-		toggleTheme,
-		appTheme,
-		setAppTheme: (v) => { setAppTheme(v); localStorage.setItem("appTheme", v); }
-	}), [darkMode, appTheme]);
+	// ── Context value ──
+	const contextValue = useMemo(
+		() => ({
+			darkMode,
+			toggleTheme,
+			appTheme,
+			setAppTheme,
+			setLocaleByKey,
+			setBrand,
+		}),
+		[darkMode, toggleTheme, appTheme, setAppTheme, setLocaleByKey, setBrand]
+	);
 
 	return (
 		<ThemeContext.Provider value={contextValue}>
@@ -80,6 +105,10 @@ export const ThemeProvider = ({ children }) => {
 			</MUIThemeProvider>
 		</ThemeContext.Provider>
 	);
+};
+
+ThemeProvider.propTypes = {
+	children: PropTypes.node.isRequired,
 };
 
 export default ThemeProvider;

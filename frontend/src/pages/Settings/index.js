@@ -1277,7 +1277,7 @@ const Settings = () => {
 							</Typography>
 
 							<Box mb={2} style={{ opacity: aiEnabled ? 1 : 0.5, pointerEvents: aiEnabled ? 'auto' : 'none' }}>
-								<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+								<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border-default)' }}>
 									<div>
 										<Typography variant="body2" style={{ fontWeight: 500 }}>IA no Pipeline</Typography>
 										<Typography variant="caption" color="textSecondary">
@@ -1295,7 +1295,7 @@ const Settings = () => {
 										color="primary"
 									/>
 								</div>
-								<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+								<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border-default)' }}>
 									<div>
 										<Typography variant="body2" style={{ fontWeight: 500 }}>IA no Flow Builder</Typography>
 										<Typography variant="caption" color="textSecondary">

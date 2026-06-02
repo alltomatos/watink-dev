@@ -61,7 +61,7 @@ const useStyles = makeStyles((theme) => ({
     sectionTitle: {
         marginBottom: theme.spacing(1),
         fontWeight: 500,
-        color: '#333'
+        color: 'var(--text-primary)'
     },
     optionItem: {
         background: '#f5f5f5',

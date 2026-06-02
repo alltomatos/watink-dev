@@ -33,14 +33,14 @@ const useStyles = makeStyles((theme) => ({
     optionButton: {
         width: '100%',
         height: '50px',
-        color: '#fff',
+        color: 'var(--bg-surface)',
         fontWeight: 'bold',
         textTransform: 'none',
         display: 'flex',
         justifyContent: 'flex-start',
         paddingLeft: theme.spacing(2),
         gap: theme.spacing(1),
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        boxShadow: '0 2px 4px var(--shadow-appbar)',
         '&:hover': {
             opacity: 0.9,
             transform: 'translateY(-1px)'
@@ -51,7 +51,7 @@ const useStyles = makeStyles((theme) => ({
         padding: theme.spacing(2),
         backgroundColor: '#f9f9f9',
         borderRadius: 8,
-        border: '1px solid #eee'
+        border: '1px solid var(--border-default)'
     },
     variableItem: {
         marginBottom: theme.spacing(1),
@@ -184,7 +184,7 @@ const ContentModal = ({ open, onClose, onAdd }) => {
                 <Button 
                     onClick={onClose} 
                     variant="contained" 
-                    style={{ backgroundColor: '#f44336', color: '#fff' }}
+                    style={{ backgroundColor: '#f44336', color: 'var(--bg-surface)' }}
                 >
                     Cancelar
                 </Button>

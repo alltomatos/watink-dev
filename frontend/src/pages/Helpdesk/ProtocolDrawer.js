@@ -24,16 +24,16 @@ const useStyles = makeStyles((theme) => ({
     drawerPaper: {
         width: drawerWidth,
         display: "flex",
-        borderTop: "1px solid rgba(0, 0, 0, 0.12)",
-        borderRight: "1px solid rgba(0, 0, 0, 0.12)",
-        borderBottom: "1px solid rgba(0, 0, 0, 0.12)",
+        borderTop: "1px solid var(--border-divider)",
+        borderRight: "1px solid var(--border-divider)",
+        borderBottom: "1px solid var(--border-divider)",
         borderTopRightRadius: 4,
         borderBottomRightRadius: 4,
     },
     header: {
         display: "flex",
-        borderBottom: "1px solid rgba(0, 0, 0, 0.12)",
-        backgroundColor: "#eee",
+        borderBottom: "1px solid var(--border-divider)",
+        backgroundColor: "var(--border-default)",
         alignItems: "center",
         padding: theme.spacing(0, 1),
         minHeight: "73px",
@@ -41,7 +41,7 @@ const useStyles = makeStyles((theme) => ({
     },
     content: {
         display: "flex",
-        backgroundColor: "#fff",
+        backgroundColor: "var(--bg-surface)",
         flexDirection: "column",
         padding: "16px",
         height: "100%",
@@ -56,7 +56,7 @@ const useStyles = makeStyles((theme) => ({
         padding: theme.spacing(2),
         display: "flex",
         justifyContent: "flex-end",
-        borderTop: "1px solid rgba(0, 0, 0, 0.12)",
+        borderTop: "1px solid var(--border-divider)",
     },
 }));
 

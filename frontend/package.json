@@ -34,11 +34,13 @@
     "yup": "^0.32.11"
   },
   "scripts": {
-    "dev": "vite",
-    "start": "vite",
-    "build": "node copy-assets.js && vite build",
-    "postbuild": "node sync-embed-go.js",
-    "preview": "vite preview"
+   "dev": "vite",
+   "start": "vite",
+   "build": "node copy-assets.js && vite build",
+   "postbuild": "node sync-embed-go.js",
+   "preview": "vite preview",
+   "lint": "eslint src/ --ext .js,.jsx --max-warnings 0",
+   "lint:ds": "eslint src/ --ext .js,.jsx --rule 'watink-design-system/no-hardcoded-colors: error'"
   },
   "browserslist": {
     "production": [
@@ -57,6 +59,7 @@
     "eslint": "^8.57.1",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-watink-design-system": "file:./scripts/eslint-rules",
     "vite": "^5.4.21"
   },
   "overrides": {

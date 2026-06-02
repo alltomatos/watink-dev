@@ -124,7 +124,7 @@ const Roles = () => {
       </ConfirmationModal>
 
       <MainHeader>
-        <Title>{i18n.t("role.title") || "Papéis"}</Title>
+        <Title>{i18n.t("role.title") || "Funções"}</Title>
         <MainHeaderButtonsWrapper>
           <TextField
             placeholder={i18n.t("contacts.searchPlaceholder")}
@@ -145,7 +145,7 @@ const Roles = () => {
             onClick={() => handleEditRole("new")}
           >
             <AddCircleOutline />
-            <span style={{ marginLeft: 8 }}>{i18n.t("role.buttons.add") || "Adicionar Papel"}</span>
+            <span style={{ marginLeft: 8 }}>{i18n.t("role.buttons.add") || "Adicionar Função"}</span>
           </Button>
         </MainHeaderButtonsWrapper>
       </MainHeader>

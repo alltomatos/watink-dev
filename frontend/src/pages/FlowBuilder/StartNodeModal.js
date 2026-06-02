@@ -193,7 +193,7 @@ const StartNodeModal = ({ open, onClose, onSave, initialData }) => {
             </DialogContent>
 
             <DialogActions style={{ padding: 16 }}>
-                <Button onClick={onClose} color="default" variant="contained" style={{ backgroundColor: '#f44336', color: '#fff' }}>
+                <Button onClick={onClose} color="default" variant="contained" style={{ backgroundColor: '#f44336', color: 'var(--bg-surface)' }}>
                     Cancelar
                 </Button>
                 <Button onClick={handleSave} color="primary" variant="contained">

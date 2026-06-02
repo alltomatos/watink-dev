@@ -39,7 +39,7 @@ const useStyles = makeStyles((theme) => ({
         cursor: "pointer",
         transition: "all 0.2s ease",
         "&:hover": {
-            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            boxShadow: "0 2px 8px var(--shadow-strong)",
             transform: "translateY(-2px)",
         },
     },
@@ -66,7 +66,7 @@ const useStyles = makeStyles((theme) => ({
     defaultIcon: { color: "#757575" },
     infoBox: {
         padding: theme.spacing(0.5, 1),
-        backgroundColor: "#fff",
+        backgroundColor: "var(--bg-surface)",
         borderTop: "1px solid #e0e0e0",
         flexGrow: 1,
         display: "flex",
@@ -101,10 +101,10 @@ const useStyles = makeStyles((theme) => ({
         position: "absolute",
         top: 16,
         right: 16,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        color: "#fff",
+        backgroundColor: "var(--overlay-dark-medium)",
+        color: "var(--bg-surface)",
         "&:hover": {
-            backgroundColor: "rgba(0,0,0,0.7)",
+            backgroundColor: "var(--overlay-dark-strong)",
         },
     },
     emptyState: {

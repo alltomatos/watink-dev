@@ -263,7 +263,7 @@ export default function VersionDashboard() {
             startIcon={updating ? <CircularProgress size={20} color="inherit" /> : <UpdateIcon />}
             disabled={updating || updateStatus === "ok"}
             onClick={() => setOpenUpdateModal(true)}
-            style={updateStatus === "ok" ? { backgroundColor: "#2e7d32", color: "#fff" } : undefined}
+            style={updateStatus === "ok" ? { backgroundColor: "#2e7d32", color: "var(--bg-surface)" } : undefined}
           >
             {updateStatus === "ok" ? "Atualização OK" : updating ? "Atualizando..." : "Verificar Atualização"}
           </Button>

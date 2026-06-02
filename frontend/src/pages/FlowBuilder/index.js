@@ -60,12 +60,12 @@ const useStyles = makeStyles((theme) => ({
         flexGrow: 1,
         height: '100%',
         position: 'relative',
-        backgroundColor: '#ffffff',
+        backgroundColor: 'var(--bg-surface)',
     },
     sidebar: {
         width: 350,
         borderLeft: '1px solid #e0e0e0',
-        backgroundColor: '#ffffff',
+        backgroundColor: 'var(--bg-surface)',
         display: 'flex',
         flexDirection: 'column',
         zIndex: 10,
@@ -82,8 +82,8 @@ const useStyles = makeStyles((theme) => ({
         top: 16,
         right: 24,
         zIndex: 15,
-        backgroundColor: '#fff',
-        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
+        backgroundColor: 'var(--bg-surface)',
+        boxShadow: '0px 4px 12px var(--shadow-appbar)',
         '&:hover': {
             backgroundColor: '#f5f5f5',
         }
@@ -96,11 +96,11 @@ const useStyles = makeStyles((theme) => ({
         display: 'flex',
         gap: '12px',
         padding: '8px 16px',
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        backgroundColor: 'var(--overlay-medium)',
         backdropFilter: 'blur(8px)',
         borderRadius: 30,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-        border: '1px solid rgba(0,0,0,0.05)'
+        boxShadow: '0 4px 20px var(--shadow-medium)',
+        border: '1px solid var(--border-subtle)'
     },
     toolbarButton: {
         borderRadius: 20,
@@ -486,7 +486,7 @@ const FlowBuilder = () => {
                                 onClick={handleToggle}
                                 style={{
                                     backgroundColor: flowInfo.isActive ? '#34C759' : '#8E8E93',
-                                    color: '#fff'
+                                    color: 'var(--bg-surface)'
                                 }}
                                 startIcon={<PowerIcon />}
                             >

@@ -38,13 +38,13 @@ const useStyles = makeStyles((theme) => ({
     root: {
         display: "flex",
         height: "100vh",
-        backgroundColor: "#f5f6f8",
+        backgroundColor: "var(--bg-default)",
     },
     toolbar: {
         paddingRight: 24, 
-        backgroundColor: "#ffffff",
-        color: "#333",
-        borderBottom: "1px solid rgba(0,0,0,0.05)",
+        backgroundColor: "var(--bg-surface)",
+        color: "var(--text-primary)",
+        borderBottom: "1px solid var(--border-subtle)",
     },
     appBar: {
         zIndex: theme.zIndex.drawer + 1,
@@ -52,9 +52,9 @@ const useStyles = makeStyles((theme) => ({
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
         }),
-        backgroundColor: "#ffffff",
+        backgroundColor: "var(--bg-surface)",
         boxShadow: "none",
-        borderBottom: "1px solid rgba(0,0,0,0.05)",
+        borderBottom: "1px solid var(--border-subtle)",
     },
     appBarShift: {
         marginLeft: drawerWidth,
@@ -82,8 +82,8 @@ const useStyles = makeStyles((theme) => ({
         }),
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "#ffffff",
-        borderRight: "1px solid rgba(0,0,0,0.05)",
+        backgroundColor: "var(--bg-surface)",
+        borderRight: "1px solid var(--border-subtle)",
     },
     drawerPaperClose: {
         overflowX: "hidden",
@@ -264,7 +264,7 @@ const MainLayoutDefault = ({ children }) => {
                             <IconButton
                                 size="small"
                                 aria-label="frontend-version"
-                                style={{ color: "#007AFF" }}
+                                style={{ color: "var(--action-primary)" }}
                             >
                                 <InfoOutlinedIcon fontSize="small" />
                             </IconButton>

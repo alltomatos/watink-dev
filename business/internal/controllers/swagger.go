@@ -28,7 +28,7 @@ func extractToken(c *gin.Context) string {
 func parseUserFromToken(tokenString string) (int, string, string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "default_secret"
+		return 0, "", "", fmt.Errorf("JWT_SECRET must be set — security-critical")
 	}
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {

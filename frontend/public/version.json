@@ -1,7 +1,7 @@
 {
   "service": "frontend",
   "version": "0.8.1",
-  "lastUpdated": "2026-06-01T21:28:44.685Z",
+  "lastUpdated": "2026-06-02T14:45:43.519Z",
   "changelog": [
     "Implementação da Regra de Versionamento e Automação de Release"
   ]

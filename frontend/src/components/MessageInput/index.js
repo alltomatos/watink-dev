@@ -55,11 +55,11 @@ const initRecorder = async () => {
 
 const useStyles = makeStyles(theme => ({
   mainWrapper: {
-    background: "#eee",
+    background: "var(--border-default)",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    borderTop: "1px solid rgba(0, 0, 0, 0.12)",
+    borderTop: "1px solid var(--border-divider)",
     [theme.breakpoints.down("sm")]: {
       position: "fixed",
       bottom: 0,
@@ -68,7 +68,7 @@ const useStyles = makeStyles(theme => ({
   },
 
   newMessageBox: {
-    background: "#eee",
+    background: "var(--border-default)",
     width: "100%",
     display: "flex",
     padding: "7px",
@@ -78,7 +78,7 @@ const useStyles = makeStyles(theme => ({
   messageInputWrapper: {
     padding: 6,
     marginRight: 7,
-    background: "#fff",
+    background: "var(--bg-surface)",
     display: "flex",
     borderRadius: 20,
     flex: 1,
@@ -88,7 +88,7 @@ const useStyles = makeStyles(theme => ({
   messageInputWrapperSaas: {
     padding: 6,
     marginRight: 7,
-    background: "#fff",
+    background: "var(--bg-surface)",
     display: "flex",
     borderRadius: 20,
     flex: 1,
@@ -117,8 +117,8 @@ const useStyles = makeStyles(theme => ({
     position: "relative",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#eee",
-    borderTop: "1px solid rgba(0, 0, 0, 0.12)",
+    backgroundColor: "var(--border-default)",
+    borderTop: "1px solid var(--border-divider)",
   },
 
   previewMediaWrapper: {
@@ -127,8 +127,8 @@ const useStyles = makeStyles(theme => ({
     padding: "8px",
     alignItems: "center",
     width: "100%",
-    backgroundColor: "#eee",
-    borderTop: "1px solid rgba(0, 0, 0, 0.12)",
+    backgroundColor: "var(--border-default)",
+    borderTop: "1px solid var(--border-divider)",
   },
   previewMediaContainer: {
     display: "flex",
@@ -140,7 +140,7 @@ const useStyles = makeStyles(theme => ({
       height: "6px",
     },
     "&::-webkit-scrollbar-thumb": {
-      backgroundColor: "rgba(0,0,0,0.2)",
+      backgroundColor: "var(--overlay-dark)",
       borderRadius: "3px",
     },
   },
@@ -155,7 +155,7 @@ const useStyles = makeStyles(theme => ({
     flexDirection: "column",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "var(--bg-surface)",
     marginRight: "10px",
   },
   previewMediaImage: {
@@ -178,13 +178,13 @@ const useStyles = makeStyles(theme => ({
     top: 0,
     right: 0,
     color: "red",
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    backgroundColor: "var(--overlay-medium)",
     borderRadius: "0 0 0 4px",
     padding: "2px",
     cursor: "pointer",
     zIndex: 1,
     "&:hover": {
-      backgroundColor: "rgba(255, 255, 255, 0.9)",
+      backgroundColor: "var(--overlay-medium)",
     },
   },
   previewMediaInputWrapper: {
@@ -243,7 +243,7 @@ const useStyles = makeStyles(theme => ({
     flex: 1,
     marginRight: 5,
     overflowY: "hidden",
-    backgroundColor: "rgba(0, 0, 0, 0.05)",
+    backgroundColor: "var(--border-subtle)",
     borderRadius: "7.5px",
     display: "flex",
     position: "relative",
@@ -278,7 +278,7 @@ const useStyles = makeStyles(theme => ({
     margin: 0,
     position: "absolute",
     bottom: "50px",
-    background: "#ffffff",
+    background: "var(--bg-surface)",
     padding: "2px",
     border: "1px solid #CCC",
     left: 0,
@@ -303,7 +303,7 @@ const useStyles = makeStyles(theme => ({
     margin: 0,
     position: "absolute",
     bottom: "50px",
-    background: "#ffffff",
+    background: "var(--bg-surface)",
     padding: "2px",
     border: "1px solid #CCC",
     left: 0,
@@ -320,7 +320,7 @@ const useStyles = makeStyles(theme => ({
         textOverflow: "ellipsis",
         overflow: "hidden",
         maxHeight: "45px",
-        borderBottom: "1px solid #eee",
+        borderBottom: "1px solid var(--border-default)",
         "&:hover": {
           background: "#F1F1F1",
           cursor: "pointer",

@@ -18,6 +18,7 @@ import AccountTreeOutlinedIcon from "@material-ui/icons/AccountTreeOutlined";
 import QuestionAnswerOutlinedIcon from "@material-ui/icons/QuestionAnswerOutlined";
 import DeviceHubIcon from "@material-ui/icons/DeviceHub";
 import LibraryBooksIcon from "@material-ui/icons/LibraryBooks";
+import SecurityIcon from "@material-ui/icons/Security";
 import PersonOutlineIcon from "@material-ui/icons/PersonOutline";
 import HeadsetMicIcon from "@material-ui/icons/HeadsetMic";
 import LocalOfferIcon from "@material-ui/icons/LocalOffer";
@@ -311,23 +312,11 @@ const MainListItems = (props) => {
         )}
       />
 
+      {/* Groups oculto do menu — funcionalidade migrada para Funções (Roles).
+          Rota /groups mantida ativa para acesso legado/direto. */}
       <Can
-        user={user}
-        perform="groups:read"
-        yes={() => (
-          <ListItemLink
-            to="/groups"
-            primary={i18n.t("mainDrawer.listItems.groups")}
-            icon={<GroupIcon />}
-            iconColor={googleColors.teal}
-            collapsed={collapsed}
-          />
-        )}
-      />
-
-      <Can
-        user={user}
-        perform="connections:read"
+      user={user}
+      perform="connections:read"
         yes={() => (
           <ListItemLink
             to="/connections"
@@ -362,9 +351,9 @@ const MainListItems = (props) => {
         perform="roles:read"
         yes={() => (
           <ListItemLink
-            to="/roles"
-            primary={i18n.t("mainDrawer.listItems.roles")}
-            icon={<PersonOutlineIcon />}
+            to="/access"
+            primary="Acesso e Permissões"
+            icon={<SecurityIcon />}
             iconColor={googleColors.blue}
             collapsed={collapsed}
           />

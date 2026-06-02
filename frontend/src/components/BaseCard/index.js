@@ -6,11 +6,11 @@ import clsx from "clsx";
 
 const useStyles = makeStyles((theme) => ({
     root: {
-        backgroundColor: "#FFFFFF",
+        backgroundColor: "var(--bg-surface)",
         borderRadius: 16, // Premium rounded corners
         border: "none",
         // Premium diffuse shadow as requested
-        boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.08)",
+        boxShadow: "0px 4px 20px var(--shadow-medium)",
         transition: "all 0.3s cubic-bezier(.25,.8,.25,1)",
         overflow: "visible",
         position: "relative",
@@ -18,8 +18,8 @@ const useStyles = makeStyles((theme) => ({
             transform: (props) => (props.hoverEffect ? "translateY(-6px)" : "none"),
             boxShadow: (props) =>
                 props.hoverEffect
-                    ? "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-                    : "0px 4px 20px rgba(0, 0, 0, 0.08)",
+                    ? "0 20px 25px -5px var(--shadow-appbar), 0 10px 10px -5px var(--overlay-weak)"
+                    : "0px 4px 20px var(--shadow-medium)",
         },
     },
     header: {
@@ -41,7 +41,7 @@ const useStyles = makeStyles((theme) => ({
         height: 48,
         borderRadius: 12, // Slightly larger and more rounded
         backgroundColor: (props) => props.iconColor || theme.palette.primary.light,
-        color: (props) => props.iconColor ? "#fff" : theme.palette.primary.main,
+        color: (props) => props.iconColor ? "var(--bg-surface)" : theme.palette.primary.main,
     },
     content: {
         padding: theme.spacing(3), // Increased padding

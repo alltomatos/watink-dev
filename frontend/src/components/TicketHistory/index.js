@@ -31,7 +31,7 @@ const useStyles = makeStyles((theme) => ({
     logItem: {
         padding: "12px",
         borderRadius: "12px",
-        backgroundColor: "#ffffff",
+        backgroundColor: "var(--bg-surface)",
         border: "1px solid #e5e7eb",
         position: "relative",
         "&::before": {
@@ -64,7 +64,7 @@ const useStyles = makeStyles((theme) => ({
         width: "24px",
         height: "24px",
         borderRadius: "50%",
-        backgroundColor: "#ffffff",
+        backgroundColor: "var(--bg-surface)",
         border: "2px solid #e5e7eb",
         display: "flex",
         alignItems: "center",
