@@ -66,7 +66,8 @@ func IsAuth() gin.HandlerFunc {
 		// We create a scoped database session for this request
 		// This session will have the tenant ID set for all its queries
 		tx := database.DB.Session(&gorm.Session{})
-		tx.Exec(fmt.Sprintf("SET app.current_tenant = '%s'", tenantID))
+		// ✅ MITIGATED: SQL Injection via Parameterized Query
+		tx.Exec("SET app.current_tenant = ?", tenantID)
 		c.Set("db", tx)
 
 		c.Next()

@@ -2,7 +2,7 @@ package usecases
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
@@ -66,7 +66,10 @@ func (uc *DistributeTicketUseCase) Execute(ctx context.Context, ticketID int, qu
 
 	// 2. Strategy dispatch
 	if strategy == "" || strategy == "MANUAL" {
-		log.Printf("[Distribution] Strategy MANUAL for Ticket %d. No user assigned.", ticketID)
+		slog.Info("distribution skipped",
+			"reason", "manual strategy",
+			"ticket_id", ticketID,
+		)
 		return nil
 	}
 
@@ -75,7 +78,10 @@ func (uc *DistributeTicketUseCase) Execute(ctx context.Context, ticketID int, qu
 		return err
 	}
 	if len(users) == 0 {
-		log.Printf("[Distribution] No users found for Queue %d. Keeping ticket unassigned.", queueID)
+		slog.Info("no users for queue",
+			"queue_id", queueID,
+			"action", "keeping ticket unassigned",
+		)
 		return nil
 	}
 
@@ -103,7 +109,11 @@ func (uc *DistributeTicketUseCase) assignTicket(ctx context.Context, ticket *dom
 	if err := uc.ticketRepo.Update(ctx, ticket, fields); err != nil {
 		return err
 	}
-	log.Printf("[Distribution] Ticket %d assigned to User %d via %s", ticket.ID, userID, strategy)
+	slog.Info("ticket assigned",
+		"ticket_id", ticket.ID,
+		"user_id", userID,
+		"strategy", strategy,
+	)
 
 	// Emit domain event
 	_ = uc.eventBus.Publish(ctx, domain.NewTicketAssignedEvent(ticket.ID, userID, tenantID))
