@@ -13,19 +13,21 @@ const filesToCopy = [
     { src: 'watink-logo-letras.png', dest: 'logo-text.png' }
 ];
 
-if (!fs.existsSync(publicDir)) {
-    fs.mkdirSync(publicDir, { recursive: true });
-}
+fs.mkdirSync(publicDir, { recursive: true });
 
 filesToCopy.forEach(file => {
     const srcPath = path.join(assetsDir, file.src);
     const destPath = path.join(publicDir, file.dest);
 
-    if (fs.existsSync(srcPath)) {
+    try {
         fs.copyFileSync(srcPath, destPath);
         console.log(`Copied ${file.src} to ${file.dest}`);
-    } else {
-        console.warn(`Source file not found: ${srcPath}`);
+    } catch (error) {
+        if (error && error.code === 'ENOENT') {
+            console.warn(`Source file not found: ${srcPath}`);
+            return;
+        }
+        throw error;
     }
 });
 
@@ -37,12 +39,13 @@ try {
     const packageJson = require(packageJsonPath);
 
     let existing = {};
-    if (fs.existsSync(versionJsonPath)) {
-        try {
-            existing = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
-        } catch (_) {
-            existing = {};
+    try {
+        existing = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
+    } catch (error) {
+        if (!error || error.code !== 'ENOENT') {
+            console.warn('Could not read existing version.json, rebuilding from package.json');
         }
+        existing = {};
     }
 
     const envChangelog = process.env.WATINK_CHANGELOG

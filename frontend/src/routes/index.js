@@ -1,51 +1,52 @@
 /* @jsxImportSource react */
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter, Switch } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 
 import LoggedInLayout from "../layout";
-import Dashboard from "../pages/Dashboard/";
-import Pipelines from "../pages/Pipelines/";
-import PipelineWizard from "../pages/Pipelines/PipelineWizard";
-import PipelineCreator from "../pages/Pipelines/PipelineCreator";
-import PipelineBoard from "../pages/Pipelines/PipelineBoard";
-import Tickets from "../pages/Tickets/";
-import FlowBuilder from "../pages/FlowBuilder/";
-import FlowManager from "../pages/FlowManager/";
-import Signup from "../pages/Signup/";
-import Login from "../pages/Login/";
-import Connections from "../pages/Connections/";
-import ConnectionConfig from "../pages/Connections/ConnectionConfig";
-import Settings from "../pages/Settings/";
-import Users from "../pages/Users";
-import UserEdit from "../pages/UserEdit";
-import UserProfile from "../pages/UserProfile";
-import ResetPassword from "../pages/ResetPassword";
-import MyActivities from "../pages/MyActivities";
-import GroupEdit from "../pages/GroupEdit";
-import Contacts from "../pages/Contacts/";
-import QuickAnswers from "../pages/QuickAnswers/";
-import Access from "../pages/Access";
-import Groups from "../pages/Groups";
-import TagManager from "../pages/TagManager/";
-import Roles from "../pages/Roles";
-import RoleEdit from "../pages/RoleEdit";
-import Queues from "../pages/Queues/";
-import KnowledgeBase from "../pages/KnowledgeBase/";
-import KnowledgeBaseConfig from "../pages/KnowledgeBase/KnowledgeBaseConfig";
-import Marketplace from "../pages/Marketplace/";
-import Billing from "../pages/Billing/";
-import PluginDetail from "../pages/Marketplace/PluginDetail";
-import Clients from "../pages/Clients/";
-import Helpdesk from "../pages/Helpdesk/";
-import ProtocolDetails from "../pages/Helpdesk/ProtocolDetails";
-import HelpdeskKanban from "../pages/Helpdesk/HelpdeskKanban";
-import HelpdeskTvMode from "../pages/Helpdesk/HelpdeskTvMode";
-import Swagger from "../pages/Swagger/";
-import VersionDashboard from "../pages/VersionDashboard/";
-import MonitorQueues from "../pages/MonitorQueues/";
-import SaaSAdmin from "../pages/SaaS/";
-import InitialSetup from "../pages/InitialSetup/";
+
+const Dashboard = lazy(() => import("../pages/Dashboard/"));
+const Pipelines = lazy(() => import("../pages/Pipelines/"));
+const PipelineCreator = lazy(() => import("../pages/Pipelines/PipelineCreator"));
+const PipelineBoard = lazy(() => import("../pages/Pipelines/PipelineBoard"));
+const Tickets = lazy(() => import("../pages/Tickets/"));
+const FlowBuilder = lazy(() => import("../pages/FlowBuilder/"));
+const FlowManager = lazy(() => import("../pages/FlowManager/"));
+const Signup = lazy(() => import("../pages/Signup/"));
+const Login = lazy(() => import("../pages/Login/"));
+const Connections = lazy(() => import("../pages/Connections/"));
+const ConnectionConfig = lazy(() => import("../pages/Connections/ConnectionConfig"));
+const Settings = lazy(() => import("../pages/Settings/"));
+const Users = lazy(() => import("../pages/Users"));
+const UserEdit = lazy(() => import("../pages/UserEdit"));
+const UserProfile = lazy(() => import("../pages/UserProfile"));
+const ResetPassword = lazy(() => import("../pages/ResetPassword"));
+const MyActivities = lazy(() => import("../pages/MyActivities"));
+const GroupEdit = lazy(() => import("../pages/GroupEdit"));
+const Contacts = lazy(() => import("../pages/Contacts/"));
+const QuickAnswers = lazy(() => import("../pages/QuickAnswers/"));
+const Access = lazy(() => import("../pages/Access"));
+const Groups = lazy(() => import("../pages/Groups"));
+const TagManager = lazy(() => import("../pages/TagManager/"));
+const Roles = lazy(() => import("../pages/Roles"));
+const RoleEdit = lazy(() => import("../pages/RoleEdit"));
+const Queues = lazy(() => import("../pages/Queues/"));
+const KnowledgeBase = lazy(() => import("../pages/KnowledgeBase/"));
+const KnowledgeBaseConfig = lazy(() => import("../pages/KnowledgeBase/KnowledgeBaseConfig"));
+const Marketplace = lazy(() => import("../pages/Marketplace/"));
+const Billing = lazy(() => import("../pages/Billing/"));
+const PluginDetail = lazy(() => import("../pages/Marketplace/PluginDetail"));
+const Clients = lazy(() => import("../pages/Clients/"));
+const Helpdesk = lazy(() => import("../pages/Helpdesk/"));
+const ProtocolDetails = lazy(() => import("../pages/Helpdesk/ProtocolDetails"));
+const HelpdeskKanban = lazy(() => import("../pages/Helpdesk/HelpdeskKanban"));
+const HelpdeskTvMode = lazy(() => import("../pages/Helpdesk/HelpdeskTvMode"));
+const Swagger = lazy(() => import("../pages/Swagger/"));
+const VersionDashboard = lazy(() => import("../pages/VersionDashboard/"));
+const MonitorQueues = lazy(() => import("../pages/MonitorQueues/"));
+const SaaSAdmin = lazy(() => import("../pages/SaaS/"));
+const InitialSetup = lazy(() => import("../pages/InitialSetup/"));
+const PublicProtocol = lazy(() => import("../pages/PublicProtocol"));
 import { AuthProvider } from "../context/Auth/AuthContext";
 import { WhatsAppsProvider } from "../context/WhatsApp/WhatsAppsContext";
 import { ThemeProvider } from "../context/DarkMode";
@@ -54,11 +55,12 @@ import Route from "./Route";
 import StatusCheck from "../components/StatusCheck";
 
 const PrivateRoutes = () => {
-  return (
-    <WhatsAppsProvider>
-      <TicketsProvider>
-        <LoggedInLayout>
-          <Switch>
+ return (
+ <WhatsAppsProvider>
+ <TicketsProvider>
+ <LoggedInLayout>
+ <Suspense fallback={<div />}>
+ <Switch>
             <Route exact path="/" component={Dashboard} isPrivate />
             <Route exact path="/pipelines" component={Pipelines} isPrivate />
             <Route exact path="/pipelines/new" component={PipelineCreator} isPrivate />
@@ -100,33 +102,34 @@ const PrivateRoutes = () => {
             <Route exact path="/monitor/queues" component={MonitorQueues} isPrivate />
             <Route exact path="/versions" component={VersionDashboard} isPrivate />
           </Switch>
-        </LoggedInLayout>
+          </Suspense>
+          </LoggedInLayout>
       </TicketsProvider>
     </WhatsAppsProvider>
   );
 };
 
-import PublicProtocol from "../pages/PublicProtocol";
-
 const Routes = () => {
-  return (
-    <BrowserRouter>
-      <StatusCheck>
-        <AuthProvider>
-          <ThemeProvider>
-            <Switch>
-              <Route exact path="/initial-setup" component={InitialSetup} />
-              <Route exact path="/login" component={Login} />
-              <Route exact path="/signup" component={Signup} />
-              <Route exact path="/public/protocols/:token" component={PublicProtocol} isPublic />
-              <Route path="/" component={PrivateRoutes} isPrivate />
-            </Switch>
-            <ToastContainer autoClose={3000} />
-          </ThemeProvider>
-        </AuthProvider>
-      </StatusCheck>
-    </BrowserRouter>
-  );
+ return (
+ <BrowserRouter>
+ <StatusCheck>
+ <AuthProvider>
+ <ThemeProvider>
+ <Suspense fallback={<div />}>
+ <Switch>
+ <Route exact path="/initial-setup" component={InitialSetup} />
+ <Route exact path="/login" component={Login} />
+ <Route exact path="/signup" component={Signup} />
+ <Route exact path="/public/protocols/:token" component={PublicProtocol} isPublic />
+ <Route path="/" component={PrivateRoutes} isPrivate />
+ </Switch>
+ </Suspense>
+ <ToastContainer autoClose={3000} />
+ </ThemeProvider>
+ </AuthProvider>
+ </StatusCheck>
+ </BrowserRouter>
+ );
 };
 
 export default Routes;
