@@ -105,9 +105,13 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Lint
+      - name: Lint (base)
         working-directory: frontend
         run: npm run lint --if-present
+
+      - name: Design System governance (no hardcoded colors)
+        working-directory: frontend
+        run: npm run lint:ds
 
       - name: Build
         working-directory: frontend

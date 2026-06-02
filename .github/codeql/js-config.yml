@@ -6,3 +6,4 @@ path-filtering:
   paths-ignore:
     - frontend/build/**
     - legacy/**
+    - marketplace-hub/**
