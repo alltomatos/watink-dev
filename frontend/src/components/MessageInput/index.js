@@ -1,8 +1,8 @@
 /* @jsxImportSource react */
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext, useRef, Suspense, lazy } from "react";
 import "emoji-mart/css/emoji-mart.css";
 import { useParams } from "react-router-dom";
-import { Picker } from "emoji-mart";
+const EmojiPicker = lazy(() => import("emoji-mart").then(mod => ({ default: mod.Picker })));
 import clsx from "clsx";
 
 import { makeStyles } from "@material-ui/core/styles";
@@ -86,14 +86,14 @@ const useStyles = makeStyles(theme => ({
   },
 
   messageInputWrapperSaas: {
-  	padding: 6,
-  	marginRight: 7,
-  	background: "var(--bg-surface)",
-  	display: "flex",
-  	borderRadius: 20,
-  	flex: 1,
-  	position: "relative",
-  	border: "1px solid var(--border-default)",
+    padding: 6,
+    marginRight: 7,
+    background: "var(--bg-surface)",
+    display: "flex",
+    borderRadius: 20,
+    flex: 1,
+    position: "relative",
+    border: "1px solid var(--border-default)",
     boxShadow: "none",
   },
 
@@ -145,10 +145,10 @@ const useStyles = makeStyles(theme => ({
     },
   },
   previewMediaItem: {
-  	position: "relative",
-  	minWidth: "150px",
-  	height: "180px",
-  	border: "1px solid var(--border-divider)",
+    position: "relative",
+    minWidth: "150px",
+    height: "180px",
+    border: "1px solid var(--border-divider)",
     borderRadius: "4px",
     overflow: "hidden",
     display: "flex",
@@ -195,10 +195,10 @@ const useStyles = makeStyles(theme => ({
   },
 
   emojiBox: {
-  	position: "absolute",
-  	bottom: 63,
-  	width: 40,
-  	borderTop: "1px solid var(--border-default)",
+    position: "absolute",
+    bottom: 63,
+    width: 40,
+    borderTop: "1px solid var(--border-default)",
   },
 
   circleLoading: {
@@ -258,29 +258,29 @@ const useStyles = makeStyles(theme => ({
   },
 
   replyginContactMsgSideColor: {
-  	flex: "none",
-  	width: "4px",
-  	backgroundColor: "var(--message-quote-side-left)",
+    flex: "none",
+    width: "4px",
+    backgroundColor: "var(--message-quote-side-left)",
   },
 
   replyginSelfMsgSideColor: {
-  	flex: "none",
-  	width: "4px",
-  	backgroundColor: "var(--message-quote-side-right)",
+    flex: "none",
+    width: "4px",
+    backgroundColor: "var(--message-quote-side-right)",
   },
 
   messageContactName: {
-  	display: "flex",
-  	color: "var(--message-quote-side-right)",
+    display: "flex",
+    color: "var(--message-quote-side-right)",
     fontWeight: 500,
   },
   messageQuickAnswersWrapper: {
-  	margin: 0,
-  	position: "absolute",
-  	bottom: "50px",
-  	background: "var(--bg-surface)",
-  	padding: "2px",
-  	border: "1px solid var(--border-divider)",
+    margin: 0,
+    position: "absolute",
+    bottom: "50px",
+    background: "var(--bg-surface)",
+    padding: "2px",
+    border: "1px solid var(--border-divider)",
     left: 0,
     width: "100%",
     "& li": {
@@ -292,20 +292,20 @@ const useStyles = makeStyles(theme => ({
         overflow: "hidden",
         maxHeight: "32px",
         "&:hover": {
-        	background: "var(--bg-surface-alt)",
-        	cursor: "pointer",
+          background: "var(--bg-surface-alt)",
+          cursor: "pointer",
         },
         },
         },
         },
 
         messageMentionsWrapper: {
-        	margin: 0,
-        	position: "absolute",
-        	bottom: "50px",
-        	background: "var(--bg-surface)",
-        	padding: "2px",
-        	border: "1px solid var(--border-divider)",
+          margin: 0,
+          position: "absolute",
+          bottom: "50px",
+          background: "var(--bg-surface)",
+          padding: "2px",
+          border: "1px solid var(--border-divider)",
     left: 0,
     width: "100%",
     zIndex: 9999,
@@ -322,8 +322,8 @@ const useStyles = makeStyles(theme => ({
         maxHeight: "45px",
         borderBottom: "1px solid var(--border-default)",
         "&:hover": {
-        	background: "var(--bg-surface-alt)",
-        	cursor: "pointer",
+          background: "var(--bg-surface-alt)",
+          cursor: "pointer",
         },
         },
         "& img": {
@@ -381,7 +381,7 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
   };
 
   const handleAddEmoji = e => {
-    let emoji = e.native;
+    const emoji = e.native;
     setInputMessage(prevState => prevState + emoji);
   };
 
@@ -815,12 +815,14 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
             {showEmoji ? (
               <div className={classes.emojiBox}>
                 <ClickAwayListener onClickAway={e => setShowEmoji(false)}>
-                  <Picker
-                    perLine={16}
-                    showPreview={false}
-                    showSkinTones={false}
-                    onSelect={handleAddEmoji}
-                  />
+                  <Suspense fallback={<div>Loading emoji...</div>}>
+                    <EmojiPicker
+                      perLine={16}
+                      showPreview={false}
+                      showSkinTones={false}
+                      onSelect={handleAddEmoji}
+                    />
+                  </Suspense>
                 </ClickAwayListener>
               </div>
             ) : null}

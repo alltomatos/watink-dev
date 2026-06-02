@@ -52,15 +52,30 @@ function chunkStrategy(id, { _getModuleInfo }) {
     if (id.includes("/date-fns/")) {
       return "date-utils";
     }
+    // Emoji picker — heavy component (600KB+), isolate for lazy load
+    if (id.includes("/emoji-mart/")) {
+      return "emoji-picker";
+    }
+    // Color picker — separate for dynamic import in forms
+    if (id.includes("/react-color/")) {
+      return "color-picker";
+    }
+    // Modal image — separate for modal-heavy routes
+    if (id.includes("/react-modal-image/")) {
+      return "modal-image";
+    }
+    // Signature canvas — separate for ticket-heavy features
+    if (id.includes("/react-signature-canvas/")) {
+      return "signature-canvas";
+    }
+    // Toast notifications — separate for UI layer
+    if (id.includes("/react-toastify/")) {
+      return "toast-notifications";
+    }
     // UI utilities — smaller libs grouped together
     if (
-      id.includes("/emoji-mart/") ||
       id.includes("/markdown-to-jsx/") ||
-      id.includes("/qrcode.react/") ||
-      id.includes("/react-color/") ||
-      id.includes("/react-modal-image/") ||
-      id.includes("/react-signature-canvas/") ||
-      id.includes("/react-toastify/")
+      id.includes("/qrcode.react/")
     ) {
       return "ui-utils";
     }
