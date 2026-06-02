@@ -2,7 +2,6 @@
 .env
 *.env
 !.env.example
-legacy/backend/.env
 ssl/
 
 # --- Runtime Data ---
@@ -35,11 +34,18 @@ Thumbs.db
 
 # --- Compiled Binaries ---
 engine-go/
-business/backend-go/
+business/backend-go
 business/watink-core
 business/watink-business
 business/server
 plugin-manager/plugin-manager
+plugin-manager/plugin-manager.exe
+
+# --- Runtime State Files ---
+business/.instance_id
+business/.entitlements_status.json
+business/.license_status.json
+business/coverage.out
 
 # --- Screenshots & Temp ---
 *.png
@@ -48,25 +54,15 @@ plugin-manager/plugin-manager
 # --- Dev Container Lock ---
 .devcontainer/devcontainer-lock.json
 
-# --- Debug / Temp Scripts (legacy) ---
-legacy/backend/debug_seed.js
-legacy/backend/find_all_memory.js
-legacy/backend/find_memory.js
-legacy/backend/list_all_supabase_tables.js
-legacy/backend/list_tables.js
-legacy/backend/temp_seed.js
-business/internal/web/placeholder.txt
+# --- Frozen / Quarantined Code ---
+legacy/
+marketplace-hub/
 
 # --- Stub Plugins ---
 plugins/saas-plugin/
 
-# --- User uploads (do not version) ---
-legacy/backend/public/**
-!legacy/backend/public/assets/
-!legacy/backend/public/assets/**
-!legacy/backend/public/plugins/
-!legacy/backend/public/plugins/**
-!legacy/backend/public/webchat.js
+# --- Orphan Scripts (zero references) ---
+script_package_plugins.js
 
 # --- Claude Code Worktrees ---
 .claude/worktrees/

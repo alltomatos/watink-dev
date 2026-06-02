@@ -8,9 +8,16 @@ import react from "@vitejs/plugin-react";
  */
 function chunkStrategy(id, { _getModuleInfo }) {
   if (id.includes("node_modules")) {
-    // React core — keep together (react, react-dom, scheduler)
-    if (id.includes("/react-dom/") || id.includes("/react/")) {
-      return "react";
+    // React core — keep together (react, react-dom, scheduler, prop-types)
+    if (
+    id.includes("/react-dom/") ||
+    id.includes("/react/") ||
+    id.includes("/scheduler/") ||
+    id.includes("/object-assign/") ||
+    id.includes("/loose-envify/") ||
+    id.includes("/prop-types/")
+    ) {
+    return "react";
     }
     // MUI v4 — monorepo, heavy, stable (rarely changes)
     if (
@@ -24,9 +31,19 @@ function chunkStrategy(id, { _getModuleInfo }) {
     if (id.includes("/formik/") || id.includes("/yup/")) {
       return "forms";
     }
-    // Charts — recharts + d3 subdeps
-    if (id.includes("/recharts/") || id.includes("/d3-") || id.includes("/victory-")) {
-      return "charts";
+    // Charts — recharts + d3 subdeps (avoid vendor circular)
+    if (
+    id.includes("/recharts/") ||
+    id.includes("/d3-") ||
+    id.includes("/victory-") ||
+    id.includes("/d3-array/") ||
+    id.includes("/d3-scale/") ||
+    id.includes("/d3-scale-chromatic/") ||
+    id.includes("/d3-array/") ||
+    id.includes("/d3-time/") ||
+    id.includes("/d3-time-format/")
+    ) {
+    return "charts";
     }
     // Flow builder + DnD
     if (id.includes("/reactflow/") || id.includes("/react-beautiful-dnd/")) {
