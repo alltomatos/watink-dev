@@ -29,7 +29,7 @@ const useStyles = makeStyles((theme) => ({
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        backgroundColor: theme.palette.type === 'dark' ? '#1e293b' : '#f8fafc',
+        backgroundColor: theme.palette.type === 'dark' ? 'var(--text-primary)' : 'var(--bg-default)',
     },
     header: {
         padding: theme.spacing(2),
@@ -56,16 +56,16 @@ const useStyles = makeStyles((theme) => ({
         fontSize: "0.85rem",
     },
     positive: {
-        backgroundColor: "#e8f5e9",
-        color: "#2e7d32",
+        backgroundColor: "var(--status-success-bg)",
+        color: "var(--status-success)",
     },
     negative: {
-        backgroundColor: "#ffebee",
-        color: "#c62828",
+        backgroundColor: "var(--status-error-bg)",
+        color: "var(--status-error)",
     },
     neutral: {
-        backgroundColor: "#e3f2fd",
-        color: "#1565c0",
+        backgroundColor: "var(--status-info-bg)",
+        color: "var(--status-info)",
     },
     topicChip: {
         margin: theme.spacing(0.5),
@@ -90,7 +90,7 @@ const useStyles = makeStyles((theme) => ({
         marginLeft: "auto",
     },
     aiMessage: {
-        backgroundColor: theme.palette.type === 'dark' ? '#334155' : '#e2e8f0',
+        backgroundColor: theme.palette.type === 'dark' ? 'var(--text-primary)' : 'var(--border-default)',
         borderRadius: "12px 12px 12px 0",
         padding: theme.spacing(1, 2),
         marginBottom: theme.spacing(1),
@@ -110,7 +110,7 @@ const useStyles = makeStyles((theme) => ({
     statItem: {
         textAlign: "center",
         padding: theme.spacing(1),
-        backgroundColor: theme.palette.type === 'dark' ? '#334155' : '#f1f5f9',
+        backgroundColor: theme.palette.type === 'dark' ? 'var(--text-primary)' : 'var(--bg-surface-alt)',
         borderRadius: theme.spacing(1),
     }
 }));

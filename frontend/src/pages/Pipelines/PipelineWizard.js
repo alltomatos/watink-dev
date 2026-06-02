@@ -46,7 +46,7 @@ const useStyles = makeStyles((theme) => ({
         padding: theme.spacing(2),
     },
     aiContainer: {
-        backgroundColor: theme.palette.type === 'dark' ? '#1e293b' : '#f8fafc',
+        backgroundColor: theme.palette.type === 'dark' ? 'var(--text-primary)' : 'var(--bg-default)',
         padding: theme.spacing(2),
         borderRadius: theme.spacing(1),
         marginTop: theme.spacing(2),
@@ -279,7 +279,7 @@ const PipelineWizard = ({ open, onClose }) => {
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
                                     {data.stages.map((s, i) => (
                                         <div key={i} style={{
-                                            background: '#e0e0e0', padding: '4px 8px', borderRadius: 4, fontSize: 12
+                                            background: 'var(--border-default)', padding: '4px 8px', borderRadius: 4, fontSize: 12
                                         }}>
                                             {s}
                                         </div>

@@ -30,7 +30,7 @@ const useStyles = makeStyles((theme) => ({
   title: {
     fontSize: "1.75rem",
     fontWeight: 700,
-    color: "#1a1a1a",
+    color: "var(--text-primary)",
   },
   customizeButton: {
     borderRadius: 20,
@@ -41,7 +41,7 @@ const useStyles = makeStyles((theme) => ({
     border: "1px solid var(--action-primary-bg)",
     boxShadow: "0 2px 8px var(--border-subtle)",
     "&:hover": {
-      backgroundColor: "#f0f7ff",
+      backgroundColor: "var(--status-info-bg)",
     }
   },
   modalPaper: {
@@ -62,7 +62,7 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: "space-between",
     marginBottom: theme.spacing(2),
     padding: theme.spacing(2),
-    backgroundColor: "#f9fafb",
+    backgroundColor: "var(--bg-surface-alt)",
     borderRadius: 12,
     border: "1px solid var(--border-weak)",
   },

@@ -57,7 +57,7 @@ const useStyles = makeStyles((theme) => ({
         border: "1px solid var(--shadow-appbar)",
     },
     usageCount: {
-        backgroundColor: "#f0f0f0",
+        backgroundColor: "var(--bg-surface-alt)",
         padding: "2px 8px",
         borderRadius: 12,
         fontSize: "0.75rem",

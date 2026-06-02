@@ -50,14 +50,14 @@ const useStyles = makeStyles((theme) => ({
         width: '100%',
         height: '100%',
         minHeight: 150,
-        border: '2px dashed #ccc',
+        border: '2px dashed var(--border-default)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
         '&:hover': {
-            backgroundColor: '#f5f5f5',
+            backgroundColor: 'var(--bg-surface-alt)',
             borderColor: theme.palette.primary.main
         }
     }

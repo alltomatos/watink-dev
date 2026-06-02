@@ -95,7 +95,7 @@ const NAV_CARDS = [
   {
     key: "roles",
     icon: Assignment,
-    color: "#3f51b5",
+    color: "var(--status-info)",
     getTitle: () => i18n.t("role.title") || "Funções",
     getDescription: () =>
       "Conjuntos de permissões que definem o que cada perfil pode fazer no sistema",
@@ -106,7 +106,7 @@ const NAV_CARDS = [
   {
     key: "users",
     icon: PeopleOutline,
-    color: "#e91e63",
+    color: "var(--status-error)",
     getTitle: () => i18n.t("users.title") || "Usuários",
     getDescription: () =>
       "Pessoas que recebem funções e permissões de acesso ao sistema",
@@ -118,7 +118,7 @@ const NAV_CARDS = [
   {
     key: "permissions",
     icon: VpnKey,
-    color: "#ff9800",
+    color: "var(--status-warning)",
     getTitle: () => "Permissões",
     getDescription: () =>
       "Visão geral das permissões disponíveis — gerenciadas via Funções",
@@ -132,7 +132,7 @@ const LEGACY_CARDS = [
   {
     key: "groups",
     icon: History,
-    color: "#9e9e9e",
+    color: "var(--text-muted)",
     getTitle: () => i18n.t("access.buttons.legacyGroups"),
     getDescription: () =>
       "Funcionalidade anterior de agrupamento — migre para Funções quando possível",

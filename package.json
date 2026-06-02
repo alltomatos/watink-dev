@@ -31,12 +31,12 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "frontend/**/*.{js,jsx,ts,tsx}": [
-      "cd frontend && npx eslint --max-warnings=0"
-    ],
-    "business/**/*.go": [
-      "gofmt -w"
-    ]
+  "frontend/**/*.{js,jsx,ts,tsx}": [
+  "bash scripts/lint-frontend.sh"
+  ],
+  "business/**/*.go": [
+  "gofmt -w"
+  ]
   },
   "repository": {
     "type": "git",

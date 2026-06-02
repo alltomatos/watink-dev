@@ -137,8 +137,8 @@ const Pipelines = () => {
                                 </div>
                                 <p>{pipeline.description}</p>
                                 <span style={{
-                                    background: pipeline.type === 'kanban' ? '#e3f2fd' : 'var(--bg-surface)3e0',
-                                    color: pipeline.type === 'kanban' ? '#1976d2' : '#f57c00',
+                                    background: pipeline.type === 'kanban' ? 'var(--status-info-bg)' : 'var(--bg-surface)3e0',
+                                    color: pipeline.type === 'kanban' ? 'var(--status-info)' : 'var(--status-warning)',
                                     padding: '2px 8px',
                                     borderRadius: '4px',
                                     fontSize: '0.8rem',

@@ -218,7 +218,7 @@ const Login = () => {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: settings.loginBackground ? "transparent" : "#f0f2f5",
+          backgroundColor: settings.loginBackground ? "transparent" : "var(--bg-surface-alt)",
         }}
       >
         <CssBaseline />

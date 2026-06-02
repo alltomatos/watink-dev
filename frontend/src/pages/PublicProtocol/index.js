@@ -43,7 +43,7 @@ const useStyles = makeStyles((theme) => ({
     root: {
         paddingTop: theme.spacing(4),
         paddingBottom: theme.spacing(4),
-        backgroundColor: "#f4f6f8",
+        backgroundColor: "var(--bg-surface-alt)",
         minHeight: "100vh",
     },
     headerCard: {
@@ -158,7 +158,7 @@ const PublicProtocol = () => {
                 <Card className={classes.headerCard}>
                     <CardHeader
                         avatar={
-                            <Avatar style={{ backgroundColor: "#3f51b5" }}>
+                            <Avatar style={{ backgroundColor: "var(--status-info)" }}>
                                 <AssignmentIcon />
                             </Avatar>
                         }
@@ -245,7 +245,7 @@ const PublicProtocol = () => {
                                                 {index < protocol.history.length - 1 && <TimelineConnector />}
                                             </TimelineSeparator>
                                             <TimelineContent className={classes.timelineContent}>
-                                                <Paper elevation={0} style={{ backgroundColor: "#f9f9f9", padding: 12, borderRadius: 8 }}>
+                                                <Paper elevation={0} style={{ backgroundColor: "var(--bg-surface-alt)", padding: 12, borderRadius: 8 }}>
                                                     <Typography variant="subtitle2" style={{ fontWeight: 600 }}>
                                                         {i18n.t(`publicProtocol.history.actions.${hist.action}`) || hist.action}
                                                     </Typography>

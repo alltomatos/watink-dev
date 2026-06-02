@@ -209,7 +209,7 @@ const Queues = () => {
                 <TableRow key={queue.id}>
                   <TableCell align="center">
                     <Box display="flex" alignItems="center" justifyContent="center">
-                      {queue.parentId && <AccountTreeOutlined style={{ marginRight: 8, fontSize: 18, color: "#888" }} />}
+                      {queue.parentId && <AccountTreeOutlined style={{ marginRight: 8, fontSize: 18, color: "var(--text-muted)" }} />}
                       <span style={{ fontWeight: queue.parentId ? 400 : 600 }}>
                         {queue.name}
                       </span>

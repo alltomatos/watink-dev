@@ -121,18 +121,20 @@ const useStyles = makeStyles(theme => ({
 }));
 
 // Paleta de cores (mesma do PipelineBoard para consistência)
+// Tokens semânticos do Design System — cores de estágio mapeadas a status tokens
 const stageColors = [
-	{ bg: '#e3f2fd', header: '#1976d2', light: '#bbdefb' }, // Azul
-	{ bg: 'var(--bg-surface)3e0', header: '#f57c00', light: '#ffe0b2' }, // Laranja
-	{ bg: '#e8f5e9', header: '#388e3c', light: '#c8e6c9' }, // Verde
-	{ bg: '#fce4ec', header: '#c2185b', light: '#f8bbd9' }, // Rosa
-	{ bg: '#ede7f6', header: '#7b1fa2', light: '#d1c4e9' }, // Roxo
-	{ bg: '#e0f7fa', header: '#0097a7', light: '#b2ebf2' }, // Ciano
-	{ bg: 'var(--bg-surface)8e1', header: '#ffa000', light: '#ffecb3' }, // Âmbar
-	{ bg: '#f3e5f5', header: '#8e24aa', light: '#e1bee7' }, // Violeta
-	{ bg: '#e8eaf6', header: '#3f51b5', light: '#c5cae9' }, // Índigo
-	{ bg: '#ffebee', header: '#d32f2f', light: '#ffcdd2' }, // Vermelho
+	{ bg: 'var(--status-info-bg)', header: 'var(--status-info)', light: 'var(--status-info-8)' }, // Azul
+	{ bg: 'var(--status-warning-bg)', header: 'var(--status-warning)', light: 'var(--status-warning-bg)' }, // Laranja
+	{ bg: 'var(--status-success-bg)', header: 'var(--status-success)', light: 'var(--status-success-10)' }, // Verde
+	{ bg: 'var(--status-error-bg)', header: 'var(--status-error)', light: 'var(--status-error-10)' }, // Rosa
+	{ bg: 'var(--status-default-bg)', header: 'var(--status-default-text)', light: 'var(--status-default-bg)' }, // Roxo
+	{ bg: 'var(--status-info-bg)', header: 'var(--status-info)', light: 'var(--status-info-8)' }, // Ciano
+	{ bg: 'var(--status-warning-bg)', header: 'var(--status-warning)', light: 'var(--status-warning-bg)' }, // Âmbar
+	{ bg: 'var(--status-default-bg)', header: 'var(--status-default-text)', light: 'var(--status-default-bg)' }, // Violeta
+	{ bg: 'var(--status-info-bg)', header: 'var(--status-info)', light: 'var(--status-info-8)' }, // Índigo
+	{ bg: 'var(--status-error-bg)', header: 'var(--status-error)', light: 'var(--status-error-10)' }, // Vermelho
 ];
+
 
 const getStageColor = (index) => stageColors[index % stageColors.length];
 
@@ -379,7 +381,7 @@ const ContactDrawer = ({ open, handleDrawerClose, contact, ticketId, loading }) 
 								{deals.map(deal => {
 									// Determine stage index if possible, otherwise use random or default
 									// We don't have full pipeline here, so maybe just use hash of stage ID
-									const color = deal.stage ? getStageColor(deal.stage.id) : { bg: '#f5f5f5', header: '#ccc' };
+									const color = deal.stage ? getStageColor(deal.stage.id) : { bg: 'var(--bg-surface-alt)', header: 'var(--border-default)' };
 
 									return (
 										<Paper

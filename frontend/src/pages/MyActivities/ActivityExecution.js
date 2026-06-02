@@ -53,7 +53,7 @@ const useStyles = makeStyles((theme) => ({
   },
   content: {
     padding: theme.spacing(2),
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "var(--bg-surface-alt)",
     minHeight: "100vh"
   },
   tabPanel: {
@@ -69,7 +69,7 @@ const useStyles = makeStyles((theme) => ({
     objectFit: "cover",
     borderRadius: 4,
     marginTop: theme.spacing(1),
-    border: "1px solid #ddd"
+    border: "1px solid var(--border-default)"
   },
   fab: {
     position: "fixed",
@@ -407,7 +407,7 @@ const ActivityExecution = ({ open, activityId, onClose }) => {
                                     secondary={
                                         <>
                                             <Typography component="span" variant="caption" style={{
-                                                backgroundColor: o.type === 'impediment' ? '#ffcdd2' : o.type === 'delay' ? 'var(--bg-surface)9c4' : '#e1f5fe',
+                                                backgroundColor: o.type === 'impediment' ? 'var(--status-error-10)' : o.type === 'delay' ? 'var(--bg-surface)9c4' : 'var(--status-info-bg)',
                                                 padding: '2px 6px',
                                                 borderRadius: 4,
                                                 marginRight: 8

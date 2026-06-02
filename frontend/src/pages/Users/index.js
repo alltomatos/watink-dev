@@ -278,7 +278,7 @@ const Users = () => {
             {i18n.t("users.confirmationModal.deleteMessage")}
           </Typography>
 
-          <div style={{ marginTop: 15, marginBottom: 15, padding: 10, background: "#f5f5f5", borderRadius: 5 }}>
+          <div style={{ marginTop: 15, marginBottom: 15, padding: 10, background: "var(--bg-surface-alt)", borderRadius: 5 }}>
             <Typography variant="body2" color="textPrimary">
               <strong>{i18n.t("users.table.name")}:</strong> {deletingUser?.name}
             </Typography>
@@ -287,7 +287,7 @@ const Users = () => {
             </Typography>
           </div>
 
-          <Typography variant="body2" style={{ color: "#f44336", marginBottom: 10, fontWeight: "bold" }}>
+          <Typography variant="body2" style={{ color: "var(--status-error)", marginBottom: 10, fontWeight: "bold" }}>
             {i18n.t("users.confirmationModal.warning")}
           </Typography>
 
@@ -380,8 +380,8 @@ const Users = () => {
                           variant="outlined"
                           style={{
                             fontWeight: 500,
-                            color: user.emailVerified ? "#4caf50" : "#ff9800",
-                            borderColor: user.emailVerified ? "#4caf50" : "#ff9800"
+                            color: user.emailVerified ? "var(--status-success)" : "var(--status-warning)",
+                            borderColor: user.emailVerified ? "var(--status-success)" : "var(--status-warning)"
                           }}
                         />
                       </TableCell>

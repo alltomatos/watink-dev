@@ -33,25 +33,25 @@ const useStyles = makeStyles(theme => ({
 		padding: "12px 16px",
 		borderRadius: 12,
 		backgroundColor: "var(--bg-surface)",
-		border: "1px solid #f1f5f9",
+		border: "1px solid var(--border-subtle)",
 		transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
 		cursor: "pointer",
 		display: "flex",
 		gap: 12,
 		"&:hover": {
-			borderColor: "#e2e8f0",
+			borderColor: "var(--border-default)",
 			boxShadow: "0 4px 6px -1px var(--border-subtle), 0 2px 4px -1px var(--border-weak)",
 			transform: "translateY(-1px)",
 		},
 	},
 
 	selectedTicket: {
-		borderColor: "#3b82f6",
+		borderColor: "var(--action-primary)",
 		backgroundColor: "var(--action-primary-bg)",
-		boxShadow: "0 0 0 1px #3b82f6",
+		boxShadow: "0 0 0 1px var(--action-primary)",
 		"&:hover": {
-			borderColor: "#3b82f6",
-			boxShadow: "0 0 0 1px #3b82f6",
+			borderColor: "var(--action-primary)",
+			boxShadow: "0 0 0 1px var(--action-primary)",
 		}
 	},
 
@@ -83,7 +83,7 @@ const useStyles = makeStyles(theme => ({
 	contactName: {
 		fontSize: "0.9375rem",
 		fontWeight: 600,
-		color: "#111827",
+		color: "var(--text-primary)",
 		overflow: "hidden",
 		textOverflow: "ellipsis",
 		whiteSpace: "nowrap",
@@ -91,7 +91,7 @@ const useStyles = makeStyles(theme => ({
 
 	lastMessage: {
 		fontSize: "0.8125rem",
-		color: "#64748b",
+		color: "var(--text-secondary)",
 		overflow: "hidden",
 		textOverflow: "ellipsis",
 		whiteSpace: "nowrap",
@@ -100,7 +100,7 @@ const useStyles = makeStyles(theme => ({
 
 	time: {
 		fontSize: "0.75rem",
-		color: "#94a3b8",
+		color: "var(--text-muted)",
 		fontWeight: 500,
 		whiteSpace: "nowrap",
 	},
@@ -113,7 +113,7 @@ const useStyles = makeStyles(theme => ({
 	},
 
 	unreadBadge: {
-		backgroundColor: "#3b82f6",
+		backgroundColor: "var(--action-primary)",
 		color: "var(--bg-surface)",
 		fontSize: "0.7rem",
 		fontWeight: 700,
@@ -136,8 +136,8 @@ const useStyles = makeStyles(theme => ({
 	connectionTag: {
 		fontSize: "0.6875rem",
 		fontWeight: 600,
-		color: "#64748b",
-		backgroundColor: "#f1f5f9",
+		color: "var(--text-secondary)",
+		backgroundColor: "var(--bg-surface-alt)",
 		padding: "1px 6px",
 		borderRadius: 4,
 		marginTop: 4,
@@ -145,7 +145,7 @@ const useStyles = makeStyles(theme => ({
 	},
 
 	acceptButton: {
-		backgroundColor: "#111827",
+		backgroundColor: "var(--text-primary)",
 		color: "var(--bg-surface)",
 		fontSize: "0.75rem",
 		fontWeight: 600,
@@ -153,7 +153,7 @@ const useStyles = makeStyles(theme => ({
 		padding: "4px 12px",
 		borderRadius: 6,
 		"&:hover": {
-			backgroundColor: "#1f2937",
+			backgroundColor: "var(--text-secondary)",
 		}
 	},
 }));
@@ -206,7 +206,7 @@ const TicketListItem = ({ ticket }) => {
 		>
 			<div 
 				className={classes.queueIndicator} 
-				style={{ backgroundColor: ticket.queue?.color || "#e2e8f0" }}
+				style={{ backgroundColor: ticket.queue?.color || "var(--border-default)" }}
 			/>
 			
 			<div className={classes.avatarWrapper}>

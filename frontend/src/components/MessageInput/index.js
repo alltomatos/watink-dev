@@ -86,14 +86,14 @@ const useStyles = makeStyles(theme => ({
   },
 
   messageInputWrapperSaas: {
-    padding: 6,
-    marginRight: 7,
-    background: "var(--bg-surface)",
-    display: "flex",
-    borderRadius: 20,
-    flex: 1,
-    position: "relative",
-    border: "1px solid #e5e7eb",
+  	padding: 6,
+  	marginRight: 7,
+  	background: "var(--bg-surface)",
+  	display: "flex",
+  	borderRadius: 20,
+  	flex: 1,
+  	position: "relative",
+  	border: "1px solid var(--border-default)",
     boxShadow: "none",
   },
 
@@ -145,10 +145,10 @@ const useStyles = makeStyles(theme => ({
     },
   },
   previewMediaItem: {
-    position: "relative",
-    minWidth: "150px",
-    height: "180px",
-    border: "1px solid #ddd",
+  	position: "relative",
+  	minWidth: "150px",
+  	height: "180px",
+  	border: "1px solid var(--border-divider)",
     borderRadius: "4px",
     overflow: "hidden",
     display: "flex",
@@ -168,7 +168,7 @@ const useStyles = makeStyles(theme => ({
     padding: "4px",
     fontSize: "12px",
     border: "none",
-    borderTop: "1px solid #ddd",
+    borderTop: "1px solid var(--border-divider)",
     outline: "none",
     height: "60px",
     resize: "none",
@@ -195,10 +195,10 @@ const useStyles = makeStyles(theme => ({
   },
 
   emojiBox: {
-    position: "absolute",
-    bottom: 63,
-    width: 40,
-    borderTop: "1px solid #e8e8e8",
+  	position: "absolute",
+  	bottom: 63,
+  	width: 40,
+  	borderTop: "1px solid var(--border-default)",
   },
 
   circleLoading: {
@@ -258,29 +258,29 @@ const useStyles = makeStyles(theme => ({
   },
 
   replyginContactMsgSideColor: {
-    flex: "none",
-    width: "4px",
-    backgroundColor: "#35cd96",
+  	flex: "none",
+  	width: "4px",
+  	backgroundColor: "var(--message-quote-side-left)",
   },
 
   replyginSelfMsgSideColor: {
-    flex: "none",
-    width: "4px",
-    backgroundColor: "#6bcbef",
+  	flex: "none",
+  	width: "4px",
+  	backgroundColor: "var(--message-quote-side-right)",
   },
 
   messageContactName: {
-    display: "flex",
-    color: "#6bcbef",
+  	display: "flex",
+  	color: "var(--message-quote-side-right)",
     fontWeight: 500,
   },
   messageQuickAnswersWrapper: {
-    margin: 0,
-    position: "absolute",
-    bottom: "50px",
-    background: "var(--bg-surface)",
-    padding: "2px",
-    border: "1px solid #CCC",
+  	margin: 0,
+  	position: "absolute",
+  	bottom: "50px",
+  	background: "var(--bg-surface)",
+  	padding: "2px",
+  	border: "1px solid var(--border-divider)",
     left: 0,
     width: "100%",
     "& li": {
@@ -292,20 +292,20 @@ const useStyles = makeStyles(theme => ({
         overflow: "hidden",
         maxHeight: "32px",
         "&:hover": {
-          background: "#F1F1F1",
-          cursor: "pointer",
+        	background: "var(--bg-surface-alt)",
+        	cursor: "pointer",
         },
-      },
-    },
-  },
+        },
+        },
+        },
 
-  messageMentionsWrapper: {
-    margin: 0,
-    position: "absolute",
-    bottom: "50px",
-    background: "var(--bg-surface)",
-    padding: "2px",
-    border: "1px solid #CCC",
+        messageMentionsWrapper: {
+        	margin: 0,
+        	position: "absolute",
+        	bottom: "50px",
+        	background: "var(--bg-surface)",
+        	padding: "2px",
+        	border: "1px solid var(--border-divider)",
     left: 0,
     width: "100%",
     zIndex: 9999,
@@ -322,11 +322,11 @@ const useStyles = makeStyles(theme => ({
         maxHeight: "45px",
         borderBottom: "1px solid var(--border-default)",
         "&:hover": {
-          background: "#F1F1F1",
-          cursor: "pointer",
+        	background: "var(--bg-surface-alt)",
+        	cursor: "pointer",
         },
-      },
-      "& img": {
+        },
+        "& img": {
         width: "30px",
         height: "30px",
         borderRadius: "50%",
@@ -706,7 +706,7 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
     return (
       <Paper square elevation={0} className={classes.mainWrapper}>
         <div className={classes.newMessageBox}>
-          <div style={{ padding: "10px", width: "100%", textAlign: "center", backgroundColor: "#ffebee", color: "#c62828", borderRadius: "5px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ padding: "10px", width: "100%", textAlign: "center", backgroundColor: "var(--status-error-bg)", color: "var(--status-error-text)", borderRadius: "5px", display: "flex", flexDirection: "column", alignItems: "center" }}>
             <span style={{ fontWeight: "bold", fontSize: "14px" }}>CONEXÃO INTERROMPIDA</span>
             <span style={{ fontSize: "12px", marginTop: "5px" }}>Não é possível enviar mensagens. Por favor, vá em "Conexões" e reconecte o WhatsApp.</span>
           </div>
@@ -748,7 +748,7 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
                     />
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "5px", fontSize: "10px", textAlign: "center", height: "120px", justifyContent: "center" }}>
-                      <AttachFileIcon style={{ fontSize: 40, color: "#888" }} />
+                      <AttachFileIcon style={{ fontSize: 40, color: "var(--text-muted)" }} />
                       <span style={{ maxWidth: "130px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {media.file.name}
                       </span>
@@ -779,7 +779,7 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
                 onChange={handleChangeMedias}
               />
               <label htmlFor="add-more-media" style={{ width: "100%", height: "100%", display: "flex", justifyContent: "center", alignItems: "center", cursor: "pointer" }}>
-                <AttachFileIcon style={{ fontSize: 30, color: "#aaa" }} />
+                <AttachFileIcon style={{ fontSize: 30, color: "var(--text-muted)" }} />
               </label>
             </div>
           )}

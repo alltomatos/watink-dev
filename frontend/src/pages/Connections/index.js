@@ -185,24 +185,24 @@ const Connections = () => {
 
 	const getStatusColor = (status) => {
 		switch (status) {
-			case "CONNECTED": return "#10b981"; // Modern emerald-500
-			case "DISCONNECTED": return "#ef4444"; // Modern red-500
-			case "QRCODE": return "#f59e0b"; // Modern amber-500
-			case "PAIRING": return "#8b5cf6"; // Modern violet-500
-			case "OPENING": return "#3b82f6"; // Modern blue-500
-			case "TIMEOUT": return "#6b7280"; // Modern gray-500
-			default: return "#9ca3af";
+			case "CONNECTED": return "var(--status-success)"; // Modern emerald-500
+			case "DISCONNECTED": return "var(--status-error)"; // Modern red-500
+			case "QRCODE": return "var(--status-warning)"; // Modern amber-500
+			case "PAIRING": return "var(--status-default-text)"; // Modern violet-500
+			case "OPENING": return "var(--status-info)"; // Modern blue-500
+			case "TIMEOUT": return "var(--text-muted)"; // Modern gray-500
+			default: return "var(--text-muted)";
 		}
 	};
 
 	const getStatusBackgroundColor = (status) => {
 		switch (status) {
-			case "CONNECTED": return "#ecfdf5";
-			case "DISCONNECTED": return "#fef2f2";
+			case "CONNECTED": return "var(--status-success-bg)";
+			case "DISCONNECTED": return "var(--status-error-bg)";
 			case "QRCODE": return "var(--bg-surface)beb";
-			case "PAIRING": return "#f5f3ff";
-			case "OPENING": return "#eff6ff";
-			default: return "#f9fafb";
+			case "PAIRING": return "var(--status-default-bg)";
+			case "OPENING": return "var(--status-info-bg)";
+			default: return "var(--bg-surface-alt)";
 		}
 	};
 
@@ -326,7 +326,7 @@ const Connections = () => {
 											title={whatsApp.name}
 											subtitle={
 												<Box>
-													<span style={{ fontSize: 13, fontWeight: 400, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+													<span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
 														<Autorenew style={{ fontSize: 14 }} />
 														{whatsApp.updatedAt
 															? format(parseISO(whatsApp.updatedAt), "dd/MM 'às' HH:mm")
@@ -334,7 +334,7 @@ const Connections = () => {
 														}
 													</span>
 													{whatsApp.status === "CONNECTED" && whatsApp.number && (
-														<Typography variant="body2" style={{ marginTop: 4, color: '#64748b', fontWeight: 500 }}>
+														<Typography variant="body2" style={{ marginTop: 4, color: 'var(--text-muted)', fontWeight: 500 }}>
 															+{whatsApp.number}
 														</Typography>
 													)}
@@ -362,7 +362,7 @@ const Connections = () => {
 																onClick={() => handleRestartWhatsApp(whatsApp.id)}
 																disabled={whatsApp.status === "CONNECTED"}
 															>
-																<Autorenew fontSize="small" style={{ color: whatsApp.status === "CONNECTED" ? '#bdbdbd' : '#94a3b8' }} />
+																<Autorenew fontSize="small" style={{ color: whatsApp.status === "CONNECTED" ? 'var(--border-default)' : 'var(--text-secondary)' }} />
 															</IconButton>
 														</span>
 													</Tooltip>
@@ -370,7 +370,7 @@ const Connections = () => {
 														size="small"
 														onClick={(e) => handleMenuOpen(e, whatsApp.id)}
 													>
-														<MoreVert fontSize="small" style={{ color: '#94a3b8' }} />
+														<MoreVert fontSize="small" style={{ color: 'var(--text-secondary)' }} />
 													</IconButton>
 												</>
 											}

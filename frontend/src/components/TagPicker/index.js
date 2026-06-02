@@ -35,8 +35,8 @@ const useStyles = makeStyles((theme) => ({
         gap: 4,
         padding: "4px 8px",
         borderRadius: 4,
-        border: "1px dashed #ccc",
-        color: "#666",
+        border: "1px dashed var(--border-default)",
+        color: "var(--text-muted)",
         fontSize: "0.75rem",
         transition: "all 0.2s",
         "&:hover": {
@@ -75,7 +75,7 @@ const useStyles = makeStyles((theme) => ({
     noResults: {
         padding: theme.spacing(2),
         textAlign: "center",
-        color: "#999",
+        color: "var(--text-muted)",
     },
     loading: {
         display: "flex",

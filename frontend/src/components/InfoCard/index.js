@@ -16,8 +16,8 @@ const useStyles = makeStyles((theme) => ({
         padding: theme.spacing(2, 3),
         borderLeft: (props) => props.headerColor
             ? `4px solid ${props.headerColor}`
-            : "4px solid #1976d2",
-        backgroundColor: (props) => props.headerBg || "#fafafa",
+            : "4px solid var(--status-info)",
+        backgroundColor: (props) => props.headerBg || "var(--bg-surface)",
     },
     headerContent: {
         display: "flex",
@@ -27,11 +27,11 @@ const useStyles = makeStyles((theme) => ({
     title: {
         fontWeight: 700,
         fontSize: "1.125rem",
-        color: "#1e293b",
+        color: "var(--text-primary)",
     },
     subtitle: {
         fontSize: "0.875rem",
-        color: "#64748b",
+        color: "var(--text-muted)",
         marginTop: theme.spacing(0.5),
     },
     headerActions: {
@@ -43,8 +43,8 @@ const useStyles = makeStyles((theme) => ({
     },
     footer: {
         padding: theme.spacing(2, 3),
-        backgroundColor: "#fafafa",
-        borderTop: "1px solid #e2e8f0",
+        backgroundColor: "var(--bg-surface)",
+        borderTop: "1px solid var(--border-default)",
         display: "flex",
         justifyContent: "flex-end",
         gap: theme.spacing(1),

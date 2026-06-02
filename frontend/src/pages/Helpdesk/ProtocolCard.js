@@ -18,16 +18,16 @@ const useStyles = makeStyles((theme) => ({
         },
     },
     priorityLow: {
-        borderLeft: "4px solid #4CAF50",
+        borderLeft: "4px solid var(--status-success)",
     },
     priorityMedium: {
-        borderLeft: "4px solid #2196F3",
+        borderLeft: "4px solid var(--status-info)",
     },
     priorityHigh: {
-        borderLeft: "4px solid #FF9800",
+        borderLeft: "4px solid var(--status-warning)",
     },
     priorityUrgent: {
-        borderLeft: "4px solid #F44336",
+        borderLeft: "4px solid var(--status-error)",
         animation: "$pulse 2s infinite",
     },
     "@keyframes pulse": {
@@ -69,7 +69,7 @@ const useStyles = makeStyles((theme) => ({
     },
     "@keyframes highlightPulse": {
         "0%": {
-            backgroundColor: "#E3F2FD",
+            backgroundColor: "var(--status-info-bg)",
         },
         "100%": {
             backgroundColor: "var(--bg-surface)",

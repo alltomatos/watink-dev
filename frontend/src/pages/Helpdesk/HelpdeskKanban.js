@@ -27,7 +27,7 @@ const useStyles = makeStyles((theme) => ({
         flexDirection: "column",
         height: "100%",
         padding: theme.spacing(2),
-        backgroundColor: "#f5f6fa",
+        backgroundColor: "var(--bg-surface-alt)",
     },
     header: {
         display: "flex",

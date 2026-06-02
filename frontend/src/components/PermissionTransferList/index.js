@@ -198,7 +198,7 @@ export default function PermissionTransferList({ allPermissions = [], selectedPe
       <List className={classes.list} dense component="div" role="list">
         {items.length === 0 && (
           <ListItem>
-            <ListItemText primary={i18n.t("role.permissions.noPermissions") || "Nenhuma permissão encontrada"} style={{ textAlign: 'center', color: '#999' }} />
+            <ListItemText primary={i18n.t("role.permissions.noPermissions") || "Nenhuma permissão encontrada"} style={{ textAlign: 'center', color: 'var(--text-muted)' }} />
           </ListItem>
         )}
         {items.map((value) => {
