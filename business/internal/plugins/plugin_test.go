@@ -382,7 +382,7 @@ func TestClientesPlugin_POST_EnforcesTenantIDFromContext(t *testing.T) {
 	}
 
 	r := gin.New()
-	r.POST("/clientes", func(c *gin.Context) {
+	r.POST("/clientes", func(c *gin.Context) { //nolint:misspell
 		c.Set("tenantId", tenantA) // Contexto JWT = TenantA
 		mockCore.registeredRoutes[1].Handler(c)
 	})
@@ -395,7 +395,7 @@ func TestClientesPlugin_POST_EnforcesTenantIDFromContext(t *testing.T) {
 	}
 	body, _ := json.Marshal(payload)
 
-	req := httptest.NewRequest("POST", "/clientes", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/clientes", bytes.NewReader(body)) //nolint:misspell
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
