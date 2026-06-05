@@ -10,7 +10,8 @@ import {
     Legend,
     ResponsiveContainer
 } from "recharts";
-import { Paper, Typography } from "@material-ui/core";
+import { Typography } from "@material-ui/core";
+import PaperCard from "../../components/PaperCard";
 
 const PipelineFunnelChart = ({ pipeline, deals }) => {
     if (!pipeline || !deals) return <div>Carregando...</div>;
@@ -29,7 +30,7 @@ const PipelineFunnelChart = ({ pipeline, deals }) => {
     });
 
     return (
-        <Paper style={{ padding: 16, margin: 16 }}>
+        <PaperCard variant="outlined" padding="default" style={{ margin: 16 }}>
             <Typography variant="h6" gutterBottom>Análise de Funil</Typography>
             <ResponsiveContainer width="100%" height={400}>
                 <BarChart data={funnelData} layout="vertical" barCategoryGap="10%">
@@ -41,7 +42,7 @@ const PipelineFunnelChart = ({ pipeline, deals }) => {
                     <Bar dataKey="count" name="Deals" data={funnelData} />
                 </BarChart>
             </ResponsiveContainer>
-        </Paper>
+        </PaperCard>
     );
 };
 

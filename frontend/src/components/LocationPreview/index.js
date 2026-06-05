@@ -1,54 +1,47 @@
 /* @jsxImportSource react */
 import React, { useEffect } from 'react';
 import toastError from "../../errors/toastError";
-
-import Typography from "@material-ui/core/Typography";
-import Grid from "@material-ui/core/Grid";
-
-import { Button, Divider, } from "@material-ui/core";
+import { Button } from "@/components/ui/button";
 
 const LocationPreview = ({ image, link, description }) => {
-    useEffect(() => {}, [image, link, description]);
+	useEffect(() => {}, [image, link, description]);
 
-    const handleLocation = async() => {
-        try {
-            window.open(link);
-        } catch (err) {
-            toastError(err);
-        }
-    }
+	const handleLocation = async() => {
+		try {
+			window.open(link);
+		} catch (err) {
+			toastError(err);
+		}
+	}
 
-    return (
-		<>
-			<div style={{
-				minWidth: "250px",
-			}}>
+	return (
+		<div className="min-w-[250px]">
+			<div>
+				<div className="float-left">
+					<img src={image} onClick={handleLocation} className="w-[100px] cursor-pointer" alt="location" />
+				</div>
+				{ description && (
+					<div className="flex flex-wrap">
+						<p className="mt-3 ml-4 mr-4 text-primary text-base font-medium mb-2">
+							<span dangerouslySetInnerHTML={{ __html: description.replace('\\n', '<br />') }}></span>
+						</p>
+					</div>
+				)}
+				<div className="block clear-both"></div>
 				<div>
-					<div style={{ float: "left" }}>
-						<img src={image} onClick={handleLocation} style={{ width: "100px" }} />
-					</div>
-					{ description && (
-					<div style={{ display: "flex", flexWrap: "wrap" }}>
-						<Typography style={{ marginTop: "12px", marginLeft: "15px", marginRight: "15px", float: "left" }} variant="subtitle1" color="primary" gutterBottom>
-							<div dangerouslySetInnerHTML={{ __html: description.replace('\\n', '<br />') }}></div>
-						</Typography>
-					</div>
-					)}
-					<div style={{ display: "block", content: "", clear: "both" }}></div>
-					<div>
-						<Divider />
-						<Button
-							fullWidth
-							color="primary"
-							onClick={handleLocation}
-							disabled={!link}
-						>Visualizar</Button>
-					</div>
+					<hr className="my-2 border-border" />
+					<Button
+						className="w-full"
+						variant="ghost"
+						onClick={handleLocation}
+						disabled={!link}
+					>
+						Visualizar
+					</Button>
 				</div>
 			</div>
-		</>
+		</div>
 	);
-
 };
 
 export default LocationPreview;

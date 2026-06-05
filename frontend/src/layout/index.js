@@ -1,19 +1,7 @@
-/* @jsxImportSource react */
 import React from "react";
-import MainLayoutDefault from "./MainLayoutDefault";
-import MainLayoutSaaS from "./MainLayoutSaaS";
-import { useThemeContext } from "../context/DarkMode";
+import MainLayout from "./MainLayout";
 
-const LoggedInLayout = ({ children }) => {
-  const { appTheme } = useThemeContext();
-
-  // If theme is 'saas', render the new SaaS Layout
-  if (appTheme === "saas") {
-    return <MainLayoutSaaS>{children}</MainLayoutSaaS>;
-  }
-
-  // Otherwise, fallback to the default Material drawer layout
-  return <MainLayoutDefault>{children}</MainLayoutDefault>;
-};
+// Wrapper for backward compatibility if any component expects specific layout imports
+export const LoggedInLayout = ({ children }) => <MainLayout>{children}</MainLayout>;
 
 export default LoggedInLayout;

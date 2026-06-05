@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
@@ -127,7 +127,7 @@ const RoleSchema = Yup.object().shape({
 const RoleEdit = () => {
     const classes = useStyles();
     const { roleId } = useParams();
-    const history = useHistory();
+    const navigate = useNavigate();
 
     const isNew = roleId === "new";
 
@@ -161,7 +161,7 @@ const RoleEdit = () => {
                 }
             } catch (err) {
                 toastError(err);
-                history.push("/roles");
+                navigate("/roles");
             } finally {
                 setLoading(false);
             }
@@ -187,7 +187,7 @@ const RoleEdit = () => {
                 await api.put(`/roles/${roleId}`, roleData);
                 toast.success(i18n.t("role.success"));
             }
-            history.push("/roles");
+            navigate("/roles");
         } catch (err) {
             toastError(err);
         } finally {
@@ -221,7 +221,7 @@ const RoleEdit = () => {
                                     <div className={classes.headerLeft}>
                                         <IconButton
                                             className={classes.backButton}
-                                            onClick={() => history.push("/roles")}
+                                            onClick={() => navigate("/roles")}
                                         >
                                             <ArrowBack />
                                         </IconButton>

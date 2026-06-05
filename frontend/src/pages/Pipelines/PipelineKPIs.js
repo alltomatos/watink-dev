@@ -13,8 +13,9 @@ import {
     Pie,
     Cell
 } from "recharts";
-import { Paper, Typography, Grid } from "@material-ui/core";
+import { Typography, Grid } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
+import PaperCard from "../../components/PaperCard";
 
 const useStyles = makeStyles((theme) => ({
     paper: {
@@ -49,43 +50,43 @@ const PipelineKPIs = ({ pipeline, deals }) => {
     return (
         <Grid container spacing={3} style={{ padding: 16 }}>
             <Grid item xs={12} md={6}>
-                <Paper className={classes.paper}>
-                    <Typography variant="h6" className={classes.title}>Deals por Etapa</Typography>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={dealsByStage}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="count" name="Quantidade" fill="var(--status-default-text)" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </Paper>
+            <PaperCard variant="outlined" padding="none" className={classes.paper}>
+            <Typography variant="h6" className={classes.title}>Deals por Etapa</Typography>
+            <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={dealsByStage}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="count" name="Quantidade" fill="var(--status-default-text)" />
+            </BarChart>
+            </ResponsiveContainer>
+            </PaperCard>
             </Grid>
             <Grid item xs={12} md={6}>
-                <Paper className={classes.paper}>
-                    <Typography variant="h6" className={classes.title}>Valor Total por Etapa</Typography>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie
-                                data={dealsByStage}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                outerRadius={80}
-                                fill="var(--status-default-text)"
-                                dataKey="value"
-                            >
-                                {dealsByStage.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip formatter={(value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)} />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </Paper>
+            <PaperCard variant="outlined" padding="none" className={classes.paper}>
+            <Typography variant="h6" className={classes.title}>Valor Total por Etapa</Typography>
+            <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+            <Pie
+            data={dealsByStage}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+            outerRadius={80}
+            fill="var(--status-default-text)"
+            dataKey="value"
+            >
+            {dealsByStage.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+            </Pie>
+            <Tooltip formatter={(value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)} />
+            </PieChart>
+            </ResponsiveContainer>
+            </PaperCard>
             </Grid>
         </Grid>
     );

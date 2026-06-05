@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect, useContext } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import Button from "@material-ui/core/Button";
 import TextField from "@material-ui/core/TextField";
@@ -26,7 +26,7 @@ const filter = createFilterOptions({
 });
 
 const NewTicketModal = ({ modalOpen, onClose }) => {
-	const history = useHistory();
+	const navigate = useNavigate();
 
 	const [options, setOptions] = useState([]);
 	const [loading, setLoading] = useState(false);
@@ -76,7 +76,7 @@ const NewTicketModal = ({ modalOpen, onClose }) => {
 				userId: user.id,
 				status: "open",
 			});
-			history.push(`/tickets/${ticket.id}`);
+			navigate(`/tickets/${ticket.id}`);
 		} catch (err) {
 			toastError(err);
 		}

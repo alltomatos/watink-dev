@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { makeStyles } from "@material-ui/core/styles";
-import Paper from "@material-ui/core/Paper";
+import PaperCard from "../../components/PaperCard";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
@@ -109,7 +109,7 @@ const TagManager = () => {
         }
     };
 
-    useEffect(() => {
+    React.useEffect(() => {
         fetchTags();
         fetchGroups();
     }, [fetchTags]);
@@ -205,7 +205,7 @@ const TagManager = () => {
                 </MainHeaderButtonsWrapper>
             </MainHeader>
 
-            <Paper className={classes.paper}>
+            <PaperCard padding="default" className={classes.paper}>
                 <Table size="small">
                     <TableHead>
                         <TableRow>
@@ -281,7 +281,7 @@ const TagManager = () => {
                         )}
                     </TableBody>
                 </Table>
-            </Paper>
+            </PaperCard>
 
             {/* Modal de Criar/Editar Tag */}
             <Dialog open={modalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth>

@@ -1,16 +1,51 @@
-import { primitives as p } from './primitives';
-
 export const componentTokens = {
-  'card-bg':                'var(--bg-surface)',
-  'card-border-radius':     p.radius.xl,
-  'card-shadow':            p.shadow.md,
+  // Radius
+  'radius-sm': '8px',
+  'radius-md': '12px',
+  'radius-lg': '16px',
+  'radius-xl': '20px',
+  'radius-full': '9999px',
 
-  'sidebar-width':          '260px',
-  'sidebar-bg':             'var(--bg-sidebar)',
+  // Spacing
+  'spacing-xs': '4px',
+  'spacing-sm': '8px',
+  'spacing-md': '16px',
+  'spacing-lg': '24px',
+  'spacing-xl': '32px',
 
-  'appbar-bg':              'var(--bg-appbar)',
-  'appbar-height':          '64px',
+  // Card
+  'card-bg': 'var(--bg-surface)',
+  'card-border-radius': 'var(--radius-lg)',
+  'card-shadow': 'var(--shadow-md)',
+  'card-padding': 'var(--spacing-md)',
+  'card-gap': 'var(--spacing-md)',
+  'card-hover-transform': 'translateY(-2px)',
 
-  'button-primary-bg':      'var(--action-primary)',
-  'button-primary-text':    'var(--text-inverse)',
+  // Button
+  'button-primary-bg': 'var(--action-primary)',
+  'button-primary-text': 'var(--text-inverse)',
+  'button-secondary-bg': 'var(--bg-surface-alt)',
+  'button-outline-border': 'var(--border-default)',
+  'button-danger-bg': 'var(--status-error)',
+  'button-sm-padding': '4px 12px',
+  'button-lg-padding': '12px 24px',
+  'button-radius': 'var(--radius-md)',
+
+  // Input
+  'input-padding': '10px 16px',
+  'input-radius': 'var(--radius-md)',
+  'input-error-border': 'var(--status-error)',
+
+  // Navigation
+  'nav-item-height': '48px',
+  'nav-item-radius': 'var(--radius-md)',
+  'nav-item-hover-bg': 'var(--bg-surface-alt)',
+  'nav-active-bg': 'var(--action-primary-bg)',
+  'nav-active-text': 'var(--text-primary)',
+
+  // App Structure
+  'sidebar-width': '260px',
+  'sidebar-bg': 'var(--bg-sidebar)',
+  'appbar-bg': 'var(--bg-appbar)',
+  'appbar-height': '64px',
 };

@@ -1,12 +1,11 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect, useRef, useContext } from "react";
 
-import { useHistory, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { parseISO, format, isSameDay } from "date-fns";
 import clsx from "clsx";
 
 import { makeStyles } from "@material-ui/core/styles";
-import { green } from "@material-ui/core/colors";
 import ListItem from "@material-ui/core/ListItem";
 import ListItemText from "@material-ui/core/ListItemText";
 import ListItemAvatar from "@material-ui/core/ListItemAvatar";
@@ -160,7 +159,7 @@ const useStyles = makeStyles(theme => ({
 
 const TicketListItem = ({ ticket }) => {
 	const classes = useStyles();
-	const history = useHistory();
+	const navigate = useNavigate();
 	const [loading, setLoading] = useState(false);
 	const { ticketId } = useParams();
 	const isMounted = useRef(true);
@@ -186,11 +185,11 @@ const TicketListItem = ({ ticket }) => {
 		if (isMounted.current) {
 			setLoading(false);
 		}
-		history.push(`/tickets/${id}`);
+		navigate(`/tickets/${id}`);
 	};
 
 	const handleSelectTicket = id => {
-		history.push(`/tickets/${id}`);
+		navigate(`/tickets/${id}`);
 	};
 
 	return (

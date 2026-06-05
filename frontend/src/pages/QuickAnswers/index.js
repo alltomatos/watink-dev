@@ -1,12 +1,9 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect, useReducer } from "react";
 import openSocket from "../../services/socket-io";
-
 import {
   Button,
   IconButton,
-  makeStyles,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -14,15 +11,14 @@ import {
   TableRow,
   InputAdornment,
   TextField,
+  Box,
 } from "@material-ui/core";
-import { Edit, DeleteOutline } from "@material-ui/icons";
-import SearchIcon from "@material-ui/icons/Search";
-
+import { Edit, DeleteOutline, Search as SearchIcon } from "@material-ui/icons";
 import MainContainer from "../../components/MainContainer";
 import MainHeader from "../../components/MainHeader";
 import MainHeaderButtonsWrapper from "../../components/MainHeaderButtonsWrapper";
 import Title from "../../components/Title";
-
+import PaperCard from "../../components/PaperCard";
 import api from "../../services/api";
 import { i18n } from "../../translate/i18n";
 import TableRowSkeleton from "../../components/TableRowSkeleton";
@@ -75,18 +71,7 @@ const reducer = (state, action) => {
   }
 };
 
-const useStyles = makeStyles((theme) => ({
-  mainPaper: {
-    flex: 1,
-    padding: theme.spacing(1),
-    overflowY: "scroll",
-    ...theme.scrollbarStyles,
-  },
-}));
-
 const QuickAnswers = () => {
-  const classes = useStyles();
-
   const [loading, setLoading] = useState(false);
   const [pageNumber, setPageNumber] = useState(1);
   const [searchParam, setSearchParam] = useState("");
@@ -191,7 +176,8 @@ const QuickAnswers = () => {
       <ConfirmationModal
         title={
           deletingQuickAnswers &&
-          `${i18n.t("quickAnswers.confirmationModal.deleteTitle")} ${deletingQuickAnswers.shortcut
+          `${i18n.t("quickAnswers.confirmationModal.deleteTitle")} ${
+            deletingQuickAnswers.shortcut
           }?`
         }
         open={confirmModalOpen}
@@ -205,7 +191,7 @@ const QuickAnswers = () => {
         onClose={handleCloseQuickAnswersModal}
         aria-labelledby="form-dialog-title"
         quickAnswerId={selectedQuickAnswers && selectedQuickAnswers.id}
-      ></QuickAnswersModal>
+      />
       <MainHeader>
         <Title>{i18n.t("quickAnswers.title")}</Title>
         <MainHeaderButtonsWrapper>
@@ -231,9 +217,10 @@ const QuickAnswers = () => {
           </Button>
         </MainHeaderButtonsWrapper>
       </MainHeader>
-      <Paper
-        className={classes.mainPaper}
+      <PaperCard
         variant="outlined"
+        padding="none"
+        style={{ height: "100%", overflowY: "auto" }}
         onScroll={handleScroll}
       >
         <Table size="small">
@@ -266,7 +253,7 @@ const QuickAnswers = () => {
 
                     <IconButton
                       size="small"
-                      onClick={(e) => {
+                      onClick={() => {
                         setConfirmModalOpen(true);
                         setDeletingQuickAnswers(quickAnswer);
                       }}
@@ -280,7 +267,7 @@ const QuickAnswers = () => {
             </>
           </TableBody>
         </Table>
-      </Paper>
+      </PaperCard>
     </MainContainer>
   );
 };

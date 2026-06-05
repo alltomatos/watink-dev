@@ -1,28 +1,17 @@
 /* @jsxImportSource react */
 import React from "react";
-import { Paper, makeStyles } from "@material-ui/core";
-import Grid from "@material-ui/core/Grid";
+import { Card, CardContent } from "@/components/ui/card";
 import Chart from "../../../pages/Dashboard/Chart";
 
-const useStyles = makeStyles((theme) => ({
-  fixedHeightPaper: {
-    padding: theme.spacing(2),
-    display: "flex",
-    overflow: "auto",
-    flexDirection: "column",
-    height: 240,
-  },
-}));
-
 const AttendanceChart = () => {
-  const classes = useStyles();
-
   return (
-    <Grid item xs={12}>
-      <Paper className={classes.fixedHeightPaper}>
-        <Chart />
-      </Paper>
-    </Grid>
+    <div className="col-span-12">
+      <Card className="p-4 flex overflow-auto flex-col h-60">
+        <CardContent className="p-0">
+          <Chart />
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

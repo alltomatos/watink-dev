@@ -9,10 +9,10 @@ import AddIcon from "@material-ui/icons/Add";
 import Chip from "@material-ui/core/Chip";
 import Grid from "@material-ui/core/Grid";
 import IconButton from "@material-ui/core/IconButton";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { makeStyles } from "@material-ui/core/styles";
-import Paper from "@material-ui/core/Paper";
+import PaperCard from "../../components/PaperCard";
 import Typography from "@material-ui/core/Typography";
 import Box from "@material-ui/core/Box";
 import List from "@material-ui/core/List";
@@ -170,7 +170,7 @@ const useStyles = makeStyles((theme) => ({
 const Settings = () => {
 	const classes = useStyles();
 	const { appTheme, setAppTheme } = useThemeContext();
-	const history = useHistory();
+	const navigate = useNavigate();
 	const { user } = useContext(AuthContext);
 
 	// Check if Plugin Manager is online to show/hide Marketplace
@@ -523,7 +523,7 @@ const Settings = () => {
 
 
 
-			<Paper className={classes.paper}>
+			<PaperCard className={classes.paper} padding="default">
 				<Typography variant="body1">Fuso Horário</Typography>
 				<Select
 					margin="dense"
@@ -555,9 +555,9 @@ const Settings = () => {
 					<option value="+06:30">UTC +06:30</option>
 					<option value="+09:30">UTC +09:30</option>
 				</Select>
-			</Paper>
+			</PaperCard>
 
-			<Paper className={classes.paper}>
+			<PaperCard className={classes.paper} padding="default">
 				<Typography variant="body1">Tema</Typography>
 				<Select
 					margin="dense"
@@ -574,9 +574,9 @@ const Settings = () => {
 					<option value="google">Google Like Theme</option>
 					<option value="apple">Apple Premium (Novo)</option>
 				</Select>
-			</Paper>
+			</PaperCard>
 
-			<Paper className={classes.paper}>
+			<PaperCard className={classes.paper} padding="default">
 				<Typography variant="body1">{i18n.t("settings.settings.language.name")}</Typography>
 				<Select
 					margin="dense"
@@ -597,10 +597,10 @@ const Settings = () => {
 					<option value="en">{i18n.t("settings.settings.language.options.en")}</option>
 					<option value="es">{i18n.t("settings.settings.language.options.es")}</option>
 				</Select>
-			</Paper>
+			</PaperCard>
 
 			{settings && settings.length > 0 && settings.find(s => s.key === "allowTenantControl")?.value === "true" && (
-				<Paper className={classes.paper}>
+				<PaperCard className={classes.paper} padding="default">
 					<Typography variant="body1">
 						{i18n.t("settings.settings.userCreation.name")}
 					</Typography>
@@ -621,10 +621,10 @@ const Settings = () => {
 							{i18n.t("settings.settings.userCreation.options.disabled")}
 						</option>
 					</Select>
-				</Paper>
+				</PaperCard>
 			)}
 
-			<Paper className={classes.paper}>
+			<PaperCard className={classes.paper} padding="default">
 				<TextField
 					id="api-token-setting"
 					InputProps={{ readOnly: true }}
@@ -634,7 +634,7 @@ const Settings = () => {
 					fullWidth
 					value={settings && settings.length > 0 && getSettingValue("userApiToken")}
 				/>
-			</Paper>
+			</PaperCard>
 		</>
 	);
 
@@ -645,7 +645,7 @@ const Settings = () => {
 			</Typography>
 
 			{/* System Title */}
-			<Paper className={classes.paper} style={{ flexDirection: "column", alignItems: "stretch" }}>
+			<PaperCard className={classes.paper} padding="default" style={{ flexDirection: "column", alignItems: "stretch" }}>
 				<Typography variant="body1" gutterBottom>
 					Título do Sistema
 				</Typography>
@@ -668,11 +668,11 @@ const Settings = () => {
 						Salvar
 					</Button>
 				</Box>
-			</Paper>
+			</PaperCard>
 
 			{/* Logo and Favicon */}
 			<Box display="flex" gap={2} flexWrap="wrap">
-				<Paper className={classes.paper} style={{ flexDirection: "column", alignItems: "stretch", flex: 1, minWidth: 280 }}>
+				<PaperCard className={classes.paper} padding="default" style={{ flexDirection: "column", alignItems: "stretch", flex: 1, minWidth: 280 }}>
 					<Box display="flex" justifyContent="space-between" alignItems="center">
 						<Box>
 							<Typography variant="body1" gutterBottom>
@@ -724,9 +724,9 @@ const Settings = () => {
 							</Button>
 						</Box>
 					)}
-				</Paper>
+				</PaperCard>
 
-				<Paper className={classes.paper} style={{ flexDirection: "column", alignItems: "stretch", flex: 1, minWidth: 280 }}>
+				<PaperCard className={classes.paper} padding="default" style={{ flexDirection: "column", alignItems: "stretch", flex: 1, minWidth: 280 }}>
 					<Typography variant="body1" gutterBottom>
 						Favicon do Sistema
 					</Typography>
@@ -763,12 +763,12 @@ const Settings = () => {
 							</Button>
 						</Box>
 					)}
-				</Paper>
+				</PaperCard>
 			</Box>
 
 			{/* Mobile Logo Card */}
 			<Box display="flex" gap={2} flexWrap="wrap" mt={2}>
-				<Paper className={classes.paper} style={{ flexDirection: "column", alignItems: "stretch", flex: 1, minWidth: 280 }}>
+				<PaperCard className={classes.paper} padding="default" style={{ flexDirection: "column", alignItems: "stretch", flex: 1, minWidth: 280 }}>
 					<Typography variant="body1" gutterBottom>
 						Logo Mobile
 					</Typography>
@@ -805,14 +805,14 @@ const Settings = () => {
 							</Button>
 						</Box>
 					)}
-				</Paper>
+				</PaperCard>
 			</Box>
 
 			{/* Login Customization Card */}
 			<Typography variant="h5" className={classes.sectionTitle} style={{ marginTop: 24 }}>
 				Tela de Login
 			</Typography>
-			<Paper className={classes.paper} style={{ flexDirection: "column", alignItems: "stretch" }}>
+			<PaperCard className={classes.paper} padding="default" style={{ flexDirection: "column", alignItems: "stretch" }}>
 				<Box display="flex" flexDirection="column" gap={2}>
 
 					{/* Layout Selector */}
@@ -880,7 +880,7 @@ const Settings = () => {
 						)}
 					</Box>
 				</Box>
-			</Paper>
+			</PaperCard>
 		</>
 	);
 
@@ -932,7 +932,7 @@ const Settings = () => {
 			</Typography>
 
 			{/* Enable Toggle */}
-			<Paper className={classes.paper} style={{ justifyContent: 'space-between' }}>
+			<PaperCard className={classes.paper} padding="default" style={{ justifyContent: 'space-between' }}>
 				<div>
 					<Typography variant="body1">Habilitar Funcionalidades Avançadas</Typography>
 					<Typography variant="caption" color="textSecondary">
@@ -949,7 +949,7 @@ const Settings = () => {
 					}}
 					color="primary"
 				/>
-			</Paper>
+			</PaperCard>
 
 			{/* Check if enabled to show other settings */}
 			{helpdeskEnabled && (
@@ -959,7 +959,7 @@ const Settings = () => {
 					<Typography variant="h6" className={classes.sectionTitle} style={{ marginTop: 24, fontSize: '1.1rem' }}>
 						SLA (Acordo de Nível de Serviço) - Horas para Resolução
 					</Typography>
-					<Paper className={classes.paper} style={{ display: 'block' }}>
+					<PaperCard className={classes.paper} padding="default" style={{ display: 'block' }}>
 						<Grid container spacing={2}>
 							<Grid item xs={12} sm={6} md={3}>
 								<TextField
@@ -1007,13 +1007,13 @@ const Settings = () => {
 								</Button>
 							</Grid>
 						</Grid>
-					</Paper>
+					</PaperCard>
 
 					{/* Categories Management */}
 					<Typography variant="h6" className={classes.sectionTitle} style={{ marginTop: 24, fontSize: '1.1rem' }}>
 						Categorias de Protocolo (ITIL)
 					</Typography>
-					<Paper className={classes.paper} style={{ display: 'block' }}>
+					<PaperCard className={classes.paper} padding="default" style={{ display: 'block' }}>
 						<Box display="flex" alignItems="center" mb={2}>
 							<TextField
 								label="Nova Categoria"
@@ -1041,7 +1041,7 @@ const Settings = () => {
 								/>
 							))}
 						</Box>
-					</Paper>
+					</PaperCard>
 				</Box>
 			)}
 		</>
@@ -1136,7 +1136,7 @@ const Settings = () => {
 							yes={() => (
 								<ListItem
 									button
-									onClick={() => history.push("/admin/settings/marketplace")}
+									onClick={() => navigate("/admin/settings/marketplace")}
 									className={classes.menuItem}
 								>
 									<ListItemIcon>
@@ -1158,7 +1158,7 @@ const Settings = () => {
 						<Typography variant="h5" className={classes.sectionTitle}>
 							Inteligência Artificial (IA)
 						</Typography>
-						<Paper className={classes.paper} style={{ display: 'block' }}>
+						<PaperCard className={classes.paper} padding="default" style={{ display: 'block' }}>
 							<Box mb={2}>
 								<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
 									<div>
@@ -1332,7 +1332,7 @@ const Settings = () => {
 									/>
 								</div>
 							</Box>
-						</Paper>
+						</PaperCard>
 					</>
 				)}
 				{activeSection === "smtp" && activePlugins.includes("smtp") && (

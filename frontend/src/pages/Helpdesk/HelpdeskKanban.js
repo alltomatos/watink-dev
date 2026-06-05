@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect, useCallback } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { makeStyles } from "@material-ui/core/styles";
 import {
     Paper,
@@ -97,7 +97,7 @@ const useStyles = makeStyles((theme) => ({
 
 const HelpdeskKanban = ({ tvMode = false }) => {
     const classes = useStyles();
-    const history = useHistory();
+    const navigate = useNavigate();
     const [columns, setColumns] = useState([]);
     const [loading, setLoading] = useState(true);
     const [recentlyAdded, setRecentlyAdded] = useState(new Set());
@@ -194,12 +194,12 @@ const HelpdeskKanban = ({ tvMode = false }) => {
 
     const handleCardClick = (protocol) => {
         if (!tvMode) {
-            history.push(`/helpdesk/${protocol.id}`);
+            navigate(`/helpdesk/${protocol.id}`);
         }
     };
 
     const handleTvMode = () => {
-        history.push("/helpdesk/tv");
+        navigate("/helpdesk/tv");
     };
 
     if (loading) {
@@ -215,7 +215,7 @@ const HelpdeskKanban = ({ tvMode = false }) => {
             <Paper className={classes.header}>
                 <Box className={classes.title}>
                     {!tvMode && (
-                        <IconButton size="small" onClick={() => history.push("/helpdesk")}>
+                        <IconButton size="small" onClick={() => navigate("/helpdesk")}>
                             <ArrowBackIcon />
                         </IconButton>
                     )}

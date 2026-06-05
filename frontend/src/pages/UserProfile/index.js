@@ -16,14 +16,13 @@ import {
 } from "@material-ui/core";
 import { Visibility, VisibilityOff, CameraAlt } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
-import { green } from "@material-ui/core/colors";
 
 import api from "../../services/api";
 import { i18n } from "../../translate/i18n";
 import toastError from "../../errors/toastError";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { getBackendUrl } from "../../helpers/urlUtils";
-import { UserProfileSchema } from "../../utils/userValidation";
+import { UserProfileSchema, UserSchema } from "../../utils/userValidation";
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -163,7 +162,7 @@ const UserProfile = () => {
                                 />
                                 <label htmlFor="icon-button-file">
                                     <Badge
-                                        overlap="circle"
+                                        overlap="circular"
                                         anchorOrigin={{
                                             vertical: "bottom",
                                             horizontal: "right",

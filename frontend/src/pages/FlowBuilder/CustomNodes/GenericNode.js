@@ -2,7 +2,7 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 import { makeStyles } from '@material-ui/core/styles';
-import { Typography, Paper, IconButton } from '@material-ui/core';
+import { Typography, PaperCard, IconButton } from '@material-ui/core';
 import DeleteIcon from '@material-ui/icons/Delete';
 
 const useStyles = makeStyles((theme) => ({
@@ -66,7 +66,7 @@ const GenericNode = ({ data, isConnectable, title, icon: Icon, children, style =
     const showDelete = onDelete || data.onDelete;
 
     return (
-        <Paper className={classes.node} style={style}>
+        <PaperCard className={classes.node} padding="default" style={style}>
             {showTargetHandle && (
                 <Handle
                     type="target"
@@ -104,7 +104,7 @@ const GenericNode = ({ data, isConnectable, title, icon: Icon, children, style =
                     style={{ background: '#555', width: 10, height: 10 }}
                 />
             )}
-        </Paper>
+        </PaperCard>
     );
 };
 

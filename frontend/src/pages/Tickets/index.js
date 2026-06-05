@@ -2,7 +2,7 @@
 import React from "react";
 import { useParams } from "react-router-dom";
 import Grid from "@material-ui/core/Grid";
-import Paper from "@material-ui/core/Paper";
+import PaperCard from "../../components/PaperCard";
 import { makeStyles } from "@material-ui/core/styles";
 
 import TicketsManager from "../../components/TicketsManager/";
@@ -85,9 +85,9 @@ const Chat = () => {
               </>
             ) : (
               <Hidden only={["sm", "xs"]}>
-                <Paper className={classes.welcomeMsg} elevation={0}>
+                <PaperCard variant="flush" padding="none" className={classes.welcomeMsg}>
                   <span>{i18n.t("chat.noTicketMessage")}</span>
-                </Paper>
+                </PaperCard>
               </Hidden>
             )}
           </Grid>

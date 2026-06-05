@@ -1,9 +1,10 @@
 /* @jsxImportSource react */
 import React, { Suspense, lazy } from "react";
-import { BrowserRouter, Switch } from "react-router-dom";
+import { BrowserRouter, Routes as RouterRoutes } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 
 import LoggedInLayout from "../layout";
+import PageLoader from "../components/PageLoader";
 
 const Dashboard = lazy(() => import("../pages/Dashboard/"));
 const Pipelines = lazy(() => import("../pages/Pipelines/"));
@@ -59,49 +60,49 @@ const PrivateRoutes = () => {
  <WhatsAppsProvider>
  <TicketsProvider>
  <LoggedInLayout>
- <Suspense fallback={<div />}>
- <Switch>
-            <Route exact path="/" component={Dashboard} isPrivate />
-            <Route exact path="/pipelines" component={Pipelines} isPrivate />
-            <Route exact path="/pipelines/new" component={PipelineCreator} isPrivate />
-            <Route exact path="/pipelines/:pipelineId/edit" component={PipelineCreator} isPrivate />
-            <Route exact path="/pipelines/:pipelineId" component={PipelineBoard} isPrivate />
-            <Route exact path="/tickets/:ticketId?" component={Tickets} isPrivate />
-            <Route exact path="/flowbuilder" component={FlowManager} isPrivate />
-            <Route exact path="/flowbuilder/:flowId" component={FlowBuilder} isPrivate />
-            <Route exact path="/connections" component={Connections} isPrivate />
-            <Route exact path="/connections/:whatsappId" component={ConnectionConfig} isPrivate />
-            <Route exact path="/contacts" component={Contacts} isPrivate />
-            <Route exact path="/users" component={Users} isPrivate />
-            <Route exact path="/users/:userId" component={UserEdit} isPrivate />
-            <Route exact path="/profile" component={UserProfile} isPrivate />
-            <Route exact path="/reset-password" component={ResetPassword} isPrivate />
-            <Route exact path="/my-activities" component={MyActivities} isPrivate />
-            <Route exact path="/access" component={Access} isPrivate />
-            <Route exact path="/groups/:groupId" component={GroupEdit} isPrivate />
-            <Route exact path="/quickAnswers" component={QuickAnswers} isPrivate />
-            <Route exact path="/Settings" component={Settings} isPrivate />
-            <Route exact path="/groups" component={Groups} isPrivate />
-            <Route exact path="/tags" component={TagManager} isPrivate />
-            <Route exact path="/roles" component={Roles} isPrivate />
-            <Route exact path="/roles/:roleId" component={RoleEdit} isPrivate />
-            <Route exact path="/queues" component={Queues} isPrivate />
-            <Route exact path="/knowledge-bases" component={KnowledgeBase} isPrivate />
-            <Route exact path="/knowledge-bases/:knowledgeBaseId" component={KnowledgeBaseConfig} isPrivate />
-            <Route exact path="/swagger" component={Swagger} isPrivate />
-            <Route exact path="/admin/settings/marketplace" component={Marketplace} isPrivate />
-            <Route exact path="/admin/settings/billing" component={Billing} isPrivate />
-            <Route exact path="/admin/settings/marketplace/:slug" component={PluginDetail} isPrivate />
-            <Route exact path="/clients" component={Clients} isPrivate />
-            <Route exact path="/helpdesk" component={Helpdesk} isPrivate />
-            <Route exact path="/helpdesk/kanban" component={HelpdeskKanban} isPrivate />
-            <Route exact path="/helpdesk/tv" component={HelpdeskTvMode} isPrivate />
-            <Route exact path="/helpdesk/:protocolId" component={ProtocolDetails} isPrivate />
-            <Route exact path="/saas-manager" component={SaaSAdmin} isPrivate />
-            <Route exact path="/monitor" component={VersionDashboard} isPrivate />
-            <Route exact path="/monitor/queues" component={MonitorQueues} isPrivate />
-            <Route exact path="/versions" component={VersionDashboard} isPrivate />
-          </Switch>
+ <Suspense fallback={<PageLoader />}>
+     <RouterRoutes>
+     <Route path="/" element={<Dashboard />} isPrivate />
+     <Route path="/pipelines" element={<Pipelines />} isPrivate />
+     <Route path="/pipelines/new" element={<PipelineCreator />} isPrivate />
+     <Route path="/pipelines/:pipelineId/edit" element={<PipelineCreator />} isPrivate />
+     <Route path="/pipelines/:pipelineId" element={<PipelineBoard />} isPrivate />
+     <Route path="/tickets/:ticketId?" element={<Tickets />} isPrivate />
+     <Route path="/flowbuilder" element={<FlowManager />} isPrivate />
+     <Route path="/flowbuilder/:flowId" element={<FlowBuilder />} isPrivate />
+     <Route path="/connections" element={<Connections />} isPrivate />
+     <Route path="/connections/:whatsappId" element={<ConnectionConfig />} isPrivate />
+     <Route path="/contacts" element={<Contacts />} isPrivate />
+     <Route path="/users" element={<Users />} isPrivate />
+     <Route path="/users/:userId" element={<UserEdit />} isPrivate />
+     <Route path="/profile" element={<UserProfile />} isPrivate />
+     <Route path="/reset-password" element={<ResetPassword />} isPrivate />
+     <Route path="/my-activities" element={<MyActivities />} isPrivate />
+     <Route path="/access" element={<Access />} isPrivate />
+     <Route path="/groups/:groupId" element={<GroupEdit />} isPrivate />
+     <Route path="/quickAnswers" element={<QuickAnswers />} isPrivate />
+     <Route path="/Settings" element={<Settings />} isPrivate />
+     <Route path="/groups" element={<Groups />} isPrivate />
+     <Route path="/tags" element={<TagManager />} isPrivate />
+     <Route path="/roles" element={<Roles />} isPrivate />
+     <Route path="/roles/:roleId" element={<RoleEdit />} isPrivate />
+     <Route path="/queues" element={<Queues />} isPrivate />
+     <Route path="/knowledge-bases" element={<KnowledgeBase />} isPrivate />
+     <Route path="/knowledge-bases/:knowledgeBaseId" element={<KnowledgeBaseConfig />} isPrivate />
+     <Route path="/swagger" element={<Swagger />} isPrivate />
+     <Route path="/admin/settings/marketplace" element={<Marketplace />} isPrivate />
+     <Route path="/admin/settings/billing" element={<Billing />} isPrivate />
+     <Route path="/admin/settings/marketplace/:slug" element={<PluginDetail />} isPrivate />
+     <Route path="/clients" element={<Clients />} isPrivate />
+     <Route path="/helpdesk" element={<Helpdesk />} isPrivate />
+     <Route path="/helpdesk/kanban" element={<HelpdeskKanban />} isPrivate />
+     <Route path="/helpdesk/tv" element={<HelpdeskTvMode />} isPrivate />
+     <Route path="/helpdesk/:protocolId" element={<ProtocolDetails />} isPrivate />
+     <Route path="/saas-manager" element={<SaaSAdmin />} isPrivate />
+     <Route path="/monitor" element={<VersionDashboard />} isPrivate />
+     <Route path="/monitor/queues" element={<MonitorQueues />} isPrivate />
+     <Route path="/versions" element={<VersionDashboard />} isPrivate />
+     </RouterRoutes>
           </Suspense>
           </LoggedInLayout>
       </TicketsProvider>
@@ -115,14 +116,14 @@ const Routes = () => {
  <StatusCheck>
  <AuthProvider>
  <ThemeProvider>
- <Suspense fallback={<div />}>
- <Switch>
- <Route exact path="/initial-setup" component={InitialSetup} />
- <Route exact path="/login" component={Login} />
- <Route exact path="/signup" component={Signup} />
- <Route exact path="/public/protocols/:token" component={PublicProtocol} isPublic />
- <Route path="/" component={PrivateRoutes} isPrivate />
- </Switch>
+ <Suspense fallback={<PageLoader />}>
+     <RouterRoutes>
+     <Route path="/initial-setup" element={<InitialSetup />} />
+     <Route path="/login" element={<Login />} />
+     <Route path="/signup" element={<Signup />} />
+     <Route path="/public/protocols/:token" element={<PublicProtocol />} isPublic />
+     <Route path="/*" element={<PrivateRoutes />} isPrivate />
+     </RouterRoutes>
  </Suspense>
  <ToastContainer autoClose={3000} />
  </ThemeProvider>

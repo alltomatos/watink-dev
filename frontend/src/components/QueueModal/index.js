@@ -6,7 +6,6 @@ import { Formik, Form, Field } from "formik";
 import { toast } from "react-toastify";
 
 import { makeStyles, withStyles } from "@material-ui/core/styles";
-import { green, blue, grey, purple, orange } from "@material-ui/core/colors";
 import Button from "@material-ui/core/Button";
 import TextField from "@material-ui/core/TextField";
 import Dialog from "@material-ui/core/Dialog";
@@ -32,6 +31,7 @@ import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import ColorPicker from "../ColorPicker";
 import { IconButton, InputAdornment, Fade, Checkbox, ListItemText } from "@material-ui/core";
+import { grey, blue, green } from "@material-ui/core/colors";
 import {
 	Colorize,
 	HelpOutline,
@@ -55,7 +55,7 @@ const PremiumSwitch = withStyles((theme) => ({
 			transform: "translateX(26px)",
 			color: theme.palette.common.white,
 			"& + $track": {
-				backgroundColor: blue[500],
+				backgroundColor: "var(--status-info)",
 				opacity: 1,
 				border: "none",
 			},
@@ -67,8 +67,8 @@ const PremiumSwitch = withStyles((theme) => ({
 	},
 	track: {
 		borderRadius: 26 / 2,
-		border: `1px solid ${grey[400]}`,
-		backgroundColor: grey[300],
+		border: `1px solid var(--border-default)`,
+		backgroundColor: "var(--bg-surface-alt)",
 		opacity: 1,
 		transition: theme.transitions.create(["background-color", "border"]),
 	},
@@ -88,7 +88,7 @@ const useStyles = makeStyles(theme => ({
 		},
 	},
 	dialogTitle: {
-		background: `linear-gradient(135deg, ${blue[600]} 0%, ${purple[600]} 100%)`,
+		background: `linear-gradient(135deg, var(--action-primary-hover) 0%, var(--brand-purple) 100%)`,
 		color: "var(--bg-surface)",
 		padding: theme.spacing(2, 3),
 		"& h2": {
@@ -118,7 +118,7 @@ const useStyles = makeStyles(theme => ({
 		position: "relative",
 	},
 	buttonProgress: {
-		color: green[500],
+		color: "var(--status-success)",
 		position: "absolute",
 		top: "50%",
 		left: "50%",
@@ -136,7 +136,7 @@ const useStyles = makeStyles(theme => ({
 		alignItems: "center",
 		marginTop: theme.spacing(3),
 		marginBottom: theme.spacing(2),
-		color: grey[700],
+		color: "var(--text-secondary)",
 		fontWeight: 600,
 		fontSize: "0.875rem",
 		textTransform: "uppercase",
@@ -144,17 +144,17 @@ const useStyles = makeStyles(theme => ({
 	},
 	sectionIcon: {
 		marginRight: theme.spacing(1),
-		color: blue[500],
+		color: "var(--status-info)",
 	},
 	configCard: {
 		padding: theme.spacing(2),
 		marginBottom: theme.spacing(2),
 		borderRadius: 12,
 		backgroundColor: "var(--bg-surface)",
-		border: `1px solid ${grey[200]}`,
+		border: `1px solid var(--border-subtle)`,
 		transition: "all 0.2s ease",
 		"&:hover": {
-			borderColor: blue[200],
+			borderColor: "var(--status-info)",
 			boxShadow: "0 4px 12px var(--border-subtle)",
 		},
 	},
@@ -175,11 +175,11 @@ const useStyles = makeStyles(theme => ({
 		padding: theme.spacing(1.5, 2),
 		borderRadius: 12,
 		backgroundColor: "var(--bg-surface)",
-		border: `1px solid ${grey[200]}`,
+		border: `1px solid var(--border-subtle)`,
 		marginBottom: theme.spacing(2),
 		transition: "all 0.2s ease",
 		"&:hover": {
-			borderColor: blue[200],
+			borderColor: "var(--status-info)",
 			boxShadow: "0 4px 12px var(--border-subtle)",
 		},
 	},
@@ -189,15 +189,15 @@ const useStyles = makeStyles(theme => ({
 		gap: theme.spacing(1),
 	},
 	switchLabelIcon: {
-		color: orange[500],
+		color: "var(--status-warning)",
 	},
 	helpIcon: {
-		color: grey[400],
+		color: "var(--text-muted)",
 		fontSize: 18,
 		cursor: "pointer",
 		marginLeft: theme.spacing(0.5),
 		"&:hover": {
-			color: blue[400],
+			color: "var(--status-info)",
 		},
 	},
 	strategyOption: {
@@ -210,12 +210,12 @@ const useStyles = makeStyles(theme => ({
 	},
 	strategyDescription: {
 		fontSize: "0.75rem",
-		color: grey[500],
+		color: "var(--text-muted)",
 	},
 	dialogActions: {
 		padding: theme.spacing(2, 3),
 		backgroundColor: "var(--bg-surface)",
-		borderTop: `1px solid ${grey[200]}`,
+		borderTop: `1px solid var(--border-subtle)`,
 	},
 	cancelButton: {
 		borderRadius: 10,
@@ -228,10 +228,10 @@ const useStyles = makeStyles(theme => ({
 		padding: theme.spacing(1, 3),
 		textTransform: "none",
 		fontWeight: 600,
-		background: `linear-gradient(135deg, ${blue[500]} 0%, ${blue[700]} 100%)`,
+		background: `linear-gradient(135deg, var(--status-info) 0%, var(--action-primary-hover) 100%)`,
 		boxShadow: "0 4px 12px var(--status-info-30)",
 		"&:hover": {
-			background: `linear-gradient(135deg, ${blue[600]} 0%, ${blue[800]} 100%)`,
+			background: `linear-gradient(135deg, var(--action-primary-hover) 0%, var(--status-info-text) 100%)`,
 			boxShadow: "0 6px 16px var(--status-info-40)",
 		},
 	},

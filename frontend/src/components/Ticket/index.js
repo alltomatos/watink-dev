@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect } from "react";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 import { toast } from "react-toastify";
 import openSocket from "../../services/socket-io";
@@ -76,7 +76,7 @@ const useStyles = makeStyles((theme) => ({
 
 const Ticket = () => {
   const { ticketId } = useParams();
-  const history = useHistory();
+  const navigate = useNavigate();
   const classes = useStyles();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -116,7 +116,7 @@ const Ticket = () => {
 
       if (data.action === "delete") {
         toast.success("Ticket deleted sucessfully.");
-        history.push("/tickets");
+        navigate("/tickets");
       }
     });
 

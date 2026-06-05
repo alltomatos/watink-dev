@@ -28,13 +28,13 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: "var(--bg-surface-alt)",
         height: "100%",
     },
-    logItem: {
-    	padding: "12px",
-    	borderRadius: "12px",
-    	backgroundColor: "var(--bg-surface)",
-    	border: "1px solid var(--border-default)",
-        position: "relative",
-        "&::before": {
+	logItem: {
+		padding: "12px",
+		borderRadius: "12px",
+		backgroundColor: "var(--bg-surface)",
+		border: "1px solid var(--border-default)",
+		position: "relative",
+		"&::before": {
             content: '""',
             position: "absolute",
             left: "-11px",
@@ -124,7 +124,9 @@ const formatLogMessage = (log) => {
     let payload = {};
     try {
         payload = JSON.parse(log.payload);
-    } catch (e) { }
+    } catch (e) {
+        console.error("Error parsing log payload:", e);
+    }
 
     switch (log.type) {
         case "transfer":

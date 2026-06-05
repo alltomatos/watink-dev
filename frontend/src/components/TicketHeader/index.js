@@ -5,7 +5,7 @@ import { Card, Button } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
 import TicketHeaderSkeleton from "../TicketHeaderSkeleton";
 import ArrowBackIos from "@material-ui/icons/ArrowBackIos";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const useStyles = makeStyles((theme) => ({
   ticketHeader: {
@@ -21,9 +21,9 @@ const useStyles = makeStyles((theme) => ({
 
 const TicketHeader = ({ loading, children }) => {
   const classes = useStyles();
-  const history = useHistory();
+  const navigate = useNavigate();
   const handleBack = () => {
-    history.push("/tickets");
+    navigate("/tickets");
   };
 
   return (

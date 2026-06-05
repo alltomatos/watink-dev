@@ -89,7 +89,7 @@ const ContentModal = ({ open, onClose, onAdd }) => {
                     <Grid item xs={12} sm={4} md={2}>
                         <Button
                             className={classes.optionButton}
-                            style={{ backgroundColor: '#2196f3' }} // Azul
+                            style={{ backgroundColor: 'var(--brand-blue)' }}
                             onClick={() => handleOptionClick('text')}
                         >
                             <TextIcon /> Texto
@@ -98,7 +98,7 @@ const ContentModal = ({ open, onClose, onAdd }) => {
                     <Grid item xs={12} sm={4} md={2}>
                         <Button
                             className={classes.optionButton}
-                            style={{ backgroundColor: '#4caf50' }} // Verde
+                            style={{ backgroundColor: 'var(--brand-green)' }}
                             onClick={() => handleOptionClick('interval')}
                         >
                             <IntervalIcon /> Intervalo
@@ -107,7 +107,7 @@ const ContentModal = ({ open, onClose, onAdd }) => {
                     <Grid item xs={12} sm={4} md={2}>
                         <Button
                             className={classes.optionButton}
-                            style={{ backgroundColor: '#ff9800' }} // Laranja
+                            style={{ backgroundColor: 'var(--brand-orange)' }}
                             onClick={() => handleOptionClick('image')}
                         >
                             <ImageIcon /> Imagem
@@ -116,7 +116,7 @@ const ContentModal = ({ open, onClose, onAdd }) => {
                     <Grid item xs={12} sm={4} md={2}>
                         <Button
                             className={classes.optionButton}
-                            style={{ backgroundColor: '#3f51b5' }} // Azul Escuro
+                            style={{ backgroundColor: 'var(--brand-indigo)' }}
                             onClick={() => handleOptionClick('file')}
                         >
                             <FileIcon /> Arquivo
@@ -125,7 +125,7 @@ const ContentModal = ({ open, onClose, onAdd }) => {
                     <Grid item xs={12} sm={4} md={2}>
                         <Button
                             className={classes.optionButton}
-                            style={{ backgroundColor: '#9c27b0' }} // Roxo
+                            style={{ backgroundColor: 'var(--brand-purple)' }}
                             onClick={() => handleOptionClick('audio')}
                         >
                             <AudioIcon /> Audio
@@ -134,7 +134,7 @@ const ContentModal = ({ open, onClose, onAdd }) => {
                     <Grid item xs={12} sm={4} md={2}>
                         <Button
                             className={classes.optionButton}
-                            style={{ backgroundColor: '#f44336' }} // Vermelho
+                            style={{ backgroundColor: 'var(--status-error)' }}
                             onClick={() => handleOptionClick('video')}
                         >
                             <VideoIcon /> Video

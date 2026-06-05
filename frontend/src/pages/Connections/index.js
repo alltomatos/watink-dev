@@ -1,10 +1,9 @@
 /* @jsxImportSource react */
 import React, { useState, useCallback, useContext } from "react";
 import { format, parseISO } from "date-fns";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { makeStyles } from "@material-ui/core/styles";
-import { green, red, orange } from "@material-ui/core/colors";
 import {
 	Button,
 	Typography,
@@ -107,7 +106,7 @@ const useStyles = makeStyles(theme => ({
 
 const Connections = () => {
 	const classes = useStyles();
-	const history = useHistory();
+	const navigate = useNavigate();
 
 	const { whatsApps, loading, reloadWhatsApps } = useContext(WhatsAppsContext);
 	const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
@@ -231,7 +230,7 @@ const Connections = () => {
 
 	const handleCardClick = (whatsappId) => {
 		if (!anchorEl) {
-			history.push(`/connections/${whatsappId}`);
+			navigate(`/connections/${whatsappId}`);
 		}
 	};
 

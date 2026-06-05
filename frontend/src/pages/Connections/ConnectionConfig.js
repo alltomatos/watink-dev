@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useCallback, useContext, useEffect } from "react";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { makeStyles } from "@material-ui/core/styles";
 import {
     Paper,
@@ -30,7 +30,6 @@ import {
     Edit,
     CheckCircle
 } from "@material-ui/icons";
-import { green, red, orange } from "@material-ui/core/colors";
 import QRCode from "qrcode.react";
 
 import MainContainer from "../../components/MainContainer";
@@ -103,7 +102,7 @@ const useStyles = makeStyles(theme => ({
 
 const ConnectionConfig = () => {
     const classes = useStyles();
-    const history = useHistory();
+    const navigate = useNavigate();
     const { whatsappId } = useParams();
     const { reloadWhatsApps } = useContext(WhatsAppsContext);
     const [whatsapp, setWhatsapp] = useState(null);
@@ -276,7 +275,7 @@ const ConnectionConfig = () => {
         try {
             await api.delete(`/whatsapp/${whatsappId}`);
             await reloadWhatsApps();
-            history.push("/connections");
+            navigate("/connections");
         } catch (err) {
             toastError(err);
         }
@@ -393,7 +392,7 @@ const ConnectionConfig = () => {
 
             <div className={classes.header}>
                 <Box display="flex" alignItems="center">
-                    <IconButton onClick={() => history.push("/connections")}>
+                    <IconButton onClick={() => navigate("/connections")}>
                         <ArrowBack />
                     </IconButton>
                     <Title>{whatsapp.name}</Title>
@@ -432,7 +431,7 @@ const ConnectionConfig = () => {
                                     <Button
                                         variant="outlined"
                                         className={classes.actionButton}
-                                        style={{ color: red[500], borderColor: red[500] }}
+                                        style={{ color: "var(--status-error)", borderColor: "var(--status-error)" }}
                                         onClick={() => { setConfirmationAction("delete"); setConfirmationOpen(true); }}
                                     >
                                         EXCLUIR

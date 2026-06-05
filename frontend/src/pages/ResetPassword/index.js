@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link as RouterLink, useHistory, useParams } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 
 import {
     Avatar,
@@ -44,7 +44,7 @@ const useStyles = makeStyles((theme) => ({
 
 const ResetPassword = () => {
     const classes = useStyles();
-    const history = useHistory();
+    const navigate = useNavigate();
     const { token } = useParams();
 
     const [passwords, setPasswords] = useState({ password: "", confirmPassword: "" });
@@ -70,7 +70,7 @@ const ResetPassword = () => {
             });
 
             toast.success(i18n.t("resetPassword.success"));
-            history.push("/login");
+            navigate("/login");
         } catch (err) {
             toast.error(i18n.t("resetPassword.error.failed"));
         }

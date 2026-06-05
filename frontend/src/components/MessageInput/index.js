@@ -6,10 +6,10 @@ const EmojiPicker = lazy(() => import("emoji-mart").then(mod => ({ default: mod.
 import clsx from "clsx";
 
 import { makeStyles } from "@material-ui/core/styles";
-import Paper from "@material-ui/core/Paper";
+import PaperCard from "../PaperCard";
 import InputBase from "@material-ui/core/InputBase";
 import CircularProgress from "@material-ui/core/CircularProgress";
-import { green } from "@material-ui/core/colors";
+
 import AttachFileIcon from "@material-ui/icons/AttachFile";
 import IconButton from "@material-ui/core/IconButton";
 import MoreVert from "@material-ui/icons/MoreVert";
@@ -202,17 +202,17 @@ const useStyles = makeStyles(theme => ({
   },
 
   circleLoading: {
-    color: green[500],
-    opacity: "70%",
-    position: "absolute",
-    top: "20%",
-    left: "50%",
-    marginLeft: -12,
+  color: "var(--status-success)",
+  opacity: "70%",
+  position: "absolute",
+  top: "20%",
+  left: "50%",
+  marginLeft: -12,
   },
 
   audioLoading: {
-    color: green[500],
-    opacity: "70%",
+  color: "var(--status-success)",
+  opacity: "70%",
   },
 
   recorderWrapper: {
@@ -661,7 +661,9 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
                     try {
                       const data = typeof message.dataJson === 'string' ? JSON.parse(message.dataJson) : message.dataJson;
                       pushName = data.pushName;
-                    } catch (e) { }
+                    } catch (e) {
+                      console.error("Error parsing dataJson:", e);
+                    }
                   }
 
                   if (message.participant) {
@@ -692,32 +694,32 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
 
   if (ticketStatus !== "open") {
     return (
-      <Paper square elevation={0} className={classes.mainWrapper}>
+      <PaperCard variant="flush" padding="none" className={classes.mainWrapper}>
         <div className={classes.newMessageBox}>
           <span style={{ fontSize: "16px", padding: "10px", margin: "0 auto", color: "gray" }}>
             {i18n.t("messagesInput.placeholderClosed")}
           </span>
         </div>
-      </Paper>
+      </PaperCard>
     );
   }
 
   if (whatsappStatus && whatsappStatus !== "CONNECTED") {
     return (
-      <Paper square elevation={0} className={classes.mainWrapper}>
+      <PaperCard variant="flush" padding="none" className={classes.mainWrapper}>
         <div className={classes.newMessageBox}>
           <div style={{ padding: "10px", width: "100%", textAlign: "center", backgroundColor: "var(--status-error-bg)", color: "var(--status-error-text)", borderRadius: "5px", display: "flex", flexDirection: "column", alignItems: "center" }}>
             <span style={{ fontWeight: "bold", fontSize: "14px" }}>CONEXÃO INTERROMPIDA</span>
             <span style={{ fontSize: "12px", marginTop: "5px" }}>Não é possível enviar mensagens. Por favor, vá em "Conexões" e reconecte o WhatsApp.</span>
           </div>
         </div>
-      </Paper>
+      </PaperCard>
     );
   }
 
   if (medias.length > 0)
     return (
-      <Paper elevation={0} square className={classes.previewMediaWrapper}>
+      <PaperCard variant="flush" padding="none" className={classes.previewMediaWrapper}>
         <IconButton
           aria-label="cancel-upload"
           component="span"
@@ -796,11 +798,11 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
             <SendIcon className={classes.sendMessageIcons} />
           </IconButton>
         </div>
-      </Paper>
-    );
+      </PaperCard>
+  );
   else {
     return (
-      <Paper square elevation={0} className={classes.mainWrapper}>
+      <PaperCard variant="flush" padding="none" className={classes.mainWrapper}>
         {replyingMessage && renderReplyingMessage(replyingMessage)}
         <div className={classes.newMessageBox}>
           <Hidden only={["sm", "xs"]}>
@@ -960,10 +962,7 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
                       className={classes.messageQuickAnswersWrapperItem}
                       key={index}
                     >
-                      {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-                      <a onClick={() => handleQuickAnswersClick(value.message)}>
-                        {`${value.shortcut} - ${value.message}`}
-                      </a>
+                      <a href="#" onClick={(e) => { e.preventDefault(); handleQuickAnswersClick(value.message); }}>{`${value.shortcut} - ${value.message}`}</a>
                     </li>
                   );
                 })}
@@ -1036,7 +1035,7 @@ const MessageInput = ({ ticketStatus, whatsappStatus }) => {
             </IconButton>
           )}
         </div>
-      </Paper>
+      </PaperCard>
     );
   }
 };

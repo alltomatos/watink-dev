@@ -1,13 +1,13 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import SplashScreen from "../SplashScreen";
 import { getBackendUrl } from "../../config";
 
 const StatusCheck = ({ children }) => {
 	const [isBackendReady, setIsBackendReady] = useState(false);
-	const history = useHistory();
+	const navigate = useNavigate();
 
 	useEffect(() => {
 		const checkBackend = async () => {
@@ -25,7 +25,7 @@ const StatusCheck = ({ children }) => {
 				const { data } = await axios.get(setupCheckUrl);
 
 				if (data.needsSetup && window.location.pathname !== "/initial-setup") {
-					history.push("/initial-setup");
+					navigate("/initial-setup");
 				}
 
 				setIsBackendReady(true);

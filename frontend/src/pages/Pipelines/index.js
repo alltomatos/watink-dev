@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { makeStyles } from "@material-ui/core/styles";
 import Paper from "@material-ui/core/Paper";
 import Grid from "@material-ui/core/Grid";
@@ -35,7 +35,7 @@ const useStyles = makeStyles((theme) => ({
 
 const Pipelines = () => {
     const classes = useStyles();
-    const history = useHistory();
+    const navigate = useNavigate();
     const [pipelines, setPipelines] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -54,16 +54,16 @@ const Pipelines = () => {
     };
 
     const handleOpenWizard = () => {
-        history.push("/pipelines/new");
+        navigate("/pipelines/new");
     };
 
     const handleOpenPipeline = (id) => {
-        history.push(`/pipelines/${id}`);
+        navigate(`/pipelines/${id}`);
     };
 
     const handleEditPipeline = (e, id) => {
         e.stopPropagation();
-        history.push(`/pipelines/${id}/edit`);
+        navigate(`/pipelines/${id}/edit`);
     };
 
     return (

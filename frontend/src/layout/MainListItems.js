@@ -1,16 +1,10 @@
 import React, { useContext, useEffect, useState } from "react";
-import { Link as RouterLink, useLocation } from "react-router-dom";
-
-import ListItem from "@material-ui/core/ListItem";
-import ListItemIcon from "@material-ui/core/ListItemIcon";
-import ListItemText from "@material-ui/core/ListItemText";
 import Divider from "@material-ui/core/Divider";
-import { Badge, Tooltip, ListSubheader } from "@material-ui/core";
+import { Badge, ListSubheader } from "@material-ui/core";
 import DashboardOutlinedIcon from "@material-ui/icons/DashboardOutlined";
 import ListAltIcon from "@material-ui/icons/ListAlt";
 import WhatsAppIcon from "@material-ui/icons/WhatsApp";
 import SyncAltIcon from "@material-ui/icons/SyncAlt";
-import GroupIcon from "@material-ui/icons/Group";
 import SettingsOutlinedIcon from "@material-ui/icons/SettingsOutlined";
 import PeopleAltOutlinedIcon from "@material-ui/icons/PeopleAltOutlined";
 import ContactPhoneOutlinedIcon from "@material-ui/icons/ContactPhoneOutlined";
@@ -30,97 +24,8 @@ import { WhatsAppsContext } from "../context/WhatsApp/WhatsAppsContext";
 import { AuthContext } from "../context/Auth/AuthContext";
 import { Can } from "../components/Can";
 import { useThemeContext } from "../context/DarkMode";
-import pluginApi from "../services/pluginApi"; 
-
-// Cores do Google para ícones (MD3)
-const googleColors = {
-  blue: "#1A73E8",
-  green: "#1E8E3E",
-  yellow: "#F9AB00",
-  red: "#D93025",
-  purple: "#7C4DFF",
-  teal: "#00897B",
-  orange: "#E8710A",
-  pink: "#D01884",
-};
-
-import { motion } from "framer-motion";
-
-function ListItemLink(props) {
-  const { icon, primary, to, className, collapsed, iconColor } = props;
-  const location = useLocation();
-  const isSelected = to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
-  const { appTheme } = useThemeContext();
-  const isGoogleTheme = appTheme === "google";
-
-  const renderLink = React.useMemo(
-    () =>
-      React.forwardRef(function RouterLinkItem(itemProps, ref) {
-        return <RouterLink to={to} ref={ref} {...itemProps} />;
-      }),
-    [to]
-  );
-
-  // Clonar ícone com cor se for tema Google
-  const coloredIcon = isGoogleTheme && iconColor && icon
-    ? React.cloneElement(icon, { style: { color: iconColor } })
-    : icon;
-
-  const listItem = (
-    <motion.div
-      whileHover={{ x: 4 }}
-      whileTap={{ scale: 0.98 }}
-    >
-      <ListItem 
-        button
-        selected={isSelected}
-        component={renderLink} 
-        className={className}
-        style={{
-          justifyContent: collapsed ? "center" : "flex-start",
-          padding: collapsed ? "12px 0" : "12px 18px",
-        }}
-      >
-        {coloredIcon ? (
-          <ListItemIcon 
-            style={{ 
-              minWidth: collapsed ? 0 : 38,
-              justifyContent: "center",
-              marginRight: collapsed ? 0 : 12,
-            }}
-          >
-            {coloredIcon}
-          </ListItemIcon>
-        ) : null}
-        {!collapsed && (
-          <ListItemText 
-            primary={primary} 
-            primaryTypographyProps={{ 
-              style: { 
-                fontWeight: appTheme === "apple" ? 600 : 500,
-                fontSize: "0.9rem",
-                letterSpacing: "-0.01em"
-              } 
-            }} 
-          />
-        )}
-      </ListItem>
-    </motion.div>
-  );
-
-  // Mostrar tooltip quando colapsado
-  if (collapsed) {
-    return (
-      <li>
-        <Tooltip title={primary} placement="right" arrow>
-          {listItem}
-        </Tooltip>
-      </li>
-    );
-  }
-
-  return <li>{listItem}</li>;
-}
+import pluginApi from "../services/pluginApi";
+import NavButton from "../components/NavButton";
 
 const MainListItems = (props) => {
   const { drawerClose, collapsed = false } = props;
@@ -131,7 +36,6 @@ const MainListItems = (props) => {
   const [activePlugins, setActivePlugins] = useState([]);
 
   useEffect(() => {
-    // Fetch active plugins using pluginApi (has JWT interceptor)
     const fetchPlugins = async () => {
       try {
         const { data } = await pluginApi.get("/plugins/installed");
@@ -171,11 +75,11 @@ const MainListItems = (props) => {
         user={user}
         perform="dashboard:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/"
             primary={i18n.t("mainDrawer.listItems.dashboard")}
             icon={<DashboardOutlinedIcon />}
-            iconColor={googleColors.blue}
+            iconTheme="dashboard"
             collapsed={collapsed}
           />
         )}
@@ -184,11 +88,11 @@ const MainListItems = (props) => {
         user={user}
         perform="pipelines:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/pipelines"
             primary={i18n.t("mainDrawer.listItems.pipelines")}
             icon={<ListAltIcon />}
-            iconColor={googleColors.purple}
+            iconTheme="pipelines"
             collapsed={collapsed}
           />
         )}
@@ -197,22 +101,22 @@ const MainListItems = (props) => {
         user={user}
         perform="tickets:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/tickets"
             primary={i18n.t("mainDrawer.listItems.tickets")}
             icon={<WhatsAppIcon />}
-            iconColor={googleColors.green}
+            iconTheme="tickets"
             collapsed={collapsed}
           />
         )}
       />
 
       {activePlugins.includes("helpdesk") && (
-        <ListItemLink
+        <NavButton
           to="/my-activities"
           primary={i18n.t("mainDrawer.listItems.myActivities")}
           icon={<AssignmentIcon />}
-          iconColor={googleColors.blue}
+          iconTheme="myActivities"
           collapsed={collapsed}
         />
       )}
@@ -221,11 +125,11 @@ const MainListItems = (props) => {
         user={user}
         perform="contacts:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/contacts"
             primary={i18n.t("mainDrawer.listItems.contacts")}
             icon={<ContactPhoneOutlinedIcon />}
-            iconColor={googleColors.orange}
+            iconTheme="contacts"
             collapsed={collapsed}
           />
         )}
@@ -234,11 +138,11 @@ const MainListItems = (props) => {
         user={user}
         perform="quick_answers:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/quickAnswers"
             primary={i18n.t("mainDrawer.listItems.quickAnswers")}
             icon={<QuestionAnswerOutlinedIcon />}
-            iconColor={googleColors.purple}
+            iconTheme="quickAnswers"
             collapsed={collapsed}
           />
         )}
@@ -248,11 +152,11 @@ const MainListItems = (props) => {
         user={user}
         perform="flows:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/flowbuilder"
             primary={i18n.t("mainDrawer.listItems.flowBuilder")}
             icon={<DeviceHubIcon />}
-            iconColor={googleColors.blue}
+            iconTheme="flowBuilder"
             collapsed={collapsed}
           />
         )}
@@ -264,11 +168,11 @@ const MainListItems = (props) => {
           user={user}
           perform="clients:read"
           yes={() => (
-            <ListItemLink
+            <NavButton
               to="/clients"
               primary={i18n.t("mainDrawer.listItems.clients")}
               icon={<PersonOutlineIcon />}
-              iconColor={googleColors.blue}
+              iconTheme="clients"
               collapsed={collapsed}
             />
           )}
@@ -280,11 +184,11 @@ const MainListItems = (props) => {
           user={user}
           perform="helpdesk:read"
           yes={() => (
-            <ListItemLink
+            <NavButton
               to="/helpdesk"
               primary={i18n.t("mainDrawer.listItems.helpdesk")}
               icon={<HeadsetMicIcon />}
-              iconColor={googleColors.red}
+              iconTheme="helpdesk"
               collapsed={collapsed}
             />
           )}
@@ -302,11 +206,11 @@ const MainListItems = (props) => {
         user={user}
         perform="tags:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/tags"
             primary={i18n.t("mainDrawer.listItems.tags")}
             icon={<LocalOfferIcon />}
-            iconColor={googleColors.purple}
+            iconTheme="tags"
             collapsed={collapsed}
           />
         )}
@@ -315,18 +219,18 @@ const MainListItems = (props) => {
       {/* Groups oculto do menu — funcionalidade migrada para Funções (Roles).
           Rota /groups mantida ativa para acesso legado/direto. */}
       <Can
-      user={user}
-      perform="connections:read"
+        user={user}
+        perform="connections:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/connections"
             primary={i18n.t("mainDrawer.listItems.connections")}
             icon={
-              <Badge badgeContent={connectionWarning ? "!" : 0} color="error">
+              <Badge badgeContent={connectionWarning ? "!" : 0} color="error" overlap="rectangular">
                 <SyncAltIcon />
               </Badge>
             }
-            iconColor={googleColors.teal}
+            iconTheme="connections"
             collapsed={collapsed}
           />
         )}
@@ -336,11 +240,11 @@ const MainListItems = (props) => {
         user={user}
         perform="users:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/users"
             primary={i18n.t("mainDrawer.listItems.users")}
             icon={<PeopleAltOutlinedIcon />}
-            iconColor={googleColors.blue}
+            iconTheme="users"
             collapsed={collapsed}
           />
         )}
@@ -350,11 +254,11 @@ const MainListItems = (props) => {
         user={user}
         perform="roles:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/access"
             primary="Acesso e Permissões"
             icon={<SecurityIcon />}
-            iconColor={googleColors.blue}
+            iconTheme="access"
             collapsed={collapsed}
           />
         )}
@@ -364,11 +268,11 @@ const MainListItems = (props) => {
         user={user}
         perform="queues:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/queues"
             primary={i18n.t("mainDrawer.listItems.queues")}
             icon={<AccountTreeOutlinedIcon />}
-            iconColor={googleColors.yellow}
+            iconTheme="queues"
             collapsed={collapsed}
           />
         )}
@@ -378,11 +282,11 @@ const MainListItems = (props) => {
         user={user}
         perform="knowledge_bases:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/knowledge-bases"
             primary={i18n.t("mainDrawer.listItems.knowledgeBase")}
             icon={<LibraryBooksIcon />}
-            iconColor={googleColors.orange}
+            iconTheme="knowledgeBase"
             collapsed={collapsed}
           />
         )}
@@ -392,11 +296,11 @@ const MainListItems = (props) => {
         user={user}
         perform="settings:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/settings"
             primary={i18n.t("mainDrawer.listItems.settings")}
             icon={<SettingsOutlinedIcon />}
-            iconColor={googleColors.red}
+            iconTheme="settings"
             collapsed={collapsed}
           />
         )}
@@ -406,11 +310,11 @@ const MainListItems = (props) => {
         user={user}
         perform="swagger:read"
         yes={() => (
-          <ListItemLink
+          <NavButton
             to="/swagger"
             primary={i18n.t("mainDrawer.listItems.swagger")}
             icon={<MenuBookIcon />}
-            iconColor={googleColors.pink}
+            iconTheme="swagger"
             collapsed={collapsed}
           />
         )}

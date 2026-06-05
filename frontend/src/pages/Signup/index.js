@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 
 import * as Yup from "yup";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Link as RouterLink } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Formik, Form, Field } from "formik";
@@ -74,7 +74,7 @@ const UserSchema = Yup.object().shape({
 
 const SignUp = () => {
 	const classes = useStyles();
-	const history = useHistory();
+	const navigate = useNavigate();
 
 	const initialState = { name: "", email: "", password: "" };
 	const [showPassword, setShowPassword] = useState(false);
@@ -84,7 +84,7 @@ const SignUp = () => {
 		try {
 			await api.post("/auth/signup", values);
 			toast.success(i18n.t("signup.toasts.success"));
-			history.push("/login");
+			navigate("/login");
 		} catch (err) {
 			toastError(err);
 		}
