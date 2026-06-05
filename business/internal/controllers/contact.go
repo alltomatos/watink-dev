@@ -5,6 +5,8 @@ import (
 	"strconv"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,16 +19,15 @@ func NewContactController(cr domain.ContactRepository) *ContactController {
 }
 
 func (cc *ContactController) ListContacts(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Contacts")
+	if !ok {
 		return
 	}
 
 	searchParam := c.Query("searchParam")
 	contacts, err := cc.contactRepo.Find(c.Request.Context(), tenantID, searchParam)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch contacts"})
+		utils.RespondWithInternalError(c, err, "ListContacts")
 		return
 	}
 
@@ -36,16 +37,15 @@ func (cc *ContactController) ListContacts(c *gin.Context) {
 }
 
 func (cc *ContactController) ShowContact(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Contacts")
+	if !ok {
 		return
 	}
 	id, _ := strconv.Atoi(c.Param("contactId"))
 
 	contact, err := cc.contactRepo.FindByID(c.Request.Context(), id, tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch contact"})
+		utils.RespondWithInternalError(c, err, "ShowContact")
 		return
 	}
 	if contact == nil {
@@ -57,23 +57,22 @@ func (cc *ContactController) ShowContact(c *gin.Context) {
 }
 
 func (cc *ContactController) CreateContact(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Contacts")
+	if !ok {
 		return
 	}
 
 	var input struct {
-		Name          string   `json:"name"`
-		Number        string   `json:"number"`
-		ProfilePicUrl string   `json:"profilePicUrl"`
-		Email         string   `json:"email"`
-		IsGroup       bool     `json:"isGroup"`
-		WalletUserID  *int     `json:"walletUserId"`
+		Name          string `json:"name"`
+		Number        string `json:"number"`
+		ProfilePicUrl string `json:"profilePicUrl"`
+		Email         string `json:"email"`
+		IsGroup       bool   `json:"isGroup"`
+		WalletUserID  *int   `json:"walletUserId"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
@@ -88,7 +87,7 @@ func (cc *ContactController) CreateContact(c *gin.Context) {
 	}
 
 	if err := cc.contactRepo.Create(c.Request.Context(), contact); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create contact"})
+		utils.RespondWithInternalError(c, err, "CreateContact")
 		return
 	}
 
@@ -96,23 +95,22 @@ func (cc *ContactController) CreateContact(c *gin.Context) {
 }
 
 func (cc *ContactController) UpdateContact(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Contacts")
+	if !ok {
 		return
 	}
 	id, _ := strconv.Atoi(c.Param("contactId"))
 
 	var input struct {
-		Name          string   `json:"name"`
-		Number        string   `json:"number"`
-		ProfilePicUrl string   `json:"profilePicUrl"`
-		Email         string   `json:"email"`
-		WalletUserID  *int     `json:"walletUserId"`
+		Name          string `json:"name"`
+		Number        string `json:"number"`
+		ProfilePicUrl string `json:"profilePicUrl"`
+		Email         string `json:"email"`
+		WalletUserID  *int   `json:"walletUserId"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
@@ -140,7 +138,7 @@ func (cc *ContactController) UpdateContact(c *gin.Context) {
 	}
 
 	if err := cc.contactRepo.Update(c.Request.Context(), contact, fields); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update contact"})
+		utils.RespondWithInternalError(c, err, "UpdateContact")
 		return
 	}
 
@@ -148,15 +146,14 @@ func (cc *ContactController) UpdateContact(c *gin.Context) {
 }
 
 func (cc *ContactController) DeleteContact(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Contacts")
+	if !ok {
 		return
 	}
 	id, _ := strconv.Atoi(c.Param("contactId"))
 
 	if err := cc.contactRepo.Delete(c.Request.Context(), id, tenantID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete contact"})
+		utils.RespondWithInternalError(c, err, "DeleteContact")
 		return
 	}
 

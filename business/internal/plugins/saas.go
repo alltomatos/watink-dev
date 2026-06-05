@@ -3,12 +3,13 @@ package plugins
 import (
 	"net/http"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/pkg/sdk"
 	"github.com/gin-gonic/gin"
 )
 
+// SaaSPlugin — DB via core.GetDB() (DI), zero acesso a database.DB global.
+// Nota: Tabela Tenants é global (sem tenantId) — rota protegida por SuperAdminOnly.
 type SaaSPlugin struct{}
 
 func (sp *SaaSPlugin) GetManifest() sdk.PluginManifest {
@@ -28,19 +29,21 @@ func (sp *SaaSPlugin) OnInstall(core sdk.WatinkCore) error {
 func (sp *SaaSPlugin) OnActivate(core sdk.WatinkCore) error {
 	// GET: Listing tenants (Allowed in ReadOnly)
 	core.RegisterRoute("GET", "/saas/manager/tenants", func(c *gin.Context) {
+		db := core.GetDB()
 		var tenants []models.Tenant
-		database.DB.Find(&tenants)
+		db.Find(&tenants)
 		c.JSON(http.StatusOK, tenants)
 	})
 
 	// POST: Creating tenant (Blocked in ReadOnly)
 	core.RegisterRoute("POST", "/saas/manager/tenants", func(c *gin.Context) {
+		db := core.GetDB()
 		var tenant models.Tenant
 		if err := c.ShouldBindJSON(&tenant); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		database.DB.Create(&tenant)
+		db.Create(&tenant)
 		c.JSON(http.StatusCreated, tenant)
 	})
 

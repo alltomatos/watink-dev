@@ -6,17 +6,35 @@ import (
 	"os"
 	"strings"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
+	"github.com/alltomatos/watinkdev/business/internal/services"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func CheckSetup(c *gin.Context) {
+type SetupController struct {
+	db           *gorm.DB
+	setupService *services.SetupService
+	hubManager   *plugins.HubManager
+}
+
+func NewSetupController(db *gorm.DB, setupService *services.SetupService, hubManager *plugins.HubManager) *SetupController {
+	return &SetupController{
+		db:           db,
+		setupService: setupService,
+		hubManager:   hubManager,
+	}
+}
+
+func (ctrl *SetupController) CheckSetup(c *gin.Context) {
 	var usersCount int64
 	var tenantsCount int64
-	database.DB.Model(&models.User{}).Count(&usersCount)
-	database.DB.Model(&models.Tenant{}).Count(&tenantsCount)
+
+	ctrl.db.Model(&models.User{}).Count(&usersCount)
+	ctrl.db.Model(&models.Tenant{}).Count(&tenantsCount)
+
 	c.JSON(http.StatusOK, gin.H{"needsSetup": usersCount == 0 && tenantsCount == 0})
 }
 
@@ -29,11 +47,13 @@ type SetupRequest struct {
 	BackendURL string `json:"backendUrl"`
 }
 
-func InitialSetup(c *gin.Context) {
+func (ctrl *SetupController) InitialSetup(c *gin.Context) {
 	var usersCount int64
 	var tenantsCount int64
-	database.DB.Model(&models.User{}).Count(&usersCount)
-	database.DB.Model(&models.Tenant{}).Count(&tenantsCount)
+
+	ctrl.db.Model(&models.User{}).Count(&usersCount)
+	ctrl.db.Model(&models.Tenant{}).Count(&tenantsCount)
+
 	if usersCount > 0 || tenantsCount > 0 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "System already initialized"})
 		return
@@ -41,77 +61,25 @@ func InitialSetup(c *gin.Context) {
 
 	var req SetupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
-	// 1. Plan
-	plan := models.Plan{
-		Name:        "Community",
-		PluginQuota: 10,
-		Active:      true,
+	seedData := services.TenantSeedData{
+		FirstName:  req.FirstName,
+		LastName:   req.LastName,
+		Email:      req.Email,
+		Password:   req.Password,
+		Document:   req.Document,
+		BackendURL: req.BackendURL,
 	}
-	database.DB.FirstOrCreate(&plan, models.Plan{Name: "Community"})
-
-	// 2. Tenant
-	tenant := models.Tenant{
-		Name:     req.FirstName + "'s Workspace",
-		Status:   "active",
-		Document: req.Document,
-	}
-	database.DB.Create(&tenant)
-
-	// 3. Admin Group
-	group := models.Group{
-		Name:     "Admin",
-		TenantID: tenant.ID,
-	}
-	database.DB.Create(&group)
-
-	// 4. Assign all permissions to group
-	var permissions []models.Permission
-	database.DB.Find(&permissions)
-	for _, p := range permissions {
-		err := database.DB.Exec("INSERT INTO group_permissions (group_id, permission_id) VALUES (?, ?)",
-			group.ID, p.ID).Error
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to assign group permissions"})
-			return
-		}
+	if err := ctrl.setupService.InitializeTenant(seedData); err != nil {
+		utils.RespondWithInternalError(c, err, "InitializeTenant")
+		return
 	}
 
-	// 5. User
-	user := models.User{
-		Name:     req.FirstName + " " + req.LastName,
-		Email:    req.Email,
-		Profile:  "superadmin",
-		TenantID: tenant.ID,
-		GroupID:  &group.ID,
-		Configs:  `{"dashboard":{"widgets":[{"id":"tickets_info","visible":true,"width":4,"order":1},{"id":"attendance_chart","visible":true,"width":8,"order":2}]}}`,
-	}
-	user.HashPassword(req.Password)
-	database.DB.Create(&user)
-
-	// 6. Update Tenant Owner
-	database.DB.Model(&tenant).Update("ownerId", user.ID)
-
-	// 7. Default Settings
-	settings := []models.Setting{
-		{Key: "systemTitle", Value: "Watink", TenantID: tenant.ID},
-		{Key: "systemLogo", Value: "/logo.png", TenantID: tenant.ID},
-		{Key: "systemLogoEnabled", Value: "true", TenantID: tenant.ID},
-		{Key: "login_layout", Value: "centered", TenantID: tenant.ID},
-		{Key: "login_backgroundImage", Value: "", TenantID: tenant.ID},
-	}
-
-	if req.BackendURL != "" {
-		settings = append(settings, models.Setting{Key: "backendUrl", Value: req.BackendURL, TenantID: tenant.ID})
-	}
-
-	database.DB.Create(&settings)
-
-	// 8. Register instance in Marketplace Hub (best effort)
-	if hm := plugins.GetHubManager(); hm != nil {
+	// Register instance in Marketplace Hub (best effort, side effect)
+	if ctrl.hubManager != nil {
 		instanceURL := strings.TrimSpace(req.BackendURL)
 		if instanceURL == "" {
 			instanceURL = strings.TrimSpace(os.Getenv("FRONTEND_URL"))
@@ -120,12 +88,12 @@ func InitialSetup(c *gin.Context) {
 			instanceURL = strings.TrimSpace(os.Getenv("BACKEND_URL"))
 		}
 
-		err := hm.RegisterInstance(map[string]string{
+		err := ctrl.hubManager.RegisterInstance(map[string]string{
 			"ownerEmail":      req.Email,
 			"superAdminEmail": req.Email,
-			"ownerName":       user.Name,
+			"ownerName":       req.FirstName + " " + req.LastName,
 			"document":        req.Document,
-			"tenantName":      tenant.Name,
+			"tenantName":      req.FirstName + "'s Workspace",
 			"instanceUrl":     instanceURL,
 		})
 		if err != nil {

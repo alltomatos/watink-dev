@@ -1,117 +1,64 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
-	"os"
-	"strings"
 
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/internal/services"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	"gorm.io/gorm"
 )
+
+type PluginController struct {
+	db         *gorm.DB
+	hubManager *plugins.HubManager
+}
+
+func NewPluginController(db *gorm.DB, hubManager *plugins.HubManager) *PluginController {
+	return &PluginController{
+		db:         db,
+		hubManager: hubManager,
+	}
+}
 
 type checkoutRequest struct {
 	Slug string `json:"slug" binding:"required"`
 }
 
-func getTenantID(c *gin.Context) string {
-	if v, ok := c.Get("tenantId"); ok {
-		switch t := v.(type) {
-		case string:
-			if t != "" {
-				return t
-			}
-		}
-	}
+func (pc *PluginController) Catalog(c *gin.Context) {
+	c.JSON(http.StatusOK, pc.hubManager.GetCatalog())
+}
 
-	if tenantID := strings.TrimSpace(c.GetHeader("x-tenant-id")); tenantID != "" {
-		return tenantID
-	}
-
-	authHeader := c.GetHeader("Authorization")
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-		return ""
-	}
-
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		return ""
-	}
-
-	token, err := jwt.Parse(parts[1], func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(secret), nil
-	})
-	if err != nil || !token.Valid {
-		return ""
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
+func (pc *PluginController) Installed(c *gin.Context) {
+	_, tenantID, ok := auth.GetScoped(c, "PluginInstallations")
 	if !ok {
-		return ""
+		return
 	}
 
-	tenantID, _ := claims["tenantId"].(string)
-	return strings.TrimSpace(tenantID)
+	c.JSON(http.StatusOK, pc.hubManager.GetInstalled(tenantID.String()))
 }
 
-func PluginsCatalog(c *gin.Context) {
-	hm := plugins.GetHubManager()
-	if hm == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "plugin hub not initialized"})
-		return
-	}
-	c.JSON(http.StatusOK, hm.GetCatalog())
-}
-
-func PluginsInstalled(c *gin.Context) {
-	hm := plugins.GetHubManager()
-	if hm == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "plugin hub not initialized"})
+func (pc *PluginController) Checkout(c *gin.Context) {
+	_, tenantID, ok := auth.GetScoped(c, "PluginInstallations")
+	if !ok {
 		return
 	}
 
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
-		return
-	}
-
-	c.JSON(http.StatusOK, hm.GetInstalled(tenantID.String()))
-}
-
-func PluginsCheckout(c *gin.Context) {
-	hm := plugins.GetHubManager()
-	if hm == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "plugin hub not initialized"})
-		return
-	}
-
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant"})
-		return
-	}
-
-	// SaaS Limit Check for Plugins
-	limitService := services.NewPlanLimitService()
+	limitService := services.NewPlanLimitService(pc.db)
 	if err := limitService.CheckLimit(tenantID, "plugins"); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		utils.RespondWithServiceError(c, http.StatusForbidden, err, "Plan limit reached for plugins")
 		return
 	}
 
 	var req checkoutRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
-	out, status, err := hm.CreateCheckout(req.Slug)
+	out, status, err := pc.hubManager.CreateCheckout(req.Slug)
 	if err != nil {
 		c.JSON(status, gin.H{"error": "hub unavailable"})
 		return
@@ -119,11 +66,20 @@ func PluginsCheckout(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
+func (pc *PluginController) Instance(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"instanceId": pc.hubManager.GetInstanceID()})
+}
+
+// Legacy stubs — remove once all clients migrate to PluginController
+func PluginsCatalog(c *gin.Context) {
+	c.JSON(http.StatusServiceUnavailable, gin.H{"error": "migrate to PluginController"})
+}
+func PluginsInstalled(c *gin.Context) {
+	c.JSON(http.StatusServiceUnavailable, gin.H{"error": "migrate to PluginController"})
+}
+func PluginsCheckout(c *gin.Context) {
+	c.JSON(http.StatusServiceUnavailable, gin.H{"error": "migrate to PluginController"})
+}
 func PluginsInstance(c *gin.Context) {
-	hm := plugins.GetHubManager()
-	if hm == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "plugin hub not initialized"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"instanceId": hm.GetInstanceID()})
+	c.JSON(http.StatusServiceUnavailable, gin.H{"error": "migrate to PluginController"})
 }

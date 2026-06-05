@@ -3,13 +3,15 @@ package flow
 import (
 	"log"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
+// FlowWorker processa eventos de fluxo automatizado.
+// DB injetado via construtor — zero acesso a database.DB global.
 type FlowWorker struct {
-	// dependencies like RabbitMQ would go here
+	db *gorm.DB
 }
 
 type FlowEventPayload struct {
@@ -20,8 +22,8 @@ type FlowEventPayload struct {
 	IsGroup     bool   `json:"isGroup"`
 }
 
-func NewFlowWorker() *FlowWorker {
-	return &FlowWorker{}
+func NewFlowWorker(db *gorm.DB) *FlowWorker {
+	return &FlowWorker{db: db}
 }
 
 func (fw *FlowWorker) ProcessEvent(envelope map[string]interface{}) {
@@ -39,12 +41,12 @@ func (fw *FlowWorker) HandleWhatsAppMessage(data FlowEventPayload, tenantID uuid
 
 	// 1. Check for Active Flow Session (Simplified logic for now)
 	// We would query FlowSessions table here
-	
-	// 2. Check for Triggers
-	var trigger models.Flow // Placeholder: assuming we have a Flow model with trigger logic
-	res := database.DB.Where("tenantId = ? AND triggerType = ? AND triggerValue = ?", 
-		tenantID, "whatsapp_message", data.MessageBody).First(&trigger)
-	
+
+	// 2. Check for Triggers (only active flows)
+	var trigger models.Flow
+	res := fw.db.Where("tenantId = ? AND triggerType = ? AND triggerValue = ? AND active = ?",
+		tenantID, "whatsapp_message", data.MessageBody, true).First(&trigger)
+
 	if res.Error == nil {
 		log.Printf("[FlowWorker] Trigger matched! Starting Flow %d", trigger.ID)
 		// fw.StartFlow(trigger.ID, data)

@@ -3,31 +3,45 @@ package controllers
 import (
 	"net/http"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/services"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func ListSettings(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+// SettingController encapsulates setting operations with RLS-scoped DB from auth middleware.
+// Tenant-scoped queries use auth.GetScoped; public settings use root DB for initial tenant lookup.
+type SettingController struct {
+	db        *gorm.DB
+	broadcast *services.RedisBroadcast
+}
+
+func NewSettingController(db *gorm.DB, broadcast *services.RedisBroadcast) *SettingController {
+	return &SettingController{db: db, broadcast: broadcast}
+}
+
+func (sc *SettingController) ListSettings(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Settings")
+	if !ok {
 		return
 	}
 
 	var settings []models.Setting
-	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Find(&settings).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch settings"})
+	if err := db.Where("\"tenantId\" = ?", tenantID).Find(&settings).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "ListSettings")
 		return
 	}
 
 	c.JSON(http.StatusOK, settings)
 }
 
-func GetPublicSettings(c *gin.Context) {
+// GetPublicSettings uses root DB because it runs BEFORE authentication (public route).
+// The first tenant's public branding keys are returned for the login page.
+func (sc *SettingController) GetPublicSettings(c *gin.Context) {
 	var tenant models.Tenant
-	if err := database.DB.Order("id ASC").First(&tenant).Error; err != nil {
+	if err := sc.db.Order("id ASC").First(&tenant).Error; err != nil {
 		c.JSON(http.StatusOK, []models.Setting{})
 		return
 	}
@@ -35,18 +49,17 @@ func GetPublicSettings(c *gin.Context) {
 	var settings []models.Setting
 	publicKeys := []string{"systemLogo", "login_backgroundImage", "login_layout", "systemFavicon"}
 
-	if err := database.DB.Where("key IN ? AND \"tenantId\" = ?", publicKeys, tenant.ID).Find(&settings).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch public settings"})
+	if err := sc.db.Where("key IN ? AND \"tenantId\" = ?", publicKeys, tenant.ID).Find(&settings).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "GetPublicSettings")
 		return
 	}
 
 	c.JSON(http.StatusOK, settings)
 }
 
-func UpdateSetting(c *gin.Context) {
-	tenantUUID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (sc *SettingController) UpdateSetting(c *gin.Context) {
+	db, tenantUUID, ok := auth.GetScoped(c, "Settings")
+	if !ok {
 		return
 	}
 	key := c.Param("key")
@@ -55,7 +68,7 @@ func UpdateSetting(c *gin.Context) {
 		Value string `json:"value" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
@@ -65,13 +78,12 @@ func UpdateSetting(c *gin.Context) {
 		Value:    req.Value,
 	}
 
-	if err := database.DB.Where("key = ? AND \"tenantId\" = ?", key, tenantUUID).Assign(models.Setting{Value: req.Value}).FirstOrCreate(&setting).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update setting"})
+	if err := db.Where("key = ? AND \"tenantId\" = ?", key, tenantUUID).Assign(models.Setting{Value: req.Value}).FirstOrCreate(&setting).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "UpdateSetting")
 		return
 	}
 
-	// Real-time broadcast
-	services.EmitToNamespace("/", "settings", map[string]interface{}{
+	sc.broadcast.EmitToNamespace("/", "settings", map[string]interface{}{
 		"action":  "update",
 		"setting": setting,
 	})

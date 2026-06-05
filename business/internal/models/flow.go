@@ -8,15 +8,17 @@ import (
 )
 
 type Flow struct {
-	ID         int            `gorm:"primaryKey" json:"id"`
-	Name       string         `json:"name"`
-	Nodes      datatypes.JSON `gorm:"type:json" json:"nodes"`
-	Edges      datatypes.JSON `gorm:"type:json" json:"edges"`
-	Active     bool           `gorm:"default:true" json:"active"`
-	WhatsAppID *int           `gorm:"column:whatsappId" json:"whatsappId"`
-	TenantID   uuid.UUID      `gorm:"column:tenantId;type:uuid" json:"tenantId"`
-	CreatedAt  time.Time      `gorm:"column:createdAt" json:"createdAt"`
-	UpdatedAt  time.Time      `gorm:"column:updatedAt" json:"updatedAt"`
+	ID           int            `gorm:"primaryKey" json:"id"`
+	Name         string         `json:"name"`
+	TriggerType  string         `gorm:"column:triggerType" json:"triggerType"`
+	TriggerValue string         `gorm:"column:triggerValue" json:"triggerValue"`
+	Nodes        datatypes.JSON `gorm:"type:json" json:"nodes"`
+	Edges        datatypes.JSON `gorm:"type:json" json:"edges"`
+	Active       bool           `json:"active"`
+	WhatsAppID   *int           `gorm:"column:whatsappId" json:"whatsappId"`
+	TenantID     uuid.UUID      `gorm:"column:tenantId;type:uuid" json:"tenantId"`
+	CreatedAt    time.Time      `gorm:"column:createdAt" json:"createdAt"`
+	UpdatedAt    time.Time      `gorm:"column:updatedAt" json:"updatedAt"`
 }
 
 func (Flow) TableName() string {

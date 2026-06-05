@@ -26,10 +26,12 @@ type RabbitMQService struct {
 	url     string
 }
 
-func NewRabbitMQService() *RabbitMQService {
-	url := os.Getenv("AMQP_URL")
+func NewRabbitMQProvider(url string) *RabbitMQService {
 	if url == "" {
-		url = "amqp://localhost:5672"
+		url = os.Getenv("AMQP_URL")
+		if url == "" {
+			url = "amqp://localhost:5672"
+		}
 	}
 	return &RabbitMQService{
 		url: url,

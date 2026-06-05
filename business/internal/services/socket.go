@@ -132,6 +132,7 @@ func SocketHandler(server *socketio.Server) http.Handler {
 
 // Cluster-aware Broadcast
 func EmitToRoom(nsp string, room string, event string, payload interface{}) {
+	log.Printf("[DEPRECATION WARNING] EmitToRoom called")
 	// 1. Emit locally
 	if Server != nil {
 		Server.BroadcastToRoom(nsp, room, event, payload)
@@ -146,6 +147,7 @@ func EmitToRoom(nsp string, room string, event string, payload interface{}) {
 }
 
 func EmitToNamespace(nsp string, event string, payload interface{}) {
+	log.Printf("[DEPRECATION WARNING] EmitToNamespace called")
 	// 1. Emit locally
 	if Server != nil {
 		Server.BroadcastToNamespace(nsp, event, payload)

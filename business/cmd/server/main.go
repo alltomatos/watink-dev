@@ -24,7 +24,6 @@ import (
 func main() {
 	_ = godotenv.Load()
 
-	// 0. Init OpenTelemetry
 	shutdown, err := services.InitTelemetry(context.Background())
 	if err != nil {
 		log.Printf("Warning: OTel init failed: %v", err)
@@ -33,59 +32,45 @@ func main() {
 	}
 
 	log.Println("Watink Business starting...")
-
-	// 1. Connect to Database
 	database.Connect()
 	database.Migrate()
 
-	// 1.1 Initialize application dependency container
-	controllers.InitContainer()
-	container := application.NewContainer(database.DB)
+	server := services.StartSocket()
+	// Instanciação explícita — Injeção via construtor (DI Pura)
+	redisSvc, err := services.NewRedisServiceFromEnv()
+	if err != nil {
+		log.Fatalf("Failed to initialize Redis: %v", err)
+	}
+	broadcast := services.NewRedisBroadcast(redisSvc, server)
+	broadcast.Start()
 
-	// 2. Connect to Redis
-	services.ConnectRedis()
-	services.SetupRedisBroadcast()
+	rabbitMQ := services.NewRabbitMQProvider(os.Getenv("AMQP_URL"))
+	container := application.NewContainer(database.DB, redisSvc, broadcast, rabbitMQ)
 
-	// 3. Connect to RabbitMQ
-	rabbitMQ := services.NewRabbitMQService()
-	services.SetRabbitMQService(rabbitMQ)
 	if err := rabbitMQ.Connect(); err == nil {
-		// 4. Start Workers
 		rabbitMQ.StartFlowWorker()
-		eventListener := services.NewEventListener(container.ReceiveMessage)
+		eventListener := services.NewEventListener(database.DB, container.ReceiveMessage)
 		services.StartEventListener(rabbitMQ, eventListener)
 	} else {
 		log.Printf("⚠️ Warning: RabbitMQ connection failed: %v", err)
 	}
 
-	// Start services
-	server := services.StartSocket()
-
 	r := gin.Default()
 
-	// 5. Global Middleware
 	r.Use(otelgin.Middleware("watink-business"))
 	r.Use(middleware.ObservabilityMiddleware())
 	r.Use(middleware.CORSMiddleware())
 
-	// Socket.IO Routes
 	r.GET("/socket.io/*any", gin.WrapH(server))
 	r.POST("/socket.io/*any", gin.WrapH(server))
 
-	// API Group
 	apiGroup := r.Group("/api/v1")
 	{
 		apiGroup.GET("/health", func(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "OK", "service": "watink-business"})
 		})
 
-		// Init integrated marketplace hub manager (replaces standalone plugin-manager service)
-		plugins.InitHubManager()
-
-		// Initialize Plugin SDK Manager
-		pluginManager := plugins.NewPluginManager(database.DB, apiGroup)
-
-		// Register Plugins
+		pluginManager := plugins.NewPluginManager(database.DB, apiGroup, container.HubManager)
 		pluginManager.Register(&plugins.HelpdeskPlugin{})
 		pluginManager.Register(&plugins.WebchatPlugin{})
 		pluginManager.Register(&plugins.ClientesPlugin{})
@@ -94,19 +79,17 @@ func main() {
 		routes.SetupRoutes(apiGroup, rabbitMQ, container)
 	}
 
-	// Compat routes (frontend without /v1 prefix)
 	r.GET("/api/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "OK", "service": "watink-business"})
 	})
-	r.GET("/api/initial-setup/check", controllers.CheckSetup)
-	r.POST("/api/initial-setup", controllers.InitialSetup)
+	setupCtrl := controllers.NewSetupController(database.DB, services.NewSetupService(database.DB), container.HubManager)
+	r.GET("/api/initial-setup/check", setupCtrl.CheckSetup)
+	r.POST("/api/initial-setup", setupCtrl.InitialSetup)
 
-	// Serve Frontend (Embed)
 	publicFS, _ := fs.Sub(web.StaticFiles, "build")
 
 	r.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
-
 		lowerPath := strings.ToLower(path)
 		if strings.HasPrefix(lowerPath, "/api") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "API route not found"})
@@ -123,7 +106,6 @@ func main() {
 			return
 		}
 
-		// SPA Fallback
 		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
 		index, err := fs.ReadFile(publicFS, "index.html")
 		if err != nil {

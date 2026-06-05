@@ -1,7 +1,8 @@
 package controllers
 
 import (
-	"fmt"
+	"errors"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -28,7 +29,7 @@ type LoginRequest struct {
 func (ac *AuthController) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
@@ -87,12 +88,14 @@ func (ac *AuthController) RefreshToken(c *gin.Context) {
 
 	token, err := jwt.Parse(refreshTokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			slog.Warn("Unexpected JWT signing method", "alg", token.Header["alg"])
+			return nil, errors.New("unexpected signing method")
 		}
 		return []byte(secret), nil
 	})
 
 	if err != nil || !token.Valid {
+		slog.Warn("Refresh token validation failed", "error", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
 		return
 	}

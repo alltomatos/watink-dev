@@ -4,12 +4,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/pkg/sdk"
 	"github.com/gin-gonic/gin"
 )
 
+// WebchatPlugin — DB via core.GetDB() (DI), zero acesso a database.DB global.
 type WebchatPlugin struct{}
 
 func (wp *WebchatPlugin) GetManifest() sdk.PluginManifest {
@@ -31,8 +31,9 @@ func (wp *WebchatPlugin) OnActivate(core sdk.WatinkCore) error {
 	// GET /api/webchat/:whatsappId
 	core.RegisterRoute("GET", "/webchat/:whatsappId", func(c *gin.Context) {
 		whatsappId := c.Param("whatsappId")
+		db := core.GetDB()
 		var whatsapp models.Whatsapp
-		if err := database.DB.First(&whatsapp, whatsappId).Error; err != nil {
+		if err := db.First(&whatsapp, whatsappId).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Webchat not found"})
 			return
 		}
@@ -47,6 +48,7 @@ func (wp *WebchatPlugin) OnActivate(core sdk.WatinkCore) error {
 	// POST /api/webchat/:whatsappId/tickets
 	core.RegisterRoute("POST", "/webchat/:whatsappId/tickets", func(c *gin.Context) {
 		whatsappId := c.Param("whatsappId")
+		db := core.GetDB()
 		var body struct {
 			Name    string `json:"name"`
 			Email   string `json:"email"`
@@ -59,14 +61,14 @@ func (wp *WebchatPlugin) OnActivate(core sdk.WatinkCore) error {
 		}
 
 		var whatsapp models.Whatsapp
-		if err := database.DB.First(&whatsapp, whatsappId).Error; err != nil {
+		if err := db.First(&whatsapp, whatsappId).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Webchat not found"})
 			return
 		}
 
 		// Find or Create Contact
 		var contact models.Contact
-		res := database.DB.Where("email = ? AND tenantId = ?", body.Email, whatsapp.TenantID).First(&contact)
+		res := db.Where("email = ? AND tenantId = ?", body.Email, whatsapp.TenantID).First(&contact)
 		if res.Error != nil {
 			number := body.Phone
 			if number == "" {
@@ -78,12 +80,12 @@ func (wp *WebchatPlugin) OnActivate(core sdk.WatinkCore) error {
 				Email:    body.Email,
 				TenantID: whatsapp.TenantID,
 			}
-			database.DB.Create(&contact)
+			db.Create(&contact)
 		}
 
 		// Simplified Ticket creation logic for the plugin
 		var ticket models.Ticket
-		database.DB.Where("contactId = ? AND whatsappId = ? AND status != ?", contact.ID, whatsapp.ID, "closed").First(&ticket)
+		db.Where("contactId = ? AND whatsappId = ? AND status != ?", contact.ID, whatsapp.ID, "closed").First(&ticket)
 		if ticket.ID == 0 {
 			ticket = models.Ticket{
 				ContactID:  contact.ID,
@@ -91,7 +93,7 @@ func (wp *WebchatPlugin) OnActivate(core sdk.WatinkCore) error {
 				Status:     "pending",
 				TenantID:   whatsapp.TenantID,
 			}
-			database.DB.Create(&ticket)
+			db.Create(&ticket)
 		}
 
 		// Emitting message to RabbitMQ would go here (omitted for brevity in this initial port)

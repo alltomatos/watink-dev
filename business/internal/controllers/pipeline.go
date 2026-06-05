@@ -1,122 +1,153 @@
 package controllers
 
 import (
-	"net/http"
 	"strings"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func ListPipelines(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+// PipelineController encapsulates pipeline operations with RLS-scoped DB from auth middleware.
+// All queries are automatically tenant-scoped via auth.GetScoped.
+type PipelineController struct{}
+
+func NewPipelineController() *PipelineController {
+	return &PipelineController{}
+}
+
+func (pc *PipelineController) List(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Pipelines")
+	if !ok {
 		return
 	}
 
 	var pipelines []models.Pipeline
-	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Preload("Stages").Find(&pipelines).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch pipelines"})
+	if err := db.Where("\"tenantId\" = ?", tenantID).Preload("Stages").Find(&pipelines).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "ListPipelines")
 		return
 	}
 
-	c.JSON(http.StatusOK, pipelines)
+	c.JSON(200, pipelines)
 }
 
-func CreatePipeline(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (pc *PipelineController) Create(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Pipelines")
+	if !ok {
 		return
 	}
 
-	var pipeline models.Pipeline
-	if err := c.ShouldBindJSON(&pipeline); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var input createPipelineInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
-	pipeline.TenantID = tenantID
-	if err := database.DB.Create(&pipeline).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create pipeline"})
-		return
+	pipeline := models.Pipeline{
+		Name:     input.Name,
+		TenantID: tenantID,
 	}
 
-	c.JSON(http.StatusOK, pipeline)
-}
-
-func UpdatePipeline(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
-		return
-	}
-	id := c.Param("pipelineId")
-
-	var pipeline models.Pipeline
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Preload("Stages").First(&pipeline).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Pipeline not found"})
-		return
-	}
-
-	var payload struct {
-		Name   string `json:"name"`
-		Stages []struct {
-			Name string `json:"name"`
-		} `json:"stages"`
-	}
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if strings.TrimSpace(payload.Name) != "" {
-		pipeline.Name = payload.Name
-	}
-	if err := database.DB.Save(&pipeline).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update pipeline"})
-		return
-	}
-
-	if payload.Stages != nil {
-		_ = database.DB.Where("\"pipelineId\" = ?", pipeline.ID).Delete(&models.PipelineStage{}).Error
-		for i, st := range payload.Stages {
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&pipeline).Error; err != nil {
+			return err
+		}
+		for i, st := range input.Stages {
 			if strings.TrimSpace(st.Name) == "" {
 				continue
 			}
-			_ = database.DB.Create(&models.PipelineStage{Name: st.Name, PipelineID: pipeline.ID, Order: i}).Error
+			if err := tx.Create(&models.PipelineStage{Name: st.Name, PipelineID: pipeline.ID, Order: i}).Error; err != nil {
+				return err
+			}
 		}
-		_ = database.DB.Where("id = ?", pipeline.ID).Preload("Stages").First(&pipeline).Error
+		return nil
+	})
+
+	if err != nil {
+		utils.RespondWithInternalError(c, err, "CreatePipeline")
+		return
 	}
 
-	c.JSON(http.StatusOK, pipeline)
+	db.Where("id = ?", pipeline.ID).Preload("Stages").First(&pipeline)
+	c.JSON(200, pipeline)
 }
 
-func ImportPipeline(c *gin.Context) {
-	// payload esperado do frontend já é compatível com criação
-	CreatePipeline(c)
-}
-
-func ExportPipeline(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (pc *PipelineController) Update(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Pipelines")
+	if !ok {
 		return
 	}
 	id := c.Param("pipelineId")
 
 	var pipeline models.Pipeline
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Preload("Stages").First(&pipeline).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Pipeline not found"})
+	if err := db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Preload("Stages").First(&pipeline).Error; err != nil {
+		c.JSON(404, gin.H{"error": "Pipeline not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, pipeline)
+	var input updatePipelineInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.RespondWithBindError(c, err)
+		return
+	}
+
+	if strings.TrimSpace(input.Name) != "" {
+		pipeline.Name = input.Name
+	}
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("\"tenantId\" = ?", tenantID).Save(&pipeline).Error; err != nil {
+			return err
+		}
+
+		if input.Stages != nil {
+			if err := tx.Where("\"pipelineId\" = ?", pipeline.ID).Delete(&models.PipelineStage{}).Error; err != nil {
+				return err
+			}
+			for i, st := range input.Stages {
+				if strings.TrimSpace(st.Name) == "" {
+					continue
+				}
+				if err := tx.Create(&models.PipelineStage{Name: st.Name, PipelineID: pipeline.ID, Order: i}).Error; err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		utils.RespondWithInternalError(c, err, "UpdatePipeline")
+		return
+	}
+
+	db.Where("id = ?", pipeline.ID).Preload("Stages").First(&pipeline)
+	c.JSON(200, pipeline)
 }
 
-func AISuggestPipeline(c *gin.Context) {
+func (pc *PipelineController) Import(c *gin.Context) {
+	pc.Create(c)
+}
+
+func (pc *PipelineController) Export(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Pipelines")
+	if !ok {
+		return
+	}
+	id := c.Param("pipelineId")
+
+	var pipeline models.Pipeline
+	if err := db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Preload("Stages").First(&pipeline).Error; err != nil {
+		c.JSON(404, gin.H{"error": "Pipeline not found"})
+		return
+	}
+
+	c.JSON(200, pipeline)
+}
+
+func (pc *PipelineController) AISuggest(c *gin.Context) {
 	var req struct {
 		Messages []struct {
 			Role    string `json:"role"`
@@ -124,7 +155,7 @@ func AISuggestPipeline(c *gin.Context) {
 		} `json:"messages"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
@@ -141,8 +172,22 @@ func AISuggestPipeline(c *gin.Context) {
 		stages = []string{"Novo", "Triagem", "Atendimento", "Resolvido"}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	c.JSON(200, gin.H{
 		"message": "Sugestão gerada com sucesso.",
 		"stages":  stages,
 	})
+}
+
+type createPipelineInput struct {
+	Name   string `json:"name"`
+	Stages []struct {
+		Name string `json:"name"`
+	} `json:"stages"`
+}
+
+type updatePipelineInput struct {
+	Name   string `json:"name"`
+	Stages []struct {
+		Name string `json:"name"`
+	} `json:"stages"`
 }

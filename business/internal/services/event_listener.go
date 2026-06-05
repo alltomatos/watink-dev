@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/application/usecases"
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/google/uuid"
 	"github.com/streadway/amqp"
@@ -18,11 +17,12 @@ import (
 )
 
 type EventListener struct {
+	db             *gorm.DB
 	receiveMessage *usecases.ReceiveMessageUseCase
 }
 
-func NewEventListener(rm *usecases.ReceiveMessageUseCase) *EventListener {
-	return &EventListener{receiveMessage: rm}
+func NewEventListener(db *gorm.DB, rm *usecases.ReceiveMessageUseCase) *EventListener {
+	return &EventListener{db: db, receiveMessage: rm}
 }
 
 func getSessionID(id string) int {
@@ -62,7 +62,7 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 
 		log.Printf("[EventListener] Event received: %s (Tenant: %s)", env.Type, env.TenantID)
 
-		return database.DB.Transaction(func(tx *gorm.DB) error {
+		return eventListener.db.Transaction(func(tx *gorm.DB) error {
 			if err := tx.Exec("SELECT set_config('app.current_tenant', ?, true)", tid.String()).Error; err != nil {
 				return err
 			}
@@ -143,7 +143,7 @@ func handleQrCode(tx *gorm.DB, payload json.RawMessage, tenantID uuid.UUID) erro
 	sessionID := getSessionID(p.SessionID)
 	if err := tx.Model(&models.Whatsapp{}).Where("id = ? AND \"tenantId\" = ?", sessionID, tenantID).Updates(map[string]interface{}{
 		"qrcode": p.QrCode,
-		"status": "QRCODE",
+		"status":  "QRCODE",
 	}).Error; err != nil {
 		log.Printf("Error updating qrcode/status for session %d: %v", sessionID, err)
 		return err

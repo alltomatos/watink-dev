@@ -1,9 +1,12 @@
 package controllers
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -15,7 +18,7 @@ type DashboardData struct {
 		Pending int64 `json:"pending"`
 		Closed  int64 `json:"closed"`
 	} `json:"tickets"`
-	Queues  []QueueCount `json:"queues"`
+	Queues []QueueCount `json:"queues"`
 	Metrics struct {
 		AvgResponseTime float64 `json:"avgResponseTime"` // in minutes
 		AvgWaitTime     float64 `json:"avgWaitTime"`     // in minutes
@@ -29,42 +32,23 @@ type QueueCount struct {
 }
 
 func GetDashboardData(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	var data DashboardData
+
+	db, tenantID, ok := auth.GetScoped(c, "Tickets")
+	if !ok {
 		return
 	}
 
-	var data DashboardData
-
-	// Use the scoped database from auth middleware
-	db := getDB(c)
-
-	// 1. Status Counts
-	db.Model(&models.Ticket{}).Where("\"tenantId\" = ? AND status = ?", tenantID, "open").Count(&data.Tickets.Open)
-	db.Model(&models.Ticket{}).Where("\"tenantId\" = ? AND status = ?", tenantID, "pending").Count(&data.Tickets.Pending)
-	db.Model(&models.Ticket{}).Where("\"tenantId\" = ? AND status = ?", tenantID, "closed").Count(&data.Tickets.Closed)
-
-	// 2. Queue Counts
-	var queueCounts []struct {
-		QueueID int
-		Count   int64
+	// 1. Status Counts — single GROUP BY instead of 3 separate COUNT queries
+	if err := fetchTicketStatusCounts(db, tenantID, &data.Tickets); err != nil {
+		utils.RespondWithInternalError(c, err, "dashboard ticket status counts")
+		return
 	}
-	db.Model(&models.Ticket{}).
-		Select("\"queueId\" as queue_id, count(*) as count").
-		Where("\"tenantId\" = ? AND \"queueId\" IS NOT NULL AND status != 'closed'", tenantID).
-		Group("\"queueId\"").
-		Scan(&queueCounts)
 
-	for _, qc := range queueCounts {
-		var queue models.Queue
-		if err := db.First(&queue, qc.QueueID).Error; err == nil {
-			data.Queues = append(data.Queues, QueueCount{
-				QueueID:   qc.QueueID,
-				QueueName: queue.Name,
-				Count:     qc.Count,
-			})
-		}
+	// 2. Queue Counts — JOIN eliminates N+1 loop
+	if err := fetchQueueCounts(db, tenantID, &data.Queues); err != nil {
+		utils.RespondWithInternalError(c, err, "dashboard queue counts")
+		return
 	}
 
 	// 3. Metrics (TMR / TME)
@@ -74,12 +58,57 @@ func GetDashboardData(c *gin.Context) {
 	c.JSON(http.StatusOK, data)
 }
 
+// fetchTicketStatusCounts populates the ticket status struct with a single
+// GROUP BY query instead of 3 individual COUNT queries.
+func fetchTicketStatusCounts(db *gorm.DB, tenantID uuid.UUID, target *struct {
+	Open    int64 `json:"open"`
+	Pending int64 `json:"pending"`
+	Closed  int64 `json:"closed"`
+}) error {
+	var counts []struct {
+		Status string
+		Count  int64
+	}
+	if err := db.Model(&models.Ticket{}).
+		Select("status, count(*) as count").
+		Where("\"tenantId\" = ?", tenantID).
+		Group("status").
+		Scan(&counts).Error; err != nil {
+		return err
+	}
+
+	for _, c := range counts {
+		switch c.Status {
+		case "open":
+			target.Open = c.Count
+		case "pending":
+			target.Pending = c.Count
+		case "closed":
+			target.Closed = c.Count
+		}
+	}
+	return nil
+}
+
+// fetchQueueCounts retrieves queue ticket counts with a single JOIN query,
+// eliminating the N+1 loop that previously called db.First() per queue.
+func fetchQueueCounts(db *gorm.DB, tenantID uuid.UUID, target *[]QueueCount) error {
+	return db.Model(&models.Ticket{}).
+		Select("q.id as queue_id, q.name as queue_name, count(t.id) as count").
+		Joins("JOIN \"Queues\" q ON q.id = t.\"queueId\"").
+		Where("t.\"tenantId\" = ? AND t.\"queueId\" IS NOT NULL AND t.status != 'closed'", tenantID).
+		Group("q.id, q.name").
+		Scan(target).Error
+}
+
+// calculateTMR computes the average response time (Tempo Médio de Resposta)
+// between a contact message and the first agent reply on the same ticket.
+// Returns 0 when no data exists or on query failure (logged via slog).
 func calculateTMR(tenantID uuid.UUID, db *gorm.DB) float64 {
 	var result struct {
 		AvgTime float64
 	}
 
-	// Complex SQL to calculate average time between Contact message and Agent response
 	query := `
 		WITH message_pairs AS (
 			SELECT
@@ -98,16 +127,22 @@ func calculateTMR(tenantID uuid.UUID, db *gorm.DB) float64 {
 		FROM message_pairs
 	`
 
-	db.Raw(query, tenantID).Scan(&result)
+	if err := db.Raw(query, tenantID).Scan(&result).Error; err != nil {
+		slog.Error("dashboard: calculateTMR failed",
+			"tenantId", tenantID, "error", err)
+		return 0
+	}
 	return result.AvgTime
 }
 
+// calculateTME computes the average wait time (Tempo Médio de Espera)
+// between ticket creation and the first agent reply.
+// Returns 0 when no data exists or on query failure (logged via slog).
 func calculateTME(tenantID uuid.UUID, db *gorm.DB) float64 {
 	var result struct {
 		AvgTime float64
 	}
 
-	// TME: Time between Ticket creation and first agent reply
 	query := `
 		WITH first_replies AS (
 			SELECT
@@ -123,6 +158,10 @@ func calculateTME(tenantID uuid.UUID, db *gorm.DB) float64 {
 		FROM first_replies
 	`
 
-	db.Raw(query, tenantID).Scan(&result)
+	if err := db.Raw(query, tenantID).Scan(&result).Error; err != nil {
+		slog.Error("dashboard: calculateTME failed",
+			"tenantId", tenantID, "error", err)
+		return 0
+	}
 	return result.AvgTime
 }

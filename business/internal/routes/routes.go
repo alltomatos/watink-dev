@@ -5,56 +5,83 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/controllers"
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
+	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(group *gin.RouterGroup, rabbitMQ domain.RabbitMQServiceInterface, container *application.Container) {
+type RouteRabbitMQ interface {
+	domain.CommandPublisher
+	domain.QueueMonitor
+}
+
+func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *application.Container) {
+	db := container.DB
 	messageController := controllers.NewMessageController(rabbitMQ)
-	userController := controllers.NewUserController(container.UserRepo)
+	systemController := controllers.NewSystemController(container.DB, rabbitMQ)
+	setupController := controllers.NewSetupController(container.DB, services.NewSetupService(container.DB), container.HubManager)
+	userController := controllers.NewUserController(container.UserRepo, container.DB)
+	queueController := controllers.NewQueueController()
 	contactController := controllers.NewContactController(container.ContactRepo)
-	sessionController := controllers.NewSessionController(container.ChannelSessionRepo)
-	ticketController := controllers.NewTicketController(container.UpdateTicket)
-	whatsappController := controllers.NewWhatsappController(container.ChannelSessionRepo)
+	sessionController := controllers.NewSessionController(container.ChannelSessionRepo, container.Broadcast, container.SessionService)
+	ticketController := controllers.NewTicketController(container.UpdateTicket, container.Broadcast)
+	whatsappController := controllers.NewWhatsappController(container.ChannelSessionRepo, container.DB, container.Broadcast, container.SessionService)
+	pluginController := controllers.NewPluginController(container.DB, container.HubManager)
 	authController := controllers.NewAuthController(container.UserRepo)
+	settingController := controllers.NewSettingController(container.DB, container.Broadcast)
+	tagController := controllers.NewTagController()
+	pipelineController := controllers.NewPipelineController()
+	kbController := controllers.NewKnowledgeBaseController()
+	groupController := controllers.NewGroupController(container.DB)
+	roleController := controllers.NewRoleController(container.DB)
+	flowController := controllers.NewFlowController()
+	quickAnswerController := controllers.NewQuickAnswerController()
+	versionController := controllers.NewVersionController(container.DB)
+	swaggerController := controllers.NewSwaggerController(container.DB)
+
 	// Public Routes
 	group.POST("/auth/login", authController.Login)
 	group.POST("/auth/refresh_token", authController.RefreshToken)
-	group.GET("/public-settings", controllers.GetPublicSettings)
-	group.GET("/initial-setup/check", controllers.CheckSetup)
-	group.POST("/initial-setup", controllers.InitialSetup)
+	group.GET("/public-settings", settingController.GetPublicSettings)
+	group.GET("/initial-setup/check", setupController.CheckSetup)
+	group.POST("/initial-setup", setupController.InitialSetup)
 	group.GET("/system/maintenance", controllers.GetMaintenanceStatus)
 
 	// Swagger / API docs
-	group.GET("/docs", controllers.SwaggerUI)
-	group.GET("/swagger.json", controllers.SwaggerJSON)
+	group.GET("/docs", swaggerController.SwaggerUI)
+	group.GET("/swagger.json", swaggerController.SwaggerJSON)
 
-	// Business Marketplace Support
-	group.GET("/plugins/catalog", controllers.PluginsCatalog)
-	group.GET("/plugins/installed", controllers.PluginsInstalled)
-	group.POST("/plugins/checkout", controllers.PluginsCheckout)
-	group.GET("/plugins/instance", controllers.PluginsInstance)
-
-	// Protected Routes
+	// Protected Routes (IsAuth + TenantMiddleware required)
 	protected := group.Group("/")
 	protected.Use(controllers.MaintenanceMiddleware())
-	protected.Use(middleware.IsAuth())
+	protected.Use(middleware.IsAuth(db))
 	protected.Use(middleware.TenantMiddleware())
 	{
-	// System (superadmin only — exposes cross-tenant stats and infrastructure)
-	system := protected.Group("/system")
-	system.Use(middleware.SuperAdminOnly())
-	{
-		system.GET("/stats", controllers.GetSystemStats)
-		system.GET("/rabbitmq/queues", controllers.GetRabbitMQQueues)
-		system.GET("/latest-release", controllers.GetLatestRelease)
-		system.POST("/update", controllers.StartUpdate)
-	}
+		// System (superadmin only — exposes cross-tenant stats and infrastructure)
+		system := protected.Group("/system")
+		system.Use(middleware.SuperAdminOnly())
+		{
+			system.GET("/stats", systemController.GetSystemStats)
+			system.GET("/rabbitmq/queues", systemController.GetRabbitMQQueues)
+			system.GET("/latest-release", controllers.GetLatestRelease)
+			system.GET("/version", versionController.GetVersion)
+			system.GET("/version/postgres", versionController.GetPostgresVersion)
+			system.GET("/version/rabbitmq", versionController.GetRabbitMQVersion)
+			system.GET("/version/redis", versionController.GetRedisVersion)
+			system.POST("/update", controllers.StartUpdate)
+		}
+
+		// Plugins (tenant-scoped — moved inside protected group)
+		protected.GET("/plugins/catalog", pluginController.Catalog)
+		protected.GET("/plugins/installed", pluginController.Installed)
+		protected.POST("/plugins/checkout", pluginController.Checkout)
+		protected.GET("/plugins/instance", pluginController.Instance)
+
 		// Auth
 		protected.DELETE("/auth/logout", authController.Logout)
 
 		// Settings
-		protected.GET("/settings", controllers.ListSettings)
-		protected.PUT("/settings/:key", controllers.UpdateSetting)
+		protected.GET("/settings", settingController.ListSettings)
+		protected.PUT("/settings/:key", settingController.UpdateSetting)
 
 		// Tickets
 		protected.GET("/tickets", ticketController.ListTickets)
@@ -94,32 +121,32 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ domain.RabbitMQServiceInterfac
 		protected.DELETE("/contacts/:contactId", contactController.DeleteContact)
 
 		// Queues
-		protected.GET("/queue", controllers.ListQueues)
-		protected.GET("/queue/", controllers.ListQueues)
-		protected.GET("/queue/:queueId", controllers.ShowQueue)
-		protected.POST("/queue", controllers.CreateQueue)
-		protected.POST("/queue/", controllers.CreateQueue)
-		protected.PUT("/queue/:queueId", controllers.UpdateQueue)
-		protected.DELETE("/queue/:queueId", controllers.DeleteQueue)
+		protected.GET("/queue", queueController.ListQueues)
+		protected.GET("/queue/", queueController.ListQueues)
+		protected.GET("/queue/:queueId", queueController.ShowQueue)
+		protected.POST("/queue", queueController.CreateQueue)
+		protected.POST("/queue/", queueController.CreateQueue)
+		protected.PUT("/queue/:queueId", queueController.UpdateQueue)
+		protected.DELETE("/queue/:queueId", queueController.DeleteQueue)
 
 		// Quick Answers
-		protected.GET("/quickAnswers", controllers.ListQuickAnswers)
-		protected.GET("/quickAnswers/", controllers.ListQuickAnswers)
-		protected.GET("/quickAnswers/:quickAnswerId", controllers.ShowQuickAnswer)
-		protected.POST("/quickAnswers", controllers.CreateQuickAnswer)
-		protected.POST("/quickAnswers/", controllers.CreateQuickAnswer)
-		protected.PUT("/quickAnswers/:quickAnswerId", controllers.UpdateQuickAnswer)
-		protected.DELETE("/quickAnswers/:quickAnswerId", controllers.DeleteQuickAnswer)
+		protected.GET("/quickAnswers", quickAnswerController.List)
+		protected.GET("/quickAnswers/", quickAnswerController.List)
+		protected.GET("/quickAnswers/:quickAnswerId", quickAnswerController.Show)
+		protected.POST("/quickAnswers", quickAnswerController.Create)
+		protected.POST("/quickAnswers/", quickAnswerController.Create)
+		protected.PUT("/quickAnswers/:quickAnswerId", quickAnswerController.Update)
+		protected.DELETE("/quickAnswers/:quickAnswerId", quickAnswerController.Delete)
 
 		// Knowledge Bases
-		protected.GET("/knowledge-bases", controllers.ListKnowledgeBases)
-		protected.GET("/knowledge-bases/", controllers.ListKnowledgeBases)
-		protected.GET("/knowledge-bases/:knowledgeBaseId", controllers.ShowKnowledgeBase)
-		protected.POST("/knowledge-bases", controllers.CreateKnowledgeBase)
-		protected.PUT("/knowledge-bases/:knowledgeBaseId", controllers.UpdateKnowledgeBase)
-		protected.DELETE("/knowledge-bases/:knowledgeBaseId", controllers.DeleteKnowledgeBase)
-		protected.POST("/knowledge-bases/:knowledgeBaseId/sources", controllers.CreateKnowledgeBaseSource)
-		protected.DELETE("/knowledge-bases/:knowledgeBaseId/sources/:sourceId", controllers.DeleteKnowledgeBaseSource)
+		protected.GET("/knowledge-bases", kbController.List)
+		protected.GET("/knowledge-bases/", kbController.List)
+		protected.GET("/knowledge-bases/:knowledgeBaseId", kbController.Show)
+		protected.POST("/knowledge-bases", kbController.Create)
+		protected.PUT("/knowledge-bases/:knowledgeBaseId", kbController.Update)
+		protected.DELETE("/knowledge-bases/:knowledgeBaseId", kbController.Delete)
+		protected.POST("/knowledge-bases/:knowledgeBaseId/sources", kbController.CreateSource)
+		protected.DELETE("/knowledge-bases/:knowledgeBaseId/sources/:sourceId", kbController.DeleteSource)
 
 		// Users
 		protected.GET("/users", userController.ListUsers)
@@ -140,42 +167,42 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ domain.RabbitMQServiceInterfac
 		}
 
 		// RBAC
-		protected.GET("/groups", controllers.ListGroups)
-		protected.POST("/groups", controllers.CreateGroup)
-		protected.GET("/groups/:groupId", controllers.ShowGroup)
-		protected.PUT("/groups/:groupId", controllers.UpdateGroup)
-		protected.DELETE("/groups/:groupId", controllers.DeleteGroup)
-		protected.GET("/permissions", controllers.ListPermissions)
+		protected.GET("/groups", groupController.List)
+		protected.POST("/groups", groupController.Create)
+		protected.GET("/groups/:groupId", groupController.Show)
+		protected.PUT("/groups/:groupId", groupController.Update)
+		protected.DELETE("/groups/:groupId", groupController.Delete)
+		protected.GET("/permissions", groupController.ListPermissions)
 
 		// Roles
-		protected.GET("/roles", controllers.ListRoles)
-		protected.POST("/roles", controllers.CreateRole)
-		protected.GET("/roles/:roleId", controllers.ShowRole)
-		protected.PUT("/roles/:roleId", controllers.UpdateRole)
-		protected.DELETE("/roles/:roleId", controllers.DeleteRole)
+		protected.GET("/roles", roleController.List)
+		protected.POST("/roles", roleController.Create)
+		protected.GET("/roles/:roleId", roleController.Show)
+		protected.PUT("/roles/:roleId", roleController.Update)
+		protected.DELETE("/roles/:roleId", roleController.Delete)
 
 		// Flows
-		protected.GET("/flows", controllers.ListFlows)
-		protected.POST("/flows", controllers.CreateFlow)
-		protected.GET("/flows/:flowId", controllers.ShowFlow)
-		protected.PUT("/flows/:flowId", controllers.UpdateFlow)
-		protected.DELETE("/flows/:flowId", controllers.DeleteFlow)
+		protected.GET("/flows", flowController.List)
+		protected.POST("/flows", flowController.Create)
+		protected.GET("/flows/:flowId", flowController.Show)
+		protected.PUT("/flows/:flowId", flowController.Update)
+		protected.DELETE("/flows/:flowId", flowController.Delete)
 
 		// Tags
-		protected.GET("/tags", controllers.ListTags)
-		protected.POST("/tags", controllers.CreateTag)
-		protected.PUT("/tags/:id", controllers.UpdateTag)
-		protected.DELETE("/tags/:id", controllers.DeleteTag)
-		protected.GET("/tag-groups", controllers.ListTagGroups)
-		protected.PUT("/entities/:entityType/:id/tags/sync", controllers.SyncEntityTags)
+		protected.GET("/tags", tagController.List)
+		protected.POST("/tags", tagController.Create)
+		protected.PUT("/tags/:id", tagController.Update)
+		protected.DELETE("/tags/:id", tagController.Delete)
+		protected.GET("/tag-groups", tagController.ListGroups)
+		protected.PUT("/entities/:entityType/:id/tags/sync", tagController.SyncEntityTags)
 
 		// Pipelines
-		protected.GET("/pipelines", controllers.ListPipelines)
-		protected.GET("/pipelines/", controllers.ListPipelines)
-		protected.POST("/pipelines", controllers.CreatePipeline)
-		protected.PUT("/pipelines/:pipelineId", controllers.UpdatePipeline)
-		protected.POST("/pipelines/import", controllers.ImportPipeline)
-		protected.GET("/pipelines/export/:pipelineId", controllers.ExportPipeline)
-		protected.POST("/pipelines/ai-suggest", controllers.AISuggestPipeline)
+		protected.GET("/pipelines", pipelineController.List)
+		protected.GET("/pipelines/", pipelineController.List)
+		protected.POST("/pipelines", pipelineController.Create)
+		protected.PUT("/pipelines/:pipelineId", pipelineController.Update)
+		protected.POST("/pipelines/import", pipelineController.Import)
+		protected.GET("/pipelines/export/:pipelineId", pipelineController.Export)
+		protected.POST("/pipelines/ai-suggest", pipelineController.AISuggest)
 	}
 }

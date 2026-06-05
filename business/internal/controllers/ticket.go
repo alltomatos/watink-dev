@@ -7,22 +7,32 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/application/usecases"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/services"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
 type TicketController struct {
 	updateTicket *usecases.UpdateTicketUseCase
+	broadcast    *services.RedisBroadcast
 }
 
-func NewTicketController(ut *usecases.UpdateTicketUseCase) *TicketController {
-	return &TicketController{updateTicket: ut}
+func NewTicketController(ut *usecases.UpdateTicketUseCase, broadcast *services.RedisBroadcast) *TicketController {
+	return &TicketController{
+		updateTicket: ut,
+		broadcast:    broadcast,
+	}
 }
 
 func (tc *TicketController) ListTickets(c *gin.Context) {
+	db, _, ok := auth.GetScoped(c, "Tickets")
+	if !ok {
+		return
+	}
 	userProfile, _ := c.Get("userProfile")
 
 	var tickets []models.Ticket
-	query := getScopedDB(c, "Tickets").
+	query := db.
 		Preload("Contact").
 		Preload("User").
 		Order("\"updatedAt\" DESC")
@@ -64,7 +74,7 @@ func (tc *TicketController) ListTickets(c *gin.Context) {
 	}
 
 	if err := query.Find(&tickets).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tickets"})
+		utils.RespondWithInternalError(c, err, "ListTickets")
 		return
 	}
 
@@ -76,10 +86,14 @@ func (tc *TicketController) ListTickets(c *gin.Context) {
 }
 
 func (tc *TicketController) ShowTicket(c *gin.Context) {
+	db, _, ok := auth.GetScoped(c, "Tickets")
+	if !ok {
+		return
+	}
 	ticketID := c.Param("ticketId")
 
 	var ticket models.Ticket
-	if err := getScopedDB(c, "Tickets").Where("id = ?", ticketID).
+	if err := db.Where("id = ?", ticketID).
 		Preload("Contact").
 		Preload("User").
 		First(&ticket).Error; err != nil {
@@ -91,15 +105,14 @@ func (tc *TicketController) ShowTicket(c *gin.Context) {
 }
 
 func (tc *TicketController) UpdateTicket(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	db, tenantID, ok := auth.GetScoped(c, "Tickets")
+	if !ok {
 		return
 	}
 	id := c.Param("ticketId")
 
 	var ticket models.Ticket
-	if err := getScopedDB(c, "Tickets").Where("id = ?", id).First(&ticket).Error; err != nil {
+	if err := db.Where("id = ?", id).First(&ticket).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ticket not found or access denied"})
 		return
 	}
@@ -111,7 +124,7 @@ func (tc *TicketController) UpdateTicket(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
@@ -130,24 +143,28 @@ func (tc *TicketController) UpdateTicket(c *gin.Context) {
 
 	updatedTicket, err := tc.updateTicket.Execute(c.Request.Context(), updateInput)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update ticket"})
+		utils.RespondWithInternalError(c, err, "UpdateTicket")
 		return
 	}
 
-	services.EmitToNamespace("/", "ticket", gin.H{"action": "update", "ticket": updatedTicket})
+	tc.broadcast.EmitToNamespace("/", "ticket", gin.H{"action": "update", "ticket": updatedTicket})
 	c.JSON(http.StatusOK, updatedTicket)
 }
 
 func (tc *TicketController) ListTicketLogs(c *gin.Context) {
+	db, _, ok := auth.GetScoped(c, "Tickets")
+	if !ok {
+		return
+	}
 	ticketID := c.Param("ticketId")
 
 	var logs []models.TicketLog
-	if err := getScopedDB(c, "Tickets").Table("TicketLogs").
+	if err := db.Table("TicketLogs").
 		Where("\"ticketId\" = ?", ticketID).
 		Preload("User").
 		Order("\"createdAt\" DESC").
 		Find(&logs).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch logs"})
+		utils.RespondWithInternalError(c, err, "ListTicketLogs")
 		return
 	}
 

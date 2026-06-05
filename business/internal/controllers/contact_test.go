@@ -17,6 +17,17 @@ import (
 	"gorm.io/gorm"
 )
 
+// testScopedMiddleware simula o middleware de autenticação injetando DB, tenantId e userProfile.
+func testScopedMiddleware(db *gorm.DB, tenantID string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("tenantId", tenantID)
+		c.Set("userProfile", "admin")
+		c.Set("userId", 1)
+		c.Next()
+	}
+}
+
 func TestUpdateContactDoesNotAcceptTenantIDFromPayload(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -63,11 +74,8 @@ func TestUpdateContactDoesNotAcceptTenantIDFromPayload(t *testing.T) {
 	}
 
 	router := gin.New()
-	router.PUT("/contacts/:contactId", func(c *gin.Context) {
-		c.Set("tenantId", tenantA.String())
-		c.Set("userProfile", "admin")
-		controller.UpdateContact(c)
-	})
+	router.Use(testScopedMiddleware(db, tenantA.String()))
+	router.PUT("/contacts/:contactId", controller.UpdateContact)
 
 	req := httptest.NewRequest(http.MethodPut, "/contacts/"+strconv.Itoa(contact.ID), bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
