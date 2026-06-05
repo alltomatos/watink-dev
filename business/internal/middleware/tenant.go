@@ -4,27 +4,37 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
+// TenantMiddleware validates that the authenticated user's tenant context
+// is properly set. The tenantId MUST come exclusively from the JWT token
+// (set by IsAuth middleware). This middleware REJECTS any x-tenant-id
+// header to prevent Tenant Impersonation attacks.
+//
+// Chain order: IsAuth → TenantMiddleware → (handlers)
 func TenantMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tenantIDStr := c.GetHeader("x-tenant-id")
-		if tenantIDStr == "" {
-			// For public routes, we might allow no tenantID
-			// But for protected routes, it's required
-			c.Next()
-			return
-		}
-
-		tenantID, err := uuid.Parse(tenantIDStr)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		// SECURITY: Reject x-tenant-id header — the ONLY source of truth
+		// for tenant identity is the JWT token, set by IsAuth middleware.
+		// Allowing client-supplied headers enables cross-tenant impersonation.
+		if c.GetHeader("x-tenant-id") != "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "x-tenant-id header is not accepted; tenant identity is derived from the JWT token",
+			})
 			c.Abort()
 			return
 		}
 
-		c.Set("tenantId", tenantID)
+		// Verify that IsAuth has already set the tenantId from the JWT.
+		// If missing, the request is unauthenticated or middleware order is wrong.
+		if _, exists := c.Get("tenantId"); !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "tenant context not found — ensure IsAuth middleware runs before TenantMiddleware",
+			})
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }

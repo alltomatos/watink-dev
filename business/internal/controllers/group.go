@@ -1,136 +1,185 @@
 package controllers
 
 import (
-	"net/http"
-
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func ListGroups(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+// GroupController encapsulates group/RBAC operations with RLS-scoped DB from auth middleware.
+// Retains root DB (gc.db) for global Permission lookups — Permissions are tenant-agnostic.
+type GroupController struct {
+	db *gorm.DB
+}
+
+func NewGroupController(db *gorm.DB) *GroupController {
+	return &GroupController{db: db}
+}
+
+func (gc *GroupController) List(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Groups")
+	if !ok {
 		return
 	}
 
 	var groups []models.Group
-	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Find(&groups).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch groups"})
+	if err := db.Where("\"tenantId\" = ?", tenantID).Find(&groups).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "ListGroups")
 		return
 	}
 
-	c.JSON(http.StatusOK, groups)
+	c.JSON(200, groups)
 }
 
-func ListPermissions(c *gin.Context) {
+// ListPermissions returns global permissions catalog.
+// Uses gc.db (root DB) because Permissions are NOT tenant-scoped —
+// auth.GetScoped(c, "Groups") would apply RLS and produce zero results for non-superadmins.
+func (gc *GroupController) ListPermissions(c *gin.Context) {
 	var permissions []models.Permission
-	if err := database.DB.Find(&permissions).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch permissions"})
+	if err := gc.db.Find(&permissions).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "ListPermissions")
 		return
 	}
-
-	c.JSON(http.StatusOK, permissions)
+	c.JSON(200, permissions)
 }
 
-func ShowGroup(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (gc *GroupController) Show(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Groups")
+	if !ok {
 		return
 	}
 	id := c.Param("groupId")
 
 	var group models.Group
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).
+	if err := db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).
 		Preload("Permissions").
 		Preload("Roles").
 		First(&group).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Group not found"})
+		c.JSON(404, gin.H{"error": "Group not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, group)
+	c.JSON(200, group)
 }
 
-func CreateGroup(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
-		return
-	}
-
-	var group models.Group
-	if err := c.ShouldBindJSON(&group); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	group.TenantID = tenantID
-	if err := database.DB.Create(&group).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create group"})
-		return
-	}
-
-	c.JSON(http.StatusOK, group)
+type createGroupInput struct {
+	Name string `json:"name" binding:"required"`
 }
 
-func UpdateGroup(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
-		return
-	}
-	id := c.Param("groupId")
-
-	var group models.Group
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&group).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Group not found"})
+func (gc *GroupController) Create(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Groups")
+	if !ok {
 		return
 	}
 
-	var req struct {
-		Name        string `json:"name"`
-		Permissions []int  `json:"permissions"`
-		Roles       []int  `json:"roles"`
-	}
-
+	var req createGroupInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
-	group.Name = req.Name
-	database.DB.Save(&group)
-
-	if req.Permissions != nil {
-		var permissions []models.Permission
-		database.DB.Where("id IN ?", req.Permissions).Find(&permissions)
-		database.DB.Model(&group).Association("Permissions").Replace(permissions)
+	group := models.Group{
+		Name:     req.Name,
+		TenantID: tenantID,
 	}
 
-	if req.Roles != nil {
-		var roles []models.Role
-		database.DB.Where("id IN ?", req.Roles).Find(&roles)
-		database.DB.Model(&group).Association("Roles").Replace(roles)
+	if err := db.Create(&group).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "CreateGroup")
+		return
 	}
 
-	c.JSON(http.StatusOK, group)
+	c.JSON(200, group)
 }
 
-func DeleteGroup(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+type updateGroupInput struct {
+	Name        string `json:"name"`
+	Permissions []int  `json:"permissions"`
+	Roles       []int  `json:"roles"`
+}
+
+func (gc *GroupController) Update(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Groups")
+	if !ok {
 		return
 	}
 	id := c.Param("groupId")
 
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Delete(&models.Group{}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete group"})
+	var req updateGroupInput
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Group deleted successfully"})
+	var group models.Group
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&group).Error; err != nil {
+			return err
+		}
+
+		if req.Name != "" {
+			group.Name = req.Name
+		}
+		if err := tx.Where("\"tenantId\" = ?", tenantID).Save(&group).Error; err != nil {
+			return err
+		}
+
+		if req.Permissions != nil {
+			var permissions []models.Permission
+			if err := gc.db.Where("id IN ?", req.Permissions).Find(&permissions).Error; err != nil {
+				return err
+			}
+			if len(permissions) != len(req.Permissions) {
+				return gorm.ErrRecordNotFound
+			}
+			if err := tx.Model(&group).Association("Permissions").Replace(permissions); err != nil {
+				return err
+			}
+		}
+
+		if req.Roles != nil {
+			var roles []models.Role
+			if err := tx.Where("id IN ? AND \"tenantId\" = ?", req.Roles, tenantID).Find(&roles).Error; err != nil {
+				return err
+			}
+			if len(roles) != len(req.Roles) {
+				return gorm.ErrRecordNotFound
+			}
+			if err := tx.Model(&group).Association("Roles").Replace(roles); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(400, gin.H{"error": "Invalid group, role or permission for this tenant"})
+			return
+		}
+		utils.RespondWithInternalError(c, err, "UpdateGroup")
+		return
+	}
+
+	c.JSON(200, group)
+}
+
+func (gc *GroupController) Delete(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Groups")
+	if !ok {
+		return
+	}
+	id := c.Param("groupId")
+
+	result := db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Delete(&models.Group{})
+	if result.Error != nil {
+		utils.RespondWithInternalError(c, result.Error, "DeleteGroup")
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(404, gin.H{"error": "Group not found"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "Group deleted successfully"})
 }

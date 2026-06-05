@@ -4,37 +4,44 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
-func ListKnowledgeBases(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+// KnowledgeBaseController encapsulates knowledge base operations with RLS-scoped DB from auth middleware.
+// All queries are automatically tenant-scoped via auth.GetDB(c).
+type KnowledgeBaseController struct{}
+
+func NewKnowledgeBaseController() *KnowledgeBaseController {
+	return &KnowledgeBaseController{}
+}
+
+func (kbc *KnowledgeBaseController) List(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
+	if !ok {
 		return
 	}
 
 	var knowledgeBases []models.KnowledgeBase
-	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Find(&knowledgeBases).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch knowledge bases"})
+	if err := db.Where("\"tenantId\" = ?", tenantID).Find(&knowledgeBases).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "Failed to fetch knowledge bases")
 		return
 	}
 
 	c.JSON(http.StatusOK, knowledgeBases)
 }
 
-func ShowKnowledgeBase(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (kbc *KnowledgeBaseController) Show(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
+	if !ok {
 		return
 	}
 	id := c.Param("knowledgeBaseId")
 
 	var knowledgeBase models.KnowledgeBase
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Preload("Sources").First(&knowledgeBase).Error; err != nil {
+	if err := db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Preload("Sources").First(&knowledgeBase).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Knowledge base not found"})
 		return
 	}
@@ -42,85 +49,100 @@ func ShowKnowledgeBase(c *gin.Context) {
 	c.JSON(http.StatusOK, knowledgeBase)
 }
 
-func CreateKnowledgeBase(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
-		return
-	}
-
-	var knowledgeBase models.KnowledgeBase
-	if err := c.ShouldBindJSON(&knowledgeBase); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	knowledgeBase.TenantID = tenantID
-	if err := database.DB.Create(&knowledgeBase).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create knowledge base"})
-		return
-	}
-
-	c.JSON(http.StatusOK, knowledgeBase)
+type createKnowledgeBaseInput struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
-func UpdateKnowledgeBase(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (kbc *KnowledgeBaseController) Create(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
+	if !ok {
+		return
+	}
+
+	var input createKnowledgeBaseInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.RespondWithBindError(c, err)
+		return
+	}
+
+	kb := models.KnowledgeBase{
+		Name:        input.Name,
+		Description: input.Description,
+		TenantID:    tenantID,
+	}
+	if err := db.Create(&kb).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "CreateKnowledgeBase")
+		return
+	}
+
+	c.JSON(http.StatusOK, kb)
+}
+
+type updateKnowledgeBaseInput struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+func (kbc *KnowledgeBaseController) Update(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
+	if !ok {
 		return
 	}
 	id := c.Param("knowledgeBaseId")
 
-	var knowledgeBase models.KnowledgeBase
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&knowledgeBase).Error; err != nil {
+	var kb models.KnowledgeBase
+	if err := db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&kb).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Knowledge base not found"})
 		return
 	}
 
-	var payload models.KnowledgeBase
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var input updateKnowledgeBaseInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
-	knowledgeBase.Name = payload.Name
-	knowledgeBase.Description = payload.Description
+	kb.Name = input.Name
+	kb.Description = input.Description
 
-	if err := database.DB.Save(&knowledgeBase).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update knowledge base"})
+	if err := db.Where("\"tenantId\" = ?", tenantID).Save(&kb).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "UpdateKnowledgeBase")
 		return
 	}
 
-	c.JSON(http.StatusOK, knowledgeBase)
+	c.JSON(http.StatusOK, kb)
 }
 
-func DeleteKnowledgeBase(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (kbc *KnowledgeBaseController) Delete(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
+	if !ok {
 		return
 	}
 	id := c.Param("knowledgeBaseId")
 
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Delete(&models.KnowledgeBase{}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete knowledge base"})
+	result := db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Delete(&models.KnowledgeBase{})
+	if result.Error != nil {
+		utils.RespondWithInternalError(c, result.Error, "DeleteKnowledgeBase")
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Knowledge base not found"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Knowledge base deleted"})
 }
 
-func CreateKnowledgeBaseSource(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
+	if !ok {
 		return
 	}
 	knowledgeBaseID := c.Param("knowledgeBaseId")
 
 	var kb models.KnowledgeBase
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", knowledgeBaseID, tenantID).First(&kb).Error; err != nil {
+	if err := db.Where("id = ? AND \"tenantId\" = ?", knowledgeBaseID, tenantID).First(&kb).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Knowledge base not found"})
 		return
 	}
@@ -148,31 +170,30 @@ func CreateKnowledgeBaseSource(c *gin.Context) {
 		Status:          "ready",
 	}
 
-	if err := database.DB.Create(&source).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create source"})
+	if err := db.Create(&source).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "CreateKnowledgeBaseSource")
 		return
 	}
 
 	c.JSON(http.StatusOK, source)
 }
 
-func DeleteKnowledgeBaseSource(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (kbc *KnowledgeBaseController) DeleteSource(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
+	if !ok {
 		return
 	}
 	knowledgeBaseID := c.Param("knowledgeBaseId")
 	sourceID := c.Param("sourceId")
 
 	var source models.KnowledgeBaseSource
-	if err := database.DB.Where("id = ? AND \"knowledgeBaseId\" = ? AND \"tenantId\" = ?", sourceID, knowledgeBaseID, tenantID).First(&source).Error; err != nil {
+	if err := db.Where("id = ? AND \"knowledgeBaseId\" = ? AND \"tenantId\" = ?", sourceID, knowledgeBaseID, tenantID).First(&source).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Source not found"})
 		return
 	}
 
-	if err := database.DB.Delete(&source).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete source"})
+	if err := db.Delete(&source).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "DeleteKnowledgeBaseSource")
 		return
 	}
 

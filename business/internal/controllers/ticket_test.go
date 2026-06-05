@@ -60,12 +60,13 @@ func setupTicketControllerTest(t *testing.T) (*gorm.DB, *TicketController) {
 		t.Fatal(err)
 	}
 
-	// DI pura: instanciar dependências
+	// DI pura: instanciar dependências via construtores
 	ticketRepo := repository.NewGORMTicketRepo(db)
 	eventBus := &noopEventBus{}
-	// Use cases opcionais podem ser nil para este teste
 	updateUseCase := usecases.NewUpdateTicketUseCase(ticketRepo, eventBus, nil, nil)
-	controller := NewTicketController(updateUseCase)
+
+	// broadcast nil = sem emissão socket (teste unitário, sem Redis/Socket.IO)
+	controller := NewTicketController(updateUseCase, nil)
 
 	return db, controller
 }
@@ -100,7 +101,7 @@ func TestUpdateTicketRejectsCrossTenantAccess(t *testing.T) {
 	router.ServeHTTP(res, req)
 
 	if res.Code != http.StatusNotFound {
-		t.Fatalf("status = %d, body = %s", res.Code, res.Body.String())
+		t.Fatalf("expected 404, got status=%d body=%s", res.Code, res.Body.String())
 	}
 
 	var unchanged models.Ticket
@@ -108,7 +109,7 @@ func TestUpdateTicketRejectsCrossTenantAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	if unchanged.Status != "pending" {
-		t.Fatalf("status changed to %s", unchanged.Status)
+		t.Fatalf("cross-tenant update leaked: status changed to %s", unchanged.Status)
 	}
 
 	var logCount int64
@@ -116,7 +117,7 @@ func TestUpdateTicketRejectsCrossTenantAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	if logCount != 0 {
-		t.Fatalf("created %d ticket logs", logCount)
+		t.Fatalf("cross-tenant access created %d ticket logs (expected 0)", logCount)
 	}
 }
 
@@ -144,7 +145,7 @@ func TestUpdateTicketCreatesTenantScopedLog(t *testing.T) {
 	router.ServeHTTP(res, req)
 
 	if res.Code != http.StatusOK {
-		t.Fatalf("status = %d, body = %s", res.Code, res.Body.String())
+		t.Fatalf("expected 200, got status=%d body=%s", res.Code, res.Body.String())
 	}
 
 	var updated models.Ticket
@@ -152,18 +153,18 @@ func TestUpdateTicketCreatesTenantScopedLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	if updated.Status != "closed" {
-		t.Fatalf("status = %s", updated.Status)
+		t.Fatalf("status=%s, expected closed", updated.Status)
 	}
 	if updated.TenantID != tenantID {
-		t.Fatalf("tenantId changed to %s", updated.TenantID)
+		t.Fatalf("tenantId changed to %s (expected %s)", updated.TenantID, tenantID)
 	}
 
+	// logAction use case is nil in this setup, so no logs expected
 	var logs []models.TicketLog
 	if err := db.Find(&logs).Error; err != nil {
 		t.Fatal(err)
 	}
-	// Note: logAction is nil in this test setup, so no logs expected
 	if len(logs) != 0 {
-		t.Fatalf("logs = %d (expected 0 because logAction use case is nil)", len(logs))
+		t.Fatalf("logs=%d (expected 0 because logAction use case is nil)", len(logs))
 	}
 }

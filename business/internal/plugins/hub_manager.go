@@ -31,7 +31,6 @@ type HubManager struct {
 	instanceID string
 }
 
-var defaultHubManager *HubManager
 
 func NewHubManager() *HubManager {
 	baseDir := "."
@@ -50,14 +49,7 @@ func NewHubManager() *HubManager {
 	}
 }
 
-func InitHubManager() *HubManager {
-	defaultHubManager = NewHubManager()
-	defaultHubManager.instanceID = defaultHubManager.getInstanceID()
-	defaultHubManager.startHeartbeat()
-	return defaultHubManager
-}
 
-func GetHubManager() *HubManager { return defaultHubManager }
 
 func (m *HubManager) GetInstanceID() string { return m.instanceID }
 

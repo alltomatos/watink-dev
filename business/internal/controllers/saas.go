@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -12,8 +14,8 @@ import (
 // Route is guarded by SuperAdminOnly middleware — only superadmins reach this handler.
 func ListTenants(c *gin.Context) {
 	var tenants []models.Tenant
-	if err := getDB(c).Find(&tenants).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tenants"})
+	if err := auth.GetDB(c).Find(&tenants).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "ListTenants")
 		return
 	}
 	c.JSON(http.StatusOK, tenants)
@@ -24,13 +26,13 @@ func ListTenants(c *gin.Context) {
 func GetTenantPlan(c *gin.Context) {
 	tenantID, err := uuid.Parse(c.Param("tenantId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
 	var tenant models.Tenant
-	if err := getDB(c).Where("id = ?", tenantID).First(&tenant).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Tenant not found"})
+	if err := auth.GetDB(c).Where("id = ?", tenantID).First(&tenant).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "GetTenantPlan")
 		return
 	}
 
@@ -41,8 +43,8 @@ func GetTenantPlan(c *gin.Context) {
 // Route is guarded by SuperAdminOnly middleware.
 func ListPlans(c *gin.Context) {
 	var plans []models.Plan
-	if err := getDB(c).Find(&plans).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch plans"})
+	if err := auth.GetDB(c).Find(&plans).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "ListPlans")
 		return
 	}
 	c.JSON(http.StatusOK, plans)
@@ -52,12 +54,12 @@ func ListPlans(c *gin.Context) {
 func CreatePlan(c *gin.Context) {
 	var plan models.Plan
 	if err := c.ShouldBindJSON(&plan); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
-	if err := getDB(c).Create(&plan).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create plan"})
+	if err := auth.GetDB(c).Create(&plan).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "CreatePlan")
 		return
 	}
 

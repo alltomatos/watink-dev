@@ -7,6 +7,18 @@ import (
 	"github.com/google/uuid"
 )
 
+// QueueMetrics represents RabbitMQ queue monitoring data.
+type QueueMetrics struct {
+	Name          string `json:"name"`
+	Messages      int    `json:"messages"`
+	Consumers     int    `json:"consumers"`
+	Ready         int    `json:"ready"`
+	Unacknowledged int   `json:"unacknowledged"`
+	Vhost         string `json:"vhost,omitempty"`
+	State         string `json:"state,omitempty"`
+	Error         string `json:"error,omitempty"`
+}
+
 // Repository Interfaces
 
 type TicketRepository interface {
@@ -80,7 +92,18 @@ type EventBus interface {
 
 type EventHandler func(ctx context.Context, event DomainEvent) error
 
-// RabbitMQServiceInterface defines the contract required by controllers that publish commands.
-type RabbitMQServiceInterface interface {
+// CommandPublisher defines the contract for sending messages to Engine Go.
+type CommandPublisher interface {
 	PublishCommand(routingKey string, payload interface{}) error
+}
+
+// EventConsumer defines the contract for listening to events.
+type EventConsumer interface {
+	ConsumeEvents(queueName string, routingKeys []string, handler func(body []byte) error) error
+}
+
+// QueueMonitor defines the contract for system monitoring.
+type QueueMonitor interface {
+	IsConnected() bool
+	ListAllQueues() ([]QueueMetrics, error)
 }

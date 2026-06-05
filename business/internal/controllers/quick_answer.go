@@ -3,103 +3,126 @@ package controllers
 import (
 	"net/http"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func ListQuickAnswers(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+// QuickAnswerController encapsulates quick answer operations with RLS-scoped DB from auth middleware.
+// All queries are automatically tenant-scoped via auth.GetDB(c).
+type QuickAnswerController struct{}
+
+func NewQuickAnswerController() *QuickAnswerController {
+	return &QuickAnswerController{}
+}
+
+func (qac *QuickAnswerController) List(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "QuickAnswers")
+	if !ok {
 		return
 	}
 
 	var quickAnswers []models.QuickAnswer
-	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Order("shortcut ASC").Find(&quickAnswers).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch quick answers"})
+	if err := db.Where("\"tenantId\" = ?", tenantID).Order("shortcut ASC").Find(&quickAnswers).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "ListQuickAnswers")
 		return
 	}
 
 	c.JSON(http.StatusOK, quickAnswers)
 }
 
-func ShowQuickAnswer(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (qac *QuickAnswerController) Show(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "QuickAnswers")
+	if !ok {
 		return
 	}
 	id := c.Param("quickAnswerId")
 
 	var quickAnswer models.QuickAnswer
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&quickAnswer).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Quick answer not found"})
+	if err := db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&quickAnswer).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "ShowQuickAnswer")
 		return
 	}
 
 	c.JSON(http.StatusOK, quickAnswer)
 }
 
-func CreateQuickAnswer(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+type updateQuickAnswerInput struct {
+	Shortcut  string `json:"shortcut"`
+	Message   string `json:"message"`
+	MediaType string `json:"mediaType"`
+	DataJson  string `json:"dataJson"`
+}
+
+func (qac *QuickAnswerController) Create(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "QuickAnswers")
+	if !ok {
 		return
 	}
 
 	var qa models.QuickAnswer
 	if err := c.ShouldBindJSON(&qa); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
 	qa.TenantID = tenantID
-	if err := database.DB.Create(&qa).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create quick answer"})
+	if err := db.Create(&qa).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "CreateQuickAnswer")
 		return
 	}
 
 	c.JSON(http.StatusOK, qa)
 }
 
-func UpdateQuickAnswer(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (qac *QuickAnswerController) Update(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "QuickAnswers")
+	if !ok {
 		return
 	}
 	id := c.Param("quickAnswerId")
 
 	var qa models.QuickAnswer
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&qa).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Quick answer not found"})
+	if err := db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&qa).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "UpdateQuickAnswer-Fetch")
 		return
 	}
 
-	if err := c.ShouldBindJSON(&qa); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var input updateQuickAnswerInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
-	if err := database.DB.Save(&qa).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update quick answer"})
+	qa.Shortcut = input.Shortcut
+	qa.Message = input.Message
+	qa.MediaType = input.MediaType
+	qa.DataJson = input.DataJson
+
+	if err := db.Where("\"tenantId\" = ?", tenantID).Save(&qa).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "UpdateQuickAnswer-Save")
 		return
 	}
 
 	c.JSON(http.StatusOK, qa)
 }
 
-func DeleteQuickAnswer(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (qac *QuickAnswerController) Delete(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "QuickAnswers")
+	if !ok {
 		return
 	}
 	id := c.Param("quickAnswerId")
 
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Delete(&models.QuickAnswer{}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete quick answer"})
+	result := db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).Delete(&models.QuickAnswer{})
+	if result.Error != nil {
+		utils.RespondWithInternalError(c, result.Error, "DeleteQuickAnswer")
+		return
+	}
+	if result.RowsAffected == 0 {
+		utils.RespondWithInternalError(c, gorm.ErrRecordNotFound, "DeleteQuickAnswer-NotFound")
 		return
 	}
 

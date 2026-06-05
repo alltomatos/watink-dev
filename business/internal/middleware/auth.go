@@ -6,13 +6,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 )
 
-func IsAuth() gin.HandlerFunc {
+// IsAuth retorna middleware que valida JWT e injeta sessão DB tenant-scoped.
+func IsAuth(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -20,7 +20,6 @@ func IsAuth() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header format"})
@@ -31,7 +30,9 @@ func IsAuth() gin.HandlerFunc {
 		tokenString := parts[1]
 		secret := os.Getenv("JWT_SECRET")
 		if secret == "" {
-			secret = "default_secret"
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Server misconfiguration: JWT_SECRET not set"})
+			c.Abort()
+			return
 		}
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
@@ -54,19 +55,14 @@ func IsAuth() gin.HandlerFunc {
 			return
 		}
 
-		tenantID := claims["tenantId"].(string)
+		tenantID, _ := claims["tenantId"].(string)
 
-		// Set user info in context
 		c.Set("userId", claims["id"])
 		c.Set("userEmail", claims["email"])
 		c.Set("userProfile", claims["profile"])
 		c.Set("tenantId", tenantID)
 
-		// ✅ CORE UPGRADE: RLS-Aware Session
-		// We create a scoped database session for this request
-		// This session will have the tenant ID set for all its queries
-		tx := database.DB.Session(&gorm.Session{})
-		// ✅ MITIGATED: SQL Injection via Parameterized Query
+		tx := db.Session(&gorm.Session{})
 		tx.Exec("SET app.current_tenant = ?", tenantID)
 		c.Set("db", tx)
 
@@ -74,11 +70,15 @@ func IsAuth() gin.HandlerFunc {
 	}
 }
 
+// SuperAdminOnly returns middleware that restricts access to users
+// with the "superadmin" profile. Must be used AFTER IsAuth so that
+// userProfile is already set in the gin.Context.
 func SuperAdminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		profile, ok := c.Get("userProfile")
-		if !ok || profile != "superadmin" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: superadmin required"})
+		profile, _ := c.Get("userProfile")
+		profileStr, ok := profile.(string)
+		if !ok || profileStr != "superadmin" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "superadmin access required"})
 			c.Abort()
 			return
 		}

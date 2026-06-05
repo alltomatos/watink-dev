@@ -7,21 +7,28 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/services"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
 type SessionController struct {
-	sessionRepo domain.ChannelSessionRepository
+	sessionRepo     domain.ChannelSessionRepository
+	broadcast      *services.RedisBroadcast
+	sessionService *services.WhatsAppSessionService
 }
 
-func NewSessionController(sr domain.ChannelSessionRepository) *SessionController {
-	return &SessionController{sessionRepo: sr}
+func NewSessionController(sr domain.ChannelSessionRepository, broadcast *services.RedisBroadcast, sessionService *services.WhatsAppSessionService) *SessionController {
+	return &SessionController{
+		sessionRepo:     sr,
+		broadcast:      broadcast,
+		sessionService: sessionService,
+	}
 }
 
 func (sc *SessionController) StartSession(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
+	if !ok {
 		return
 	}
 	whatsappID, _ := strconv.Atoi(c.Param("whatsappId"))
@@ -38,8 +45,8 @@ func (sc *SessionController) StartSession(c *gin.Context) {
 	}
 	_ = c.ShouldBindJSON(&req)
 
-	if err := services.StartWhatsAppSession(channelSessionToModel(session), req.UsePairingCode, req.PhoneNumber, true); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := sc.sessionService.StartWhatsAppSession(channelSessionToModel(session), req.UsePairingCode, req.PhoneNumber, true); err != nil {
+		utils.RespondWithInternalError(c, err, "StartWhatsAppSession")
 		return
 	}
 
@@ -47,9 +54,8 @@ func (sc *SessionController) StartSession(c *gin.Context) {
 }
 
 func (sc *SessionController) StopSession(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
+	if !ok {
 		return
 	}
 	whatsappID, _ := strconv.Atoi(c.Param("whatsappId"))
@@ -65,12 +71,12 @@ func (sc *SessionController) StopSession(c *gin.Context) {
 		return
 	}
 
-	if err := services.StopWhatsAppSession(channelSessionToModel(session)); err != nil {
+	if err := sc.sessionService.StopWhatsAppSession(channelSessionToModel(session)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to stop session"})
 		return
 	}
 
-	services.EmitToNamespace("/", "whatsappSession", map[string]interface{}{
+	sc.broadcast.EmitToNamespace("/", "whatsappSession", map[string]interface{}{
 		"action":  "update",
 		"session": session,
 	})
@@ -79,9 +85,8 @@ func (sc *SessionController) StopSession(c *gin.Context) {
 }
 
 func (sc *SessionController) RestartAllSessions(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
+	if !ok {
 		return
 	}
 
@@ -92,7 +97,7 @@ func (sc *SessionController) RestartAllSessions(c *gin.Context) {
 	}
 
 	for i := range whatsapps {
-		_ = services.StartWhatsAppSession(channelSessionToModel(&whatsapps[i]), false, "", true)
+		_ = sc.sessionService.StartWhatsAppSession(channelSessionToModel(&whatsapps[i]), false, "", true)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Restarting all sessions."})

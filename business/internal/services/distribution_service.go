@@ -3,7 +3,6 @@ package services
 import (
 	"log"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -13,9 +12,9 @@ type DistributionService struct {
 	db *gorm.DB
 }
 
-func NewDistributionService() *DistributionService {
+func NewDistributionService(db *gorm.DB) *DistributionService {
 	return &DistributionService{
-		db: database.DB,
+		db: db,
 	}
 }
 

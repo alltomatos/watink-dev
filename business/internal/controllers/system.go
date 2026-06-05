@@ -6,13 +6,33 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
-	"github.com/alltomatos/watinkdev/business/internal/services"
+	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/process"
+	"gorm.io/gorm"
 )
+
+// SystemRabbitMQInterface defines the RabbitMQ contract needed by SystemController.
+// This is a subset of domain.RabbitMQServiceInterface for monitoring/query operations.
+type SystemRabbitMQInterface interface {
+	IsConnected() bool
+	ListAllQueues() ([]domain.QueueMetrics, error)
+}
+
+type SystemController struct {
+	db     *gorm.DB
+	rabbit SystemRabbitMQInterface
+}
+
+func NewSystemController(db *gorm.DB, rabbit SystemRabbitMQInterface) *SystemController {
+	return &SystemController{
+		db:     db,
+		rabbit: rabbit,
+	}
+}
 
 type TenantConsumption struct {
 	TenantID    string `json:"tenantId" gorm:"column:tenant_id"`
@@ -25,8 +45,8 @@ type TenantConsumption struct {
 }
 
 type RabbitMQStats struct {
-	Connected bool                    `json:"connected"`
-	Queues    []services.QueueMetrics `json:"queues"`
+	Connected bool                 `json:"connected"`
+	Queues    []domain.QueueMetrics `json:"queues"`
 }
 
 type SystemStats struct {
@@ -47,23 +67,22 @@ type SystemStats struct {
 
 var startTime = time.Now()
 
-func GetRabbitMQQueues(c *gin.Context) {
-	rabbit := services.GetRabbitMQService()
-	if rabbit == nil {
+func (sc *SystemController) GetRabbitMQQueues(c *gin.Context) {
+	if sc.rabbit == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "RabbitMQ service not initialized"})
 		return
 	}
 
-	queues, err := rabbit.ListAllQueues()
+	queues, err := sc.rabbit.ListAllQueues()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.RespondWithInternalError(c, err, "ListAllQueues")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"connected": rabbit.IsConnected(), "queues": queues, "total": len(queues)})
+	c.JSON(http.StatusOK, gin.H{"connected": sc.rabbit.IsConnected(), "queues": queues, "total": len(queues)})
 }
 
-func GetSystemStats(c *gin.Context) {
+func (sc *SystemController) GetSystemStats(c *gin.Context) {
 	var stats SystemStats
 
 	cpuPercentages, _ := cpu.Percent(0, false)
@@ -92,7 +111,7 @@ func GetSystemStats(c *gin.Context) {
 	stats.Uptime = time.Since(startTime).Seconds()
 
 	var tenantConsumption []TenantConsumption
-	_ = database.DB.Raw(`
+	_ = sc.db.Raw(`
 		SELECT
 			t.id::text AS tenant_id,
 			t.name AS tenant_name,
@@ -106,10 +125,9 @@ func GetSystemStats(c *gin.Context) {
 	`).Scan(&tenantConsumption).Error
 	stats.TenantConsumption = tenantConsumption
 
-	rabbit := services.GetRabbitMQService()
-	stats.RabbitMQ.Connected = rabbit != nil && rabbit.IsConnected()
-	if rabbit != nil {
-		if queues, err := rabbit.ListAllQueues(); err == nil {
+	if sc.rabbit != nil {
+		stats.RabbitMQ.Connected = sc.rabbit.IsConnected()
+		if queues, err := sc.rabbit.ListAllQueues(); err == nil {
 			stats.RabbitMQ.Queues = queues
 		}
 	}

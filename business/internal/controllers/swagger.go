@@ -7,13 +7,27 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
+// SwaggerController gerencia acesso à documentação Swagger.
+// DB injetado via construtor — zero acesso a database.DB global.
+// Funções de auth (extractToken, parseUserFromToken) continuam como helpers
+// puramente funcionais (sem estado) pois não tocam DB.
+type SwaggerController struct {
+	db *gorm.DB
+}
+
+func NewSwaggerController(db *gorm.DB) *SwaggerController {
+	return &SwaggerController{db: db}
+}
+
+// extractToken lê Bearer token do header Authorization ou query param ?token.
+// Função pura — sem acesso a DB ou estado global.
 func extractToken(c *gin.Context) string {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader != "" {
@@ -25,6 +39,8 @@ func extractToken(c *gin.Context) string {
 	return c.Query("token")
 }
 
+// parseUserFromToken valida JWT e extrai userID, profile, tenantID.
+// Função pura — sem acesso a DB ou estado global.
 func parseUserFromToken(tokenString string) (int, string, string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
@@ -62,7 +78,10 @@ func parseUserFromToken(tokenString string) (int, string, string, error) {
 	return userID, strings.ToLower(profile), tenantID, nil
 }
 
-func hasSwaggerGroupPermission(userID int, tenantID string) bool {
+// hasSwaggerGroupPermission verifica se o grupo do usuário concede acesso ao swagger.
+// Usa DB injetado — zero acesso a database.DB global.
+// Proteção contra tenant leakage: scoping por tenantId + uuid.Parse.
+func (sc *SwaggerController) hasSwaggerGroupPermission(userID int, tenantID string) bool {
 	if userID <= 0 || tenantID == "" {
 		return false
 	}
@@ -73,20 +92,22 @@ func hasSwaggerGroupPermission(userID int, tenantID string) bool {
 	}
 
 	var user models.User
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", userID, parsedTenantID).First(&user).Error; err != nil || user.GroupID == nil {
+	if err := sc.db.Where("id = ? AND \"tenantId\" = ?", userID, parsedTenantID).First(&user).Error; err != nil || user.GroupID == nil {
 		return false
 	}
 
 	var count int64
-	database.DB.Table("GroupPermissions gp").
-		Joins("JOIN \"Permissions\" p ON p.id = gp.\"permissionId\"").
-		Where("gp.\"groupId\" = ? AND ((p.resource = ? AND p.action = ?) OR (p.resource = ? AND p.action = ?))", *user.GroupID, "view", "swagger", "view_swagger", "allow").
+	sc.db.Table("group_permissions AS gp").
+		Joins("JOIN \"Permissions\" p ON p.id = gp.permission_id").
+		Where("gp.group_id = ? AND ((p.resource = ? AND p.action = ?) OR (p.resource = ? AND p.action = ?))", *user.GroupID, "view", "swagger", "view_swagger", "allow").
 		Count(&count)
 
 	return count > 0
 }
 
-func ensureSwaggerAccess(c *gin.Context) bool {
+// ensureSwaggerAccess valida token e verifica permissão swagger.
+// Retorna true se acesso concedido; envia HTTP error e retorna false caso contrário.
+func (sc *SwaggerController) ensureSwaggerAccess(c *gin.Context) bool {
 	token := extractToken(c)
 	if token == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization required"})
@@ -99,7 +120,7 @@ func ensureSwaggerAccess(c *gin.Context) bool {
 		return false
 	}
 
-	if profile == "superadmin" || hasSwaggerGroupPermission(userID, tenantID) {
+	if profile == "superadmin" || sc.hasSwaggerGroupPermission(userID, tenantID) {
 		return true
 	}
 
@@ -107,43 +128,43 @@ func ensureSwaggerAccess(c *gin.Context) bool {
 	return false
 }
 
-func SwaggerUI(c *gin.Context) {
-	if !ensureSwaggerAccess(c) {
+func (sc *SwaggerController) SwaggerUI(c *gin.Context) {
+	if !sc.ensureSwaggerAccess(c) {
 		return
 	}
 
 	html := `<!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Watink API Docs</title>
-    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
-    <style>
-      html, body { margin: 0; padding: 0; }
-      #swagger-ui { max-width: 1200px; margin: 0 auto; }
-    </style>
-  </head>
-  <body>
-    <div id="swagger-ui"></div>
-    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-    <script>
-      const token = new URLSearchParams(window.location.search).get('token') || '';
-      window.ui = SwaggerUIBundle({
-        url: '/api/swagger.json?token=' + encodeURIComponent(token),
-        dom_id: '#swagger-ui',
-        deepLinking: true,
-        displayRequestDuration: true,
-      });
-    </script>
-  </body>
+ <head>
+ <meta charset="utf-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1" />
+ <title>Watink API Docs</title>
+ <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+ <style>
+ html, body { margin: 0; padding: 0; }
+ #swagger-ui { max-width: 1200px; margin: 0 auto; }
+ </style>
+ </head>
+ <body>
+ <div id="swagger-ui"></div>
+ <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+ <script>
+ const token = new URLSearchParams(window.location.search).get('token') || '';
+ window.ui = SwaggerUIBundle({
+ url: '/api/swagger.json?token=' + encodeURIComponent(token),
+ dom_id: '#swagger-ui',
+ deepLinking: true,
+ displayRequestDuration: true,
+ });
+ </script>
+ </body>
 </html>`
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
 
-func SwaggerJSON(c *gin.Context) {
-	if !ensureSwaggerAccess(c) {
+func (sc *SwaggerController) SwaggerJSON(c *gin.Context) {
+	if !sc.ensureSwaggerAccess(c) {
 		return
 	}
 
@@ -156,18 +177,18 @@ func SwaggerJSON(c *gin.Context) {
 		},
 		"servers": []gin.H{{"url": "/"}},
 		"paths": gin.H{
-			"/api/auth/login":                                gin.H{"post": gin.H{"summary": "Login", "responses": gin.H{"200": gin.H{"description": "OK"}}, "security": []gin.H{}, "tags": []string{"auth"}}},
-			"/api/health":                                    gin.H{"get": gin.H{"summary": "Health check", "responses": gin.H{"200": gin.H{"description": "OK"}}, "security": []gin.H{}, "tags": []string{"system"}}},
-			"/api/public-settings":                           gin.H{"get": gin.H{"summary": "Lista configurações públicas", "responses": gin.H{"200": gin.H{"description": "OK"}}, "security": []gin.H{}, "tags": []string{"settings"}}},
-			"/api/tickets":                                   gin.H{"get": gin.H{"summary": "Lista tickets", "responses": gin.H{"200": gin.H{"description": "OK"}, "401": gin.H{"description": "Unauthorized"}}, "tags": []string{"tickets"}}},
-			"/api/pipelines":                                 gin.H{"get": gin.H{"summary": "Lista pipelines", "tags": []string{"pipelines"}}, "post": gin.H{"summary": "Cria pipeline", "tags": []string{"pipelines"}}},
-			"/api/pipelines/{pipelineId}":                    gin.H{"put": gin.H{"summary": "Atualiza pipeline", "tags": []string{"pipelines"}}},
-			"/api/pipelines/import":                          gin.H{"post": gin.H{"summary": "Importa pipeline", "tags": []string{"pipelines"}}},
-			"/api/pipelines/export/{pipelineId}":             gin.H{"get": gin.H{"summary": "Exporta pipeline", "tags": []string{"pipelines"}}},
-			"/api/pipelines/ai-suggest":                      gin.H{"post": gin.H{"summary": "Sugestão IA de pipeline", "tags": []string{"pipelines"}}},
-			"/api/knowledge-bases":                           gin.H{"get": gin.H{"summary": "Lista bases de conhecimento", "tags": []string{"knowledge-base"}}, "post": gin.H{"summary": "Cria base de conhecimento", "tags": []string{"knowledge-base"}}},
-			"/api/knowledge-bases/{knowledgeBaseId}":         gin.H{"get": gin.H{"summary": "Detalha base de conhecimento", "tags": []string{"knowledge-base"}}, "put": gin.H{"summary": "Atualiza base de conhecimento", "tags": []string{"knowledge-base"}}, "delete": gin.H{"summary": "Remove base de conhecimento", "tags": []string{"knowledge-base"}}},
-			"/api/knowledge-bases/{knowledgeBaseId}/sources": gin.H{"post": gin.H{"summary": "Adiciona fonte na base", "tags": []string{"knowledge-base"}}},
+			"/api/auth/login":            gin.H{"post": gin.H{"summary": "Login", "responses": gin.H{"200": gin.H{"description": "OK"}}, "security": []gin.H{}, "tags": []string{"auth"}}},
+			"/api/health":                gin.H{"get": gin.H{"summary": "Health check", "responses": gin.H{"200": gin.H{"description": "OK"}}, "security": []gin.H{}, "tags": []string{"system"}}},
+			"/api/public-settings":       gin.H{"get": gin.H{"summary": "Lista configurações públicas", "responses": gin.H{"200": gin.H{"description": "OK"}}, "security": []gin.H{}, "tags": []string{"settings"}}},
+			"/api/tickets":               gin.H{"get": gin.H{"summary": "Lista tickets", "responses": gin.H{"200": gin.H{"description": "OK"}, "401": gin.H{"description": "Unauthorized"}}, "tags": []string{"tickets"}}},
+			"/api/pipelines":             gin.H{"get": gin.H{"summary": "Lista pipelines", "tags": []string{"pipelines"}}, "post": gin.H{"summary": "Cria pipeline", "tags": []string{"pipelines"}}},
+			"/api/pipelines/{pipelineId}": gin.H{"put": gin.H{"summary": "Atualiza pipeline", "tags": []string{"pipelines"}}},
+			"/api/pipelines/import":      gin.H{"post": gin.H{"summary": "Importa pipeline", "tags": []string{"pipelines"}}},
+			"/api/pipelines/export/{pipelineId}": gin.H{"get": gin.H{"summary": "Exporta pipeline", "tags": []string{"pipelines"}}},
+			"/api/pipelines/ai-suggest":  gin.H{"post": gin.H{"summary": "Sugestão IA de pipeline", "tags": []string{"pipelines"}}},
+			"/api/knowledge-bases":       gin.H{"get": gin.H{"summary": "Lista bases de conhecimento", "tags": []string{"knowledge-base"}}, "post": gin.H{"summary": "Cria base de conhecimento", "tags": []string{"knowledge-base"}}},
+			"/api/knowledge-bases/{knowledgeBaseId}": gin.H{"get": gin.H{"summary": "Detalha base de conhecimento", "tags": []string{"knowledge-base"}}, "put": gin.H{"summary": "Atualiza base de conhecimento", "tags": []string{"knowledge-base"}}, "delete": gin.H{"summary": "Remove base de conhecimento", "tags": []string{"knowledge-base"}}},
+			"/api/knowledge-bases/{knowledgeBaseId}/sources":            gin.H{"post": gin.H{"summary": "Adiciona fonte na base", "tags": []string{"knowledge-base"}}},
 			"/api/knowledge-bases/{knowledgeBaseId}/sources/{sourceId}": gin.H{"delete": gin.H{"summary": "Remove fonte da base", "tags": []string{"knowledge-base"}}},
 		},
 		"components": gin.H{"securitySchemes": gin.H{"bearerAuth": gin.H{"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}}},

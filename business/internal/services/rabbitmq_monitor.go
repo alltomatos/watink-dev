@@ -9,35 +9,26 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 )
 
-type QueueMetrics struct {
-	Name           string `json:"name"`
-	Messages       int    `json:"messages"`
-	Consumers      int    `json:"consumers"`
-	Ready          int    `json:"ready"`
-	Unacknowledged int    `json:"unacknowledged"`
-	Vhost          string `json:"vhost,omitempty"`
-	State          string `json:"state,omitempty"`
-	Error          string `json:"error,omitempty"`
-}
-
 type rabbitMgmtQueue struct {
-	Name                   string `json:"name"`
-	Vhost                  string `json:"vhost"`
-	Messages               int    `json:"messages"`
-	MessagesReady          int    `json:"messages_ready"`
-	MessagesUnacknowledged int    `json:"messages_unacknowledged"`
-	Consumers              int    `json:"consumers"`
-	State                  string `json:"state"`
+	Name string `json:"name"`
+	Vhost string `json:"vhost"`
+	Messages int `json:"messages"`
+	MessagesReady int `json:"messages_ready"`
+	MessagesUnacknowledged int `json:"messages_unacknowledged"`
+	Consumers int `json:"consumers"`
+	State string `json:"state"`
 }
 
 func (s *RabbitMQService) IsConnected() bool {
 	return s != nil && s.conn != nil && !s.conn.IsClosed()
 }
 
-func (s *RabbitMQService) InspectQueue(queueName string) QueueMetrics {
-	m := QueueMetrics{Name: queueName}
+func (s *RabbitMQService) InspectQueue(queueName string) domain.QueueMetrics {
+	m := domain.QueueMetrics{Name: queueName}
 	if !s.IsConnected() {
 		m.Error = "not_connected"
 		return m
@@ -96,7 +87,7 @@ func deriveManagementURL(amqpURL string) string {
 	return fmt.Sprintf("http://%s:15672/api/queues", host)
 }
 
-func (s *RabbitMQService) listQueuesViaManagementAPI() ([]QueueMetrics, error) {
+func (s *RabbitMQService) listQueuesViaManagementAPI() ([]domain.QueueMetrics, error) {
 	managementURL := strings.TrimSpace(os.Getenv("RABBITMQ_MANAGEMENT_URL"))
 	if managementURL == "" {
 		managementURL = deriveManagementURL(s.url)
@@ -141,16 +132,16 @@ func (s *RabbitMQService) listQueuesViaManagementAPI() ([]QueueMetrics, error) {
 		return nil, err
 	}
 
-	queues := make([]QueueMetrics, 0, len(raw))
+	queues := make([]domain.QueueMetrics, 0, len(raw))
 	for _, q := range raw {
-		queues = append(queues, QueueMetrics{
-			Name:           q.Name,
-			Vhost:          q.Vhost,
-			Messages:       q.Messages,
-			Ready:          q.MessagesReady,
+		queues = append(queues, domain.QueueMetrics{
+			Name:          q.Name,
+			Vhost:         q.Vhost,
+			Messages:      q.Messages,
+			Ready:         q.MessagesReady,
 			Unacknowledged: q.MessagesUnacknowledged,
-			Consumers:      q.Consumers,
-			State:          q.State,
+			Consumers:     q.Consumers,
+			State:         q.State,
 		})
 	}
 
@@ -164,7 +155,7 @@ func (s *RabbitMQService) listQueuesViaManagementAPI() ([]QueueMetrics, error) {
 	return queues, nil
 }
 
-func (s *RabbitMQService) ListAllQueues() ([]QueueMetrics, error) {
+func (s *RabbitMQService) ListAllQueues() ([]domain.QueueMetrics, error) {
 	if s == nil {
 		return nil, fmt.Errorf("rabbitmq not initialized")
 	}
@@ -174,7 +165,7 @@ func (s *RabbitMQService) ListAllQueues() ([]QueueMetrics, error) {
 	}
 
 	fallback := ParseQueueList(os.Getenv("MONITOR_RABBIT_QUEUES"))
-	out := make([]QueueMetrics, 0, len(fallback))
+	out := make([]domain.QueueMetrics, 0, len(fallback))
 	for _, q := range fallback {
 		out = append(out, s.InspectQueue(q))
 	}

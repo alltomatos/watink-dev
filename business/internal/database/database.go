@@ -72,6 +72,10 @@ func Migrate() {
 		log.Printf("Warning: failed to apply RLS policies: %v", err)
 	}
 
+	if err := addCustomIndexes(); err != nil {
+		log.Printf("Warning: failed to create custom indexes: %v", err)
+	}
+
 	fmt.Println("Database migration completed")
 	Seed()
 }
@@ -94,6 +98,22 @@ func Seed() {
 	}
 
 	fmt.Println("Database seeding completed")
+}
+
+func addCustomIndexes() error {
+	indexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_tickets_tenant_status ON "Tickets" ("tenantId", "status")`,
+		`CREATE INDEX IF NOT EXISTS idx_tickets_tenant_queue_status ON "Tickets" ("tenantId", "queueId", "status")`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_tenant_ticket_fromme ON "Messages" ("tenantId", "ticketId", "fromMe")`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_tenant_fromme_createdat ON "Messages" ("tenantId", "fromMe", "createdAt")`,
+	}
+
+	for _, ddl := range indexes {
+		if err := DB.Exec(ddl).Error; err != nil {
+			return fmt.Errorf("create index: %w", err)
+		}
+	}
+	return nil
 }
 
 func applyRLS() error {

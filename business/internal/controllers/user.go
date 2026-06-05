@@ -7,27 +7,33 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/services"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type UserController struct {
 	userRepo domain.UserRepository
+	db       *gorm.DB
 }
 
-func NewUserController(ur domain.UserRepository) *UserController {
-	return &UserController{userRepo: ur}
+func NewUserController(ur domain.UserRepository, db *gorm.DB) *UserController {
+	return &UserController{
+		userRepo: ur,
+		db:       db,
+	}
 }
 
 func (uc *UserController) ListUsers(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Users")
+	if !ok {
 		return
 	}
 
 	users, err := uc.userRepo.FindAll(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+		utils.RespondWithInternalError(c, err, "ListUsers")
 		return
 	}
 
@@ -37,9 +43,8 @@ func (uc *UserController) ListUsers(c *gin.Context) {
 }
 
 func (uc *UserController) ShowUser(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Users")
+	if !ok {
 		return
 	}
 	id, _ := strconv.Atoi(c.Param("userId"))
@@ -90,22 +95,21 @@ func (uc *UserController) ShowUser(c *gin.Context) {
 }
 
 func (uc *UserController) CreateUser(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Users")
+	if !ok {
 		return
 	}
 
 	// SaaS Limit Check
-	limitService := services.NewPlanLimitService()
+	limitService := services.NewPlanLimitService(uc.db)
 	if err := limitService.CheckLimit(tenantID, "users"); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		utils.RespondWithServiceError(c, http.StatusForbidden, err, "User limit reached for this plan")
 		return
 	}
 
 	var input models.User
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
@@ -121,7 +125,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 	}
 
 	if err := uc.userRepo.Create(c.Request.Context(), domainUser); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		utils.RespondWithInternalError(c, err, "CreateUser")
 		return
 	}
 
@@ -129,9 +133,8 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 }
 
 func (uc *UserController) UpdateUser(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Users")
+	if !ok {
 		return
 	}
 	id, _ := strconv.Atoi(c.Param("userId"))
@@ -144,7 +147,7 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
@@ -154,7 +157,7 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 	if pwd, ok := req["password"].(string); ok && pwd != "" {
 		tmp := models.User{PasswordHash: user.PasswordHash}
 		if err := tmp.HashPassword(pwd); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			utils.RespondWithInternalError(c, err, "HashPassword")
 			return
 		}
 		updateMap["passwordHash"] = tmp.PasswordHash
@@ -188,7 +191,7 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 	}
 
 	if err := uc.userRepo.Update(c.Request.Context(), user, updateMap); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+		utils.RespondWithInternalError(c, err, "UpdateUser")
 		return
 	}
 
@@ -196,15 +199,14 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 }
 
 func (uc *UserController) DeleteUser(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+	_, tenantID, ok := auth.GetScoped(c, "Users")
+	if !ok {
 		return
 	}
 	id, _ := strconv.Atoi(c.Param("userId"))
 
 	if err := uc.userRepo.Delete(c.Request.Context(), id, tenantID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		utils.RespondWithInternalError(c, err, "DeleteUser")
 		return
 	}
 

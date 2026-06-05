@@ -5,34 +5,45 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
+	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/render"
+	"gorm.io/gorm"
 )
 
-func ListTags(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+// TagController encapsulates tag operations with RLS-scoped DB from auth middleware.
+// All queries are automatically tenant-scoped via auth.GetScoped.
+type TagController struct{}
+
+func NewTagController() *TagController {
+	return &TagController{}
+}
+
+// List returns all tags for the current tenant, optionally including archived.
+func (tc *TagController) List(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Tags")
+	if !ok {
 		return
 	}
 
 	includeArchived := c.Query("includeArchived") == "true"
 	var tags []models.Tag
-	q := database.DB.Where("\"tenantId\" = ?", tenantID).Preload("Group")
+	q := db.Where("\"tenantId\" = ?", tenantID).Preload("Group")
 	if !includeArchived {
 		q = q.Where("archived = ?", false)
 	}
 
 	if err := q.Order("name ASC").Find(&tags).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tags"})
+		utils.RespondWithInternalError(c, err, "ListTags")
 		return
 	}
 
 	result := make([]gin.H, 0, len(tags))
 	for _, t := range tags {
 		var usage int64
-		database.DB.Model(&models.EntityTag{}).Where("\"tenantId\" = ? AND \"tagId\" = ?", tenantID, t.ID).Count(&usage)
+		db.Model(&models.EntityTag{}).Where("\"tenantId\" = ? AND \"tagId\" = ?", tenantID, t.ID).Count(&usage)
 		result = append(result, gin.H{
 			"id": t.ID, "name": t.Name, "color": t.Color, "icon": t.Icon,
 			"description": t.Description, "archived": t.Archived, "groupId": t.GroupID,
@@ -43,126 +54,131 @@ func ListTags(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-func CreateTag(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (tc *TagController) Create(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Tags")
+	if !ok {
 		return
 	}
 
-	var payload map[string]interface{}
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var input createTagInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
-	name := strings.TrimSpace(toString(payload["name"]))
+	name := strings.TrimSpace(input.Name)
 	if name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
 		return
 	}
 
-	input := models.Tag{
+	tag := models.Tag{
 		Name:        name,
-		Color:       defaultString(strings.TrimSpace(toString(payload["color"])), "blue"),
-		Icon:        strings.TrimSpace(toString(payload["icon"])),
-		Description: strings.TrimSpace(toString(payload["description"])),
-		Archived:    toBool(payload["archived"]),
+		Color:       defaultStringTag(strings.TrimSpace(input.Color), "blue"),
+		Icon:        strings.TrimSpace(input.Icon),
+		Description: strings.TrimSpace(input.Description),
+		Archived:    input.Archived,
 		TenantID:    tenantID,
-	}
-	if gid := toOptionalInt(payload["groupId"]); gid != nil {
-		input.GroupID = gid
+		GroupID:     input.GroupID,
 	}
 
-	if err := database.DB.Create(&input).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, input)
-}
-
-func UpdateTag(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
-		return
-	}
-	id := c.Param("id")
-
-	var tag models.Tag
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&tag).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Tag not found"})
-		return
-	}
-
-	var input models.Tag
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	input.ID = tag.ID
-	input.TenantID = tenantID
-	if err := database.DB.Model(&tag).Updates(input).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := db.Create(&tag).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "CreateTag")
 		return
 	}
 
 	c.JSON(http.StatusOK, tag)
 }
 
-func DeleteTag(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (tc *TagController) Update(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Tags")
+	if !ok {
+		return
+	}
+	id := c.Param("id")
+
+	var tag models.Tag
+	if err := db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&tag).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Tag not found"})
+		return
+	}
+
+	var input updateTagInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.RespondWithBindError(c, err)
+		return
+	}
+
+	tag.Name = strings.TrimSpace(input.Name)
+	tag.Color = input.Color
+	tag.Icon = input.Icon
+	tag.Description = input.Description
+	tag.Archived = input.Archived
+	if input.GroupID != nil {
+		tag.GroupID = input.GroupID
+	}
+
+	if err := db.Where("\"tenantId\" = ?", tenantID).Save(&tag).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "UpdateTag")
+		return
+	}
+
+	c.JSON(http.StatusOK, tag)
+}
+
+func (tc *TagController) Delete(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Tags")
+	if !ok {
 		return
 	}
 	id := c.Param("id")
 	forceDelete := c.Query("forceDelete") == "true"
 
 	var tag models.Tag
-	if err := database.DB.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&tag).Error; err != nil {
+	if err := db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&tag).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Tag not found"})
 		return
 	}
 
 	if forceDelete {
-		database.DB.Where("\"tenantId\" = ? AND \"tagId\" = ?", tenantID, tag.ID).Delete(&models.EntityTag{})
-		if err := database.DB.Delete(&tag).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		res := db.Where("\"tenantId\" = ? AND \"tagId\" = ?", tenantID, tag.ID).Delete(&models.EntityTag{})
+		if res.Error != nil {
+			utils.RespondWithInternalError(c, res.Error, "DeleteEntityTags")
+			return
+		}
+
+		if err := db.Delete(&tag).Error; err != nil {
+			utils.RespondWithInternalError(c, err, "DeleteTag")
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "Tag deleted"})
 		return
 	}
 
-	if err := database.DB.Model(&tag).Update("archived", true).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := db.Model(&tag).Update("archived", true).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "ArchiveTag")
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Tag archived"})
 }
 
-func ListTagGroups(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (tc *TagController) ListGroups(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Tags")
+	if !ok {
 		return
 	}
 	var groups []models.TagGroup
-	if err := database.DB.Where("\"tenantId\" = ?", tenantID).Order("name ASC").Find(&groups).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tag groups"})
+	if err := db.Where("\"tenantId\" = ?", tenantID).Order("name ASC").Find(&groups).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "ListTagGroups")
 		return
 	}
 	c.JSON(http.StatusOK, groups)
 }
 
-func SyncEntityTags(c *gin.Context) {
-	tenantID, err := tenantUUIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid tenant ID"})
+func (tc *TagController) SyncEntityTags(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Tags")
+	if !ok {
 		return
 	}
 	entityType := c.Param("entityType")
@@ -172,64 +188,54 @@ func SyncEntityTags(c *gin.Context) {
 		TagIDs []int `json:"tagIds"`
 	}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.RespondWithBindError(c, err)
 		return
 	}
 
-	database.DB.Where("\"tenantId\" = ? AND \"entityType\" = ? AND \"entityId\" = ?", tenantID, entityType, id).Delete(&models.EntityTag{})
-	for _, tagID := range payload.TagIDs {
-		database.DB.Create(&models.EntityTag{TagID: tagID, EntityType: entityType, EntityID: id, TenantID: tenantID})
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("\"tenantId\" = ? AND \"entityType\" = ? AND \"entityId\" = ?", tenantID, entityType, id).Delete(&models.EntityTag{}).Error; err != nil {
+			return err
+		}
+		for _, tagID := range payload.TagIDs {
+			if err := tx.Create(&models.EntityTag{TagID: tagID, EntityType: entityType, EntityID: id, TenantID: tenantID}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		utils.RespondWithInternalError(c, err, "SyncEntityTags")
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Tags synced"})
 }
 
-func toString(v interface{}) string {
-	switch t := v.(type) {
-	case string:
-		return t
-	default:
-		return ""
-	}
+type createTagInput struct {
+	Name        string `json:"name"`
+	Color       string `json:"color"`
+	Icon        string `json:"icon"`
+	Description string `json:"description"`
+	Archived    bool   `json:"archived"`
+	GroupID     *int   `json:"groupId"`
 }
 
-func defaultString(v, d string) string {
+type updateTagInput struct {
+	Name        string `json:"name"`
+	Color       string `json:"color"`
+	Icon        string `json:"icon"`
+	Description string `json:"description"`
+	Archived    bool   `json:"archived"`
+	GroupID     *int   `json:"groupId"`
+}
+
+func defaultStringTag(v, d string) string {
 	if strings.TrimSpace(v) == "" {
 		return d
 	}
 	return v
 }
 
-func toBool(v interface{}) bool {
-	switch t := v.(type) {
-	case bool:
-		return t
-	case string:
-		return strings.EqualFold(t, "true") || t == "1"
-	default:
-		return false
-	}
-}
-
-func toOptionalInt(v interface{}) *int {
-	switch t := v.(type) {
-	case float64:
-		i := int(t)
-		return &i
-	case int:
-		i := t
-		return &i
-	case string:
-		t = strings.TrimSpace(t)
-		if t == "" {
-			return nil
-		}
-		i, err := strconv.Atoi(t)
-		if err != nil {
-			return nil
-		}
-		return &i
-	default:
-		return nil
-	}
-}
+// Ensure render import is used (Writer interface for future JSON responses)
+var _ render.Render = nil

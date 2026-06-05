@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/sdk"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -35,9 +36,13 @@ func (hp *HelpdeskPlugin) OnInstall(core sdk.WatinkCore) error {
 
 func (hp *HelpdeskPlugin) OnActivate(core sdk.WatinkCore) error {
 	core.RegisterRoute("GET", "/helpdesk/protocols", func(c *gin.Context) {
-		tenantID, _ := c.Get("tenantId")
+		tenantID, err := auth.TenantUUIDFromContext(c)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant"})
+			return
+		}
 		var protocols []Protocol
-		core.GetDB().Where("tenantId = ?", tenantID).Find(&protocols)
+		core.GetDB().Where("\"tenantId\" = ?", tenantID).Find(&protocols)
 		c.JSON(http.StatusOK, protocols)
 	})
 	return nil
