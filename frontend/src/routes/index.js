@@ -52,7 +52,8 @@ import { AuthProvider } from "../context/Auth/AuthContext";
 import { WhatsAppsProvider } from "../context/WhatsApp/WhatsAppsContext";
 import { ThemeProvider } from "../context/DarkMode";
 import { TicketsProvider } from "../context/Tickets/TicketsContext";
-import Route from "./Route";
+import PrivateRoute from "./Route";
+import { Route } from "react-router-dom";
 import StatusCheck from "../components/StatusCheck";
 
 const PrivateRoutes = () => {
@@ -62,46 +63,46 @@ const PrivateRoutes = () => {
  <LoggedInLayout>
  <Suspense fallback={<PageLoader />}>
      <RouterRoutes>
-     <Route path="/" element={<Dashboard />} isPrivate />
-     <Route path="/pipelines" element={<Pipelines />} isPrivate />
-     <Route path="/pipelines/new" element={<PipelineCreator />} isPrivate />
-     <Route path="/pipelines/:pipelineId/edit" element={<PipelineCreator />} isPrivate />
-     <Route path="/pipelines/:pipelineId" element={<PipelineBoard />} isPrivate />
-     <Route path="/tickets/:ticketId?" element={<Tickets />} isPrivate />
-     <Route path="/flowbuilder" element={<FlowManager />} isPrivate />
-     <Route path="/flowbuilder/:flowId" element={<FlowBuilder />} isPrivate />
-     <Route path="/connections" element={<Connections />} isPrivate />
-     <Route path="/connections/:whatsappId" element={<ConnectionConfig />} isPrivate />
-     <Route path="/contacts" element={<Contacts />} isPrivate />
-     <Route path="/users" element={<Users />} isPrivate />
-     <Route path="/users/:userId" element={<UserEdit />} isPrivate />
-     <Route path="/profile" element={<UserProfile />} isPrivate />
-     <Route path="/reset-password" element={<ResetPassword />} isPrivate />
-     <Route path="/my-activities" element={<MyActivities />} isPrivate />
-     <Route path="/access" element={<Access />} isPrivate />
-     <Route path="/groups/:groupId" element={<GroupEdit />} isPrivate />
-     <Route path="/quickAnswers" element={<QuickAnswers />} isPrivate />
-     <Route path="/Settings" element={<Settings />} isPrivate />
-     <Route path="/groups" element={<Groups />} isPrivate />
-     <Route path="/tags" element={<TagManager />} isPrivate />
-     <Route path="/roles" element={<Roles />} isPrivate />
-     <Route path="/roles/:roleId" element={<RoleEdit />} isPrivate />
-     <Route path="/queues" element={<Queues />} isPrivate />
-     <Route path="/knowledge-bases" element={<KnowledgeBase />} isPrivate />
-     <Route path="/knowledge-bases/:knowledgeBaseId" element={<KnowledgeBaseConfig />} isPrivate />
-     <Route path="/swagger" element={<Swagger />} isPrivate />
-     <Route path="/admin/settings/marketplace" element={<Marketplace />} isPrivate />
-     <Route path="/admin/settings/billing" element={<Billing />} isPrivate />
-     <Route path="/admin/settings/marketplace/:slug" element={<PluginDetail />} isPrivate />
-     <Route path="/clients" element={<Clients />} isPrivate />
-     <Route path="/helpdesk" element={<Helpdesk />} isPrivate />
-     <Route path="/helpdesk/kanban" element={<HelpdeskKanban />} isPrivate />
-     <Route path="/helpdesk/tv" element={<HelpdeskTvMode />} isPrivate />
-     <Route path="/helpdesk/:protocolId" element={<ProtocolDetails />} isPrivate />
-     <Route path="/saas-manager" element={<SaaSAdmin />} isPrivate />
-     <Route path="/monitor" element={<VersionDashboard />} isPrivate />
-     <Route path="/monitor/queues" element={<MonitorQueues />} isPrivate />
-     <Route path="/versions" element={<VersionDashboard />} isPrivate />
+     <Route path="/" element={<PrivateRoute isPrivate><Dashboard /></PrivateRoute>} />
+     <Route path="/pipelines" element={<PrivateRoute isPrivate><Pipelines /></PrivateRoute>} />
+     <Route path="/pipelines/new" element={<PrivateRoute isPrivate><PipelineCreator /></PrivateRoute>} />
+     <Route path="/pipelines/:pipelineId/edit" element={<PrivateRoute isPrivate><PipelineCreator /></PrivateRoute>} />
+     <Route path="/pipelines/:pipelineId" element={<PrivateRoute isPrivate><PipelineBoard /></PrivateRoute>} />
+     <Route path="/tickets/:ticketId?" element={<PrivateRoute isPrivate><Tickets /></PrivateRoute>} />
+     <Route path="/flowbuilder" element={<PrivateRoute isPrivate><FlowManager /></PrivateRoute>} />
+     <Route path="/flowbuilder/:flowId" element={<PrivateRoute isPrivate><FlowBuilder /></PrivateRoute>} />
+     <Route path="/connections" element={<PrivateRoute isPrivate><Connections /></PrivateRoute>} />
+     <Route path="/connections/:whatsappId" element={<PrivateRoute isPrivate><ConnectionConfig /></PrivateRoute>} />
+     <Route path="/contacts" element={<PrivateRoute isPrivate><Contacts /></PrivateRoute>} />
+     <Route path="/users" element={<PrivateRoute isPrivate><Users /></PrivateRoute>} />
+     <Route path="/users/:userId" element={<PrivateRoute isPrivate><UserEdit /></PrivateRoute>} />
+     <Route path="/profile" element={<PrivateRoute isPrivate><UserProfile /></PrivateRoute>} />
+     <Route path="/reset-password" element={<PrivateRoute isPrivate><ResetPassword /></PrivateRoute>} />
+     <Route path="/my-activities" element={<PrivateRoute isPrivate><MyActivities /></PrivateRoute>} />
+     <Route path="/access" element={<PrivateRoute isPrivate><Access /></PrivateRoute>} />
+     <Route path="/groups/:groupId" element={<PrivateRoute isPrivate><GroupEdit /></PrivateRoute>} />
+     <Route path="/quickAnswers" element={<PrivateRoute isPrivate><QuickAnswers /></PrivateRoute>} />
+     <Route path="/Settings" element={<PrivateRoute isPrivate><Settings /></PrivateRoute>} />
+     <Route path="/groups" element={<PrivateRoute isPrivate><Groups /></PrivateRoute>} />
+     <Route path="/tags" element={<PrivateRoute isPrivate><TagManager /></PrivateRoute>} />
+     <Route path="/roles" element={<PrivateRoute isPrivate><Roles /></PrivateRoute>} />
+     <Route path="/roles/:roleId" element={<PrivateRoute isPrivate><RoleEdit /></PrivateRoute>} />
+     <Route path="/queues" element={<PrivateRoute isPrivate><Queues /></PrivateRoute>} />
+     <Route path="/knowledge-bases" element={<PrivateRoute isPrivate><KnowledgeBase /></PrivateRoute>} />
+     <Route path="/knowledge-bases/:knowledgeBaseId" element={<PrivateRoute isPrivate><KnowledgeBaseConfig /></PrivateRoute>} />
+     <Route path="/swagger" element={<PrivateRoute isPrivate><Swagger /></PrivateRoute>} />
+     <Route path="/admin/settings/marketplace" element={<PrivateRoute isPrivate><Marketplace /></PrivateRoute>} />
+     <Route path="/admin/settings/billing" element={<PrivateRoute isPrivate><Billing /></PrivateRoute>} />
+     <Route path="/admin/settings/marketplace/:slug" element={<PrivateRoute isPrivate><PluginDetail /></PrivateRoute>} />
+     <Route path="/clients" element={<PrivateRoute isPrivate><Clients /></PrivateRoute>} />
+     <Route path="/helpdesk" element={<PrivateRoute isPrivate><Helpdesk /></PrivateRoute>} />
+     <Route path="/helpdesk/kanban" element={<PrivateRoute isPrivate><HelpdeskKanban /></PrivateRoute>} />
+     <Route path="/helpdesk/tv" element={<PrivateRoute isPrivate><HelpdeskTvMode /></PrivateRoute>} />
+     <Route path="/helpdesk/:protocolId" element={<PrivateRoute isPrivate><ProtocolDetails /></PrivateRoute>} />
+     <Route path="/saas-manager" element={<PrivateRoute isPrivate><SaaSAdmin /></PrivateRoute>} />
+     <Route path="/monitor" element={<PrivateRoute isPrivate><VersionDashboard /></PrivateRoute>} />
+     <Route path="/monitor/queues" element={<PrivateRoute isPrivate><MonitorQueues /></PrivateRoute>} />
+     <Route path="/versions" element={<PrivateRoute isPrivate><VersionDashboard /></PrivateRoute>} />
      </RouterRoutes>
           </Suspense>
           </LoggedInLayout>
@@ -118,11 +119,11 @@ const Routes = () => {
  <ThemeProvider>
  <Suspense fallback={<PageLoader />}>
      <RouterRoutes>
-     <Route path="/initial-setup" element={<InitialSetup />} />
-     <Route path="/login" element={<Login />} />
-     <Route path="/signup" element={<Signup />} />
-     <Route path="/public/protocols/:token" element={<PublicProtocol />} isPublic />
-     <Route path="/*" element={<PrivateRoutes />} isPrivate />
+     <Route path="/initial-setup" element={<PrivateRoute><InitialSetup /></PrivateRoute>} />
+     <Route path="/login" element={<PrivateRoute><Login /></PrivateRoute>} />
+     <Route path="/signup" element={<PrivateRoute><Signup /></PrivateRoute>} />
+     <Route path="/public/protocols/:token" element={<PrivateRoute isPublic><PublicProtocol /></PrivateRoute>} />
+     <Route path="/*" element={<PrivateRoute isPrivate><PrivateRoutes /></PrivateRoute>} />
      </RouterRoutes>
  </Suspense>
  <ToastContainer autoClose={3000} />
