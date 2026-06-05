@@ -138,13 +138,6 @@ func setupPluginTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-func setupGinEngine() (*gin.Engine, *gin.RouterGroup) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	api := r.Group("/api")
-	return r, api
-}
-
 // ---- WebchatPlugin Tests ----
 
 // TestWebchatPlugin_GetManifest verifica metadata do plugin
@@ -207,7 +200,9 @@ func TestWebchatPlugin_GET_ReturnsWhatsAppConfig(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
 	assert.Equal(t, "Test Channel", body["name"])
 	assert.Equal(t, "Olá!", body["greetingMessage"])
 }
@@ -220,7 +215,9 @@ func TestWebchatPlugin_GET_NotFound(t *testing.T) {
 	mockCore.On("RegisterRoute", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	plugin := &WebchatPlugin{}
-	plugin.OnActivate(mockCore)
+	if err := plugin.OnActivate(mockCore); err != nil {
+		t.Fatal(err)
+	}
 
 	r := gin.New()
 	r.GET("/webchat/:whatsappId", mockCore.registeredRoutes[0].Handler)
@@ -250,7 +247,9 @@ func TestWebchatPlugin_POST_CreatesTicketAndContact(t *testing.T) {
 	mockCore.On("RegisterRoute", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	plugin := &WebchatPlugin{}
-	plugin.OnActivate(mockCore)
+	if err := plugin.OnActivate(mockCore); err != nil {
+		t.Fatal(err)
+	}
 
 	r := gin.New()
 	r.POST("/webchat/:whatsappId/tickets", mockCore.registeredRoutes[1].Handler)
@@ -271,7 +270,9 @@ func TestWebchatPlugin_POST_CreatesTicketAndContact(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
 	assert.NotNil(t, resp["ticketId"])
 	assert.NotNil(t, resp["contactId"])
 
@@ -304,10 +305,9 @@ func TestClientesPlugin_OnInstall_RunsAutoMigrate(t *testing.T) {
 	mockCore.On("GetDB").Return(db)
 
 	plugin := &ClientesPlugin{}
-	err := plugin.OnInstall(mockCore)
-
-	assert.NoError(t, err)
-	// Verifica que a tabela Clients existe (AutoMigrate criou)
+	if err := plugin.OnInstall(mockCore); err != nil {
+		t.Fatal(err)
+	}
 	assert.True(t, db.Migrator().HasTable("Clients"))
 }
 
@@ -319,9 +319,10 @@ func TestClientesPlugin_OnActivate_RegistersRoutes(t *testing.T) {
 	mockCore.On("RegisterRoute", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	plugin := &ClientesPlugin{}
-	err := plugin.OnActivate(mockCore)
+	if err := plugin.OnActivate(mockCore); err != nil {
+		t.Fatal(err)
+	}
 
-	assert.NoError(t, err)
 	mockCore.AssertNumberOfCalls(t, "RegisterRoute", 2)
 	assert.Len(t, mockCore.registeredRoutes, 2)
 }
@@ -340,7 +341,9 @@ func TestClientesPlugin_GET_ReturnsOnlyTenantClients(t *testing.T) {
 	mockCore.On("RegisterRoute", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	plugin := &ClientesPlugin{}
-	plugin.OnActivate(mockCore)
+	if err := plugin.OnActivate(mockCore); err != nil {
+		t.Fatal(err)
+	}
 
 	r := gin.New()
 	r.GET("/clientes", func(c *gin.Context) {
@@ -355,7 +358,9 @@ func TestClientesPlugin_GET_ReturnsOnlyTenantClients(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var clients []models.Client
-	json.Unmarshal(w.Body.Bytes(), &clients)
+	if err := json.Unmarshal(w.Body.Bytes(), &clients); err != nil {
+		t.Fatal(err)
+	}
 	assert.Len(t, clients, 1)
 	assert.Equal(t, "Cliente A", clients[0].Name)
 }
@@ -372,7 +377,9 @@ func TestClientesPlugin_POST_EnforcesTenantIDFromContext(t *testing.T) {
 	mockCore.On("RegisterRoute", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	plugin := &ClientesPlugin{}
-	plugin.OnActivate(mockCore)
+	if err := plugin.OnActivate(mockCore); err != nil {
+		t.Fatal(err)
+	}
 
 	r := gin.New()
 	r.POST("/clientes", func(c *gin.Context) {
@@ -440,7 +447,9 @@ func TestSaaSPlugin_GET_ReturnsAllTenants(t *testing.T) {
 	mockCore.On("RegisterRoute", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	plugin := &SaaSPlugin{}
-	plugin.OnActivate(mockCore)
+	if err := plugin.OnActivate(mockCore); err != nil {
+		t.Fatal(err)
+	}
 
 	r := gin.New()
 	r.GET("/saas/manager/tenants", mockCore.registeredRoutes[0].Handler)
@@ -452,7 +461,9 @@ func TestSaaSPlugin_GET_ReturnsAllTenants(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var tenants []models.Tenant
-	json.Unmarshal(w.Body.Bytes(), &tenants)
+	if err := json.Unmarshal(w.Body.Bytes(), &tenants); err != nil {
+		t.Fatal(err)
+	}
 	assert.Len(t, tenants, 2)
 }
 
