@@ -294,7 +294,7 @@ func TestWebchatPlugin_POST_CreatesTicketAndContact(t *testing.T) {
 func TestClientesPlugin_GetManifest(t *testing.T) {
 	p := &ClientesPlugin{}
 	m := p.GetManifest()
-	assert.Equal(t, "clientes", m.Slug)
+	assert.Equal(t, "clientes", m.Slug) //nolint:misspell // PT-BR: slug legítima do plugin
 	assert.Equal(t, "1.2.0", m.Version)
 }
 
@@ -346,12 +346,12 @@ func TestClientesPlugin_GET_ReturnsOnlyTenantClients(t *testing.T) {
 	}
 
 	r := gin.New()
-	r.GET("/clientes", func(c *gin.Context) {
+	r.GET("/clientes", func(c *gin.Context) { //nolint:misspell
 		c.Set("tenantId", tenantA)
 		mockCore.registeredRoutes[0].Handler(c)
 	})
 
-	req := httptest.NewRequest("GET", "/clientes", nil)
+	req := httptest.NewRequest("GET", "/clientes", nil) //nolint:misspell
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
