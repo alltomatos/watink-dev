@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect, useReducer } from "react";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import openSocket from "../../services/socket-io";
 
@@ -58,7 +58,7 @@ const useStyles = makeStyles((theme) => ({
 const KnowledgeBaseConfig = () => {
     const classes = useStyles();
     const { knowledgeBaseId } = useParams();
-    const history = useHistory();
+    const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
     const [knowledgeBase, setKnowledgeBase] = useState(null);
@@ -162,7 +162,7 @@ const KnowledgeBaseConfig = () => {
         <MainContainer>
             <MainHeader>
                 <div style={{ display: "flex", alignItems: "center" }}>
-                    <IconButton onClick={() => history.push("/knowledge-bases")} color="primary">
+                    <IconButton onClick={() => navigate("/knowledge-bases")} color="primary">
                         <ArrowBack />
                     </IconButton>
                     <Title>{knowledgeBase ? knowledgeBase.name : "Carregando..."}</Title>

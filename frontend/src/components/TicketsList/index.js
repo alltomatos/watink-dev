@@ -4,7 +4,7 @@ import openSocket from "../../services/socket-io";
 
 import { makeStyles } from "@material-ui/core/styles";
 import List from "@material-ui/core/List";
-import Paper from "@material-ui/core/Paper";
+import PaperCard from "../PaperCard";
 
 import TicketListItem from "../TicketListItem";
 import TicketsListSkeleton from "../TicketsListSkeleton";
@@ -299,11 +299,11 @@ const TicketsList = (props) => {
 	};
 
 	return (
-		<Paper className={classes.ticketsListWrapper} style={style}>
-			<Paper
-				square
+		<PaperCard variant="flush" padding="none" className={classes.ticketsListWrapper} style={style}>
+			<PaperCard
+				variant="flush"
+				padding="none"
 				name="closed"
-				elevation={0}
 				className={classes.ticketsList}
 				onScroll={handleScroll}
 			>
@@ -326,8 +326,8 @@ const TicketsList = (props) => {
 					)}
 					{loading && <TicketsListSkeleton />}
 				</List>
-			</Paper>
-		</Paper>
+			</PaperCard>
+		</PaperCard>
 	);
 };
 

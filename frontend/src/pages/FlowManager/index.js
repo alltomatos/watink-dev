@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 import { makeStyles } from '@material-ui/core/styles';
 import {
     Paper,
@@ -65,7 +65,7 @@ const useStyles = makeStyles((theme) => ({
 
 const FlowManager = () => {
     const classes = useStyles();
-    const history = useHistory();
+    const navigate = useNavigate();
     const [flows, setFlows] = useState([]);
     const [loading, setLoading] = useState(false);
     const [openModal, setOpenModal] = useState(false);
@@ -111,14 +111,14 @@ const FlowManager = () => {
             setOpenModal(false);
             setNewFlowName('');
             setSelectedWhatsapp('');
-            history.push(`/flowbuilder/${data.id}`);
+            navigate(`/flowbuilder/${data.id}`);
         } catch (err) {
             toast.error("Erro ao criar fluxo");
         }
     };
 
     const handleEditFlow = (id) => {
-        history.push(`/flowbuilder/${id}`);
+        navigate(`/flowbuilder/${id}`);
     };
 
     const isConnectionUsed = (whatsappId) => {

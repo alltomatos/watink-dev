@@ -17,7 +17,7 @@ import {
     Cancel as CancelIcon,
 } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
-import { useParams, useHistory, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
@@ -89,7 +89,7 @@ const longDescriptionBySlug = (slug) => {
 const PluginDetail = () => {
     const classes = useStyles();
     const { slug } = useParams();
-    const history = useHistory();
+    const navigate = useNavigate();
     const location = useLocation();
     const { user } = useContext(AuthContext);
     const [plugin, setPlugin] = useState(null);
@@ -245,7 +245,7 @@ const PluginDetail = () => {
                     <Button
                         startIcon={<ArrowBackIcon />}
                         className={classes.backButton}
-                        onClick={() => history.push("/admin/settings/marketplace")}
+                        onClick={() => navigate("/admin/settings/marketplace")}
                     >
                         Voltar ao Marketplace
                     </Button>

@@ -71,18 +71,19 @@ export const ThemeProvider = ({ children }) => {
 		setLocale(LOCALE_MAP[key] || ptBR);
 	}, []);
 
-	// ── Apply CSS tokens whenever mode or brand changes ──
+	// ── Apply CSS tokens whenever mode, appTheme, or brand changes ──
 	useEffect(() => {
 		applyThemeTokens({
 			mode: darkMode ? "dark" : "light",
+			appTheme,
 			brand,
 		});
-	}, [darkMode, brand]);
+	}, [darkMode, appTheme, brand]);
 
 	// ── Build MUI theme (memoized) — concrete hex for MUI internals ──
 	const theme = useMemo(() => {
-		return createMuiThemeBridge({ darkMode, locale });
-	}, [darkMode, locale]);
+		return createMuiThemeBridge({ darkMode, appTheme, locale });
+	}, [darkMode, appTheme, locale]);
 
 	// ── Context value ──
 	const contextValue = useMemo(

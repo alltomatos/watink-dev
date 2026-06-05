@@ -1,90 +1,7 @@
 /* @jsxImportSource react */
 import React from "react";
-import { makeStyles } from "@material-ui/core/styles";
-import { Card, CardContent, Typography, Box } from "@material-ui/core";
-import { TrendingUp, TrendingDown } from "@material-ui/icons";
 import clsx from "clsx";
-
-const useStyles = makeStyles((theme) => ({
-    root: {
-        backgroundColor: "var(--bg-surface)",
-        borderRadius: 16,
-        border: "none",
-        boxShadow: "0px 4px 20px var(--shadow-medium)",
-        transition: "all 0.3s cubic-bezier(.25,.8,.25,1)",
-        overflow: "visible",
-        height: "100%",
-        "&:hover": {
-            transform: "translateY(-6px)",
-            boxShadow: "0 20px 25px -5px var(--shadow-appbar), 0 10px 10px -5px var(--overlay-weak)",
-        },
-    },
-    content: {
-        padding: theme.spacing(3),
-        "&:last-child": {
-            paddingBottom: theme.spacing(3),
-        },
-    },
-    header: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: theme.spacing(2),
-    },
-    iconWrapper: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 56,
-        height: 56,
-        borderRadius: 16,
-        background: (props) => props.bgColor,
-        boxShadow: "0 4px 6px var(--border-subtle)",
-    },
-    label: {
-        fontSize: "0.875rem",
-        fontWeight: 600,
-        color: "var(--text-muted)",
-        marginBottom: theme.spacing(0.5),
-        textTransform: "uppercase",
-        letterSpacing: "0.5px",
-    },
-    value: {
-        fontSize: "2.5rem",
-        fontWeight: 800,
-        color: (props) => props.textColor || "var(--text-primary)",
-        lineHeight: 1.2,
-    },
-    footer: {
-        display: "flex",
-        alignItems: "center",
-        marginTop: theme.spacing(2),
-    },
-    trendPositive: {
-        display: "flex",
-        alignItems: "center",
-        fontSize: "0.75rem",
-        fontWeight: 700,
-        color: "var(--status-success)",
-        backgroundColor: "var(--status-success-10)",
-        padding: "4px 10px",
-        borderRadius: 20,
-    },
-    trendNegative: {
-        display: "flex",
-        alignItems: "center",
-        fontSize: "0.75rem",
-        fontWeight: 700,
-        color: "var(--status-error)",
-        backgroundColor: "var(--status-error-10)",
-        padding: "4px 10px",
-        borderRadius: 20,
-    },
-    trendIcon: {
-        fontSize: 16,
-        marginRight: 4,
-    },
-}));
+import { TrendingUp, TrendingDown } from "@material-ui/icons";
 
 // Mapeia cores do tema para valores RGB e Gradients
 const colorMap = {
@@ -94,7 +11,7 @@ const colorMap = {
         text: "var(--status-info)"
     },
     success: {
-        bg: "linear-gradient(135deg, var(--status-success-10) 0%, var(--status-success-bg) 100%)",
+        bg: "linear-gradient(135deg, var(--status-success-bg) 0%, var(--status-success-10) 100%)",
         icon: "var(--status-success)",
         text: "var(--status-success)"
     },
@@ -116,8 +33,7 @@ const colorMap = {
 };
 
 /**
- * MetricCard Component
- * 
+ * MetricCard Component — Semântico e token-based.
  * Card de métricas para dashboards com visual premium.
  * 
  * @param {Object} props
@@ -138,40 +54,96 @@ const MetricCard = ({
     ...rest
 }) => {
     const colors = colorMap[color] || colorMap.primary;
-    const classes = useStyles({ bgColor: colors.bg, textColor: colors.text });
 
     return (
-        <Card className={clsx(classes.root, className)} {...rest}>
-            <CardContent className={classes.content}>
-                <div className={classes.header}>
-                    <div className={classes.iconWrapper}>
+        <div
+            className={clsx("metric-card", className)}
+            style={{
+                backgroundColor: "var(--bg-surface)",
+                borderRadius: 16,
+                boxShadow: "0px 4px 20px var(--shadow-medium)",
+                transition: "all 0.3s cubic-bezier(.25,.8,.25,1)",
+                overflow: "visible",
+                height: "100%",
+                "&:hover": {
+                    transform: "translateY(-6px)",
+                    boxShadow: "0 20px 25px -5px var(--shadow-lg), 0 10px 10px -5px var(--overlay-dark)",
+                },
+            }}
+            {...rest}
+        >
+            <div style={{ padding: "16px" }}>
+                {/* Header with icon */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 56,
+                            height: 56,
+                            borderRadius: 16,
+                            background: colors.bg,
+                            boxShadow: "0 4px 6px var(--shadow-subtle)",
+                        }}
+                    >
                         {icon && React.cloneElement(icon, {
                             style: { color: colors.icon, fontSize: 30 }
                         })}
                     </div>
                 </div>
 
-                <Typography className={classes.label}>
+                {/* Label */}
+                <div
+                    style={{
+                        fontSize: "0.875rem",
+                        fontWeight: 600,
+                        color: "var(--text-muted)",
+                        marginBottom: "8px",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                    }}
+                >
                     {label}
-                </Typography>
+                </div>
 
-                <Typography className={classes.value}>
+                {/* Value */}
+                <div
+                    style={{
+                        fontSize: "2.5rem",
+                        fontWeight: 800,
+                        color: colors.text || "var(--text-primary)",
+                        lineHeight: 1.2,
+                    }}
+                >
                     {value}
-                </Typography>
+                </div>
 
+                {/* Trend */}
                 {trend && (
-                    <div className={classes.footer}>
-                        <span className={trend.positive ? classes.trendPositive : classes.trendNegative}>
+                    <div style={{ display: "flex", alignItems: "center", marginTop: "16px" }}>
+                        <span
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                fontSize: "0.75rem",
+                                fontWeight: 700,
+                                color: trend.positive ? "var(--status-success)" : "var(--status-error)",
+                                backgroundColor: trend.positive ? "var(--status-success-bg)" : "var(--status-error-bg)",
+                                padding: "4px 10px",
+                                borderRadius: 20,
+                            }}
+                        >
                             {trend.positive
-                                ? <TrendingUp className={classes.trendIcon} />
-                                : <TrendingDown className={classes.trendIcon} />
+                                ? <TrendingUp style={{ fontSize: 16, marginRight: 4 }} />
+                                : <TrendingDown style={{ fontSize: 16, marginRight: 4 }} />
                             }
                             {trend.value}
                         </span>
                     </div>
                 )}
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 };
 

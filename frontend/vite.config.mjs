@@ -1,5 +1,13 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+/// <reference types="vitest" />
 
 /**
  * Manual chunk strategy — function-based to avoid circular dependencies.
@@ -31,19 +39,9 @@ function chunkStrategy(id, { _getModuleInfo }) {
     if (id.includes("/formik/") || id.includes("/yup/")) {
       return "forms";
     }
-    // Charts — recharts + d3 subdeps (avoid vendor circular)
-    if (
-    id.includes("/recharts/") ||
-    id.includes("/d3-") ||
-    id.includes("/victory-") ||
-    id.includes("/d3-array/") ||
-    id.includes("/d3-scale/") ||
-    id.includes("/d3-scale-chromatic/") ||
-    id.includes("/d3-array/") ||
-    id.includes("/d3-time/") ||
-    id.includes("/d3-time-format/")
-    ) {
-    return "charts";
+    // Charts — recharts + victory (d3 is now handled by rollup/vite naturally if shared)
+    if (id.includes("/recharts/") || id.includes("/victory-")) {
+      return "charts";
     }
     // Flow builder + DnD
     if (id.includes("/reactflow/") || id.includes("/react-beautiful-dnd/")) {
@@ -103,11 +101,12 @@ function chunkStrategy(id, { _getModuleInfo }) {
 
 export default defineConfig({
   plugins: [
-    react({
-      // Use automatic runtime to support the /* @jsxImportSource react */ comments
-      // or to handle JSX without manual React imports.
-      jsxRuntime: "automatic",
-    }),
+  react({
+  // Use automatic runtime to support the /* @jsxImportSource react */ comments
+  // or to handle JSX without manual React imports.
+  jsxRuntime: "automatic",
+  }),
+  tailwindcss(),
   ],
   server: {
     port: 3000,
@@ -126,7 +125,6 @@ export default defineConfig({
   },
   envPrefix: "VITE_",
   esbuild: {
-    // Force JSX loader for .js files in src
     loader: "jsx",
     include: /src\/.*\.[jt]sx?$/,
     exclude: [],
@@ -153,7 +151,13 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "jss-plugin-globalThis": "jss-plugin-global",
+      "@": resolve(__dirname, "./src"),
     },
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/setupTests.js',
+    include: ['src/**/*.{test,spec}.{js,jsx}'],
   },
 });

@@ -1,11 +1,11 @@
 /* @jsxImportSource react */
 import React, { useContext } from "react";
-import { Route as RouterRoute, Redirect } from "react-router-dom";
+import { Route as RouterRoute, Navigate } from "react-router-dom";
 
 import { AuthContext } from "../context/Auth/AuthContext";
 import BackdropLoading from "../components/BackdropLoading";
 
-const Route = ({ component: Component, isPrivate = false, isPublic = false, ...rest }) => {
+const Route = ({ isPrivate = false, isPublic = false, component: Component, ...rest }) => {
   const { isAuth, loading } = useContext(AuthContext);
 
   if (loading) {
@@ -14,18 +14,18 @@ const Route = ({ component: Component, isPrivate = false, isPublic = false, ...r
 
   if (!isAuth && isPrivate) {
     return (
-      <Redirect to={{ pathname: "/login", state: { from: rest.location } }} />
+    <Navigate to="/login" state={{ from: rest.location }} replace />
     );
   }
 
   if (isAuth && !isPrivate && !isPublic) {
-    return (
-      <Redirect to={{ pathname: "/", state: { from: rest.location } }} />
-    );
+  return (
+  <Navigate to="/" state={{ from: rest.location }} replace />
+  );
   }
 
   return (
-    <RouterRoute {...rest} component={Component} />
+  <RouterRoute {...rest} element={<Component />} />
   );
 };
 

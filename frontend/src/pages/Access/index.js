@@ -1,15 +1,10 @@
 import React from "react";
-import { useHistory } from "react-router-dom";
-import { makeStyles } from "@material-ui/core/styles";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
   Grid,
-  Paper,
   Button,
-  Card,
-  CardContent,
-  CardActions,
   Chip,
 } from "@material-ui/core";
 import {
@@ -22,79 +17,16 @@ import {
 import MainContainer from "../../components/MainContainer";
 import MainHeader from "../../components/MainHeader";
 import Title from "../../components/Title";
+import PaperCard from "../../components/PaperCard";
+import MetricCard from "../../components/MetricCard";
 import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
 
-const useStyles = makeStyles((theme) => ({
-  root: {
-    padding: theme.spacing(3),
-  },
-  card: {
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    transition: "transform 0.2s ease, box-shadow 0.2s ease",
-    "&:hover": {
-      transform: "translateY(-4px)",
-      boxShadow: theme.shadows[6],
-    },
-  },
-  legacyCard: {
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    opacity: 0.7,
-    border: `1px dashed ${theme.palette.divider}`,
-  },
-  cardHeader: {
-    display: "flex",
-    alignItems: "center",
-    gap: theme.spacing(2),
-    marginBottom: theme.spacing(1),
-  },
-  cardIcon: {
-    padding: theme.spacing(1),
-    borderRadius: 12,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "var(--bg-surface)",
-  },
-  cardTitle: {
-    fontWeight: 600,
-  },
-  cardContent: {
-    flex: 1,
-  },
-  cardButton: {
-    width: "100%",
-    justifyContent: "flex-start",
-  },
-  metricCard: {
-    padding: theme.spacing(2),
-    textAlign: "center",
-    borderRadius: 12,
-    marginBottom: theme.spacing(2),
-  },
-  metricValue: {
-    fontSize: "2.5rem",
-    fontWeight: "bold",
-    color: theme.palette.primary.main,
-  },
-  metricLabel: {
-    color: theme.palette.text.secondary,
-    fontWeight: 500,
-  },
-  legacyChip: {
-    marginLeft: theme.spacing(1),
-  },
-}));
-
 const NAV_CARDS = [
   {
     key: "roles",
-    icon: Assignment,
+    icon: <Assignment />,
     color: "var(--status-info)",
     getTitle: () => i18n.t("role.title") || "Funções",
     getDescription: () =>
@@ -105,7 +37,7 @@ const NAV_CARDS = [
   },
   {
     key: "users",
-    icon: PeopleOutline,
+    icon: <PeopleOutline />,
     color: "var(--status-error)",
     getTitle: () => i18n.t("users.title") || "Usuários",
     getDescription: () =>
@@ -117,7 +49,7 @@ const NAV_CARDS = [
   },
   {
     key: "permissions",
-    icon: VpnKey,
+    icon: <VpnKey />,
     color: "var(--status-warning)",
     getTitle: () => "Permissões",
     getDescription: () =>
@@ -131,7 +63,7 @@ const NAV_CARDS = [
 const LEGACY_CARDS = [
   {
     key: "groups",
-    icon: History,
+    icon: <History />,
     color: "var(--text-muted)",
     getTitle: () => i18n.t("access.buttons.legacyGroups"),
     getDescription: () =>
@@ -146,22 +78,27 @@ const KPI_CONFIG = [
     key: "totalRoles",
     getValue: (stats) => stats.totalRoles,
     labelKey: "access.metrics.roles",
+    color: "primary",
+    icon: <Assignment />,
   },
   {
     key: "usersWithoutRole",
     getValue: (stats) => stats.usersWithoutRole,
     labelKey: "access.metrics.noRole",
+    color: "error",
+    icon: <PeopleOutline />,
   },
   {
     key: "totalUsers",
     getValue: (stats) => stats.totalUsers,
     labelKey: "access.metrics.total",
+    color: "info",
+    icon: <PeopleOutline />,
   },
 ];
 
 const Access = () => {
-  const classes = useStyles();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [stats, setStats] = React.useState({
     totalRoles: 0,
@@ -200,7 +137,7 @@ const Access = () => {
     fetchStats();
   }, []);
 
-  const handleNavigate = (path) => history.push(path);
+  const handleNavigate = (path) => navigate(path);
 
   if (loading) {
     return (
@@ -223,108 +160,97 @@ const Access = () => {
         <Title>{i18n.t("access.title")}</Title>
       </MainHeader>
 
-      <Box className={classes.root}>
+      <Box p={3}>
         <Grid container spacing={3}>
           {KPI_CONFIG.map((kpi) => (
             <Grid item xs={12} md={4} key={kpi.key}>
-              <Paper className={classes.metricCard}>
-                <Typography variant="h3" className={classes.metricValue}>
-                  {kpi.getValue(stats)}
-                </Typography>
-                <Typography variant="body1" className={classes.metricLabel}>
-                  {i18n.t(kpi.labelKey)}
-                </Typography>
-              </Paper>
+              <MetricCard
+                label={i18n.t(kpi.labelKey)}
+                value={kpi.getValue(stats)}
+                icon={kpi.icon}
+                color={kpi.color}
+              />
             </Grid>
           ))}
 
-          {NAV_CARDS.map((card) => {
-            const Icon = card.icon;
-            return (
-              <Grid item xs={12} md={4} key={card.key}>
-                <Card className={classes.card}>
-                  <CardContent className={classes.cardContent}>
-                    <div className={classes.cardHeader}>
-                      <div
-                        className={classes.cardIcon}
-                        style={{ backgroundColor: card.color }}
-                      >
-                        <Icon style={{ color: "var(--bg-surface)" }} />
-                      </div>
-                      <Typography variant="h6" className={classes.cardTitle}>
-                        {card.getTitle()}
-                      </Typography>
-                    </div>
-                    <Typography
-                      variant="body2"
-                      color="textSecondary"
-                      gutterBottom
-                    >
-                      {card.getDescription()}
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      {card.getSubtitle(stats)}
-                    </Typography>
-                  </CardContent>
-                  <CardActions>
-                    <Button
-                      variant="outlined"
-                      className={classes.cardButton}
-                      endIcon={<ArrowForward />}
-                      onClick={() => handleNavigate(card.route)}
-                    >
-                      {card.getButtonLabel()}
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            );
-          })}
+          {NAV_CARDS.map((card) => (
+            <Grid item xs={12} md={4} key={card.key}>
+              <PaperCard variant="outlined" padding="default" hoverEffect>
+                <Box display="flex" alignItems="center" gap={2} mb={1}>
+                  <Box
+                    p={1}
+                    borderRadius={12}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    bgcolor={card.color}
+                    color="white"
+                  >
+                    {card.icon}
+                  </Box>
+                  <Typography variant="h6" style={{ fontWeight: 600 }}>
+                    {card.getTitle()}
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="textSecondary" gutterBottom>
+                  {card.getDescription()}
+                </Typography>
+                <Typography variant="caption" color="textSecondary">
+                  {card.getSubtitle(stats)}
+                </Typography>
+                <Box mt={2}>
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    endIcon={<ArrowForward />}
+                    onClick={() => handleNavigate(card.route)}
+                  >
+                    {card.getButtonLabel()}
+                  </Button>
+                </Box>
+              </PaperCard>
+            </Grid>
+          ))}
 
-          {LEGACY_CARDS.map((card) => {
-            const Icon = card.icon;
-            return (
-              <Grid item xs={12} md={4} key={card.key}>
-                <Card className={classes.legacyCard}>
-                  <CardContent className={classes.cardContent}>
-                    <div className={classes.cardHeader}>
-                      <div
-                        className={classes.cardIcon}
-                        style={{ backgroundColor: card.color }}
-                      >
-                        <Icon style={{ color: "var(--bg-surface)" }} />
-                      </div>
-                      <Typography variant="h6" className={classes.cardTitle}>
-                        {card.getTitle()}
-                        <Chip
-                          size="small"
-                          label="Legado"
-                          className={classes.legacyChip}
-                        />
-                      </Typography>
-                    </div>
-                    <Typography
-                      variant="body2"
-                      color="textSecondary"
-                      gutterBottom
-                    >
-                      {card.getDescription()}
-                    </Typography>
-                  </CardContent>
-                  <CardActions>
-                    <Button
-                      size="small"
-                      className={classes.cardButton}
-                      endIcon={<ArrowForward />}
-                      onClick={() => handleNavigate(card.route)}
-                    >
-                      {card.getButtonLabel()}
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            );
-          })}
+          {LEGACY_CARDS.map((card) => (
+            <Grid item xs={12} md={4} key={card.key}>
+              <PaperCard
+                variant="outlined"
+                style={{ opacity: 0.7, borderStyle: "dashed" }}
+              >
+                <Box display="flex" alignItems="center" gap={2} mb={1}>
+                  <Box
+                    p={1}
+                    borderRadius={12}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    bgcolor={card.color}
+                    color="white"
+                  >
+                    {card.icon}
+                  </Box>
+                  <Typography variant="h6" style={{ fontWeight: 600 }}>
+                    {card.getTitle()}
+                    <Chip size="small" label="Legado" style={{ marginLeft: 8 }} />
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="textSecondary" gutterBottom>
+                  {card.getDescription()}
+                </Typography>
+                <Box mt={2}>
+                  <Button
+                    size="small"
+                    fullWidth
+                    endIcon={<ArrowForward />}
+                    onClick={() => handleNavigate(card.route)}
+                  >
+                    {card.getButtonLabel()}
+                  </Button>
+                </Box>
+              </PaperCard>
+            </Grid>
+          ))}
         </Grid>
       </Box>
     </MainContainer>

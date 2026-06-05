@@ -1,10 +1,11 @@
 /* @jsxImportSource react */
 import React from "react";
-import { Paper, Typography, Box } from "@material-ui/core";
+import { Typography, Box } from "@material-ui/core";
+import PaperCard from "../../components/PaperCard";
 
 const PapiSettingsForm = () => {
   return (
-    <Paper style={{ padding: 16 }}>
+    <PaperCard variant="outlined" padding="default">
       <Box>
         <Typography variant="body1" style={{ fontWeight: 600 }}>
           Configurações PAPI
@@ -13,7 +14,7 @@ const PapiSettingsForm = () => {
           Módulo de configuração PAPI em reconstrução nesta branch de design.
         </Typography>
       </Box>
-    </Paper>
+    </PaperCard>
   );
 };
 

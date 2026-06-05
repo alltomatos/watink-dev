@@ -14,7 +14,8 @@ import 'reactflow/dist/style.css';
 import './flowbuilder.css';
 
 import { makeStyles } from '@material-ui/core/styles';
-import { Paper, IconButton, Tooltip, Button, CircularProgress, Switch, FormControlLabel } from '@material-ui/core';
+import { IconButton, Tooltip, Button, CircularProgress, Switch, FormControlLabel } from '@material-ui/core';
+import PaperCard from '../../components/PaperCard';
 import {
     Chat as ChatIcon,
     ChevronRight as ChevronRightIcon,
@@ -510,14 +511,14 @@ const FlowBuilder = () => {
             </div>
 
             {aiEnabled && (
-                <Paper className={`${classes.sidebar} ${!isChatOpen ? classes.sidebarCollapsed : ''}`} square elevation={3}>
+                <PaperCard className={`${classes.sidebar} ${!isChatOpen ? classes.sidebarCollapsed : ''}`}>
                     <div style={{ display: 'flex', justifyContent: 'flex-start', padding: '5px' }}>
                         <IconButton onClick={() => setIsChatOpen(false)} size="small">
                             <ChevronRightIcon />
                         </IconButton>
                     </div>
                     <FlowChat onFlowGenerated={handleAIResponse} />
-                </Paper>
+                </PaperCard>
             )}
 
             {/* Sidebar de edição de nó */}

@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect, useRef } from "react";
-import { useHistory, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { makeStyles } from "@material-ui/core/styles";
 import {
     Paper,
@@ -129,7 +129,7 @@ const getStageColor = (index) => stageColors[index % stageColors.length];
 
 const PipelineCreator = () => {
     const classes = useStyles();
-    const history = useHistory();
+    const navigate = useNavigate();
     const { pipelineId } = useParams();
     const messagesEndRef = useRef(null);
 
@@ -222,7 +222,7 @@ const PipelineCreator = () => {
                 await api.post("/pipelines", payload);
                 toast.success("Pipeline criado com sucesso!");
             }
-            history.push("/pipelines");
+            navigate("/pipelines");
         } catch (err) {
             toast.error("Erro ao criar pipeline");
         }
@@ -312,7 +312,7 @@ const PipelineCreator = () => {
         <MainContainer className={classes.root}>
             <MainHeader>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <IconButton onClick={() => history.push("/pipelines")}>
+                    <IconButton onClick={() => navigate("/pipelines")}>
                         <ArrowBackIcon />
                     </IconButton>
                     <Title>{pipelineId ? "Editar Pipeline" : "Novo Pipeline"}</Title>
@@ -405,7 +405,7 @@ const PipelineCreator = () => {
                     </List>
 
                     <Box mt="auto" pt={2} display="flex" justifyContent="flex-end" gap={2}>
-                        <Button onClick={() => history.push("/pipelines")}>Cancelar</Button>
+                        <Button onClick={() => navigate("/pipelines")}>Cancelar</Button>
                         <Button
                             variant="contained"
                             color="primary"

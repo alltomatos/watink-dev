@@ -1,7 +1,7 @@
 /**
  * ESLint configuration — Watink Frontend
  *
- * Stack: React 17 + Vite + MUI v4
+ * Stack: React 17 + Vite + MUI v4 (em migracao para shadcn/ui + Tailwind)
  * Plugin local: watink-design-system (Design System governance)
  */
 "use strict";
@@ -36,11 +36,14 @@ module.exports = {
 	rules: {
 		// ── Design System Governance ──
 		"watink-design-system/no-hardcoded-colors": [
-			"warn",
+			"error",
 			{
-				exemptPatterns: ["/legacy/"],
+				exemptPatterns: ["ColorPicker", "FlowBuilder", "tagColors", "MainListItems"],
 			},
 		],
+
+		// ── Migration Guard (ADR-001) ──
+		"watink-design-system/no-make-styles": "error",
 
 		// ── React ──
 		"react/prop-types": "off",
@@ -54,6 +57,13 @@ module.exports = {
 		"no-var": "error",
 	},
 	overrides: [
+		{
+			// Legacy MUI v4 components — exempt from migration guard
+			files: ["src/components/legacy/**/*", "src/theme/bridge.js"],
+			rules: {
+				"watink-design-system/no-make-styles": "off",
+			},
+		},
 		{
 			// Config files & scripts exempt from DS rule
 			files: ["vite.config.*", "copy-assets.*", "sync-embed-go.*", "*.config.js"],

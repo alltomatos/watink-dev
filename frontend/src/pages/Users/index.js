@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useReducer, useContext } from "react";
 import { toast } from "react-toastify";
 import openSocket from "../../services/socket-io";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import {
   makeStyles,
@@ -133,7 +133,7 @@ const useStyles = makeStyles((theme) => ({
 
 const Users = () => {
   const classes = useStyles();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { user: loggedInUser } = useContext(AuthContext);
 
   const [loading, setLoading] = useState(false);
@@ -212,7 +212,7 @@ const Users = () => {
   };
 
   const handleEditUser = (user) => {
-    history.push(`/users/${user.id}`);
+    navigate(`/users/${user.id}`);
   };
 
   const handleDeleteUser = async (userId) => {
@@ -325,7 +325,7 @@ const Users = () => {
             variant="contained"
             color="primary"
             className={classes.addButton}
-            onClick={() => history.push("/users/new")}
+            onClick={() => navigate("/users/new")}
             startIcon={<PersonAdd />}
           >
             {i18n.t("users.buttons.add")}

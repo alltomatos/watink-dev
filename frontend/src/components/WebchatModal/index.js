@@ -5,7 +5,6 @@ import { Formik, Form, Field } from "formik";
 import { toast } from "react-toastify";
 
 import { makeStyles } from "@material-ui/core/styles";
-import { green } from "@material-ui/core/colors";
 
 import {
 	Dialog,
@@ -32,6 +31,16 @@ import { i18n } from "../../translate/i18n";
 import toastError from "../../errors/toastError";
 import QueueSelect from "../QueueSelect";
 
+const DEFAULT_WEBCHAT_BUTTON_COLOR = "var(--whatsapp-brand, var(--status-success))";
+
+const resolveDesignToken = token => {
+    if (typeof window === "undefined") return "#10B981";
+    const rootStyles = window.getComputedStyle(document.documentElement);
+    const tokenMatch = token.match(/var\((--[^,)]+)/);
+    const value = tokenMatch ? rootStyles.getPropertyValue(tokenMatch[1]).trim() : token;
+    return value || "#10B981";
+};
+
 const useStyles = makeStyles(theme => ({
 	root: {
 		display: "flex",
@@ -47,7 +56,7 @@ const useStyles = makeStyles(theme => ({
 		position: "relative",
 	},
 	buttonProgress: {
-		color: green[500],
+		color: "var(--status-success)",
 		position: "absolute",
 		top: "50%",
 		left: "50%",
@@ -100,7 +109,7 @@ const WebchatModal = ({ open, onClose, whatsAppId, onSaved }) => {
 		isDefault: false,
         type: "webchat",
         chatConfig: {
-            buttonColor: "#00E676",
+            buttonColor: DEFAULT_WEBCHAT_BUTTON_COLOR,
             icon: "chat",
             position: "right",
             title: "Suporte Online",
@@ -290,7 +299,7 @@ const WebchatModal = ({ open, onClose, whatsAppId, onSaved }) => {
                                             <input
                                                 type="color"
                                                 className={classes.colorPicker}
-                                                value={values.chatConfig?.buttonColor || "#00E676"}
+                                                value={resolveDesignToken(values.chatConfig?.buttonColor || DEFAULT_WEBCHAT_BUTTON_COLOR)}
                                                 onChange={(e) => setFieldValue("chatConfig.buttonColor", e.target.value)}
                                             />
                                         </Box>
@@ -299,7 +308,7 @@ const WebchatModal = ({ open, onClose, whatsAppId, onSaved }) => {
                                         <div className={classes.previewContainer}>
                                             <div 
                                                 className={classes.previewButton}
-                                                style={{ backgroundColor: values.chatConfig?.buttonColor || "#00E676" }}
+                                                style={{ backgroundColor: values.chatConfig?.buttonColor || DEFAULT_WEBCHAT_BUTTON_COLOR }}
                                             >
                                                 <svg style={{ width: 30, height: 30, fill: 'var(--bg-surface)' }} viewBox="0 0 24 24">
                                                     <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>

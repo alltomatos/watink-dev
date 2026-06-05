@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect, useCallback } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
     Container,
     Paper,
@@ -91,7 +91,7 @@ const priorityLabels = {
 
 const Helpdesk = () => {
     const classes = useStyles();
-    const history = useHistory();
+    const navigate = useNavigate();
     const { user } = useAuth();
     const [protocols, setProtocols] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -132,7 +132,7 @@ const Helpdesk = () => {
     };
 
     const handleViewProtocol = (id) => {
-        history.push(`/helpdesk/${id}`);
+        navigate(`/helpdesk/${id}`);
     };
 
     const getStatusClass = (status) => {
@@ -190,7 +190,7 @@ const Helpdesk = () => {
                                             variant="outlined"
                                             color="primary"
                                             startIcon={<ViewModuleIcon />}
-                                            onClick={() => history.push("/helpdesk/kanban")}
+                                            onClick={() => navigate("/helpdesk/kanban")}
                                             style={{ marginRight: 8 }}
                                         >
                                             Ver Kanban

@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect, useContext } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import Button from "@material-ui/core/Button";
 import TextField from "@material-ui/core/TextField";
@@ -39,7 +39,7 @@ const filterOptions = createFilterOptions({
 });
 
 const TransferTicketModal = ({ modalOpen, onClose, ticketid, ticketWhatsappId }) => {
-	const history = useHistory();
+	const navigate = useNavigate();
 	const [options, setOptions] = useState([]);
 	const [queues, setQueues] = useState([]);
 	const [allQueues, setAllQueues] = useState([]);
@@ -122,7 +122,7 @@ const TransferTicketModal = ({ modalOpen, onClose, ticketid, ticketWhatsappId })
 			await api.put(`/tickets/${ticketid}`, data);
 
 			setLoading(false);
-			history.push(`/tickets`);
+			navigate(`/tickets`);
 		} catch (err) {
 			setLoading(false);
 			toastError(err);

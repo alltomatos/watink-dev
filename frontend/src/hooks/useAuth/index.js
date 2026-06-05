@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import { useState, useEffect, useCallback } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import openSocket from "../../services/socket-io";
 
 import { toast } from "react-toastify";
@@ -10,7 +10,7 @@ import api from "../../services/api";
 import toastError from "../../errors/toastError";
 
 const useAuth = () => {
-	const history = useHistory();
+	const navigate = useNavigate();
 	const [isAuth, setIsAuth] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [user, setUser] = useState({});
@@ -46,7 +46,7 @@ const useAuth = () => {
 				if (status === 401 && isRefreshRequest) {
 					clearSession();
 					if (history.location.pathname !== "/login") {
-						history.push("/login");
+						navigate("/login");
 					}
 					return Promise.reject(error);
 				}
@@ -70,13 +70,13 @@ const useAuth = () => {
 						console.error("RefreshToken failed", err);
 						clearSession();
 						if (history.location.pathname !== "/login") {
-							history.push("/login");
+							navigate("/login");
 						}
 					}
 				} else if (status === 401 && originalRequest._retry) {
 					clearSession();
 					if (history.location.pathname !== "/login") {
-						history.push("/login");
+						navigate("/login");
 					}
 				}
 				return Promise.reject(error);
@@ -101,7 +101,7 @@ const useAuth = () => {
 				} catch (err) {
 					toastError(err);
 					clearSession();
-					history.push("/login");
+					navigate("/login");
 				}
 			}
 			setLoading(false);
@@ -143,7 +143,7 @@ const useAuth = () => {
 			setUser(data.user);
 			setIsAuth(true);
 			toast.success(i18n.t("auth.toasts.success"));
-			history.push("/tickets");
+			navigate("/tickets");
 			setLoading(false);
 		} catch (err) {
 			toastError(err);
@@ -162,7 +162,7 @@ const useAuth = () => {
 			sessionStorage.removeItem("token");
 			api.defaults.headers.Authorization = undefined;
 			setLoading(false);
-			history.push("/login");
+			navigate("/login");
 		} catch (err) {
 			toastError(err);
 			setLoading(false);

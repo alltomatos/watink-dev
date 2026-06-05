@@ -25,10 +25,11 @@ import {
   Block,
   Done,
   DoneAll,
+  ErrorOutline,
   ExpandMore,
   GetApp,
   History as HistoryIcon,
-} from "@material-ui/icons";
+  } from "@material-ui/icons";
 
 import MarkdownWrapper from "../MarkdownWrapper";
 import VcardPreview from "../VcardPreview";
@@ -827,7 +828,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
                   try {
                     const data = typeof quoted.dataJson === 'string' ? JSON.parse(quoted.dataJson) : quoted.dataJson;
                     pushName = data.pushName;
-                  } catch (e) { }
+                    } catch (e) { /* invalid dataJson — fallback to participant/contact */ }
                 }
 
                 if (quoted.participant) {
@@ -946,7 +947,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
           try {
             const data = typeof msg.dataJson === 'string' ? JSON.parse(msg.dataJson) : msg.dataJson;
             pushName = data?.pushName;
-          } catch (e) { }
+            } catch (e) { /* invalid dataJson — fallback to contact name */ }
         }
 
         if (msg.contact) {

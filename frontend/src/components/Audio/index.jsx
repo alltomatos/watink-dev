@@ -1,11 +1,9 @@
 import { Button } from "@material-ui/core";
-import React, { useRef } from "react";
-import { useEffect } from "react";
-import { useState } from "react";
+import React, { useRef, useEffect, useState } from "react";
 
 const LS_NAME = 'audioMessageRate';
 
-export default function({url}) {
+const Audio = function Audio({url}) {
     const audioRef = useRef(null);
     const [audioRate, setAudioRate] = useState( parseFloat(localStorage.getItem(LS_NAME) || "1") );
     const [showButtonRate, setShowButtonRate] = useState(false);
@@ -59,4 +57,8 @@ export default function({url}) {
             {showButtonRate && <Button style={{marginLeft: "5px", marginTop: "-45px"}} onClick={toogleRate}>{audioRate}x</Button>}
         </>
     );
-}
+};
+
+Audio.displayName = 'Audio';
+
+export default Audio;

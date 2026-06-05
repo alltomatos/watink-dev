@@ -1,9 +1,8 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
     Container,
-    Paper,
     Typography,
     Button,
     Grid,
@@ -37,41 +36,15 @@ import {
 } from "@material-ui/icons";
 import FileUploader from "../../components/FileUploader";
 import AttachmentsList from "../../components/AttachmentsList";
-import { makeStyles } from "@material-ui/core/styles";
+import PaperCard from "../../components/PaperCard";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "react-toastify";
 import api from "../../services/api";
 
-const useStyles = makeStyles((theme) => ({
-    root: {
-        padding: theme.spacing(3),
-    },
-    paper: {
-        padding: theme.spacing(3),
-        marginBottom: theme.spacing(3),
-    },
-    header: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: theme.spacing(3),
-    },
-    historyItem: {
-        borderLeft: `2px solid ${theme.palette.primary.main}`,
-        marginLeft: theme.spacing(2),
-        paddingLeft: theme.spacing(2),
-        marginBottom: theme.spacing(1),
-    },
-    historyIcon: {
-        minWidth: 36,
-    },
-}));
-
 const ProtocolDetails = () => {
-    const classes = useStyles();
     const { protocolId } = useParams();
-    const historyRoute = useHistory();
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [protocol, setProtocol] = useState(null);
@@ -102,11 +75,11 @@ const ProtocolDetails = () => {
             setAttachments(attachmentsRes.data || []);
         } catch (err) {
             toast.error("Erro ao carregar protocolo");
-            historyRoute.push("/helpdesk");
+            	navigate("/helpdesk");
         } finally {
             setLoading(false);
         }
-    }, [protocolId, historyRoute]);
+    }, [protocolId, navigate]);
 
     useEffect(() => {
         loadProtocol();
@@ -218,7 +191,7 @@ const ProtocolDetails = () => {
 
     if (loading) {
         return (
-            <Box className={classes.root} display="flex" justifyContent="center">
+            <Box style={{ padding: 24 }} display="flex" justifyContent="center">
                 <CircularProgress />
             </Box>
         );
@@ -236,12 +209,12 @@ const ProtocolDetails = () => {
     };
 
     return (
-        <Container maxWidth="lg" className={classes.root}>
-            <Box className={classes.header}>
+        <Container maxWidth="lg" style={{ padding: 24 }}>
+            <Box style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
                 <Box display="flex" alignItems="center">
                     <Button
                         startIcon={<ArrowBackIcon />}
-                        onClick={() => historyRoute.push("/helpdesk")}
+                        onClick={() => navigate("/helpdesk")}
                         style={{ marginRight: 16 }}
                     >
                         Voltar
@@ -263,7 +236,7 @@ const ProtocolDetails = () => {
 
             <Grid container spacing={3}>
                 <Grid item xs={12} md={8}>
-                    <Paper className={classes.paper}>
+                    <PaperCard style={{ marginBottom: 24 }}>
                         <Typography variant="h6" gutterBottom>
                             Detalhes
                         </Typography>
@@ -297,10 +270,10 @@ const ProtocolDetails = () => {
                                 {protocol.contact ? protocol.contact.name : "-"}
                             </Typography>
                         </Box>
-                    </Paper>
+                    </PaperCard>
 
                     {/* Attachments Section */}
-                    <Paper className={classes.paper}>
+                    <PaperCard style={{ marginBottom: 24 }}>
                         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                             <Typography variant="h6">
                                 <AttachFileIcon style={{ marginRight: 8, verticalAlign: "middle" }} />
@@ -339,9 +312,9 @@ const ProtocolDetails = () => {
                                 </Box>
                             )}
                         </Box>
-                    </Paper>
+                    </PaperCard>
 
-                    <Paper className={classes.paper}>
+                    <PaperCard style={{ marginBottom: 24 }}>
                         <Typography variant="h6" gutterBottom>
                             Atualizar
                         </Typography>
@@ -414,18 +387,18 @@ const ProtocolDetails = () => {
                                 </Button>
                             </Grid>
                         </Grid>
-                    </Paper>
+                    </PaperCard>
                 </Grid>
 
                 <Grid item xs={12} md={4}>
-                    <Paper className={classes.paper}>
+                    <PaperCard style={{ marginBottom: 24 }}>
                         <Typography variant="h6" gutterBottom>
                             Histórico
                         </Typography>
                         <List dense>
                             {history.map((item, index) => (
-                                <ListItem key={index} className={classes.historyItem}>
-                                    <ListItemIcon className={classes.historyIcon}>
+                                <ListItem key={index} style={{ borderLeft: "2px solid var(--primary-main)", marginLeft: 16, paddingLeft: 16, marginBottom: 4 }}>
+                                    <ListItemIcon style={{ minWidth: 36 }}>
                                         {getActionIcon(item.action)}
                                     </ListItemIcon>
                                     <ListItemText
@@ -467,7 +440,7 @@ const ProtocolDetails = () => {
                                 </Typography>
                             )}
                         </List>
-                    </Paper>
+                    </PaperCard>
                 </Grid>
             </Grid>
         </Container>

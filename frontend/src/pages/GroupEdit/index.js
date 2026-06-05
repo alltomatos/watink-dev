@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
@@ -215,7 +215,7 @@ const GroupSchema = Yup.object().shape({
 const GroupEdit = () => {
     const classes = useStyles();
     const { groupId } = useParams();
-    const history = useHistory();
+    const navigate = useNavigate();
 
     const isNew = groupId === "new";
 
@@ -262,7 +262,7 @@ const GroupEdit = () => {
                 }
             } catch (err) {
                 toastError(err);
-                history.push("/groups");
+                navigate("/groups");
             } finally {
                 setLoading(false);
             }
@@ -283,7 +283,7 @@ const GroupEdit = () => {
             if (isNew) {
                 await api.post("/groups", groupData);
                 toast.success(i18n.t("groupModal.success"));
-                history.push("/groups");
+                navigate("/groups");
             } else {
                 await api.put(`/groups/${groupId}`, groupData);
                 toast.success(i18n.t("groupModal.success"));
@@ -358,7 +358,7 @@ const GroupEdit = () => {
                                     <div className={classes.headerLeft}>
                                         <IconButton
                                             className={classes.backButton}
-                                            onClick={() => history.push("/groups")}
+                                            onClick={() => navigate("/groups")}
                                         >
                                             <ArrowBack />
                                         </IconButton>

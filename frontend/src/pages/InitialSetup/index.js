@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Button,
   CssBaseline,
@@ -56,7 +56,7 @@ const useStyles = makeStyles((theme) => ({
 
 const InitialSetup = () => {
   const classes = useStyles();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [setupData, setSetupData] = useState({
     firstName: "",
@@ -81,7 +81,7 @@ const InitialSetup = () => {
     try {
       await api.post("/initial-setup", setupData);
       toast.success("Sistema inicializado com sucesso!");
-      history.push("/login");
+      navigate("/login");
     } catch (err) {
       const errorMsg = err.response?.data?.error || "Erro ao inicializar sistema.";
       toast.error(errorMsg);

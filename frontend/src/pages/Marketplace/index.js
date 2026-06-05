@@ -30,7 +30,7 @@ import {
     CheckCircle as CheckCircleIcon,
 } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
@@ -112,7 +112,7 @@ const useStyles = makeStyles((theme) => ({
 
 const Marketplace = () => {
     const classes = useStyles();
-    const history = useHistory();
+    const navigate = useNavigate();
     const { user } = useContext(AuthContext);
     const [viewMode, setViewMode] = useState("cards");
     const [plugins, setPlugins] = useState([]);
@@ -175,7 +175,7 @@ const Marketplace = () => {
     };
 
     const handlePluginClick = (plugin) => {
-        history.push(`/admin/settings/marketplace/${plugin.slug}`);
+        navigate(`/admin/settings/marketplace/${plugin.slug}`);
     };
 
     const filteredPlugins = plugins.filter(

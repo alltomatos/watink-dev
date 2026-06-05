@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect, useReducer } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import openSocket from "../../services/socket-io";
 
@@ -103,7 +103,7 @@ const reducer = (state, action) => {
 const KnowledgeBase = () => {
     const classes = useStyles();
     const theme = useTheme();
-    const history = useHistory();
+    const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
     const [knowledgeBases, dispatch] = useReducer(reducer, []);
@@ -213,7 +213,7 @@ const KnowledgeBase = () => {
                                         <TableCell align="center">
                                             <IconButton
                                                 size="small"
-                                                onClick={() => history.push(`/knowledge-bases/${knowledgeBase.id}`)}
+                                                onClick={() => navigate(`/knowledge-bases/${knowledgeBase.id}`)}
                                             >
                                                 <Settings />
                                             </IconButton>

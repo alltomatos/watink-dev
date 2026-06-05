@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useReducer } from "react";
 import { toast } from "react-toastify";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import {
   makeStyles,
@@ -45,7 +45,7 @@ const useStyles = makeStyles((theme) => ({
 
 const Roles = () => {
   const classes = useStyles();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
   const [pageNumber, setPageNumber] = useState(1);
@@ -88,7 +88,7 @@ const Roles = () => {
   };
 
   const handleEditRole = (roleId) => {
-    history.push(`/roles/${roleId}`);
+    navigate(`/roles/${roleId}`);
   };
 
   const handleDeleteRole = async (roleId) => {

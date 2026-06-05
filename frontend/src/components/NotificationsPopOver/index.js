@@ -1,9 +1,9 @@
 /* @jsxImportSource react */
 import React, { useState, useRef, useEffect, useContext } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import openSocket from "../../services/socket-io";
-import useSound from "use-sound";
+
 import { toast } from "react-toastify";
 
 import Popover from "@material-ui/core/Popover";
@@ -45,10 +45,9 @@ const useStyles = makeStyles(theme => ({
 	},
 }));
 
-const NotificationToast = ({ ticket, message, contact, history }) => {
+const NotificationToast = ({ ticket, message, contact, onNavigate }) => {
 	const handleToastClick = () => {
-		history.push(`/tickets/${ticket.id}`);
-		// Trigger window focus logic or any other desired behavior
+		onNavigate(`/tickets/${ticket.id}`);
 		window.focus();
 	};
 
@@ -95,9 +94,9 @@ const NotificationsPopOver = () => {
 	const classes = useStyles();
 	const theme = useTheme();
 
-	const history = useHistory();
+	const navigate = useNavigate();
 	const { user } = useContext(AuthContext);
-	const ticketIdUrl = +history.location.pathname.split("/")[2];
+	const ticketIdUrl = +window.location.pathname.split("/")[2];
 	const ticketIdRef = useRef(ticketIdUrl);
 	const anchorEl = useRef();
 	const [isOpen, setIsOpen] = useState(false);
@@ -106,20 +105,23 @@ const NotificationsPopOver = () => {
 	const [, setDesktopNotifications] = useState([]);
 
 	const { tickets } = useTickets({ withUnreadMessages: "true" });
-	const [play] = useSound(alertSound);
-	const soundAlertRef = useRef();
-
-	const historyRef = useRef(history);
+	const soundAlertRef = useRef(null);
 
 	useEffect(() => {
-		soundAlertRef.current = play;
+		const audio = new Audio(alertSound);
+		audio.preload = "auto";
+		soundAlertRef.current = () => { audio.currentTime = 0; audio.play().catch(() => {}); };
 
 		if (!("Notification" in window)) {
 			console.log("This browser doesn't support notifications");
 		} else {
 			Notification.requestPermission();
 		}
-	}, [play]);
+
+		return () => { audio.pause(); audio.src = ""; };
+	}, []);
+
+	const navigateRef = useRef({ push: (path) => navigate(path) });
 
 	useEffect(() => {
 		setNotifications(tickets);
@@ -209,7 +211,7 @@ const NotificationsPopOver = () => {
 		notification.onclick = e => {
 			e.preventDefault();
 			window.focus();
-			historyRef.current.push(`/tickets/${ticket.id}`);
+			navigate(`/tickets/${ticket.id}`);
 		};
 
 		setDesktopNotifications(prevState => {
@@ -225,7 +227,7 @@ const NotificationsPopOver = () => {
 
 		soundAlertRef.current();
 
-		toast(<NotificationToast ticket={ticket} message={message} contact={contact} history={historyRef.current} />, {
+		toast(<NotificationToast ticket={ticket} message={message} contact={contact} onNavigate={navigate} />, {
 			position: "top-right",
 			autoClose: 5000,
 			hideProgressBar: false,
@@ -263,7 +265,7 @@ const NotificationsPopOver = () => {
 				aria-label="Open Notifications"
 				className={classes.iconButton}
 			>
-				<Badge badgeContent={notifications.length} color="secondary">
+				<Badge badgeContent={notifications.length} color="secondary" overlap="rectangular">
 					<ChatIcon />
 				</Badge>
 			</IconButton>

@@ -1,7 +1,8 @@
 /* @jsxImportSource react */
 import React from "react";
 import { makeStyles } from "@material-ui/core/styles";
-import { Paper, Typography, Avatar, Box } from "@material-ui/core";
+import { Typography, Avatar, Box } from "@material-ui/core";
+import PaperCard from "../../components/PaperCard";
 import { getBackendUrl } from "../../helpers/urlUtils";
 
 const useStyles = makeStyles((theme) => ({
@@ -98,7 +99,10 @@ const ProtocolCard = ({ protocol, isNew = false, onClick }) => {
     };
 
     return (
-        <Paper
+        <PaperCard
+            variant="outlined"
+            padding="none"
+            hoverEffect
             className={`${classes.card} ${getPriorityClass(protocol.priority)} ${isNew ? classes.highlight : ""}`}
             onClick={() => onClick && onClick(protocol)}
         >
@@ -122,7 +126,7 @@ const ProtocolCard = ({ protocol, isNew = false, onClick }) => {
                     </Typography>
                 </Box>
             </Box>
-        </Paper>
+        </PaperCard>
     );
 };
 

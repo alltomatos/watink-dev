@@ -20,7 +20,6 @@ import {
 } from "@material-ui/core";
 
 import { makeStyles } from "@material-ui/core/styles";
-import { green } from "@material-ui/core/colors";
 
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
@@ -41,7 +40,7 @@ const useStyles = makeStyles(theme => ({
         position: "relative",
     },
     buttonProgress: {
-        color: green[500],
+        color: "var(--status-success)",
         position: "absolute",
         top: "50%",
         left: "50%",

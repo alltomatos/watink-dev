@@ -1,7 +1,7 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect } from "react";
-import { makeStyles } from "@material-ui/core/styles";
-import { Grid, Paper, Typography, CircularProgress, Box } from "@material-ui/core";
+import PaperCard from "../../components/PaperCard";
+import { Grid, Typography, CircularProgress, Box } from "@material-ui/core";
 import {
     BarChart,
     Bar,
@@ -19,27 +19,9 @@ import api from "../../services/api";
 import { toast } from "react-toastify";
 import { i18n } from "../../translate/i18n";
 
-const useStyles = makeStyles((theme) => ({
-    root: {
-        flexGrow: 1,
-        padding: theme.spacing(2),
-    },
-    paper: {
-        padding: theme.spacing(2),
-        textAlign: "center",
-        color: theme.palette.text.secondary,
-        height: "100%",
-    },
-    chartContainer: {
-        height: 300,
-        marginTop: theme.spacing(2),
-    },
-}));
-
-const COLORS = ["var(--status-info)", "#00C49F", "#FFBB28", "#FF8042", "var(--status-default-text)", "#82ca9d"];
+const COLORS = ["var(--status-info)", "var(--status-success)", "var(--status-warning)", "var(--status-error)", "var(--status-default-text)", "var(--status-success-bg)"];
 
 const HelpdeskReports = () => {
-    const classes = useStyles();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState({
         statusCounts: [],
@@ -108,11 +90,11 @@ const HelpdeskReports = () => {
     }));
 
     return (
-        <div className={classes.root}>
+        <div style={{ padding: 16 }}>
             <Grid container spacing={3}>
                 {/* Status Chart */}
                 <Grid item xs={12} md={6}>
-                    <Paper className={classes.paper}>
+                    <PaperCard>
                         <Typography variant="h6" gutterBottom>
                             Protocolos por Status
                         </Typography>
@@ -125,12 +107,12 @@ const HelpdeskReports = () => {
                                 <Bar dataKey="count" fill="var(--status-default-text)" name="Quantidade" />
                             </BarChart>
                         </ResponsiveContainer>
-                    </Paper>
+                    </PaperCard>
                 </Grid>
 
                 {/* Priority Chart */}
                 <Grid item xs={12} md={6}>
-                    <Paper className={classes.paper}>
+                    <PaperCard>
                         <Typography variant="h6" gutterBottom>
                             Protocolos por Prioridade
                         </Typography>
@@ -154,12 +136,12 @@ const HelpdeskReports = () => {
                                 <Legend />
                             </PieChart>
                         </ResponsiveContainer>
-                    </Paper>
+                    </PaperCard>
                 </Grid>
 
                 {/* SLA Chart */}
                 <Grid item xs={12} md={6}>
-                    <Paper className={classes.paper}>
+                    <PaperCard>
                         <Typography variant="h6" gutterBottom>
                             Conformidade de SLA (Abertos/Em Andamento)
                         </Typography>
@@ -170,23 +152,23 @@ const HelpdeskReports = () => {
                                     cx="50%"
                                     cy="50%"
                                     outerRadius={100}
-                                    fill="#82ca9d"
+                                    fill="var(--status-success-bg)"
                                     dataKey="value"
                                     label
                                 >
-                                    <Cell fill="#00C49F" /> {/* No Prazo */}
-                                    <Cell fill="#FF8042" /> {/* Atrasado */}
+                                    <Cell fill="var(--status-success)" /> {/* No Prazo */}
+                                    <Cell fill="var(--status-error)" /> {/* Atrasado */}
                                 </Pie>
                                 <Tooltip />
                                 <Legend />
                             </PieChart>
                         </ResponsiveContainer>
-                    </Paper>
+                    </PaperCard>
                 </Grid>
 
                 {/* Categories Chart */}
                 <Grid item xs={12} md={6}>
-                    <Paper className={classes.paper}>
+                    <PaperCard>
                         <Typography variant="h6" gutterBottom>
                             Top 10 Categorias
                         </Typography>
@@ -196,10 +178,10 @@ const HelpdeskReports = () => {
                                 <XAxis type="number" />
                                 <YAxis dataKey="category" type="category" width={100} />
                                 <Tooltip />
-                                <Bar dataKey="count" fill="#FFBB28" name="Quantidade" />
+                                <Bar dataKey="count" fill="var(--status-warning)" name="Quantidade" />
                             </BarChart>
                         </ResponsiveContainer>
-                    </Paper>
+                    </PaperCard>
                 </Grid>
             </Grid>
         </div>

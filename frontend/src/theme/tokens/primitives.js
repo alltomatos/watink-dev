@@ -14,7 +14,7 @@ export const blue = {
 	200: '#90CAF9',
 	300: '#64B5F6',
 	400: '#42A5F5',
-	500: 'var(--action-primary)',
+	500: '#007AFF',
 	600: '#0063E6',
 	700: '#1565C0',
 	800: '#0D47A1',
@@ -36,7 +36,7 @@ export const slate = {
 };
 
 export const neutral = {
-	0: 'var(--bg-surface)',
+	0: '#FFFFFF',
 	50: '#F9FAFB',
 	100: '#F3F4F6',
 	200: '#E5E7EB',
@@ -77,7 +77,7 @@ export const red = {
 };
 
 export const amber = {
-	50: 'var(--bg-surface)BEB',
+	50: '#FFFBEB',
 	100: '#FEF3C7',
 	200: '#FDE68A',
 	300: '#FCD34D',
@@ -113,6 +113,32 @@ export const pink = {
 	700: '#BE185D',
 	800: '#9D174D',
 	900: '#831843',
+};
+
+export const indigo = {
+	50: '#EEF2FF',
+	100: '#E0E7FF',
+	200: '#C7D2FE',
+	300: '#A5B4FC',
+	400: '#818CF8',
+	500: '#3F51B5',
+	600: '#3949AB',
+	700: '#303F9F',
+	800: '#283593',
+	900: '#1A237E',
+};
+
+export const purple = {
+	50: '#F3E5F5',
+	100: '#E1BEE7',
+	200: '#CE93D8',
+	300: '#BA68C8',
+	400: '#AB47BC',
+	500: '#7C4DFF',
+	600: '#7B1FA2',
+	700: '#6A1B9A',
+	800: '#4A148C',
+	900: '#311B92',
 };
 
 export const google = {
@@ -192,6 +218,8 @@ export const primitives = {
 	amber,
 	violet,
 	pink,
+	indigo,
+	purple,
 	google,
 	spacing,
 	radius,

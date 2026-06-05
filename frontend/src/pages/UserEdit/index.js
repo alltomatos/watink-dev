@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Formik, Form, Field } from "formik";
 import { toast } from "react-toastify";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 import {
     Button,
@@ -26,7 +26,6 @@ import {
 
 import { Visibility, VisibilityOff, ArrowBack } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
-import { green } from "@material-ui/core/colors";
 
 import MainContainer from "../../components/MainContainer";
 import MainHeader from "../../components/MainHeader";
@@ -63,7 +62,7 @@ const useStyles = makeStyles((theme) => ({
         marginTop: theme.spacing(2),
     },
     buttonProgress: {
-        color: green[500],
+        color: "var(--status-success)",
         position: "absolute",
         top: "50%",
         left: "50%",
@@ -85,7 +84,7 @@ const useStyles = makeStyles((theme) => ({
 const UserEdit = () => {
     const classes = useStyles();
     const { userId } = useParams();
-    const history = useHistory();
+    const navigate = useNavigate();
 
     const isNew = userId === "new";
 
@@ -180,7 +179,7 @@ const UserEdit = () => {
                 await api.put(`/users/${userId}`, userData);
                 toast.success(i18n.t("userModal.success"));
             }
-            history.push("/users");
+            navigate("/users");
         } catch (err) {
             toastError(err);
         }
@@ -215,7 +214,7 @@ const UserEdit = () => {
         <MainContainer>
             <MainHeader>
                 <Box display="flex" alignItems="center">
-                    <IconButton onClick={() => history.push("/users")} className={classes.backButton}>
+                    <IconButton onClick={() => navigate("/users")} className={classes.backButton}>
                         <ArrowBack />
                     </IconButton>
                     <Title>{isNew ? i18n.t("userModal.title.add") : user.name}</Title>

@@ -10,10 +10,12 @@
 "use strict";
 
 const noHardcodedColors = require("./no-hardcoded-colors");
+const noMakeStyles = require("./no-make-styles");
 
 module.exports = {
 	rules: {
 		"no-hardcoded-colors": noHardcodedColors,
+		"no-make-styles": noMakeStyles,
 	},
 	configs: {
 		recommended: {

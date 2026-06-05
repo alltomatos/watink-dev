@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React, { useContext, useState } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { makeStyles } from "@material-ui/core/styles";
 import { IconButton } from "@material-ui/core";
@@ -27,7 +27,7 @@ const useStyles = makeStyles(theme => ({
 
 const TicketActionButtons = ({ ticket }) => {
 	const classes = useStyles();
-	const history = useHistory();
+	const navigate = useNavigate();
 	const [anchorEl, setAnchorEl] = useState(null);
 	const [loading, setLoading] = useState(false);
 	const ticketOptionsMenuOpen = Boolean(anchorEl);
@@ -51,9 +51,9 @@ const TicketActionButtons = ({ ticket }) => {
 
 			setLoading(false);
 			if (status === "open") {
-				history.push(`/tickets/${ticket.id}`);
+				navigate(`/tickets/${ticket.id}`);
 			} else {
-				history.push("/tickets");
+				navigate("/tickets");
 			}
 		} catch (err) {
 			setLoading(false);
