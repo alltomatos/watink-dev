@@ -182,7 +182,7 @@ func TestGORMUserRepo_FindByEmailForAuth_CrossTenant(t *testing.T) {
 	ctx := context.Background()
 
 	// FindByEmailForAuth é intencionalmente cross-tenant (usado no login)
-	// Deve encontrar o usuário por email independente do tenant
+	// Deve encontrar o usuário por email independentemente do tenant
 	found, err := repo.FindByEmailForAuth(ctx, "alice@tenant-a.com")
 	assert.NoError(t, err)
 	assert.NotNil(t, found, "FindByEmailForAuth deveria encontrar o usuário para login")
