@@ -216,7 +216,11 @@ jobs:
           SMOKE_EMAIL: admin@test.com
           SMOKE_PASS: test123
         run: |
-          python3 scripts/smoke_test.py
+          python3 scripts/smoke_test.py \
+            --mode api \
+            --base-url "$SMOKE_BASE_URL" \
+            --email "$SMOKE_EMAIL" \
+            --password "$SMOKE_PASS"
 
       - name: Dump backend logs on failure
         if: failure()

@@ -35,7 +35,7 @@ Frontend (React/Vite) ←REST/Socket→ Backend Go (Gin/GORM) ←SQL→ PostgreS
 |---|---|---|---|
 | Backend Go | `business/` | Go 1.24 / Gin / GORM | 8082 |
 | Engine Go | `engine-go/` | Go 1.24 / whatsmeow | — |
-| Frontend | `frontend/` | React 17 / Vite / MUI v4 | 3000 (vite) |
+| Frontend | `frontend/` | React 18 / Vite / shadcn+Tailwind (MUI v4 em migracao) | 3000 (vite) |
 | Plugin Manager | `plugin-manager/` | Go 1.24 / gorilla-mux | 8081 |
 | Marketplace Hub | `marketplace-hub/` | Node/Express | 8090 |
 | Plugin SDK | `packages/plugin-sdk/` | TypeScript | — |
@@ -161,33 +161,6 @@ SMOKE_BASE_URL=http://localhost:3000 SMOKE_EMAIL=user@example.com SMOKE_PASS=sec
 - **Redis transient store**: messages cached with TTL 24h at key `wbot:msg:{jid}:{id}` for retry after engine restart
 - **Plugin activation**: no code download — built-in plugins are unlocked by flipping `PluginInstallations.active` in DB after Manager license check
 
-## Skills (Claude Code)
-
-Skills são comandos especializados (`/nome`) que automatizam fluxos recorrentes. Cada skill vive em `.claude/skills/<nome>/` com seu `SKILL.md` e script `.mjs`.
-
-| Skill | Comando | Descrição |
-|---|---|---|
-| **devops-ops** | `/devops-ops` | GitFlow automatizado — cria/termina/aborta branches feature/release/hotfix, status do flow, auto-commit com conventional commits, smart-commit (commit + draft PR), proteção de branch, CI status/logs, health do stack Docker, PR com risk assessment. Guardrails: sem push direto em main/develop, secret scanning, dry-run. |
-| **designer** | `/designer` | Design system do frontend — parseia tokens MUI v4 do `DarkMode/index.js`, audita cores hardcoded e gaps dark-mode em 112+ `makeStyles`, tira screenshots via puppeteer/chromium-cli, modifica tokens no source, lista/compara/alterna temas (apple vs saas). |
-| **run-watink** | `/run-watink` | Build e orquestração do stack completo — gerencia dependências Docker (PostgreSQL, Redis, RabbitMQ), build/start dos 5 serviços, health checks (`/api/v1/health`), status, screenshots, graceful shutdown. |
-| **tenant-guard** | `/tenant-guard` | Auditoria read-only de multitenancy — escaneia controllers e services do backend Go buscando filtros `tenantId` ausentes em queries GORM, operações destrutivas sem escopo tenant, raw SQL sem tenant scoping, e contexto tenant não propagado. Reporta severidade HIGH/MEDIUM/LOW. Use **antes** de alterar qualquer controller/service que toque dados tenant. |
-| **backend** | `/backend` | Diagnóstico e implementação do fluxo command/event (Backend ↔ RabbitMQ ↔ Engine Go/whatsmeow). Rastreamento root-to-cause do ciclo mensagem/QR, comandos Docker/RabbitMQ/psql, checklist de 9 passos do fluxo de mensagem, padrões de falha comuns. Regra: sem fixes especulativos, apenas mudanças mínimas no boundary identificado. |
-
-### Uso
-
-```bash
-# Exemplos de invocação no Claude Code REPL
-/devops-ops feature start user-avatar
-/devops-ops flow status
-/designer tokens
-/designer audit
-/run-watink health
-/tenant-guard scan
-/backend diagnose qr-not-loading
-```
-
-Skills são invocados via `/nome` no REPL do Claude Code. O script associado executa e retorna resultado estruturado. Para detalhes completos de cada skill, consulte `.claude/skills/<nome>/SKILL.md`.
-
 ## Core Engineering & Testing Guidelines
 
 - **Segurança (Multitenancy)**: Em qualquer novo controller do Gin no diretório `business/`, é estritamente obrigatório utilizar o utilitário `tenantUUIDFromContext(c)` para extrair o ID do cliente. Nunca utilize `c.Get("tenantId")` com tipagem genérica ou bruta.
@@ -203,3 +176,65 @@ Para manter a integridade do código e a qualidade arquitetural, as seguintes re
 2. **Edições Atômicas**: Mudanças devem ser cirúrgicas e atômicas. Se um bloco grande falhar, faça edições menores e focadas.
 3. **Proibido Inventar Contexto**: Não assuma comportamentos ou estruturas que não foram previamente lidos através das ferramentas de Read. Na dúvida, leia o arquivo.
 4. **DI Pura (Anti-Singleton)**: É proibido o uso de variáveis globais de estado, Singletons ou Service Locators. Toda dependência deve ser passado explicitamente via construtores (Constructor Injection).
+
+## Frontend Migration Governance (MUI v4 -> shadcn/ui)
+
+**Estado atual:** 199 arquivos JS/JSX, 0 TS. 40+ componentes MUI v4, 100+ `makeStyles`, React 17, Router v5.
+**Target:** React 18 + TypeScript + Tailwind v4 + shadcn/ui (Radix headless + Tailwind styling).
+
+### Regras Estritas de Migracao
+
+1. **PROIBIDO novo `makeStyles`**: Qualquer estilizacao nova DEVE usar Tailwind CSS utility classes. A ESLint rule `no-makeStyles` deve falhar o build.
+2. **PROIBIDO novo import de `@material-ui/core`** em features novas. Componentes novos usam `src/components/ui/` (shadcn/ui).
+3. **Diretorio Legacy**: Componentes MUI v4 existentes sao READ-ONLY — correcoes de bug/security apenas. Nao adicionar funcionalidades.
+4. **Componentes de Ponte**: Wrappers em `src/components/ui/` que abstraem a implementacao (MUI hoje, shadcn amanha). Consumidores nunca importam MUI diretamente.
+5. **TypeScript incremental**: `tsconfig.json` com `allowJs: true`. Novos arquivos sao `.tsx`. Arquivos existentes sao convertidos apenas quando tocados (boy scout rule).
+6. **Tokens existentes**: O sistema 3-camadas (`src/theme/tokens/`) e a fonte de verdade para cores/espacamento/radius. Tailwind `@theme` no `index.css` consome essas CSS vars. NAO duplicar valores hardcoded no tailwind.config.
+7. **React 18 obrigatorio**: shadcn/ui exige React 18+. O upgrade React 17->18 + Router v5->v6 e prerequisito bloqueante.
+
+### Fases da Migracao
+
+| Fase | Objetivo | Risco | Pre-requisito |
+|------|----------|-------|---------------|
+| 0 | React 17->18 + Router v5->v6 | ALTO | testes E2E existentes |
+| 1 | TypeScript (tsconfig + allowJs) + vite.config.ts | MEDIO | Fase 0 |
+| 2 | Tailwind v4 + shadcn/ui init + POC (Button) | BAIXO | Fase 1 |
+| 3 | Pattern Shim (ESLint no-makeStyles + coexistencia) | BAIXO | Fase 2 |
+| 4 | Substituicao gradual por camada (Atomicos -> Forms -> Overlays -> Composicao) | MEDIO | Fase 3 |
+| 5 | Remocao MUI v4 (npm uninstall + cleanup) | MEDIO | Fase 4 completa |
+
+### Estrutura de Diretorios Frontend
+
+```
+frontend/src/
+  components/
+    ui/          -> componentes shadcn/ui (NOVO, .tsx)
+    legacy/      -> componentes MUI v4 existentes (READ-ONLY)
+  lib/
+    utils.ts     -> cn() helper (clsx + tailwind-merge)
+  hooks/         -> custom hooks
+  theme/
+    tokens/      -> fontes de verdade (primitives, semantic, components, typography)
+    bridge.js    -> MUI createTheme bridge (remover na Fase 5)
+    loader.js    -> CSS var injection (manter, adaptar para Tailwind @theme)
+```
+
+## Agent skills
+
+### Issue Tracker
+- **Platform**: GitHub (`gh` CLI)
+- **Config**: `docs/agents/issue-tracker.md`
+
+### Triage Labels
+- **Config**: `docs/agents/triage-labels.md`
+- `needs-triage` → `triage`
+- `needs-info` → `needs-info`
+- `ready-for-agent` → `ready-for-agent`
+- `ready-for-human` → `ready-for-human`
+- `wontfix` → `wontfix`
+
+### Domain Docs
+- **Glossary**: `CONTEXT.md`
+- **ADRs**: `docs/adr/`
+- **Config**: `docs/agents/domain.md`
+- Use canonical terms from `CONTEXT.md` in all code and docs. Never use `_Avoid_` terms in new code.
