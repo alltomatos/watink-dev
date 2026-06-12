@@ -125,7 +125,7 @@ export default defineConfig({
   },
   envPrefix: "VITE_",
   esbuild: {
-    loader: "jsx",
+    loader: "tsx",
     include: /src\/.*\.[jt]sx?$/,
     exclude: [],
   },

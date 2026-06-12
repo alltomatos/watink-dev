@@ -28,10 +28,44 @@ const resolvePreset = (appTheme = 'apple', mode = 'light') => {
 // ──────────────────────────────────────────────
 // CSS Variable injection
 // ──────────────────────────────────────────────
+const hexToHslRaw = (hex) => {
+  if (typeof hex !== 'string') return hex;
+  const match = hex.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  if (!match) return hex;
+
+  let color = match[1];
+  if (color.length === 3) {
+    color = color.split('').map(char => char + char).join('');
+  }
+
+  const r = parseInt(color.substring(0, 2), 16) / 255;
+  const g = parseInt(color.substring(2, 4), 16) / 255;
+  const b = parseInt(color.substring(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+};
+
 const setCssVars = (tokens) => {
   const root = document.documentElement;
   Object.entries(tokens).forEach(([key, value]) => {
-    root.style.setProperty(`--${key}`, value);
+    root.style.setProperty(`--${key}`, hexToHslRaw(value));
   });
 };
 
@@ -63,13 +97,13 @@ export const applyThemeTokens = ({
 
   // 3. Brand overrides (runtime white-label, takes precedence)
   if (brand.primary) {
-    document.documentElement.style.setProperty('--action-primary', brand.primary);
+    document.documentElement.style.setProperty('--action-primary', hexToHslRaw(brand.primary));
   }
   if (brand.primaryHover) {
-    document.documentElement.style.setProperty('--action-primary-hover', brand.primaryHover);
+    document.documentElement.style.setProperty('--action-primary-hover', hexToHslRaw(brand.primaryHover));
   }
   if (brand.sidebarBg) {
-    document.documentElement.style.setProperty('--bg-sidebar', brand.sidebarBg);
+    document.documentElement.style.setProperty('--bg-sidebar', hexToHslRaw(brand.sidebarBg));
   }
 
   // 4. Data attributes for CSS selectors
