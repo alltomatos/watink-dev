@@ -114,6 +114,18 @@ const buttonShadowMap = {
   },
 };
 
+const mapToMuiColor = (value) => {
+  if (!value || typeof value !== 'string') return value;
+  if (value.startsWith('#') || value.startsWith('rgba') || value.startsWith('rgb')) {
+    return value;
+  }
+  const parts = value.trim().split(/\s+/);
+  if (parts.length === 3) {
+    return `hsl(${parts[0]}, ${parts[1]}, ${parts[2]})`;
+  }
+  return value;
+};
+
 const resolvePalette = (appTheme, darkMode) => {
   const family = palettePresets[appTheme] || palettePresets.apple;
   return family[darkMode ? 'dark' : 'light'] || family.light;
@@ -124,7 +136,19 @@ export const createMuiThemeBridge = ({
   appTheme = 'apple',
   locale,
 } = {}) => {
-  const palette = resolvePalette(appTheme, darkMode);
+  const rawPalette = resolvePalette(appTheme, darkMode);
+  const palette = {
+    primary: { main: mapToMuiColor(rawPalette.primary?.main) },
+    secondary: { main: mapToMuiColor(rawPalette.secondary?.main) },
+    background: {
+      default: mapToMuiColor(rawPalette.background?.default),
+      paper: mapToMuiColor(rawPalette.background?.paper)
+    },
+    text: {
+      primary: mapToMuiColor(rawPalette.text?.primary),
+      secondary: mapToMuiColor(rawPalette.text?.secondary)
+    }
+  };
   const mode = darkMode ? 'dark' : 'light';
   const shape = themeShape[appTheme] || themeShape.apple;
   const buttonShadow = (buttonShadowMap[appTheme] || buttonShadowMap.apple)[mode];
