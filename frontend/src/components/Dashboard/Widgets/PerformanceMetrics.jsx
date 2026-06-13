@@ -1,7 +1,6 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect } from "react";
-import { Typography } from "@material-ui/core";
-import { Speed, AccessTime } from "@material-ui/icons";
+import { Gauge, Clock } from "lucide-react";
 import api from "../../../services/api";
 import MetricCard from "../../../components/ui/metric-card";
 
@@ -32,17 +31,17 @@ const PerformanceMetrics = () => {
   };
 
   return (
-    <div className="col-span-12 sm:col-span-6">
+    <div className="col-span-12 sm:col-span-6 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
       <MetricCard
         label="TMR (Tempo Médio de Resposta)"
         value={formatTime(data.metrics.avgResponseTime)}
-        icon={<Speed />}
+        icon={<Gauge className="h-5 w-5" />}
         color="info"
       />
       <MetricCard
         label="TME (Tempo Médio de Espera)"
         value={formatTime(data.metrics.avgWaitTime)}
-        icon={<AccessTime />}
+        icon={<Clock className="h-5 w-5" />}
         color="secondary"
       />
     </div>
