@@ -20,10 +20,10 @@ import { AuthContext } from "../../context/Auth/AuthContext";
 import { getBackendUrl } from "../../helpers/urlUtils";
 import { UserProfileSchema } from "../../utils/userValidation";
 
-import { 
-  PageContainer, 
-  PageHeader, 
-  PageContent 
+import {
+  PageLayout,
+  PageHeader,
+  PageContent
 } from "../../components/ui/page-layout";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -105,8 +105,8 @@ const UserProfile = () => {
   };
 
   return (
-    <PageContainer>
-      <PageHeader 
+    <PageLayout>
+      <PageHeader
         title={i18n.t("userProfile.title")}
         description="Gerencie suas informações pessoais e credenciais de acesso"
       />
@@ -269,7 +269,7 @@ const UserProfile = () => {
           </Card>
         </div>
       </PageContent>
-    </PageContainer>
+    </PageLayout>
   );
 };
 

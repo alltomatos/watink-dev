@@ -5,6 +5,7 @@ import { AuthContext } from "../context/Auth/AuthContext";
 import { i18n } from "../translate/i18n";
 import api from "../services/api";
 import { getBackendUrl } from "../helpers/urlUtils";
+import openSocket from "../services/socket-io";
 
 import MainSidebar from "../components/MainSidebar";
 import MainTopBar from "../components/MainTopBar";
