@@ -3,42 +3,39 @@ import React, { useState, useEffect, useReducer, useContext } from "react";
 import openSocket from "../../services/socket-io";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import { 
-  Search, 
-  Plus, 
-  MessageSquare, 
-  Trash2, 
-  Edit, 
-  LayoutGrid, 
-  List, 
-  Download,
-  Loader2,
-  MoreVertical
-} from "lucide-react";
 
 import api from "../../services/api";
 import { i18n } from "../../translate/i18n";
+import { PageLayout, PageHeader, PageContent } from "../../components/ui/page-layout";
 import ContactModal from "../../components/ContactModal";
 import ConfirmationModal from "../../components/ConfirmationModal/";
 import toastError from "../../errors/toastError";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
-import ClientModal from "../Clients/ClientModal"; 
+import ClientModal from "../Clients/ClientModal";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { getBackendUrl } from "../../helpers/urlUtils";
 
-import { 
-  PageContainer, 
-  PageHeader, 
-  PageContent 
-} from "../../components/ui/page-layout";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Search,
+  Plus,
+  MessageSquare,
+  Trash2,
+  Edit,
+  LayoutGrid,
+  List,
+  Download,
+  Loader2,
+  MoreVertical
+} from "lucide-react";
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "../../components/ui/table";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -46,19 +43,20 @@ import { Avatar } from "../../components/ui/avatar";
 import { Badge } from "../../components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import ListItemCard from "../../components/ListItemCard";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from "../../components/ui/dropdown-menu";
 
 const reducer = (state, action) => {
   if (action.type === "LOAD_CONTACTS") {
-    const contacts = action.payload;
-    const newContacts = [];
+    const contacts = action.payload || [];
+    if (contacts.length === 0) return [];
+    const newContacts: any[] = [];
 
-    contacts.forEach((contact) => {
+    contacts.forEach((contact: any) => {
       const contactIndex = state.findIndex((c) => c.id === contact.id);
       if (contactIndex !== -1) {
         state[contactIndex] = contact;
@@ -236,14 +234,14 @@ const Contacts = () => {
   };
 
   return (
-    <PageContainer>
+    <PageLayout>
       <ContactModal
         open={contactModalOpen}
         onClose={handleCloseContactModal}
         aria-labelledby="form-dialog-title"
         contactId={selectedContactId}
-      ></ContactModal>
-      
+      />
+
       {clientModalOpen && (
         <ClientModal
           open={clientModalOpen}
@@ -273,10 +271,7 @@ const Contacts = () => {
         {i18n.t("contacts.confirmationModal.importMessage")}
       </ConfirmationModal>
 
-      <PageHeader 
-        title={i18n.t("contacts.title")}
-        description={`${contacts.length} contatos encontrados`}
-      >
+      <PageHeader title={i18n.t("contacts.title")} description={`${contacts.length} contatos encontrados`}>
         <div className="flex items-center gap-2">
           <div className="relative w-full max-w-sm hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -292,24 +287,24 @@ const Contacts = () => {
             <Download className="mr-2 h-4 w-4" />
             {i18n.t("contacts.buttons.import")}
           </Button>
-          
+
           <Button size="sm" onClick={handleOpenContactModal}>
             <Plus className="mr-2 h-4 w-4" />
             {i18n.t("contacts.buttons.add")}
           </Button>
 
           <div className="flex items-center border rounded-md p-1 bg-muted/50">
-            <Button 
-              variant={view === "table" ? "secondary" : "ghost"} 
-              size="icon" 
+            <Button
+              variant={view === "table" ? "secondary" : "ghost"}
+              size="icon"
               className="h-8 w-8 rounded-sm"
               onClick={() => setView("table")}
             >
               <List className="h-4 w-4" />
             </Button>
-            <Button 
-              variant={view === "card" ? "secondary" : "ghost"} 
-              size="icon" 
+            <Button
+              variant={view === "card" ? "secondary" : "ghost"}
+              size="icon"
               className="h-8 w-8 rounded-sm"
               onClick={() => setView("card")}
             >
@@ -333,76 +328,7 @@ const Contacts = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {contacts.map((contact) => (
-                  <TableRow key={contact.id} className="group">
-                    <TableCell>
-                      <Avatar src={getBackendUrl(contact.profilePicUrl)} name={contact.name} size="sm" />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {contact.name}
-                        {getContactStatus(contact)}
-                      </div>
-                    </TableCell>
-                    <TableCell>{contact.number}</TableCell>
-                    <TableCell>{contact.email}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                              onClick={() => handleSaveTicket(contact.id)}
-                            >
-                              <MessageSquare className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Iniciar Conversa</TooltipContent>
-                        </Tooltip>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {
-                              setSelectedContactId(contact.id);
-                              setContactModalOpen(true);
-                            }}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              <span>Editar</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleOpenClientModal(contact)}>
-                              <Plus className="mr-2 h-4 w-4" />
-                              <span>Tornar Cliente</span>
-                            </DropdownMenuItem>
-                            <Can
-                              user={user}
-                              perform="contacts-page:deleteContact"
-                              yes={() => (
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => {
-                                    setSelectedContactId(contact.id);
-                                    setConfirmOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  <span>Excluir</span>
-                                </DropdownMenuItem>
-                              )}
-                            />
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {loading && (
+                {loading && contacts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
                       <div className="flex items-center justify-center">
@@ -410,6 +336,82 @@ const Contacts = () => {
                       </div>
                     </TableCell>
                   </TableRow>
+                ) : contacts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                      Nenhum contato pode ser carregado.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  contacts.map((contact) => (
+                    <TableRow key={contact.id} className="group">
+                      <TableCell>
+                        <Avatar src={getBackendUrl(contact.profilePicUrl)} name={contact.name} size="sm" />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {contact.name}
+                          {getContactStatus(contact)}
+                        </div>
+                      </TableCell>
+                      <TableCell>{contact.number}</TableCell>
+                      <TableCell>{contact.email}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={() => handleSaveTicket(contact.id)}
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Iniciar Conversa</TooltipContent>
+                          </Tooltip>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedContactId(contact.id);
+                                setContactModalOpen(true);
+                              }}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                <span>Editar</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleOpenClientModal(contact)}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                <span>Tornar Cliente</span>
+                              </DropdownMenuItem>
+                              <Can
+                                user={user}
+                                perform="contacts-page:deleteContact"
+                                yes={() => (
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => {
+                                      setSelectedContactId(contact.id);
+                                      setConfirmOpen(true);
+                                    }}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Excluir</span>
+                                  </DropdownMenuItem>
+                                )}
+                              />
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>
@@ -425,9 +427,9 @@ const Contacts = () => {
                 status={getContactStatus(contact)}
                 actions={
                   <div className="flex items-center gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-8 w-8"
                       onClick={() => handleSaveTicket(contact.id)}
                     >
@@ -481,7 +483,7 @@ const Contacts = () => {
           </div>
         )}
       </PageContent>
-    </PageContainer>
+    </PageLayout>
   );
 };
 

@@ -7,18 +7,18 @@ interface PageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * PageContainer — substitui MainContainer.
+ * PageLayout — substitui MainContainer.
  * Fornece o layout base para páginas, com scroll interno opcional e padding padrão.
  */
-export const PageContainer: React.FC<PageContainerProps> = ({ 
-  children, 
+export const PageLayout: React.FC<PageContainerProps> = ({
+  children,
   className,
-  ...props 
+  ...props
 }) => {
   return (
-    <div 
+    <div
       className={cn(
-        "wt-page-container flex flex-col h-full w-full overflow-hidden bg-background",
+        "wt-page-layout flex flex-col h-full w-full overflow-hidden bg-background",
         className
       )}
       {...props}
@@ -27,6 +27,8 @@ export const PageContainer: React.FC<PageContainerProps> = ({
     </div>
   );
 };
+
+export const PageContainer = PageLayout; // Alias para compatibilidade legada
 
 interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   title?: React.ReactNode;

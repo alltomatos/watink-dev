@@ -17,10 +17,10 @@ import api from "../../services/api";
 import { i18n } from "../../translate/i18n";
 import toastError from "../../errors/toastError";
 
-import { 
-  PageContainer, 
-  PageHeader, 
-  PageContent 
+import {
+  PageLayout,
+  PageHeader,
+  PageContent
 } from "../../components/ui/page-layout";
 import { 
   Table, 
@@ -38,7 +38,8 @@ import ConfirmationModal from "../../components/ConfirmationModal";
 
 const reducer = (state, action) => {
   if (action.type === "LOAD_TAGS") {
-    const tags = action.payload;
+    const tags = action.payload || [];
+    if (tags.length === 0) return [];
     const newTags = [];
 
     tags.forEach((tag) => {
@@ -180,7 +181,7 @@ const TagManager = () => {
   };
 
   return (
-    <PageContainer>
+    <PageLayout>
       <TagModal
         open={tagModalOpen}
         onClose={handleCloseTagModal}
@@ -323,7 +324,7 @@ const TagManager = () => {
           </Table>
         </div>
       </PageContent>
-    </PageContainer>
+    </PageLayout>
   );
 };
 

@@ -36,7 +36,7 @@ import { Can } from "../../components/Can";
 import openSocket from "../../services/socket-io";
 
 import {
-  PageContainer,
+  PageLayout,
   PageHeader,
   PageContent
 } from "../../components/ui/page-layout";
@@ -61,6 +61,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Separator } from "../../components/ui/separator";
+import AISettings from "./components/AISettings";
 
 interface Setting {
   key: string;
@@ -109,7 +110,8 @@ const Settings: React.FC = () => {
       setLoading(true);
       try {
         const { data: settingsData } = await api.get("/settings");
-        setSettings(settingsData);
+        const safeSettings = settingsData || [];
+        setSettings(safeSettings);
 
         // Active plugins
         try {
@@ -120,14 +122,14 @@ const Settings: React.FC = () => {
         }
 
         // Deserialize category/SLA state
-        const savedCategories = settingsData.find((s) => s.key === "helpdesk_categories")?.value;
+        const savedCategories = safeSettings.find((s) => s.key === "helpdesk_categories")?.value;
         if (savedCategories) {
           try {
             setHelpdeskCategories(JSON.parse(savedCategories));
           } catch (_) {}
         }
 
-        const savedSLA = settingsData.find((s) => s.key === "helpdesk_sla_config")?.value;
+        const savedSLA = safeSettings.find((s) => s.key === "helpdesk_sla_config")?.value;
         if (savedSLA) {
           try {
             setSlaConfig(JSON.parse(savedSLA));
@@ -503,6 +505,7 @@ const Settings: React.FC = () => {
               </Select>
             </div>
           </div>
+            </CardContent>
         </Card>
 
         <Card>
@@ -788,142 +791,15 @@ const Settings: React.FC = () => {
     </div>
   );
 
-  const renderAISection = () => {
-    const provider = getSettingValue("aiProvider") || "openai";
-
-    const providerModels: Record<string, string[]> = {
-      openai: ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
-      grok: ["grok-beta", "grok-2"],
-      anthropic: ["claude-3-5-sonnet", "claude-3-opus", "claude-3-haiku"]
-    };
-
-    const models = providerModels[provider] || [];
-
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-primary">
-              <Brain className="h-5 w-5" />
-              Agente de IA e Automação
-            </CardTitle>
-            <CardDescription>Configure as chaves, modelos e canais de Inteligência Artificial</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Habilitar IA Global</Label>
-                  <p className="text-xs text-muted-foreground">Bot inteligente ativo no onboarding e fechamento básico</p>
-                </div>
-                <Switch
-                  checked={getSettingValue("aiEnabled") === "true"}
-                  onCheckedChange={(checked) => handleUpdateSetting("aiEnabled", checked ? "true" : "false")}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>IA no FlowBuilder</Label>
-                  <p className="text-xs text-muted-foreground">Editor assistido de fluxos de decisão automatizados</p>
-                </div>
-                <Switch
-                  checked={getSettingValue("aiFlowBuilderEnabled") === "true"}
-                  onCheckedChange={(checked) => handleUpdateSetting("aiFlowBuilderEnabled", checked ? "true" : "false")}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Co-Piloto de Respostas no Chat</Label>
-                  <p className="text-xs text-muted-foreground">Sugestões de atendimento inteligentes e automáticas em tempo real</p>
-                </div>
-                <Switch
-                  checked={getSettingValue("aiAssistantEnabled") === "true"}
-                  onCheckedChange={(checked) => handleUpdateSetting("aiAssistantEnabled", checked ? "true" : "false")}
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="ai-provider">Provedor de Inteligência Artificial</Label>
-                <Select
-                  value={provider}
-                  onValueChange={(v) => {
-                    handleUpdateSetting("aiProvider", v);
-                    // Reset selected model to first model of new provider
-                    const firstModel = providerModels[v]?.[0] || "";
-                    if (firstModel) {
-                      handleUpdateSetting("aiModel", firstModel);
-                    }
-                  }}
-                >
-                  <SelectTrigger id="ai-provider">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="openai">OpenAI (GPT-4/GPT-3.5)</SelectItem>
-                    <SelectItem value="grok">xAI Grok (Grok-2/Grok-Beta)</SelectItem>
-                    <SelectItem value="anthropic">Anthropic (Claude 3.5)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="ai-model">Modelo de Linguagem (LLM)</Label>
-                <Select
-                  value={getSettingValue("aiModel") || models[0] || ""}
-                  onValueChange={(v) => handleUpdateSetting("aiModel", v)}
-                  disabled={models.length === 0}
-                >
-                  <SelectTrigger id="ai-model">
-                    <SelectValue placeholder="Selecione o modelo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {models.map((mod) => (
-                      <SelectItem key={mod} value={mod}>{mod}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="ai-key">Chave da API (Credentials/API Key)</Label>
-                <Input
-                  id="ai-key"
-                  type="password"
-                  placeholder="sk-..."
-                  defaultValue={getSettingValue("aiApiKey")}
-                  onBlur={(e) => handleUpdateSetting("aiApiKey", e.target.value)}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="ai-prompt">Prompt de Orientação (Guide Prompt)</Label>
-                <Textarea
-                  id="ai-prompt"
-                  rows={6}
-                  placeholder="Você é um assistente virtual focado em..."
-                  defaultValue={getSettingValue("aiGuidePrompt")}
-                  onBlur={(e) => handleUpdateSetting("aiGuidePrompt", e.target.value)}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
+  const renderAISection = () => (
+    <AISettings
+      getSettingValue={getSettingValue}
+      handleUpdateSetting={handleUpdateSetting}
+    />
+  );
 
   return (
-    <PageContainer>
+    <PageLayout>
       <PageHeader title="Configurações do Sistema">
         <div className="flex gap-2">
           <Can
@@ -1024,7 +900,7 @@ const Settings: React.FC = () => {
           )}
         </div>
       </PageContent>
-    </PageContainer>
+    </PageLayout>
   );
 };
 

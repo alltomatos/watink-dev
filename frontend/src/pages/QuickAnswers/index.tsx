@@ -14,10 +14,10 @@ import api from "../../services/api";
 import { i18n } from "../../translate/i18n";
 import toastError from "../../errors/toastError";
 
-import { 
-  PageContainer, 
-  PageHeader, 
-  PageContent 
+import {
+  PageLayout,
+  PageHeader,
+  PageContent
 } from "../../components/ui/page-layout";
 import { 
   Table, 
@@ -34,7 +34,8 @@ import ConfirmationModal from "../../components/ConfirmationModal";
 
 const reducer = (state, action) => {
   if (action.type === "LOAD_QUICK_ANSWERS") {
-    const quickAnswers = action.payload;
+    const quickAnswers = action.payload || [];
+    if (quickAnswers.length === 0) return [];
     const newQuickAnswers = [];
 
     quickAnswers.forEach((quickAnswer) => {
@@ -173,7 +174,7 @@ const QuickAnswers = () => {
   };
 
   return (
-    <PageContainer>
+    <PageLayout>
       <QuickAnswersModal
         open={quickAnswerModalOpen}
         onClose={handleCloseQuickAnswerModal}
@@ -284,7 +285,7 @@ const QuickAnswers = () => {
           </Table>
         </div>
       </PageContent>
-    </PageContainer>
+    </PageLayout>
   );
 };
 
