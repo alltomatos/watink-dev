@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -57,14 +58,21 @@ func IsAuth(db *gorm.DB) gin.HandlerFunc {
 
 		tenantID, _ := claims["tenantId"].(string)
 
+		// Validate UUID to prevent SQL injection before string concatenation in SET LOCAL
+		if _, err := uuid.Parse(tenantID); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid tenant ID format"})
+			c.Abort()
+			return
+		}
+
 		c.Set("userId", claims["id"])
 		c.Set("userEmail", claims["email"])
 		c.Set("userProfile", claims["profile"])
 		c.Set("tenantId", tenantID)
 
 		tx := db.Session(&gorm.Session{})
-		// PostgreSQL SET for RLS
-			tx.Exec("SET LOCAL app.current_tenant = '" + tenantID + "'")
+		// PostgreSQL SET for RLS — Safe since tenantID is validated as UUID
+		tx.Exec(fmt.Sprintf("SET LOCAL app.current_tenant = '%s'", tenantID))
 		c.Set("db", tx)
 
 		c.Next()
