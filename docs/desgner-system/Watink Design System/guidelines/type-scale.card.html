@@ -1,0 +1,28 @@
+<!-- @dsCard group="Type" viewport="700x320" name="Escala Tipográfica" subtitle="Inter — escala completa de --text-xs (11px) a --text-h1 (32px)" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg-default); padding: 16px 20px; font-family: var(--font-primary, 'Inter', sans-serif); }
+  .row { display: flex; align-items: baseline; gap: 16px; padding: 5px 0; border-bottom: 1px solid var(--border-weak); }
+  .row:last-child { border-bottom: none; }
+  .meta { width: 120px; flex-shrink: 0; font-size: 9px; color: var(--text-muted); font-family: var(--font-mono, monospace); }
+  .sample { color: var(--text-primary); }
+</style>
+</head>
+<body>
+  <div class="row"><div class="meta">--text-h1 · 32px</div><div class="sample" style="font-size:var(--text-h1);font-weight:800;letter-spacing:-0.02em;">Watink</div></div>
+  <div class="row"><div class="meta">--text-4xl · 28px</div><div class="sample" style="font-size:var(--text-4xl);font-weight:700;letter-spacing:-0.02em;">Dashboard</div></div>
+  <div class="row"><div class="meta">--text-3xl · 24px</div><div class="sample" style="font-size:var(--text-3xl);font-weight:700;letter-spacing:-0.01em;">Filas de Atendimento</div></div>
+  <div class="row"><div class="meta">--text-2xl · 20px</div><div class="sample" style="font-size:var(--text-2xl);font-weight:600;">Conexões WhatsApp</div></div>
+  <div class="row"><div class="meta">--text-xl · 18px</div><div class="sample" style="font-size:var(--text-xl);font-weight:600;">Tickets em Aberto</div></div>
+  <div class="row"><div class="meta">--text-lg · 16px</div><div class="sample" style="font-size:var(--text-lg);font-weight:500;">Ana Lima · Suporte Técnico</div></div>
+  <div class="row"><div class="meta">--text-body · 15px</div><div class="sample" style="font-size:var(--text-body);color:var(--text-secondary);">Olá! Preciso de ajuda com meu pedido #4821.</div></div>
+  <div class="row"><div class="meta">--text-body-sm · 13px</div><div class="sample" style="font-size:var(--text-body-sm);color:var(--text-secondary);">Última mensagem há 5 minutos · Fila: Vendas</div></div>
+  <div class="row"><div class="meta">--text-sm · 12px</div><div class="sample" style="font-size:var(--text-sm);color:var(--text-muted);">09:42 · Protocolo #WTK-00423</div></div>
+  <div class="row"><div class="meta">--text-xs · 11px</div><div class="sample" style="font-size:var(--text-xs);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">TICKETS ABERTOS</div></div>
+</body>
+</html>

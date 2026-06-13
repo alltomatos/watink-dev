@@ -1,0 +1,41 @@
+<!-- @dsCard group="Spacing" viewport="700x180" name="Movimento" subtitle="Tokens de duração + easing — originados de bridge.js + primitives.js" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg-default); padding: 16px 20px; font-family: var(--font-primary, 'Inter', sans-serif); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  h4 { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  td { padding: 4px 8px; border-bottom: 1px solid var(--border-weak); color: var(--text-secondary); }
+  td:first-child { font-family: var(--font-mono, monospace); color: var(--text-primary); font-weight: 600; }
+  td:last-child { color: var(--text-muted); font-family: var(--font-mono, monospace); font-size: 9px; }
+  .bar { height: 6px; border-radius: 3px; background: var(--action-primary); opacity: 0.8; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="grid">
+  <div>
+    <h4>Duration</h4>
+    <table>
+      <tr><td>--duration-fast</td><td>150ms</td><td><div class="bar" style="width:30%;"></div></td></tr>
+      <tr><td>--duration-normal</td><td>200ms</td><td><div class="bar" style="width:40%;"></div></td></tr>
+      <tr><td>--duration-slow</td><td>300ms</td><td><div class="bar" style="width:60%;"></div></td></tr>
+      <tr><td>--duration-slower</td><td>500ms</td><td><div class="bar" style="width:100%;"></div></td></tr>
+    </table>
+  </div>
+  <div>
+    <h4>Easing</h4>
+    <table>
+      <tr><td>--ease-out</td><td colspan="2">cubic-bezier(0, 0, 0.2, 1)</td></tr>
+      <tr><td>--ease-in</td><td colspan="2">cubic-bezier(0.4, 0, 1, 1)</td></tr>
+      <tr><td>--ease-in-out</td><td colspan="2">cubic-bezier(0.4, 0, 0.2, 1)</td></tr>
+      <tr><td>--ease-spring</td><td colspan="2">cubic-bezier(0.25, 0.8, 0.25, 1)</td></tr>
+    </table>
+  </div>
+</div>
+</body>
+</html>
