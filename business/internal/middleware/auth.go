@@ -63,7 +63,8 @@ func IsAuth(db *gorm.DB) gin.HandlerFunc {
 		c.Set("tenantId", tenantID)
 
 		tx := db.Session(&gorm.Session{})
-		tx.Exec("SET app.current_tenant = ?", tenantID)
+		// PostgreSQL SET for RLS
+			tx.Exec("SET LOCAL app.current_tenant = '" + tenantID + "'")
 		c.Set("db", tx)
 
 		c.Next()
