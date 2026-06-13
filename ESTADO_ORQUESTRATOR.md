@@ -85,6 +85,7 @@ Análise completa do design system em `docs/desgner-system/` identificou gaps en
 
 | Data | Ação | Tier | Resultado |
 |------|------|------|-----------|
+| 2026-06-13 | Consolidado build frontend: resolvidos erros de RLS no backend, limpo duplicatas .js, corrigido index.html e PageLayout exports | T1 | ✅ Sucesso |
 | 2026-06-13 | Realizada Auditoria e fix de imports globais de PaperCard no FlowBuilder | T1 | ✅ Sucesso |
 | 2026-06-13 | Executada bateria de testes unitários do vitest e build com sucesso | T1 | ✅ Sucesso |
 | 2026-06-12 | Removido `/pages/MuralTvMode/` (diretório vazio) — Tarefa removida da sessão | T1 | ✅ Sucesso |
