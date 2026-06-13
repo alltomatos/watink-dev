@@ -1,0 +1,9 @@
+/* Watink Design System — Ponto de Entrada CSS Global
+ * Este arquivo é apenas um manifesto de @import — nunca adicione regras aqui.
+ * Todas as definições de tokens e estilos ficam nos arquivos importados.
+ */
+
+@import './tokens/typography.css';
+@import './tokens/colors.css';
+@import './tokens/spacing.css';
+@import './tokens/motion.css';

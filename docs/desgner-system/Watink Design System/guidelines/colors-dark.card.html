@@ -1,0 +1,50 @@
+<!-- @dsCard group="Colors" viewport="700x180" name="Superfícies Escuras" subtitle="Hierarquia de superfícies no modo escuro — bg-default → bg-surface-alt → bg-surface → bg-sidebar" -->
+<!DOCTYPE html>
+<html data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg-default); padding: 16px 20px; font-family: var(--font-primary, 'Inter', sans-serif); }
+  .row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .surface { flex: 1; border-radius: 10px; padding: 12px 14px; border: 1px solid var(--border-subtle); }
+  .surface-name { font-size: 10px; font-weight: 700; color: var(--text-secondary); margin-bottom: 2px; }
+  .surface-val  { font-size: 9px;  color: var(--text-muted); font-family: var(--font-mono, monospace); }
+  .tokens { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tok { font-size: 9px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+  .tok-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="row">
+  <div class="surface" style="background:var(--bg-default);">
+    <div class="surface-name" style="color:var(--text-secondary);">--bg-default</div>
+    <div class="surface-val">#030712</div>
+  </div>
+  <div class="surface" style="background:var(--bg-surface-alt);">
+    <div class="surface-name" style="color:var(--text-secondary);">--bg-surface-alt</div>
+    <div class="surface-val">#0F172A</div>
+  </div>
+  <div class="surface" style="background:var(--bg-surface);">
+    <div class="surface-name" style="color:var(--text-secondary);">--bg-surface</div>
+    <div class="surface-val">#1E293B</div>
+  </div>
+  <div class="surface" style="background:var(--bg-sidebar);">
+    <div class="surface-name" style="color:var(--text-secondary);">--bg-sidebar</div>
+    <div class="surface-val">#030712</div>
+  </div>
+  <div class="surface" style="background:var(--bg-appbar);">
+    <div class="surface-name" style="color:var(--text-secondary);">--bg-appbar</div>
+    <div class="surface-val">#1E293B</div>
+  </div>
+</div>
+<div class="tokens">
+  <div class="tok"><div class="tok-dot" style="background:var(--text-primary);"></div>--text-primary</div>
+  <div class="tok"><div class="tok-dot" style="background:var(--text-secondary);"></div>--text-secondary</div>
+  <div class="tok"><div class="tok-dot" style="background:var(--text-muted);"></div>--text-muted</div>
+  <div class="tok"><div class="tok-dot" style="background:var(--text-sidebar);"></div>--text-sidebar</div>
+  <div class="tok"><div class="tok-dot" style="background:var(--border-default);border:1px solid #333;"></div>--border-default</div>
+</div>
+</body>
+</html>

@@ -10,6 +10,11 @@ O Watink é um sistema robusto e gratuito para centralizar seu atendimento. Orga
 
 ---
 
+## 📚 Documentação de Funcionalidades
+Para detalhes técnicos aprofundados sobre cada módulo do sistema, consulte nossa [Documentação de Features](./docs/features/OVERVIEW.md).
+
+---
+
 ## 🚀 Funcionalidades do Core (Nativas)
 
 Tudo o que você precisa para operar, já incluído no núcleo do sistema:

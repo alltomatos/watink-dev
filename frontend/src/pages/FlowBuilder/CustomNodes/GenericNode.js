@@ -2,7 +2,8 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 import { makeStyles } from '@material-ui/core/styles';
-import { Typography, PaperCard, IconButton } from '@material-ui/core';
+import { Typography, IconButton } from '@material-ui/core';
+import PaperCard from '../../../components/PaperCard';
 import DeleteIcon from '@material-ui/icons/Delete';
 
 const useStyles = makeStyles((theme) => ({

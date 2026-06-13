@@ -4,8 +4,29 @@ const messages = {
       common: {
         rowsPerPage: "Linhas por página",
       },
+      tags: {
+        title: "Etiquetas",
+        searchPlaceholder: "Pesquisar etiquetas...",
+        buttons: {
+          add: "Nova Etiqueta",
+        },
+        table: {
+          name: "Nome",
+          actions: "Ações",
+        },
+        toasts: {
+          deleted: "Tag excluída com sucesso.",
+          archived: "Tag arquivada.",
+          restored: "Tag restaurada.",
+        },
+        confirmationModal: {
+          deleteTitle: "Excluir Tag",
+          deleteMessage: "Tem certeza? Esta ação não pode ser revertida e a tag será removida permanentemente.",
+        },
+      },
       role: {
         title: "Funções",
+        searchPlaceholder: "Pesquisar...",
         buttons: {
           add: "Adicionar Função",
         },
@@ -124,6 +145,7 @@ const messages = {
         title: "Conexões",
         toasts: {
           deleted: "Conexão deletada!",
+          disconnected: "Sessão desconectada!",
         },
         confirmationModal: {
           deleteTitle: "Deletar",
