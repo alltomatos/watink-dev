@@ -1,6 +1,23 @@
 # Watink
 Plataforma open-source de atendimento e automação no WhatsApp com arquitetura de microsserviços, multitenancy via PostgreSQL RLS, e sistema de plugins com licenciamento centralizado.
 
+## Design System & UI Patterns
+
+A fonte de verdade para padrões visuais, componentes e experiência do usuário é o **Watink Design System** localizado em `docs/desgner-system/`.
+
+### Tech Stack (UI/Frontend)
+- **Framework**: React 18+
+- **Styling**: Tailwind CSS v4+ (Utility-first)
+- **Components**: shadcn/ui (Radix UI primitives)
+- **Language**: TypeScript (TSX para componentes)
+- **Icons**: Lucide React
+- **Animation**: Framer Motion
+
+### Princípios de Design
+- **Foco**: Funcionalidade e clareza (Tom direto e profissional).
+- **Consistência**: Uso estrito de tokens (Cores em HSL, Espaçamento, Tipografia) definidos em `docs/desgner-system/Watink Design System/tokens/`.
+- **Reuso**: É proibido criar componentes base do zero. Utilize ou estenda os componentes em `src/components/ui/` (shadcn).
+
 ## Language
 
 **Ticket**: Unidade central de atendimento — representa uma conversa ativa entre um Contact e um User em um Queue. Criada automaticamente ao receber uma mensagem ou manualmente por um agente.

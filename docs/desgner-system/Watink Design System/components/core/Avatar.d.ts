@@ -1,17 +1,22 @@
-import { HTMLAttributes, CSSProperties } from 'react';
+import * as React from "react";
+import { VariantProps } from "class-variance-authority";
+import { avatarVariants } from "./Avatar";
 
-export interface AvatarProps extends HTMLAttributes<HTMLDivElement> {
-  /** URL da imagem — usa iniciais como fallback em caso de erro */
-  src?: string;
-  /** Nome completo usado para gerar fallback de 1–2 iniciais */
+export interface AvatarProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof avatarVariants> {
+  /** URL da imagem do avatar — cai para iniciais em caso de erro */
+  src?: string | null;
+  /** Nome completo usado para gerar iniciais (1-2 letras) e cor de fundo determinística */
   name?: string;
-  /** Variante de tamanho */
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  /** Se informado, renderiza ponto de status: true = online (verde), false = offline (cinza) */
+  /** Exibe ponto de status online (verde) no canto inferior direito */
   online?: boolean;
-  style?: CSSProperties;
-  className?: string;
 }
 
-export declare function Avatar(props: AvatarProps): JSX.Element;
+/**
+ * Avatar de usuário - Componente Core Watink
+ * @see Avatar.tsx para implementação baseada em shadcn/ui
+ */
+export declare const Avatar: React.ForwardRefExoticComponent<AvatarProps & React.RefAttributes<HTMLDivElement>>;
+
 export default Avatar;
