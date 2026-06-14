@@ -1,30 +1,21 @@
-import { HTMLAttributes, ReactNode, CSSProperties } from 'react';
+import { HTMLAttributes, forwardRef } from 'react';
 
 /**
- * @startingPoint section="Components" subtitle="Base content card with header, icon, and body slot" viewport="700x200"
+ * @startingPoint section="Components" subtitle="Standard content containers with modular sub-components based on shadcn/ui" viewport="700x400"
  */
-export interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  /** Título do card */
-  title?: string;
-  /** Subtítulo / texto secundário abaixo do título */
-  subtitle?: ReactNode;
-  /** Ícone exibido em um quadrado colorido */
-  icon?: ReactNode;
-  /** Cor de fundo do container do ícone (padrão: --status-info-8) */
-  iconColor?: string;
-  /** Elementos de ação renderizados no canto superior direito do header */
-  actions?: ReactNode;
-  /** Animação de elevação no hover — translateY(-6px) + sombra mais profunda */
-  hoverEffect?: boolean;
-  /** Torna o card inteiro clicável */
-  onClick?: () => void;
-  /** Conteúdo do corpo do card */
-  children?: ReactNode;
-  /** Sobrescreve o padding interno (padrão 24px) */
-  padding?: string | number;
-  style?: CSSProperties;
-  className?: string;
-}
 
-export declare function Card(props: CardProps): JSX.Element;
+export interface CardProps extends HTMLAttributes<HTMLDivElement> {}
+export interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {}
+export interface CardTitleProps extends HTMLAttributes<HTMLHeadingElement> {}
+export interface CardDescriptionProps extends HTMLAttributes<HTMLParagraphElement> {}
+export interface CardContentProps extends HTMLAttributes<HTMLDivElement> {}
+export interface CardFooterProps extends HTMLAttributes<HTMLDivElement> {}
+
+export declare const Card: React.ForwardRefExoticComponent<CardProps & React.RefAttributes<HTMLDivElement>>;
+export declare const CardHeader: React.ForwardRefExoticComponent<CardHeaderProps & React.RefAttributes<HTMLDivElement>>;
+export declare const CardTitle: React.ForwardRefExoticComponent<CardTitleProps & React.RefAttributes<HTMLHeadingElement>>;
+export declare const CardDescription: React.ForwardRefExoticComponent<CardDescriptionProps & React.RefAttributes<HTMLParagraphElement>>;
+export declare const CardContent: React.ForwardRefExoticComponent<CardContentProps & React.RefAttributes<HTMLDivElement>>;
+export declare const CardFooter: React.ForwardRefExoticComponent<CardFooterProps & React.RefAttributes<HTMLDivElement>>;
+
 export default Card;
