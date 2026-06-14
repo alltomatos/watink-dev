@@ -8,37 +8,31 @@ import {
 
 import MetricCard from "../../../components/ui/metric-card";
 import { i18n } from "../../../translate/i18n";
-import useTickets from "../../../hooks/useTickets";
+import { useDashboardStats } from "../../../hooks/useDashboardStats";
 
 const TicketsInfo = ({ userQueueIds }) => {
+  const { data: stats, isLoading, error } = useDashboardStats();
 
-  const GetTickets = (status, showAll, withUnreadMessages) => {
-    const { count } = useTickets({
-      status: status,
-      showAll: showAll,
-      withUnreadMessages: withUnreadMessages,
-      queueIds: JSON.stringify(userQueueIds),
-    });
-    return count;
-  };
+  if (isLoading) return <div>Carregando...</div>;
+  if (error) return <div>Erro ao carregar dados</div>;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full col-span-12">
       <MetricCard
         label={i18n.t("dashboard.messages.inAttendance.title")}
-        value={GetTickets("open", "true", "false")}
+        value={stats?.openTickets ?? 0}
         icon={<ClipboardList className="h-5 w-5" />}
         color="primary"
       />
       <MetricCard
         label={i18n.t("dashboard.messages.waiting.title")}
-        value={GetTickets("pending", "true", "false")}
+        value={stats?.pendingTickets ?? 0}
         icon={<Hourglass className="h-5 w-5" />}
         color="warning"
       />
       <MetricCard
         label={i18n.t("dashboard.messages.closed.title")}
-        value={GetTickets("closed", "true", "false")}
+        value={stats?.closedTickets ?? 0}
         icon={<CheckCircle2 className="h-5 w-5" />}
         color="success"
       />

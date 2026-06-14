@@ -1,7 +1,13 @@
-/* Google Fonts Import for Watink Design System */
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 
+@import './theme/tokens/colors.css';
+@import './theme/tokens/typography.css';
+@import './theme/tokens/spacing.css';
+@import './theme/tokens/motion.css';
+@import './theme/bridge.css';
+
 @import "tailwindcss";
+
 
 :root {
   /* ─── Typography Design Tokens ─── */
@@ -64,19 +70,19 @@
   --radius-full: 9999px;
 
   /* ─── Components Styling Primitives ─── */
-  --card-bg:            var(--bg-surface);
+  --card-bg:            hsl(var(--bg-surface));
   --card-border-radius: var(--radius-xl);   /* 16px — base card */
   --card-shadow:        0px 4px 20px rgba(0,0,0,0.08);
 
   --sidebar-width:           260px;
   --sidebar-collapsed-width: 72px;
-  --sidebar-bg:              var(--bg-sidebar);
+  --sidebar-bg:              hsl(var(--bg-sidebar));
 
-  --appbar-bg:     var(--bg-appbar);
+  --appbar-bg:     hsl(var(--bg-appbar));
   --appbar-height: 64px;
 
-  --button-primary-bg:   var(--action-primary);
-  --button-primary-text: var(--text-inverse);
+  --button-primary-bg:   hsl(var(--action-primary));
+  --button-primary-text: hsl(var(--text-inverse));
 
   /* ─── Motion Durations & Easings ─── */
   --duration-fast:   150ms;
@@ -98,25 +104,25 @@
 
 @layer base {
   :root {
-    --background: var(--bg-default);
-    --foreground: var(--text-primary);
-    --card: var(--bg-surface);
-    --card-foreground: var(--text-primary);
-    --popover: var(--bg-surface);
-    --popover-foreground: var(--text-primary);
-    --primary: var(--action-primary);
-    --primary-foreground: var(--text-inverse);
-    --secondary: var(--bg-surface-alt);
-    --secondary-foreground: var(--text-secondary);
-    --muted: var(--bg-surface-alt);
-    --muted-foreground: var(--text-muted);
-    --accent: var(--bg-surface-alt);
-    --accent-foreground: var(--text-secondary);
-    --destructive: var(--status-error);
-    --destructive-foreground: var(--text-inverse);
-    --border: var(--border-default);
-    --input: var(--border-default);
-    --ring: var(--action-primary);
+    --background: hsl(var(--bg-default));
+    --foreground: hsl(var(--text-primary));
+    --card: hsl(var(--bg-surface));
+    --card-foreground: hsl(var(--text-primary));
+    --popover: hsl(var(--bg-surface));
+    --popover-foreground: hsl(var(--text-primary));
+    --primary: hsl(var(--action-primary));
+    --primary-foreground: hsl(var(--text-inverse));
+    --secondary: hsl(var(--bg-surface-alt));
+    --secondary-foreground: hsl(var(--text-secondary));
+    --muted: hsl(var(--bg-surface-alt));
+    --muted-foreground: hsl(var(--text-muted));
+    --accent: hsl(var(--bg-surface-alt));
+    --accent-foreground: hsl(var(--text-secondary));
+    --destructive: hsl(var(--status-error));
+    --destructive-foreground: hsl(var(--text-inverse));
+    --border: hsl(var(--border-default));
+    --input: hsl(var(--border-default));
+    --ring: hsl(var(--action-primary));
     --radius: 0.5rem;
   }
 }

@@ -19,7 +19,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
-import VersionFooter from "../VersionFooter/index.js";
+import VersionFooter from "../VersionFooter";
 import { getBackendUrl } from "../../helpers/urlUtils";
 import { i18n } from "../../translate/i18n";
 import { AuthContext } from "../../context/Auth/AuthContext";
@@ -241,16 +241,19 @@ const MainSidebar: React.FC<MainSidebarProps> = ({ collapsed, onToggle }) => {
         />
       </div>
 
-      {/* Collapse Toggle at the bottom */}
-      <div className="p-4 border-t border-border flex items-center justify-center">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onToggle}
-          className="rounded-full hover:bg-accent h-8 w-8"
-        >
-          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-        </Button>
+      {/* Version and Collapse Toggle */}
+      <div className="mt-auto border-t border-border">
+        <VersionFooter collapsed={collapsed} />
+        <div className="p-4 flex items-center justify-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggle}
+            className="rounded-full hover:bg-accent h-8 w-8"
+          >
+            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </Button>
+        </div>
       </div>
     </aside>
   );

@@ -13,7 +13,7 @@ import { toast } from "react-toastify";
 
 import { AuthContext } from "../../context/Auth/AuthContext";
 import api from "../../services/api";
-import useTickets from "../../hooks/useTickets";
+import { useTickets } from "../../hooks/useTickets";
 import { i18n } from "../../translate/i18n";
 
 import {

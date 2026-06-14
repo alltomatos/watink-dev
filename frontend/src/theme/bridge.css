@@ -1,0 +1,45 @@
+/*
+ * Theme Bridge
+ * Mapeia as variáveis semânticas do Watink Design System (Primitivas)
+ * para as variáveis funcionais esperadas pelo shadcn/ui (Tailwind CSS)
+ */
+
+:root, [data-theme="default"] {
+  --background: var(--bg-default);
+  --foreground: var(--slate-900);
+  --card: var(--neutral-0);
+  --card-foreground: var(--slate-900);
+  --primary: var(--blue-500);
+  --primary-foreground: var(--neutral-0);
+  --secondary: var(--slate-100);
+  --secondary-foreground: var(--slate-900);
+  --muted: var(--slate-100);
+  --muted-foreground: var(--slate-500);
+  --accent: var(--blue-50);
+  --accent-foreground: var(--blue-900);
+  --destructive: var(--red-500);
+  --destructive-foreground: var(--neutral-0);
+  --border: var(--slate-200);
+  --input: var(--slate-200);
+  --ring: var(--blue-500);
+}
+
+[data-theme="google"] {
+  --primary: var(--google-blue);
+  /* Outras customizações específicas do tema Google aqui */
+}
+
+[data-theme="whatsapp"] {
+  --primary: var(--emerald-500);
+  /* Outras customizações específicas do tema WhatsApp aqui */
+}
+
+[data-theme="dark"] {
+  --background: var(--neutral-950);
+  --foreground: var(--slate-100);
+  --card: var(--slate-800);
+  --card-foreground: var(--slate-100);
+  --primary: var(--blue-400);
+  --primary-foreground: var(--neutral-950);
+  --border: var(--slate-700);
+}
