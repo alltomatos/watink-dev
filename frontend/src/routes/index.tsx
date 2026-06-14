@@ -55,6 +55,9 @@ import { TicketsProvider } from "../context/Tickets/TicketsContext";
 import PrivateRoute from "./Route";
 import { Route } from "react-router-dom";
 import StatusCheck from "../components/StatusCheck";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { queryClient } from "../lib/queryClient";
 
 const PrivateRoutes = () => {
  return (
@@ -113,6 +116,7 @@ const PrivateRoutes = () => {
 
 const Routes = () => {
  return (
+ <QueryClientProvider client={queryClient}>
  <BrowserRouter>
  <StatusCheck>
  <AuthProvider>
@@ -131,6 +135,8 @@ const Routes = () => {
  </AuthProvider>
  </StatusCheck>
  </BrowserRouter>
+ <ReactQueryDevtools initialIsOpen={false} />
+ </QueryClientProvider>
  );
 };
 

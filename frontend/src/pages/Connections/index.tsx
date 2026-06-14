@@ -21,7 +21,7 @@ import { toast } from "react-toastify";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import { i18n } from "../../translate/i18n";
-import { WhatsAppsContext } from "../../context/WhatsApp/WhatsAppsContext";
+import { useWhatsAppsQuery } from "../../hooks/useWhatsAppsQuery";
 import { getBackendUrl } from "../../helpers/urlUtils";
 
 import { 
@@ -52,7 +52,7 @@ import ConfirmationModal from "../../components/ConfirmationModal";
 
 const Connections = () => {
   const navigate = useNavigate();
-  const { whatsApps, loading, reloadWhatsApps } = useContext(WhatsAppsContext);
+  const { data: whatsApps = [], isLoading, refetch: reloadWhatsApps } = useWhatsAppsQuery();
 
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
   const [webchatModalOpen, setWebchatModalOpen] = useState(false);

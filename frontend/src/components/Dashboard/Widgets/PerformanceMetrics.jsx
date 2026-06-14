@@ -1,25 +1,12 @@
-/* @jsxImportSource react */
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Gauge, Clock } from "lucide-react";
-import api from "../../../services/api";
+import { useDashboardStats } from "../../../hooks/useDashboardStats";
 import MetricCard from "../../../components/ui/metric-card";
 
 const PerformanceMetrics = () => {
-  const [data, setData] = useState({ metrics: { avgResponseTime: 0, avgWaitTime: 0 } });
+  const { data, isLoading, error } = useDashboardStats();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data } = await api.get("/dashboard");
-        setData(data);
-      } catch (err) {
-        console.error("Error fetching dashboard data", err);
-      }
-    };
-    fetchData();
-  }, []);
-
-  const formatTime = (minutes) => {
+  const formatTime = (minutes?: number) => {
     if (!minutes) return "0m";
     if (minutes < 1) return `${Math.round(minutes * 60)}s`;
     if (minutes > 60) {
@@ -30,17 +17,20 @@ const PerformanceMetrics = () => {
     return `${Math.round(minutes)}m`;
   };
 
+  if (isLoading) return <div>Carregando...</div>;
+  if (error || !data) return <div>Erro ao carregar métricas</div>;
+
   return (
     <div className="col-span-12 sm:col-span-6 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
       <MetricCard
         label="TMR (Tempo Médio de Resposta)"
-        value={formatTime(data.metrics.avgResponseTime)}
+        value={formatTime(data.metrics?.avgResponseTime)}
         icon={<Gauge className="h-5 w-5" />}
         color="info"
       />
       <MetricCard
         label="TME (Tempo Médio de Espera)"
-        value={formatTime(data.metrics.avgWaitTime)}
+        value={formatTime(data.metrics?.avgWaitTime)}
         icon={<Clock className="h-5 w-5" />}
         color="secondary"
       />

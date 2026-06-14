@@ -18,7 +18,7 @@ import { Avatar, Box, Typography } from "@material-ui/core";
 
 import TicketListItem from "../TicketListItem";
 import { i18n } from "../../translate/i18n";
-import useTickets from "../../hooks/useTickets";
+import { useTickets } from "../../hooks/useTickets";
 import alertSound from "../../assets/sound.mp3";
 import { AuthContext } from "../../context/Auth/AuthContext";
 
@@ -265,7 +265,7 @@ const NotificationsPopOver = () => {
 				aria-label="Open Notifications"
 				className={classes.iconButton}
 			>
-				<Badge badgeContent={notifications.length} color="secondary" overlap="rectangular">
+				<Badge badgeContent={notifications?.length || 0} color="secondary" overlap="rectangular">
 					<ChatIcon />
 				</Badge>
 			</IconButton>
@@ -285,12 +285,12 @@ const NotificationsPopOver = () => {
 				onClose={handleClickAway}
 			>
 				<List dense className={classes.tabContainer}>
-					{notifications.length === 0 ? (
+					{(notifications || []).length === 0 ? (
 						<ListItem>
 							<ListItemText>{i18n.t("notifications.noTickets")}</ListItemText>
 						</ListItem>
 					) : (
-						notifications.map(ticket => (
+						(notifications || []).map(ticket => (
 							<NotificationTicket key={ticket.id}>
 								<TicketListItem ticket={ticket} />
 							</NotificationTicket>

@@ -1,17 +1,14 @@
-/* @jsxImportSource react */
-import React, { useState, useEffect, useReducer, useContext } from "react";
+import React, { useEffect, useContext, useMemo } from "react";
 import openSocket from "../../services/socket-io";
-
 import { makeStyles } from "@material-ui/core/styles";
 import List from "@material-ui/core/List";
 import PaperCard from "../PaperCard";
-
 import TicketListItem from "../TicketListItem";
 import TicketsListSkeleton from "../TicketsListSkeleton";
-
-import useTickets from "../../hooks/useTickets";
+import { useTicketsInfinite } from "../../hooks/useTicketsInfinite";
 import { i18n } from "../../translate/i18n";
 import { AuthContext } from "../../context/Auth/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 const useStyles = makeStyles(theme => ({
 	ticketsListWrapper: {
@@ -24,7 +21,6 @@ const useStyles = makeStyles(theme => ({
 		borderBottomRightRadius: 0,
 		backgroundColor: "transparent",
 	},
-
 	ticketsList: {
 		flex: 1,
 		overflowY: "scroll",
@@ -32,38 +28,18 @@ const useStyles = makeStyles(theme => ({
 		padding: "16px 0",
 		background: "transparent",
 	},
-
-	ticketsListHeader: {
-		color: "rgb(67, 83, 105)",
-		zIndex: 2,
-		backgroundColor: "white",
-		borderBottom: "1px solid var(--border-divider)",
-		display: "flex",
-		alignItems: "center",
-		justifyContent: "space-between",
-	},
-
-	ticketsCount: {
-		fontWeight: "normal",
-		color: "rgb(104, 121, 146)",
-		marginLeft: "8px",
-		fontSize: "14px",
-	},
-
 	noTicketsText: {
 		textAlign: "center",
 		color: "rgb(104, 121, 146)",
 		fontSize: "14px",
 		lineHeight: "1.4",
 	},
-
 	noTicketsTitle: {
 		textAlign: "center",
 		fontSize: "16px",
 		fontWeight: "600",
 		margin: "0px",
 	},
-
 	noTicketsDiv: {
 		display: "flex",
 		height: "100px",
@@ -74,181 +50,73 @@ const useStyles = makeStyles(theme => ({
 	},
 }));
 
-const reducer = (state, action) => {
-	if (action.type === "LOAD_TICKETS") {
-		const newTickets = action.payload;
-
-		newTickets.forEach(ticket => {
-			const ticketIndex = state.findIndex(t => t.id === ticket.id);
-			if (ticketIndex !== -1) {
-				state[ticketIndex] = ticket;
-				if (ticket.unreadMessages > 0) {
-					state.unshift(state.splice(ticketIndex, 1)[0]);
-				}
-			} else {
-				state.push(ticket);
-			}
-		});
-
-		return [...state];
-	}
-
-	if (action.type === "RESET_UNREAD") {
-		const ticketId = action.payload;
-
-		const ticketIndex = state.findIndex(t => t.id === ticketId);
-		if (ticketIndex !== -1) {
-			state[ticketIndex].unreadMessages = 0;
-		}
-
-		return [...state];
-	}
-
-	if (action.type === "UPDATE_TICKET") {
-		const ticket = action.payload;
-
-		const ticketIndex = state.findIndex(t => t.id === ticket.id);
-		if (ticketIndex !== -1) {
-			state[ticketIndex] = ticket;
-		} else {
-			state.unshift(ticket);
-		}
-
-		return [...state];
-	}
-
-	if (action.type === "UPDATE_TICKET_UNREAD_MESSAGES") {
-		const ticket = action.payload;
-
-		const ticketIndex = state.findIndex(t => t.id === ticket.id);
-		if (ticketIndex !== -1) {
-			state[ticketIndex] = ticket;
-			state.unshift(state.splice(ticketIndex, 1)[0]);
-		} else {
-			state.unshift(ticket);
-		}
-
-		return [...state];
-	}
-
-	if (action.type === "UPDATE_TICKET_CONTACT") {
-		const contact = action.payload;
-		const ticketIndex = state.findIndex(t => t.contactId === contact.id);
-		if (ticketIndex !== -1) {
-			state[ticketIndex].contact = contact;
-		}
-		return [...state];
-	}
-
-	if (action.type === "DELETE_TICKET") {
-		const ticketId = action.payload;
-		const ticketIndex = state.findIndex(t => t.id === ticketId);
-		if (ticketIndex !== -1) {
-			state.splice(ticketIndex, 1);
-		}
-
-		return [...state];
-	}
-
-	if (action.type === "RESET") {
-		return [];
-	}
-};
-
 const TicketsList = (props) => {
-	const { status, searchParam, showAll, selectedQueueIds, updateCount, style, isGroup } =
-		props;
+	const { status, searchParam, showAll, selectedQueueIds, updateCount, style, isGroup } = props;
 	const classes = useStyles();
-	const [pageNumber, setPageNumber] = useState(1);
-	const [ticketsList, dispatch] = useReducer(reducer, []);
 	const { user } = useContext(AuthContext);
+	const queryClient = useQueryClient();
 
-	useEffect(() => {
-		dispatch({ type: "RESET" });
-		setPageNumber(1);
-	}, [status, searchParam, dispatch, showAll, selectedQueueIds, isGroup]);
-
-	const { tickets, hasMore, loading } = useTickets({
-		pageNumber,
+	const params = useMemo(() => ({
 		searchParam,
 		status,
 		showAll,
 		queueIds: JSON.stringify(selectedQueueIds),
 		isGroup
-	});
+	}), [searchParam, status, showAll, selectedQueueIds, isGroup]);
+
+	const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status: queryStatus, isLoading } = useTicketsInfinite(params);
+
+	const tickets = useMemo(() => {
+		return data?.pages.flatMap(page => page.tickets) || [];
+	}, [data]);
 
 	useEffect(() => {
-		if (!status && !searchParam && !isGroup) return;
-		dispatch({
-			type: "LOAD_TICKETS",
-			payload: tickets,
-		});
-	}, [tickets, status, searchParam, isGroup]);
+		if (typeof updateCount === "function") {
+			const count = tickets.length;
+			updateCount(count);
+		}
+	}, [tickets.length, updateCount]);
 
 	useEffect(() => {
 		const socket = openSocket();
+		const queryKey = ["tickets", params];
 
 		const shouldUpdateTicket = ticket => {
-			// Check if ticket is group based on contact or root prop
 			const ticketIsGroup = ticket.contact?.isGroup || ticket.contact?.number?.includes("g.us") || ticket.isGroup;
-			// Filter based on isGroup prop
 			const groupMatch = isGroup === "true" ? ticketIsGroup : !ticketIsGroup;
-
 			return !searchParam &&
 				(!ticket.userId || ticket.userId === user?.id || showAll) &&
 				(!ticket.queueId || selectedQueueIds.indexOf(ticket.queueId) > -1) &&
 				groupMatch;
-		}
-
-		const notBelongsToUserQueues = ticket =>
-			ticket.queueId && selectedQueueIds.indexOf(ticket.queueId) === -1;
+		};
 
 		socket.on("connect", () => {
-			if (status) {
-				socket.emit("joinTickets", status);
-			} else {
-				socket.emit("joinNotification");
-			}
+			if (status) socket.emit("joinTickets", status);
+			else socket.emit("joinNotification");
 		});
 
 		socket.on("ticket", data => {
-			if (data.action === "updateUnread") {
-				dispatch({
-					type: "RESET_UNREAD",
-					payload: data.ticketId,
-				});
-			}
-
 			if (data.action === "update" && shouldUpdateTicket(data.ticket)) {
-				dispatch({
-					type: "UPDATE_TICKET",
-					payload: data.ticket,
+				queryClient.setQueryData(queryKey, (oldData) => {
+					if (!oldData) return oldData;
+					return {
+						...oldData,
+						pages: oldData.pages.map(page => ({
+							...page,
+							tickets: page.tickets.map(t => t.id === data.ticket.id ? data.ticket : t)
+						}))
+					};
 				});
-			}
-
-			if (data.action === "update" && notBelongsToUserQueues(data.ticket)) {
-				dispatch({ type: "DELETE_TICKET", payload: data.ticket.id });
-			}
-
-			if (data.action === "delete") {
-				dispatch({ type: "DELETE_TICKET", payload: data.ticketId });
-			}
-		});
-
-		socket.on("appMessage", data => {
-			if (data.action === "create" && shouldUpdateTicket(data.ticket)) {
-				dispatch({
-					type: "UPDATE_TICKET_UNREAD_MESSAGES",
-					payload: data.ticket,
-				});
-			}
-		});
-
-		socket.on("contact", data => {
-			if (data.action === "update") {
-				dispatch({
-					type: "UPDATE_TICKET_CONTACT",
-					payload: data.contact,
+			} else if (data.action === "delete") {
+				queryClient.setQueryData(queryKey, (oldData) => {
+					if (!oldData) return oldData;
+					return {
+						...oldData,
+						pages: oldData.pages.map(page => ({
+							...page,
+							tickets: page.tickets.filter(t => t.id !== data.ticketId)
+						}))
+					};
 				});
 			}
 		});
@@ -256,45 +124,13 @@ const TicketsList = (props) => {
 		return () => {
 			socket.disconnect();
 		};
-	}, [status, searchParam, showAll, user, selectedQueueIds, isGroup]);
-
-	// Apply filter consistently for Render AND Count
-	const filteredTickets = ticketsList.filter(ticket => {
-		const contactNumber = ticket.contact?.number?.toLowerCase() || "";
-		const contactName = ticket.contact?.name?.toLowerCase() || "";
-
-		const isGroupTicket =
-			ticket.isGroup ||
-			ticket.contact?.isGroup ||
-			contactNumber.includes("g.us") ||
-			contactName.includes("g.us");
-
-		if (isGroup === "true") {
-			return isGroupTicket;
-		} else {
-			return !isGroupTicket; // true if NOT group
-		}
-	});
-
-	useEffect(() => {
-		if (typeof updateCount === "function") {
-			updateCount(filteredTickets.length);
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [filteredTickets.length]);
-
-	const loadMore = () => {
-		setPageNumber(prevState => prevState + 1);
-	};
+	}, [params, user, queryClient, status, searchParam, showAll, selectedQueueIds, isGroup]);
 
 	const handleScroll = e => {
-		if (!hasMore || loading) return;
-
+		if (!hasNextPage || isFetchingNextPage || isLoading) return;
 		const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-
 		if (scrollHeight - (scrollTop + 100) < clientHeight) {
-			e.currentTarget.scrollTop = scrollTop - 100;
-			loadMore();
+			fetchNextPage();
 		}
 	};
 
@@ -308,23 +144,20 @@ const TicketsList = (props) => {
 				onScroll={handleScroll}
 			>
 				<List style={{ paddingTop: 0 }}>
-					{filteredTickets.length === 0 && !loading ? (
+					{tickets.length === 0 && !isLoading ? (
 						<div className={classes.noTicketsDiv}>
-							<span className={classes.noTicketsTitle}>
-								{i18n.t("ticketsList.noTicketsTitle")}
-							</span>
-							<p className={classes.noTicketsText}>
-								{i18n.t("ticketsList.noTicketsMessage")}
-							</p>
+							<span className={classes.noTicketsTitle}>{i18n.t("ticketsList.noTicketsTitle")}</span>
+							<p className={classes.noTicketsText}>{i18n.t("ticketsList.noTicketsMessage")}</p>
 						</div>
 					) : (
 						<>
-							{filteredTickets.map(ticket => (
+							{tickets.map(ticket => (
 								<TicketListItem ticket={ticket} key={ticket.id} />
 							))}
+							{isFetchingNextPage && <TicketsListSkeleton />}
 						</>
 					)}
-					{loading && <TicketsListSkeleton />}
+					{isLoading && <TicketsListSkeleton />}
 				</List>
 			</PaperCard>
 		</PaperCard>
