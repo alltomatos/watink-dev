@@ -2,18 +2,80 @@
 
 > Guia de design e biblioteca de componentes para o **Watink** — plataforma open-source brasileira de atendimento multiagente no WhatsApp.
 
-**Repositórios e branches:**
-- `alltomatos/watinkdev` @ `main` — branch legado com React 17 + MUI v4 (referência histórica)
-- `alltomatos/watinkdev` @ `tinker/ui-and-di-refactor` — **branch ativo** com React 18 + TypeScript + Tailwind CSS v4 + shadcn/ui
-  - `frontend/src/components/ui/` — 22 componentes shadcn/ui (Button, Card, Dialog, Input, Badge, Avatar, MetricCard, StatusChip, PageLayout…)
-  - `frontend/src/theme/tokens/` — **fonte canônica de tokens CSS** (colors.css, typography.css, spacing.css, motion.css)
-  - `frontend/src/theme/loader.js` — injeção de 8 variantes de tema em runtime (apple/google/whatsapp/saas × light/dark)
-  - `frontend/tailwind.config.js` — Tailwind consome CSS vars via `hsl(var(--token))`
-  - `frontend/src/index.css` — entry point: importa tokens CSS + bridge + Tailwind
+---
 
-> **Documentação canônica**: `docs/Watink Design System v2/` — 7 documentos ativos para agentes de IA.  
-> **Governança**: `docs/adr/frontend/005-design-system-governance.md`  
-> **Epic em andamento**: `ESTADO_ORQUESTRATOR.md` — 4B (46 componentes) + 4D (66 páginas) pendentes.
+## 🚀 NOVO: Documentação Completa para Agentes de IA
+
+**Watink Design System v2.0** — Documentação profissional pronta para desenvolvimento com agentes de IA.
+
+### 📚 6 Documentos Completos (71 KB)
+
+1. **[README_AI_AGENTS.md](README_AI_AGENTS.md)** — 📍 **COMECE AQUI** (10 min)
+   - Guia rápido de entrada
+   - Stack técnico resumido
+   - Regras básicas
+
+2. **[AI_AGENT_INSTRUCTIONS.md](AI_AGENT_INSTRUCTIONS.md)** (25 min)
+   - Workflow passo-a-passo
+   - Checklist antes de commitar
+   - Regras estritas (✅ FAÇA / ❌ NÃO FAÇA)
+   - Troubleshooting
+
+3. **[FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md)** (35 min)
+   - Arquitetura técnica completa
+   - Hierarquia 3-camadas de tokens
+   - Padrões de componentes
+   - Dark mode implementation
+
+4. **[DESIGN_SYSTEM_GUIDE.md](DESIGN_SYSTEM_GUIDE.md)** (Referência)
+   - Paleta de cores com valores
+   - Componentes base (shadcn/ui)
+   - Padrões Tailwind CSS
+   - Exemplos práticos
+
+5. **[IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)** (Tarefas)
+   - 4 fases de implementação
+   - Cronograma (junho-agosto 2026)
+   - Tarefas imediatas priorizadas
+   - Métricas de sucesso
+
+6. **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** (Navegação)
+   - Índice completo
+   - Como usar a documentação
+   - Checklist de implementação
+
+### ⏱️ Onboarding Rápido (90 min)
+```bash
+1. Ler README_AI_AGENTS.md               (10 min)
+2. Ler AI_AGENT_INSTRUCTIONS.md          (25 min)
+3. Ler FRONTEND_ARCHITECTURE.md          (35 min)
+4. Guardar DESIGN_SYSTEM_GUIDE.md        (referência)
+5. Consultar IMPLEMENTATION_ROADMAP.md   (tarefas)
+```
+
+### ✨ O Que Cobre
+
+✅ Stack: React 18 + TypeScript + Vite + Tailwind v4 + shadcn/ui  
+✅ Design tokens (3 camadas)  
+✅ 15+ componentes base documentados  
+✅ Padrões de composição e formulários  
+✅ Dark mode + Acessibilidade (WCAG AA)  
+✅ Workflow para agentes de IA  
+✅ Checklist de validação  
+✅ Troubleshooting + FAQ  
+✅ Cronograma e tarefas  
+
+---
+
+**Repositórios e branches:**
+- `alltomatos/watinkdev` @ `main` — **branch ativo** com React 18 + Tailwind CSS v4.3.0 + shadcn/ui
+- `alltomatos/watinkdev` @ `tinker/ui-and-di-refactor` — branch anterior (histórico)
+  - `frontend/src/components/ui/` — componentes shadcn/ui base (Button, Card, Dialog, Input, Label, Skeleton)
+  - `frontend/src/components/` — componentes customizados Watink (BaseCard, MetricCard, MessageInput, Sidebar, etc.)
+  - `frontend/src/layout/` — layouts do shell (MainContainer, MainHeader, Sidebar com Tailwind)
+  - `frontend/src/pages/` — implementações de páginas
+  - `frontend/tailwind.config.js` — configuração Tailwind com CSS variables (HSL)
+  - `frontend/src/index.css` — variáveis de cores globais
 
 ---
 
@@ -29,9 +91,13 @@ O Watink é uma plataforma open-source brasileira que centraliza o atendimento v
 | **Flow Builder** | Editor de chatbots com arrastar e soltar (baseado em ReactFlow) |
 | **Admin / SaaS** | Painel de administração multi-tenant (`MainLayoutSaaS.js`) |
 
-**Status:** Sistema de design em transição de MUI v4 → **shadcn/ui + Tailwind CSS v4.3.0** (branch `tinker/ui-and-di-refactor`).
+**Status:** ✅ Sistema de design v2.0 — **shadcn/ui + Tailwind CSS v4.3.0 em produção**.
 
-Este sistema de design representa a identidade visual do Watink de forma agnóstica ao framework, usando CSS custom properties em HSL que mapeiam para classes Tailwind. Veja `MIGRATION.md` para detalhes técnicos sobre a migração, como adicionar componentes shadcn/ui, e próximas prioridades de desenvolvimento.
+**Documentação:** Veja [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) para índice completo e navegação.
+
+Este sistema de design representa a identidade visual do Watink de forma agnóstica ao framework, usando CSS custom properties em HSL que mapeiam para classes Tailwind.
+
+**Para agentes de IA:** Comece por [README_AI_AGENTS.md](README_AI_AGENTS.md) — todo o contexto necessário está documentado.
 
 ---
 
