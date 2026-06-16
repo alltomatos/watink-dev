@@ -10,20 +10,13 @@ import {
   Puzzle,
   Headphones,
   Brain,
-  Save,
   Loader2,
   Layout,
-  Type,
-  ImageIcon,
-  Smartphone,
-  CheckCircle2,
-  XCircle,
   Plus,
   Copy,
   Mail,
   Globe,
-  Clock,
-  RotateCcw
+  XCircle
 } from "lucide-react";
 
 import api from "../../services/api";
@@ -45,7 +38,6 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
 import { Badge } from "../../components/ui/badge";
-import { Textarea } from "../../components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -87,7 +79,6 @@ const Settings: React.FC = () => {
   const [settings, setSettings] = useState<Setting[]>([]);
   const [activePlugins, setActivePlugins] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   // Hidden File Inputs Refs
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -117,7 +108,7 @@ const Settings: React.FC = () => {
         try {
           const { data: pluginsData } = await pluginApi.get("/plugins/installed");
           setActivePlugins(pluginsData?.active || []);
-        } catch (e) {
+        } catch {
           setActivePlugins([]);
         }
 
@@ -126,14 +117,14 @@ const Settings: React.FC = () => {
         if (savedCategories) {
           try {
             setHelpdeskCategories(JSON.parse(savedCategories));
-          } catch (_) {}
+          } catch { /* silence */ }
         }
 
         const savedSLA = safeSettings.find((s) => s.key === "helpdesk_sla_config")?.value;
         if (savedSLA) {
           try {
             setSlaConfig(JSON.parse(savedSLA));
-          } catch (_) {}
+          } catch { /* silence */ }
         }
 
         setLoading(false);
@@ -164,12 +155,12 @@ const Settings: React.FC = () => {
         if (data.setting.key === "helpdesk_categories") {
           try {
             setHelpdeskCategories(JSON.parse(data.setting.value));
-          } catch (_) {}
+          } catch { /* silence */ }
         }
         if (data.setting.key === "helpdesk_sla_config") {
           try {
             setSlaConfig(JSON.parse(data.setting.value));
-          } catch (_) {}
+          } catch { /* silence */ }
         }
       }
     });
@@ -185,7 +176,7 @@ const Settings: React.FC = () => {
   };
 
   const handleUpdateSetting = async (key: string, value: string) => {
-    setSaving(true);
+    
     try {
       await api.put(`/settings/${key}`, { value });
       setSettings((prev) => {
@@ -198,8 +189,6 @@ const Settings: React.FC = () => {
       toast.success("Configuração atualizada!");
     } catch (err) {
       toastError(err);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -216,7 +205,7 @@ const Settings: React.FC = () => {
   const handleImageUpload = async (key: string, file: File | undefined) => {
     if (!file) return;
     try {
-      setSaving(true);
+      
       const base64String = await convertFileToBase64(file);
       await handleUpdateSetting(key, base64String);
 
@@ -232,8 +221,6 @@ const Settings: React.FC = () => {
       }
     } catch (err) {
       toastError(err);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -274,7 +261,7 @@ const Settings: React.FC = () => {
     await handleUpdateSetting("helpdesk_categories", JSON.stringify(nextCategories));
   };
 
-  const renderImagePreview = (key: string, defaultUrl: string) => {
+  const renderImagePreview = (key: string) => {
     const value = getSettingValue(key);
     if (!value) {
       return (
@@ -425,7 +412,7 @@ const Settings: React.FC = () => {
                 />
               </div>
               <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-3 bg-muted/10">
-                {renderImagePreview("systemLogo", "/logo.png")}
+                {renderImagePreview("systemLogo")}
                 <input
                   type="file"
                   accept="image/*"
@@ -447,7 +434,7 @@ const Settings: React.FC = () => {
             <div className="space-y-4">
               <Label>Favicon (Ícone do Navegador)</Label>
               <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-3 bg-muted/10">
-                {renderImagePreview("systemFavicon", "/favicon.png")}
+                {renderImagePreview("systemFavicon")}
                 <input
                   type="file"
                   accept="image/x-icon,image/png,image/jpeg"
@@ -469,7 +456,7 @@ const Settings: React.FC = () => {
             <div className="space-y-4">
               <Label>Logotipo Mobile</Label>
               <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-3 bg-muted/10">
-                {renderImagePreview("mobileLogo", "/logo.png")}
+                {renderImagePreview("mobileLogo")}
                 <input
                   type="file"
                   accept="image/*"

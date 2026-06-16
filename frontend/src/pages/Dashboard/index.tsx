@@ -116,8 +116,8 @@ const Dashboard: React.FC = () => {
       try {
         const { data } = await api.get("/dashboard");
         setAvgResponseTime(data?.metrics?.avgResponseTime || 0);
-      } catch (err) {
-        console.error("Error fetching dashboard data", err);
+      } catch {
+        console.error("Error fetching dashboard data");
       }
     };
     fetchDashboard();
@@ -139,7 +139,7 @@ const Dashboard: React.FC = () => {
 
       toast.success("Dashboard preferences saved!");
       setModalOpen(false);
-    } catch (err) {
+    } catch {
       toast.error("Error saving preferences");
     }
   };
@@ -165,8 +165,6 @@ const Dashboard: React.FC = () => {
   };
 
   const sortedWidgets = [...widgets].sort((a, b) => a.order - b.order);
-  const isVisible = (id: string) =>
-    sortedWidgets.find((w) => w.id === id)?.visible !== false;
 
   const stats = [
     {

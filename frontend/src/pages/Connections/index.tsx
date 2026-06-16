@@ -1,5 +1,5 @@
 /* @jsxImportSource react */
-import React, { useState, useContext, useCallback } from "react";
+import React, { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -10,9 +10,8 @@ import {
   RefreshCw, 
   QrCode, 
   CheckCircle2, 
-  AlertTriangle, 
-  SignalHigh, 
-  SignalLow,
+ 
+  SignalHigh,
   WifiOff,
   MessageSquare
 } from "lucide-react";
@@ -52,7 +51,7 @@ import ConfirmationModal from "../../components/ConfirmationModal";
 
 const Connections = () => {
   const navigate = useNavigate();
-  const { data: whatsApps = [], isLoading, refetch: reloadWhatsApps } = useWhatsAppsQuery();
+  const { data: whatsApps = [], isLoading: _isLoading, refetch: reloadWhatsApps } = useWhatsAppsQuery();
 
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
   const [webchatModalOpen, setWebchatModalOpen] = useState(false);

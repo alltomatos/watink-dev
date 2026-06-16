@@ -55,7 +55,7 @@ const UserProfile = () => {
         const { data } = await api.get(`/users/${user.id}`);
         if (data.profileImage) setProfileImage(getBackendUrl(data.profileImage));
         if (data.signature !== undefined) setSignature(data.signature || "");
-      } catch (err) {
+      } catch {
         // perfil pode não expor estes campos no backend atual — silencioso
       }
     };

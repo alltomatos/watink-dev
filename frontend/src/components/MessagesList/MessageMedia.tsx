@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Image as ImageIcon, Video, Mic, MapPin, User } from 'lucide-react';
+import { FileText, Mic, MapPin, User } from 'lucide-react';
 
 interface MessageMediaProps {
   mediaType: string;

@@ -2,7 +2,6 @@
 import React, { useState, useContext, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { AuthContext } from "../context/Auth/AuthContext";
-import { i18n } from "../translate/i18n";
 import api from "../services/api";
 import { getBackendUrl } from "../helpers/urlUtils";
 import openSocket from "../services/socket-io";
@@ -18,9 +17,9 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(() => window.innerWidth >= 1024);
   const [userModalOpen, setUserModalOpen] = useState(false);
-  const [systemLogo, setSystemLogo] = useState("");
+  const [_systemLogo, setSystemLogo] = useState("");
   const [systemTitle, setSystemTitle] = useState("Watink");
-  const [logoEnabled, setLogoEnabled] = useState(true);
+  const [_logoEnabled, setLogoEnabled] = useState(true);
   const [frontendVersion, setFrontendVersion] = useState("");
 
   const { user, handleLogout, loading } = useContext(AuthContext);
@@ -71,7 +70,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           }
           link.href = getBackendUrl(favicon.value);
         }
-      } catch (err) {
+      } catch {
         // Silent settings fetch
       }
     };
@@ -87,7 +86,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           const data = await res.json();
           setFrontendVersion(data?.version || "");
         }
-      } catch (_err) {
+      } catch {
         // version.json unavailable
       }
     };

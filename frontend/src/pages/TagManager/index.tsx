@@ -8,8 +8,7 @@ import {
   Trash2, 
   Archive, 
   RotateCcw,
-  Loader2,
-  Tag as TagIcon
+  Loader2
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -249,7 +248,7 @@ const TagManager = () => {
                     <div className="flex items-center gap-2">
                       <div
                         className="h-4 w-4 rounded-full border border-black/10 shadow-sm"
-                        style={{ backgroundColor: tag.color || "#eee" }}
+                        style={{ backgroundColor: tag.color || "var(--muted)" }}
                       />
                       <span className="font-semibold">{tag.name}</span>
                       {tag.archived && (

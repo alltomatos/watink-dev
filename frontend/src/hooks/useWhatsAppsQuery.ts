@@ -1,5 +1,5 @@
 import api from "../services/api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 export const useWhatsAppsQuery = () => {
   return useQuery({
