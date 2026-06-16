@@ -8,11 +8,7 @@ import {
   Contact,
   GitMerge,
   MessageCircle,
-  Layers,
-  BookOpen,
-  ShieldCheck,
   Settings,
-  FileCode,
   ClipboardList,
   RefreshCw,
   Tags,
@@ -54,7 +50,7 @@ const MainSidebar: React.FC<MainSidebarProps> = ({ collapsed, onToggle }) => {
         if (logo?.value) setSystemLogo(logo.value);
         if (title?.value) setSystemTitle(title.value);
         if (enabled) setLogoEnabled(enabled.value === "true");
-      } catch (err) {}
+      } catch { /* silence — settings fetch is non-critical */ }
     };
     fetchData();
 
@@ -62,7 +58,7 @@ const MainSidebar: React.FC<MainSidebarProps> = ({ collapsed, onToggle }) => {
       try {
         const { data } = await pluginApi.get("/plugins/installed");
         setActivePlugins(data.active || []);
-      } catch (err) {
+      } catch {
         // Silent error
       }
     };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -26,7 +26,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ modalOpen, onClo
   const [searchParam, setSearchParam] = useState("");
   const { user } = useContext(AuthContext);
 
-  const handleSaveTicket = async (contactId: number) => {
+  const _handleSaveTicket = async (contactId: number) => {
     setLoading(true);
     try {
       const { data: ticket } = await api.post("/tickets", {

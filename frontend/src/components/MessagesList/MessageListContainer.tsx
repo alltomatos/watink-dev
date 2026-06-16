@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { VirtuosoMessageList, VirtuosoMessageListMethods } from '@virtuoso.dev/message-list';
 import connectToSocket from '../../services/socket-io';
@@ -55,13 +55,6 @@ export const MessageListContainer: React.FC<MessageListContainerProps> = ({ tick
     };
   }, [ticketId, queryClient]);
 
-  const listData = useMemo(() => ({
-    data: messages,
-    scrollModifier: {
-      type: 'auto-scroll-to-bottom',
-      autoScroll: ({ atBottom }: { atBottom: boolean }) => (atBottom ? 'smooth' : 'auto'),
-    } as const,
-  }), [messages]);
 
   if (isLoading) return <div>Carregando mensagens...</div>;
 

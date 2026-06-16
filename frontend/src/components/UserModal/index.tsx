@@ -72,7 +72,7 @@ const UserModal: React.FC<UserModalProps> = ({ open, onClose, userId }) => {
     groupIds: []
   };
 
-  const { user: loggedInUser } = useContext(AuthContext);
+  const { user: _loggedInUser } = useContext(AuthContext);
 
   const [user, setUser] = useState<User>(initialState);
   const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>([]);

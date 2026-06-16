@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
-
 @import './theme/tokens/colors.css';
 @import './theme/tokens/typography.css';
 @import './theme/tokens/spacing.css';
@@ -9,98 +8,7 @@
 @import "tailwindcss";
 
 
-:root {
-  /* ─── Typography Design Tokens ─── */
-  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-mono:    'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-
-  /* Font sizes */
-  --text-xs:      0.6875rem;  /* 11px */
-  --text-sm:      0.75rem;    /* 12px */
-  --text-body-sm: 0.8125rem;  /* 13px */
-  --text-body:    0.9375rem;  /* 15px */
-  --text-lg:      1rem;       /* 16px */
-  --text-xl:      1.125rem;   /* 18px */
-  --text-2xl:     1.25rem;    /* 20px */
-  --text-3xl:     1.5rem;     /* 24px */
-  --text-4xl:     1.75rem;    /* 28px */
-  --text-h1:      2rem;       /* 32px */
-
-  /* Font weights */
-  --weight-normal:    400;
-  --weight-medium:    500;
-  --weight-semibold:  600;
-  --weight-bold:      700;
-  --weight-extrabold: 800;
-
-  /* Line heights */
-  --leading-tight:   1.20;
-  --leading-snug:    1.35;
-  --leading-normal:  1.50;
-  --leading-relaxed: 1.75;
-
-  /* Letter spacing */
-  --tracking-tight:  -0.02em;
-  --tracking-snug:   -0.01em;
-  --tracking-normal:  0em;
-
-  /* ─── Spacing Design Tokens ─── */
-  --space-0:    0px;
-  --space-0-5:  2px;
-  --space-1:    4px;
-  --space-1-5:  6px;
-  --space-2:    8px;
-  --space-3:    12px;
-  --space-4:    16px;
-  --space-5:    20px;
-  --space-6:    24px;
-  --space-8:    32px;
-  --space-10:   40px;
-  --space-12:   48px;
-  --space-16:   64px;
-  --space-20:   80px;
-
-  /* ─── Border Radius Tokens ─── */
-  --radius-none: 0px;
-  --radius-sm:   6px;
-  --radius-md:   8px;
-  --radius-lg:   12px;
-  --radius-xl:   16px;
-  --radius-2xl:  20px;
-  --radius-full: 9999px;
-
-  /* ─── Components Styling Primitives ─── */
-  --card-bg:            hsl(var(--bg-surface));
-  --card-border-radius: var(--radius-xl);   /* 16px — base card */
-  --card-shadow:        0px 4px 20px rgba(0,0,0,0.08);
-
-  --sidebar-width:           260px;
-  --sidebar-collapsed-width: 72px;
-  --sidebar-bg:              hsl(var(--bg-sidebar));
-
-  --appbar-bg:     hsl(var(--bg-appbar));
-  --appbar-height: 64px;
-
-  --button-primary-bg:   hsl(var(--action-primary));
-  --button-primary-text: hsl(var(--text-inverse));
-
-  /* ─── Motion Durations & Easings ─── */
-  --duration-fast:   150ms;
-  --duration-normal: 200ms;
-  --duration-slow:   300ms;
-  --duration-slower: 500ms;
-
-  --ease-out:    cubic-bezier(0.0, 0, 0.2, 1);
-  --ease-in:     cubic-bezier(0.4, 0, 1, 1);
-  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-sharp:  cubic-bezier(0.4, 0, 0.6, 1);
-  --ease-spring: cubic-bezier(0.25, 0.8, 0.25, 1);
-
-  --transition-default: all var(--duration-normal) var(--ease-out);
-  --transition-fast:    all var(--duration-fast)   var(--ease-out);
-  --transition-slow:    all var(--duration-slow)   var(--ease-spring);
-  --transition-card:    all 300ms var(--ease-spring);
-}
+/* Token vars are now imported from theme/tokens/*.css above */
 
 @layer base {
   :root {
@@ -124,6 +32,22 @@
     --input: hsl(var(--border-default));
     --ring: hsl(var(--action-primary));
     --radius: 0.5rem;
+    /* Resolved color bridges — full hsl() values usable as var(--x) directly */
+    --color-primary: hsl(var(--action-primary));
+    --color-primary-bg: hsl(var(--action-primary-bg));
+    --color-success: hsl(var(--status-success));
+    --color-error: hsl(var(--status-error));
+    --color-warning: hsl(var(--status-warning));
+    --color-info: hsl(var(--status-info));
+    --color-success-bg: hsl(var(--status-success-bg));
+    --color-error-bg: hsl(var(--status-error-bg));
+    --color-warning-bg: hsl(var(--status-warning-bg));
+    --color-info-bg: hsl(var(--status-info-bg));
+    --color-bg-surface: hsl(var(--bg-surface));
+    --color-bg-surface-alt: hsl(var(--bg-surface-alt));
+    --color-border: hsl(var(--border-default));
+    --color-text-secondary: hsl(var(--text-secondary));
+    --color-text-muted: hsl(var(--text-muted));
   }
 }
 

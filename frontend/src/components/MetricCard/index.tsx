@@ -16,29 +16,29 @@ export interface MetricCardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const colorMap = {
   primary: {
-    bg: "linear-gradient(135deg, rgba(26, 115, 232, 0.04) 0%, rgba(26, 115, 232, 0.15) 100%)",
-    icon: "text-[hsl(var(--action-primary))]",
-    text: "text-[hsl(var(--action-primary))]"
+    bg: "linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 4%, transparent) 0%, color-mix(in srgb, var(--color-primary) 15%, transparent) 100%)",
+    icon: "text-[var(--color-primary)]",
+    text: "text-[var(--color-primary)]"
   },
   success: {
-    bg: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.2) 100%)",
-    icon: "text-[hsl(var(--status-success))]",
-    text: "text-[hsl(var(--status-success))]"
+    bg: "linear-gradient(135deg, color-mix(in srgb, var(--color-success) 10%, transparent) 0%, color-mix(in srgb, var(--color-success) 20%, transparent) 100%)",
+    icon: "text-[var(--color-success)]",
+    text: "text-[var(--color-success)]"
   },
   warning: {
-    bg: "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.2) 100%)",
-    icon: "text-[hsl(var(--status-warning))]",
-    text: "text-[hsl(var(--status-warning))]"
+    bg: "linear-gradient(135deg, color-mix(in srgb, var(--color-warning) 10%, transparent) 0%, color-mix(in srgb, var(--color-warning) 20%, transparent) 100%)",
+    icon: "text-[var(--color-warning)]",
+    text: "text-[var(--color-warning)]"
   },
   error: {
-    bg: "linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.2) 100%)",
-    icon: "text-[hsl(var(--status-error))]",
-    text: "text-[hsl(var(--status-error))]"
+    bg: "linear-gradient(135deg, color-mix(in srgb, var(--color-error) 10%, transparent) 0%, color-mix(in srgb, var(--color-error) 20%, transparent) 100%)",
+    icon: "text-[var(--color-error)]",
+    text: "text-[var(--color-error)]"
   },
   info: {
-    bg: "linear-gradient(135deg, rgba(26, 115, 232, 0.04) 0%, rgba(26, 115, 232, 0.15) 100%)",
-    icon: "text-[hsl(var(--status-info))]",
-    text: "text-[hsl(var(--status-info))]"
+    bg: "linear-gradient(135deg, color-mix(in srgb, var(--color-info) 4%, transparent) 0%, color-mix(in srgb, var(--color-info) 15%, transparent) 100%)",
+    icon: "text-[var(--color-info)]",
+    text: "text-[var(--color-info)]"
   }
 };
 
@@ -56,7 +56,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   return (
     <Card
       className={clsx(
-        "wt-metric relative overflow-visible h-full hover:translate-y-[-6px] transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)] border border-[hsl(var(--border))] rounded-2xl shadow-sm hover:shadow-xl bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))]",
+        "wt-metric relative overflow-visible h-full hover:translate-y-[-6px] transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)] border border-[var(--border)] rounded-2xl shadow-sm hover:shadow-xl bg-[var(--card)] text-[var(--card-foreground)]",
         className
       )}
       {...rest}
@@ -76,7 +76,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         </div>
 
         {/* Label */}
-        <div className="wt-metric-label text-[11px] font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-widest mb-1">
+        <div className="wt-metric-label text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-widest mb-1">
           {label}
         </div>
 
@@ -97,8 +97,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
               className={clsx(
                 "wt-metric-trend inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full",
                 trend.positive
-                  ? "text-[hsl(var(--status-success))] bg-[rgba(16,185,129,0.1)]"
-                  : "text-[hsl(var(--status-error))] bg-[rgba(239,68,68,0.1)]"
+                  ? "text-[var(--color-success)] bg-[var(--color-success-bg)]"
+                  : "text-[var(--color-error)] bg-[var(--color-error-bg)]"
               )}
             >
               {trend.positive ? (
