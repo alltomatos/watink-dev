@@ -10,6 +10,7 @@ import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
 import openSocket from "../../services/socket-io";
 import toastError from "../../errors/toastError";
+import { WhatsAppSessionSocketEvent, WhatsAppSession } from "../../types/api";
 
 interface QrcodeModalProps {
   open: boolean;
@@ -24,7 +25,7 @@ const QrcodeModal = ({ open, onClose, whatsAppId }: QrcodeModalProps) => {
     if (!whatsAppId) return;
     const fetchSession = async () => {
       try {
-        const { data } = await api.get(`/whatsapp/${whatsAppId}`);
+        const { data } = await api.get<WhatsAppSession>(`/whatsapp/${whatsAppId}`);
         setQrCode(data.qrcode);
       } catch (err) {
         toastError(err);
@@ -37,7 +38,7 @@ const QrcodeModal = ({ open, onClose, whatsAppId }: QrcodeModalProps) => {
     if (!whatsAppId) return;
     const socket = openSocket();
 
-    socket.on("whatsappSession", (data: any) => {
+    socket.on("whatsappSession", (data: WhatsAppSessionSocketEvent) => {
       if (data.action === "update" && data.session.id === whatsAppId) {
         setQrCode(data.session.qrcode);
       }

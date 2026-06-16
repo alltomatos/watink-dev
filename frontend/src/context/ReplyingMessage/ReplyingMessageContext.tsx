@@ -1,7 +1,7 @@
 import React, { useState, createContext, ReactNode } from "react";
 
 interface Message {
-  id?: string;
+  id?: string | number;
   body?: string;
   [key: string]: unknown;
 }

@@ -20,6 +20,7 @@ import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import QueueSelect from "../QueueSelect";
+import type { WhatsAppConnection, WhatsAppFormValues } from "../../types/domain";
 
 const SessionSchema = Yup.object().shape({
   name: Yup.string().min(2, "Too Short!").max(50, "Too Long!").required("Required"),
@@ -33,7 +34,7 @@ interface WhatsAppModalProps {
 }
 
 const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProps) => {
-  const [whatsApp, setWhatsApp] = useState<any>({
+  const [whatsApp, setWhatsApp] = useState<WhatsAppFormValues>({
     name: "",
     isDefault: false,
     keepAlive: false,
@@ -43,11 +44,16 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProp
 
   useEffect(() => {
     if (!whatsAppId) return;
-    api.get(`/whatsapp/${whatsAppId}`)
+    api.get<WhatsAppConnection>(`/whatsapp/${whatsAppId}`)
       .then(({ data }) => {
-        setWhatsApp(data);
+        setWhatsApp({
+          name: data.name,
+          isDefault: data.isDefault,
+          keepAlive: data.keepAlive,
+          syncHistory: data.syncHistory,
+        });
         if (data.queues) {
-          setSelectedQueueIds(data.queues.map((q: any) => q.id));
+          setSelectedQueueIds(data.queues.map((q) => q.id));
         }
       })
       .catch(toastError);
@@ -59,7 +65,7 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProp
     setSelectedQueueIds([]);
   };
 
-  const handleSaveWhatsApp = async (values: any) => {
+  const handleSaveWhatsApp = async (values: WhatsAppFormValues) => {
     const payload = { ...values, queueIds: selectedQueueIds };
     try {
       if (whatsAppId) {

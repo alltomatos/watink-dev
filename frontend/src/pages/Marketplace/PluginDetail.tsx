@@ -8,6 +8,7 @@ import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
 import pluginApi from "../../services/pluginApi";
 import { getBackendUrl } from "../../helpers/urlUtils";
+import type { CatalogPlugin, PluginCatalogResponse, PluginInstalledResponse } from "../../types/api";
 
 import { PageContainer, PageHeader, PageContent } from "../../components/ui/page-layout";
 import { Button } from "../../components/ui/button";
@@ -16,18 +17,11 @@ import { Card, CardContent } from "../../components/ui/card";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface Plugin {
-  slug: string;
-  name: string;
-  description: string;
+/** View-model: CatalogPlugin augmented with local state fields */
+interface PluginViewModel extends CatalogPlugin {
   longDescription: string;
-  version: string;
-  type: "free" | "business";
-  price: number;
-  category: string;
   active: boolean;
   installed: boolean;
-  iconUrl: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -48,7 +42,7 @@ const PluginDetail: React.FC = () => {
   const location = useLocation();
   const { user } = useContext(AuthContext);
 
-  const [plugin, setPlugin] = useState<Plugin | null>(null);
+  const [plugin, setPlugin] = useState<PluginViewModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
 
@@ -57,12 +51,12 @@ const PluginDetail: React.FC = () => {
     try {
       setLoading(true);
       const [{ data: catalog }, { data: installed }] = await Promise.all([
-        pluginApi.get<{ plugins: any[] }>("/plugins/catalog"),
-        pluginApi.get<{ active: string[] }>("/plugins/installed"),
+        pluginApi.get<PluginCatalogResponse>("/plugins/catalog"),
+        pluginApi.get<PluginInstalledResponse>("/plugins/installed"),
       ]);
 
-      const all = Array.isArray(catalog?.plugins) ? catalog.plugins : [];
-      const active = new Set(Array.isArray(installed?.active) ? installed.active : []);
+      const all: CatalogPlugin[] = Array.isArray(catalog?.plugins) ? catalog.plugins : [];
+      const active = new Set<string>(Array.isArray(installed?.active) ? installed.active : []);
       const p = all.find((x) => x.slug === slug);
 
       if (!p) {
@@ -74,7 +68,7 @@ const PluginDetail: React.FC = () => {
         ...p,
         installed: active.has(p.slug),
         active: active.has(p.slug),
-        iconUrl: `/public/plugins/${p.slug}.png`,
+        iconUrl: p.iconUrl ?? `/public/plugins/${p.slug}.png`,
         longDescription: getLongDescription(p.slug),
       });
     } catch {
@@ -92,7 +86,6 @@ const PluginDetail: React.FC = () => {
     const status = search.get("checkout") || search.get("status");
     if (status === "approved" || status === "success") {
       toast.success("Pagamento aprovado.");
-      setWaitingPayment(true);
       loadPlugin();
     }
   }, [location.search, loadPlugin]);
