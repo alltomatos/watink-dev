@@ -1,16 +1,14 @@
-/* @jsxImportSource react */
 import React from "react";
-import {
-  ClipboardList,
-  Hourglass,
-  CheckCircle2
-} from "lucide-react";
-
+import { ClipboardList, Hourglass, CheckCircle2 } from "lucide-react";
 import MetricCard from "../../../components/ui/metric-card";
 import { i18n } from "../../../translate/i18n";
 import { useDashboardStats } from "../../../hooks/useDashboardStats";
 
-const TicketsInfo = ({ userQueueIds }) => {
+interface TicketsInfoProps {
+  userQueueIds?: number[];
+}
+
+const TicketsInfo: React.FC<TicketsInfoProps> = () => {
   const { data: stats, isLoading, error } = useDashboardStats();
 
   if (isLoading) return <div>Carregando...</div>;

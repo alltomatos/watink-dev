@@ -1,4 +1,3 @@
-/* @jsxImportSource react */
 const messages = {
   en: {
     translations: {
