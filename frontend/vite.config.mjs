@@ -27,14 +27,6 @@ function chunkStrategy(id, { _getModuleInfo }) {
     ) {
     return "react";
     }
-    // MUI v4 — monorepo, heavy, stable (rarely changes)
-    if (
-      id.includes("/@material-ui/core/") ||
-      id.includes("/@material-ui/icons/") ||
-      id.includes("/@material-ui/lab/")
-    ) {
-      return "material-ui";
-    }
     // Forms
     if (id.includes("/formik/") || id.includes("/yup/")) {
       return "forms";
@@ -143,9 +135,6 @@ export default defineConfig({
     },
     include: [
       "mic-recorder-to-mp3",
-      "@material-ui/core",
-      "@material-ui/icons",
-      "@material-ui/lab",
     ],
     exclude: [],
   },
@@ -157,7 +146,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: './src/setupTests.js',
+    setupFiles: './src/setupTests.ts',
     include: ['src/**/*.{test,spec}.{js,jsx,ts,tsx}'],
   },
 });
