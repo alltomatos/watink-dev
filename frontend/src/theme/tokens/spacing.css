@@ -1,0 +1,54 @@
+/* Watink Design System v2 — Spacing, Radius & Component Structure Tokens */
+
+:root {
+  /* ─── Spacing scale (Tailwind-compatible) ── */
+  --space-0:    0px;
+  --space-0-5:  2px;
+  --space-1:    4px;
+  --space-1-5:  6px;
+  --space-2:    8px;
+  --space-3:    12px;
+  --space-4:    16px;
+  --space-5:    20px;
+  --space-6:    24px;
+  --space-8:    32px;
+  --space-10:   40px;
+  --space-12:   48px;
+  --space-16:   64px;
+  --space-20:   80px;
+
+  /* ─── Border radius ── */
+  --radius-none: 0px;
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-2xl:  20px;
+  --radius-full: 9999px;
+
+  /* ─── Component structural tokens ── */
+  --card-bg:            hsl(var(--bg-surface, 0 0% 100%));
+  --card-border-radius: var(--radius-xl);
+  --card-shadow:        0px 4px 20px rgba(0, 0, 0, 0.08);
+  --card-padding:       var(--space-4);
+  --card-gap:           var(--space-4);
+
+  --sidebar-width:           260px;
+  --sidebar-collapsed-width: 72px;
+  --sidebar-bg:              hsl(var(--bg-sidebar, 240 11% 96%));
+
+  --appbar-bg:     hsl(var(--bg-appbar, 240 11% 96%));
+  --appbar-height: 64px;
+
+  --button-primary-bg:   hsl(var(--action-primary, 211 100% 50%));
+  --button-primary-text: hsl(var(--text-inverse, 0 0% 100%));
+  --button-radius:       var(--radius-md);
+  --button-sm-padding:   4px 12px;
+  --button-lg-padding:   12px 24px;
+
+  --input-padding:      10px 16px;
+  --input-radius:       var(--radius-md);
+
+  --nav-item-height:    48px;
+  --nav-item-radius:    var(--radius-md);
+}
