@@ -1,3 +1,9 @@
+export interface ExtraInfo {
+  id?: number;
+  name: string;
+  value: string;
+}
+
 export interface Contact {
   id: number;
   name: string;
@@ -5,6 +11,9 @@ export interface Contact {
   profilePicUrl?: string;
   email?: string;
   isGroup?: boolean;
+  /** WhatsApp linked-device identifier — present when contact is verified */
+  lid?: string;
+  extraInfo?: ExtraInfo[];
 }
 
 export interface Tag {

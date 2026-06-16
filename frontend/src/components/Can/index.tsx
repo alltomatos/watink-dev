@@ -1,23 +1,25 @@
 import React from "react";
+import { User } from "../../types/domain";
 
-const check = (user: any, action: string, _data?: any) => {
+const check = (user: User | undefined, action: string, _data?: unknown) => {
   const userPermissions = user?.permissions || [];
   const profile = user?.profile || user?.role;
 
-  if (["admin", "superadmin"].includes(profile)) return true;
+  if (profile && ["admin", "superadmin"].includes(profile)) return true;
   if (userPermissions.includes(action)) return true;
 
   return false;
 };
 
 interface CanProps {
-  user?: any;
+  user?: User;
   role?: string;
   perform: string;
-  data?: any;
+  data?: unknown;
   yes: () => React.ReactNode;
   no?: () => React.ReactNode;
 }
+
 
 export const Can = ({ user, role, perform, data, yes, no = () => null }: CanProps) => {
   const effectiveUser = user || { profile: role, permissions: [] };

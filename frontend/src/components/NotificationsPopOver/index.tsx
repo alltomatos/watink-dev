@@ -13,12 +13,14 @@ import { i18n } from "../../translate/i18n";
 import { useTickets } from "../../hooks/useTickets";
 import alertSound from "../../assets/sound.mp3";
 import { AuthContext } from "../../context/Auth/AuthContext";
+import { Ticket, Contact } from "../../types/Ticket";
+import { Message } from "../../types/Message";
 
 /* ─── Notification Toast ───────────────────────────────────────────── */
 interface NotificationToastProps {
-  ticket: any;
-  message: any;
-  contact: any;
+  ticket: Ticket;
+  message: Message;
+  contact: Contact;
   onNavigate: (path: string) => void;
 }
 
@@ -60,7 +62,7 @@ const NotificationsPopOver = () => {
   const ticketIdUrl = +window.location.pathname.split("/")[2];
   const ticketIdRef = useRef(ticketIdUrl);
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Ticket[]>([]);
   const [, setDesktopNotifications] = useState<Notification[]>([]);
 
   const { tickets } = useTickets({ withUnreadMessages: "true" });
@@ -99,7 +101,7 @@ const NotificationsPopOver = () => {
 
     socket.on("connect", () => socket.emit("joinNotification"));
 
-    socket.on("ticket", (data: any) => {
+    socket.on("ticket", (data: { action: string; ticketId: number }) => {
       if (data.action === "updateUnread" || data.action === "delete") {
         setNotifications((prevState) => {
           const ticketIndex = prevState.findIndex((t) => t.id === data.ticketId);
@@ -124,7 +126,7 @@ const NotificationsPopOver = () => {
       }
     });
 
-    socket.on("appMessage", (data: any) => {
+    socket.on("appMessage", (data: { action: string; message: Message; ticket: Ticket; contact: Contact }) => {
       if (
         data.action === "create" &&
         !data.message.read &&
@@ -156,7 +158,7 @@ const NotificationsPopOver = () => {
     };
   }, [user]);
 
-  const handleNotifications = (data: any) => {
+  const handleNotifications = (data: { message: Message; ticket: Ticket; contact: Contact }) => {
     const { message, contact, ticket } = data;
 
     const options: NotificationOptions & { renotify?: boolean } = {

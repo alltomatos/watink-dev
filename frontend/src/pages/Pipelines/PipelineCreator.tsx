@@ -20,6 +20,8 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import api from "../../services/api";
 import { toast } from "react-toastify";
+import type { Pipeline } from "@/types/domain";
+import type { AxiosError } from "axios";
 
 // Stage colors logic mapping from kanban
 const stageColors = [
@@ -90,13 +92,13 @@ const PipelineCreator: React.FC = () => {
             if (!pipelineId) return;
             try {
                 const { data: pipelines } = await api.get("/pipelines");
-                const pipeline = pipelines.find((p: any) => p.id === Number(pipelineId));
+                const pipeline = (pipelines as Pipeline[]).find((p) => p.id === Number(pipelineId));
                 if (pipeline) {
                     setData({
                         name: pipeline.name,
-                        description: pipeline.description || "",
-                        type: pipeline.type || "kanban",
-                        stages: pipeline.stages.map((s: any) => s.name),
+                        description: pipeline.description ?? "",
+                        type: pipeline.type ?? "kanban",
+                        stages: pipeline.stages.map((s) => s.name),
                     });
                     setMessages((prev) => [
                         ...prev,
@@ -185,14 +187,15 @@ const PipelineCreator: React.FC = () => {
                 setData((prev) => ({ ...prev, stages: aiData.stages }));
                 toast.success("Etapas geradas e aplicadas!");
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error(err);
-            const errorMessage = err.response?.data?.error || err.message || "Erro desconhecido";
+            const axiosErr = err as AxiosError<{ error?: string }>;
+            const errorMessage = axiosErr.response?.data?.error ?? axiosErr.message ?? "Erro desconhecido";
             let helpfulTip = "";
             if (
                 errorMessage.includes("ERR_NO_AI_API_KEY") ||
                 errorMessage.includes("ERR_AI_SERVICE_FAILED") ||
-                err.response?.status === 400
+                axiosErr.response?.status === 400
             ) {
                 helpfulTip =
                     "\n\nDica: Verifique em Configurações > Inteligência Artificial se a API Key, Modelo e Provedor estão corretos.";

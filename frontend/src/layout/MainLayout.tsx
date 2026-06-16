@@ -5,6 +5,7 @@ import { AuthContext } from "../context/Auth/AuthContext";
 import api from "../services/api";
 import { getBackendUrl } from "../helpers/urlUtils";
 import openSocket from "../services/socket-io";
+import type { SettingSocketEvent } from "../types/api";
 
 import MainSidebar from "../components/MainSidebar";
 import MainTopBar from "../components/MainTopBar";
@@ -97,7 +98,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   useEffect(() => {
     const socket = openSocket();
     if (!socket) return;
-    socket.on("settings", (data: any) => {
+    socket.on("settings", (data: SettingSocketEvent) => {
       if (data.action === "update") {
         if (data.setting.key === "systemLogo") setSystemLogo(data.setting.value);
         if (data.setting.key === "systemTitle") {

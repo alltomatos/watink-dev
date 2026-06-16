@@ -4,10 +4,15 @@ import { VirtuosoMessageList, VirtuosoMessageListMethods } from '@virtuoso.dev/m
 import connectToSocket from '../../services/socket-io';
 import { MessageItem } from './MessageItem';
 import { Message } from '../../types/Message';
+import { SocketMessageEvent } from '../../types/api';
 import api from '../../services/api';
 
 interface MessageListContainerProps {
   ticketId: string | number;
+}
+
+interface MessagesResponse {
+  messages: Message[];
 }
 
 export const MessageListContainer: React.FC<MessageListContainerProps> = ({ ticketId }) => {
@@ -18,7 +23,7 @@ export const MessageListContainer: React.FC<MessageListContainerProps> = ({ tick
   const { data: messages = [], isLoading } = useQuery<Message[]>({
     queryKey: ['messages', ticketId],
     queryFn: async () => {
-      const response = await api.get(`/messages/${ticketId}`);
+      const response = await api.get<MessagesResponse>(`/messages/${ticketId}`);
       return response.data.messages;
     },
   });
@@ -27,7 +32,7 @@ export const MessageListContainer: React.FC<MessageListContainerProps> = ({ tick
   useEffect(() => {
     const socketInstance = connectToSocket();
 
-    const handleNewMessage = (data: any) => {
+    const handleNewMessage = (data: SocketMessageEvent<Message>) => {
       if (data.action === 'create') {
         const newMessage = data.message;
         queryClient.setQueryData<Message[]>(['messages', ticketId], (oldData) => {

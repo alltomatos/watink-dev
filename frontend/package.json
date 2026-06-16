@@ -63,7 +63,7 @@
     "test": "vitest",
     "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx --max-warnings 0",
     "lint:ds": "eslint src/ --ext .js,.jsx,.ts,.tsx --rule 'watink-design-system/no-hardcoded-colors: error'",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "browserslist": {
     "production": [

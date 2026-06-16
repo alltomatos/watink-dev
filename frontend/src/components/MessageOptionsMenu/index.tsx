@@ -13,8 +13,15 @@ import {
 } from "../ui/dropdown-menu";
 import { Trash2, Reply } from "lucide-react";
 
+/**
+ * Local Message shape: the canonical `Message` in `types/Message.ts` requires
+ * several fields (`read`, `ticketId`, `contactId`, `updatedAt`) that the
+ * lightweight context/menu only care about as opaque data. Keep the
+ * permissive local type but align it with `ReplyMessageContext.Message` so
+ * `setReplyingMessage` accepts the value.
+ */
 interface Message {
-  id: number | string;
+  id?: number | string;
   fromMe?: boolean;
   [key: string]: unknown;
 }

@@ -62,8 +62,9 @@ const Pipelines: React.FC = () => {
                 await api.post("/pipelines/import", json);
                 toast.success("Pipeline importado com sucesso!");
                 fetchPipelines();
-            } catch (err: any) {
-                toast.error("Erro ao importar pipeline: " + (err.message || "Erro desconhecido"));
+            } catch (err) {
+                const message = err instanceof Error ? err.message : "Erro desconhecido";
+                toast.error("Erro ao importar pipeline: " + message);
             }
         };
         reader.readAsText(file);

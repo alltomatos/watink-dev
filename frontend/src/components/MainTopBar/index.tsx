@@ -14,9 +14,10 @@ import { Avatar } from "../../components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import NotificationsPopOver from "../NotificationsPopOver";
 import { getBackendUrl } from "../../helpers/urlUtils";
+import { User as UserDomain } from "../../types/domain";
 
 interface MainTopBarProps {
-  user: any;
+  user: UserDomain | null;
   systemTitle: string;
   frontendVersion: string;
   onOpenUserModal: () => void;

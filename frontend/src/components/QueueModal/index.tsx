@@ -31,6 +31,7 @@ import {
 import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
+import { Queue } from "../../types/domain";
 
 const QueueSchema = Yup.object().shape({
   name: Yup.string().min(2, "Too Short!").max(50, "Too Long!").required("Required"),
@@ -69,7 +70,7 @@ interface QueueModalProps {
 
 const QueueModal = ({ open, onClose, queueId }: QueueModalProps) => {
   const isMounted = useRef(true);
-  const [queue, setQueue] = useState<any>({
+  const [queue, setQueue] = useState<Queue>({
     name: "",
     color: "var(--color-primary)", // default primary color
     greetingMessage: "",
@@ -91,7 +92,7 @@ const QueueModal = ({ open, onClose, queueId }: QueueModalProps) => {
     setQueue({ name: "", color: "var(--color-primary)", greetingMessage: "", distributionStrategy: "ROUND_ROBIN", prioritizeWallet: false });
   };
 
-  const handleSave = async (values: any) => {
+  const handleSave = async (values: Queue) => {
     try {
       if (queueId) {
         await api.put(`/queue/${queueId}`, values);

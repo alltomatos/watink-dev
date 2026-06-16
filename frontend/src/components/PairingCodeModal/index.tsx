@@ -14,6 +14,8 @@ import openSocket from "../../services/socket-io";
 import toastError from "../../errors/toastError";
 import { i18n } from "../../translate/i18n";
 
+import { WhatsAppSessionSocketEvent } from "../../types/api";
+
 interface PairingCodeModalProps {
   open: boolean;
   onClose: () => void;
@@ -29,7 +31,7 @@ const PairingCodeModal = ({ open, onClose, whatsAppId }: PairingCodeModalProps) 
     if (!whatsAppId || !open) return;
     const socket = openSocket();
 
-    socket.on("whatsappSession", (data: any) => {
+    socket.on("whatsappSession", (data: WhatsAppSessionSocketEvent) => {
       if (data.action === "update" && data.session.id === whatsAppId) {
         if (data.session.pairingCode) {
           setPairingCode(data.session.pairingCode);

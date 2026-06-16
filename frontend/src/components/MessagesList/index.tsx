@@ -35,15 +35,12 @@ import { Loader2 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+import { Reaction } from "../../types/Message";
+
 interface Contact {
   name?: string;
   number?: string;
   isGroup?: boolean;
-}
-
-interface Reaction {
-  text?: string;
-  emoji?: string;
 }
 
 interface QuotedMsg {
@@ -70,6 +67,13 @@ interface Message {
   dataJson?: string | Record<string, unknown>;
   contact?: Contact;
   reactions?: Reaction[] | string;
+  /**
+   * Index signature required so this type is structurally assignable to the
+   * `Message` declared in MessageOptionsMenu (which uses `[key: string]: unknown`).
+   * Without it, passing `selectedMessage` to `<MessageOptionsMenu message={…} />`
+   * raises TS2719 ("Two different types with this name exist").
+   */
+  [key: string]: unknown;
 }
 
 interface MessagesListProps {

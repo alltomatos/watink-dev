@@ -36,6 +36,8 @@ import TicketHistory from "../TicketHistory";
 import ProtocolDrawer from "../../pages/Helpdesk/ProtocolDrawer";
 import { getBackendUrl } from "../../helpers/urlUtils";
 
+import { SettingPayload, PluginsPayload } from "../../types/api";
+
 /* ─── Stage color tokens (same palette as PipelineBoard) ───────────── */
 const stageColors = [
   { bg: "var(--status-info-bg)", header: "var(--status-info)" },
@@ -70,10 +72,11 @@ interface Contact {
   id: number;
   name: string;
   number?: string;
+  email?: string;
   lid?: string;
   profilePicUrl?: string;
   isGroup?: boolean;
-  clients?: any[];
+  clients?: unknown[];
 }
 
 interface ContactDrawerProps {
@@ -111,10 +114,10 @@ const ContactDrawer = ({
   useEffect(() => {
     const fetchAISettings = async () => {
       try {
-        const { data } = await api.get("/settings");
-        setAiEnabled(data.find((s: any) => s.key === "aiEnabled")?.value === "true");
+        const { data } = await api.get<SettingPayload[]>("/settings");
+        setAiEnabled(data.find((s) => s.key === "aiEnabled")?.value === "true");
         setAiAssistantEnabled(
-          data.find((s: any) => s.key === "aiAssistantEnabled")?.value === "true"
+          data.find((s) => s.key === "aiAssistantEnabled")?.value === "true"
         );
       } catch (err) {
         console.error("Erro ao carregar configurações de IA:", err);
@@ -126,7 +129,7 @@ const ContactDrawer = ({
   useEffect(() => {
     const fetchPlugins = async () => {
       try {
-        const { data } = await api.get("/v1/plugins/installed");
+        const { data } = await api.get<PluginsPayload>("/v1/plugins/installed");
         setActivePlugins(data.active || []);
       } catch (err) {
         console.error("Erro ao carregar plugins:", err);
@@ -480,7 +483,12 @@ const ContactDrawer = ({
         open={clientModalOpen}
         onClose={() => setClientModalOpen(false)}
         client={null}
-        initialContact={contact}
+        initialContact={{
+          id: contact.id != null ? String(contact.id) : undefined,
+          name: contact.name,
+          number: contact.number,
+          email: contact.email,
+        }}
       />
     </>
   );
