@@ -3,10 +3,10 @@ import { Gauge, Clock } from "lucide-react";
 import { useDashboardStats } from "../../../hooks/useDashboardStats";
 import MetricCard from "../../../components/ui/metric-card";
 
-const PerformanceMetrics = () => {
+const PerformanceMetrics: React.FC = () => {
   const { data, isLoading, error } = useDashboardStats();
 
-  const formatTime = (minutes?: number) => {
+  const formatTime = (minutes?: number): string => {
     if (!minutes) return "0m";
     if (minutes < 1) return `${Math.round(minutes * 60)}s`;
     if (minutes > 60) {
