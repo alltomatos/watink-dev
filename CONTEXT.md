@@ -3,20 +3,24 @@ Plataforma open-source de atendimento e automação no WhatsApp com arquitetura 
 
 ## Design System & UI Patterns
 
-A fonte de verdade para padrões visuais, componentes e experiência do usuário é o **Watink Design System** localizado em `docs/desgner-system/`.
+A fonte canônica de padrões visuais, componentes e tokens é o **Watink Design System v2** localizado em `docs/Watink Design System v2/`.  
+O espelho sincronizado vive em `docs/desgner-system/`.  
+Governança: `docs/adr/frontend/005-design-system-governance.md`.
 
 ### Tech Stack (UI/Frontend)
-- **Framework**: React 18+
-- **Styling**: Tailwind CSS v4+ (Utility-first)
-- **Components**: shadcn/ui (Radix UI primitives)
-- **Language**: TypeScript (TSX para componentes)
+- **Framework**: React 18 + TypeScript
+- **Styling**: Tailwind CSS v4 (Utility-first) + CSS Custom Properties
+- **Components**: shadcn/ui (Radix UI primitives) — `frontend/src/components/ui/`
+- **Language**: TypeScript obrigatório — arquivos `.tsx`. JS legado READ-ONLY.
 - **Icons**: Lucide React
-- **Animation**: Framer Motion
+- **Tokens**: `frontend/src/theme/tokens/*.css` (colors, typography, spacing, motion)
+- **Tema dinâmico**: `theme/loader.js` — 8 variantes (apple/google/whatsapp/saas × light/dark)
 
 ### Princípios de Design
-- **Foco**: Funcionalidade e clareza (Tom direto e profissional).
-- **Consistência**: Uso estrito de tokens (Cores em HSL, Espaçamento, Tipografia) definidos em `docs/desgner-system/Watink Design System/tokens/`.
-- **Reuso**: É proibido criar componentes base do zero. Utilize ou estenda os componentes em `src/components/ui/` (shadcn).
+- **Tokens como fonte de verdade**: Cores em HSL raw (`--token: H S% L%`), consumidas como `hsl(var(--token))`. Nunca hardcoded hex.
+- **Reuso estrito**: Proibido criar componentes base do zero — estender os 22 componentes em `src/components/ui/`.
+- **Sem MUI em código novo**: `@material-ui` imports proibidos em `.tsx`. 46 componentes legados (`.js`) são READ-ONLY.
+- **Componentes DS**: `Button`, `Card`, `MetricCard`, `StatusChip`, `Avatar`, `PageLayout`, `Dialog`, `Input`, `Badge`, `Table`, `Tabs`…
 
 ## Language
 

@@ -1,0 +1,12 @@
+{
+  "libraries": {
+    "shadcn-ui": "/shadcn-ui/ui",
+    "tailwindcss": "/tailwindlabs/tailwindcss",
+    "radix-ui": "/radix-ui/primitives",
+    "react": "/facebook/react",
+    "vite": "/vitejs/vite",
+    "vitest": "/vitest-dev/vitest",
+    "react-hook-form": "/react-hook-form/react-hook-form",
+    "tanstack-query": "/tanstack/query"
+  }
+}

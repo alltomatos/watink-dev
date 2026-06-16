@@ -1,0 +1,95 @@
+{
+  "namespace": "WatinkDesignSystem_9345f8",
+  "components": [
+    {"name": "Avatar",      "sourcePath": "components/core/Avatar.tsx"},
+    {"name": "Button",      "sourcePath": "components/core/Button.tsx"},
+    {"name": "Card",        "sourcePath": "components/core/Card.tsx"},
+    {"name": "MetricCard",  "sourcePath": "components/core/MetricCard.tsx"},
+    {"name": "StatusChip",  "sourcePath": "components/core/StatusChip.tsx"}
+  ],
+  "startingPoints": [
+    {
+      "name": "Button",
+      "path": "components/core/Button.tsx",
+      "previewPath": "components/core/components.card.html",
+      "kind": "component",
+      "section": "Components",
+      "subtitle": "Action button — primary, outlined, ghost, destructive — 3 sizes",
+      "viewport": "700x120"
+    },
+    {
+      "name": "Card",
+      "path": "components/core/Card.tsx",
+      "previewPath": "components/core/components.card.html",
+      "kind": "component",
+      "section": "Components",
+      "subtitle": "Base content card with header, icon, and body slot",
+      "viewport": "700x200"
+    },
+    {
+      "name": "MetricCard",
+      "path": "components/core/MetricCard.tsx",
+      "previewPath": "components/core/components.card.html",
+      "kind": "component",
+      "section": "Components",
+      "subtitle": "Dashboard metric card — big number, label, trend badge",
+      "viewport": "700x200"
+    },
+    {
+      "name": "StatusChip",
+      "path": "components/core/StatusChip.tsx",
+      "previewPath": "components/core/components.card.html",
+      "kind": "component",
+      "section": "Components",
+      "subtitle": "Semantic status pill — success, error, warning, info, default",
+      "viewport": "700x80"
+    },
+    {
+      "name": "Avatar",
+      "path": "components/core/Avatar.tsx",
+      "previewPath": "components/core/components.card.html",
+      "kind": "component",
+      "section": "Components",
+      "subtitle": "User avatar — image + initials fallback, online dot, 5 sizes",
+      "viewport": "700x80"
+    },
+    {
+      "name": "watink",
+      "path": "ui_kits/watink/index.html",
+      "previewPath": "ui_kits/watink/index.html",
+      "kind": "screen",
+      "section": "UI Kits",
+      "subtitle": "Watink: Login → Dashboard → Tickets (pt-BR)",
+      "viewport": "1280x800"
+    }
+  ],
+  "cards": [
+    {"path": "guidelines/colors-dark.card.html",     "group": "Colors",     "viewport": "700x180", "subtitle": "Hierarquia de superfícies no modo escuro — bg-default → bg-surface-alt → bg-surface → bg-sidebar", "name": "Superfícies Escuras"},
+    {"path": "guidelines/colors-google.card.html",   "group": "Colors",     "viewport": "700x90",  "subtitle": "Paleta de ícones de navegação — usada na colorização da sidebar (tema google)", "name": "Cores Google"},
+    {"path": "guidelines/colors-messages.card.html", "group": "Colors",     "viewport": "700x190", "subtitle": "Pares de tokens de bolhas estilo WhatsApp — esquerda (recebida) · direita (enviada)", "name": "Bolhas de Mensagem"},
+    {"path": "guidelines/colors-neutral.card.html",  "group": "Colors",     "viewport": "700x160", "subtitle": "Escalas Slate + Neutral — fundos, texto, bordas", "name": "Neutros"},
+    {"path": "guidelines/colors-primary.card.html",  "group": "Colors",     "viewport": "700x140", "subtitle": "Cor de ação — escala azul + tokens principais", "name": "Azul Primário"},
+    {"path": "guidelines/colors-status.card.html",   "group": "Colors",     "viewport": "700x110", "subtitle": "Success · Error · Warning · Info — preenchimento de chips + cores de ícone", "name": "Cores de Status"},
+    {"path": "components/core/components.card.html", "group": "Components", "viewport": "700x540", "subtitle": "Button · StatusChip · Card · MetricCard · Avatar", "name": "Componentes Principais"},
+    {"path": "guidelines/motion.card.html",          "group": "Spacing",    "viewport": "700x180", "subtitle": "Tokens de duração + easing — tokens/motion.css", "name": "Movimento"},
+    {"path": "guidelines/radius-scale.card.html",    "group": "Spacing",    "viewport": "700x120", "subtitle": "--radius-sm (6px) até --radius-full — escala de arredondamento", "name": "Border Radius"},
+    {"path": "guidelines/shadows.card.html",         "group": "Spacing",    "viewport": "700x200", "subtitle": "Escala de elevação — sm a strong + tokens de sidebar/appbar", "name": "Sombras"},
+    {"path": "guidelines/spacing-scale.card.html",   "group": "Spacing",    "viewport": "700x150", "subtitle": "--space-0 (0px) até --space-20 (80px)", "name": "Escala de Espaçamento"},
+    {"path": "guidelines/type-scale.card.html",      "group": "Type",       "viewport": "700x320", "subtitle": "Inter — escala completa de --text-xs (11px) a --text-h1 (32px)", "name": "Escala Tipográfica"},
+    {"path": "guidelines/type-weights.card.html",    "group": "Type",       "viewport": "700x200", "subtitle": "Inter pesos 400–800 + uso do JetBrains Mono", "name": "Pesos & Mono"},
+    {"path": "ui_kits/watink/index.html",            "group": "Watink App", "viewport": "1280x800","subtitle": "Protótipo interativo — login · dashboard · tickets", "name": "Watink App"}
+  ],
+  "templates": [],
+  "globalCssPaths": [
+    "tokens/typography.css",
+    "tokens/colors.css",
+    "tokens/spacing.css",
+    "tokens/motion.css",
+    "styles.css"
+  ],
+  "_meta": {
+    "updatedAt": "2026-06-13",
+    "epic": "4C",
+    "note": "Atualizado: componentes migrados de .jsx para .tsx; PageLayout e StatusChip adicionados; tokens sincronizados com frontend/src/theme/tokens/*.css"
+  }
+}

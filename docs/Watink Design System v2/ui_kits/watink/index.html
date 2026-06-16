@@ -1,0 +1,437 @@
+<!-- @dsCard group="Watink App" viewport="1280x800" name="Watink App" subtitle="Protótipo interativo — login · dashboard · tickets" -->
+<!-- @startingPoint section="UI Kits" subtitle="Watink: Login → Dashboard → Tickets (pt-BR)" viewport="1280x800" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Watink</title>
+<link rel="stylesheet" href="../../styles.css">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font-primary,'Inter',sans-serif);background:var(--bg-default,#F8FAFC);color:var(--text-primary,#111827);height:100vh;overflow:hidden}
+  input,button{font-family:inherit}
+  .mi{font-family:'Material Icons Outlined';font-style:normal;font-weight:normal;line-height:1;display:inline-block;vertical-align:middle;user-select:none}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:var(--border-default,#E2E8F0);border-radius:3px}
+  ::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+/* ─── Primitive Components (self-contained, no bundle needed) ── */
+
+function Button({ children, variant='primary', size='md', disabled=false, icon=null, trailingIcon=null, onClick, type='button', fullWidth=false, style }) {
+  const V = {
+    primary:  { background:'var(--action-primary,#1A73E8)', color:'#fff' },
+    outlined: { background:'transparent', color:'var(--action-primary,#1A73E8)', border:'1.5px solid var(--action-primary,#1A73E8)' },
+    ghost:    { background:'transparent', color:'var(--text-primary,#111827)' },
+    danger:   { background:'var(--status-error,#EF4444)', color:'#fff' },
+  };
+  const S = {
+    sm: { padding:'6px 14px',  fontSize:'0.8125rem', borderRadius:8,  minHeight:32 },
+    md: { padding:'8px 20px',  fontSize:'0.9375rem', borderRadius:12, minHeight:40 },
+    lg: { padding:'12px 28px', fontSize:'1rem',      borderRadius:12, minHeight:48 },
+  };
+  return (
+    <button type={type} disabled={disabled} onClick={onClick}
+      style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, fontFamily:'inherit', fontWeight:600, letterSpacing:'-0.01em', border:'none', outline:'none', cursor:disabled?'not-allowed':'pointer', opacity:disabled?0.45:1, transition:'all 150ms ease', whiteSpace:'nowrap', width:fullWidth?'100%':undefined, ...(V[variant]||V.primary), ...(S[size]||S.md), ...style }}>
+      {icon}{children}{trailingIcon}
+    </button>
+  );
+}
+
+function StatusChip({ status='default', label, size='md', dot=true, style }) {
+  const M = {
+    success: { bg:'var(--status-success-bg,#ECFDF5)', color:'var(--status-success-text,#065F46)', dot:'var(--status-success,#10B981)' },
+    error:   { bg:'var(--status-error-bg,#FEF2F2)',   color:'var(--status-error-text,#991B1B)',   dot:'var(--status-error,#EF4444)'   },
+    warning: { bg:'var(--status-warning-bg,#FFFBEB)', color:'var(--status-warning-text,#92400E)', dot:'var(--status-warning,#F59E0B)' },
+    info:    { bg:'var(--status-info-bg,#EFF6FF)',    color:'var(--status-info-text,#0D47A1)',    dot:'var(--status-info,#1A73E8)'    },
+    default: { bg:'var(--status-default-bg,#F3F4F6)', color:'var(--status-default-text,#6B7280)', dot:'var(--text-muted,#94A3B8)'    },
+  };
+  const SZ = { sm:{padding:'2px 8px',fontSize:'0.6875rem'}, md:{padding:'4px 10px',fontSize:'0.75rem'}, lg:{padding:'6px 14px',fontSize:'0.875rem'} };
+  const c = M[status]||M.default;
+  return (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontWeight:600, borderRadius:9999, lineHeight:1, background:c.bg, color:c.color, ...(SZ[size]||SZ.md), ...style }}>
+      {dot && <span style={{ width:6, height:6, borderRadius:'50%', background:c.dot, flexShrink:0 }} />}
+      {label}
+    </span>
+  );
+}
+
+function Card({ title, subtitle, icon, iconColor, actions, hoverEffect=false, onClick, children, style, padding=24 }) {
+  const [hov, setHov] = React.useState(false);
+  return (
+    <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)} onClick={onClick}
+      style={{ background:'var(--bg-surface,#fff)', borderRadius:16, boxShadow:'0px 4px 20px rgba(0,0,0,0.08)', transition:'all 300ms cubic-bezier(.25,.8,.25,1)', overflow:'hidden', transform:hoverEffect&&hov?'translateY(-6px)':'none', cursor:onClick?'pointer':'default', ...style }}>
+      <div style={{ padding }}>
+        {(title||icon||actions) && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+              {icon && <div style={{ width:48, height:48, borderRadius:12, background:iconColor||'rgba(26,115,232,0.08)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{icon}</div>}
+              {(title||subtitle) && (
+                <div>
+                  {title && <div style={{ fontWeight:700, fontSize:'1.125rem', color:'var(--text-primary,#111827)', letterSpacing:'-0.01em' }}>{title}</div>}
+                  {subtitle && <div style={{ fontSize:'0.875rem', color:'var(--text-secondary,#64748B)', marginTop:3 }}>{subtitle}</div>}
+                </div>
+              )}
+            </div>
+            {actions && <div>{actions}</div>}
+          </div>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({ label, value, icon=null, color='primary', trend, style }) {
+  const [hov, setHov] = React.useState(false);
+  const CM = {
+    primary: { bg:'linear-gradient(135deg,rgba(26,115,232,0.05) 0%,rgba(26,115,232,0.14) 100%)', ic:'var(--status-info,#1A73E8)',   txt:'var(--status-info,#1A73E8)'   },
+    success: { bg:'linear-gradient(135deg,rgba(16,185,129,0.08) 0%,#D1FAE5 100%)',               ic:'var(--status-success,#10B981)', txt:'var(--status-success,#10B981)' },
+    warning: { bg:'linear-gradient(135deg,#FFFBEB 0%,rgba(245,158,11,0.15) 100%)',              ic:'var(--status-warning,#F59E0B)', txt:'var(--status-warning,#F59E0B)' },
+    error:   { bg:'linear-gradient(135deg,rgba(239,68,68,0.08) 0%,#FEE2E2 100%)',               ic:'var(--status-error,#EF4444)',   txt:'var(--status-error,#EF4444)'   },
+    info:    { bg:'linear-gradient(135deg,rgba(26,115,232,0.05) 0%,rgba(26,115,232,0.14) 100%)', ic:'var(--status-info,#1A73E8)',   txt:'var(--status-info,#1A73E8)'   },
+  };
+  const c = CM[color]||CM.primary;
+  return (
+    <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+      style={{ background:'var(--bg-surface,#fff)', borderRadius:16, boxShadow:'0px 4px 20px rgba(0,0,0,0.08)', padding:24, transition:'all 300ms cubic-bezier(.25,.8,.25,1)', transform:hov?'translateY(-6px)':'none', ...style }}>
+      {icon && <div style={{ width:56, height:56, borderRadius:16, background:c.bg, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16, fontSize:28, color:c.ic }}>{icon}</div>}
+      <div style={{ fontSize:'0.6875rem', fontWeight:700, color:'var(--text-muted,#94A3B8)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>{label}</div>
+      <div style={{ fontSize:'2.5rem', fontWeight:800, color:c.txt, letterSpacing:'-0.02em', lineHeight:1.1 }}>{value}</div>
+      {trend && <div style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:'0.75rem', fontWeight:700, padding:'4px 10px', borderRadius:9999, marginTop:12, background:trend.positive?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)', color:trend.positive?'var(--status-success,#10B981)':'var(--status-error,#EF4444)' }}>{trend.positive?'↑':'↓'} {trend.value}</div>}
+    </div>
+  );
+}
+
+function Avatar({ src, name, size='md', online, style }) {
+  const [err, setErr] = React.useState(false);
+  const px = { xs:24, sm:32, md:40, lg:48, xl:64 }[size]||40;
+  const initials = name ? name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase() : '?';
+  return (
+    <div title={name} style={{ position:'relative', width:px, height:px, borderRadius:'50%', background:'var(--action-primary-bg,#E3F2FD)', color:'var(--action-primary,#1A73E8)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:px*0.35, flexShrink:0, overflow:'hidden', userSelect:'none', ...style }}>
+      {src&&!err ? <img src={src} alt={name||''} onError={()=>setErr(true)} style={{ width:'100%',height:'100%',objectFit:'cover' }} /> : <span>{initials}</span>}
+      {online!==undefined && <div style={{ position:'absolute', bottom:1, right:1, width:Math.max(8,px*0.22), height:Math.max(8,px*0.22), borderRadius:'50%', background:online?'var(--status-success,#10B981)':'var(--text-muted,#94A3B8)', border:'2px solid var(--bg-surface,#fff)' }} />}
+    </div>
+  );
+}
+
+/* ─── Icon helper ──────────────────────────────────────────── */
+const Icon = ({ name, size=20, color, style }) => (
+  <span className="mi" style={{ fontSize:size, color:color||'inherit', lineHeight:1, flexShrink:0, ...style }}>{name}</span>
+);
+
+/* ─── Data ─────────────────────────────────────────────────── */
+const NAV = [
+  { id:'dashboard', label:'Dashboard',     icon:'dashboard',      color:'#1A73E8' },
+  { id:'tickets',   label:'Tickets',       icon:'chat',           color:'#1E8E3E' },
+  { id:'contacts',  label:'Contatos',      icon:'contact_phone',  color:'#E8710A' },
+  { id:'flows',     label:'Flow Builder',  icon:'device_hub',     color:'#1A73E8' },
+  { id:'queues',    label:'Filas',         icon:'account_tree',   color:'#F9AB00' },
+  { id:'settings',  label:'Configurações', icon:'settings',       color:'#D93025' },
+];
+
+const TICKETS = [
+  { id:1, name:'Ana Lima',       preview:'Preciso de ajuda com pedido #4821',    time:'09:42', unread:2, status:'open',    queue:'Suporte'    },
+  { id:2, name:'Carlos Mendes',  preview:'Ok, muito obrigado pelo suporte!',      time:'09:31', unread:0, status:'pending', queue:'Vendas'     },
+  { id:3, name:'Beatriz Santos', preview:'Embalagem danificada — preciso urgente', time:'08:55', unread:5, status:'open',    queue:'Suporte'    },
+  { id:4, name:'Rafael Costa',   preview:'Quando vocês reabrem o escritório?',    time:'Seg',   unread:0, status:'closed',  queue:'Vendas'     },
+  { id:5, name:'Lucia Ferreira', preview:'Quero fazer upgrade do meu plano',      time:'Dom',   unread:0, status:'pending', queue:'Financeiro' },
+];
+
+const INIT_CONVOS = {
+  1: [
+    { id:1, text:'Olá! Preciso de ajuda com meu pedido #4821.', from:'contact', time:'09:40' },
+    { id:2, text:'Claro! Qual é o problema com ele?',           from:'agent',   time:'09:41' },
+    { id:3, text:'Ele foi entregue com a embalagem completamente danificada.', from:'contact', time:'09:42' },
+    { id:4, text:'Entendo. Pode me enviar uma foto do dano?',   from:'agent',   time:'09:42' },
+  ],
+  3: [
+    { id:1, text:'Boa tarde! Pedido #4891 chegou danificado.',  from:'contact', time:'08:50' },
+    { id:2, text:'Lamentamos muito! Vou abrir uma ocorrência.', from:'agent',   time:'08:52' },
+    { id:3, text:'Preciso de solução urgente, é presente!',     from:'contact', time:'08:55' },
+  ],
+};
+
+/* ─── Login ────────────────────────────────────────────────── */
+const INPUT_STYLE = { width:'100%', padding:'10px 14px', border:'1.5px solid var(--border-default,#E2E8F0)', borderRadius:12, fontSize:'0.9375rem', color:'var(--text-primary,#111827)', background:'var(--bg-surface,#fff)', outline:'none', transition:'border-color 150ms' };
+
+function LoginScreen({ onLogin }) {
+  const [email, setEmail] = React.useState('admin@watink.com');
+  const [pass,  setPass]  = React.useState('');
+  return (
+    <div style={{ display:'flex', height:'100vh' }}>
+      <div style={{ width:440, background:'var(--bg-surface,#fff)', display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 52px', boxShadow:'4px 0 32px rgba(0,0,0,0.08)', zIndex:2, flexShrink:0 }}>
+        <img src="../../assets/watink-logo-letras.png" alt="Watink" style={{ height:32, objectFit:'contain', objectPosition:'left', marginBottom:44 }} onError={e=>{e.target.style.display='none';}} />
+        <h1 style={{ fontSize:'1.75rem', fontWeight:800, letterSpacing:'-0.02em', marginBottom:8 }}>Bem-vindo de volta</h1>
+        <p style={{ color:'var(--text-secondary,#64748B)', marginBottom:32, fontSize:'0.9375rem' }}>Entre na sua conta para continuar.</p>
+        <label style={{ fontSize:'0.75rem', fontWeight:600, color:'var(--text-secondary,#64748B)', display:'block', marginBottom:6 }}>E-mail</label>
+        <input value={email} onChange={e=>setEmail(e.target.value)} style={INPUT_STYLE} />
+        <label style={{ fontSize:'0.75rem', fontWeight:600, color:'var(--text-secondary,#64748B)', display:'block', marginTop:16, marginBottom:6 }}>Senha</label>
+        <input type="password" placeholder="••••••••" value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==='Enter'&&onLogin()} style={INPUT_STYLE} />
+        <Button variant="primary" fullWidth size="lg" style={{ marginTop:28 }} onClick={onLogin}>Entrar</Button>
+        <p style={{ textAlign:'center', marginTop:20, fontSize:'0.75rem', color:'var(--text-secondary,#64748B)' }}>
+          Não tem conta?{' '}<a href="#" onClick={e=>e.preventDefault()} style={{ color:'var(--action-primary,#1A73E8)', fontWeight:600, textDecoration:'none' }}>Criar conta</a>
+        </p>
+      </div>
+      <div style={{ flex:1, background:'linear-gradient(135deg,#0D47A1 0%,#1A73E8 55%,#00897B 100%)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:'#fff', padding:48, gap:20 }}>
+        <Icon name="support_agent" size={80} style={{ opacity:0.25 }} />
+        <h2 style={{ fontSize:'2rem', fontWeight:800, letterSpacing:'-0.02em', textAlign:'center', lineHeight:1.15 }}>Atendimento inteligente<br/>no WhatsApp</h2>
+        <p style={{ fontSize:'1rem', opacity:0.75, textAlign:'center', maxWidth:360, lineHeight:1.7 }}>Um número, vários atendentes. Simples, poderoso e livre.</p>
+        <div style={{ display:'flex', gap:24, marginTop:8 }}>
+          {[['confirmation_number','Tickets'],['groups','Equipe'],['bolt','Automações']].map(([ic,lb])=>(
+            <div key={ic} style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.875rem', opacity:0.85 }}>
+              <Icon name={ic} size={16} />{lb}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Sidebar ──────────────────────────────────────────────── */
+function NavItem({ id, label, icon, color, isActive, collapsed, onClick }) {
+  const [hov, setHov] = React.useState(false);
+  return (
+    <div onClick={onClick} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+      style={{ display:'flex', alignItems:'center', gap:12, padding:collapsed?'11px 0':'10px 18px', justifyContent:collapsed?'center':'flex-start', cursor:'pointer', background:isActive?'rgba(26,115,232,0.13)':hov?'rgba(255,255,255,0.04)':'transparent', borderLeft:`3px solid ${isActive?'var(--action-primary,#1A73E8)':'transparent'}`, transition:'all 150ms ease', transform:hov&&!isActive?'translateX(3px)':'none' }}>
+      <Icon name={icon} size={20} color={isActive?'#fff':color} />
+      {!collapsed && <span style={{ fontSize:'0.8125rem', fontWeight:isActive?600:500, color:isActive?'#fff':'var(--text-sidebar,#E2E8F0)', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>{label}</span>}
+    </div>
+  );
+}
+
+function Sidebar({ active, onNavigate, collapsed }) {
+  return (
+    <div style={{ width:collapsed?72:260, background:'var(--bg-sidebar,#1E293B)', display:'flex', flexDirection:'column', transition:'width 200ms ease', flexShrink:0, borderRight:'1px solid var(--border-sidebar,#334155)', overflow:'hidden' }}>
+      <div style={{ height:64, display:'flex', alignItems:'center', justifyContent:collapsed?'center':'flex-start', padding:collapsed?0:'0 20px', borderBottom:'1px solid var(--border-sidebar,#334155)', flexShrink:0 }}>
+        {collapsed
+          ? <img src="../../assets/logo.png" alt="W" style={{ width:30, height:30, objectFit:'contain' }} onError={e=>{e.target.style.display='none';}} />
+          : <img src="../../assets/watink-logo-letras.png" alt="Watink" style={{ height:26, objectFit:'contain', filter:'brightness(0) invert(1)', opacity:0.88 }} onError={e=>{e.target.replaceWith(Object.assign(document.createElement('span'),{textContent:'Watink',style:'color:#fff;font-weight:800;font-size:18px;'}));}} />
+        }
+      </div>
+      <div style={{ flex:1, overflowY:'auto', padding:'6px 0' }}>
+        {NAV.map(item => <NavItem key={item.id} {...item} isActive={active===item.id} collapsed={collapsed} onClick={()=>onNavigate(item.id)} />)}
+      </div>
+      <div style={{ borderTop:'1px solid var(--border-sidebar,#334155)', padding:collapsed?'10px 0':'10px 16px', display:'flex', alignItems:'center', gap:10, justifyContent:collapsed?'center':'flex-start' }}>
+        <Avatar name="Admin User" size="sm" online={true} style={{ flexShrink:0 }} />
+        {!collapsed && <div><div style={{ fontSize:'0.8125rem', fontWeight:600, color:'var(--text-sidebar,#E2E8F0)' }}>Admin</div><div style={{ fontSize:'0.6875rem', color:'var(--text-muted,#94A3B8)' }}>Super Admin</div></div>}
+      </div>
+    </div>
+  );
+}
+
+/* ─── App Bar ──────────────────────────────────────────────── */
+function AppBar({ onToggle, title, darkMode, onDarkToggle }) {
+  return (
+    <div style={{ height:64, background:'var(--bg-appbar,#fff)', borderBottom:'1px solid var(--border-subtle,rgba(0,0,0,0.05))', display:'flex', alignItems:'center', padding:'0 20px', gap:12, flexShrink:0 }}>
+      <button onClick={onToggle} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-secondary,#64748B)', display:'flex', padding:6, borderRadius:8 }}>
+        <Icon name="menu" size={22} />
+      </button>
+      <span style={{ fontWeight:700, fontSize:'1.125rem', letterSpacing:'-0.01em' }}>{title}</span>
+      <div style={{ flex:1 }} />
+      <button onClick={onDarkToggle} title={darkMode?'Modo Claro':'Modo Escuro'} style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-secondary,#64748B)', display:'flex', padding:6, borderRadius:8 }}>
+        <Icon name={darkMode?'light_mode':'dark_mode'} size={20} />
+      </button>
+      <button style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--action-primary,#1A73E8)', padding:6, borderRadius:8, position:'relative', display:'flex' }}>
+        <Icon name="notifications_none" size={22} />
+        <span style={{ position:'absolute', top:4, right:4, width:8, height:8, background:'var(--status-error,#EF4444)', borderRadius:'50%', border:'2px solid var(--bg-appbar,#fff)' }} />
+      </button>
+      <Avatar name="Admin User" size="sm" online={true} />
+    </div>
+  );
+}
+
+/* ─── Dashboard ────────────────────────────────────────────── */
+function DashboardScreen() {
+  const chartData = [{l:'08h',v:4},{l:'09h',v:14},{l:'10h',v:18},{l:'11h',v:22},{l:'12h',v:15},{l:'13h',v:9},{l:'14h',v:21},{l:'15h',v:25},{l:'16h',v:17},{l:'17h',v:8}];
+  const maxV = Math.max(...chartData.map(d=>d.v));
+  return (
+    <div style={{ padding:28, minHeight:'100%' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
+        <h1 style={{ fontSize:'1.75rem', fontWeight:800, letterSpacing:'-0.02em' }}>Dashboard</h1>
+        <Button variant="outlined" size="sm" icon={<Icon name="tune" size={15} color="var(--action-primary,#1A73E8)" />}>Personalizar</Button>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:20 }}>
+        <MetricCard label="Tickets Abertos"  value="142"   color="primary" icon={<Icon name="confirmation_number" size={28} />} trend={{value:'+12%',positive:true}} />
+        <MetricCard label="Atendidos Hoje"   value="38"    color="success" icon={<Icon name="support_agent"        size={28} />} trend={{value:'+5',  positive:true}} />
+        <MetricCard label="Tempo Médio"      value="4m12s" color="warning" icon={<Icon name="timer"                size={28} />} trend={{value:'+30s',positive:false}} />
+        <MetricCard label="Sem Resposta"     value="7"     color="error"   icon={<Icon name="mark_unread_chat_alt" size={28} />} />
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 300px', gap:16 }}>
+        <Card title="Atendimentos por Hora" subtitle="Hoje — 153 total" icon={<Icon name="bar_chart" color="var(--action-primary,#1A73E8)" />} iconColor="rgba(26,115,232,0.08)">
+          <div style={{ display:'flex', alignItems:'flex-end', gap:8, height:96, marginTop:16 }}>
+            {chartData.map(d=>(
+              <div key={d.l} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4, height:'100%', justifyContent:'flex-end' }}>
+                <div style={{ width:'100%', height:`${(d.v/maxV)*100}%`, background:'var(--action-primary,#1A73E8)', opacity:0.75, borderRadius:'4px 4px 0 0', minHeight:3 }} />
+                <span style={{ fontSize:8, color:'var(--text-muted,#94A3B8)', flexShrink:0 }}>{d.l}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card title="Conexões" subtitle="2 de 3 ativas" icon={<Icon name="phone_android" color="#1E8E3E" />} iconColor="rgba(30,142,62,0.10)">
+          <div style={{ display:'flex', flexDirection:'column', gap:2, marginTop:4 }}>
+            {[{n:'WhatsApp Principal',ok:true},{n:'WhatsApp Vendas',ok:true},{n:'WhatsApp Suporte 2',ok:false}].map(c=>(
+              <div key={c.n} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid var(--border-weak,rgba(0,0,0,0.03))' }}>
+                <span style={{ fontSize:'0.8125rem', fontWeight:500 }}>{c.n}</span>
+                <StatusChip status={c.ok?'success':'error'} label={c.ok?'Conectado':'Offline'} size="sm" />
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Tickets ──────────────────────────────────────────────── */
+function TicketItem({ ticket, isActive, onClick }) {
+  return (
+    <div onClick={onClick} style={{ padding:'10px 14px', cursor:'pointer', background:isActive?'var(--status-info-8,rgba(26,115,232,0.08))':'transparent', borderLeft:`3px solid ${isActive?'var(--action-primary,#1A73E8)':'transparent'}`, borderBottom:'1px solid var(--border-weak,rgba(0,0,0,0.03))', display:'flex', gap:10, alignItems:'flex-start', transition:'background 150ms' }}>
+      <Avatar name={ticket.name} size="md" online={ticket.status==='open'} />
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2 }}>
+          <span style={{ fontWeight:600, fontSize:'0.8125rem', letterSpacing:'-0.01em' }}>{ticket.name}</span>
+          <span style={{ fontSize:'0.6875rem', color:'var(--text-muted,#94A3B8)', flexShrink:0, marginLeft:6 }}>{ticket.time}</span>
+        </div>
+        <div style={{ fontSize:'0.6875rem', color:'var(--text-secondary,#64748B)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginBottom:5 }}>{ticket.preview}</div>
+        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+          <span style={{ fontSize:9, color:'var(--text-muted,#94A3B8)', background:'var(--bg-surface-alt,#F1F5F9)', padding:'1px 7px', borderRadius:4 }}>{ticket.queue}</span>
+          {ticket.unread>0 && <span style={{ background:'var(--action-primary,#1A73E8)', color:'#fff', fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:9999, marginLeft:'auto' }}>{ticket.unread}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TicketsScreen() {
+  const [sel, setSel]     = React.useState(1);
+  const [convos, setC]    = React.useState(INIT_CONVOS);
+  const [input, setInput] = React.useState('');
+  const [filter, setF]    = React.useState('all');
+  const scrollRef = React.useRef(null);
+  const ticket = TICKETS.find(t=>t.id===sel);
+  const msgs   = convos[sel]||[];
+  const listed = filter==='all' ? TICKETS : TICKETS.filter(t=>t.status===filter);
+  const SL = { open:'Em Atendimento', pending:'Aguardando', closed:'Fechado' };
+  const SC = { open:'success', pending:'warning', closed:'default' };
+
+  React.useEffect(()=>{
+    if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  },[sel, msgs.length]);
+
+  const send = () => {
+    if(!input.trim()) return;
+    const now = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    setC(p=>({...p,[sel]:[...(p[sel]||[]),{id:Date.now(),text:input.trim(),from:'agent',time:now}]}));
+    setInput('');
+  };
+
+  return (
+    <div style={{ display:'flex', height:'100%', overflow:'hidden' }}>
+      {/* List */}
+      <div style={{ width:290, flexShrink:0, borderRight:'1px solid var(--border-default,#E2E8F0)', background:'var(--bg-surface,#fff)', display:'flex', flexDirection:'column' }}>
+        <div style={{ padding:'10px 12px', borderBottom:'1px solid var(--border-subtle,rgba(0,0,0,0.05))' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--bg-surface-alt,#F1F5F9)', borderRadius:8, padding:'6px 10px', marginBottom:8 }}>
+            <Icon name="search" size={15} color="var(--text-muted,#94A3B8)" />
+            <input placeholder="Buscar..." style={{ border:'none', background:'transparent', flex:1, fontSize:'0.8125rem', color:'var(--text-primary,#111827)', outline:'none' }} />
+          </div>
+          <div style={{ display:'flex', gap:3 }}>
+            {[{id:'all',l:'Todos'},{id:'open',l:'Abertos'},{id:'pending',l:'Pendentes'},{id:'closed',l:'Fechados'}].map(f=>(
+              <button key={f.id} onClick={()=>setF(f.id)} style={{ flex:1, padding:'4px 0', border:'none', borderRadius:6, cursor:'pointer', fontSize:10, fontWeight:600, background:filter===f.id?'var(--action-primary,#1A73E8)':'transparent', color:filter===f.id?'#fff':'var(--text-muted,#94A3B8)', transition:'all 150ms' }}>{f.l}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ flex:1, overflowY:'auto' }}>
+          {listed.map(t=><TicketItem key={t.id} ticket={t} isActive={sel===t.id} onClick={()=>setSel(t.id)} />)}
+        </div>
+      </div>
+      {/* Chat */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        <div style={{ background:'var(--bg-surface,#fff)', borderBottom:'1px solid var(--border-subtle,rgba(0,0,0,0.05))', padding:'10px 20px', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
+          <Avatar name={ticket?.name} size="md" online={ticket?.status==='open'} />
+          <div>
+            <div style={{ fontWeight:700, fontSize:'1.0625rem', letterSpacing:'-0.01em' }}>{ticket?.name}</div>
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
+              <StatusChip status={SC[ticket?.status]||'default'} label={SL[ticket?.status]||''} size="sm" />
+              <span style={{ fontSize:10, color:'var(--text-muted,#94A3B8)' }}>Fila: {ticket?.queue}</span>
+            </div>
+          </div>
+          <div style={{ flex:1 }} />
+          <button style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted,#94A3B8)', display:'flex', padding:4 }}><Icon name="more_vert" /></button>
+        </div>
+        <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'16px 20px', display:'flex', flexDirection:'column', gap:8, backgroundImage:'url(../../assets/wa-background.png)', backgroundSize:'200px' }}>
+          <div style={{ alignSelf:'center', background:'var(--message-daily-bg,#BBDEFB)', color:'var(--message-daily-text,#475569)', fontSize:10, padding:'3px 12px', borderRadius:10, marginBottom:4 }}>Hoje</div>
+          {msgs.map(msg=>(
+            <div key={msg.id} style={{ display:'flex', justifyContent:msg.from==='agent'?'flex-end':'flex-start' }}>
+              <div style={{ maxWidth:'62%', background:msg.from==='agent'?'var(--message-right-bg,#D1FAE5)':'var(--message-left-bg,#fff)', color:msg.from==='agent'?'var(--message-right-text,#1E293B)':'var(--message-left-text,#1E293B)', padding:'8px 12px', borderRadius:msg.from==='agent'?'12px 12px 2px 12px':'12px 12px 12px 2px', boxShadow:'0 1px 2px rgba(0,0,0,0.05)', fontSize:'0.8125rem', lineHeight:1.5 }}>
+                {msg.text}
+                <div style={{ fontSize:9, color:'var(--message-timestamp-text,#94A3B8)', textAlign:'right', marginTop:3 }}>{msg.time}{msg.from==='agent'&&' ✓✓'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ background:'var(--bg-surface,#fff)', borderTop:'1px solid var(--border-subtle,rgba(0,0,0,0.05))', padding:'10px 16px', display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+          <button style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted,#94A3B8)', display:'flex', padding:4 }}><Icon name="emoji_emotions" size={22} /></button>
+          <button style={{ border:'none', background:'transparent', cursor:'pointer', color:'var(--text-muted,#94A3B8)', display:'flex', padding:4 }}><Icon name="attach_file" size={22} /></button>
+          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder="Digite uma mensagem..." style={{ flex:1, border:'1.5px solid var(--border-default,#E2E8F0)', borderRadius:12, padding:'8px 14px', fontSize:'0.8125rem', background:'var(--bg-surface-alt,#F1F5F9)', outline:'none', color:'var(--text-primary,#111827)' }} />
+          <button onClick={send} style={{ background:'var(--action-primary,#1A73E8)', border:'none', borderRadius:12, padding:'9px 16px', cursor:'pointer', color:'#fff', display:'flex', alignItems:'center', gap:4 }}>
+            <Icon name="send" size={18} color="#fff" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main App ─────────────────────────────────────────────── */
+const TITLES = { dashboard:'Dashboard', tickets:'Tickets', contacts:'Contatos', flows:'Flow Builder', queues:'Filas', settings:'Configurações' };
+
+function MainApp() {
+  const [nav,       setNav]   = React.useState('dashboard');
+  const [collapsed, setCol]   = React.useState(true);
+  const [dark,      setDark]  = React.useState(false);
+
+  React.useEffect(()=>{
+    document.documentElement.setAttribute('data-theme', dark?'dark':'light');
+  }, [dark]);
+
+  return (
+    <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
+      <Sidebar active={nav} onNavigate={setNav} collapsed={collapsed} />
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        <AppBar onToggle={()=>setCol(c=>!c)} title={TITLES[nav]||''} darkMode={dark} onDarkToggle={()=>setDark(d=>!d)} />
+        <div style={{ flex:1, overflow:'auto', background:'var(--bg-default,#F8FAFC)' }}>
+          {nav==='dashboard' && <DashboardScreen />}
+          {nav==='tickets'   && <TicketsScreen />}
+          {!['dashboard','tickets'].includes(nav) && (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', color:'var(--text-muted,#94A3B8)', gap:12 }}>
+              <Icon name="construction" size={48} style={{ opacity:0.4 }} />
+              <span style={{ fontSize:'1.125rem', fontWeight:700 }}>{TITLES[nav]}</span>
+              <span style={{ fontSize:'0.8125rem' }}>Disponível no protótipo completo</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Root ─────────────────────────────────────────────────── */
+function App() {
+  const [loggedIn, setLoggedIn] = React.useState(false);
+  return loggedIn ? <MainApp /> : <LoginScreen onLogin={()=>setLoggedIn(true)} />;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!-- @dsCard group="Colors" viewport="700x110" name="Cores de Status" subtitle="Success · Error · Warning · Info — preenchimento de chips + cores de ícone" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg-default); padding: 16px 20px; font-family: var(--font-primary, 'Inter', sans-serif); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .group { display: flex; flex-direction: column; gap: 5px; }
+  .swatch-lg { height: 44px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
+  .pair { display: flex; gap: 4px; }
+  .swatch-sm { flex: 1; height: 18px; border-radius: 4px; }
+  .lbl { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="grid">
+  <div class="group">
+    <div class="swatch-lg" style="background:var(--status-success-bg);color:var(--status-success-text);">Success</div>
+    <div class="pair">
+      <div><div class="swatch-sm" style="background:var(--status-success);"></div><div class="lbl">icon</div></div>
+      <div><div class="swatch-sm" style="background:var(--status-success-bg);border:1px solid #ddd;"></div><div class="lbl">bg</div></div>
+      <div><div class="swatch-sm" style="background:var(--status-success-text);"></div><div class="lbl">text</div></div>
+    </div>
+  </div>
+  <div class="group">
+    <div class="swatch-lg" style="background:var(--status-error-bg);color:var(--status-error-text);">Error</div>
+    <div class="pair">
+      <div><div class="swatch-sm" style="background:var(--status-error);"></div><div class="lbl">icon</div></div>
+      <div><div class="swatch-sm" style="background:var(--status-error-bg);border:1px solid #ddd;"></div><div class="lbl">bg</div></div>
+      <div><div class="swatch-sm" style="background:var(--status-error-text);"></div><div class="lbl">text</div></div>
+    </div>
+  </div>
+  <div class="group">
+    <div class="swatch-lg" style="background:var(--status-warning-bg);color:var(--status-warning-text);">Warning</div>
+    <div class="pair">
+      <div><div class="swatch-sm" style="background:var(--status-warning);"></div><div class="lbl">icon</div></div>
+      <div><div class="swatch-sm" style="background:var(--status-warning-bg);border:1px solid #ddd;"></div><div class="lbl">bg</div></div>
+      <div><div class="swatch-sm" style="background:var(--status-warning-text);"></div><div class="lbl">text</div></div>
+    </div>
+  </div>
+  <div class="group">
+    <div class="swatch-lg" style="background:var(--status-info-bg);color:var(--status-info-text);">Info</div>
+    <div class="pair">
+      <div><div class="swatch-sm" style="background:var(--status-info);"></div><div class="lbl">icon</div></div>
+      <div><div class="swatch-sm" style="background:var(--status-info-bg);border:1px solid #ddd;"></div><div class="lbl">bg</div></div>
+      <div><div class="swatch-sm" style="background:var(--status-info-text);"></div><div class="lbl">text</div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
