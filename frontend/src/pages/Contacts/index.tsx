@@ -139,6 +139,7 @@ const Contacts = () => {
 
   useEffect(() => {
     const socket = openSocket();
+    if (!socket) return;
     socket.on("contact", (data) => {
       if (data.action === "update" || data.action === "create") {
         dispatch({ type: "UPDATE_CONTACTS", payload: data.contact });
@@ -283,7 +284,7 @@ const Contacts = () => {
             />
           </div>
 
-          <Button variant="outline" size="sm" onClick={() => setImportConfirmOpen(true)} className="hidden sm:flex">
+          <Button variant="ghost" size="sm" onClick={() => setImportConfirmOpen(true)} className="hidden sm:flex">
             <Download className="mr-2 h-4 w-4" />
             {i18n.t("contacts.buttons.import")}
           </Button>

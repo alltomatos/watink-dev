@@ -116,6 +116,7 @@ const TagManager = () => {
 
   useEffect(() => {
     const socket = openSocket();
+    if (!socket) return;
 
     socket.on("tag", (data) => {
       if (data.action === "update" || data.action === "create") {
@@ -214,7 +215,7 @@ const TagManager = () => {
             />
           </div>
           <Button
-            variant={showArchived ? "secondary" : "outline"}
+            variant={showArchived ? "secondary" : "ghost"}
             onClick={() => setShowArchived((prev) => !prev)}
           >
             <Archive className="mr-2 h-4 w-4" />

@@ -6,10 +6,6 @@ interface PageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 
-/**
- * PageLayout — substitui MainContainer.
- * Fornece o layout base para páginas, com scroll interno opcional e padding padrão.
- */
 export const PageLayout: React.FC<PageContainerProps> = ({
   children,
   className,
@@ -28,37 +24,42 @@ export const PageLayout: React.FC<PageContainerProps> = ({
   );
 };
 
-export const PageContainer = PageLayout; // Alias para compatibilidade legada
+export const PageContainer = PageLayout;
 
-interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+interface PageHeaderProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
   title?: React.ReactNode;
+  description?: React.ReactNode;
   children?: React.ReactNode;
 }
 
-/**
- * PageHeader — substitui MainHeader + Title + MainHeaderButtonsWrapper.
- * Fornece o cabeçalho da página com título e ações.
- */
-export const PageHeader: React.FC<PageHeaderProps> = ({ 
-  title, 
-  children, 
+export const PageHeader: React.FC<PageHeaderProps> = ({
+  title,
+  description,
+  children,
   className,
-  ...props 
+  ...props
 }) => {
   return (
-    <header 
+    <header
       className={cn(
-        "wt-page-header flex items-center justify-between px-6 py-4 border-b border-border bg-card/30 backdrop-blur-sm sticky top-0 z-10",
+        "wt-page-header flex items-center justify-between gap-4 px-6 py-4 border-b border-border bg-card/30 backdrop-blur-sm sticky top-0 z-10",
         className
       )}
       {...props}
     >
-      {title && (
-        <h1 className="text-xl font-bold tracking-tight text-foreground">
-          {title}
-        </h1>
+      {(title || description) && (
+        <div className="flex flex-col min-w-0">
+          {title && (
+            <h1 className="text-xl font-bold tracking-tight text-foreground">
+              {title}
+            </h1>
+          )}
+          {description && (
+            <p className="text-sm text-muted-foreground mt-0.5 truncate">{description}</p>
+          )}
+        </div>
       )}
-      <div className="flex items-center gap-2 ml-auto">
+      <div className="flex items-center gap-2 ml-auto shrink-0">
         {children}
       </div>
     </header>
@@ -69,16 +70,13 @@ interface PageContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 
-/**
- * PageContent — área de conteúdo principal com scroll.
- */
-export const PageContent: React.FC<PageContentProps> = ({ 
-  children, 
+export const PageContent: React.FC<PageContentProps> = ({
+  children,
   className,
-  ...props 
+  ...props
 }) => {
   return (
-    <main 
+    <main
       className={cn(
         "wt-page-content flex-1 overflow-y-auto overflow-x-hidden p-6",
         className

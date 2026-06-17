@@ -137,13 +137,9 @@ const ContactAIInsights = ({ contactId }: ContactAIInsightsProps) => {
       {/* Header */}
       <div className="px-4 py-3 border-b border-[var(--border-divider)] bg-[var(--bg-surface)] flex items-center justify-between">
         <span className="text-sm font-semibold">🤖 Assistente IA</span>
-        <button
-          onClick={fetchInsights}
-          title="Atualizar análise"
-          className="p-1.5 rounded hover:bg-[var(--bg-surface-alt)] transition-colors"
-        >
+        <Button variant="ghost" size="icon" onClick={fetchInsights} title="Atualizar análise">
           <RefreshCw className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
 
       {/* Content */}

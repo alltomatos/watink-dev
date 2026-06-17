@@ -248,14 +248,14 @@ const ProtocolDetails: React.FC = () => {
             </h1>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={handleCopyExternalLink}
-                  className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
                   aria-label="Copiar link externo"
                 >
                   <Link className="h-5 w-5" />
-                </button>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>
                 Copiar link externo (para enviar ao cliente)

@@ -207,7 +207,7 @@ const Dashboard: React.FC = () => {
       >
         <div className="flex gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => setModalOpen(true)}
           >

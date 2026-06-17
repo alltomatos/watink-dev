@@ -30,6 +30,7 @@ const PairingCodeModal = ({ open, onClose, whatsAppId }: PairingCodeModalProps) 
   useEffect(() => {
     if (!whatsAppId || !open) return;
     const socket = openSocket();
+    if (!socket) return;
 
     socket.on("whatsappSession", (data: WhatsAppSessionSocketEvent) => {
       if (data.action === "update" && data.session.id === whatsAppId) {

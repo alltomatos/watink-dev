@@ -806,13 +806,13 @@ const Settings: React.FC = () => {
             user={user}
             perform="marketplace:read"
             yes={() => (
-              <Button variant="outline" onClick={() => navigate("/admin/settings/marketplace")}>
+              <Button variant="ghost" onClick={() => navigate("/admin/settings/marketplace")}>
                 <Puzzle className="mr-2 h-4 w-4" />
                 Marketplace de Plugins
               </Button>
             )}
           />
-          <Button variant="outline" onClick={() => navigate("/helpdesk")}>
+          <Button variant="ghost" onClick={() => navigate("/helpdesk")}>
             <Headphones className="mr-2 h-4 w-4" />
             Ajuda
           </Button>

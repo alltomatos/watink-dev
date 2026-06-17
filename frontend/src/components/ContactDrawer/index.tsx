@@ -268,19 +268,18 @@ const ContactDrawer = ({
                     <div className="flex items-center justify-center gap-1 mt-1">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <button
-                            onClick={() => setModalOpen(true)}
-                            className="p-1.5 rounded hover:bg-[var(--bg-surface-alt)] transition-colors"
-                          >
-                            <Edit2 className="w-4 h-4 text-primary" />
-                          </button>
+                          <Button variant="ghost" size="icon" onClick={() => setModalOpen(true)}>
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
                         </TooltipTrigger>
                         <TooltipContent>{i18n.t("contactDrawer.buttons.edit")}</TooltipContent>
                       </Tooltip>
 
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={async () => {
                               try {
                                 await api.post(`/contacts/${contact.id}/sync`);
@@ -289,10 +288,9 @@ const ContactDrawer = ({
                                 console.error(e);
                               }
                             }}
-                            className="p-1.5 rounded hover:bg-[var(--bg-surface-alt)] transition-colors"
                           >
-                            <RefreshCw className="w-4 h-4 text-primary" />
-                          </button>
+                            <RefreshCw className="w-4 h-4" />
+                          </Button>
                         </TooltipTrigger>
                         <TooltipContent>Atualizar</TooltipContent>
                       </Tooltip>
@@ -300,24 +298,18 @@ const ContactDrawer = ({
                       {(!contact.clients || contact.clients.length === 0) ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <button
-                              onClick={() => setClientModalOpen(true)}
-                              className="p-1.5 rounded hover:bg-[var(--bg-surface-alt)] transition-colors"
-                            >
-                              <UserPlus className="w-4 h-4 text-primary" />
-                            </button>
+                            <Button variant="ghost" size="icon" onClick={() => setClientModalOpen(true)}>
+                              <UserPlus className="w-4 h-4" />
+                            </Button>
                           </TooltipTrigger>
                           <TooltipContent>Criar Cliente</TooltipContent>
                         </Tooltip>
                       ) : (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <button
-                              disabled
-                              className="p-1.5 rounded opacity-50 cursor-not-allowed"
-                            >
-                              <PersonStanding className="w-4 h-4 text-primary" />
-                            </button>
+                            <Button variant="ghost" size="icon" disabled>
+                              <PersonStanding className="w-4 h-4" />
+                            </Button>
                           </TooltipTrigger>
                           <TooltipContent>Cliente Vinculado</TooltipContent>
                         </Tooltip>
@@ -346,12 +338,14 @@ const ContactDrawer = ({
                             >
                               {deal.stage?.name}
                             </span>
-                            <button
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
                               onClick={() => handleDeleteDeal(deal.id)}
-                              className="p-1 rounded hover:bg-[var(--bg-surface-alt)] transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       );

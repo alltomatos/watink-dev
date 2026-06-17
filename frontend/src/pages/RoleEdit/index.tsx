@@ -10,7 +10,7 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
 
-import MainContainer from "../../components/MainContainer";
+import { PageLayout } from "../../components/ui/page-layout";
 import RolePermissionTransferList from "../../components/RolePermissionTransferList";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
@@ -106,16 +106,16 @@ const RoleEdit: React.FC = () => {
 
   if (loading) {
     return (
-      <MainContainer>
+      <PageLayout>
         <div className="flex min-h-[400px] items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      </MainContainer>
+      </PageLayout>
     );
   }
 
   return (
-    <MainContainer>
+    <PageLayout>
       <Formik
         initialValues={role}
         enableReinitialize
@@ -233,7 +233,7 @@ const RoleEdit: React.FC = () => {
           </Form>
         )}
       </Formik>
-    </MainContainer>
+    </PageLayout>
   );
 };
 

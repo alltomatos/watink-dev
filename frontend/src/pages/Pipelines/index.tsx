@@ -2,10 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Pencil, Upload } from "lucide-react";
-import MainContainer from "@/components/MainContainer";
-import MainHeader from "@/components/MainHeader";
-import MainHeaderButtonsWrapper from "@/components/MainHeaderButtonsWrapper";
-import Title from "@/components/Title";
+import { PageLayout, PageHeader, PageContent } from "@/components/ui/page-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,36 +69,29 @@ const Pipelines: React.FC = () => {
     };
 
     return (
-        <MainContainer className="flex-1">
-            <MainHeader>
-                <Title>Pipelines</Title>
-                <MainHeaderButtonsWrapper>
-                    <Button onClick={handleOpenWizard}>
-                        Adicionar Pipeline
+        <PageLayout>
+            <PageHeader title="Pipelines" description="Gerencie seus fluxos de atendimento e funis de vendas">
+                <input
+                    style={{ display: "none" }}
+                    id="import-pipeline"
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportPipeline}
+                />
+                <label htmlFor="import-pipeline">
+                    <Button variant="ghost" className="cursor-pointer" asChild>
+                        <span>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Importar Pipeline
+                        </span>
                     </Button>
-                    <input
-                        style={{ display: "none" }}
-                        id="import-pipeline"
-                        type="file"
-                        accept=".json"
-                        onChange={handleImportPipeline}
-                    />
-                    <label htmlFor="import-pipeline">
-                        <Button
-                            variant="secondary"
-                            className="ml-2 cursor-pointer"
-                            asChild
-                        >
-                            <span>
-                                <Upload className="mr-2 h-4 w-4" />
-                                Importar Pipeline
-                            </span>
-                        </Button>
-                    </label>
-                </MainHeaderButtonsWrapper>
-            </MainHeader>
+                </label>
+                <Button onClick={handleOpenWizard}>
+                    Adicionar Pipeline
+                </Button>
+            </PageHeader>
 
-            <div className="flex-1 p-4 overflow-y-auto">
+            <PageContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {!loading && pipelines.length === 0 && (
                         <div className="col-span-full text-center p-8 text-muted-foreground">
@@ -149,8 +139,8 @@ const Pipelines: React.FC = () => {
                         </Card>
                     ))}
                 </div>
-            </div>
-        </MainContainer>
+            </PageContent>
+        </PageLayout>
     );
 };
 

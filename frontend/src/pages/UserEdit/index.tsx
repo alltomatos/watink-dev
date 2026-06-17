@@ -17,9 +17,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 
-import MainContainer from "../../components/MainContainer";
-import MainHeader from "../../components/MainHeader";
-import Title from "../../components/Title";
+import { PageLayout, PageHeader, PageContent } from "../../components/ui/page-layout";
 import QueueSelect from "../../components/QueueSelect";
 import { Can } from "../../components/Can";
 import { AuthContext } from "../../context/Auth/AuthContext";
@@ -156,29 +154,28 @@ const UserEdit: React.FC = () => {
 
   if (loading) {
     return (
-      <MainContainer>
+      <PageLayout>
         <div className="flex min-h-[400px] items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      </MainContainer>
+      </PageLayout>
     );
   }
 
   return (
-    <MainContainer>
-      <MainHeader>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/users")}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <Title>{isNew ? i18n.t("userModal.title.add") : user.name}</Title>
-        </div>
-      </MainHeader>
+    <PageLayout>
+      <PageHeader
+        title={
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/users")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <span>{isNew ? i18n.t("userModal.title.add") : user.name}</span>
+          </div>
+        }
+      />
 
+      <PageContent>
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <Tabs defaultValue="data">
           <TabsList>
@@ -425,7 +422,8 @@ const UserEdit: React.FC = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </MainContainer>
+      </PageContent>
+    </PageLayout>
   );
 };
 

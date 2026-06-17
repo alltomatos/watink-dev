@@ -263,7 +263,7 @@ const Connections = () => {
         description="Gerencie seus canais de comunicação e conexões WhatsApp"
       >
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { setSelectedWhatsApp(null); setWebchatModalOpen(true); }}>
+          <Button variant="ghost" onClick={() => { setSelectedWhatsApp(null); setWebchatModalOpen(true); }}>
             <MessageSquare className="mr-2 h-4 w-4" />
             Configurar Webchat
           </Button>

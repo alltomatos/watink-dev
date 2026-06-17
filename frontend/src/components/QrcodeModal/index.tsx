@@ -37,6 +37,7 @@ const QrcodeModal = ({ open, onClose, whatsAppId }: QrcodeModalProps) => {
   useEffect(() => {
     if (!whatsAppId) return;
     const socket = openSocket();
+    if (!socket) return;
 
     socket.on("whatsappSession", (data: WhatsAppSessionSocketEvent) => {
       if (data.action === "update" && data.session.id === whatsAppId) {
