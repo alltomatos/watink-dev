@@ -1,46 +1,57 @@
 # Git Workflow Policy (Watink)
 
-## Objetivo
-Garantir estabilidade do main, rastreabilidade de mudanças por agente e integração segura entre Robot, Groud e Tinker.
-
 ## Regras obrigatórias
-1. **Proibido commit direto no main**.
-2. Todo trabalho deve nascer em branch dedicada.
-3. Toda branch deve virar **PR** com testes antes de merge.
-4. Merge só após validação de CI/smoke e revisão humana.
-5. Commits devem seguir Conventional Commits (eat:, ix:, chore:...).
 
-## Convenção de branches
-- obot/<tema>
-- groud/<tema>
-- 	inker/<tema>
-- hotfix/<tema> (somente urgência)
+1. **Proibido commit direto em `main`** — todo trabalho via PR.
+2. Toda branch deve virar PR com testes antes de merge.
+3. Merge só após CI/smoke e revisão humana.
+4. Commits seguem **Conventional Commits**.
 
-Exemplos:
-- obot/windows-business-runtime
-- groud/rbac-tenant-fixes
-- 	inker/hardening-redis-rabbit
+## Convenção de Branches
 
-## Fluxo padrão
-1. Atualizar base: git fetch origin && git checkout main && git pull.
-2. Criar branch: git checkout -b <agent>/<tema>.
-3. Implementar + commits pequenos.
-4. Rodar testes locais/smoke.
-5. git push origin <branch>.
-6. Abrir PR para develop (ou main se develop indisponível).
-7. Merge após aprovação.
+Baseada no tipo de mudança (espelha o prefixo do commit):
+
+| Prefixo | Uso | Exemplo |
+|---|---|---|
+| `feat/<tema>` | Nova funcionalidade | `feat/helpdesk-kanban` |
+| `fix/<tema>` | Correção de bug | `fix/ticket-status-update` |
+| `refactor/<tema>` | Refatoração sem nova feature | `refactor/frontend-shadcn-migration` |
+| `chore/<tema>` | Manutenção, tooling, deps | `chore/update-go-deps` |
+| `docs/<tema>` | Somente documentação | `docs/adr-di-backend` |
+| `hotfix/<tema>` | Correção urgente em produção | `hotfix/rabbitmq-reconnect` |
+
+## Conventional Commits
+
+```
+feat:      nova funcionalidade
+fix:       correção de bug
+refactor:  mudança de código sem alterar comportamento
+chore:     manutenção, tooling, deps
+docs:      somente documentação
+hardening: segurança, resiliência
+test:      adição ou correção de testes
+```
+
+## Fluxo Padrão
+
+```bash
+git fetch origin && git checkout main && git pull
+git checkout -b feat/<tema>
+# implementar + commits pequenos
+git push origin feat/<tema>
+# abrir PR → develop (ou main se develop indisponível)
+```
 
 ## Checklist de PR (obrigatório)
+
 - [ ] Resumo técnico do que mudou
 - [ ] Risco/impacto
-- [ ] Evidência de teste (logs/smoke)
+- [ ] Evidência de teste (logs/smoke/build)
 - [ ] Plano de rollback
 
-## Regras para agentes
-- Não sobrescrever trabalho de outro agente sem rebase/merge explícito.
-- Conflitos devem ser resolvidos em branch, nunca direto em main.
-- Notificar o enxame (Supabase + system event) ao abrir/atualizar PR.
+## Merge Flow
 
-## Exceções
-- Hotfix crítico pode ir para hotfix/*, com PR prioritária.
-- Mesmo em hotfix, manter evidência mínima de teste.
+```
+feat/* / fix/* / refactor/* → develop → main (release)
+hotfix/*                    → main → back-merge para develop
+```
