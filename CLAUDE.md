@@ -135,7 +135,7 @@ docker compose -f docker-compose.dev.yml logs --tail=100 watink-frontend
 
 ### Smoke Test
 ```bash
-SMOKE_BASE_URL=http://localhost:3000 SMOKE_EMAIL=user@example.com SMOKE_PASS=secret node scripts/playwright-smoke.js
+SMOKE_BASE_URL=http://localhost:3000 SMOKE_EMAIL=admin@test.com SMOKE_PASS=test123 node scripts/playwright-smoke.js
 ```
 
 ## Git & PR Conventions
@@ -177,33 +177,114 @@ Para manter a integridade do código e a qualidade arquitetural, as seguintes re
 3. **Proibido Inventar Contexto**: Não assuma comportamentos ou estruturas que não foram previamente lidos através das ferramentas de Read. Na dúvida, leia o arquivo.
 4. **DI Pura (Anti-Singleton)**: É proibido o uso de variáveis globais de estado, Singletons ou Service Locators. Toda dependência deve ser passado explicitamente via construtores (Constructor Injection).
 
-## Frontend Migration Governance (MUI v4 -> shadcn/ui)
+## Frontend Design System
 
-**Estado atual:** 199 arquivos JS/JSX, 0 TS. 40+ componentes MUI v4, 100+ `makeStyles`, React 17, Router v5.
-**Target:** React 18 + TypeScript + Tailwind v4 + shadcn/ui (Radix headless + Tailwind styling).
+### Estado Atual (jun/2026)
 
-### Regras Estritas de Migracao
+Stack consolidada: **React 18 + TypeScript + Tailwind v4 + shadcn/ui + Vite**.
+Migração MUI v4 → shadcn/ui em andamento. Novos componentes exclusivamente em `.tsx` + shadcn/ui.
 
-1. **PROIBIDO novo `makeStyles`**: Qualquer estilizacao nova DEVE usar Tailwind CSS utility classes. A ESLint rule `no-makeStyles` deve falhar o build.
-2. **PROIBIDO novo import de `@material-ui/core`** em features novas. Componentes novos usam `src/components/ui/` (shadcn/ui).
-3. **Diretorio Legacy**: Componentes MUI v4 existentes sao READ-ONLY — correcoes de bug/security apenas. Nao adicionar funcionalidades.
-4. **Componentes de Ponte**: Wrappers em `src/components/ui/` que abstraem a implementacao (MUI hoje, shadcn amanha). Consumidores nunca importam MUI diretamente.
-5. **TypeScript incremental**: `tsconfig.json` com `allowJs: true`. Novos arquivos sao `.tsx`. Arquivos existentes sao convertidos apenas quando tocados (boy scout rule).
-6. **Tokens existentes**: O sistema 3-camadas (`src/theme/tokens/`) e a fonte de verdade para cores/espacamento/radius. Tailwind `@theme` no `index.css` consome essas CSS vars. NAO duplicar valores hardcoded no tailwind.config.
-7. **React 18 obrigatorio**: shadcn/ui exige React 18+. O upgrade React 17->18 + Router v5->v6 e prerequisito bloqueante.
+### Arquitetura de Tokens (3 camadas)
 
-### Fases da Migracao
+```
+primitives.ts      →  valores brutos (hex, px, ms)
+    ↓
+semantic.ts        →  tokens com significado (action-primary, bg-surface, border-default…)
+    ↓ loader.js injeta como CSS vars em HSL cru (ex: "211 100% 50%")
+colors.css         →  fallback estático dos mesmos tokens em HSL cru no :root
+    ↓
+bridge.css         →  mapeia tokens semânticos → variáveis shadcn/ui
+                       (--primary, --border, --muted, --card…)
+    ↓
+index.css @theme   →  Tailwind v4 gera utilitários (bg-primary, border-border…)
+                       adicionando hsl() sobre os tokens HSL cru
+```
 
-| Fase | Objetivo | Risco | Pre-requisito |
-|------|----------|-------|---------------|
-| 0 | React 17->18 + Router v5->v6 | ALTO | testes E2E existentes |
-| 1 | TypeScript (tsconfig + allowJs) + vite.config.ts | MEDIO | Fase 0 |
-| 2 | Tailwind v4 + shadcn/ui init + POC (Button) | BAIXO | Fase 1 |
-| 3 | Pattern Shim (ESLint no-makeStyles + coexistencia) | BAIXO | Fase 2 |
-| 4 | Substituicao gradual por camada (Atomicos -> Forms -> Overlays -> Composicao) | MEDIO | Fase 3 |
-| 5 | Remocao MUI v4 (npm uninstall + cleanup) | MEDIO | Fase 4 completa |
+### REGRA CRÍTICA — Variáveis CSS + Tailwind v4
 
-### Estrutura de Diretorios Frontend
+**Os tokens semânticos armazenam canais HSL crus** (ex: `211 100% 50%`), sem `hsl()`.
+O Tailwind v4 adiciona `hsl()` via `@theme inline` em `index.css`.
+
+**PROIBIDO** duplicar `hsl()`:
+```css
+/* ❌ ERRADO — resulta em hsl(hsl(...)) = CSS inválido */
+--primary: hsl(var(--action-primary));
+
+/* ✅ CORRETO — bridge.css aponta para o token cru */
+--primary: var(--action-primary);  /* action-primary = "211 100% 50%" */
+```
+
+**PROIBIDO** referenciar primitivos hex no `bridge.css`:
+```css
+/* ❌ ERRADO — blue-500 = #007AFF; hsl(#007AFF) é inválido no Tailwind */
+--primary: var(--blue-500);
+
+/* ✅ CORRETO — usa token semântico HSL cru */
+--primary: var(--action-primary);
+```
+
+**Para adicionar novas cores ao Tailwind**, declare em `index.css` no bloco `@theme inline`:
+```css
+@theme inline {
+  --color-minha-cor: hsl(var(--meu-token-semantico));
+}
+```
+
+**Para usar cores em `style={{}}` inline** (quando Tailwind não é viável), use as vars `--color-*`
+definidas em `@layer base` do `index.css` — elas já têm `hsl()` resolvido:
+```tsx
+style={{ color: 'var(--color-primary)' }}   // ✅
+style={{ color: 'var(--primary)' }}          // ❌ — HSL cru, não é cor CSS válida
+```
+
+### Regras de Aparência (Design Language)
+
+**Superfícies e cards — sombra, não borda:**
+```tsx
+// ✅ Cards/superfícies de conteúdo: sombra suave + border-radius grande
+"rounded-2xl bg-card shadow-[0px_4px_20px_rgba(0,0,0,0.08)]"
+
+// ✅ Overlays flutuantes (dropdown, popover, dialog): sombra mais forte
+"rounded-xl shadow-[0px_8px_24px_rgba(0,0,0,0.12)]"
+
+// ❌ PROIBIDO adicionar border em cards/superfícies novas
+"border bg-card shadow-sm"   // borda visível não faz parte do visual Watink
+```
+
+**Border-radius padrão:**
+- Cards e painéis: `rounded-2xl` (16px)
+- Overlays (dropdown, popover, select): `rounded-xl` (12px)
+- Botões e inputs: `rounded-md` (8px)
+- Badges/pills: `rounded-full`
+
+**Separadores entre seções:** `border-b border-border` (usa `hsl(var(--border))` = cinza claro).
+Nunca usar bordas escuras `border-slate-700` fora do sidebar.
+
+### Sidebar
+
+| Propriedade | Valor |
+|---|---|
+| Largura expandida | `w-[200px]` |
+| Largura colapsada | `w-[70px]` |
+| Fundo | `bg-[var(--slate-800)]` (`#1E293B`) |
+| Borda direita | `border-[var(--slate-700)]` |
+| Separadores internos | `border-[var(--slate-700)]` |
+| Toggle (posição) | Header, lado direito |
+| Preferência persistida | `localStorage` key `wt:sidebar:collapsed` |
+| Mobile | Sempre fechado (< 1024px), sem persistir |
+
+**PROIBIDO** usar `border-border` dentro do sidebar — use `border-[var(--slate-700)]`
+pois o sidebar tem fundo escuro e a variável `--border` é cinza claro (para fundos brancos).
+
+### Regras de Migração (MUI v4 → shadcn/ui)
+
+1. **PROIBIDO novo `makeStyles`** — estilização nova obrigatoriamente em Tailwind.
+2. **PROIBIDO novo import de `@material-ui/core`** em features novas. Novos componentes usam `src/components/ui/` (shadcn/ui).
+3. **Componentes MUI existentes são READ-ONLY** — somente bug/security fixes.
+4. **TypeScript incremental** — novos arquivos são `.tsx`; existentes convertidos ao tocar (boy scout rule).
+5. **React 18 obrigatório** — shadcn/ui exige React 18+.
+
+### Estrutura de Diretórios Frontend
 
 ```
 frontend/src/
@@ -212,11 +293,17 @@ frontend/src/
     legacy/      -> componentes MUI v4 existentes (READ-ONLY)
   lib/
     utils.ts     -> cn() helper (clsx + tailwind-merge)
-  hooks/         -> custom hooks
   theme/
-    tokens/      -> fontes de verdade (primitives, semantic, components, typography)
-    bridge.js    -> MUI createTheme bridge (remover na Fase 5)
-    loader.js    -> CSS var injection (manter, adaptar para Tailwind @theme)
+    tokens/
+      primitives.ts  -> paleta base em hex (NUNCA usada direto em componentes)
+      semantic.ts    -> tokens com significado, exportados para o loader
+      components.ts  -> tokens de componentes (radius, spacing, card…)
+    bridge.css        -> mapeia tokens semânticos → vars shadcn/ui (--primary, --border…)
+    loader.js         -> injeta tokens semânticos como CSS vars em HSL cru no :root em runtime
+    tokens/colors.css -> fallback estático dos tokens semânticos em HSL cru
+  index.css
+    @theme inline  -> registra --color-* para Tailwind gerar bg-*, text-*, border-* utilities
+    @layer base    -> --radius, --color-* (hsl resolvido para uso em style={{}})
 ```
 
 ## Agent skills

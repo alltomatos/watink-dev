@@ -16,14 +16,12 @@ const VersionFooter: React.FC<VersionFooterProps> = ({ collapsed = false }) => {
   }
 
   return (
-    <div className="p-4 text-center text-xs text-muted-foreground border-t border-border mt-auto overflow-hidden whitespace-nowrap">
-      <RouterLink
-        to="/monitor"
-        className="no-underline font-semibold text-primary hover:underline"
-      >
-        Monitor
-      </RouterLink>
-    </div>
+    <RouterLink
+      to="/monitor"
+      className="no-underline text-xs font-semibold text-primary hover:underline truncate"
+    >
+      Monitor
+    </RouterLink>
   );
 };
 

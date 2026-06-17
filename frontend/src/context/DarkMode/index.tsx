@@ -26,6 +26,7 @@ interface BrandOverrides {
 interface ThemeContextValue {
   darkMode: boolean;
   toggleTheme: () => void;
+  setDarkMode: (v: boolean) => void;
   appTheme: string;
   setAppTheme: (v: string) => void;
   setBrand: (b: BrandOverrides) => void;
@@ -39,8 +40,17 @@ const getInitialDarkMode = (): boolean => {
   return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
 };
 
-const getInitialAppTheme = (): string =>
-  localStorage.getItem("appTheme") || "apple";
+const VALID_THEMES = ["apple", "google", "whatsapp", "saas"];
+
+const getInitialAppTheme = (): string => {
+  const stored = localStorage.getItem("appTheme");
+  // Migra temas legados (valores inválidos) para o padrão google
+  if (!stored || !VALID_THEMES.includes(stored)) {
+    localStorage.setItem("appTheme", "google");
+    return "google";
+  }
+  return stored;
+};
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({
   children,
@@ -55,6 +65,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({
       localStorage.setItem("darkMode", String(next));
       return next;
     });
+  }, []);
+
+  const setDarkModeValue = useCallback((v: boolean) => {
+    setDarkMode(v);
+    localStorage.setItem("darkMode", String(v));
   }, []);
 
   const setAppTheme = useCallback((v: string) => {
@@ -74,11 +89,12 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({
     () => ({
       darkMode,
       toggleTheme,
+      setDarkMode: setDarkModeValue,
       appTheme,
       setAppTheme,
       setBrand,
     }),
-    [darkMode, toggleTheme, appTheme, setAppTheme, setBrand]
+    [darkMode, toggleTheme, setDarkModeValue, appTheme, setAppTheme, setBrand]
   );
 
   return (

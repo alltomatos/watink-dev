@@ -17,22 +17,23 @@ const PerformanceMetrics: React.FC = () => {
     return `${Math.round(minutes)}m`;
   };
 
-  if (isLoading) return <div>Carregando...</div>;
-  if (error || !data) return <div>Erro ao carregar métricas</div>;
+  // Fallback para zero enquanto API de stats não está disponível
+  const avgResponse = data?.metrics?.avgResponseTime ?? 0;
+  const avgWait = data?.metrics?.avgWaitTime ?? 0;
 
   return (
     <div className="col-span-12 sm:col-span-6 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
       <MetricCard
         label="TMR (Tempo Médio de Resposta)"
-        value={formatTime(data.metrics?.avgResponseTime)}
+        value={isLoading ? "—" : formatTime(avgResponse)}
         icon={<Gauge className="h-5 w-5" />}
         color="info"
       />
       <MetricCard
         label="TME (Tempo Médio de Espera)"
-        value={formatTime(data.metrics?.avgWaitTime)}
+        value={isLoading ? "—" : formatTime(avgWait)}
         icon={<Clock className="h-5 w-5" />}
-        color="secondary"
+        color="warning"
       />
     </div>
   );

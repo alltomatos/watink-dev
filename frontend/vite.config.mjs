@@ -105,6 +105,11 @@ export default defineConfig({
     open: false,
     host: true,
     allowedHosts: ["app.docker"],
+    // Polling necessário para HMR funcionar com Docker volumes no Windows
+    watch: {
+      usePolling: true,
+      interval: 300,
+    },
   },
   build: {
     outDir: "build",
