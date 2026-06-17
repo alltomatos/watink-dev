@@ -4,23 +4,33 @@ Guia para o Claude Code ao trabalhar neste repositório.
 
 ## Project Overview
 
-Watink — plataforma open-source de atendimento e automação no WhatsApp. Microsserviços com RabbitMQ, multitenancy via PostgreSQL RLS, sistema de plugins com licenciamento centralizado.
+Watink — plataforma de atendimento e automação no WhatsApp. Microsserviços com RabbitMQ, multitenancy via PostgreSQL RLS, sistema de plugins com licenciamento centralizado.
 
 ```
-Frontend (React/Vite) ←REST/Socket→ Backend Go (Gin/GORM) ←SQL→ PostgreSQL
-                                          ↕ AMQP
-                                     RabbitMQ ←── Engine Go (whatsmeow) → WhatsApp
-                                          ↕
-                              Plugin Manager · Marketplace Hub
+Frontend (React/Vite) ←REST/Socket.io→ Backend Go (Gin/GORM) ←SQL→ PostgreSQL
+                                               ↕ AMQP
+                                          RabbitMQ ←── Engine Go (whatsmeow) → WhatsApp
+                                               ↕
+                                   Plugin Manager · Marketplace Hub
 ```
+
+## Status Atual (jun/2026)
+
+| Área | Status |
+|---|---|
+| Frontend — migração MUI v4 → shadcn/ui | ✅ Concluída |
+| Frontend — JS/JSX → TypeScript (163 arquivos) | ✅ Concluída |
+| Frontend — Design Token System (3 camadas) | ✅ Concluída |
+| Frontend — ESLint/Lint governance | ✅ Concluída (70 `no-explicit-any` pendentes) |
+| Backend Go — DI & organização de pacotes | 🔜 Próximo epic |
 
 ## Services & Ports
 
-| Service | Dir | Stack | Port |
+| Service | Dir | Stack | Porta |
 |---|---|---|---|
 | Backend Go | `business/` | Go 1.24 / Gin / GORM | 8082 |
 | Engine Go | `engine-go/` | Go 1.24 / whatsmeow | — |
-| Frontend | `frontend/` | React 18 / Vite / shadcn+Tailwind v4 | 3000 |
+| Frontend | `frontend/` | React 18 / Vite / TypeScript / shadcn+Tailwind v4 | 3000 |
 | Plugin Manager | `plugin-manager/` | Go 1.24 / gorilla-mux | 8081 |
 | Marketplace Hub | `marketplace-hub/` | Node/Express | 8090 |
 | Backend Node (legacy) | `legacy/backend/` | Node/Express/Sequelize | 8080 |
@@ -45,9 +55,10 @@ cd engine-go && go run cmd/engine/main.go
 
 ### Frontend (`frontend/`)
 ```bash
-cd frontend && npm run dev
-cd frontend && npm run build
-cd frontend && npm run lint
+cd frontend && npm run dev        # Vite dev server (porta 3000)
+cd frontend && npm run build      # build de produção
+cd frontend && npm run lint       # ESLint
+cd frontend && npm run typecheck  # TypeScript sem emitir
 ```
 
 ### Docker
@@ -62,12 +73,14 @@ docker compose -f docker-compose.dev.yml logs --tail=100 watink-frontend
 SMOKE_BASE_URL=http://localhost:3000 SMOKE_EMAIL=admin@test.com SMOKE_PASS=test123 node scripts/playwright-smoke.js
 ```
 
+→ Referência completa em [`docs/dev/commands.md`](docs/dev/commands.md)
+
 ## Git & PR Conventions
 
-→ Detalhes completos em [`docs/dev/git_workflow_policy.md`](docs/dev/git_workflow_policy.md)
+→ Detalhes em [`docs/dev/git_workflow_policy.md`](docs/dev/git_workflow_policy.md)
 
-- **Conventional Commits**: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `hotfix:`, `hardening:`
-- **Branch naming** (espelha o tipo de commit):
+- **Conventional Commits**: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `hardening:`, `test:`
+- **Branch naming**:
   - `feat/<tema>` — nova funcionalidade
   - `fix/<tema>` — correção de bug
   - `refactor/<tema>` — refatoração
@@ -97,16 +110,16 @@ SMOKE_BASE_URL=http://localhost:3000 SMOKE_EMAIL=admin@test.com SMOKE_PASS=test1
 
 - **DI PURA**: proibido Service Locator, Container Global ou Singleton. Dependências injetadas via construtor em `main.go`.
 - **Multitenancy**: use sempre `tenantUUIDFromContext(c)` em controllers Gin. Nunca `c.Get("tenantId")` bruto.
-- **Testes**: Mocks encapsulados em structs locais dentro de cada `Test...` — sem variáveis globais de mock.
+- **Testes**: Mocks em structs locais dentro de cada `Test...` — sem variáveis globais de mock.
 
 ## Frontend Design System
 
 → Referência completa em [`docs/frontend/design-system.md`](docs/frontend/design-system.md)
 
-Stack: **React 18 + TypeScript + Tailwind v4 + shadcn/ui**. MUI v4 removido.
+Stack consolidada: **React 18 + TypeScript + Tailwind v4 + shadcn/ui**. MUI v4 completamente removido.
 
 **Regras críticas:**
-- Tokens semânticos em HSL cru — o Tailwind adiciona `hsl()` via `@theme inline`, nunca duplique.
+- Tokens semânticos em HSL cru — Tailwind adiciona `hsl()` via `@theme inline`, nunca duplique.
 - Cards usam sombra, não borda: `rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.08)]`.
 - Sidebar: fundo `bg-[var(--slate-800)]`, separadores `border-[var(--slate-700)]`.
 - Proibido `makeStyles` ou qualquer import de `@material-ui/*`.
@@ -129,6 +142,22 @@ Stack: **React 18 + TypeScript + Tailwind v4 + shadcn/ui**. MUI v4 removido.
 
 - **Glossário**: [`CONTEXT.md`](CONTEXT.md)
 - **ADRs**: [`docs/adr/`](docs/adr/)
+- **Arquitetura**: [`docs/dev/architecture.md`](docs/dev/architecture.md)
 - **Frontend DS**: [`docs/frontend/design-system.md`](docs/frontend/design-system.md)
 - **Git Workflow**: [`docs/dev/git_workflow_policy.md`](docs/dev/git_workflow_policy.md)
+- **Plugins**: [`docs/dev/plugins.md`](docs/dev/plugins.md)
+- **Migrations**: [`docs/dev/migrations.md`](docs/dev/migrations.md)
 - **Agent config**: [`docs/agents/`](docs/agents/)
+
+## Agent Skills
+
+### Issue Tracker
+- **Platform**: GitHub (`gh` CLI)
+- **Config**: [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md)
+
+### Triage Labels
+- **Config**: [`docs/agents/triage-labels.md`](docs/agents/triage-labels.md)
+
+### Domain
+- **Config**: [`docs/agents/domain.md`](docs/agents/domain.md)
+- Use sempre os termos canônicos de `CONTEXT.md` — nunca os termos marcados como `_Avoid_`.
