@@ -25,9 +25,9 @@ import { i18n } from "../../translate/i18n";
 import toastError from "../../errors/toastError";
 import { getBackendUrl } from "../../helpers/urlUtils";
 import { AuthContext } from "../../context/Auth/AuthContext";
+import { useThemeContext } from "../../context/DarkMode";
 import { Can } from "../../components/Can";
 import openSocket from "../../services/socket-io";
-
 import {
   PageLayout,
   PageHeader,
@@ -55,6 +55,13 @@ import {
 import { Separator } from "../../components/ui/separator";
 import AISettings from "./components/AISettings";
 
+// Mapeamento dos valores DB → ThemeContext
+const DB_THEME_MAP: Record<string, { appTheme: string; darkMode?: boolean }> = {
+  whaticket: { appTheme: "google" },
+  whatsapp:  { appTheme: "whatsapp" },
+  dark:      { appTheme: "apple", darkMode: true },
+};
+
 interface Setting {
   key: string;
   value: string;
@@ -74,6 +81,7 @@ const timezones = [
 const Settings: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
+  const { setAppTheme, setDarkMode } = useThemeContext();
 
   const [activeSection, setActiveSection] = useState("general");
   const [settings, setSettings] = useState<Setting[]>([]);
@@ -176,7 +184,6 @@ const Settings: React.FC = () => {
   };
 
   const handleUpdateSetting = async (key: string, value: string) => {
-    
     try {
       await api.put(`/settings/${key}`, { value });
       setSettings((prev) => {
@@ -186,6 +193,12 @@ const Settings: React.FC = () => {
         }
         return hash;
       });
+      // Aplicar tema imediatamente ao ThemeContext
+      if (key === "theme") {
+        const mapped = DB_THEME_MAP[value] ?? { appTheme: "google" };
+        setAppTheme(mapped.appTheme);
+        setDarkMode(mapped.darkMode ?? false);
+      }
       toast.success("Configuração atualizada!");
     } catch (err) {
       toastError(err);

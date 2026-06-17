@@ -9,8 +9,6 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { i18n } from "../../translate/i18n";
-import { Title } from "../../components/ui/title";
 import { useDashboardStats } from "../../hooks/useDashboardStats";
 
 const HOURS = [
@@ -27,8 +25,6 @@ const Chart: React.FC = () => {
     return base.map((d) => ({ ...d, amount: stats.ticketsByHour[d.time] || 0 }));
   }, [stats]);
 
-  const totalTickets = useMemo(() => stats?.ticketsCount || 0, [stats]);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">
@@ -39,7 +35,6 @@ const Chart: React.FC = () => {
 
   return (
     <>
-      <Title>{`${i18n.t("dashboard.charts.perDay.title")}${totalTickets}`}</Title>
       <ResponsiveContainer width="100%" height={250}>
         <BarChart
           data={chartData}

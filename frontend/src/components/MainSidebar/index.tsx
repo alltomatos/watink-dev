@@ -25,14 +25,50 @@ import SidebarItem from "../SidebarItem";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import api from "../../services/api";
+import { useThemeContext } from "../../context/DarkMode";
 
 interface MainSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
 
+// Pré-computa classes fora do JSX para evitar ambiguidade do parser TSX com hsl(var(--...))
+const getSidebarClass = (isLight: boolean, collapsed: boolean): string =>
+  cn(
+    "flex flex-col h-full transition-all duration-300 relative z-20",
+    isLight
+      ? "bg-[hsl(var(--bg-sidebar))] border-r border-[hsl(var(--border-sidebar))]"
+      : "bg-[var(--slate-800)] border-r border-[var(--slate-700)]",
+    collapsed ? "w-[70px]" : "w-[200px]"
+  );
+
+const getHeaderClass = (isLight: boolean): string =>
+  cn(
+    "flex items-center h-16 min-h-16 border-b px-3 gap-2",
+    isLight ? "border-[hsl(var(--border-sidebar))]" : "border-[var(--slate-700)]"
+  );
+
+const getToggleClass = (isLight: boolean): string =>
+  cn(
+    "shrink-0 rounded-full h-8 w-8",
+    isLight
+      ? "text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-primary))] hover:bg-black/5"
+      : "text-[var(--slate-400)] hover:text-white hover:bg-white/10"
+  );
+
+const getDividerClass = (isLight: boolean): string =>
+  cn("my-4 border-t mx-2", isLight ? "border-[hsl(var(--border-sidebar))]" : "border-border/50");
+
+const getFooterClass = (isLight: boolean): string =>
+  cn(
+    "mt-auto border-t flex items-center justify-center px-3 py-2 min-h-[44px]",
+    isLight ? "border-[hsl(var(--border-sidebar))]" : "border-[var(--slate-700)]"
+  );
+
 const MainSidebar: React.FC<MainSidebarProps> = ({ collapsed, onToggle }) => {
   const { user } = useContext(AuthContext);
+  const { appTheme } = useThemeContext();
+  const isLightSidebar = appTheme === "whatsapp";
   const [activePlugins, setActivePlugins] = useState<string[]>([]);
   const [systemLogo, setSystemLogo] = useState("");
   const [systemTitle, setSystemTitle] = useState("Watink");
@@ -66,22 +102,30 @@ const MainSidebar: React.FC<MainSidebarProps> = ({ collapsed, onToggle }) => {
   }, []);
 
   return (
-    <aside
-      className={cn(
-        "flex flex-col h-full bg-card border-r border-border transition-all duration-300 relative z-20 shadow-sm",
-        collapsed ? "w-[70px]" : "w-[260px]"
-      )}
-    >
-      <div className="flex items-center justify-center py-6 h-16 min-h-16">
-        {collapsed ? (
-            <div className="w-8 h-8 bg-primary rounded-full" />
-        ) : (
-          logoEnabled && systemLogo ? (
-            <img src={getBackendUrl(systemLogo)} alt={systemTitle} className="h-12 w-auto object-contain" />
+    <aside className={getSidebarClass(isLightSidebar, collapsed)}>
+      {/* Header: logo + toggle */}
+      <div className={getHeaderClass(isLightSidebar)}>
+        {/* Logo / título */}
+        <div className={cn("flex flex-1 items-center overflow-hidden", collapsed ? "justify-center" : "justify-start pl-1")}>
+          {collapsed ? (
+            <div className="w-8 h-8 bg-primary rounded-full shrink-0" />
+          ) : logoEnabled && systemLogo ? (
+            <img src={getBackendUrl(systemLogo)} alt={systemTitle} className="h-8 w-auto object-contain brightness-0 invert opacity-90" />
           ) : (
-            <h1 className="text-xl font-bold text-primary truncate px-4">{systemTitle}</h1>
-          )
-        )}
+            <h1 className={cn("text-lg font-bold truncate", isLightSidebar ? "text-[hsl(var(--text-primary))]" : "text-white")}>{systemTitle}</h1>
+          )}
+        </div>
+
+        {/* Botão toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggle}
+          className={getToggleClass(isLightSidebar)}
+          aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+        >
+          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        </Button>
       </div>
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-1 custom-scrollbar">
         <Can
@@ -178,7 +222,7 @@ const MainSidebar: React.FC<MainSidebarProps> = ({ collapsed, onToggle }) => {
           )}
         />
 
-        <div className="my-4 border-t border-border/50 mx-2" />
+        <div className={getDividerClass(isLightSidebar)} />
 
         <Can
           user={user}
@@ -237,19 +281,9 @@ const MainSidebar: React.FC<MainSidebarProps> = ({ collapsed, onToggle }) => {
         />
       </div>
 
-      {/* Version and Collapse Toggle */}
-      <div className="mt-auto border-t border-border">
+      {/* Footer: apenas Monitor */}
+      <div className={getFooterClass(isLightSidebar)}>
         <VersionFooter collapsed={collapsed} />
-        <div className="p-4 flex items-center justify-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            className="rounded-full hover:bg-accent h-8 w-8"
-          >
-            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </Button>
-        </div>
       </div>
     </aside>
   );

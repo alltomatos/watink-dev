@@ -7,47 +7,51 @@
 
 @import "tailwindcss";
 
-
-/* Token vars are now imported from theme/tokens/*.css above */
+/* ── Tailwind v4: @theme define as utilidades de cor (bg-*, text-*, border-*) ──
+ * Os tokens shadcn (--primary, --border, etc.) ficam em bridge.css como HSL cru.
+ * Aqui adicionamos hsl() para que o Tailwind gere as classes corretamente.     */
+@theme inline {
+  --color-background:           hsl(var(--background));
+  --color-foreground:           hsl(var(--foreground));
+  --color-card:                 hsl(var(--card));
+  --color-card-foreground:      hsl(var(--card-foreground));
+  --color-popover:              hsl(var(--popover));
+  --color-popover-foreground:   hsl(var(--popover-foreground));
+  --color-primary:              hsl(var(--primary));
+  --color-primary-foreground:   hsl(var(--primary-foreground));
+  --color-secondary:            hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted:                hsl(var(--muted));
+  --color-muted-foreground:     hsl(var(--muted-foreground));
+  --color-accent:               hsl(var(--accent));
+  --color-accent-foreground:    hsl(var(--accent-foreground));
+  --color-destructive:          hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border:               hsl(var(--border));
+  --color-input:                hsl(var(--input));
+  --color-ring:                 hsl(var(--ring));
+}
 
 @layer base {
   :root {
-    --background: hsl(var(--bg-default));
-    --foreground: hsl(var(--text-primary));
-    --card: hsl(var(--bg-surface));
-    --card-foreground: hsl(var(--text-primary));
-    --popover: hsl(var(--bg-surface));
-    --popover-foreground: hsl(var(--text-primary));
-    --primary: hsl(var(--action-primary));
-    --primary-foreground: hsl(var(--text-inverse));
-    --secondary: hsl(var(--bg-surface-alt));
-    --secondary-foreground: hsl(var(--text-secondary));
-    --muted: hsl(var(--bg-surface-alt));
-    --muted-foreground: hsl(var(--text-muted));
-    --accent: hsl(var(--bg-surface-alt));
-    --accent-foreground: hsl(var(--text-secondary));
-    --destructive: hsl(var(--status-error));
-    --destructive-foreground: hsl(var(--text-inverse));
-    --border: hsl(var(--border-default));
-    --input: hsl(var(--border-default));
-    --ring: hsl(var(--action-primary));
+    /* Radius — não coberto pelo bridge */
     --radius: 0.5rem;
-    /* Resolved color bridges — full hsl() values usable as var(--x) directly */
-    --color-primary: hsl(var(--action-primary));
-    --color-primary-bg: hsl(var(--action-primary-bg));
-    --color-success: hsl(var(--status-success));
-    --color-error: hsl(var(--status-error));
-    --color-warning: hsl(var(--status-warning));
-    --color-info: hsl(var(--status-info));
-    --color-success-bg: hsl(var(--status-success-bg));
-    --color-error-bg: hsl(var(--status-error-bg));
-    --color-warning-bg: hsl(var(--status-warning-bg));
-    --color-info-bg: hsl(var(--status-info-bg));
-    --color-bg-surface: hsl(var(--bg-surface));
+
+    /* Cores completas (hsl resolvido) — para uso em style={{}} inline quando
+     * classes Tailwind não são viáveis. */
+    --color-primary-bg:     hsl(var(--action-primary-bg));
+    --color-success:        hsl(var(--status-success));
+    --color-error:          hsl(var(--status-error));
+    --color-warning:        hsl(var(--status-warning));
+    --color-info:           hsl(var(--status-info));
+    --color-success-bg:     hsl(var(--status-success-bg));
+    --color-error-bg:       hsl(var(--status-error-bg));
+    --color-warning-bg:     hsl(var(--status-warning-bg));
+    --color-info-bg:        hsl(var(--status-info-bg));
+    --color-bg-surface:     hsl(var(--bg-surface));
     --color-bg-surface-alt: hsl(var(--bg-surface-alt));
-    --color-border: hsl(var(--border-default));
     --color-text-secondary: hsl(var(--text-secondary));
-    --color-text-muted: hsl(var(--text-muted));
+    --color-text-muted:     hsl(var(--text-muted));
   }
 }
 
