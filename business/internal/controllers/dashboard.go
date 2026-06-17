@@ -99,11 +99,12 @@ func fetchTicketStatusCounts(db *gorm.DB, tenantID uuid.UUID, target *struct {
 
 // fetchQueueCounts retrieves queue ticket counts with a single JOIN query,
 // eliminating the N+1 loop that previously called db.First() per queue.
-func fetchQueueCounts(db *gorm.DB, tenantID uuid.UUID, target *[]QueueCount) error {
+// Tenant isolation is guaranteed by the scoped db passed from GetScoped.
+func fetchQueueCounts(db *gorm.DB, _ uuid.UUID, target *[]QueueCount) error {
 	return db.Model(&models.Ticket{}).
 		Select(`q.id as queue_id, q.name as queue_name, count("Tickets".id) as count`).
 		Joins(`JOIN "Queues" q ON q.id = "Tickets"."queueId"`).
-		Where(`"Tickets"."tenantId" = ? AND "Tickets"."queueId" IS NOT NULL AND "Tickets".status != 'closed'`, tenantID).
+		Where(`"Tickets"."queueId" IS NOT NULL AND "Tickets".status != 'closed'`).
 		Group("q.id, q.name").
 		Scan(target).Error
 }
