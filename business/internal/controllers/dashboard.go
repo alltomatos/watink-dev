@@ -31,6 +31,13 @@ type QueueCount struct {
 	Count     int64  `json:"count"`
 }
 
+// @Summary      Dados do dashboard
+// @Description  Retorna contagens de tickets, TMR, TME e distribuição por fila
+// @Tags         dashboard
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /dashboard [get]
 func GetDashboardData(c *gin.Context) {
 	var data DashboardData
 

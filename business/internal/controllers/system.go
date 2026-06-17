@@ -67,6 +67,12 @@ type SystemStats struct {
 
 var startTime = time.Now()
 
+// @Summary      Filas RabbitMQ
+// @Tags         system
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /system/rabbitmq/queues [get]
 func (sc *SystemController) GetRabbitMQQueues(c *gin.Context) {
 	if sc.rabbit == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "RabbitMQ service not initialized"})
@@ -82,6 +88,12 @@ func (sc *SystemController) GetRabbitMQQueues(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"connected": sc.rabbit.IsConnected(), "queues": queues, "total": len(queues)})
 }
 
+// @Summary      Estatísticas do sistema
+// @Tags         system
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /system/stats [get]
 func (sc *SystemController) GetSystemStats(c *gin.Context) {
 	var stats SystemStats
 

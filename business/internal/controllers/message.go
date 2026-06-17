@@ -21,6 +21,13 @@ func NewMessageController(r domain.CommandPublisher) *MessageController {
 }
 
 // ListMessages returns all messages for a given ticket.
+// @Summary      Listar mensagens do ticket
+// @Tags         messages
+// @Produce      json
+// @Param        ticketId  path      int  true  "ID do ticket"
+// @Success      200       {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /messages/{ticketId} [get]
 func (mc *MessageController) ListMessages(c *gin.Context) {
 	db, _, ok := auth.GetScoped(c, "Messages")
 	if !ok {
@@ -43,7 +50,16 @@ func (mc *MessageController) ListMessages(c *gin.Context) {
 	})
 }
 
-// SendMessage sends a message through the WhatsApp engine via RabbitMQ.
+// @Summary      Enviar mensagem
+// @Description  Envia mensagem via engine WhatsApp através do RabbitMQ
+// @Tags         messages
+// @Accept       json
+// @Produce      json
+// @Param        ticketId  path      int                     true  "ID do ticket"
+// @Param        body      body      map[string]interface{}  true  "Conteúdo da mensagem"
+// @Success      200       {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /messages/{ticketId} [post]
 func (mc *MessageController) SendMessage(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Messages")
 	if !ok {

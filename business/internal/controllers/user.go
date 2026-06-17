@@ -25,6 +25,12 @@ func NewUserController(ur domain.UserRepository, db *gorm.DB) *UserController {
 	}
 }
 
+// @Summary      Listar usuários
+// @Tags         users
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /users [get]
 func (uc *UserController) ListUsers(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
@@ -42,6 +48,14 @@ func (uc *UserController) ListUsers(c *gin.Context) {
 	})
 }
 
+// @Summary      Detalhar usuário
+// @Tags         users
+// @Produce      json
+// @Param        userId  path      int  true  "ID do usuário"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      404     {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /users/{userId} [get]
 func (uc *UserController) ShowUser(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
@@ -94,6 +108,14 @@ func (uc *UserController) ShowUser(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// @Summary      Criar usuário
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados do usuário"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /users [post]
 func (uc *UserController) CreateUser(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
@@ -132,6 +154,15 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, domainUser)
 }
 
+// @Summary      Atualizar usuário
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        userId  path      int                     true  "ID do usuário"
+// @Param        body    body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200     {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /users/{userId} [put]
 func (uc *UserController) UpdateUser(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
@@ -198,6 +229,13 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+// @Summary      Remover usuário
+// @Tags         users
+// @Produce      json
+// @Param        userId  path      int  true  "ID do usuário"
+// @Success      200     {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /users/{userId} [delete]
 func (uc *UserController) DeleteUser(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {

@@ -1,0 +1,2086 @@
+basePath: /api/v1
+definitions:
+  controllers.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+host: localhost:8082
+info:
+  contact:
+    email: dev@watink.com.br
+    name: Watink Dev
+  description: API do backend Go — atendimento e automação WhatsApp.
+  license:
+    name: Proprietary
+    url: https://watink.com.br
+  termsOfService: https://watink.com.br/terms
+  title: Watink Business API
+  version: 2.0.0
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Autentica usuário e retorna JWT de acesso e refresh token
+      parameters:
+      - description: Credenciais
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login
+      tags:
+      - auth
+  /auth/logout:
+    delete:
+      description: Invalida o refresh token no cookie
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - auth
+  /auth/refresh_token:
+    post:
+      description: Renova o access token usando o refresh token no cookie
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Refresh token
+      tags:
+      - auth
+  /contacts:
+    get:
+      parameters:
+      - description: Busca por nome ou número
+        in: query
+        name: searchParam
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Listar contatos
+      tags:
+      - contacts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados do contato
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar contato
+      tags:
+      - contacts
+  /contacts/{contactId}:
+    delete:
+      parameters:
+      - description: ID do contato
+        in: path
+        name: contactId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover contato
+      tags:
+      - contacts
+    get:
+      parameters:
+      - description: ID do contato
+        in: path
+        name: contactId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Detalhar contato
+      tags:
+      - contacts
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do contato
+        in: path
+        name: contactId
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar contato
+      tags:
+      - contacts
+  /dashboard:
+    get:
+      description: Retorna contagens de tickets, TMR, TME e distribuição por fila
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Dados do dashboard
+      tags:
+      - dashboard
+  /entities/{entityType}/{id}/tags/sync:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tipo da entidade (ticket, contact)
+        in: path
+        name: entityType
+        required: true
+        type: string
+      - description: ID da entidade
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Lista de tag IDs
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Sincronizar tags de entidade
+      tags:
+      - tags
+  /flows:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar flows
+      tags:
+      - flows
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados do flow
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar flow
+      tags:
+      - flows
+  /flows/{flowId}:
+    delete:
+      parameters:
+      - description: ID do flow
+        in: path
+        name: flowId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover flow
+      tags:
+      - flows
+    get:
+      parameters:
+      - description: ID do flow
+        in: path
+        name: flowId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Detalhar flow
+      tags:
+      - flows
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do flow
+        in: path
+        name: flowId
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar flow
+      tags:
+      - flows
+  /groups:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar grupos
+      tags:
+      - rbac
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados do grupo
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar grupo
+      tags:
+      - rbac
+  /groups/{groupId}:
+    delete:
+      parameters:
+      - description: ID do grupo
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover grupo
+      tags:
+      - rbac
+    get:
+      parameters:
+      - description: ID do grupo
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Detalhar grupo
+      tags:
+      - rbac
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do grupo
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar grupo
+      tags:
+      - rbac
+  /initial-setup:
+    post:
+      consumes:
+      - application/json
+      description: Cria o primeiro usuário admin e inicializa o tenant
+      parameters:
+      - description: Dados de configuração inicial
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Configuração inicial do tenant
+      tags:
+      - setup
+  /initial-setup/check:
+    get:
+      description: Retorna se o tenant precisa de configuração inicial
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Verificar setup inicial
+      tags:
+      - setup
+  /knowledge-bases:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar bases de conhecimento
+      tags:
+      - knowledge-base
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados da base
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar base de conhecimento
+      tags:
+      - knowledge-base
+  /knowledge-bases/{knowledgeBaseId}:
+    delete:
+      parameters:
+      - description: ID da base
+        in: path
+        name: knowledgeBaseId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover base de conhecimento
+      tags:
+      - knowledge-base
+    get:
+      parameters:
+      - description: ID da base
+        in: path
+        name: knowledgeBaseId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Detalhar base de conhecimento
+      tags:
+      - knowledge-base
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID da base
+        in: path
+        name: knowledgeBaseId
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar base de conhecimento
+      tags:
+      - knowledge-base
+  /knowledge-bases/{knowledgeBaseId}/sources:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID da base
+        in: path
+        name: knowledgeBaseId
+        required: true
+        type: integer
+      - description: Dados da fonte
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Adicionar fonte na base
+      tags:
+      - knowledge-base
+  /knowledge-bases/{knowledgeBaseId}/sources/{sourceId}:
+    delete:
+      parameters:
+      - description: ID da base
+        in: path
+        name: knowledgeBaseId
+        required: true
+        type: integer
+      - description: ID da fonte
+        in: path
+        name: sourceId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover fonte da base
+      tags:
+      - knowledge-base
+  /messages/{ticketId}:
+    get:
+      parameters:
+      - description: ID do ticket
+        in: path
+        name: ticketId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar mensagens do ticket
+      tags:
+      - messages
+    post:
+      consumes:
+      - application/json
+      description: Envia mensagem via engine WhatsApp através do RabbitMQ
+      parameters:
+      - description: ID do ticket
+        in: path
+        name: ticketId
+        required: true
+        type: integer
+      - description: Conteúdo da mensagem
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Enviar mensagem
+      tags:
+      - messages
+  /permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar permissões disponíveis
+      tags:
+      - rbac
+  /pipelines:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar pipelines
+      tags:
+      - pipelines
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados do pipeline
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar pipeline
+      tags:
+      - pipelines
+  /pipelines/{pipelineId}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do pipeline
+        in: path
+        name: pipelineId
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar pipeline
+      tags:
+      - pipelines
+  /pipelines/ai-suggest:
+    post:
+      consumes:
+      - application/json
+      description: Gera sugestão de pipeline com IA baseada em contexto de atendimento
+      parameters:
+      - description: Mensagens de contexto
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Sugestão IA de pipeline
+      tags:
+      - pipelines
+  /pipelines/export/{pipelineId}:
+    get:
+      parameters:
+      - description: ID do pipeline
+        in: path
+        name: pipelineId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Exportar pipeline
+      tags:
+      - pipelines
+  /pipelines/import:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados do pipeline
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Importar pipeline
+      tags:
+      - pipelines
+  /plugins/catalog:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Catálogo de plugins
+      tags:
+      - plugins
+  /plugins/checkout:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados do checkout
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Ativar/instalar plugin
+      tags:
+      - plugins
+  /plugins/installed:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Plugins instalados
+      tags:
+      - plugins
+  /plugins/instance:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: ID da instância
+      tags:
+      - plugins
+  /public-settings:
+    get:
+      description: Retorna configurações visíveis sem autenticação (nome do tenant,
+        logo)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Configurações públicas
+      tags:
+      - settings
+  /queue:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar filas
+      tags:
+      - queues
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados da fila
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar fila
+      tags:
+      - queues
+  /queue/{queueId}:
+    delete:
+      parameters:
+      - description: ID da fila
+        in: path
+        name: queueId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover fila
+      tags:
+      - queues
+    get:
+      parameters:
+      - description: ID da fila
+        in: path
+        name: queueId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Detalhar fila
+      tags:
+      - queues
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID da fila
+        in: path
+        name: queueId
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar fila
+      tags:
+      - queues
+  /quickAnswers:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar respostas rápidas
+      tags:
+      - quick-answers
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados da resposta
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar resposta rápida
+      tags:
+      - quick-answers
+  /quickAnswers/{quickAnswerId}:
+    delete:
+      parameters:
+      - description: ID da resposta
+        in: path
+        name: quickAnswerId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover resposta rápida
+      tags:
+      - quick-answers
+    get:
+      parameters:
+      - description: ID da resposta rápida
+        in: path
+        name: quickAnswerId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Detalhar resposta rápida
+      tags:
+      - quick-answers
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID da resposta
+        in: path
+        name: quickAnswerId
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar resposta rápida
+      tags:
+      - quick-answers
+  /roles:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar papéis
+      tags:
+      - rbac
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados do papel
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar papel
+      tags:
+      - rbac
+  /roles/{roleId}:
+    delete:
+      parameters:
+      - description: ID do papel
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover papel
+      tags:
+      - rbac
+    get:
+      parameters:
+      - description: ID do papel
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Detalhar papel
+      tags:
+      - rbac
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do papel
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar papel
+      tags:
+      - rbac
+  /saas/plans:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar planos (superadmin)
+      tags:
+      - saas
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados do plano
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar plano (superadmin)
+      tags:
+      - saas
+  /saas/tenants:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar tenants (superadmin)
+      tags:
+      - saas
+  /saas/tenants/{tenantId}/plan:
+    get:
+      parameters:
+      - description: UUID do tenant
+        in: path
+        name: tenantId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Plano do tenant (superadmin)
+      tags:
+      - saas
+  /settings:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar configurações
+      tags:
+      - settings
+  /settings/{key}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Chave da configuração
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Valor a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar configuração
+      tags:
+      - settings
+  /system/rabbitmq/queues:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Filas RabbitMQ
+      tags:
+      - system
+  /system/stats:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Estatísticas do sistema
+      tags:
+      - system
+  /system/version:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Versão do serviço
+      tags:
+      - system
+  /system/version/postgres:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Versão do PostgreSQL
+      tags:
+      - system
+  /system/version/rabbitmq:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Versão do RabbitMQ
+      tags:
+      - system
+  /system/version/redis:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Versão do Redis
+      tags:
+      - system
+  /tag-groups:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar grupos de tags
+      tags:
+      - tags
+  /tags:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar tags
+      tags:
+      - tags
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados da tag
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar tag
+      tags:
+      - tags
+  /tags/{id}:
+    delete:
+      parameters:
+      - description: ID da tag
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover tag
+      tags:
+      - tags
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID da tag
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar tag
+      tags:
+      - tags
+  /tickets:
+    get:
+      parameters:
+      - description: Filtro por status (open, pending, closed)
+        in: query
+        name: status
+        type: string
+      - description: Filtro por fila
+        in: query
+        name: queueId
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar tickets
+      tags:
+      - tickets
+  /tickets/{ticketId}:
+    get:
+      parameters:
+      - description: ID do ticket
+        in: path
+        name: ticketId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Detalhar ticket
+      tags:
+      - tickets
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do ticket
+        in: path
+        name: ticketId
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar ticket
+      tags:
+      - tickets
+  /tickets/{ticketId}/logs:
+    get:
+      parameters:
+      - description: ID do ticket
+        in: path
+        name: ticketId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Logs do ticket
+      tags:
+      - tickets
+  /users:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar usuários
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados do usuário
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar usuário
+      tags:
+      - users
+  /users/{userId}:
+    delete:
+      parameters:
+      - description: ID do usuário
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover usuário
+      tags:
+      - users
+    get:
+      parameters:
+      - description: ID do usuário
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Detalhar usuário
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do usuário
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar usuário
+      tags:
+      - users
+  /whatsapp:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar conexões WhatsApp
+      tags:
+      - whatsapp
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados da conexão
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar conexão WhatsApp
+      tags:
+      - whatsapp
+  /whatsapp/{id}:
+    delete:
+      parameters:
+      - description: ID da conexão
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover conexão WhatsApp
+      tags:
+      - whatsapp
+    get:
+      parameters:
+      - description: ID da conexão
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Detalhar conexão WhatsApp
+      tags:
+      - whatsapp
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID da conexão
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar conexão WhatsApp
+      tags:
+      - whatsapp
+  /whatsappsession/{whatsappId}:
+    delete:
+      parameters:
+      - description: ID da conexão
+        in: path
+        name: whatsappId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Parar sessão WhatsApp
+      tags:
+      - whatsapp-sessions
+    post:
+      parameters:
+      - description: ID da conexão
+        in: path
+        name: whatsappId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Iniciar sessão WhatsApp
+      tags:
+      - whatsapp-sessions
+  /whatsappsession/all:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reiniciar todas as sessões
+      tags:
+      - whatsapp-sessions
+securityDefinitions:
+  BearerAuth:
+    description: 'Bearer JWT token. Formato: "Bearer <token>"'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

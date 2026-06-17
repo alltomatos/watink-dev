@@ -18,6 +18,12 @@ func NewVersionController(db *gorm.DB) *VersionController {
 	return &VersionController{db: db}
 }
 
+// @Summary      Versão do serviço
+// @Tags         system
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /system/version [get]
 func (vc *VersionController) GetVersion(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"service": "watink-business",
@@ -25,6 +31,12 @@ func (vc *VersionController) GetVersion(c *gin.Context) {
 	})
 }
 
+// @Summary      Versão do PostgreSQL
+// @Tags         system
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /system/version/postgres [get]
 func (vc *VersionController) GetPostgresVersion(c *gin.Context) {
 	var version string
 	if err := vc.db.Raw("SELECT version()").Scan(&version).Error; err != nil {
@@ -39,6 +51,12 @@ func (vc *VersionController) GetPostgresVersion(c *gin.Context) {
 }
 
 // GetRabbitMQVersion — stub até integração real com Management API.
+// @Summary      Versão do RabbitMQ
+// @Tags         system
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /system/version/rabbitmq [get]
 func (vc *VersionController) GetRabbitMQVersion(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"service":     "rabbitmq",
@@ -48,6 +66,12 @@ func (vc *VersionController) GetRabbitMQVersion(c *gin.Context) {
 }
 
 // GetRedisVersion — stub até integração real com Redis INFO.
+// @Summary      Versão do Redis
+// @Tags         system
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /system/version/redis [get]
 func (vc *VersionController) GetRedisVersion(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"service":     "redis",

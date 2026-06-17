@@ -18,6 +18,12 @@ func NewKnowledgeBaseController() *KnowledgeBaseController {
 	return &KnowledgeBaseController{}
 }
 
+// @Summary      Listar bases de conhecimento
+// @Tags         knowledge-base
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /knowledge-bases [get]
 func (kbc *KnowledgeBaseController) List(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
 	if !ok {
@@ -33,6 +39,13 @@ func (kbc *KnowledgeBaseController) List(c *gin.Context) {
 	c.JSON(http.StatusOK, knowledgeBases)
 }
 
+// @Summary      Detalhar base de conhecimento
+// @Tags         knowledge-base
+// @Produce      json
+// @Param        knowledgeBaseId  path      int  true  "ID da base"
+// @Success      200              {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /knowledge-bases/{knowledgeBaseId} [get]
 func (kbc *KnowledgeBaseController) Show(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
 	if !ok {
@@ -54,6 +67,14 @@ type createKnowledgeBaseInput struct {
 	Description string `json:"description"`
 }
 
+// @Summary      Criar base de conhecimento
+// @Tags         knowledge-base
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados da base"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /knowledge-bases [post]
 func (kbc *KnowledgeBaseController) Create(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
 	if !ok {
@@ -84,6 +105,15 @@ type updateKnowledgeBaseInput struct {
 	Description string `json:"description"`
 }
 
+// @Summary      Atualizar base de conhecimento
+// @Tags         knowledge-base
+// @Accept       json
+// @Produce      json
+// @Param        knowledgeBaseId  path      int                     true  "ID da base"
+// @Param        body             body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200              {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /knowledge-bases/{knowledgeBaseId} [put]
 func (kbc *KnowledgeBaseController) Update(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
 	if !ok {
@@ -114,6 +144,13 @@ func (kbc *KnowledgeBaseController) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, kb)
 }
 
+// @Summary      Remover base de conhecimento
+// @Tags         knowledge-base
+// @Produce      json
+// @Param        knowledgeBaseId  path      int  true  "ID da base"
+// @Success      200              {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /knowledge-bases/{knowledgeBaseId} [delete]
 func (kbc *KnowledgeBaseController) Delete(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
 	if !ok {
@@ -134,6 +171,15 @@ func (kbc *KnowledgeBaseController) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Knowledge base deleted"})
 }
 
+// @Summary      Adicionar fonte na base
+// @Tags         knowledge-base
+// @Accept       json
+// @Produce      json
+// @Param        knowledgeBaseId  path      int                     true  "ID da base"
+// @Param        body             body      map[string]interface{}  true  "Dados da fonte"
+// @Success      200              {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /knowledge-bases/{knowledgeBaseId}/sources [post]
 func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
 	if !ok {
@@ -178,6 +224,14 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 	c.JSON(http.StatusOK, source)
 }
 
+// @Summary      Remover fonte da base
+// @Tags         knowledge-base
+// @Produce      json
+// @Param        knowledgeBaseId  path      int  true  "ID da base"
+// @Param        sourceId         path      int  true  "ID da fonte"
+// @Success      200              {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /knowledge-bases/{knowledgeBaseId}/sources/{sourceId} [delete]
 func (kbc *KnowledgeBaseController) DeleteSource(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
 	if !ok {

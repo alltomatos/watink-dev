@@ -18,6 +18,12 @@ func NewPipelineController() *PipelineController {
 	return &PipelineController{}
 }
 
+// @Summary      Listar pipelines
+// @Tags         pipelines
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /pipelines [get]
 func (pc *PipelineController) List(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Pipelines")
 	if !ok {
@@ -33,6 +39,14 @@ func (pc *PipelineController) List(c *gin.Context) {
 	c.JSON(200, pipelines)
 }
 
+// @Summary      Criar pipeline
+// @Tags         pipelines
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados do pipeline"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /pipelines [post]
 func (pc *PipelineController) Create(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Pipelines")
 	if !ok {
@@ -74,6 +88,15 @@ func (pc *PipelineController) Create(c *gin.Context) {
 	c.JSON(200, pipeline)
 }
 
+// @Summary      Atualizar pipeline
+// @Tags         pipelines
+// @Accept       json
+// @Produce      json
+// @Param        pipelineId  path      int                     true  "ID do pipeline"
+// @Param        body        body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200         {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /pipelines/{pipelineId} [put]
 func (pc *PipelineController) Update(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Pipelines")
 	if !ok {
@@ -127,10 +150,25 @@ func (pc *PipelineController) Update(c *gin.Context) {
 	c.JSON(200, pipeline)
 }
 
+// @Summary      Importar pipeline
+// @Tags         pipelines
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados do pipeline"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /pipelines/import [post]
 func (pc *PipelineController) Import(c *gin.Context) {
 	pc.Create(c)
 }
 
+// @Summary      Exportar pipeline
+// @Tags         pipelines
+// @Produce      json
+// @Param        pipelineId  path      int  true  "ID do pipeline"
+// @Success      200         {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /pipelines/export/{pipelineId} [get]
 func (pc *PipelineController) Export(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Pipelines")
 	if !ok {
@@ -147,6 +185,15 @@ func (pc *PipelineController) Export(c *gin.Context) {
 	c.JSON(200, pipeline)
 }
 
+// @Summary      Sugestão IA de pipeline
+// @Description  Gera sugestão de pipeline com IA baseada em contexto de atendimento
+// @Tags         pipelines
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Mensagens de contexto"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /pipelines/ai-suggest [post]
 func (pc *PipelineController) AISuggest(c *gin.Context) {
 	var req struct {
 		Messages []struct {

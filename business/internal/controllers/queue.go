@@ -16,6 +16,12 @@ func NewQueueController() *QueueController {
 	return &QueueController{}
 }
 
+// @Summary      Listar filas
+// @Tags         queues
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /queue [get]
 func (qc *QueueController) ListQueues(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Queues")
 	if !ok {
@@ -34,6 +40,14 @@ func (qc *QueueController) ListQueues(c *gin.Context) {
 	c.JSON(200, queues)
 }
 
+// @Summary      Detalhar fila
+// @Tags         queues
+// @Produce      json
+// @Param        queueId  path      int  true  "ID da fila"
+// @Success      200      {object}  map[string]interface{}
+// @Failure      404      {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /queue/{queueId} [get]
 func (qc *QueueController) ShowQueue(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Queues")
 	if !ok {
@@ -51,6 +65,14 @@ func (qc *QueueController) ShowQueue(c *gin.Context) {
 	c.JSON(200, queue)
 }
 
+// @Summary      Criar fila
+// @Tags         queues
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados da fila"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /queue [post]
 func (qc *QueueController) CreateQueue(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Queues")
 	if !ok {
@@ -78,6 +100,15 @@ func (qc *QueueController) CreateQueue(c *gin.Context) {
 	c.JSON(200, input)
 }
 
+// @Summary      Atualizar fila
+// @Tags         queues
+// @Accept       json
+// @Produce      json
+// @Param        queueId  path      int                     true  "ID da fila"
+// @Param        body     body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200      {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /queue/{queueId} [put]
 func (qc *QueueController) UpdateQueue(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Queues")
 	if !ok {
@@ -104,6 +135,14 @@ func (qc *QueueController) UpdateQueue(c *gin.Context) {
 	c.JSON(200, queue)
 }
 
+// @Summary      Remover fila
+// @Tags         queues
+// @Produce      json
+// @Param        queueId  path      int  true  "ID da fila"
+// @Success      200      {object}  map[string]string
+// @Failure      404      {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /queue/{queueId} [delete]
 func (qc *QueueController) DeleteQueue(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Queues")
 	if !ok {
