@@ -31,7 +31,7 @@ import {
 } from "../../components/ui/table";
 import { Button } from "../../components/ui/button";
 
-const reducer = (state, action) => {
+const reducer = (state: any[], action: { type: string; payload?: any }): any[] => {
   if (action.type === "LOAD_QUEUES") {
     const queues = action.payload;
     return [...queues];
@@ -65,7 +65,7 @@ const Queues = () => {
   const [loading, setLoading] = useState(false);
   const [queues, dispatch] = useReducer(reducer, []);
   const [queueModalOpen, setQueueModalOpen] = useState(false);
-  const [selectedQueue, setSelectedQueue] = useState(null);
+  const [selectedQueue, setSelectedQueue] = useState<any>(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
   useEffect(() => {
@@ -110,12 +110,12 @@ const Queues = () => {
     setQueueModalOpen(false);
   };
 
-  const handleEditQueue = (queue) => {
+  const handleEditQueue = (queue: any) => {
     setSelectedQueue(queue);
     setQueueModalOpen(true);
   };
 
-  const handleDeleteQueue = async (queueId) => {
+  const handleDeleteQueue = async (queueId: any) => {
     try {
       await api.delete(`/queue/${queueId}`);
       toast.success(i18n.t("queues.toasts.deleted"));
@@ -146,7 +146,7 @@ const Queues = () => {
       />
 
       <PageHeader 
-        title={i18n.t("queues.title")}
+        title={i18n.t("queues.title") as string}
         description="Configure as filas de atendimento e fluxos de triagem automática"
       >
         <Button onClick={handleOpenQueueModal}>
@@ -167,7 +167,7 @@ const Queues = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {queues.map((queue) => (
+              {queues.map((queue: any) => (
                 <TableRow key={queue.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">

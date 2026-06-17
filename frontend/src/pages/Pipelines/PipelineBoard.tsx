@@ -180,9 +180,9 @@ const PipelineBoard: React.FC = () => {
                     />
                 ) : (
                     <PipelineKanban
-                        pipeline={pipeline}
-                        columns={columns}
-                        setColumns={setColumns}
+                        pipeline={pipeline as any}
+                        columns={columns as any}
+                        setColumns={setColumns as any}
                         onDragEnd={handleDragEnd}
                         isEnterprise={false}
                     />

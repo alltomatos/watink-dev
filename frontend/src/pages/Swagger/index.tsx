@@ -12,7 +12,7 @@ const Swagger: React.FC = () => {
   const [url, setUrl] = useState("");
 
   const profile = (user?.profile || "").toLowerCase();
-  const perms: string[] = user?.permissions || [];
+  const perms: string[] = (user as any)?.permissions || [];
   const hasPermission =
     profile === "superadmin" ||
     perms.includes("view_swagger") ||

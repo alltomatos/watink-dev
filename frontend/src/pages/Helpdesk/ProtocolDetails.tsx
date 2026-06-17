@@ -302,8 +302,8 @@ const ProtocolDetails: React.FC = () => {
               </div>
 
               <AttachmentsList
-                attachments={attachments}
-                onDelete={handleDeleteAttachment}
+                attachments={attachments as any}
+                onDelete={handleDeleteAttachment as any}
                 canDelete={true}
                 showEmpty={false}
               />

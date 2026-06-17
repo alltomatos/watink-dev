@@ -38,7 +38,7 @@ const TicketsManager: React.FC = () => {
   const [pendingCount, setPendingCount] = useState<number>(0);
 
   // Filtros
-  const userQueueIds: number[] = user?.queues?.map((q: any) => q.id) ?? [];
+  const userQueueIds: number[] = (user as any)?.queues?.map((q: any) => q.id) ?? [];
   const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>(userQueueIds);
   const [selectedTags, setSelectedTags] = useState<any[]>([]);
 
@@ -90,7 +90,7 @@ const TicketsManager: React.FC = () => {
                 </Tooltip>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-64 p-3">
-                <TicketsQueueSelect selectedQueueIds={selectedQueueIds} userQueues={user?.queues} onChange={(values: number[]) => setSelectedQueueIds(values)} />
+                <TicketsQueueSelect selectedQueueIds={selectedQueueIds} userQueues={(user as any)?.queues} onChange={(values: number[]) => setSelectedQueueIds(values)} />
               </PopoverContent>
             </Popover>
 

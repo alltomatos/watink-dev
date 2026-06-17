@@ -34,7 +34,7 @@ const NewTicketModal = ({ modalOpen, onClose }: NewTicketModalProps) => {
   const [contactModalOpen, setContactModalOpen] = useState(false);
 
   const { user } = useContext(AuthContext);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!modalOpen || searchParam.length < 3) {

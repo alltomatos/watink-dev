@@ -51,7 +51,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ modalOpen, onClo
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <Input
-            placeholder={i18n.t("newTicketModal.fieldLabel")}
+            placeholder={i18n.t("newTicketModal.fieldLabel") as string}
             value={searchParam}
             onChange={(e) => setSearchParam(e.target.value)}
             autoFocus

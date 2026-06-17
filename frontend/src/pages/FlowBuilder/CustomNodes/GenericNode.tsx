@@ -46,6 +46,7 @@ const GenericNode: React.FC<GenericNodeProps> = ({
   const showDelete = !!(onDelete || data.onDelete);
 
   return (
+    <div style={style}>
     <PaperCard
       className={cn(
         "relative flex min-w-[180px] flex-col items-center justify-center p-2.5",
@@ -53,8 +54,6 @@ const GenericNode: React.FC<GenericNodeProps> = ({
         "rounded-md text-sm shadow-[0_2px_5px_var(--shadow-appbar)]",
         className
       )}
-      padding="default"
-      style={style}
     >
       {showTargetHandle && (
         <Handle
@@ -102,6 +101,7 @@ const GenericNode: React.FC<GenericNodeProps> = ({
         />
       )}
     </PaperCard>
+    </div>
   );
 };
 

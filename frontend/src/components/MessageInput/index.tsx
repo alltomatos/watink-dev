@@ -447,7 +447,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ ticketStatus, whatsappStatu
                   )}
                   <textarea
                     className="w-full p-1 text-xs border-none border-t border-[var(--border-divider)] outline-none h-[60px] resize-none bg-[var(--bg-surface)]"
-                    placeholder={i18n.t("messagesInput.placeholderOpen")}
+                    placeholder={i18n.t("messagesInput.placeholderOpen") as string}
                     value={media.caption}
                     onChange={(e) => handleMediaCaptionChange(index, e.target.value)}
                   />
@@ -549,7 +549,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ ticketStatus, whatsappStatu
             <Switch
               checked={Boolean(signMessage)}
               onCheckedChange={(checked) => setSignMessage(checked)}
-              aria-label={i18n.t("messagesInput.signMessage")}
+              aria-label={i18n.t("messagesInput.signMessage") as string}
             />
           </label>
         </div>
@@ -624,8 +624,8 @@ const MessageInput: React.FC<MessageInputProps> = ({ ticketStatus, whatsappStatu
             className="pl-2.5 flex-1 border-none bg-transparent resize-none outline-none text-sm leading-5 max-h-[120px]"
             placeholder={
               ticketStatus === "open"
-                ? i18n.t("messagesInput.placeholderOpen")
-                : i18n.t("messagesInput.placeholderClosed")
+                ? i18n.t("messagesInput.placeholderOpen") as string
+                : i18n.t("messagesInput.placeholderClosed") as string
             }
             rows={1}
             value={inputMessage}

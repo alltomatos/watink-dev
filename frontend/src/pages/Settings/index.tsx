@@ -121,14 +121,14 @@ const Settings: React.FC = () => {
         }
 
         // Deserialize category/SLA state
-        const savedCategories = safeSettings.find((s) => s.key === "helpdesk_categories")?.value;
+        const savedCategories = safeSettings.find((s: any) => s.key === "helpdesk_categories")?.value;
         if (savedCategories) {
           try {
             setHelpdeskCategories(JSON.parse(savedCategories));
           } catch { /* silence */ }
         }
 
-        const savedSLA = safeSettings.find((s) => s.key === "helpdesk_sla_config")?.value;
+        const savedSLA = safeSettings.find((s: any) => s.key === "helpdesk_sla_config")?.value;
         if (savedSLA) {
           try {
             setSlaConfig(JSON.parse(savedSLA));
@@ -538,7 +538,7 @@ const Settings: React.FC = () => {
               <div className="space-y-2">
                 <Label>Imagem de Fundo (Login)</Label>
                 <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-3 bg-muted/10">
-                  {renderImagePreview("login_backgroundImage", "")}
+                  {renderImagePreview("login_backgroundImage")}
                   <input
                     type="file"
                     accept="image/*"

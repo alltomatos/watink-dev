@@ -44,8 +44,8 @@ const UserProfile = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [profileImage, setProfileImage] = useState(getBackendUrl(user?.profileImage));
-  const [signature, setSignature] = useState(user?.signature || "");
+  const [profileImage, setProfileImage] = useState(getBackendUrl(user?.profileImage as string | undefined));
+  const [signature, setSignature] = useState<string>((user as any)?.signature || "");
 
   // Busca dados frescos do perfil ao montar (avatar/assinatura podem estar desatualizados no contexto)
   useEffect(() => {
@@ -62,7 +62,7 @@ const UserProfile = () => {
     fetchProfile();
   }, [user?.id]);
 
-  const handleUpdateUser = async (values) => {
+  const handleUpdateUser = async (values: any) => {
     try {
       const payload: Record<string, unknown> = {
         name: values.name,
@@ -248,7 +248,7 @@ const UserProfile = () => {
                         id="signature" 
                         name="signature" 
                         placeholder="Ex: Att, Equipe Watink"
-                        value={values.signature}
+                        value={values.signature ?? ""}
                         onChange={handleChange}
                         onBlur={handleBlur}
                       />

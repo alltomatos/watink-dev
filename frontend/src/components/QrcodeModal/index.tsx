@@ -26,7 +26,7 @@ const QrcodeModal = ({ open, onClose, whatsAppId }: QrcodeModalProps) => {
     const fetchSession = async () => {
       try {
         const { data } = await api.get<WhatsAppSession>(`/whatsapp/${whatsAppId}`);
-        setQrCode(data.qrcode);
+        setQrCode(data.qrcode ?? "");
       } catch (err) {
         toastError(err);
       }
@@ -41,7 +41,7 @@ const QrcodeModal = ({ open, onClose, whatsAppId }: QrcodeModalProps) => {
 
     socket.on("whatsappSession", (data: WhatsAppSessionSocketEvent) => {
       if (data.action === "update" && data.session.id === whatsAppId) {
-        setQrCode(data.session.qrcode);
+        setQrCode(data.session.qrcode ?? "");
       }
       if (data.action === "update" && data.session.qrcode === "") {
         onClose();

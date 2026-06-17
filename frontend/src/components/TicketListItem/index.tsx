@@ -179,7 +179,7 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
         {isPending && (
           <div className="mt-1.5">
             <ButtonWithSpinner
-              size="small"
+              size="sm"
               loading={loading}
               className="rounded-md px-3 py-1 text-xs font-semibold normal-case bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={(e: React.MouseEvent) => {

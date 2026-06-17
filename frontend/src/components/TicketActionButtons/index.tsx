@@ -72,12 +72,12 @@ const TicketActionButtons: React.FC<TicketActionButtonsProps> = ({ ticket }) => 
         <ButtonWithSpinner
           loading={loading}
           startIcon={<RotateCcw className="h-4 w-4" />}
-          size="small"
+          size="sm"
           onClick={(e: React.MouseEvent) =>
             handleUpdateTicketStatus(e, "open", user?.id ?? null)
           }
         >
-          {i18n.t("messagesList.header.buttons.reopen")}
+          {i18n.t("messagesList.header.buttons.reopen") as string}
         </ButtonWithSpinner>
       )}
 
@@ -86,24 +86,24 @@ const TicketActionButtons: React.FC<TicketActionButtonsProps> = ({ ticket }) => 
           <ButtonWithSpinner
             loading={loading}
             startIcon={<RotateCcw className="h-4 w-4" />}
-            size="small"
+            size="sm"
             onClick={(e: React.MouseEvent) =>
               handleUpdateTicketStatus(e, "pending", null)
             }
           >
-            {i18n.t("messagesList.header.buttons.return")}
+            {i18n.t("messagesList.header.buttons.return") as string}
           </ButtonWithSpinner>
 
           <ButtonWithSpinner
             loading={loading}
-            size="small"
-            variant="contained"
+            size="sm"
+            variant="default"
             color="primary"
             onClick={(e: React.MouseEvent) =>
               handleUpdateTicketStatus(e, "closed", user?.id ?? null)
             }
           >
-            {i18n.t("messagesList.header.buttons.resolve")}
+            {i18n.t("messagesList.header.buttons.resolve") as string}
           </ButtonWithSpinner>
 
           <Button
@@ -126,14 +126,14 @@ const TicketActionButtons: React.FC<TicketActionButtonsProps> = ({ ticket }) => 
       {ticket.status === "pending" && (
         <ButtonWithSpinner
           loading={loading}
-          size="small"
-          variant="contained"
+          size="sm"
+          variant="default"
           color="primary"
           onClick={(e: React.MouseEvent) =>
             handleUpdateTicketStatus(e, "open", user?.id ?? null)
           }
         >
-          {i18n.t("messagesList.header.buttons.accept")}
+          {i18n.t("messagesList.header.buttons.accept") as string}
         </ButtonWithSpinner>
       )}
     </div>

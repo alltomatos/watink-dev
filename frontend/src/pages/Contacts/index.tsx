@@ -50,7 +50,7 @@ import {
   DropdownMenuTrigger
 } from "../../components/ui/dropdown-menu";
 
-const reducer = (state, action) => {
+const reducer = (state: any[], action: { type: string; payload?: any }): any[] => {
   if (action.type === "LOAD_CONTACTS") {
     const contacts = action.payload || [];
     if (contacts.length === 0) return [];
@@ -103,10 +103,10 @@ const Contacts = () => {
   const [pageNumber, setPageNumber] = useState(1);
   const [searchParam, setSearchParam] = useState("");
   const [contacts, dispatch] = useReducer(reducer, []);
-  const [selectedContactId, setSelectedContactId] = useState(null);
+  const [selectedContactId, setSelectedContactId] = useState<any>(null);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
-  const [selectedInitialContact, setSelectedInitialContact] = useState(null);
+  const [selectedInitialContact, setSelectedInitialContact] = useState<any>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [importConfirmOpen, setImportConfirmOpen] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -153,7 +153,7 @@ const Contacts = () => {
     };
   }, []);
 
-  const handleSearch = (event) => {
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchParam(event.target.value.toLowerCase());
   };
 
@@ -167,12 +167,12 @@ const Contacts = () => {
     setContactModalOpen(false);
   };
 
-  const handleOpenClientModal = (contact) => {
+  const handleOpenClientModal = (contact: any) => {
     setSelectedInitialContact(contact);
     setClientModalOpen(true);
   };
 
-  const handleSaveTicket = async (contactId) => {
+  const handleSaveTicket = async (contactId: any) => {
     if (!contactId) return;
     setLoading(true);
     try {
@@ -188,7 +188,7 @@ const Contacts = () => {
     setLoading(false);
   };
 
-  const handleDeleteContact = async (contactId) => {
+  const handleDeleteContact = async (contactId: any) => {
     if (!contactId) return;
     try {
       await api.delete(`/contacts/${contactId}`);
@@ -216,7 +216,7 @@ const Contacts = () => {
     setPageNumber((prevPageNumber) => prevPageNumber + 1);
   };
 
-  const handleScroll = (e) => {
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (!hasMore || loading) return;
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     if (scrollHeight - (scrollTop + clientHeight) < 100) {
@@ -224,7 +224,7 @@ const Contacts = () => {
     }
   };
 
-  const getContactStatus = (contact) => {
+  const getContactStatus = (contact: any) => {
     if (contact.isGroup || contact.number?.includes("@g.us")) {
       return <Badge variant="secondary">Grupo</Badge>;
     }
@@ -272,12 +272,12 @@ const Contacts = () => {
         {i18n.t("contacts.confirmationModal.importMessage")}
       </ConfirmationModal>
 
-      <PageHeader title={i18n.t("contacts.title")} description={`${contacts.length} contatos encontrados`}>
+      <PageHeader title={i18n.t("contacts.title") as string} description={`${contacts.length} contatos encontrados`}>
         <div className="flex items-center gap-2">
           <div className="relative w-full max-w-sm hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={i18n.t("contacts.searchPlaceholder")}
+              placeholder={i18n.t("contacts.searchPlaceholder") as string}
               value={searchParam}
               onChange={handleSearch}
               className="pl-9 h-10"
@@ -344,7 +344,7 @@ const Contacts = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  contacts.map((contact) => (
+                  contacts.map((contact: any) => (
                     <TableRow key={contact.id} className="group">
                       <TableCell>
                         <Avatar src={getBackendUrl(contact.profilePicUrl)} name={contact.name} size="sm" />
@@ -419,7 +419,7 @@ const Contacts = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-8">
-            {contacts.map((contact) => (
+            {contacts.map((contact: any) => (
               <ListItemCard
                 key={contact.id}
                 avatar={getBackendUrl(contact.profilePicUrl)}

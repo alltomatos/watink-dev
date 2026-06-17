@@ -80,8 +80,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     applyThemeTokens({
       mode: darkMode ? "dark" : "light",
-      appTheme,
-      brand,
+      appTheme: appTheme as any,
+      brand: brand as any,
     });
   }, [darkMode, appTheme, brand]);
 
