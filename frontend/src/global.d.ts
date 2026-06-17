@@ -23,7 +23,16 @@ declare module 'react-signature-canvas' {
   }
   export default SignatureCanvas;
 }
-declare module 'emoji-mart';
+declare module 'emoji-mart' {
+  import React from 'react';
+  export const Picker: React.ComponentType<any>;
+  export const NimblePicker: React.ComponentType<any>;
+  export const Emoji: React.ComponentType<any>;
+  export const NimbleEmoji: React.ComponentType<any>;
+  export const EmojiLookup: any;
+  const emojiMart: any;
+  export default emojiMart;
+}
 declare module 'mic-recorder-to-mp3' {
   const MicRecorder: any;
   export default MicRecorder;
