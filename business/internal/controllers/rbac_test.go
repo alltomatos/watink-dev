@@ -39,6 +39,11 @@ func setupRBACTestDB(t *testing.T) *gorm.DB {
 	tmpFile := t.TempDir() + "/rbac_test.db"
 	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	})
 
 	ddls := []string{
 		`CREATE TABLE IF NOT EXISTS "Roles" (
@@ -96,6 +101,7 @@ func setupTestContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID) (*gin.Conte
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest("GET", "/", nil)
 
 	// Injetar dados do JWT (simula TenantMiddleware)
 	c.Set("tenantId", tenantID)
