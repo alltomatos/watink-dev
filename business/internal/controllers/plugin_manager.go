@@ -3,23 +3,22 @@ package controllers
 import (
 	"net/http"
 
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
-	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type PluginController struct {
-	db         *gorm.DB
-	hubManager *plugins.HubManager
+	planLimitSvc domain.PlanLimitServiceInterface
+	hubManager   *plugins.HubManager
 }
 
-func NewPluginController(db *gorm.DB, hubManager *plugins.HubManager) *PluginController {
+func NewPluginController(planLimitSvc domain.PlanLimitServiceInterface, hubManager *plugins.HubManager) *PluginController {
 	return &PluginController{
-		db:         db,
-		hubManager: hubManager,
+		planLimitSvc: planLimitSvc,
+		hubManager:   hubManager,
 	}
 }
 
@@ -66,8 +65,7 @@ func (pc *PluginController) Checkout(c *gin.Context) {
 		return
 	}
 
-	limitService := services.NewPlanLimitService(pc.db)
-	if err := limitService.CheckLimit(tenantID, "plugins"); err != nil {
+	if err := pc.planLimitSvc.CheckLimit(tenantID, "plugins"); err != nil {
 		utils.RespondWithServiceError(c, http.StatusForbidden, err, "Plan limit reached for plugins")
 		return
 	}

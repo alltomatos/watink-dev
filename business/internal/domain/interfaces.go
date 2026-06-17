@@ -108,11 +108,60 @@ type QueueMonitor interface {
 	ListAllQueues() ([]QueueMetrics, error)
 }
 
+// TenantConsumption is a read-model for cross-tenant system stats (superadmin only).
+type TenantConsumption struct {
+	TenantID    string `json:"tenantId"`
+	TenantName  string `json:"tenantName"`
+	Users       int64  `json:"users"`
+	Contacts    int64  `json:"contacts"`
+	Tickets     int64  `json:"tickets"`
+	OpenTickets int64  `json:"openTickets"`
+	Whatsapps   int64  `json:"whatsapps"`
+}
+
+// SystemRepository defines the contract for cross-tenant system monitoring queries.
+type SystemRepository interface {
+	GetTenantConsumption(ctx context.Context) ([]TenantConsumption, error)
+}
+
+// SettingRepository defines the contract for setting operations.
+type SettingRepository interface {
+	// FindPublicSettings returns branding settings for the first tenant (used on login page, no auth).
+	FindPublicSettings(ctx context.Context, keys []string) ([]models.Setting, error)
+}
+
+// PermissionRepository defines the contract for global (tenant-agnostic) permission catalog.
+type PermissionRepository interface {
+	FindAll(ctx context.Context) ([]models.Permission, error)
+	FindByIDs(ctx context.Context, ids []int) ([]models.Permission, error)
+}
+
+// SwaggerPermissionRepository checks whether a user has access to API docs.
+type SwaggerPermissionRepository interface {
+	HasSwaggerPermission(userID int, tenantID uuid.UUID) (bool, error)
+}
+
+// VersionRepository provides infrastructure version diagnostics.
+type VersionRepository interface {
+	GetPostgresVersion(ctx context.Context) (string, error)
+}
+
 // Service Interfaces
+
+// TenantSeedData holds the data required to bootstrap the first tenant.
+type TenantSeedData struct {
+	FirstName  string
+	LastName   string
+	Email      string
+	Password   string
+	Document   string
+	BackendURL string
+}
 
 // SetupServiceInterface defines the contract for tenant initialization.
 type SetupServiceInterface interface {
-	InitializeTenant(data interface{}) error
+	NeedsSetup(ctx context.Context) (bool, error)
+	InitializeTenant(data TenantSeedData) error
 }
 
 // DistributionServiceInterface defines the contract for ticket distribution.

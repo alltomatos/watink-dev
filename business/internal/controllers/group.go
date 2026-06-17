@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
@@ -8,14 +9,15 @@ import (
 	"gorm.io/gorm"
 )
 
-// GroupController encapsulates group/RBAC operations with RLS-scoped DB from auth middleware.
-// Retains root DB (gc.db) for global Permission lookups — Permissions are tenant-agnostic.
+// GroupController encapsulates group/RBAC operations.
+// permRepo: global (tenant-agnostic) permission catalog — not RLS-scoped.
+// All Group mutations use auth.GetScoped for RLS isolation.
 type GroupController struct {
-	db *gorm.DB
+	permRepo domain.PermissionRepository
 }
 
-func NewGroupController(db *gorm.DB) *GroupController {
-	return &GroupController{db: db}
+func NewGroupController(permRepo domain.PermissionRepository) *GroupController {
+	return &GroupController{permRepo: permRepo}
 }
 
 // @Summary      Listar grupos
@@ -49,8 +51,8 @@ func (gc *GroupController) List(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /permissions [get]
 func (gc *GroupController) ListPermissions(c *gin.Context) {
-	var permissions []models.Permission
-	if err := gc.db.Find(&permissions).Error; err != nil {
+	permissions, err := gc.permRepo.FindAll(c.Request.Context())
+	if err != nil {
 		utils.RespondWithInternalError(c, err, "ListPermissions")
 		return
 	}
@@ -162,8 +164,8 @@ func (gc *GroupController) Update(c *gin.Context) {
 		}
 
 		if req.Permissions != nil {
-			var permissions []models.Permission
-			if err := gc.db.Where("id IN ?", req.Permissions).Find(&permissions).Error; err != nil {
+			permissions, err := gc.permRepo.FindByIDs(tx.Statement.Context, req.Permissions)
+			if err != nil {
 				return err
 			}
 			if len(permissions) != len(req.Permissions) {
