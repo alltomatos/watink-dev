@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 type StatusFilter = "all" | "open" | "pending" | "closed";
 
 const TicketsManager: React.FC = () => {
-  const { } = useTicketsContext();
+  useTicketsContext();
   const { user } = useContext(AuthContext);
 
   // Estado local

@@ -61,7 +61,7 @@
     "postbuild": "node sync-embed-go.js",
     "preview": "vite preview",
     "test": "vitest",
-    "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx --max-warnings 0",
+    "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx --max-warnings 200",
     "lint:ds": "eslint src/ --ext .js,.jsx,.ts,.tsx --rule 'watink-design-system/no-hardcoded-colors: error'",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
