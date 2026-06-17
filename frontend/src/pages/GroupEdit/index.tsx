@@ -33,7 +33,7 @@ import {
   TooltipTrigger,
 } from "../../components/ui/tooltip";
 
-import MainContainer from "../../components/MainContainer";
+import { PageLayout } from "../../components/ui/page-layout";
 import PermissionTransferList from "../../components/PermissionTransferList";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
@@ -181,16 +181,16 @@ const GroupEdit: React.FC = () => {
 
   if (loading) {
     return (
-      <MainContainer>
+      <PageLayout>
         <div className="flex min-h-[400px] items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      </MainContainer>
+      </PageLayout>
     );
   }
 
   return (
-    <MainContainer>
+    <PageLayout>
       <Formik
         initialValues={group}
         enableReinitialize
@@ -424,7 +424,7 @@ const GroupEdit: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </MainContainer>
+    </PageLayout>
   );
 };
 

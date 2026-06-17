@@ -8,9 +8,7 @@ import {
   History,
 } from "lucide-react";
 
-import MainContainer from "../../components/MainContainer";
-import MainHeader from "../../components/MainHeader";
-import Title from "../../components/Title";
+import { PageLayout, PageHeader, PageContent } from "../../components/ui/page-layout";
 import PaperCard from "../../components/PaperCard";
 import MetricCard from "../../components/ui/metric-card";
 import { Button } from "../../components/ui/button";
@@ -167,21 +165,19 @@ const Access: React.FC = () => {
 
   if (loading) {
     return (
-      <MainContainer>
+      <PageLayout>
         <div className="flex min-h-[400px] items-center justify-center">
           <p className="text-muted-foreground">Carregando métricas...</p>
         </div>
-      </MainContainer>
+      </PageLayout>
     );
   }
 
   return (
-    <MainContainer>
-      <MainHeader>
-        <Title>{i18n.t("access.title")}</Title>
-      </MainHeader>
+    <PageLayout>
+      <PageHeader title={i18n.t("access.title")} description="Gerencie usuários, funções e permissões do sistema" />
 
-      <div className="p-6">
+      <PageContent>
         {/* KPIs */}
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
           {KPI_CONFIG.map((kpi) => (
@@ -265,8 +261,8 @@ const Access: React.FC = () => {
             </PaperCard>
           ))}
         </div>
-      </div>
-    </MainContainer>
+      </PageContent>
+    </PageLayout>
   );
 };
 

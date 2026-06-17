@@ -13,8 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../
 
 import { ArrowLeft, Scan, Edit2, Loader2 } from "lucide-react";
 
-import MainContainer from "../../components/MainContainer";
-import Title from "../../components/Title";
+import { PageLayout, PageHeader, PageContent } from "../../components/ui/page-layout";
 import ConnectionStatusCard from "../../components/ConnectionStatusCard";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
@@ -62,6 +61,7 @@ const ConnectionConfig = () => {
 
     useEffect(() => {
         const socket = openSocket();
+        if (!socket) return;
 
         socket.on("whatsappSession", (data: any) => {
             if (data.action === "update" && data.session.id === parseInt(whatsappId || "0")) {
@@ -208,7 +208,7 @@ const ConnectionConfig = () => {
     }
 
     return (
-        <MainContainer>
+        <PageLayout>
             <ConfirmationModal
                 title={confirmationAction === "disconnect" ? i18n.t("connections.confirmationModal.disconnectTitle") : i18n.t("connections.confirmationModal.deleteTitle")}
                 open={confirmationOpen}
@@ -262,26 +262,29 @@ const ConnectionConfig = () => {
                 </DialogContent>
             </Dialog>
 
-            <div className="mb-6 flex items-center justify-between p-6 pb-0">
-                <div className="flex items-center space-x-4">
-                    <Button variant="ghost" size="icon" onClick={() => navigate("/connections")}>
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                    <Title>{whatsapp.name}</Title>
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={() => setWhatsAppModalOpen(true)} className="ml-2">
-                                    <Edit2 className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Editar Nome/Fila</TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
-            </div>
+            <PageHeader
+                title={
+                    <div className="flex items-center gap-3">
+                        <Button variant="ghost" size="icon" onClick={() => navigate("/connections")}>
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                        <span>{whatsapp.name}</span>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" onClick={() => setWhatsAppModalOpen(true)}>
+                                        <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Editar Nome/Fila</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                }
+            />
 
-            <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-3">
+            <PageContent>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                 <div className="md:col-span-2 space-y-6">
                     <ConnectionStatusCard status={whatsapp.status} />
 
@@ -459,7 +462,8 @@ const ConnectionConfig = () => {
                     </Card>
                 </div>
             </div>
-        </MainContainer>
+            </PageContent>
+        </PageLayout>
     );
 };
 

@@ -76,6 +76,7 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
 
   useEffect(() => {
     const socket = openSocket();
+    if (!socket) return;
     const queryKey = ["tickets", params];
 
     const shouldUpdateTicket = (ticket: TicketShape) => {

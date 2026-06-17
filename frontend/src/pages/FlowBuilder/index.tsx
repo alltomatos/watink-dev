@@ -161,7 +161,7 @@ const FlowBuilderContent = () => {
                 }
                 if (Array.isArray(data.edges)) setEdges(data.edges);
                 setLoading(false);
-            } catch {
+            } catch (_err) {
                 toastError(_err);
                 navigate('/flowbuilder');
             }

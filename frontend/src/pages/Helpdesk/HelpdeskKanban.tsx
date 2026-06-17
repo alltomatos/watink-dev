@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Maximize, RefreshCw, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import api from "../../services/api";
@@ -156,26 +157,22 @@ const HelpdeskKanban: React.FC<HelpdeskKanbanProps> = ({ tvMode = false }) => {
         <div className="mb-4 flex items-center justify-between rounded-lg bg-[var(--bg-surface)] p-3 shadow-sm">
           <div className="flex items-center gap-2">
             {!tvMode && (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => navigate("/helpdesk")}
-                className="rounded p-1.5 hover:bg-black/5"
               >
                 <ArrowLeft className="h-5 w-5" />
-              </button>
+              </Button>
             )}
             <h1 className="text-xl font-semibold">🎫 Helpdesk Kanban</h1>
           </div>
           <div className="flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={loadKanbanData}
-                  className="rounded p-2 hover:bg-black/5"
-                >
+                <Button variant="ghost" size="icon" onClick={loadKanbanData}>
                   <RefreshCw className="h-5 w-5" />
-                </button>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>Atualizar</TooltipContent>
             </Tooltip>
@@ -183,13 +180,9 @@ const HelpdeskKanban: React.FC<HelpdeskKanbanProps> = ({ tvMode = false }) => {
             {!tvMode && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={handleTvMode}
-                    className="rounded p-2 hover:bg-black/5"
-                  >
+                  <Button variant="ghost" size="icon" onClick={handleTvMode}>
                     <Maximize className="h-5 w-5" />
-                  </button>
+                  </Button>
                 </TooltipTrigger>
                 <TooltipContent>Modo TV (Tela Cheia)</TooltipContent>
               </Tooltip>

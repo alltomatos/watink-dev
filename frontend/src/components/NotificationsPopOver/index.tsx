@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { MessageSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { toast } from "react-toastify";
 import openSocket from "../../services/socket-io";
 
@@ -98,6 +99,7 @@ const NotificationsPopOver = () => {
 
   useEffect(() => {
     const socket = openSocket();
+    if (!socket) return;
 
     socket.on("connect", () => socket.emit("joinNotification"));
 
@@ -213,17 +215,14 @@ const NotificationsPopOver = () => {
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <button
-          aria-label="Open Notifications"
-          className="relative p-2 rounded-md hover:bg-[var(--bg-surface-alt)] transition-colors"
-        >
+        <Button variant="ghost" size="icon" aria-label="Open Notifications" className="relative">
           <MessageSquare className="w-5 h-5" />
           {count > 0 && (
             <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
               {count > 99 ? "99+" : count}
             </span>
           )}
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent
         align="end"

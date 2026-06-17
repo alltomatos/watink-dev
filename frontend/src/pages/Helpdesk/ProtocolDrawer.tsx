@@ -95,14 +95,9 @@ const ProtocolDrawer: React.FC<ProtocolDrawerProps> = ({
         {/* Header */}
         <div className="flex min-h-[73px] items-center justify-between border-b border-[var(--border-divider)] bg-[var(--border-default)] px-3">
           <span className="text-base font-semibold">Novo Protocolo</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded p-1 hover:bg-black/10 transition-colors"
-            aria-label="Fechar"
-          >
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fechar">
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
 
         {/* Content */}

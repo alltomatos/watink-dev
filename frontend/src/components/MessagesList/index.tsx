@@ -222,6 +222,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
 
   useEffect(() => {
     const socket = openSocket();
+    if (!socket) return;
     socket.on("connect", () => socket.emit("joinChatBox", ticketId));
     socket.on("appMessage", (data: { action: string; message: Message }) => {
       if (data.action === "create") {
