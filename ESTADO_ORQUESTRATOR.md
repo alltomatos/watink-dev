@@ -43,13 +43,13 @@ exclusivamente em `main.go` / `Container`.
 
 | ID | Tarefa | Arquivo(s) | Status | Depende de |
 |----|--------|-----------|--------|-----------|
-| A1 | Remover fallback `database.DB` global do Container | `business/internal/application/container.go` | ⏳ | — |
-| A2 | Mover `internal/controllers/swagger.go` → verificar se duplicata de `business/internal/controllers/swagger.go` e deletar raiz | `internal/controllers/swagger.go`, `internal/controllers/version.go` | ⏳ | — |
-| A3 | Declarar interface `SetupServiceInterface` em `domain/interfaces.go` | `business/internal/domain/interfaces.go` | ⏳ | — |
-| A4 | Declarar interface `DistributionServiceInterface` em `domain/interfaces.go` | `business/internal/domain/interfaces.go` | ⏳ | A3 |
-| A5 | Declarar interface `PlanLimitServiceInterface` em `domain/interfaces.go` | `business/internal/domain/interfaces.go` | ⏳ | A3 |
-| A6 | Declarar interface `TicketLogServiceInterface` em `domain/interfaces.go` | `business/internal/domain/interfaces.go` | ⏳ | A3 |
-| A7 | Declarar interface `WhatsAppSessionServiceInterface` em `domain/interfaces.go` | `business/internal/domain/interfaces.go` | ⏳ | A3 |
+| A1 | Remover fallback `database.DB` global do Container | `business/internal/application/container.go` | ✅ | — |
+| A2 | Deletar `internal/` da raiz (swagger.go e version.go órfãos, sem importações) | `internal/controllers/swagger.go`, `internal/controllers/version.go` | ✅ | — |
+| A3 | Declarar interface `SetupServiceInterface` em `domain/interfaces.go` | `business/internal/domain/interfaces.go` | ✅ | — |
+| A4 | Declarar interface `DistributionServiceInterface` em `domain/interfaces.go` | `business/internal/domain/interfaces.go` | ✅ | A3 |
+| A5 | Declarar interface `PlanLimitServiceInterface` em `domain/interfaces.go` | `business/internal/domain/interfaces.go` | ✅ | A3 |
+| A6 | Declarar interface `TicketLogServiceInterface` em `domain/interfaces.go` | `business/internal/domain/interfaces.go` | ✅ | A3 |
+| A7 | Declarar interface `WhatsAppSessionServiceInterface` em `domain/interfaces.go` | `business/internal/domain/interfaces.go` | ✅ | A3 |
 
 ### Bloco B — Controllers (depende de A)
 
@@ -86,7 +86,7 @@ exclusivamente em `main.go` / `Container`.
 
 ## Checkpoints de Sanidade
 
-- [ ] **CP-1** — Após Bloco A: `go build ./...` compila sem erros
+- [x] **CP-1** — Após Bloco A: `go build ./...` compila sem erros ✅ 2026-06-17
 - [ ] **CP-2** — Após Bloco B: testes existentes ainda passam
 - [ ] **CP-3** — Após Bloco C: `go build ./...` + `go test ./...` limpos
 - [ ] **CP-4** — Final: ADR criado, PR aberta, zero `*gorm.DB` em construtores de controller
@@ -100,3 +100,4 @@ exclusivamente em `main.go` / `Container`.
 | 2026-06-17 | Auditoria do backend Go — 5 GAPs identificados | ✅ |
 | 2026-06-17 | Branch `refactor/backend-di-packages` criado | ✅ |
 | 2026-06-17 | ESTADO_ORQUESTRATOR.md criado com DAG completo | ✅ |
+| 2026-06-17 | Bloco A concluído — globals removidos, 5 interfaces declaradas, CP-1 ✅ | ✅ |
