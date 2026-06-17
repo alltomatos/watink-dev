@@ -100,10 +100,10 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
       }}
       className={cn(
         "relative flex cursor-pointer gap-3 px-4 py-2.5",
-        "border-b border-[rgba(0,0,0,0.04)]",
+        "border-b border-black/[0.04]",
         "transition-colors duration-150",
         isSelected
-          ? "bg-[rgba(26,115,232,0.08)]"
+          ? "bg-primary/[0.08]"
           : "bg-transparent hover:bg-muted/40"
       )}
     >
