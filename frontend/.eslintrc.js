@@ -14,7 +14,13 @@ module.exports = {
 		es2021: true,
 		node: true,
 	},
-	extends: ["eslint:recommended", "plugin:react/recommended", "plugin:react-hooks/recommended"],
+	extends: [
+		"eslint:recommended",
+		"plugin:react/recommended",
+		"plugin:react-hooks/recommended",
+		"plugin:@typescript-eslint/recommended",
+	],
+	parser: "@typescript-eslint/parser",
 	parserOptions: {
 		ecmaVersion: "latest",
 		sourceType: "module",
@@ -25,6 +31,7 @@ module.exports = {
 	plugins: [
 		"react",
 		"react-hooks",
+		"@typescript-eslint",
 		// Local plugin — resolves via file: link in package.json
 		"watink-design-system",
 	],
@@ -35,6 +42,55 @@ module.exports = {
 	},
 	rules: {
 		// ── Design System Governance ──
+
+		// GAP-003: proibir import direto de @material-ui em arquivos novos
+		// Aplicado globalmente; legado fica isento via override abaixo
+		"no-restricted-imports": [
+			"error",
+			{
+				patterns: [
+					{
+						group: ["@material-ui/*", "@material-ui/core", "@material-ui/icons", "@material-ui/lab"],
+						message:
+							"MUI v4 proibido em arquivos novos. Use shadcn/ui em src/components/ui/ — DS v2 GAP-003.",
+					},
+				],
+			},
+		],
+
+		// GAP-003: prop-contract dos componentes DS v2 (ported from _adherence.oxlintrc.json)
+		"no-restricted-syntax": [
+			"warn",
+			{
+				selector: "JSXOpeningElement[name.name='Avatar'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:xs|sm|md|lg|xl)$/]",
+				message: "<Avatar> size must be one of 'xs' | 'sm' | 'md' | 'lg' | 'xl'.",
+			},
+			{
+				selector: "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:primary|outlined|ghost|danger)$/]",
+				message: "<Button> variant must be one of 'primary' | 'outlined' | 'ghost' | 'danger'.",
+			},
+			{
+				selector: "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:sm|md|lg)$/]",
+				message: "<Button> size must be one of 'sm' | 'md' | 'lg'.",
+			},
+			{
+				selector: "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='type'] > Literal[value!=/^(?:button|submit|reset)$/]",
+				message: "<Button> type must be one of 'button' | 'submit' | 'reset'.",
+			},
+			{
+				selector: "JSXOpeningElement[name.name='MetricCard'] > JSXAttribute[name.name='color'] > Literal[value!=/^(?:primary|success|warning|error|info)$/]",
+				message: "<MetricCard> color must be one of 'primary' | 'success' | 'warning' | 'error' | 'info'.",
+			},
+			{
+				selector: "JSXOpeningElement[name.name='StatusChip'] > JSXAttribute[name.name='status'] > Literal[value!=/^(?:success|error|warning|info|default)$/]",
+				message: "<StatusChip> status must be one of 'success' | 'error' | 'warning' | 'info' | 'default'.",
+			},
+			{
+				selector: "JSXOpeningElement[name.name='StatusChip'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:sm|md|lg)$/]",
+				message: "<StatusChip> size must be one of 'sm' | 'md' | 'lg'.",
+			},
+		],
+
 		"watink-design-system/no-hardcoded-colors": [
 			"error",
 			{
@@ -52,16 +108,21 @@ module.exports = {
 
 		// ── Code Quality ──
 		"no-console": ["warn", { allow: ["warn", "error"] }],
-		"no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+		"no-unused-vars": "off",
+		"@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", destructuredArrayIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }],
 		"prefer-const": "warn",
 		"no-var": "error",
+
+		// Rule from @next/next doesn't exist in this non-Next.js project — silence the "rule not found" error
+		"@next/next/no-img-element": "off",
 	},
 	overrides: [
 		{
-			// Legacy MUI v4 components — exempt from migration guard
-			files: ["src/components/legacy/**/*", "src/theme/bridge.js"],
+			// Legacy components dir — exempt from migration guard
+			files: ["src/components/legacy/**/*"],
 			rules: {
 				"watink-design-system/no-make-styles": "off",
+				"no-restricted-imports": "off",
 			},
 		},
 		{
@@ -69,6 +130,13 @@ module.exports = {
 			files: ["vite.config.*", "copy-assets.*", "sync-embed-go.*", "*.config.js"],
 			rules: {
 				"watink-design-system/no-hardcoded-colors": "off",
+			},
+		},
+		{
+			// Suppress Next.js-only rules that don't exist in this project
+			files: ["**/*.tsx", "**/*.ts", "**/*.js", "**/*.jsx"],
+			rules: {
+				"@next/next/no-img-element": "off",
 			},
 		},
 	],

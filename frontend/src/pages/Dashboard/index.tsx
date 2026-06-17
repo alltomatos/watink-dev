@@ -8,12 +8,14 @@ import {
   CheckCircle,
   ArrowUp,
   ArrowDown,
+  Smartphone,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { AuthContext } from "../../context/Auth/AuthContext";
 import api from "../../services/api";
 import { useTickets } from "../../hooks/useTickets";
+import { useWhatsAppsQuery } from "../../hooks/useWhatsAppsQuery";
 import { i18n } from "../../translate/i18n";
 
 import {
@@ -30,6 +32,7 @@ import {
 } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { MetricCard } from "../../components/ui/metric-card";
+import { StatusChip } from "../../components/ui/status-chip";
 import {
   Dialog,
   DialogContent,
@@ -80,6 +83,9 @@ const Dashboard: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [avgResponseTime, setAvgResponseTime] = useState(0);
 
+  const { data: whatsApps = [] } = useWhatsAppsQuery();
+  const connectedCount = whatsApps.filter((w: any) => w.status === "CONNECTED").length;
+
   const userQueueIds: number[] = user?.queues?.map((q: any) => q.id) || [];
   const queueIdsParam = JSON.stringify(userQueueIds);
 
@@ -116,8 +122,8 @@ const Dashboard: React.FC = () => {
       try {
         const { data } = await api.get("/dashboard");
         setAvgResponseTime(data?.metrics?.avgResponseTime || 0);
-      } catch (err) {
-        console.error("Error fetching dashboard data", err);
+      } catch {
+        console.error("Error fetching dashboard data");
       }
     };
     fetchDashboard();
@@ -139,7 +145,7 @@ const Dashboard: React.FC = () => {
 
       toast.success("Dashboard preferences saved!");
       setModalOpen(false);
-    } catch (err) {
+    } catch {
       toast.error("Error saving preferences");
     }
   };
@@ -165,32 +171,30 @@ const Dashboard: React.FC = () => {
   };
 
   const sortedWidgets = [...widgets].sort((a, b) => a.order - b.order);
-  const isVisible = (id: string) =>
-    sortedWidgets.find((w) => w.id === id)?.visible !== false;
 
   const stats = [
     {
       title: i18n.t("dashboard.messages.inAttendance.title"),
       value: String(openCount ?? 0),
-      icon: <MessageSquare className="h-4 w-4" />,
+      icon: <MessageSquare />,
       color: "primary" as const,
     },
     {
       title: i18n.t("dashboard.messages.waiting.title"),
       value: String(pendingCount ?? 0),
-      icon: <Users className="h-4 w-4" />,
+      icon: <Users />,
       color: "warning" as const,
     },
     {
       title: i18n.t("dashboard.messages.closed.title"),
       value: String(closedCount ?? 0),
-      icon: <CheckCircle className="h-4 w-4" />,
+      icon: <CheckCircle />,
       color: "success" as const,
     },
     {
       title: "TMR (Tempo Médio)",
       value: formatTime(avgResponseTime),
-      icon: <Clock className="h-4 w-4" />,
+      icon: <Clock />,
       color: "info" as const,
     },
   ];
@@ -203,7 +207,7 @@ const Dashboard: React.FC = () => {
       >
         <div className="flex gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => setModalOpen(true)}
           >
@@ -225,6 +229,72 @@ const Dashboard: React.FC = () => {
               color={stat.color}
             />
           ))}
+        </div>
+
+        {/* Linha principal: Gráfico + Painel de Conexões */}
+        <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+          {/* Gráfico de Atendimentos por Hora */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[rgba(26,115,232,0.08)]">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--color-info)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </div>
+                <div>
+                  <CardTitle>Atendimentos por Hora</CardTitle>
+                  <CardDescription>Hoje — {(openCount ?? 0) + (pendingCount ?? 0) + (closedCount ?? 0)} total</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <AttendanceChart />
+            </CardContent>
+          </Card>
+
+          {/* Painel de Conexões */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-success-bg)]">
+                  <Smartphone className="h-6 w-6 text-[var(--color-success)]" />
+                </div>
+                <div>
+                  <CardTitle>Conexões</CardTitle>
+                  <CardDescription>
+                    {connectedCount} de {whatsApps.length} ativas
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col divide-y divide-border">
+                {whatsApps.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    Nenhuma conexão configurada
+                  </p>
+                ) : (
+                  whatsApps.map((wa: any) => {
+                    const connected = wa.status === "CONNECTED";
+                    return (
+                      <div
+                        key={wa.id}
+                        className="flex items-center justify-between py-2.5"
+                      >
+                        <span className="text-sm font-medium text-foreground">
+                          {wa.name}
+                        </span>
+                        <StatusChip
+                          status={connected ? "success" : "error"}
+                          label={connected ? "Conectado" : "Offline"}
+                          size="sm"
+                        />
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Widgets configuráveis, em ordem definida pelo usuário */}
@@ -261,19 +331,8 @@ const Dashboard: React.FC = () => {
                 </Card>
               );
             case "attendance_chart":
-              return (
-                <Card key={widget.id}>
-                  <CardHeader>
-                    <CardTitle>Fluxo de Atendimento</CardTitle>
-                    <CardDescription>
-                      Volume de mensagens e tickets ao longo do dia
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <AttendanceChart />
-                  </CardContent>
-                </Card>
-              );
+              // Já renderizado acima na linha principal — ocultar aqui
+              return null;
             default:
               return null;
           }

@@ -83,6 +83,7 @@ const Queues = () => {
 
   useEffect(() => {
     const socket = openSocket();
+    if (!socket) return;
 
     socket.on("queue", (data) => {
       if (data.action === "update" || data.action === "create") {
@@ -178,7 +179,7 @@ const Queues = () => {
                     <div className="flex items-center gap-2">
                       <div 
                         className="h-4 w-4 rounded-full border border-black/10 shadow-sm"
-                        style={{ backgroundColor: queue.color || "#eee" }}
+                        style={{ backgroundColor: queue.color || "var(--muted)" }}
                       />
                       <span className="text-xs font-mono uppercase text-muted-foreground">{queue.color}</span>
                     </div>

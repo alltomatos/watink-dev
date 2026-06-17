@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import api from "../../services/api";
 import { Ticket } from "../../types/Ticket";
 
@@ -17,8 +17,6 @@ interface FetchTicketsResponse {
 }
 
 export const useTicketsQuery = (params: FetchTicketsParams) => {
-  const queryClient = useQueryClient();
-
   return useInfiniteQuery({
     queryKey: ["tickets", params],
     queryFn: async ({ pageParam = 1 }) => {

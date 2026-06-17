@@ -65,7 +65,7 @@ const QueueSelect: React.FC<QueueSelectProps> = ({
                     key={queue.id}
                     variant="outline"
                     className="flex items-center gap-1 pr-1 border-none text-white font-medium"
-                    style={{ backgroundColor: queue.color || "#7c7c7c" }}
+                    style={{ backgroundColor: queue.color || "var(--muted-foreground)" }}
                   >
                     {queue.name}
                     <X

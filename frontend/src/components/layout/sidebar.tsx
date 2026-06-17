@@ -1,13 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
 import {
-  Menu,
-  X,
-  Settings,
-  LogOut,
-  User,
-  Info
+  X
 } from "lucide-react";
 import { Button } from "../ui/button";
 
