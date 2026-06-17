@@ -4,7 +4,7 @@
 
 - [x] **Epic 1**: Transição do Sistema de Design (MUI v4 → Tailwind + shadcn/ui) | ✅ Concluída
 - [x] **Epic 3**: Migração Total Frontend (163 JS/JSX → TSX, remoção MUI, design tokens, lint) | ✅ Concluída jun/2026
-- [ ] **Epic 2**: Refatoração DI & organização de pacotes (Backend Go) | 🔜 Próximo
+- [ ] **Epic 2**: Refatoração DI & organização de pacotes (Backend Go) | 🔄 Em andamento
 - [ ] **Epic 4**: Qualidade residual — 70 `no-explicit-any` no frontend | Pendente
 
 ## Milestones
@@ -38,6 +38,7 @@ Objetivos:
 
 | Data | Decisão |
 |---|---|
+| 2026-06-17 | API Docs: Swagger UI → Scalar + swaggo/swag (50+ rotas anotadas, JSON gerado automaticamente) |
 | jun/2026 | Nova nomenclatura de branches baseada em Conventional Commits (feat/, fix/, refactor/, chore/, docs/, hotfix/) |
 | jun/2026 | docs/dev/ recriado — removido conteúdo Docker Swarm legacy e referências a agentes obsoletos |
 | jun/2026 | Epic 3 concluída: MUI v4 removido, 163 arquivos migrados para TSX, design token system 3 camadas |

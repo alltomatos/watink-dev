@@ -7,7 +7,14 @@ cd business && go fmt ./...               # formatar código
 cd business && go build ./...             # compilar
 cd business && go run cmd/server/main.go  # rodar em dev
 cd business && go test ./...              # executar testes
+
+# Regenerar docs OpenAPI — obrigatório após adicionar/alterar handlers
+cd business && go run github.com/swaggo/swag/cmd/swag@latest init -g cmd/server/main.go -o docs/
 ```
+
+> **API Docs**: acessível em `/api/v1/docs` (requer JWT de admin ou superadmin).
+> UI: **Scalar** (dark mode, sidebar, API client integrado, geração de snippets curl/Go/Python/JS).
+> JSON OpenAPI gerado em `business/docs/swagger.json` — commitar junto com cada PR que altera rotas.
 
 ## Engine Go (`engine-go/`)
 
@@ -97,6 +104,7 @@ node scripts/playwright-smoke.js
 | Sintoma | O que verificar |
 |---|---|
 | Backend Go não sobe | `docker compose logs watink-business` → `cd business && go build ./...` |
+| Docs desatualizados no Scalar | `cd business && go run github.com/swaggo/swag/cmd/swag@latest init -g cmd/server/main.go -o docs/` |
 | Engine não conecta | Logs de `watink-engine` e `watink-rabbitmq` juntos — race condition de startup |
 | Frontend com erro de build | `cd frontend && npm run build` para ver erros detalhados do Vite |
 | Migrations falhando | `cd legacy/backend && npm run db:migrate` com `NODE_ENV=development` |
