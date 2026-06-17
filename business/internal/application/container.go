@@ -1,8 +1,9 @@
 package application
 
 import (
+	"log"
+
 	"github.com/alltomatos/watinkdev/business/internal/application/usecases"
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/infrastructure/repository"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
@@ -31,7 +32,7 @@ type Container struct {
 
 func NewContainer(db *gorm.DB, redisSvc domain.RedisService, broadcast *services.RedisBroadcast, publisher domain.CommandPublisher) *Container {
 	if db == nil {
-		db = database.DB
+		log.Fatal("NewContainer: db is required — pass a valid *gorm.DB instance")
 	}
 	ticketRepo := repository.NewGORMTicketRepo(db)
 	messageRepo := repository.NewGORMMessageRepo(db)
