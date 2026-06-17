@@ -12,7 +12,6 @@ import (
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/process"
-	"gorm.io/gorm"
 )
 
 // SystemRabbitMQInterface defines the RabbitMQ contract needed by SystemController.
@@ -23,25 +22,15 @@ type SystemRabbitMQInterface interface {
 }
 
 type SystemController struct {
-	db     *gorm.DB
-	rabbit SystemRabbitMQInterface
+	systemRepo domain.SystemRepository
+	rabbit     SystemRabbitMQInterface
 }
 
-func NewSystemController(db *gorm.DB, rabbit SystemRabbitMQInterface) *SystemController {
+func NewSystemController(systemRepo domain.SystemRepository, rabbit SystemRabbitMQInterface) *SystemController {
 	return &SystemController{
-		db:     db,
-		rabbit: rabbit,
+		systemRepo: systemRepo,
+		rabbit:     rabbit,
 	}
-}
-
-type TenantConsumption struct {
-	TenantID    string `json:"tenantId" gorm:"column:tenant_id"`
-	TenantName  string `json:"tenantName" gorm:"column:tenant_name"`
-	Users       int64  `json:"users"`
-	Contacts    int64  `json:"contacts"`
-	Tickets     int64  `json:"tickets"`
-	OpenTickets int64  `json:"openTickets" gorm:"column:open_tickets"`
-	Whatsapps   int64  `json:"whatsapps"`
 }
 
 type RabbitMQStats struct {
@@ -50,12 +39,12 @@ type RabbitMQStats struct {
 }
 
 type SystemStats struct {
-	CPUUsage          float64             `json:"cpuUsage"`
-	MemoryTotal       uint64              `json:"memoryTotal"`
-	MemoryUsed        uint64              `json:"memoryUsed"`
-	MemoryFree        uint64              `json:"memoryFree"`
-	Uptime            float64             `json:"uptime"`
-	TenantConsumption []TenantConsumption `json:"tenantConsumption"`
+	CPUUsage          float64                  `json:"cpuUsage"`
+	MemoryTotal       uint64                   `json:"memoryTotal"`
+	MemoryUsed        uint64                   `json:"memoryUsed"`
+	MemoryFree        uint64                   `json:"memoryFree"`
+	Uptime            float64                  `json:"uptime"`
+	TenantConsumption []domain.TenantConsumption `json:"tenantConsumption"`
 	RabbitMQ          RabbitMQStats       `json:"rabbitmq"`
 	Process           struct {
 		CPUUsage     float64 `json:"cpuUsage"`
@@ -122,20 +111,9 @@ func (sc *SystemController) GetSystemStats(c *gin.Context) {
 
 	stats.Uptime = time.Since(startTime).Seconds()
 
-	var tenantConsumption []TenantConsumption
-	_ = sc.db.Raw(`
-		SELECT
-			t.id::text AS tenant_id,
-			t.name AS tenant_name,
-			(SELECT COUNT(*) FROM "Users" u WHERE u."tenantId" = t.id) AS users,
-			(SELECT COUNT(*) FROM "Contacts" c WHERE c."tenantId" = t.id) AS contacts,
-			(SELECT COUNT(*) FROM "Tickets" tk WHERE tk."tenantId" = t.id) AS tickets,
-			(SELECT COUNT(*) FROM "Tickets" tk WHERE tk."tenantId" = t.id AND tk.status = 'open') AS open_tickets,
-			(SELECT COUNT(*) FROM "Whatsapps" w WHERE w."tenantId" = t.id) AS whatsapps
-		FROM "Tenants" t
-		ORDER BY tickets DESC, contacts DESC, users DESC
-	`).Scan(&tenantConsumption).Error
-	stats.TenantConsumption = tenantConsumption
+	if tenantConsumption, err := sc.systemRepo.GetTenantConsumption(c.Request.Context()); err == nil {
+		stats.TenantConsumption = tenantConsumption
+	}
 
 	if sc.rabbit != nil {
 		stats.RabbitMQ.Connected = sc.rabbit.IsConnected()

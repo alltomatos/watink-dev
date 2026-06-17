@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
@@ -12,14 +13,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// RoleController encapsulates role/RBAC operations with RLS-scoped DB from auth middleware.
-// Retains root DB (rc.db) for global Permission lookups — Permissions are tenant-agnostic.
+// RoleController encapsulates role/RBAC operations.
+// permRepo: global (tenant-agnostic) permission catalog — not RLS-scoped.
 type RoleController struct {
-	db *gorm.DB
+	permRepo domain.PermissionRepository
 }
 
-func NewRoleController(db *gorm.DB) *RoleController {
-	return &RoleController{db: db}
+func NewRoleController(permRepo domain.PermissionRepository) *RoleController {
+	return &RoleController{permRepo: permRepo}
 }
 
 // @Summary      Listar papéis
@@ -156,8 +157,8 @@ func (rc *RoleController) Update(c *gin.Context) {
 		}
 
 		if req.Permissions != nil {
-			var permissions []models.Permission
-			if err := rc.db.Where("id IN ?", req.Permissions).Find(&permissions).Error; err != nil {
+			permissions, err := rc.permRepo.FindByIDs(tx.Statement.Context, req.Permissions)
+			if err != nil {
 				return err
 			}
 			if len(permissions) != len(req.Permissions) {

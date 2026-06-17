@@ -7,23 +7,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
-// SwaggerController gerencia acesso à documentação Swagger.
-// DB injetado via construtor — zero acesso a database.DB global.
-// Funções de auth (extractToken, parseUserFromToken) continuam como helpers
-// puramente funcionais (sem estado) pois não tocam DB.
 type SwaggerController struct {
-	db *gorm.DB
+	permRepo domain.SwaggerPermissionRepository
 }
 
-func NewSwaggerController(db *gorm.DB) *SwaggerController {
-	return &SwaggerController{db: db}
+func NewSwaggerController(permRepo domain.SwaggerPermissionRepository) *SwaggerController {
+	return &SwaggerController{permRepo: permRepo}
 }
 
 // extractToken lê Bearer token do header Authorization ou query param ?token.
@@ -78,31 +73,16 @@ func parseUserFromToken(tokenString string) (int, string, string, error) {
 	return userID, strings.ToLower(profile), tenantID, nil
 }
 
-// hasSwaggerGroupPermission verifica se o grupo do usuário concede acesso ao swagger.
-// Usa DB injetado — zero acesso a database.DB global.
-// Proteção contra tenant leakage: scoping por tenantId + uuid.Parse.
 func (sc *SwaggerController) hasSwaggerGroupPermission(userID int, tenantID string) bool {
 	if userID <= 0 || tenantID == "" {
 		return false
 	}
-
 	parsedTenantID, err := uuid.Parse(tenantID)
 	if err != nil {
 		return false
 	}
-
-	var user models.User
-	if err := sc.db.Where("id = ? AND \"tenantId\" = ?", userID, parsedTenantID).First(&user).Error; err != nil || user.GroupID == nil {
-		return false
-	}
-
-	var count int64
-	sc.db.Table("group_permissions AS gp").
-		Joins("JOIN \"Permissions\" p ON p.id = gp.permission_id").
-		Where("gp.group_id = ? AND ((p.resource = ? AND p.action = ?) OR (p.resource = ? AND p.action = ?))", *user.GroupID, "view", "swagger", "view_swagger", "allow").
-		Count(&count)
-
-	return count > 0
+	ok, _ := sc.permRepo.HasSwaggerPermission(userID, parsedTenantID)
+	return ok
 }
 
 // ensureSwaggerAccess valida token e verifica permissão swagger.

@@ -4,18 +4,16 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-// VersionController centraliza endpoints de versão de serviços.
-// DB injetado via construtor — zero acesso a database.DB global.
 type VersionController struct {
-	db *gorm.DB
+	versionRepo domain.VersionRepository
 }
 
-func NewVersionController(db *gorm.DB) *VersionController {
-	return &VersionController{db: db}
+func NewVersionController(versionRepo domain.VersionRepository) *VersionController {
+	return &VersionController{versionRepo: versionRepo}
 }
 
 // @Summary      Versão do serviço
@@ -38,8 +36,8 @@ func (vc *VersionController) GetVersion(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /system/version/postgres [get]
 func (vc *VersionController) GetPostgresVersion(c *gin.Context) {
-	var version string
-	if err := vc.db.Raw("SELECT version()").Scan(&version).Error; err != nil {
+	version, err := vc.versionRepo.GetPostgresVersion(c.Request.Context())
+	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database unavailable"})
 		return
 	}

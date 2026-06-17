@@ -6,22 +6,20 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
-	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type UserController struct {
-	userRepo domain.UserRepository
-	db       *gorm.DB
+	userRepo      domain.UserRepository
+	planLimitSvc  domain.PlanLimitServiceInterface
 }
 
-func NewUserController(ur domain.UserRepository, db *gorm.DB) *UserController {
+func NewUserController(ur domain.UserRepository, planLimitSvc domain.PlanLimitServiceInterface) *UserController {
 	return &UserController{
-		userRepo: ur,
-		db:       db,
+		userRepo:     ur,
+		planLimitSvc: planLimitSvc,
 	}
 }
 
@@ -123,8 +121,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 	}
 
 	// SaaS Limit Check
-	limitService := services.NewPlanLimitService(uc.db)
-	if err := limitService.CheckLimit(tenantID, "users"); err != nil {
+	if err := uc.planLimitSvc.CheckLimit(tenantID, "users"); err != nil {
 		utils.RespondWithServiceError(c, http.StatusForbidden, err, "User limit reached for this plan")
 		return
 	}

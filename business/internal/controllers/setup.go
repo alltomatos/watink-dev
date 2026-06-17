@@ -6,23 +6,19 @@ import (
 	"os"
 	"strings"
 
-	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
-	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type SetupController struct {
-	db           *gorm.DB
-	setupService *services.SetupService
+	setupService domain.SetupServiceInterface
 	hubManager   *plugins.HubManager
 }
 
-func NewSetupController(db *gorm.DB, setupService *services.SetupService, hubManager *plugins.HubManager) *SetupController {
+func NewSetupController(setupService domain.SetupServiceInterface, hubManager *plugins.HubManager) *SetupController {
 	return &SetupController{
-		db:           db,
 		setupService: setupService,
 		hubManager:   hubManager,
 	}
@@ -35,13 +31,12 @@ func NewSetupController(db *gorm.DB, setupService *services.SetupService, hubMan
 // @Success      200  {object}  map[string]interface{}
 // @Router       /initial-setup/check [get]
 func (ctrl *SetupController) CheckSetup(c *gin.Context) {
-	var usersCount int64
-	var tenantsCount int64
-
-	ctrl.db.Model(&models.User{}).Count(&usersCount)
-	ctrl.db.Model(&models.Tenant{}).Count(&tenantsCount)
-
-	c.JSON(http.StatusOK, gin.H{"needsSetup": usersCount == 0 && tenantsCount == 0})
+	needs, err := ctrl.setupService.NeedsSetup(c.Request.Context())
+	if err != nil {
+		utils.RespondWithInternalError(c, err, "CheckSetup")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"needsSetup": needs})
 }
 
 type SetupRequest struct {
@@ -62,13 +57,12 @@ type SetupRequest struct {
 // @Success      200   {object}  map[string]interface{}
 // @Router       /initial-setup [post]
 func (ctrl *SetupController) InitialSetup(c *gin.Context) {
-	var usersCount int64
-	var tenantsCount int64
-
-	ctrl.db.Model(&models.User{}).Count(&usersCount)
-	ctrl.db.Model(&models.Tenant{}).Count(&tenantsCount)
-
-	if usersCount > 0 || tenantsCount > 0 {
+	needs, err := ctrl.setupService.NeedsSetup(c.Request.Context())
+	if err != nil {
+		utils.RespondWithInternalError(c, err, "InitialSetup")
+		return
+	}
+	if !needs {
 		c.JSON(http.StatusForbidden, gin.H{"error": "System already initialized"})
 		return
 	}
@@ -79,7 +73,7 @@ func (ctrl *SetupController) InitialSetup(c *gin.Context) {
 		return
 	}
 
-	seedData := services.TenantSeedData{
+	seedData := domain.TenantSeedData{
 		FirstName:  req.FirstName,
 		LastName:   req.LastName,
 		Email:      req.Email,
