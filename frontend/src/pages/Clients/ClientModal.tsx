@@ -448,7 +448,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                       <div className="space-y-1.5">
                         <label className="text-xs font-medium">Nome</label>
                         <Input
-                          size="sm"
                           value={contact.name}
                           onChange={(e) =>
                             handleContactChange(index, "name", e.target.value)
@@ -465,7 +464,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                       <div className="space-y-1.5">
                         <label className="text-xs font-medium">Cargo/Função</label>
                         <Input
-                          size="sm"
                           value={contact.role}
                           onChange={(e) =>
                             handleContactChange(index, "role", e.target.value)
@@ -476,7 +474,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                       <div className="space-y-1.5">
                         <label className="text-xs font-medium">Telefone</label>
                         <Input
-                          size="sm"
                           value={contact.phone}
                           onChange={(e) =>
                             handleContactChange(index, "phone", e.target.value)
@@ -487,7 +484,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                       <div className="space-y-1.5">
                         <label className="text-xs font-medium">Email</label>
                         <Input
-                          size="sm"
                           type="email"
                           value={contact.email}
                           onChange={(e) =>
@@ -536,7 +532,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                       <div className="col-span-1 space-y-1.5">
                         <label className="text-xs font-medium">Rótulo (ex: Sede)</label>
                         <Input
-                          size="sm"
                           value={address.label}
                           onChange={(e) => handleAddressChange(index, "label", e.target.value)}
                           placeholder="Sede"
@@ -545,7 +540,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                       <div className="col-span-1 space-y-1.5">
                         <label className="text-xs font-medium">CEP</label>
                         <Input
-                          size="sm"
                           value={address.zipCode}
                           onChange={(e) => handleAddressChange(index, "zipCode", e.target.value)}
                           onBlur={() => handleCepBlur(index)}
@@ -555,7 +549,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                       <div className="col-span-1 space-y-1.5">
                         <label className="text-xs font-medium">Número</label>
                         <Input
-                          size="sm"
                           value={address.number}
                           onChange={(e) => handleAddressChange(index, "number", e.target.value)}
                           placeholder="123"
@@ -564,7 +557,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                       <div className="col-span-1 space-y-1.5">
                         <label className="text-xs font-medium">Complemento</label>
                         <Input
-                          size="sm"
                           value={address.complement}
                           onChange={(e) => handleAddressChange(index, "complement", e.target.value)}
                           placeholder="Sala 101"
@@ -573,7 +565,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                       <div className="col-span-2 space-y-1.5">
                         <label className="text-xs font-medium">Logradouro</label>
                         <Input
-                          size="sm"
                           value={address.street}
                           onChange={(e) => handleAddressChange(index, "street", e.target.value)}
                           placeholder="Rua, Avenida..."
@@ -582,7 +573,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                       <div className="col-span-2 space-y-1.5">
                         <label className="text-xs font-medium">Bairro</label>
                         <Input
-                          size="sm"
                           value={address.neighborhood}
                           onChange={(e) => handleAddressChange(index, "neighborhood", e.target.value)}
                           placeholder="Bairro"
@@ -591,7 +581,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                       <div className="col-span-2 space-y-1.5">
                         <label className="text-xs font-medium">Cidade</label>
                         <Input
-                          size="sm"
                           value={address.city}
                           onChange={(e) => handleAddressChange(index, "city", e.target.value)}
                           placeholder="Cidade"
@@ -600,7 +589,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                       <div className="col-span-2 space-y-1.5">
                         <label className="text-xs font-medium">Estado (UF)</label>
                         <Input
-                          size="sm"
                           value={address.state}
                           onChange={(e) => handleAddressChange(index, "state", e.target.value)}
                           placeholder="CE"

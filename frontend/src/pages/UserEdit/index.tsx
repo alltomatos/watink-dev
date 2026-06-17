@@ -323,9 +323,9 @@ const UserEdit: React.FC = () => {
                     perform="user-modal:editQueues"
                     yes={() => (
                       <QueueSelect
-                        selectedQueueIds={selectedQueueIds || []}
-                        onChange={(vals: string[]) =>
-                          setSelectedQueueIds(vals || [])
+                        selectedQueueIds={(selectedQueueIds || []) as unknown as number[]}
+                        onChange={(vals: number[]) =>
+                          setSelectedQueueIds(vals as any || [])
                         }
                       />
                     )}

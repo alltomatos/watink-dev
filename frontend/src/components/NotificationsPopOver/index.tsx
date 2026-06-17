@@ -66,7 +66,8 @@ const NotificationsPopOver = () => {
   const [notifications, setNotifications] = useState<Ticket[]>([]);
   const [, setDesktopNotifications] = useState<Notification[]>([]);
 
-  const { tickets } = useTickets({ withUnreadMessages: "true" });
+  const { data: ticketsData } = useTickets({ withUnreadMessages: "true" });
+  const tickets = ticketsData?.tickets;
   const soundAlertRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -90,7 +91,7 @@ const NotificationsPopOver = () => {
   }, []);
 
   useEffect(() => {
-    setNotifications(tickets);
+    setNotifications(tickets ?? []);
   }, [tickets]);
 
   useEffect(() => {
@@ -166,7 +167,7 @@ const NotificationsPopOver = () => {
     const options: NotificationOptions & { renotify?: boolean } = {
       body: `${message.body} - ${format(new Date(), "HH:mm")}`,
       icon: contact.profilePicUrl,
-      tag: ticket.id,
+      tag: String(ticket.id),
       renotify: true,
     };
 

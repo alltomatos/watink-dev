@@ -6,12 +6,13 @@ import type { ButtonProps } from "@/components/ui/button";
 
 interface ButtonWithSpinnerProps extends ButtonProps {
   loading?: boolean;
+  startIcon?: React.ReactNode;
 }
 
-const ButtonWithSpinner = ({ loading = false, children, className, ...rest }: ButtonWithSpinnerProps) => {
+const ButtonWithSpinner = ({ loading = false, children, className, startIcon, ...rest }: ButtonWithSpinnerProps) => {
   return (
     <Button
-      className={cn("relative", className)}
+      className={cn("relative gap-1", className)}
       disabled={loading || rest.disabled}
       {...rest}
     >
@@ -21,7 +22,9 @@ const ButtonWithSpinner = ({ loading = false, children, className, ...rest }: Bu
           aria-hidden
         />
       )}
-      <span className={cn(loading && "invisible")}>{children}</span>
+      <span className={cn("flex items-center gap-1", loading && "invisible")}>
+        {startIcon}{children}
+      </span>
     </Button>
   );
 };

@@ -262,7 +262,7 @@ const Users: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
             <Input
               className="pl-9 h-10"
-              placeholder={i18n.t("contacts.searchPlaceholder")}
+              placeholder={i18n.t("contacts.searchPlaceholder") as string}
               type="search"
               value={searchParam}
               onChange={handleSearch}

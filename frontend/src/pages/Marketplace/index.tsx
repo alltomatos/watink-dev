@@ -47,13 +47,13 @@ const Marketplace = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
-  const [plugins, setPlugins] = useState([]);
+  const [plugins, setPlugins] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParam, setSearchParam] = useState("");
   const [view, setView] = useState("grid");
   const [offline, setOffline] = useState(false);
   const [instanceId, setInstanceId] = useState("");
-  const [entitlements, setEntitlements] = useState(null);
+  const [entitlements, setEntitlements] = useState<any>(null);
 
   useEffect(() => {
     loadPlugins();
@@ -80,7 +80,7 @@ const Marketplace = () => {
         Array.isArray(installedRes?.active) ? installedRes.active : []
       );
       const all = Array.isArray(catalogRes?.plugins) ? catalogRes.plugins : [];
-      const normalized = all.map((p) => ({
+      const normalized = all.map((p: any) => ({
         id: p.id,
         slug: p.slug,
         name: p.name,
@@ -101,7 +101,7 @@ const Marketplace = () => {
     }
   };
 
-  const handlePluginClick = (plugin) => {
+  const handlePluginClick = (plugin: any) => {
     navigate(`/admin/settings/marketplace/${plugin.slug}`);
   };
 

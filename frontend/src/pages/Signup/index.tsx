@@ -29,7 +29,7 @@ const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const initialState = { name: "", email: "", password: "" };
 
-  const handleSignUp = async (values) => {
+  const handleSignUp = async (values: any) => {
     try {
       await api.post("/auth/signup", values);
       toast.success(i18n.t("signup.toasts.success"));

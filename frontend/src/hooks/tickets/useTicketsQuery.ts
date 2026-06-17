@@ -25,7 +25,7 @@ export const useTicketsQuery = (params: FetchTicketsParams) => {
       });
       return data;
     },
-    getNextPageParam: (lastPage) => (lastPage.hasMore ? (params.pageNumber || 1) + 1 : undefined),
+    getNextPageParam: (_lastPage, allPages) => (_lastPage.hasMore ? allPages.length + 1 : undefined),
     initialPageParam: 1,
     staleTime: 5000,
   });

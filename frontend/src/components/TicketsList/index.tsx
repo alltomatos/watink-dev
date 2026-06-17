@@ -17,6 +17,7 @@ interface TicketsListProps {
   updateCount?: (count: number) => void;
   style?: React.CSSProperties;
   isGroup?: string;
+  tags?: any[];
 }
 
 interface TicketShape {

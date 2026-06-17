@@ -17,7 +17,7 @@ const ModalImageCors = ({ imageUrl }: ModalImageCorsProps) => {
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(
-        new Blob([data], { type: headers["content-type"] })
+        new Blob([data], { type: String(headers["content-type"] ?? "") })
       );
       setBlobUrl(url);
       setFetching(false);

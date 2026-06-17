@@ -137,7 +137,7 @@ const Ticket: React.FC = () => {
         </TicketHeader>
 
         <ReplyMessageProvider>
-          <MessagesList ticketId={ticketId} isGroup={ticket.isGroup} />
+          <MessagesList ticketId={ticketId ?? ""} isGroup={ticket.isGroup} />
           <MessageInput
             ticketStatus={ticket.status}
             whatsappStatus={ticket.whatsapp?.status}
@@ -148,8 +148,8 @@ const Ticket: React.FC = () => {
       <ContactDrawer
         open={drawerOpen}
         handleDrawerClose={handleDrawerClose}
-        contact={contact}
-        ticketId={ticketId}
+        contact={contact as any}
+        ticketId={Number(ticketId) || 0}
         loading={loading}
       />
     </div>

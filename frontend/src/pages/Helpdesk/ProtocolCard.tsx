@@ -37,7 +37,7 @@ const ProtocolCard: React.FC<ProtocolCardProps> = ({
 }) => {
   const getAvatarUrl = (): string | null => {
     if (protocol.contact?.profilePicUrl) {
-      return getBackendUrl(protocol.contact.profilePicUrl);
+      return getBackendUrl(protocol.contact.profilePicUrl) ?? null;
     }
     return null;
   };

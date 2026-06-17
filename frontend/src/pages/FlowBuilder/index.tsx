@@ -82,13 +82,13 @@ const getId = () => `dndnode_${Date.now()}_${nodeSeq++}`;
 const FlowBuilderContent = () => {
     const { flowId } = useParams();
     const navigate = useNavigate();
-    const reactFlowWrapper = useRef(null);
-    const fileInputRef = useRef(null);
-    const saveTimeoutRef = useRef(null);
+    const reactFlowWrapper = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-    const [reactFlowInstance, setReactFlowInstance] = useState(null);
+    const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [flowName, setFlowName] = useState("");
@@ -96,7 +96,7 @@ const FlowBuilderContent = () => {
     const [aiEnabled, setAiEnabled] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
 
-    const [selectedNode, setSelectedNode] = useState(null);
+    const [selectedNode, setSelectedNode] = useState<any>(null);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
     const [isNodesSidebarOpen, setIsNodesSidebarOpen] = useState(true);
@@ -126,8 +126,8 @@ const FlowBuilderContent = () => {
         const fetchSettings = async () => {
             try {
                 const { data } = await api.get("/settings");
-                const masterEnabled = data.find((s) => s.key === "aiEnabled")?.value === "true";
-                const flowBuilderEnabled = data.find((s) => s.key === "aiFlowBuilderEnabled")?.value === "true";
+                const masterEnabled = data.find((s: any) => s.key === "aiEnabled")?.value === "true";
+                const flowBuilderEnabled = data.find((s: any) => s.key === "aiFlowBuilderEnabled")?.value === "true";
                 if (masterEnabled && flowBuilderEnabled) {
                     setAiEnabled(true);
                     setIsChatOpen(true);
@@ -150,7 +150,7 @@ const FlowBuilderContent = () => {
                 setIsActive(data.active !== false);
 
                 if (Array.isArray(data.nodes)) {
-                    const hydratedNodes = data.nodes.map((node) => ({
+                    const hydratedNodes = data.nodes.map((node: any) => ({
                         ...node,
                         data: {
                             ...node.data,
@@ -198,7 +198,7 @@ const FlowBuilderContent = () => {
             handleSave(true);
         }, 5000);
 
-        return () => clearTimeout(saveTimeoutRef.current);
+        return () => clearTimeout(saveTimeoutRef.current ?? undefined);
     }, [nodes, edges, loading, handleSave]);
 
     // Alternar ativo/inativo — persiste via PUT (backend não tem /toggle)
@@ -250,7 +250,7 @@ const FlowBuilderContent = () => {
         fileReader.readAsText(file, "UTF-8");
         fileReader.onload = (e) => {
             try {
-                const parsed = JSON.parse(e.target.result);
+                const parsed = JSON.parse(e.target!.result as string);
                 if (parsed.nodes && parsed.edges) {
                     setNodes(parsed.nodes);
                     setEdges(parsed.edges);
@@ -288,8 +288,8 @@ const FlowBuilderContent = () => {
             const label = event.dataTransfer.getData('application/reactflow/label');
             if (typeof type === 'undefined' || !type) return;
 
-            const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-            const position = reactFlowInstance.project({
+            const reactFlowBounds = reactFlowWrapper.current!.getBoundingClientRect();
+            const position = reactFlowInstance!.project({
                 x: event.clientX - reactFlowBounds.left,
                 y: event.clientY - reactFlowBounds.top,
             });
@@ -414,11 +414,11 @@ const FlowBuilderContent = () => {
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
-                        onInit={setReactFlowInstance}
+                        onInit={(instance) => setReactFlowInstance(instance)}
                         onDrop={onDrop}
                         onDragOver={onDragOver}
                         onNodeClick={onNodeClick}
-                        nodeTypes={nodeTypes}
+                        nodeTypes={nodeTypes as any}
                         fitView
                     >
                         <Background color="var(--border-default)" gap={20} />

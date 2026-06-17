@@ -89,21 +89,21 @@ const PipelineFunnelView: React.FC<PipelineFunnelViewProps> = ({
                 <div className="flex-1 overflow-auto">
                     <TabsContent value="board" className="mt-0 h-full">
                         <PipelineKanban
-                            pipeline={pipeline}
-                            columns={columns}
-                            setColumns={setColumns}
+                            pipeline={pipeline as any}
+                            columns={columns as any}
+                            setColumns={setColumns as any}
                             onDragEnd={onDragEnd}
                             isEnterprise={true}
                         />
                     </TabsContent>
                     <TabsContent value="gantt" className="mt-0">
-                        <PipelineGantt deals={deals} />
+                        <PipelineGantt deals={deals as any} />
                     </TabsContent>
                     <TabsContent value="kpis" className="mt-0">
-                        <PipelineKPIs pipeline={pipeline} deals={deals} />
+                        <PipelineKPIs pipeline={pipeline as any} deals={deals as any} />
                     </TabsContent>
                     <TabsContent value="funnel" className="mt-0">
-                        <PipelineFunnelChart pipeline={pipeline} deals={deals} />
+                        <PipelineFunnelChart pipeline={pipeline as any} deals={deals as any} />
                     </TabsContent>
                 </div>
             </Tabs>

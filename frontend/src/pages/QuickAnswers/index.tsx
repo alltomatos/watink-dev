@@ -32,13 +32,13 @@ import { Input } from "../../components/ui/input";
 import QuickAnswersModal from "../../components/QuickAnswersModal";
 import ConfirmationModal from "../../components/ConfirmationModal";
 
-const reducer = (state, action) => {
+const reducer = (state: any[], action: { type: string; payload?: any }): any[] => {
   if (action.type === "LOAD_QUICK_ANSWERS") {
     const quickAnswers = action.payload || [];
     if (quickAnswers.length === 0) return [];
-    const newQuickAnswers = [];
+    const newQuickAnswers: any[] = [];
 
-    quickAnswers.forEach((quickAnswer) => {
+    quickAnswers.forEach((quickAnswer: any) => {
       const quickAnswerIndex = state.findIndex((q) => q.id === quickAnswer.id);
       if (quickAnswerIndex !== -1) {
         state[quickAnswerIndex] = quickAnswer;
@@ -83,7 +83,7 @@ const QuickAnswers = () => {
   const [hasMore, setHasMore] = useState(false);
   const [searchParam, setSearchParam] = useState("");
   const [quickAnswers, dispatch] = useReducer(reducer, []);
-  const [selectedQuickAnswer, setSelectedQuickAnswer] = useState(null);
+  const [selectedQuickAnswer, setSelectedQuickAnswer] = useState<any>(null);
   const [quickAnswerModalOpen, setQuickAnswerModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
@@ -131,7 +131,7 @@ const QuickAnswers = () => {
     };
   }, []);
 
-  const handleSearch = (event) => {
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchParam(event.target.value.toLowerCase());
   };
 
@@ -145,12 +145,12 @@ const QuickAnswers = () => {
     setQuickAnswerModalOpen(false);
   };
 
-  const handleEditQuickAnswer = (quickAnswer) => {
+  const handleEditQuickAnswer = (quickAnswer: any) => {
     setSelectedQuickAnswer(quickAnswer);
     setQuickAnswerModalOpen(true);
   };
 
-  const handleDeleteQuickAnswer = async (quickAnswerId) => {
+  const handleDeleteQuickAnswer = async (quickAnswerId: any) => {
     try {
       await api.delete(`/quickAnswers/${quickAnswerId}`);
       toast.success(i18n.t("quickAnswers.toasts.deleted"));
@@ -166,7 +166,7 @@ const QuickAnswers = () => {
     setPageNumber((prev) => prev + 1);
   };
 
-  const handleScroll = (e) => {
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (!hasMore || loading) return;
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     if (scrollHeight - (scrollTop + clientHeight) < 100) {
@@ -197,14 +197,14 @@ const QuickAnswers = () => {
       </ConfirmationModal>
 
       <PageHeader 
-        title={i18n.t("quickAnswers.title")}
+        title={i18n.t("quickAnswers.title") as string}
         description="Gerencie suas respostas rápidas para agilizar o atendimento"
       >
         <div className="flex items-center gap-2">
           <div className="relative w-full max-w-sm hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={i18n.t("quickAnswers.searchPlaceholder")}
+              placeholder={i18n.t("quickAnswers.searchPlaceholder") as string}
               value={searchParam}
               onChange={handleSearch}
               className="pl-9 h-10"

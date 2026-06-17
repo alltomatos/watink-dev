@@ -225,7 +225,7 @@ const Clients: React.FC = () => {
           <ClientModal
             open={modalOpen}
             onClose={handleCloseModal}
-            client={selectedClient}
+            client={selectedClient as any}
           />
 
           <ConfirmationModal

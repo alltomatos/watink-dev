@@ -78,7 +78,8 @@ const formatTime = (minutes: number): string => {
 };
 
 const Dashboard: React.FC = () => {
-  const { user, setUser } = useContext(AuthContext);
+  const { user: _user, setUser } = useContext(AuthContext) as any;
+  const user: any = _user;
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [avgResponseTime, setAvgResponseTime] = useState(0);
@@ -90,24 +91,27 @@ const Dashboard: React.FC = () => {
   const queueIdsParam = JSON.stringify(userQueueIds);
 
   // Contagens reais de tickets por status (mesma fonte do legado MUI)
-  const { count: openCount } = useTickets({
+  const { data: openData } = useTickets({
     status: "open",
     showAll: "true",
     withUnreadMessages: "false",
     queueIds: queueIdsParam,
   });
-  const { count: pendingCount } = useTickets({
+  const openCount = openData?.count ?? 0;
+  const { data: pendingData } = useTickets({
     status: "pending",
     showAll: "true",
     withUnreadMessages: "false",
     queueIds: queueIdsParam,
   });
-  const { count: closedCount } = useTickets({
+  const pendingCount = pendingData?.count ?? 0;
+  const { data: closedData } = useTickets({
     status: "closed",
     showAll: "true",
     withUnreadMessages: "false",
     queueIds: queueIdsParam,
   });
+  const closedCount = closedData?.count ?? 0;
 
   useEffect(() => {
     if (user?.configs?.dashboard?.widgets) {
