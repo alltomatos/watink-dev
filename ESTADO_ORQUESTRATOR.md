@@ -101,3 +101,4 @@ exclusivamente em `main.go` / `Container`.
 | 2026-06-17 | Branch `refactor/backend-di-packages` criado | ✅ |
 | 2026-06-17 | ESTADO_ORQUESTRATOR.md criado com DAG completo | ✅ |
 | 2026-06-17 | Bloco A concluído — globals removidos, 5 interfaces declaradas, CP-1 ✅ | ✅ |
+| 2026-06-17 | API Docs migrados: Swagger UI → Scalar + swaggo/swag; 50+ handlers anotados; JSON gerado em `business/docs/` | ✅ |

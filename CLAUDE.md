@@ -22,7 +22,8 @@ Frontend (React/Vite) ←REST/Socket.io→ Backend Go (Gin/GORM) ←SQL→ Postg
 | Frontend — JS/JSX → TypeScript (163 arquivos) | ✅ Concluída |
 | Frontend — Design Token System (3 camadas) | ✅ Concluída |
 | Frontend — ESLint/Lint governance | ✅ Concluída (70 `no-explicit-any` pendentes) |
-| Backend Go — DI & organização de pacotes | 🔜 Próximo epic |
+| Backend Go — DI & organização de pacotes | 🔄 Em andamento (`refactor/backend-di-packages`) |
+| Backend Go — API Docs (Scalar + swaggo) | ✅ Concluída |
 
 ## Services & Ports
 
@@ -44,6 +45,9 @@ cd business && go fmt ./...
 cd business && go build ./...
 cd business && go run cmd/server/main.go
 cd business && go test ./...
+
+# Regenerar documentação OpenAPI (obrigatório após adicionar/alterar rotas)
+cd business && go run github.com/swaggo/swag/cmd/swag@latest init -g cmd/server/main.go -o docs/
 ```
 
 ### Engine Go (`engine-go/`)
