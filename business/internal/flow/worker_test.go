@@ -17,6 +17,11 @@ func setupFlowTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+	})
 	// DDL manual — SQLite não suporta gen_random_uuid() nem type:uuid
 	db.Exec(`CREATE TABLE IF NOT EXISTS "Flows" (
 		"id" INTEGER PRIMARY KEY AUTOINCREMENT,
