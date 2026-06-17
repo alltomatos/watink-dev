@@ -1,26 +1,49 @@
 # Roadmap do Projeto
 
 ## Epics (Visão Estratégica)
-- [x] Epic 1: Transição do Sistema de Design (MUI v4 -> Tailwind + shadcn/ui) | Status: Concluída
-- [ ] Epic 2: Refatoração da Injeção de Dependências e Organização de Pastas | Status: Pendente
-- [ ] Epic 3: Migração Total Frontend (DS v2 — 163 arquivos JS → TSX, remoção MUI) | Status: Em Andamento
-  - Workflow: `.claude/plans/frontend-ds-v2-workflow.md`
-  - Sub-épicas: 4A (tokens) → 4B (componentes) → 4C (docs) → 4D (páginas) → 4E (qualidade) → 4F (remoção MUI)
 
-## Milestones (Entregas Técnicas)
-- [x] M1: Análise e Auditoria de docs/desgner-system e PDF do Guia | Epic: [1] | Status: Concluído
-- [x] M2: Alinhamento de Terminologia (CONTEXT.md) e Regras de Componentes | Epic: [1] | Status: Concluído
-- [x] M3: Substituição de Componentes Customizados Legados (BaseCard, MetricCard, StatusChip, PageLayout) | Epic: [1] | Status: Concluído
-- [x] M4: Migração Estrutural (MainLayout, Dashboard, Tickets, Contacts, Users, FlowBuilder canvas) | Epic: [3] | Status: Concluído
-- [ ] M5: Token Format Migration (JS → CSS Custom Properties) | Epic: [3] | Status: Pendente
-- [x] M6: Migração 46 Componentes Compartilhados MUI → shadcn+TSX | Epic: [3] | Status: Concluído
-- [ ] M7: Sync Documentação Design System v2 | Epic: [3] | Status: Pendente
-- [ ] M8: Migração 66 Páginas/Modais MUI → shadcn+TSX | Epic: [3] | Status: Pendente
-- [ ] M9: Storybook + A11y + Visual Regression CI | Epic: [3] | Status: Pendente
-- [x] M10: Remoção Final MUI v4 (npm uninstall + zero imports) | Epic: [3] | Status: Concluído 2026-06-16
+- [x] **Epic 1**: Transição do Sistema de Design (MUI v4 → Tailwind + shadcn/ui) | ✅ Concluída
+- [x] **Epic 3**: Migração Total Frontend (163 JS/JSX → TSX, remoção MUI, design tokens, lint) | ✅ Concluída jun/2026
+- [ ] **Epic 2**: Refatoração DI & organização de pacotes (Backend Go) | 🔜 Próximo
+- [ ] **Epic 4**: Qualidade residual — 70 `no-explicit-any` no frontend | Pendente
+
+## Milestones
+
+| ID | Descrição | Status |
+|---|---|---|
+| M1 | Auditoria do Design System | ✅ |
+| M2 | Alinhamento de terminologia (CONTEXT.md) | ✅ |
+| M3 | Substituição de componentes legados (BaseCard, MetricCard, StatusChip, PageLayout) | ✅ |
+| M4 | Migração estrutural (MainLayout, Dashboard, Tickets, Contacts, FlowBuilder) | ✅ |
+| M5 | Token Format Migration (JS → CSS Custom Properties + HSL cru) | ✅ |
+| M6 | Migração 46 componentes compartilhados MUI → shadcn+TSX | ✅ |
+| M7 | Sync Documentação Design System | ✅ |
+| M8 | Migração 66+ páginas/modais MUI → shadcn+TSX | ✅ |
+| M9 | Storybook + A11y + Visual Regression CI | ⏳ Pendente |
+| M10 | Remoção final MUI v4 (npm uninstall + zero imports) | ✅ jun/2026 |
+| M11 | ESLint governance — 298 → 70 erros (-77%) | ✅ jun/2026 |
+| M12 | Docs cleanup — CLAUDE.md, docs/dev/, docs/ legado | ✅ jun/2026 |
+
+## Próximo Epic — Backend Go DI & Packages
+
+**Branch**: `refactor/backend-di-packages`
+
+Objetivos:
+- Garantir DI pura em todos os controllers e services (`business/`)
+- Separar camadas: `domain/`, `application/`, `infrastructure/`
+- Definir interfaces explícitas entre `business/` e `engine-go/`
+- Cobrir endpoints críticos com testes de integração (`httptest`)
 
 ## Histórico de Decisões
-- 2026-06-12 - Inicialização: Análise detalhada das diretrizes visuais e infraestrutura de componentes sob docs/desgner-system na branch tinker/ui-and-di-refactor.
-- 2026-06-13 - Epic 3 aberta: 163 arquivos JS legados identificados, 46 componentes + 66 páginas com MUI. Workflow documentado em `.claude/plans/frontend-ds-v2-workflow.md`.
-- 2026-06-13 - DS v2 analisado: `docs/Watink Design System v2/` contém 7 documentos ativos (AI_AGENT_INSTRUCTIONS, FRONTEND_ARCHITECTURE, DESIGN_SYSTEM_GUIDE, IMPLEMENTATION_ROADMAP, DOCUMENTATION_INDEX, SUMARIO_ENTREGA, ATUALIZACAO_16JUN_2026). Tokens em `.js` precisam migrar para `.css`.
-- 2026-06-16 - Orquestrador: WIP de tipagem (camada `types/api.ts` + `types/domain.ts`) concluída e commitada (`23e0e4b88`). 23 arquivos, +338/-99. 11 worktrees `worktree-agent-*` obsoletas removidas. Script `typecheck` corrigido para `-p tsconfig.app.json`. GAPs pré-existentes (ClientModal string→number, MessagesList socket/png, Button variant lint, @types/* faltando) documentados como débito fora do escopo. Próximo: Epic 2 (DI / organização de pastas) ou Epic 4D (páginas restantes).
+
+| Data | Decisão |
+|---|---|
+| jun/2026 | Nova nomenclatura de branches baseada em Conventional Commits (feat/, fix/, refactor/, chore/, docs/, hotfix/) |
+| jun/2026 | docs/dev/ recriado — removido conteúdo Docker Swarm legacy e referências a agentes obsoletos |
+| jun/2026 | Epic 3 concluída: MUI v4 removido, 163 arquivos migrados para TSX, design token system 3 camadas |
+| jun/2026 | CLAUDE.md reduzido com ponteiros para docs/ especializados |
+| 2026-06-16 | Epic 4F: npm uninstall @material-ui/* — zero imports MUI em src/ |
+| 2026-06-16 | Epic 4E: ESLint expandido, typescript@5.9.3, 298 → 70 erros |
+| 2026-06-14 | Epic 4D: todas as páginas e modais migrados para shadcn/ui + TSX |
+| 2026-06-13 | Epic 4B: 46 componentes compartilhados migrados |
+| 2026-06-13 | Epic 4A: tokens migrados para CSS Custom Properties em HSL cru |
