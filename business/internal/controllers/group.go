@@ -18,6 +18,12 @@ func NewGroupController(db *gorm.DB) *GroupController {
 	return &GroupController{db: db}
 }
 
+// @Summary      Listar grupos
+// @Tags         rbac
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /groups [get]
 func (gc *GroupController) List(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Groups")
 	if !ok {
@@ -36,6 +42,12 @@ func (gc *GroupController) List(c *gin.Context) {
 // ListPermissions returns global permissions catalog.
 // Uses gc.db (root DB) because Permissions are NOT tenant-scoped —
 // auth.GetScoped(c, "Groups") would apply RLS and produce zero results for non-superadmins.
+// @Summary      Listar permissões disponíveis
+// @Tags         rbac
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /permissions [get]
 func (gc *GroupController) ListPermissions(c *gin.Context) {
 	var permissions []models.Permission
 	if err := gc.db.Find(&permissions).Error; err != nil {
@@ -45,6 +57,13 @@ func (gc *GroupController) ListPermissions(c *gin.Context) {
 	c.JSON(200, permissions)
 }
 
+// @Summary      Detalhar grupo
+// @Tags         rbac
+// @Produce      json
+// @Param        groupId  path      int  true  "ID do grupo"
+// @Success      200      {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /groups/{groupId} [get]
 func (gc *GroupController) Show(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Groups")
 	if !ok {
@@ -68,6 +87,14 @@ type createGroupInput struct {
 	Name string `json:"name" binding:"required"`
 }
 
+// @Summary      Criar grupo
+// @Tags         rbac
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados do grupo"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /groups [post]
 func (gc *GroupController) Create(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Groups")
 	if !ok {
@@ -99,6 +126,15 @@ type updateGroupInput struct {
 	Roles       []int  `json:"roles"`
 }
 
+// @Summary      Atualizar grupo
+// @Tags         rbac
+// @Accept       json
+// @Produce      json
+// @Param        groupId  path      int                     true  "ID do grupo"
+// @Param        body     body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200      {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /groups/{groupId} [put]
 func (gc *GroupController) Update(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Groups")
 	if !ok {
@@ -164,6 +200,13 @@ func (gc *GroupController) Update(c *gin.Context) {
 	c.JSON(200, group)
 }
 
+// @Summary      Remover grupo
+// @Tags         rbac
+// @Produce      json
+// @Param        groupId  path      int  true  "ID do grupo"
+// @Success      200      {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /groups/{groupId} [delete]
 func (gc *GroupController) Delete(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Groups")
 	if !ok {

@@ -26,6 +26,15 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// @Summary      Login
+// @Description  Autentica usuário e retorna JWT de acesso e refresh token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        body  body      LoginRequest  true  "Credenciais"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      401   {object}  map[string]string
+// @Router       /auth/login [post]
 func (ac *AuthController) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -73,6 +82,13 @@ func (ac *AuthController) Login(c *gin.Context) {
 	})
 }
 
+// @Summary      Refresh token
+// @Description  Renova o access token usando o refresh token no cookie
+// @Tags         auth
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Failure      401  {object}  map[string]string
+// @Router       /auth/refresh_token [post]
 func (ac *AuthController) RefreshToken(c *gin.Context) {
 	refreshTokenStr, err := c.Cookie("refreshToken")
 	if err != nil || refreshTokenStr == "" {
@@ -147,6 +163,13 @@ func (ac *AuthController) RefreshToken(c *gin.Context) {
 	})
 }
 
+// @Summary      Logout
+// @Description  Invalida o refresh token no cookie
+// @Tags         auth
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /auth/logout [delete]
 func (ac *AuthController) Logout(c *gin.Context) {
 	c.SetCookie("refreshToken", "", -1, "/", "", true, true)
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})

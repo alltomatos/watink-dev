@@ -1,3 +1,22 @@
+// @title           Watink Business API
+// @version         2.0.0
+// @description     API do backend Go — atendimento e automação WhatsApp.
+// @termsOfService  https://watink.com.br/terms
+
+// @contact.name   Watink Dev
+// @contact.email  dev@watink.com.br
+
+// @license.name  Proprietary
+// @license.url   https://watink.com.br
+
+// @host      localhost:8082
+// @BasePath  /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Bearer JWT token. Formato: "Bearer <token>"
+
 package main
 
 import (
@@ -8,6 +27,7 @@ import (
 	"os"
 	"strings"
 
+	_ "github.com/alltomatos/watinkdev/business/docs"
 	"github.com/alltomatos/watinkdev/business/internal/application"
 	"github.com/alltomatos/watinkdev/business/internal/controllers"
 	"github.com/alltomatos/watinkdev/business/internal/database"

@@ -18,6 +18,12 @@ func NewQuickAnswerController() *QuickAnswerController {
 	return &QuickAnswerController{}
 }
 
+// @Summary      Listar respostas rápidas
+// @Tags         quick-answers
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /quickAnswers [get]
 func (qac *QuickAnswerController) List(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "QuickAnswers")
 	if !ok {
@@ -33,6 +39,13 @@ func (qac *QuickAnswerController) List(c *gin.Context) {
 	c.JSON(http.StatusOK, quickAnswers)
 }
 
+// @Summary      Detalhar resposta rápida
+// @Tags         quick-answers
+// @Produce      json
+// @Param        quickAnswerId  path      int  true  "ID da resposta rápida"
+// @Success      200            {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /quickAnswers/{quickAnswerId} [get]
 func (qac *QuickAnswerController) Show(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "QuickAnswers")
 	if !ok {
@@ -56,6 +69,14 @@ type updateQuickAnswerInput struct {
 	DataJson  string `json:"dataJson"`
 }
 
+// @Summary      Criar resposta rápida
+// @Tags         quick-answers
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados da resposta"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /quickAnswers [post]
 func (qac *QuickAnswerController) Create(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "QuickAnswers")
 	if !ok {
@@ -77,6 +98,15 @@ func (qac *QuickAnswerController) Create(c *gin.Context) {
 	c.JSON(http.StatusOK, qa)
 }
 
+// @Summary      Atualizar resposta rápida
+// @Tags         quick-answers
+// @Accept       json
+// @Produce      json
+// @Param        quickAnswerId  path      int                     true  "ID da resposta"
+// @Param        body           body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200            {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /quickAnswers/{quickAnswerId} [put]
 func (qac *QuickAnswerController) Update(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "QuickAnswers")
 	if !ok {
@@ -109,6 +139,13 @@ func (qac *QuickAnswerController) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, qa)
 }
 
+// @Summary      Remover resposta rápida
+// @Tags         quick-answers
+// @Produce      json
+// @Param        quickAnswerId  path      int  true  "ID da resposta"
+// @Success      200            {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /quickAnswers/{quickAnswerId} [delete]
 func (qac *QuickAnswerController) Delete(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "QuickAnswers")
 	if !ok {

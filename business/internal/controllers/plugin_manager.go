@@ -27,10 +27,22 @@ type checkoutRequest struct {
 	Slug string `json:"slug" binding:"required"`
 }
 
+// @Summary      Catálogo de plugins
+// @Tags         plugins
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /plugins/catalog [get]
 func (pc *PluginController) Catalog(c *gin.Context) {
 	c.JSON(http.StatusOK, pc.hubManager.GetCatalog())
 }
 
+// @Summary      Plugins instalados
+// @Tags         plugins
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /plugins/installed [get]
 func (pc *PluginController) Installed(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "PluginInstallations")
 	if !ok {
@@ -40,6 +52,14 @@ func (pc *PluginController) Installed(c *gin.Context) {
 	c.JSON(http.StatusOK, pc.hubManager.GetInstalled(tenantID.String()))
 }
 
+// @Summary      Ativar/instalar plugin
+// @Tags         plugins
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados do checkout"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /plugins/checkout [post]
 func (pc *PluginController) Checkout(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "PluginInstallations")
 	if !ok {
@@ -66,6 +86,12 @@ func (pc *PluginController) Checkout(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
+// @Summary      ID da instância
+// @Tags         plugins
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /plugins/instance [get]
 func (pc *PluginController) Instance(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"instanceId": pc.hubManager.GetInstanceID()})
 }

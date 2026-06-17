@@ -22,6 +22,12 @@ func NewRoleController(db *gorm.DB) *RoleController {
 	return &RoleController{db: db}
 }
 
+// @Summary      Listar papéis
+// @Tags         rbac
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /roles [get]
 func (rc *RoleController) List(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Roles")
 	if !ok {
@@ -37,6 +43,13 @@ func (rc *RoleController) List(c *gin.Context) {
 	c.JSON(http.StatusOK, roles)
 }
 
+// @Summary      Detalhar papel
+// @Tags         rbac
+// @Produce      json
+// @Param        roleId  path      int  true  "ID do papel"
+// @Success      200     {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /roles/{roleId} [get]
 func (rc *RoleController) Show(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Roles")
 	if !ok {
@@ -64,6 +77,14 @@ type createRoleInput struct {
 	Description string `json:"description"`
 }
 
+// @Summary      Criar papel
+// @Tags         rbac
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados do papel"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /roles [post]
 func (rc *RoleController) Create(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Roles")
 	if !ok {
@@ -96,6 +117,15 @@ type updateRoleInput struct {
 	Permissions []int  `json:"permissions"`
 }
 
+// @Summary      Atualizar papel
+// @Tags         rbac
+// @Accept       json
+// @Produce      json
+// @Param        roleId  path      int                     true  "ID do papel"
+// @Param        body    body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200     {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /roles/{roleId} [put]
 func (rc *RoleController) Update(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Roles")
 	if !ok {
@@ -151,6 +181,13 @@ func (rc *RoleController) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, role)
 }
 
+// @Summary      Remover papel
+// @Tags         rbac
+// @Produce      json
+// @Param        roleId  path      int  true  "ID do papel"
+// @Success      200     {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /roles/{roleId} [delete]
 func (rc *RoleController) Delete(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Roles")
 	if !ok {

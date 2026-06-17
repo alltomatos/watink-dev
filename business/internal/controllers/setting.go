@@ -22,6 +22,12 @@ func NewSettingController(db *gorm.DB, broadcast *services.RedisBroadcast) *Sett
 	return &SettingController{db: db, broadcast: broadcast}
 }
 
+// @Summary      Listar configurações
+// @Tags         settings
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /settings [get]
 func (sc *SettingController) ListSettings(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Settings")
 	if !ok {
@@ -39,6 +45,12 @@ func (sc *SettingController) ListSettings(c *gin.Context) {
 
 // GetPublicSettings uses root DB because it runs BEFORE authentication (public route).
 // The first tenant's public branding keys are returned for the login page.
+// @Summary      Configurações públicas
+// @Description  Retorna configurações visíveis sem autenticação (nome do tenant, logo)
+// @Tags         settings
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Router       /public-settings [get]
 func (sc *SettingController) GetPublicSettings(c *gin.Context) {
 	var tenant models.Tenant
 	if err := sc.db.Order("id ASC").First(&tenant).Error; err != nil {
@@ -57,6 +69,15 @@ func (sc *SettingController) GetPublicSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, settings)
 }
 
+// @Summary      Atualizar configuração
+// @Tags         settings
+// @Accept       json
+// @Produce      json
+// @Param        key   path      string                  true  "Chave da configuração"
+// @Param        body  body      map[string]interface{}  true  "Valor a atualizar"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /settings/{key} [put]
 func (sc *SettingController) UpdateSetting(c *gin.Context) {
 	db, tenantUUID, ok := auth.GetScoped(c, "Settings")
 	if !ok {

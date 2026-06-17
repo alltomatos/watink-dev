@@ -28,6 +28,12 @@ func NewSetupController(db *gorm.DB, setupService *services.SetupService, hubMan
 	}
 }
 
+// @Summary      Verificar setup inicial
+// @Description  Retorna se o tenant precisa de configuração inicial
+// @Tags         setup
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Router       /initial-setup/check [get]
 func (ctrl *SetupController) CheckSetup(c *gin.Context) {
 	var usersCount int64
 	var tenantsCount int64
@@ -47,6 +53,14 @@ type SetupRequest struct {
 	BackendURL string `json:"backendUrl"`
 }
 
+// @Summary      Configuração inicial do tenant
+// @Description  Cria o primeiro usuário admin e inicializa o tenant
+// @Tags         setup
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados de configuração inicial"
+// @Success      200   {object}  map[string]interface{}
+// @Router       /initial-setup [post]
 func (ctrl *SetupController) InitialSetup(c *gin.Context) {
 	var usersCount int64
 	var tenantsCount int64
