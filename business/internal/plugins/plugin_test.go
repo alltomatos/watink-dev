@@ -67,7 +67,7 @@ func setupPluginTestDB(t *testing.T) *gorm.DB {
 	}
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
-			sqlDB.Close()
+			_ = sqlDB.Close()
 		}
 	})
 	// DDL manual completo para todas as tabelas compatível com SQLite
