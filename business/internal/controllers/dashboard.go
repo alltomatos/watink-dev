@@ -31,6 +31,13 @@ type QueueCount struct {
 	Count     int64  `json:"count"`
 }
 
+// @Summary      Dados do dashboard
+// @Description  Retorna contagens de tickets, TMR, TME e distribuição por fila
+// @Tags         dashboard
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /dashboard [get]
 func GetDashboardData(c *gin.Context) {
 	var data DashboardData
 
@@ -90,15 +97,22 @@ func fetchTicketStatusCounts(db *gorm.DB, tenantID uuid.UUID, target *struct {
 	return nil
 }
 
-// fetchQueueCounts retrieves queue ticket counts with a single JOIN query,
-// eliminating the N+1 loop that previously called db.First() per queue.
+// fetchQueueCounts retrieves queue ticket counts with a raw JOIN query.
+// Raw SQL bypasses the scoped-db WHERE clause that GetScopedDB adds without
+// a table qualifier — that unqualified "tenantId" becomes ambiguous when
+// Queues (which also has tenantId) is joined. Tenant isolation is explicit.
 func fetchQueueCounts(db *gorm.DB, tenantID uuid.UUID, target *[]QueueCount) error {
-	return db.Model(&models.Ticket{}).
-		Select("q.id as queue_id, q.name as queue_name, count(tickets.id) as count").
-		Joins("JOIN \"Queues\" q ON q.id = tickets.\"queueId\"").
-		Where("tickets.\"tenantId\" = ? AND tickets.\"queueId\" IS NOT NULL AND tickets.status != 'closed'", tenantID).
-		Group("q.id, q.name").
-		Scan(target).Error
+	return db.Raw(`
+		SELECT q.id       AS queue_id,
+		       q.name     AS queue_name,
+		       count("Tickets".id) AS count
+		FROM "Tickets"
+		JOIN "Queues" q ON q.id = "Tickets"."queueId"
+		WHERE "Tickets"."tenantId"  = ?
+		  AND "Tickets"."queueId"   IS NOT NULL
+		  AND "Tickets".status      != 'closed'
+		GROUP BY q.id, q.name
+	`, tenantID).Scan(target).Error
 }
 
 // calculateTMR computes the average response time (Tempo Médio de Resposta)

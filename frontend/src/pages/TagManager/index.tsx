@@ -35,13 +35,13 @@ import { Badge } from "../../components/ui/badge";
 import TagModal from "../../components/TagModal";
 import ConfirmationModal from "../../components/ConfirmationModal";
 
-const reducer = (state, action) => {
+const reducer = (state: any[], action: { type: string; payload?: any }): any[] => {
   if (action.type === "LOAD_TAGS") {
     const tags = action.payload || [];
     if (tags.length === 0) return [];
-    const newTags = [];
+    const newTags: any[] = [];
 
-    tags.forEach((tag) => {
+    tags.forEach((tag: any) => {
       const tagIndex = state.findIndex((s) => s.id === tag.id);
       if (tagIndex !== -1) {
         state[tagIndex] = tag;
@@ -85,7 +85,7 @@ const TagManager = () => {
   const [searchParam, setSearchParam] = useState("");
   const [tags, dispatch] = useReducer(reducer, []);
   const [showArchived, setShowArchived] = useState(false);
-  const [selectedTag, setSelectedTag] = useState(null);
+  const [selectedTag, setSelectedTag] = useState<any>(null);
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
@@ -133,7 +133,7 @@ const TagManager = () => {
     };
   }, []);
 
-  const handleSearch = (event) => {
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchParam(event.target.value.toLowerCase());
   };
 
@@ -147,13 +147,13 @@ const TagManager = () => {
     setTagModalOpen(false);
   };
 
-  const handleEditTag = (tag) => {
+  const handleEditTag = (tag: any) => {
     setSelectedTag(tag);
     setTagModalOpen(true);
   };
 
   // Exclusão definitiva (forceDelete); sem o parâmetro o backend apenas arquiva
-  const handleDeleteTag = async (tagId) => {
+  const handleDeleteTag = async (tagId: any) => {
     try {
       await api.delete(`/tags/${tagId}?forceDelete=true`);
       toast.success(i18n.t("tags.toasts.deleted"));
@@ -166,7 +166,7 @@ const TagManager = () => {
   };
 
   // Arquivar (soft delete) ou restaurar
-  const handleToggleArchive = async (tag) => {
+  const handleToggleArchive = async (tag: any) => {
     try {
       await api.put(`/tags/${tag.id}`, { ...tag, archived: !tag.archived });
       toast.success(
@@ -201,14 +201,14 @@ const TagManager = () => {
       </ConfirmationModal>
 
       <PageHeader 
-        title={i18n.t("tags.title")}
+        title={i18n.t("tags.title") as string}
         description="Gerencie as etiquetas para organizar seus atendimentos"
       >
         <div className="flex items-center gap-2">
           <div className="relative w-full max-w-sm hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={i18n.t("tags.searchPlaceholder")}
+              placeholder={i18n.t("tags.searchPlaceholder") as string}
               value={searchParam}
               onChange={handleSearch}
               className="pl-9 h-10"

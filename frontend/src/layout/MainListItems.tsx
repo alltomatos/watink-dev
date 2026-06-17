@@ -26,6 +26,9 @@ import { useThemeContext } from "../context/DarkMode";
 import pluginApi from "../services/pluginApi";
 import NavButton from "../components/NavButton";
 
+/** i18n.t() retorna DefaultTFuncReturn (inclui null); NavButton.primary exige string. */
+const ts = (key: string): string => i18n.t(key) as string;
+
 // AlertCircle não existe em algumas versões — fallback inline
 const ConnectionIcon: React.FC<{ warn: boolean }> = ({ warn }) => (
   <span className="relative inline-flex">
@@ -89,7 +92,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/"
-            primary={i18n.t("mainDrawer.listItems.dashboard")}
+            primary={ts("mainDrawer.listItems.dashboard")}
             icon={<LayoutDashboard />}
             iconTheme="dashboard"
             collapsed={collapsed}
@@ -102,7 +105,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/pipelines"
-            primary={i18n.t("mainDrawer.listItems.pipelines")}
+            primary={ts("mainDrawer.listItems.pipelines")}
             icon={<List />}
             iconTheme="pipelines"
             collapsed={collapsed}
@@ -115,7 +118,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/tickets"
-            primary={i18n.t("mainDrawer.listItems.tickets")}
+            primary={ts("mainDrawer.listItems.tickets")}
             icon={<MessageSquare />}
             iconTheme="tickets"
             collapsed={collapsed}
@@ -126,7 +129,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
       {activePlugins.includes("helpdesk") && (
         <NavButton
           to="/my-activities"
-          primary={i18n.t("mainDrawer.listItems.myActivities")}
+          primary={ts("mainDrawer.listItems.myActivities")}
           icon={<ClipboardList />}
           iconTheme="myActivities"
           collapsed={collapsed}
@@ -139,7 +142,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/contacts"
-            primary={i18n.t("mainDrawer.listItems.contacts")}
+            primary={ts("mainDrawer.listItems.contacts")}
             icon={<Contact />}
             iconTheme="contacts"
             collapsed={collapsed}
@@ -152,7 +155,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/quickAnswers"
-            primary={i18n.t("mainDrawer.listItems.quickAnswers")}
+            primary={ts("mainDrawer.listItems.quickAnswers")}
             icon={<MessageSquareMore />}
             iconTheme="quickAnswers"
             collapsed={collapsed}
@@ -165,7 +168,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/flowbuilder"
-            primary={i18n.t("mainDrawer.listItems.flowBuilder")}
+            primary={ts("mainDrawer.listItems.flowBuilder")}
             icon={<Network />}
             iconTheme="flowBuilder"
             collapsed={collapsed}
@@ -180,7 +183,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
           yes={() => (
             <NavButton
               to="/clients"
-              primary={i18n.t("mainDrawer.listItems.clients")}
+              primary={ts("mainDrawer.listItems.clients")}
               icon={<User />}
               iconTheme="clients"
               collapsed={collapsed}
@@ -196,7 +199,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
           yes={() => (
             <NavButton
               to="/helpdesk"
-              primary={i18n.t("mainDrawer.listItems.helpdesk")}
+              primary={ts("mainDrawer.listItems.helpdesk")}
               icon={<Headphones />}
               iconTheme="helpdesk"
               collapsed={collapsed}
@@ -220,7 +223,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/tags"
-            primary={i18n.t("mainDrawer.listItems.tags")}
+            primary={ts("mainDrawer.listItems.tags")}
             icon={<Tag />}
             iconTheme="tags"
             collapsed={collapsed}
@@ -233,7 +236,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/connections"
-            primary={i18n.t("mainDrawer.listItems.connections")}
+            primary={ts("mainDrawer.listItems.connections")}
             icon={<ConnectionIcon warn={connectionWarning} />}
             iconTheme="connections"
             collapsed={collapsed}
@@ -246,7 +249,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/users"
-            primary={i18n.t("mainDrawer.listItems.users")}
+            primary={ts("mainDrawer.listItems.users")}
             icon={<Users />}
             iconTheme="users"
             collapsed={collapsed}
@@ -272,7 +275,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/queues"
-            primary={i18n.t("mainDrawer.listItems.queues")}
+            primary={ts("mainDrawer.listItems.queues")}
             icon={<Network />}
             iconTheme="queues"
             collapsed={collapsed}
@@ -285,7 +288,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/knowledge-bases"
-            primary={i18n.t("mainDrawer.listItems.knowledgeBase")}
+            primary={ts("mainDrawer.listItems.knowledgeBase")}
             icon={<Library />}
             iconTheme="knowledgeBase"
             collapsed={collapsed}
@@ -298,7 +301,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/settings"
-            primary={i18n.t("mainDrawer.listItems.settings")}
+            primary={ts("mainDrawer.listItems.settings")}
             icon={<Settings />}
             iconTheme="settings"
             collapsed={collapsed}
@@ -311,7 +314,7 @@ const MainListItems: React.FC<MainListItemsProps> = ({
         yes={() => (
           <NavButton
             to="/swagger"
-            primary={i18n.t("mainDrawer.listItems.swagger")}
+            primary={ts("mainDrawer.listItems.swagger")}
             icon={<BookOpen />}
             iconTheme="swagger"
             collapsed={collapsed}

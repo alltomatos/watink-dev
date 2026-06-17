@@ -395,10 +395,10 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
       return <VcardPreview contact={contact} numbers={obj[0]?.number} />;
     }
     if (message.mediaType === "image" || message.mediaType === "sticker") {
-      return <ModalImageCors imageUrl={getBackendUrl(message.mediaUrl)} />;
+      return <ModalImageCors imageUrl={getBackendUrl(message.mediaUrl) ?? ""} />;
     }
     if (message.mediaType === "audio") {
-      return <Audio url={getBackendUrl(message.mediaUrl)} />;
+      return <Audio url={getBackendUrl(message.mediaUrl) ?? ""} />;
     }
     if (message.mediaType === "video") {
       return (
@@ -453,7 +453,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
       }
       return null;
     }
-    return <FilePreview mediaUrl={getBackendUrl(message.mediaUrl)} filename={message.body} />;
+    return <FilePreview mediaUrl={getBackendUrl(message.mediaUrl) ?? ""} filename={message.body} />;
   };
 
   const renderMessageAck = (message: Message) => {

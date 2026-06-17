@@ -20,7 +20,7 @@ export interface MetricCardProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Valor numérico ou textual em destaque (ex: "1.234", "99%") */
   value: string | number;
   /** Ícone Lucide renderizado dentro do container */
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   /** Variante de cor semântica */
   color?: MetricCardColor;
   /** Indicador de tendência (badge de variação) */

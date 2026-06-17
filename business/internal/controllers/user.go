@@ -6,25 +6,29 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
-	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type UserController struct {
-	userRepo domain.UserRepository
-	db       *gorm.DB
+	userRepo      domain.UserRepository
+	planLimitSvc  domain.PlanLimitServiceInterface
 }
 
-func NewUserController(ur domain.UserRepository, db *gorm.DB) *UserController {
+func NewUserController(ur domain.UserRepository, planLimitSvc domain.PlanLimitServiceInterface) *UserController {
 	return &UserController{
-		userRepo: ur,
-		db:       db,
+		userRepo:     ur,
+		planLimitSvc: planLimitSvc,
 	}
 }
 
+// @Summary      Listar usuários
+// @Tags         users
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /users [get]
 func (uc *UserController) ListUsers(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
@@ -42,6 +46,14 @@ func (uc *UserController) ListUsers(c *gin.Context) {
 	})
 }
 
+// @Summary      Detalhar usuário
+// @Tags         users
+// @Produce      json
+// @Param        userId  path      int  true  "ID do usuário"
+// @Success      200     {object}  map[string]interface{}
+// @Failure      404     {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /users/{userId} [get]
 func (uc *UserController) ShowUser(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
@@ -94,6 +106,14 @@ func (uc *UserController) ShowUser(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// @Summary      Criar usuário
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados do usuário"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /users [post]
 func (uc *UserController) CreateUser(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
@@ -101,8 +121,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 	}
 
 	// SaaS Limit Check
-	limitService := services.NewPlanLimitService(uc.db)
-	if err := limitService.CheckLimit(tenantID, "users"); err != nil {
+	if err := uc.planLimitSvc.CheckLimit(tenantID, "users"); err != nil {
 		utils.RespondWithServiceError(c, http.StatusForbidden, err, "User limit reached for this plan")
 		return
 	}
@@ -132,6 +151,15 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, domainUser)
 }
 
+// @Summary      Atualizar usuário
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        userId  path      int                     true  "ID do usuário"
+// @Param        body    body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200     {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /users/{userId} [put]
 func (uc *UserController) UpdateUser(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
@@ -198,6 +226,13 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+// @Summary      Remover usuário
+// @Tags         users
+// @Produce      json
+// @Param        userId  path      int  true  "ID do usuário"
+// @Success      200     {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /users/{userId} [delete]
 func (uc *UserController) DeleteUser(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {

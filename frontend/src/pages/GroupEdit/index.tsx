@@ -367,7 +367,7 @@ const GroupEdit: React.FC = () => {
                 <PermissionTransferList
                   allPermissions={allPermissions}
                   selectedPermissions={selectedPermissions}
-                  onChange={setSelectedPermissions}
+                  onChange={(ids) => setSelectedPermissions(ids as string[])}
                 />
               </div>
             </div>

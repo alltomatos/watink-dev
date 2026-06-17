@@ -26,6 +26,13 @@ func NewSessionController(sr domain.ChannelSessionRepository, broadcast *service
 	}
 }
 
+// @Summary      Iniciar sessão WhatsApp
+// @Tags         whatsapp-sessions
+// @Produce      json
+// @Param        whatsappId  path      int  true  "ID da conexão"
+// @Success      200         {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /whatsappsession/{whatsappId} [post]
 func (sc *SessionController) StartSession(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {
@@ -53,6 +60,13 @@ func (sc *SessionController) StartSession(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Starting session."})
 }
 
+// @Summary      Parar sessão WhatsApp
+// @Tags         whatsapp-sessions
+// @Produce      json
+// @Param        whatsappId  path      int  true  "ID da conexão"
+// @Success      200         {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /whatsappsession/{whatsappId} [delete]
 func (sc *SessionController) StopSession(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {
@@ -84,6 +98,12 @@ func (sc *SessionController) StopSession(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Session disconnected."})
 }
 
+// @Summary      Reiniciar todas as sessões
+// @Tags         whatsapp-sessions
+// @Produce      json
+// @Success      200  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /whatsappsession/all [post]
 func (sc *SessionController) RestartAllSessions(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {

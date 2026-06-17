@@ -92,7 +92,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             link.rel = "icon";
             document.head.appendChild(link);
           }
-          link.href = getBackendUrl(favicon.value);
+          link.href = getBackendUrl(favicon.value) ?? "";
         }
       } catch {
         // Silent settings fetch
@@ -143,7 +143,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             link.rel = "icon";
             document.head.appendChild(link);
           }
-          link.href = getBackendUrl(data.setting.value);
+          link.href = getBackendUrl(data.setting.value) ?? "";
         }
       }
     });

@@ -24,6 +24,14 @@ func NewTicketController(ut *usecases.UpdateTicketUseCase, broadcast *services.R
 	}
 }
 
+// @Summary      Listar tickets
+// @Tags         tickets
+// @Produce      json
+// @Param        status    query     string  false  "Filtro por status (open, pending, closed)"
+// @Param        queueId   query     int     false  "Filtro por fila"
+// @Success      200       {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /tickets [get]
 func (tc *TicketController) ListTickets(c *gin.Context) {
 	db, _, ok := auth.GetScoped(c, "Tickets")
 	if !ok {
@@ -85,6 +93,14 @@ func (tc *TicketController) ListTickets(c *gin.Context) {
 	})
 }
 
+// @Summary      Detalhar ticket
+// @Tags         tickets
+// @Produce      json
+// @Param        ticketId  path      int  true  "ID do ticket"
+// @Success      200       {object}  map[string]interface{}
+// @Failure      404       {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /tickets/{ticketId} [get]
 func (tc *TicketController) ShowTicket(c *gin.Context) {
 	db, _, ok := auth.GetScoped(c, "Tickets")
 	if !ok {
@@ -104,6 +120,15 @@ func (tc *TicketController) ShowTicket(c *gin.Context) {
 	c.JSON(http.StatusOK, ticket)
 }
 
+// @Summary      Atualizar ticket
+// @Tags         tickets
+// @Accept       json
+// @Produce      json
+// @Param        ticketId  path      int                     true  "ID do ticket"
+// @Param        body      body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200       {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /tickets/{ticketId} [put]
 func (tc *TicketController) UpdateTicket(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Tickets")
 	if !ok {
@@ -151,6 +176,13 @@ func (tc *TicketController) UpdateTicket(c *gin.Context) {
 	c.JSON(http.StatusOK, updatedTicket)
 }
 
+// @Summary      Logs do ticket
+// @Tags         tickets
+// @Produce      json
+// @Param        ticketId  path      int  true  "ID do ticket"
+// @Success      200       {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /tickets/{ticketId}/logs [get]
 func (tc *TicketController) ListTicketLogs(c *gin.Context) {
 	db, _, ok := auth.GetScoped(c, "Tickets")
 	if !ok {

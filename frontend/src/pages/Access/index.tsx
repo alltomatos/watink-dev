@@ -227,10 +227,9 @@ const Access: React.FC = () => {
         {/* Legacy cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {LEGACY_CARDS.map((card) => (
+            <div key={card.key} style={{ opacity: 0.7 }}>
             <PaperCard
-              key={card.key}
               variant="outlined"
-              style={{ opacity: 0.7, borderStyle: "dashed" } as React.CSSProperties}
             >
               <div className="mb-2 flex items-center gap-2">
                 <span
@@ -259,6 +258,7 @@ const Access: React.FC = () => {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </PaperCard>
+            </div>
           ))}
         </div>
       </PageContent>

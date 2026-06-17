@@ -34,12 +34,12 @@ import {
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 
-const reducer = (state, action) => {
+const reducer = (state: any[], action: { type: string; payload?: any }): any[] => {
   if (action.type === "LOAD_GROUPS") {
     const groups = action.payload;
-    const newGroups = [];
+    const newGroups: any[] = [];
 
-    groups.forEach((group) => {
+    groups.forEach((group: any) => {
       const groupIndex = state.findIndex((g) => g.id === group.id);
       if (groupIndex !== -1) {
         state[groupIndex] = group;
@@ -84,7 +84,7 @@ const Groups = () => {
   const [loading, setLoading] = useState(false);
   const [searchParam, setSearchParam] = useState("");
   const [groups, dispatch] = useReducer(reducer, []);
-  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState<any>(null);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
@@ -111,7 +111,7 @@ const Groups = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [searchParam]);
 
-  const handleSearch = (event) => {
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchParam(event.target.value.toLowerCase());
   };
 
@@ -125,12 +125,12 @@ const Groups = () => {
     setGroupModalOpen(false);
   };
 
-  const handleEditGroup = (group) => {
+  const handleEditGroup = (group: any) => {
     setSelectedGroup(group);
     setGroupModalOpen(true);
   };
 
-  const handleDeleteGroup = async (groupId) => {
+  const handleDeleteGroup = async (groupId: any) => {
     try {
       await api.delete(`/groups/${groupId}`);
       toast.success(i18n.t("groups.toasts.deleted"));
@@ -161,14 +161,14 @@ const Groups = () => {
       </ConfirmationModal>
 
       <PageHeader 
-        title={i18n.t("groups.title")}
+        title={i18n.t("groups.title") as string}
         description="Gerencie os grupos de atendimento e permissões coletivas"
       >
         <div className="flex items-center gap-2">
           <div className="relative w-full max-w-sm hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={i18n.t("groups.searchPlaceholder")}
+              placeholder={i18n.t("groups.searchPlaceholder") as string}
               value={searchParam}
               onChange={handleSearch}
               className="pl-9 h-10"

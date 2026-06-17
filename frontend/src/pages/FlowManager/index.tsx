@@ -52,20 +52,20 @@ import ConfirmationModal from "../../components/ConfirmationModal";
 
 const FlowManager = () => {
     const navigate = useNavigate();
-    const [flows, setFlows] = useState([]);
-    const [whatsapps, setWhatsapps] = useState([]);
+    const [flows, setFlows] = useState<any[]>([]);
+    const [whatsapps, setWhatsapps] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchParam, setSearchParam] = useState("");
     const [view, setView] = useState("grid");
 
     // Create/Edit Modal State
     const [openModal, setOpenModal] = useState(false);
-    const [selectedFlow, setSelectedFlow] = useState(null);
+    const [selectedFlow, setSelectedFlow] = useState<any>(null);
     const [newFlowName, setNewFlowName] = useState("");
     const [selectedWhatsapp, setSelectedWhatsapp] = useState("");
 
     const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-    const [deletingFlow, setDeletingFlow] = useState(null);
+    const [deletingFlow, setDeletingFlow] = useState<any>(null);
 
     useEffect(() => {
         fetchFlows();
@@ -92,11 +92,11 @@ const FlowManager = () => {
         }
     };
 
-    const isConnectionUsed = (whatsappId) => {
+    const isConnectionUsed = (whatsappId: any) => {
         return flows.some((flow) => flow.whatsappId === whatsappId && flow.isActive);
     };
 
-    const handleOpenModal = (flow = null) => {
+    const handleOpenModal = (flow: any = null) => {
         setSelectedFlow(flow);
         setNewFlowName(flow ? flow.name : "");
         setSelectedWhatsapp(flow?.whatsappId ? String(flow.whatsappId) : "");

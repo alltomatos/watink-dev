@@ -18,6 +18,12 @@ func NewFlowController() *FlowController {
 	return &FlowController{}
 }
 
+// @Summary      Listar flows
+// @Tags         flows
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /flows [get]
 func (fc *FlowController) List(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Flows")
 	if !ok {
@@ -40,6 +46,14 @@ type flowInput struct {
 	Active bool           `json:"active"`
 }
 
+// @Summary      Criar flow
+// @Tags         flows
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados do flow"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /flows [post]
 func (fc *FlowController) Create(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Flows")
 	if !ok {
@@ -68,6 +82,13 @@ func (fc *FlowController) Create(c *gin.Context) {
 	c.JSON(http.StatusOK, flow)
 }
 
+// @Summary      Detalhar flow
+// @Tags         flows
+// @Produce      json
+// @Param        flowId  path      int  true  "ID do flow"
+// @Success      200     {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /flows/{flowId} [get]
 func (fc *FlowController) Show(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Flows")
 	if !ok {
@@ -84,6 +105,15 @@ func (fc *FlowController) Show(c *gin.Context) {
 	c.JSON(http.StatusOK, flow)
 }
 
+// @Summary      Atualizar flow
+// @Tags         flows
+// @Accept       json
+// @Produce      json
+// @Param        flowId  path      int                     true  "ID do flow"
+// @Param        body    body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200     {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /flows/{flowId} [put]
 func (fc *FlowController) Update(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Flows")
 	if !ok {
@@ -116,6 +146,13 @@ func (fc *FlowController) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, flow)
 }
 
+// @Summary      Remover flow
+// @Tags         flows
+// @Produce      json
+// @Param        flowId  path      int  true  "ID do flow"
+// @Success      200     {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /flows/{flowId} [delete]
 func (fc *FlowController) Delete(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Flows")
 	if !ok {

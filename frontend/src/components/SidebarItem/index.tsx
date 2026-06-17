@@ -21,14 +21,14 @@ interface SidebarItemProps {
 const getLinkClass = (isLightSidebar: boolean, isActive: boolean, collapsed: boolean): string => {
   const base = "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative select-none";
   const hover = isLightSidebar
-    ? "hover:bg-black/5 hover:text-[hsl(var(--text-primary))]"
+    ? "hover:bg-black/5 hover:text-[var(--text-primary)]"
     : "hover:bg-white/5 hover:text-white";
   const state = isActive
     ? isLightSidebar
-      ? "bg-[hsl(var(--action-primary-bg))] text-[hsl(var(--action-primary))] font-semibold"
+      ? "bg-[var(--action-primary-bg)] text-[var(--action-primary)] font-semibold"
       : "bg-primary/20 text-white font-semibold"
     : isLightSidebar
-      ? "text-[hsl(var(--text-secondary))]"
+      ? "text-[var(--text-secondary)]"
       : "text-[var(--slate-300)]";
   const layout = collapsed ? "justify-center px-2" : "";
   return cn(base, hover, state, layout);
@@ -37,9 +37,9 @@ const getLinkClass = (isLightSidebar: boolean, isActive: boolean, collapsed: boo
 const getIconClass = (isLightSidebar: boolean, isActive: boolean): string => {
   const base = "flex shrink-0 items-center justify-center transition-transform group-hover:scale-110";
   const color = isActive
-    ? isLightSidebar ? "text-[hsl(var(--action-primary))]" : "text-white"
+    ? isLightSidebar ? "text-[var(--action-primary)]" : "text-white"
     : isLightSidebar
-      ? "text-[hsl(var(--text-muted))] group-hover:text-[hsl(var(--text-primary))]"
+      ? "text-[var(--text-muted)] group-hover:text-[var(--text-primary)]"
       : "text-[var(--slate-400)] group-hover:text-white";
   return cn(base, color);
 };

@@ -72,11 +72,11 @@ const QueueModal = ({ open, onClose, queueId }: QueueModalProps) => {
   const isMounted = useRef(true);
   const [queue, setQueue] = useState<Queue>({
     name: "",
-    color: "var(--color-primary)", // default primary color
+    color: "var(--color-primary)",
     greetingMessage: "",
     distributionStrategy: "ROUND_ROBIN",
     prioritizeWallet: false
-  });
+  } as Queue);
 
   useEffect(() => { return () => { isMounted.current = false; }; }, []);
 
@@ -89,7 +89,7 @@ const QueueModal = ({ open, onClose, queueId }: QueueModalProps) => {
 
   const handleClose = () => {
     onClose();
-    setQueue({ name: "", color: "var(--color-primary)", greetingMessage: "", distributionStrategy: "ROUND_ROBIN", prioritizeWallet: false });
+    setQueue({ name: "", color: "var(--color-primary)", greetingMessage: "", distributionStrategy: "ROUND_ROBIN", prioritizeWallet: false } as Queue);
   };
 
   const handleSave = async (values: Queue) => {

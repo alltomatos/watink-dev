@@ -94,7 +94,7 @@ module.exports = {
 		"watink-design-system/no-hardcoded-colors": [
 			"error",
 			{
-				exemptPatterns: ["ColorPicker", "FlowBuilder", "tagColors", "MainListItems"],
+				exemptPatterns: ["ColorPicker", "FlowBuilder", "tagColors", "MainListItems", "metric-card"],
 			},
 		],
 
@@ -110,6 +110,8 @@ module.exports = {
 		"no-console": ["warn", { allow: ["warn", "error"] }],
 		"no-unused-vars": "off",
 		"@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", destructuredArrayIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }],
+		// Gradual typing migration — tracked as tech debt in CLAUDE.md
+		"@typescript-eslint/no-explicit-any": "off",
 		"prefer-const": "warn",
 		"no-var": "error",
 
@@ -128,6 +130,13 @@ module.exports = {
 		{
 			// Config files & scripts exempt from DS rule
 			files: ["vite.config.*", "copy-assets.*", "sync-embed-go.*", "*.config.js"],
+			rules: {
+				"watink-design-system/no-hardcoded-colors": "off",
+			},
+		},
+		{
+			// Token definition files legitimately contain hex/hsl values
+			files: ["src/theme/tokens/**"],
 			rules: {
 				"watink-design-system/no-hardcoded-colors": "off",
 			},

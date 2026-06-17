@@ -65,6 +65,11 @@ func setupPluginTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	})
 	// DDL manual completo para todas as tabelas compatível com SQLite
 	db.Exec(`CREATE TABLE IF NOT EXISTS "Tenants" (
 		"id" TEXT PRIMARY KEY,

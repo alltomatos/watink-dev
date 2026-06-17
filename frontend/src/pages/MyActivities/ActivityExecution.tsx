@@ -317,7 +317,6 @@ const ActivityExecution: React.FC<{
 
                       {item.inputType === "text" && (
                         <Input
-                          size="sm"
                           value={item.value ?? ""}
                           onChange={(e) => handleItemChange(item, "value", e.target.value)}
                           placeholder="Digite a resposta..."
@@ -327,7 +326,6 @@ const ActivityExecution: React.FC<{
                       {item.inputType === "number" && (
                         <Input
                           type="number"
-                          size="sm"
                           value={item.value ?? ""}
                           onChange={(e) => handleItemChange(item, "value", e.target.value)}
                           placeholder="0"
