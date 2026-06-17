@@ -19,7 +19,7 @@ func setupFlowTestDB(t *testing.T) *gorm.DB {
 	}
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
-			sqlDB.Close()
+			_ = sqlDB.Close()
 		}
 	})
 	// DDL manual — SQLite não suporta gen_random_uuid() nem type:uuid

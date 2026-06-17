@@ -41,7 +41,7 @@ func setupRBACTestDB(t *testing.T) *gorm.DB {
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
-			sqlDB.Close()
+			_ = sqlDB.Close()
 		}
 	})
 

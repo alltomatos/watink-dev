@@ -79,7 +79,9 @@ func TestSetupController_CheckSetup_AlreadyConfigured(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 	var body map[string]bool
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
 	if body["needsSetup"] {
 		t.Fatal("expected needsSetup=false")
 	}
