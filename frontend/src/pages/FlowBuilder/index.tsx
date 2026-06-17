@@ -102,7 +102,7 @@ const FlowBuilderContent = () => {
     const [isNodesSidebarOpen, setIsNodesSidebarOpen] = useState(true);
 
     // Remoção de nó + arestas conectadas
-    const handleNodeDelete = useCallback((nodeId) => {
+    const handleNodeDelete = useCallback((nodeId: any) => {
         setNodes((nds) => nds.filter((node) => node.id !== nodeId));
         setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
         setSelectedNode(null);
@@ -110,7 +110,7 @@ const FlowBuilderContent = () => {
     }, [setNodes, setEdges]);
 
     // Salvar configurações de um nó específico
-    const handleNodeConfigSave = useCallback((nodeId, newData) => {
+    const handleNodeConfigSave = useCallback((nodeId: any, newData: any) => {
         setNodes((nds) =>
             nds.map((node) =>
                 node.id === nodeId
@@ -169,7 +169,7 @@ const FlowBuilderContent = () => {
         fetchFlow();
     }, [flowId, navigate, setNodes, setEdges, handleNodeDelete]);
 
-    const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
+    const onConnect = useCallback((params: any) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
 
     const handleSave = useCallback(async (silent = false) => {
         if (!silent) setSaving(true);
@@ -243,7 +243,7 @@ const FlowBuilderContent = () => {
         link.click();
     }, [nodes, edges, flowId]);
 
-    const handleImport = useCallback((event) => {
+    const handleImport = useCallback((event: any) => {
         const file = event.target.files?.[0];
         if (!file) return;
         const fileReader = new FileReader();
@@ -264,25 +264,25 @@ const FlowBuilderContent = () => {
         };
     }, [setNodes, setEdges]);
 
-    const handleSimulate = useCallback(async (id, message) => {
+    const handleSimulate = useCallback(async (id: any, message: any) => {
         const { data } = await api.post(`/flows/${id}/simulate`, { message });
         return data;
     }, []);
 
-    const handleAIResponse = useCallback((newNodes, newEdges) => {
+    const handleAIResponse = useCallback((newNodes: any, newEdges: any) => {
         if (newNodes && newEdges) {
             setNodes(newNodes);
             setEdges(newEdges);
         }
     }, [setNodes, setEdges]);
 
-    const onDragOver = useCallback((event) => {
+    const onDragOver = useCallback((event: any) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
     }, []);
 
     const onDrop = useCallback(
-        (event) => {
+        (event: any) => {
             event.preventDefault();
             const type = event.dataTransfer.getData('application/reactflow');
             const label = event.dataTransfer.getData('application/reactflow/label');
@@ -311,7 +311,7 @@ const FlowBuilderContent = () => {
         [reactFlowInstance, setNodes, handleNodeDelete]
     );
 
-    const onNodeClick = useCallback((event, node) => {
+    const onNodeClick = useCallback((event: any, node: any) => {
         setSelectedNode(node);
         setIsEditorOpen(true);
     }, []);
