@@ -50,6 +50,7 @@ business/coverage.out
 # --- Screenshots & Temp ---
 *.png
 !frontend/public/**/*.png
+!images/*.png
 
 # --- Dev Container Lock ---
 .devcontainer/devcontainer-lock.json
@@ -66,3 +67,10 @@ script_package_plugins.js
 
 # --- Claude Code Worktrees ---
 .claude/worktrees/
+
+# --- PowerShell / Batch Scripts Temporários ---
+*.ps1
+*.bat
+
+# --- Zone Identifiers (Windows) ---
+*:Zone.Identifier
