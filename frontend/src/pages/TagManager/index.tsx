@@ -8,8 +8,7 @@ import {
   Trash2, 
   Archive, 
   RotateCcw,
-  Loader2,
-  Tag as TagIcon
+  Loader2
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -117,6 +116,7 @@ const TagManager = () => {
 
   useEffect(() => {
     const socket = openSocket();
+    if (!socket) return;
 
     socket.on("tag", (data) => {
       if (data.action === "update" || data.action === "create") {
@@ -215,7 +215,7 @@ const TagManager = () => {
             />
           </div>
           <Button
-            variant={showArchived ? "secondary" : "outline"}
+            variant={showArchived ? "secondary" : "ghost"}
             onClick={() => setShowArchived((prev) => !prev)}
           >
             <Archive className="mr-2 h-4 w-4" />
@@ -249,7 +249,7 @@ const TagManager = () => {
                     <div className="flex items-center gap-2">
                       <div
                         className="h-4 w-4 rounded-full border border-black/10 shadow-sm"
-                        style={{ backgroundColor: tag.color || "#eee" }}
+                        style={{ backgroundColor: tag.color || "var(--muted)" }}
                       />
                       <span className="font-semibold">{tag.name}</span>
                       {tag.archived && (

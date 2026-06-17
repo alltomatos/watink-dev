@@ -1,5 +1,5 @@
 /* @jsxImportSource react */
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactFlow, {
     ReactFlowProvider,
@@ -135,8 +135,8 @@ const FlowBuilderContent = () => {
                     setAiEnabled(false);
                     setIsChatOpen(false);
                 }
-            } catch (err) {
-                console.error("Erro ao carregar configurações:", err);
+            } catch {
+                console.error("Erro ao carregar configurações");
             }
         };
         fetchSettings();
@@ -161,8 +161,8 @@ const FlowBuilderContent = () => {
                 }
                 if (Array.isArray(data.edges)) setEdges(data.edges);
                 setLoading(false);
-            } catch (err) {
-                toastError(err);
+            } catch (_err) {
+                toastError(_err);
                 navigate('/flowbuilder');
             }
         };
@@ -181,8 +181,8 @@ const FlowBuilderContent = () => {
                 active: isActive,
             });
             if (!silent) toast.success("Fluxo salvo com sucesso");
-        } catch (err) {
-            if (!silent) toastError(err);
+        } catch (_err) {
+            if (!silent) toastError(_err);
         } finally {
             if (!silent) setSaving(false);
         }
@@ -213,9 +213,9 @@ const FlowBuilderContent = () => {
                 active: next,
             });
             toast.success(next ? "Fluxo ativado" : "Fluxo pausado");
-        } catch (err) {
+        } catch (_err) {
             setIsActive(!next);
-            toastError(err);
+            toastError(_err);
         }
     }, [isActive, flowId, flowName, nodes, edges]);
 
@@ -258,7 +258,7 @@ const FlowBuilderContent = () => {
                 } else {
                     toast.error("Arquivo de fluxo inválido");
                 }
-            } catch (err) {
+            } catch {
                 toast.error("Erro ao ler arquivo");
             }
         };
@@ -421,7 +421,7 @@ const FlowBuilderContent = () => {
                         nodeTypes={nodeTypes}
                         fitView
                     >
-                        <Background color="#cbd5e1" gap={20} />
+                        <Background color="var(--border-default)" gap={20} />
                         <Controls position="bottom-right" className="bg-white border rounded-lg shadow-xl" />
                     </ReactFlow>
                 </div>

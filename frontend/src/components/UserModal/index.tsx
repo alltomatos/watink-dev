@@ -11,6 +11,13 @@ import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../Can";
 import useWhatsApps from "../../hooks/useWhatsApps";
 import { UserSchema } from "../../utils/userValidation";
+import type {
+  Group,
+  Role,
+  UserDetail,
+  UserQueue,
+  UserSavePayload,
+} from "../../types/domain";
 
 import {
   Dialog,
@@ -37,26 +44,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-interface User {
-  id?: number;
-  name: string;
-  email: string;
-  password?: string;
-  groupIds?: number[];
-  whatsappId?: number | string;
-  queues?: { id: number; name: string }[];
-  roles?: { id: number; name: string }[];
-}
-
-interface Group {
-  id: number;
-  name: string;
-}
-
-interface Role {
-  id: number;
-  name: string;
-}
+/** Local Formik form values — a subset of UserDetail */
+type UserFormValues = Pick<UserDetail, "name" | "email" | "password" | "groupIds">;
 
 interface UserModalProps {
   open: boolean;
@@ -65,16 +54,16 @@ interface UserModalProps {
 }
 
 const UserModal: React.FC<UserModalProps> = ({ open, onClose, userId }) => {
-  const initialState: User = {
+  const initialState: UserFormValues = {
     name: "",
     email: "",
     password: "",
-    groupIds: []
+    groupIds: [],
   };
 
-  const { user: loggedInUser } = useContext(AuthContext);
+  const { user: _loggedInUser } = useContext(AuthContext);
 
-  const [user, setUser] = useState<User>(initialState);
+  const [user, setUser] = useState<UserFormValues>(initialState);
   const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [whatsappId, setWhatsappId] = useState<number | string>("");
@@ -108,15 +97,16 @@ const UserModal: React.FC<UserModalProps> = ({ open, onClose, userId }) => {
     const fetchUser = async () => {
       if (!userId || !open) return;
       try {
-        const { data } = await api.get(`/users/${userId}`);
-        const userGroupIds = data.groups?.map((group: any) => group.id) || [];
-        const userRoleIds = data.roles?.map((role: any) => role.id) || [];
+        const { data } = await api.get<UserDetail>(`/users/${userId}`);
+        const userGroupIds = data.groups?.map((group: Group) => group.id) ?? [];
+        const userRoleIds = data.roles?.map((role: Role) => role.id) ?? [];
         setUser((prevState) => ({
           ...prevState,
-          ...data,
+          name: data.name,
+          email: data.email,
           groupIds: userGroupIds,
         }));
-        const userQueueIds = data.queues?.map((queue: any) => queue.id) || [];
+        const userQueueIds = data.queues?.map((queue: UserQueue) => queue.id) ?? [];
         setSelectedQueueIds(userQueueIds);
         setSelectedRoleIds(userRoleIds);
         setWhatsappId(data.whatsappId ? data.whatsappId : "");
@@ -136,12 +126,15 @@ const UserModal: React.FC<UserModalProps> = ({ open, onClose, userId }) => {
     setWhatsappId("");
   };
 
-  const handleSaveUser = async (values: User) => {
-    const userData = {
-      ...values,
-      whatsappId: whatsappId === "" ? null : whatsappId,
+  const handleSaveUser = async (values: UserFormValues) => {
+    const userData: UserSavePayload = {
+      name: values.name,
+      email: values.email,
+      password: values.password,
+      whatsappId: whatsappId === "" ? null : Number(whatsappId),
       queueIds: selectedQueueIds,
       roleIds: selectedRoleIds,
+      groupIds: values.groupIds ?? [],
     };
     try {
       if (userId) {

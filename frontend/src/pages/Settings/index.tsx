@@ -10,20 +10,13 @@ import {
   Puzzle,
   Headphones,
   Brain,
-  Save,
   Loader2,
   Layout,
-  Type,
-  ImageIcon,
-  Smartphone,
-  CheckCircle2,
-  XCircle,
   Plus,
   Copy,
   Mail,
   Globe,
-  Clock,
-  RotateCcw
+  XCircle
 } from "lucide-react";
 
 import api from "../../services/api";
@@ -32,9 +25,9 @@ import { i18n } from "../../translate/i18n";
 import toastError from "../../errors/toastError";
 import { getBackendUrl } from "../../helpers/urlUtils";
 import { AuthContext } from "../../context/Auth/AuthContext";
+import { useThemeContext } from "../../context/DarkMode";
 import { Can } from "../../components/Can";
 import openSocket from "../../services/socket-io";
-
 import {
   PageLayout,
   PageHeader,
@@ -45,7 +38,6 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
 import { Badge } from "../../components/ui/badge";
-import { Textarea } from "../../components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -62,6 +54,13 @@ import {
 } from "../../components/ui/select";
 import { Separator } from "../../components/ui/separator";
 import AISettings from "./components/AISettings";
+
+// Mapeamento dos valores DB → ThemeContext
+const DB_THEME_MAP: Record<string, { appTheme: string; darkMode?: boolean }> = {
+  whaticket: { appTheme: "google" },
+  whatsapp:  { appTheme: "whatsapp" },
+  dark:      { appTheme: "apple", darkMode: true },
+};
 
 interface Setting {
   key: string;
@@ -82,12 +81,12 @@ const timezones = [
 const Settings: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
+  const { setAppTheme, setDarkMode } = useThemeContext();
 
   const [activeSection, setActiveSection] = useState("general");
   const [settings, setSettings] = useState<Setting[]>([]);
   const [activePlugins, setActivePlugins] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   // Hidden File Inputs Refs
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -117,7 +116,7 @@ const Settings: React.FC = () => {
         try {
           const { data: pluginsData } = await pluginApi.get("/plugins/installed");
           setActivePlugins(pluginsData?.active || []);
-        } catch (e) {
+        } catch {
           setActivePlugins([]);
         }
 
@@ -126,14 +125,14 @@ const Settings: React.FC = () => {
         if (savedCategories) {
           try {
             setHelpdeskCategories(JSON.parse(savedCategories));
-          } catch (_) {}
+          } catch { /* silence */ }
         }
 
         const savedSLA = safeSettings.find((s) => s.key === "helpdesk_sla_config")?.value;
         if (savedSLA) {
           try {
             setSlaConfig(JSON.parse(savedSLA));
-          } catch (_) {}
+          } catch { /* silence */ }
         }
 
         setLoading(false);
@@ -164,12 +163,12 @@ const Settings: React.FC = () => {
         if (data.setting.key === "helpdesk_categories") {
           try {
             setHelpdeskCategories(JSON.parse(data.setting.value));
-          } catch (_) {}
+          } catch { /* silence */ }
         }
         if (data.setting.key === "helpdesk_sla_config") {
           try {
             setSlaConfig(JSON.parse(data.setting.value));
-          } catch (_) {}
+          } catch { /* silence */ }
         }
       }
     });
@@ -185,7 +184,6 @@ const Settings: React.FC = () => {
   };
 
   const handleUpdateSetting = async (key: string, value: string) => {
-    setSaving(true);
     try {
       await api.put(`/settings/${key}`, { value });
       setSettings((prev) => {
@@ -195,11 +193,15 @@ const Settings: React.FC = () => {
         }
         return hash;
       });
+      // Aplicar tema imediatamente ao ThemeContext
+      if (key === "theme") {
+        const mapped = DB_THEME_MAP[value] ?? { appTheme: "google" };
+        setAppTheme(mapped.appTheme);
+        setDarkMode(mapped.darkMode ?? false);
+      }
       toast.success("Configuração atualizada!");
     } catch (err) {
       toastError(err);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -216,7 +218,7 @@ const Settings: React.FC = () => {
   const handleImageUpload = async (key: string, file: File | undefined) => {
     if (!file) return;
     try {
-      setSaving(true);
+      
       const base64String = await convertFileToBase64(file);
       await handleUpdateSetting(key, base64String);
 
@@ -232,8 +234,6 @@ const Settings: React.FC = () => {
       }
     } catch (err) {
       toastError(err);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -274,7 +274,7 @@ const Settings: React.FC = () => {
     await handleUpdateSetting("helpdesk_categories", JSON.stringify(nextCategories));
   };
 
-  const renderImagePreview = (key: string, defaultUrl: string) => {
+  const renderImagePreview = (key: string) => {
     const value = getSettingValue(key);
     if (!value) {
       return (
@@ -425,7 +425,7 @@ const Settings: React.FC = () => {
                 />
               </div>
               <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-3 bg-muted/10">
-                {renderImagePreview("systemLogo", "/logo.png")}
+                {renderImagePreview("systemLogo")}
                 <input
                   type="file"
                   accept="image/*"
@@ -447,7 +447,7 @@ const Settings: React.FC = () => {
             <div className="space-y-4">
               <Label>Favicon (Ícone do Navegador)</Label>
               <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-3 bg-muted/10">
-                {renderImagePreview("systemFavicon", "/favicon.png")}
+                {renderImagePreview("systemFavicon")}
                 <input
                   type="file"
                   accept="image/x-icon,image/png,image/jpeg"
@@ -469,7 +469,7 @@ const Settings: React.FC = () => {
             <div className="space-y-4">
               <Label>Logotipo Mobile</Label>
               <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center gap-3 bg-muted/10">
-                {renderImagePreview("mobileLogo", "/logo.png")}
+                {renderImagePreview("mobileLogo")}
                 <input
                   type="file"
                   accept="image/*"
@@ -806,13 +806,13 @@ const Settings: React.FC = () => {
             user={user}
             perform="marketplace:read"
             yes={() => (
-              <Button variant="outline" onClick={() => navigate("/admin/settings/marketplace")}>
+              <Button variant="ghost" onClick={() => navigate("/admin/settings/marketplace")}>
                 <Puzzle className="mr-2 h-4 w-4" />
                 Marketplace de Plugins
               </Button>
             )}
           />
-          <Button variant="outline" onClick={() => navigate("/helpdesk")}>
+          <Button variant="ghost" onClick={() => navigate("/helpdesk")}>
             <Headphones className="mr-2 h-4 w-4" />
             Ajuda
           </Button>

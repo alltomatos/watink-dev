@@ -15,10 +15,10 @@ const Tickets: React.FC = () => {
   }, [ticketId]);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-surface">
+    <div className="flex h-screen w-full overflow-hidden bg-background">
       {/* Coluna 1: Lista de Tickets (TicketsManager) */}
       <div className={cn(
-        "flex-col border-r border-border md:flex md:w-[260px]",
+        "flex-col border-r border-border md:flex md:w-[290px] shrink-0",
         hasOpenTicket ? "hidden md:flex" : "flex w-full"
       )}>
         <TicketsManager />

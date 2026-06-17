@@ -24,13 +24,12 @@ import {
 } from "../../components/ui/page-layout";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
+import {
+  Card,
+  CardHeader,
+  CardTitle,
   CardDescription,
-  CardFooter 
+  CardFooter
 } from "../../components/ui/card";
 import { 
   Dialog, 
@@ -79,8 +78,7 @@ const FlowManager = () => {
             const { data } = await api.get('/flows');
             setFlows(Array.isArray(data) ? data : []);
             setLoading(false);
-        } catch (err) {
-            toastError(err);
+        } catch {
             setLoading(false);
         }
     };
@@ -89,8 +87,8 @@ const FlowManager = () => {
         try {
             const { data } = await api.get('/whatsapp');
             setWhatsapps(Array.isArray(data) ? data : []);
-        } catch (err) {
-            toastError(err);
+        } catch (_err) {
+            toastError(_err);
         }
     };
 
@@ -145,8 +143,8 @@ const FlowManager = () => {
                 handleCloseModal();
                 navigate(`/flowbuilder/${data.id}`);
             }
-        } catch (err) {
-            toastError(err);
+        } catch (_err) {
+            toastError(_err);
         }
     };
 
@@ -158,8 +156,8 @@ const FlowManager = () => {
             fetchFlows();
             setConfirmModalOpen(false);
             setDeletingFlow(null);
-        } catch (err) {
-            toastError(err);
+        } catch (_err) {
+            toastError(_err);
         }
     };
 

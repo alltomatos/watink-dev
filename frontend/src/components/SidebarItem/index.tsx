@@ -7,6 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../../components/ui/tooltip";
+import { useThemeContext } from "../../context/DarkMode";
 
 interface SidebarItemProps {
   to: string;
@@ -16,6 +17,33 @@ interface SidebarItemProps {
   activeColor?: string;
 }
 
+// Pré-computa classes fora do JSX para evitar ambiguidade do parser TSX com hsl(var(--...))
+const getLinkClass = (isLightSidebar: boolean, isActive: boolean, collapsed: boolean): string => {
+  const base = "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative select-none";
+  const hover = isLightSidebar
+    ? "hover:bg-black/5 hover:text-[hsl(var(--text-primary))]"
+    : "hover:bg-white/5 hover:text-white";
+  const state = isActive
+    ? isLightSidebar
+      ? "bg-[hsl(var(--action-primary-bg))] text-[hsl(var(--action-primary))] font-semibold"
+      : "bg-primary/20 text-white font-semibold"
+    : isLightSidebar
+      ? "text-[hsl(var(--text-secondary))]"
+      : "text-[var(--slate-300)]";
+  const layout = collapsed ? "justify-center px-2" : "";
+  return cn(base, hover, state, layout);
+};
+
+const getIconClass = (isLightSidebar: boolean, isActive: boolean): string => {
+  const base = "flex shrink-0 items-center justify-center transition-transform group-hover:scale-110";
+  const color = isActive
+    ? isLightSidebar ? "text-[hsl(var(--action-primary))]" : "text-white"
+    : isLightSidebar
+      ? "text-[hsl(var(--text-muted))] group-hover:text-[hsl(var(--text-primary))]"
+      : "text-[var(--slate-400)] group-hover:text-white";
+  return cn(base, color);
+};
+
 const SidebarItem: React.FC<SidebarItemProps> = ({
   to,
   icon,
@@ -24,30 +52,24 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   activeColor = "var(--primary)",
 }) => {
   const location = useLocation();
+  const { appTheme } = useThemeContext();
+  const isLightSidebar = appTheme === "whatsapp";
   const isActive = to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
 
+  const linkClass = getLinkClass(isLightSidebar, isActive, collapsed);
+  const iconClass = getIconClass(isLightSidebar, isActive);
+
   const content = (
-    <NavLink
-      to={to}
-      className={cn(
-        "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative select-none",
-        "hover:bg-accent hover:text-accent-foreground",
-        isActive ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground",
-        collapsed && "justify-center px-2"
-      )}
-    >
+    <NavLink to={to} className={linkClass}>
       {/* Active Indicator */}
       {isActive && (
-        <div 
-          className="absolute left-0 w-1 h-6 bg-primary rounded-r-full" 
-          style={{ backgroundColor: activeColor }}
+        <div
+          className="absolute left-0 w-[3px] h-6 rounded-r-full"
+          style={{ backgroundColor: activeColor || "var(--color-info)" }}
         />
       )}
-      
-      <div className={cn(
-        "flex shrink-0 items-center justify-center transition-transform group-hover:scale-110",
-        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-      )}>
+
+      <div className={iconClass}>
         {icon}
       </div>
 

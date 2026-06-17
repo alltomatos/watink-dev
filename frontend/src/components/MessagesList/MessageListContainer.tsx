@@ -1,13 +1,18 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { VirtuosoMessageList, VirtuosoMessageListMethods } from '@virtuoso.dev/message-list';
 import connectToSocket from '../../services/socket-io';
 import { MessageItem } from './MessageItem';
 import { Message } from '../../types/Message';
+import { SocketMessageEvent } from '../../types/api';
 import api from '../../services/api';
 
 interface MessageListContainerProps {
   ticketId: string | number;
+}
+
+interface MessagesResponse {
+  messages: Message[];
 }
 
 export const MessageListContainer: React.FC<MessageListContainerProps> = ({ ticketId }) => {
@@ -18,7 +23,7 @@ export const MessageListContainer: React.FC<MessageListContainerProps> = ({ tick
   const { data: messages = [], isLoading } = useQuery<Message[]>({
     queryKey: ['messages', ticketId],
     queryFn: async () => {
-      const response = await api.get(`/messages/${ticketId}`);
+      const response = await api.get<MessagesResponse>(`/messages/${ticketId}`);
       return response.data.messages;
     },
   });
@@ -27,7 +32,7 @@ export const MessageListContainer: React.FC<MessageListContainerProps> = ({ tick
   useEffect(() => {
     const socketInstance = connectToSocket();
 
-    const handleNewMessage = (data: any) => {
+    const handleNewMessage = (data: SocketMessageEvent<Message>) => {
       if (data.action === 'create') {
         const newMessage = data.message;
         queryClient.setQueryData<Message[]>(['messages', ticketId], (oldData) => {
@@ -55,13 +60,6 @@ export const MessageListContainer: React.FC<MessageListContainerProps> = ({ tick
     };
   }, [ticketId, queryClient]);
 
-  const listData = useMemo(() => ({
-    data: messages,
-    scrollModifier: {
-      type: 'auto-scroll-to-bottom',
-      autoScroll: ({ atBottom }: { atBottom: boolean }) => (atBottom ? 'smooth' : 'auto'),
-    } as const,
-  }), [messages]);
 
   if (isLoading) return <div>Carregando mensagens...</div>;
 

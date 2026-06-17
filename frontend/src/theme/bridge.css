@@ -1,45 +1,45 @@
 /*
  * Theme Bridge
- * Mapeia as variáveis semânticas do Watink Design System (Primitivas)
- * para as variáveis funcionais esperadas pelo shadcn/ui (Tailwind CSS)
+ * Mapeia os tokens semânticos do Watink Design System para as variáveis
+ * funcionais esperadas pelo shadcn/ui + Tailwind CSS.
+ *
+ * IMPORTANTE: os tokens semânticos (--action-primary, --bg-surface, etc.)
+ * armazenam canais HSL crus (ex: "211 100% 50%") SEM o wrapper hsl().
+ * O Tailwind adiciona hsl() ao gerar as utilidades (ex: bg-primary → hsl(var(--primary))).
+ * Por isso, aqui apontamos para os tokens semânticos, NÃO para os primitivos hex.
  */
 
-:root, [data-theme="default"] {
+:root {
+  /* Cores de fundo */
   --background: var(--bg-default);
-  --foreground: var(--slate-900);
-  --card: var(--neutral-0);
-  --card-foreground: var(--slate-900);
-  --primary: var(--blue-500);
-  --primary-foreground: var(--neutral-0);
-  --secondary: var(--slate-100);
-  --secondary-foreground: var(--slate-900);
-  --muted: var(--slate-100);
-  --muted-foreground: var(--slate-500);
-  --accent: var(--blue-50);
-  --accent-foreground: var(--blue-900);
-  --destructive: var(--red-500);
-  --destructive-foreground: var(--neutral-0);
-  --border: var(--slate-200);
-  --input: var(--slate-200);
-  --ring: var(--blue-500);
-}
+  --card:        var(--bg-surface);
+  --popover:     var(--bg-surface);
 
-[data-theme="google"] {
-  --primary: var(--google-blue);
-  /* Outras customizações específicas do tema Google aqui */
-}
+  /* Texto */
+  --foreground:          var(--text-primary);
+  --card-foreground:     var(--text-primary);
+  --popover-foreground:  var(--text-primary);
 
-[data-theme="whatsapp"] {
-  --primary: var(--emerald-500);
-  /* Outras customizações específicas do tema WhatsApp aqui */
-}
+  /* Cor de destaque principal */
+  --primary:             var(--action-primary);
+  --primary-foreground:  var(--text-inverse);
 
-[data-theme="dark"] {
-  --background: var(--neutral-950);
-  --foreground: var(--slate-100);
-  --card: var(--slate-800);
-  --card-foreground: var(--slate-100);
-  --primary: var(--blue-400);
-  --primary-foreground: var(--neutral-950);
-  --border: var(--slate-700);
+  /* Secundário / muted */
+  --secondary:             var(--bg-surface-alt);
+  --secondary-foreground:  var(--text-secondary);
+  --muted:                 var(--bg-surface-alt);
+  --muted-foreground:      var(--text-muted);
+
+  /* Accent */
+  --accent:             var(--action-primary-bg);
+  --accent-foreground:  var(--action-primary);
+
+  /* Destrutivo */
+  --destructive:             var(--status-error);
+  --destructive-foreground:  var(--text-inverse);
+
+  /* Bordas, inputs, foco */
+  --border:  var(--border-default);
+  --input:   var(--border-default);
+  --ring:    var(--action-primary);
 }

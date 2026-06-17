@@ -2,8 +2,7 @@ import React, { useContext, useState } from "react";
 import { useTicketsContext } from "../../context/Tickets/TicketsContext";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import NewTicketModal from "../NewTicketModal";
-import TicketsList from "../TicketsList";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Plus, Filter } from "lucide-react";
@@ -14,7 +13,6 @@ export const TicketsManager: React.FC = () => {
   const {
     tab,
     setTab,
-    searchParam,
     setSearchParam,
     tabOpen,
     setTabOpen,
@@ -23,11 +21,10 @@ export const TicketsManager: React.FC = () => {
   } = useTicketsContext();
 
   const { user } = useContext(AuthContext);
-  const [openCount, setOpenCount] = useState(0);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [groupsCount, setGroupsCount] = useState(0);
+  const [openCount, _setOpenCount] = useState(0);
+  const [pendingCount, _setPendingCount] = useState(0);
+  const [groupsCount, _setGroupsCount] = useState(0);
   const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>(user?.queues?.map((q) => q.id) || []);
-  const [selectedTags] = useState<any[]>([]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchParam(e.target.value.toLowerCase());

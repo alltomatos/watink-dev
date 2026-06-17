@@ -2,10 +2,10 @@
 import React, { useState, useContext, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { AuthContext } from "../context/Auth/AuthContext";
-import { i18n } from "../translate/i18n";
 import api from "../services/api";
 import { getBackendUrl } from "../helpers/urlUtils";
 import openSocket from "../services/socket-io";
+import type { SettingSocketEvent } from "../types/api";
 
 import MainSidebar from "../components/MainSidebar";
 import MainTopBar from "../components/MainTopBar";
@@ -13,17 +13,30 @@ import UserModal from "../components/UserModal";
 import BackdropLoading from "../components/BackdropLoading";
 import PageTransition from "../components/PageTransition";
 import { TooltipProvider } from "../components/ui/tooltip";
+import { useThemeContext } from "../context/DarkMode";
+
+// Mapeamento dos valores DB → ThemeContext (espelhado de Settings/index.tsx)
+const DB_THEME_MAP: Record<string, { appTheme: string; darkMode?: boolean }> = {
+  whaticket: { appTheme: "google" },
+  whatsapp:  { appTheme: "whatsapp" },
+  dark:      { appTheme: "apple", darkMode: true },
+};
 
 const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const [drawerOpen, setDrawerOpen] = useState(() => window.innerWidth >= 1024);
+  const [drawerOpen, setDrawerOpen] = useState(() => {
+    if (window.innerWidth < 1024) return false;
+    const saved = localStorage.getItem("wt:sidebar:collapsed");
+    return saved !== null ? saved !== "true" : true; // default: aberto no desktop
+  });
   const [userModalOpen, setUserModalOpen] = useState(false);
-  const [systemLogo, setSystemLogo] = useState("");
+  const [_systemLogo, setSystemLogo] = useState("");
   const [systemTitle, setSystemTitle] = useState("Watink");
-  const [logoEnabled, setLogoEnabled] = useState(true);
+  const [_logoEnabled, setLogoEnabled] = useState(true);
   const [frontendVersion, setFrontendVersion] = useState("");
 
   const { user, handleLogout, loading } = useContext(AuthContext);
+  const { setAppTheme, setDarkMode } = useThemeContext();
 
   // Fecha a barra lateral ao mudar de rota em telas pequenas (mobile/tablet)
   useEffect(() => {
@@ -62,6 +75,16 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           document.title = title.value;
         }
         if (enabled) setLogoEnabled(enabled.value === "true");
+
+        // Aplicar tema do tenant ao ThemeContext
+        const themeSetting = settings.find((s) => s.key === "theme");
+        if (themeSetting?.value) {
+          const mapped = DB_THEME_MAP[themeSetting.value];
+          if (mapped) {
+            setAppTheme(mapped.appTheme);
+            setDarkMode(mapped.darkMode ?? false);
+          }
+        }
         if (favicon?.value) {
           let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
           if (!link) {
@@ -71,7 +94,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           }
           link.href = getBackendUrl(favicon.value);
         }
-      } catch (err) {
+      } catch {
         // Silent settings fetch
       }
     };
@@ -87,7 +110,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           const data = await res.json();
           setFrontendVersion(data?.version || "");
         }
-      } catch (_err) {
+      } catch {
         // version.json unavailable
       }
     };
@@ -98,7 +121,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   useEffect(() => {
     const socket = openSocket();
     if (!socket) return;
-    socket.on("settings", (data: any) => {
+    socket.on("settings", (data: SettingSocketEvent) => {
       if (data.action === "update") {
         if (data.setting.key === "systemLogo") setSystemLogo(data.setting.value);
         if (data.setting.key === "systemTitle") {
@@ -106,6 +129,13 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           document.title = data.setting.value;
         }
         if (data.setting.key === "systemLogoEnabled") setLogoEnabled(data.setting.value === "true");
+        if (data.setting.key === "theme") {
+          const mapped = DB_THEME_MAP[data.setting.value];
+          if (mapped) {
+            setAppTheme(mapped.appTheme);
+            setDarkMode(mapped.darkMode ?? false);
+          }
+        }
         if (data.setting.key === "systemFavicon") {
           let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
           if (!link) {
@@ -123,7 +153,16 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     };
   }, []);
 
-  const toggleDrawer = useCallback(() => setDrawerOpen((prev) => !prev), []);
+  const toggleDrawer = useCallback(() => {
+    setDrawerOpen((prev) => {
+      const next = !prev;
+      // Persiste preferência apenas no desktop
+      if (window.innerWidth >= 1024) {
+        localStorage.setItem("wt:sidebar:collapsed", String(!next));
+      }
+      return next;
+    });
+  }, []);
 
   if (loading) return <BackdropLoading />;
 

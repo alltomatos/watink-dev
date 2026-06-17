@@ -1,0 +1,16 @@
+{
+  "project": "watinkdev",
+  "branch": "tinker/ui-and-di-refactor",
+  "stack": {
+    "frontend": "React 18 + TypeScript + Vite + Tailwind v4 + shadcn/ui",
+    "backend": "Go 1.24 / Gin / GORM",
+    "engine": "Go 1.24 / whatsmeow",
+    "db": "PostgreSQL (RLS multitenancy)",
+    "messaging": "RabbitMQ"
+  },
+  "orchestrator": {
+    "roadmap": "ORCHESTRATOR-ROADMAP.md",
+    "state": "ESTADO_ORQUESTRATOR.md",
+    "plans": ".claude/plans/"
+  }
+}

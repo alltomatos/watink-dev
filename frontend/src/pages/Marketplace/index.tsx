@@ -17,7 +17,6 @@ import { toast } from "react-toastify";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
 import pluginApi from "../../services/pluginApi";
-import { i18n } from "../../translate/i18n";
 import { getBackendUrl } from "../../helpers/urlUtils";
 
 import { 
@@ -28,13 +27,12 @@ import {
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription,
-  CardFooter 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter
 } from "../../components/ui/card";
 import { 
   Table, 
@@ -66,7 +64,7 @@ const Marketplace = () => {
     try {
       const { data } = await pluginApi.get("/plugins/instance");
       setInstanceId(data.instanceId);
-    } catch (err) {
+    } catch {
       console.error("Erro ao carregar Instance ID");
     }
   };
@@ -96,7 +94,7 @@ const Marketplace = () => {
         active: activeSlugs.has(p.slug),
       }));
       setPlugins(normalized);
-    } catch (err) {
+    } catch {
       toast.error("Erro ao carregar plugins");
     } finally {
       setLoading(false);

@@ -1,0 +1,22 @@
+/* Watink Design System v2 — Motion Tokens */
+
+:root {
+  /* Durations */
+  --duration-fast:   150ms;
+  --duration-normal: 200ms;
+  --duration-slow:   300ms;
+  --duration-slower: 500ms;
+
+  /* Easing curves */
+  --ease-out:    cubic-bezier(0.0, 0, 0.2, 1);
+  --ease-in:     cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-sharp:  cubic-bezier(0.4, 0, 0.6, 1);
+  --ease-spring: cubic-bezier(0.25, 0.8, 0.25, 1);
+
+  /* Transition shorthands */
+  --transition-default: all var(--duration-normal) var(--ease-out);
+  --transition-fast:    all var(--duration-fast)   var(--ease-out);
+  --transition-slow:    all var(--duration-slow)   var(--ease-spring);
+  --transition-card:    all 300ms var(--ease-spring);
+}
