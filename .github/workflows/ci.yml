@@ -170,6 +170,7 @@ jobs:
           DB_NAME: watink
           JWT_SECRET: test-jwt-secret
           JWT_REFRESH_SECRET: test-jwt-refresh-secret
+          APP_ENV: test
         run: |
           nohup go run cmd/server/main.go > /tmp/watink-backend.log 2>&1 &
           echo $! > /tmp/watink-backend.pid

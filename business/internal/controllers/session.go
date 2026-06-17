@@ -74,7 +74,8 @@ func (ac *AuthController) Login(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refreshToken", refreshToken, 3600*24*7, "/", "", true, true)
+	secureCookie := os.Getenv("APP_ENV") != "test" && os.Getenv("GIN_MODE") != "test"
+	c.SetCookie("refreshToken", refreshToken, 3600*24*7, "/", "", secureCookie, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
