@@ -46,18 +46,18 @@ const TransferTicketModal = ({ modalOpen, onClose, ticketid, ticketWhatsappId }:
   const [selectedQueue, setSelectedQueue] = useState("");
   const [selectedWhatsapp, setSelectedWhatsapp] = useState(ticketWhatsappId ? String(ticketWhatsappId) : "");
 
-  const { findAll: findAllQueues } = useQueues();
-  const { loadingWhatsapps, whatsApps } = useWhatsApps();
+  const { data: queuesData } = useQueues();
+  const { loading: loadingWhatsapps, whatsApps } = useWhatsApps();
   const { user: loggedInUser } = useContext(AuthContext);
 
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    findAllQueues().then((list: any[]) => {
-      setAllQueues(list);
-      setQueues(list);
-    });
-  }, [findAllQueues]);
+    if (queuesData) {
+      setAllQueues(queuesData);
+      setQueues(queuesData);
+    }
+  }, [queuesData]);
 
   useEffect(() => {
     if (!modalOpen || searchParam.length < 3) {

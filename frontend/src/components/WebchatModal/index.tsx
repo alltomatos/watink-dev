@@ -151,7 +151,6 @@ const WebchatModal: React.FC<WebchatModalProps> = ({ open, onClose, whatsAppId, 
   const renderEmbedCode = () => {
     if (!whatsAppId) return <p className="text-sm text-muted-foreground mt-4">Salve para gerar o código</p>;
 
-    // @ts-expect-error — import.meta.env is typed via vite/client but not all envs are declared
     const backendUrl = import.meta.env.VITE_BACKEND_URL || window.location.origin.replace('app', 'api').replace('3000', '8082');
 
     const script = `<script>

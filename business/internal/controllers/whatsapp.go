@@ -10,25 +10,30 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type WhatsappController struct {
-	sessionRepo   domain.ChannelSessionRepository
-	db            *gorm.DB
-	broadcast     *services.RedisBroadcast
+	sessionRepo    domain.ChannelSessionRepository
+	planLimitSvc   domain.PlanLimitServiceInterface
+	broadcast      *services.RedisBroadcast
 	sessionService *services.WhatsAppSessionService
 }
 
-func NewWhatsappController(sr domain.ChannelSessionRepository, db *gorm.DB, broadcast *services.RedisBroadcast, sessionService *services.WhatsAppSessionService) *WhatsappController {
+func NewWhatsappController(sr domain.ChannelSessionRepository, planLimitSvc domain.PlanLimitServiceInterface, broadcast *services.RedisBroadcast, sessionService *services.WhatsAppSessionService) *WhatsappController {
 	return &WhatsappController{
-		sessionRepo:   sr,
-		db:            db,
-		broadcast:     broadcast,
+		sessionRepo:    sr,
+		planLimitSvc:   planLimitSvc,
+		broadcast:      broadcast,
 		sessionService: sessionService,
 	}
 }
 
+// @Summary      Listar conexões WhatsApp
+// @Tags         whatsapp
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /whatsapp [get]
 func (wc *WhatsappController) ListWhatsapps(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {
@@ -44,6 +49,13 @@ func (wc *WhatsappController) ListWhatsapps(c *gin.Context) {
 	c.JSON(http.StatusOK, whatsapps)
 }
 
+// @Summary      Detalhar conexão WhatsApp
+// @Tags         whatsapp
+// @Produce      json
+// @Param        id  path      int  true  "ID da conexão"
+// @Success      200 {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /whatsapp/{id} [get]
 func (wc *WhatsappController) ShowWhatsapp(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {
@@ -91,14 +103,21 @@ func (wc *WhatsappController) ShowWhatsapp(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// @Summary      Criar conexão WhatsApp
+// @Tags         whatsapp
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados da conexão"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /whatsapp [post]
 func (wc *WhatsappController) CreateWhatsapp(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {
 		return
 	}
 
-	limitService := services.NewPlanLimitService(wc.db)
-	if err := limitService.CheckLimit(tenantID, "connections"); err != nil {
+	if err := wc.planLimitSvc.CheckLimit(tenantID, "connections"); err != nil {
 		utils.RespondWithServiceError(c, http.StatusForbidden, err, "Connection limit reached for this plan")
 		return
 	}
@@ -129,6 +148,15 @@ func (wc *WhatsappController) CreateWhatsapp(c *gin.Context) {
 	c.JSON(http.StatusOK, input)
 }
 
+// @Summary      Atualizar conexão WhatsApp
+// @Tags         whatsapp
+// @Accept       json
+// @Produce      json
+// @Param        id    path      int                     true  "ID da conexão"
+// @Param        body  body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /whatsapp/{id} [put]
 func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {
@@ -188,6 +216,13 @@ func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
 	c.JSON(http.StatusOK, updated)
 }
 
+// @Summary      Remover conexão WhatsApp
+// @Tags         whatsapp
+// @Produce      json
+// @Param        id  path      int  true  "ID da conexão"
+// @Success      200 {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /whatsapp/{id} [delete]
 func (wc *WhatsappController) DeleteWhatsapp(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {

@@ -1,6 +1,9 @@
 package services
 
 import (
+	"context"
+
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"gorm.io/gorm"
 )
@@ -13,13 +16,18 @@ func NewSetupService(db *gorm.DB) *SetupService {
 	return &SetupService{db: db}
 }
 
-type TenantSeedData struct {
-	FirstName  string
-	LastName   string
-	Email      string
-	Password   string
-	Document   string
-	BackendURL string
+// TenantSeedData is an alias kept for backwards compat with callers inside this package.
+type TenantSeedData = domain.TenantSeedData
+
+func (s *SetupService) NeedsSetup(ctx context.Context) (bool, error) {
+	var usersCount, tenantsCount int64
+	if err := s.db.WithContext(ctx).Model(&models.User{}).Count(&usersCount).Error; err != nil {
+		return false, err
+	}
+	if err := s.db.WithContext(ctx).Model(&models.Tenant{}).Count(&tenantsCount).Error; err != nil {
+		return false, err
+	}
+	return usersCount == 0 && tenantsCount == 0, nil
 }
 
 func (s *SetupService) InitializeTenant(data TenantSeedData) error {

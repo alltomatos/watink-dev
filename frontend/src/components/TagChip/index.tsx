@@ -40,7 +40,7 @@ const TagChip = ({ tag, size = "medium", onRemove, onClick, showIcon = false, cl
         sizeClasses[size],
         className
       )}
-      style={{ backgroundColor: colors.background, color: colors.text, ...style }}
+      style={{ backgroundColor: colors.bg, color: colors.text, ...style }}
     >
       {showIcon && tag.icon && <span aria-hidden>{tag.icon}</span>}
       {tag.name}

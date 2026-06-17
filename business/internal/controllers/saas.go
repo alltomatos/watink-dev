@@ -12,6 +12,12 @@ import (
 
 // ListTenants returns all tenants.
 // Route is guarded by SuperAdminOnly middleware — only superadmins reach this handler.
+// @Summary      Listar tenants (superadmin)
+// @Tags         saas
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /saas/tenants [get]
 func ListTenants(c *gin.Context) {
 	var tenants []models.Tenant
 	if err := auth.GetDB(c).Find(&tenants).Error; err != nil {
@@ -23,6 +29,13 @@ func ListTenants(c *gin.Context) {
 
 // GetTenantPlan returns a single tenant by ID.
 // Route is guarded by SuperAdminOnly middleware.
+// @Summary      Plano do tenant (superadmin)
+// @Tags         saas
+// @Produce      json
+// @Param        tenantId  path      string  true  "UUID do tenant"
+// @Success      200       {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /saas/tenants/{tenantId}/plan [get]
 func GetTenantPlan(c *gin.Context) {
 	tenantID, err := uuid.Parse(c.Param("tenantId"))
 	if err != nil {
@@ -41,6 +54,12 @@ func GetTenantPlan(c *gin.Context) {
 
 // ListPlans returns all plans.
 // Route is guarded by SuperAdminOnly middleware.
+// @Summary      Listar planos (superadmin)
+// @Tags         saas
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /saas/plans [get]
 func ListPlans(c *gin.Context) {
 	var plans []models.Plan
 	if err := auth.GetDB(c).Find(&plans).Error; err != nil {
@@ -51,6 +70,14 @@ func ListPlans(c *gin.Context) {
 }
 
 // CreatePlan creates a new plan. Route is guarded by SuperAdminOnly middleware.
+// @Summary      Criar plano (superadmin)
+// @Tags         saas
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados do plano"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /saas/plans [post]
 func CreatePlan(c *gin.Context) {
 	var plan models.Plan
 	if err := c.ShouldBindJSON(&plan); err != nil {

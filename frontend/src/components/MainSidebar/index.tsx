@@ -37,7 +37,7 @@ const getSidebarClass = (isLight: boolean, collapsed: boolean): string =>
   cn(
     "flex flex-col h-full transition-all duration-300 relative z-20",
     isLight
-      ? "bg-[hsl(var(--bg-sidebar))] border-r border-[hsl(var(--border-sidebar))]"
+      ? "bg-[var(--bg-sidebar)] border-r border-[var(--border-sidebar)]"
       : "bg-[var(--slate-800)] border-r border-[var(--slate-700)]",
     collapsed ? "w-[70px]" : "w-[200px]"
   );
@@ -45,24 +45,24 @@ const getSidebarClass = (isLight: boolean, collapsed: boolean): string =>
 const getHeaderClass = (isLight: boolean): string =>
   cn(
     "flex items-center h-16 min-h-16 border-b px-3 gap-2",
-    isLight ? "border-[hsl(var(--border-sidebar))]" : "border-[var(--slate-700)]"
+    isLight ? "border-[var(--border-sidebar)]" : "border-[var(--slate-700)]"
   );
 
 const getToggleClass = (isLight: boolean): string =>
   cn(
     "shrink-0 rounded-full h-8 w-8",
     isLight
-      ? "text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-primary))] hover:bg-black/5"
+      ? "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5"
       : "text-[var(--slate-400)] hover:text-white hover:bg-white/10"
   );
 
 const getDividerClass = (isLight: boolean): string =>
-  cn("my-4 border-t mx-2", isLight ? "border-[hsl(var(--border-sidebar))]" : "border-border/50");
+  cn("my-4 border-t mx-2", isLight ? "border-[var(--border-sidebar)]" : "border-border/50");
 
 const getFooterClass = (isLight: boolean): string =>
   cn(
     "mt-auto border-t flex items-center justify-center px-3 py-2 min-h-[44px]",
-    isLight ? "border-[hsl(var(--border-sidebar))]" : "border-[var(--slate-700)]"
+    isLight ? "border-[var(--border-sidebar)]" : "border-[var(--slate-700)]"
   );
 
 const MainSidebar: React.FC<MainSidebarProps> = ({ collapsed, onToggle }) => {
@@ -112,7 +112,7 @@ const MainSidebar: React.FC<MainSidebarProps> = ({ collapsed, onToggle }) => {
           ) : logoEnabled && systemLogo ? (
             <img src={getBackendUrl(systemLogo)} alt={systemTitle} className="h-8 w-auto object-contain brightness-0 invert opacity-90" />
           ) : (
-            <h1 className={cn("text-lg font-bold truncate", isLightSidebar ? "text-[hsl(var(--text-primary))]" : "text-white")}>{systemTitle}</h1>
+            <h1 className={cn("text-lg font-bold truncate", isLightSidebar ? "text-[var(--text-primary)]" : "text-white")}>{systemTitle}</h1>
           )}
         </div>
 

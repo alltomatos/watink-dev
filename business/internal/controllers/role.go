@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
@@ -12,16 +13,22 @@ import (
 	"gorm.io/gorm"
 )
 
-// RoleController encapsulates role/RBAC operations with RLS-scoped DB from auth middleware.
-// Retains root DB (rc.db) for global Permission lookups — Permissions are tenant-agnostic.
+// RoleController encapsulates role/RBAC operations.
+// permRepo: global (tenant-agnostic) permission catalog — not RLS-scoped.
 type RoleController struct {
-	db *gorm.DB
+	permRepo domain.PermissionRepository
 }
 
-func NewRoleController(db *gorm.DB) *RoleController {
-	return &RoleController{db: db}
+func NewRoleController(permRepo domain.PermissionRepository) *RoleController {
+	return &RoleController{permRepo: permRepo}
 }
 
+// @Summary      Listar papéis
+// @Tags         rbac
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /roles [get]
 func (rc *RoleController) List(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Roles")
 	if !ok {
@@ -37,6 +44,13 @@ func (rc *RoleController) List(c *gin.Context) {
 	c.JSON(http.StatusOK, roles)
 }
 
+// @Summary      Detalhar papel
+// @Tags         rbac
+// @Produce      json
+// @Param        roleId  path      int  true  "ID do papel"
+// @Success      200     {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /roles/{roleId} [get]
 func (rc *RoleController) Show(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Roles")
 	if !ok {
@@ -64,6 +78,14 @@ type createRoleInput struct {
 	Description string `json:"description"`
 }
 
+// @Summary      Criar papel
+// @Tags         rbac
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados do papel"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /roles [post]
 func (rc *RoleController) Create(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Roles")
 	if !ok {
@@ -96,6 +118,15 @@ type updateRoleInput struct {
 	Permissions []int  `json:"permissions"`
 }
 
+// @Summary      Atualizar papel
+// @Tags         rbac
+// @Accept       json
+// @Produce      json
+// @Param        roleId  path      int                     true  "ID do papel"
+// @Param        body    body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200     {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /roles/{roleId} [put]
 func (rc *RoleController) Update(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Roles")
 	if !ok {
@@ -126,8 +157,8 @@ func (rc *RoleController) Update(c *gin.Context) {
 		}
 
 		if req.Permissions != nil {
-			var permissions []models.Permission
-			if err := rc.db.Where("id IN ?", req.Permissions).Find(&permissions).Error; err != nil {
+			permissions, err := rc.permRepo.FindByIDs(tx.Statement.Context, req.Permissions)
+			if err != nil {
 				return err
 			}
 			if len(permissions) != len(req.Permissions) {
@@ -151,6 +182,13 @@ func (rc *RoleController) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, role)
 }
 
+// @Summary      Remover papel
+// @Tags         rbac
+// @Produce      json
+// @Param        roleId  path      int  true  "ID do papel"
+// @Success      200     {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /roles/{roleId} [delete]
 func (rc *RoleController) Delete(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Roles")
 	if !ok {

@@ -1,8 +1,9 @@
 package application
 
 import (
+	"log"
+
 	"github.com/alltomatos/watinkdev/business/internal/application/usecases"
-	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/infrastructure/repository"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
@@ -18,6 +19,12 @@ type Container struct {
 	QueueRepo         domain.QueueRepository
 	UserRepo          domain.UserRepository
 	ChannelSessionRepo domain.ChannelSessionRepository
+	PermissionRepo     domain.PermissionRepository
+	SettingRepo        domain.SettingRepository
+	SystemRepo         domain.SystemRepository
+	PlanLimitSvc      domain.PlanLimitServiceInterface
+	SwaggerPermRepo   domain.SwaggerPermissionRepository
+	VersionRepo       domain.VersionRepository
 	HubManager        *plugins.HubManager
 	EventBus          domain.EventBus
 	RedisSvc          domain.RedisService
@@ -31,7 +38,7 @@ type Container struct {
 
 func NewContainer(db *gorm.DB, redisSvc domain.RedisService, broadcast *services.RedisBroadcast, publisher domain.CommandPublisher) *Container {
 	if db == nil {
-		db = database.DB
+		log.Fatal("NewContainer: db is required — pass a valid *gorm.DB instance")
 	}
 	ticketRepo := repository.NewGORMTicketRepo(db)
 	messageRepo := repository.NewGORMMessageRepo(db)
@@ -39,7 +46,13 @@ func NewContainer(db *gorm.DB, redisSvc domain.RedisService, broadcast *services
 	queueRepo := repository.NewGORMQueueRepo(db)
 	userRepo := repository.NewGORMUserRepo(db)
 	sessionRepo := repository.NewGORMChannelSessionRepo(db)
-	hubManager := plugins.NewHubManager() // Instanciação explícita
+	permissionRepo := repository.NewGORMPermissionRepo(db)
+	settingRepo := repository.NewGORMSettingRepo(db)
+	systemRepo := repository.NewGORMSystemRepo(db)
+	planLimitSvc := services.NewPlanLimitService(db)
+	swaggerPermRepo := repository.NewGORMSwaggerPermissionRepo(db)
+	versionRepo := repository.NewGORMVersionRepo(db)
+	hubManager := plugins.NewHubManager()
 	eventBus := NewInMemoryEventBus()
 	logTicketAction := usecases.NewLogTicketActionUseCase(db)
 	distributeTicket := usecases.NewDistributeTicketUseCase(ticketRepo, queueRepo, eventBus, db)
@@ -54,6 +67,12 @@ func NewContainer(db *gorm.DB, redisSvc domain.RedisService, broadcast *services
 		QueueRepo:         queueRepo,
 		UserRepo:          userRepo,
 		ChannelSessionRepo: sessionRepo,
+		PermissionRepo:     permissionRepo,
+		SettingRepo:        settingRepo,
+		SystemRepo:         systemRepo,
+		PlanLimitSvc:      planLimitSvc,
+		SwaggerPermRepo:   swaggerPermRepo,
+		VersionRepo:       versionRepo,
 		HubManager:        hubManager,
 		EventBus:          eventBus,
 		RedisSvc:          redisSvc,

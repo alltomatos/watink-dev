@@ -226,7 +226,7 @@ const HelpdeskKanban: React.FC<HelpdeskKanbanProps> = ({ tvMode = false }) => {
                         <ProtocolCard
                           protocol={protocol}
                           isNew={recentlyAdded.has(protocol.id)}
-                          onClick={handleCardClick}
+                          onClick={handleCardClick as any}
                         />
                       </motion.div>
                     ))

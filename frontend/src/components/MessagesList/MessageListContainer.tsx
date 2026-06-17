@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { VirtuosoMessageList, VirtuosoMessageListMethods } from '@virtuoso.dev/message-list';
 import connectToSocket from '../../services/socket-io';
-import { MessageItem } from './MessageItem';
+import MessageItem from './MessageItem';
 import { Message } from '../../types/Message';
 import { SocketMessageEvent } from '../../types/api';
 import api from '../../services/api';
@@ -17,7 +17,7 @@ interface MessagesResponse {
 
 export const MessageListContainer: React.FC<MessageListContainerProps> = ({ ticketId }) => {
   const queryClient = useQueryClient();
-  const virtuosoRef = useRef<VirtuosoMessageListMethods<Message>>(null);
+  const virtuosoRef = useRef<any>(null);
 
   // Fetch initial history
   const { data: messages = [], isLoading } = useQuery<Message[]>({
@@ -67,8 +67,8 @@ export const MessageListContainer: React.FC<MessageListContainerProps> = ({ tick
     <VirtuosoMessageList
       ref={virtuosoRef}
       data={messages}
-      ItemContent={({ data }) => <MessageItem message={data} />}
-      computeItemKey={({ data }) => String(data.id)}
+      ItemContent={({ data }: { data: any }) => <MessageItem message={data} />}
+      computeItemKey={({ data }: { data: any }) => String(data.id)}
       style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
     />
   );

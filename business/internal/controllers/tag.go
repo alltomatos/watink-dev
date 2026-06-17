@@ -22,6 +22,12 @@ func NewTagController() *TagController {
 }
 
 // List returns all tags for the current tenant, optionally including archived.
+// @Summary      Listar tags
+// @Tags         tags
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /tags [get]
 func (tc *TagController) List(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Tags")
 	if !ok {
@@ -54,6 +60,14 @@ func (tc *TagController) List(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// @Summary      Criar tag
+// @Tags         tags
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados da tag"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /tags [post]
 func (tc *TagController) Create(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Tags")
 	if !ok {
@@ -90,6 +104,15 @@ func (tc *TagController) Create(c *gin.Context) {
 	c.JSON(http.StatusOK, tag)
 }
 
+// @Summary      Atualizar tag
+// @Tags         tags
+// @Accept       json
+// @Produce      json
+// @Param        id    path      int                     true  "ID da tag"
+// @Param        body  body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /tags/{id} [put]
 func (tc *TagController) Update(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Tags")
 	if !ok {
@@ -126,6 +149,13 @@ func (tc *TagController) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, tag)
 }
 
+// @Summary      Remover tag
+// @Tags         tags
+// @Produce      json
+// @Param        id  path      int  true  "ID da tag"
+// @Success      200 {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /tags/{id} [delete]
 func (tc *TagController) Delete(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Tags")
 	if !ok {
@@ -163,6 +193,12 @@ func (tc *TagController) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Tag archived"})
 }
 
+// @Summary      Listar grupos de tags
+// @Tags         tags
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /tag-groups [get]
 func (tc *TagController) ListGroups(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Tags")
 	if !ok {
@@ -176,6 +212,16 @@ func (tc *TagController) ListGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, groups)
 }
 
+// @Summary      Sincronizar tags de entidade
+// @Tags         tags
+// @Accept       json
+// @Produce      json
+// @Param        entityType  path      string                  true  "Tipo da entidade (ticket, contact)"
+// @Param        id          path      int                     true  "ID da entidade"
+// @Param        body        body      map[string]interface{}  true  "Lista de tag IDs"
+// @Success      200         {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /entities/{entityType}/{id}/tags/sync [put]
 func (tc *TagController) SyncEntityTags(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Tags")
 	if !ok {

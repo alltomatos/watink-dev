@@ -39,8 +39,8 @@ const Login = () => {
 
         setSettings({
           loginLayout: layoutSetting?.value || "split_left",
-          loginBackground: bgSetting?.value ? getBackendUrl(bgSetting.value) : "/login-background.png",
-          systemLogo: logoSetting?.value ? getBackendUrl(logoSetting.value) : "/logo.png",
+          loginBackground: getBackendUrl(bgSetting?.value) ?? "/login-background.png",
+          systemLogo: getBackendUrl(logoSetting?.value) ?? "/logo.png",
         });
       } catch (err) {
         console.error("Error fetching settings for login", err);
@@ -49,11 +49,11 @@ const Login = () => {
     fetchSettings();
   }, []);
 
-  const handleChangeInput = (e) => {
+  const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUser({ ...user, [e.target.name]: e.target.value });
   };
 
-  const handlSubmit = async (e) => {
+  const handlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {

@@ -141,7 +141,7 @@ const Tenants: React.FC = () => {
       <TenantModal
         open={tenantModalOpen}
         onClose={handleCloseTenantModal}
-        tenantId={selectedTenantId}
+        tenantId={selectedTenantId ?? undefined}
       />
 
       <PageHeader title="🏢 Tenants" description="Gerencie os tenants cadastrados na plataforma">

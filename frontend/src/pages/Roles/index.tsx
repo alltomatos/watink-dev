@@ -36,9 +36,9 @@ const Roles = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
-  const [roles, setRoles] = useState([]);
+  const [roles, setRoles] = useState<any[]>([]);
   const [searchParam, setSearchParam] = useState("");
-  const [selectedRole, setSelectedRole] = useState(null);
+  const [selectedRole, setSelectedRole] = useState<any>(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
   useEffect(() => {
@@ -60,15 +60,15 @@ const Roles = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [searchParam]);
 
-  const handleSearch = (event) => {
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchParam(event.target.value.toLowerCase());
   };
 
-  const handleEditRole = (roleId) => {
+  const handleEditRole = (roleId: any) => {
     navigate(`/roles/${roleId}`);
   };
 
-  const handleDeleteRole = async (roleId) => {
+  const handleDeleteRole = async (roleId: any) => {
     try {
       await api.delete(`/roles/${roleId}`);
       toast.success(i18n.t("role.toasts.deleted"));
@@ -94,14 +94,14 @@ const Roles = () => {
       </ConfirmationModal>
 
       <PageHeader 
-        title={i18n.t("role.title")}
+        title={i18n.t("role.title") as string}
         description="Gerencie as funções e permissões de acesso do sistema"
       >
         <div className="flex items-center gap-2">
           <div className="relative w-full max-w-sm hidden md:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={i18n.t("role.searchPlaceholder")}
+              placeholder={i18n.t("role.searchPlaceholder") as string}
               value={searchParam}
               onChange={handleSearch}
               className="pl-9 h-10"
@@ -125,7 +125,7 @@ const Roles = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {roles.map((role) => (
+              {roles.map((role: any) => (
                 <TableRow key={role.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">

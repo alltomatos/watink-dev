@@ -18,13 +18,13 @@ export const TicketsManager: React.FC = () => {
     setTabOpen,
     newTicketModalOpen,
     setNewTicketModalOpen,
-  } = useTicketsContext();
+  } = useTicketsContext() as any;
 
   const { user } = useContext(AuthContext);
   const [openCount, _setOpenCount] = useState(0);
   const [pendingCount, _setPendingCount] = useState(0);
   const [groupsCount, _setGroupsCount] = useState(0);
-  const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>(user?.queues?.map((q) => q.id) || []);
+  const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>((user as any)?.queues?.map((q: any) => q.id) || []);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchParam(e.target.value.toLowerCase());
@@ -56,7 +56,7 @@ export const TicketsManager: React.FC = () => {
               <PopoverContent className="w-64">
                 <TicketsQueueSelect
                   selectedQueueIds={selectedQueueIds}
-                  userQueues={user?.queues}
+                  userQueues={(user as any)?.queues}
                   onChange={(values: number[]) => setSelectedQueueIds(values)}
                 />
               </PopoverContent>

@@ -2,18 +2,53 @@ package controllers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
 
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
+
+// sqliteVersionRepo adapts *gorm.DB to domain.VersionRepository for tests.
+type sqliteVersionRepo struct{ db *gorm.DB }
+
+func (r *sqliteVersionRepo) GetPostgresVersion(ctx context.Context) (string, error) {
+	if r.db == nil || r.db.Statement == nil {
+		return "", fmt.Errorf("database unavailable")
+	}
+	var version string
+	return version, r.db.WithContext(ctx).Raw("SELECT version()").Scan(&version).Error
+}
+
+var _ domain.VersionRepository = (*sqliteVersionRepo)(nil)
+
+// sqliteSwaggerPermRepo adapts *gorm.DB to domain.SwaggerPermissionRepository for tests.
+type sqliteSwaggerPermRepo struct{ db *gorm.DB }
+
+func (r *sqliteSwaggerPermRepo) HasSwaggerPermission(userID int, tenantID uuid.UUID) (bool, error) {
+	var user models.User
+	if err := r.db.Where("id = ? AND \"tenantId\" = ?", userID, tenantID).First(&user).Error; err != nil || user.GroupID == nil {
+		return false, nil
+	}
+	var count int64
+	r.db.Table("group_permissions AS gp").
+		Joins("JOIN \"Permissions\" p ON p.id = gp.permission_id").
+		Where("gp.group_id = ? AND ((p.resource = ? AND p.action = ?) OR (p.resource = ? AND p.action = ?))",
+			*user.GroupID, "view", "swagger", "view_swagger", "allow").
+		Count(&count)
+	return count > 0, nil
+}
+
+var _ domain.SwaggerPermissionRepository = (*sqliteSwaggerPermRepo)(nil)
 
 // setupGroupTestDB cria um SQLite in-memory com DDL manual para Groups, Roles, Permissions, Users e join tables.
 // Nota: GORM gera colunas de join tables em snake_case (group_id, role_id, permission_id),
@@ -89,7 +124,7 @@ func setupGroupTestDB(t *testing.T) *gorm.DB {
 func TestGroupUpdateRejectsCrossTenantRole(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupGroupTestDB(t)
-	controller := NewGroupController(db)
+	controller := NewGroupController(&sqlitePermRepo{db})
 
 	tenantA := uuid.New()
 	tenantB := uuid.New()
@@ -147,7 +182,7 @@ func TestGroupUpdateRejectsCrossTenantRole(t *testing.T) {
 func TestGroupUpdateAcceptsSameTenantRole(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupGroupTestDB(t)
-	controller := NewGroupController(db)
+	controller := NewGroupController(&sqlitePermRepo{db})
 
 	tenantA := uuid.New()
 
@@ -195,7 +230,7 @@ func TestGroupUpdateAcceptsSameTenantRole(t *testing.T) {
 func TestGroupUpdateRejectsInvalidPermission(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupGroupTestDB(t)
-	controller := NewGroupController(db)
+	controller := NewGroupController(&sqlitePermRepo{db})
 
 	tenantA := uuid.New()
 
@@ -268,7 +303,7 @@ func TestRoleUpdateRejectsInvalidPermission(t *testing.T) {
 		}
 	}
 
-	controller := NewRoleController(db)
+	controller := NewRoleController(&sqlitePermRepo{db})
 	tenantA := uuid.New()
 
 	role := models.Role{Name: "Operator", TenantID: tenantA}
@@ -303,7 +338,7 @@ func TestRoleUpdateRejectsInvalidPermission(t *testing.T) {
 func TestVersionController_GetVersion(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	controller := NewVersionController(db)
+	controller := NewVersionController(&sqliteVersionRepo{db})
 
 	router := gin.New()
 	router.GET("/version", controller.GetVersion)
@@ -332,7 +367,7 @@ func TestVersionController_GetVersion(t *testing.T) {
 func TestVersionController_GetPostgresVersion_DBError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	controller := NewVersionController(db)
+	controller := NewVersionController(&sqliteVersionRepo{db})
 
 	router := gin.New()
 	router.GET("/version/postgres", controller.GetPostgresVersion)
@@ -351,7 +386,7 @@ func TestVersionController_GetPostgresVersion_DBError(t *testing.T) {
 func TestSwaggerController_SwaggerUI_AccessDenied(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	controller := NewSwaggerController(db)
+	controller := NewSwaggerController(&sqliteSwaggerPermRepo{db})
 
 	router := gin.New()
 	router.GET("/docs", controller.SwaggerUI)
@@ -369,7 +404,7 @@ func TestSwaggerController_SwaggerUI_AccessDenied(t *testing.T) {
 func TestSwaggerController_SwaggerJSON_AccessDenied(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	controller := NewSwaggerController(db)
+	controller := NewSwaggerController(&sqliteSwaggerPermRepo{db})
 
 	router := gin.New()
 	router.GET("/swagger.json", controller.SwaggerJSON)
@@ -387,7 +422,7 @@ func TestSwaggerController_SwaggerJSON_AccessDenied(t *testing.T) {
 func TestSwaggerController_HasSwaggerGroupPermission_SameTenant(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupGroupTestDB(t)
-	controller := NewSwaggerController(db)
+	controller := NewSwaggerController(&sqliteSwaggerPermRepo{db})
 
 	tenant := uuid.New()
 
@@ -424,7 +459,7 @@ func TestSwaggerController_HasSwaggerGroupPermission_SameTenant(t *testing.T) {
 func TestSwaggerController_HasSwaggerGroupPermission_CrossTenant(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupGroupTestDB(t)
-	controller := NewSwaggerController(db)
+	controller := NewSwaggerController(&sqliteSwaggerPermRepo{db})
 
 	tenantA := uuid.New()
 	tenantB := uuid.New()

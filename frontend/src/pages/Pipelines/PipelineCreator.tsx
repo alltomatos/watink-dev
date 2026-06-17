@@ -217,7 +217,7 @@ const PipelineCreator: React.FC = () => {
     };
 
     return (
-        <MainContainer className="flex flex-col h-full">
+        <MainContainer>
             <MainHeader>
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" onClick={() => navigate("/pipelines")}>

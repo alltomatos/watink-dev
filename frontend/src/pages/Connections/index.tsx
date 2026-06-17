@@ -56,10 +56,10 @@ const Connections = () => {
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
   const [webchatModalOpen, setWebchatModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [selectedWhatsApp, setSelectedWhatsApp] = useState(null);
+  const [selectedWhatsApp, setSelectedWhatsApp] = useState<any>(null);
 
   // Iniciar/reiniciar sessão usa o endpoint real do backend: /whatsappsession/:id
-  const handleStartWhatsAppSession = async (whatsAppId) => {
+  const handleStartWhatsAppSession = async (whatsAppId: any) => {
     try {
       await api.post(`/whatsappsession/${whatsAppId}`);
     } catch (err) {
@@ -67,7 +67,7 @@ const Connections = () => {
     }
   };
 
-  const handleRequestNewQrCode = async (whatsAppId) => {
+  const handleRequestNewQrCode = async (whatsAppId: any) => {
     try {
       await api.put(`/whatsappsession/${whatsAppId}`);
     } catch (err) {
@@ -76,7 +76,7 @@ const Connections = () => {
   };
 
   // Desconectar: para a sessão sem excluir o registro da conexão
-  const handleDisconnectSession = async (whatsAppId) => {
+  const handleDisconnectSession = async (whatsAppId: any) => {
     try {
       await api.delete(`/whatsappsession/${whatsAppId}`);
       await reloadWhatsApps();
@@ -108,7 +108,7 @@ const Connections = () => {
     setSelectedWhatsApp(null);
   };
 
-  const handleEditWhatsApp = (whatsApp) => {
+  const handleEditWhatsApp = (whatsApp: any) => {
     setSelectedWhatsApp(whatsApp);
     if (whatsApp.type === "webchat") {
       setWebchatModalOpen(true);
@@ -136,8 +136,8 @@ const Connections = () => {
     TIMEOUT: "Tempo Esgotado",
   };
 
-  const renderStatus = (session) => {
-    const label = STATUS_LABELS[session.status] || "Desconhecido";
+  const renderStatus = (session: any) => {
+    const label = STATUS_LABELS[session.status as keyof typeof STATUS_LABELS] || "Desconhecido";
     if (session.status === "CONNECTED") {
       return (
         <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 border-none">
@@ -170,7 +170,7 @@ const Connections = () => {
     );
   };
 
-  const renderActionButtons = (whatsApp) => {
+  const renderActionButtons = (whatsApp: any) => {
     return (
       <div className="flex gap-2">
         {(whatsApp.status === "DISCONNECTED" || whatsApp.status === "TIMEOUT") && (
@@ -238,13 +238,13 @@ const Connections = () => {
         open={whatsAppModalOpen}
         onClose={handleCloseWhatsAppModal}
         whatsAppId={selectedWhatsApp?.id}
-        onSaved={reloadWhatsApps}
+        onSaved={async () => { await reloadWhatsApps(); }}
       />
       <WebchatModal
         open={webchatModalOpen}
         onClose={handleCloseWebchatModal}
         whatsAppId={selectedWhatsApp?.id}
-        onSaved={reloadWhatsApps}
+        onSaved={async () => { await reloadWhatsApps(); }}
       />
       <ConfirmationModal
         title={i18n.t("connections.confirmationModal.deleteTitle")}
@@ -276,7 +276,7 @@ const Connections = () => {
 
       <PageContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {whatsApps?.map((whatsApp) => (
+          {whatsApps?.map((whatsApp: any) => (
             <Card key={whatsApp.id} className="flex flex-col">
               <CardHeader className="flex flex-row items-start justify-between pb-2">
                 <div className="flex items-center gap-3">

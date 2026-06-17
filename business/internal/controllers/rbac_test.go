@@ -2,11 +2,13 @@ package controllers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -16,12 +18,32 @@ import (
 	"gorm.io/gorm"
 )
 
+// sqlitePermRepo adapts *gorm.DB to domain.PermissionRepository for tests.
+type sqlitePermRepo struct{ db *gorm.DB }
+
+func (r *sqlitePermRepo) FindAll(_ context.Context) ([]models.Permission, error) {
+	var perms []models.Permission
+	return perms, r.db.Find(&perms).Error
+}
+
+func (r *sqlitePermRepo) FindByIDs(_ context.Context, ids []int) ([]models.Permission, error) {
+	var perms []models.Permission
+	return perms, r.db.Where("id IN ?", ids).Find(&perms).Error
+}
+
+var _ domain.PermissionRepository = (*sqlitePermRepo)(nil)
+
 // setupRBACTestDB cria DB SQLite com DDL manual compatível para testes de RBAC.
 func setupRBACTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	tmpFile := t.TempDir() + "/rbac_test.db"
 	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		if sqlDB, err := db.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	})
 
 	ddls := []string{
 		`CREATE TABLE IF NOT EXISTS "Roles" (
@@ -79,6 +101,7 @@ func setupTestContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID) (*gin.Conte
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest("GET", "/", nil)
 
 	// Injetar dados do JWT (simula TenantMiddleware)
 	c.Set("tenantId", tenantID)
@@ -106,7 +129,7 @@ func TestRoleController_List_CrossTenantIsolation(t *testing.T) {
 	db.Create(&models.Role{Name: "Admin B", TenantID: tenantB})
 	db.Create(&models.Role{Name: "Agent A", TenantID: tenantA})
 
-	rc := NewRoleController(db)
+	rc := NewRoleController(&sqlitePermRepo{db})
 
 	c, w := setupTestContext(t, db, tenantA)
 	rc.List(c)
@@ -130,7 +153,7 @@ func TestRoleController_Show_CrossTenantBlocked(t *testing.T) {
 	roleB := models.Role{Name: "Secret Role B", TenantID: tenantB}
 	db.Create(&roleB)
 
-	rc := NewRoleController(db)
+	rc := NewRoleController(&sqlitePermRepo{db})
 
 	c, w := setupTestContext(t, db, tenantA)
 	c.Params = gin.Params{gin.Param{Key: "roleId", Value: "1"}}
@@ -145,7 +168,7 @@ func TestRoleController_Create_MassAssignmentPrevention(t *testing.T) {
 	tenantA := uuid.New()
 	tenantB := uuid.New()
 
-	rc := NewRoleController(db)
+	rc := NewRoleController(&sqlitePermRepo{db})
 
 	c, w := setupTestContext(t, db, tenantA)
 	payload := map[string]interface{}{
@@ -175,7 +198,7 @@ func TestRoleController_Create_MissingTenantContext(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupRBACTestDB(t)
 
-	rc := NewRoleController(db)
+	rc := NewRoleController(&sqlitePermRepo{db})
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -198,7 +221,7 @@ func TestRoleController_Delete_CrossTenantBlocked(t *testing.T) {
 	roleB := models.Role{Name: "Role B", TenantID: tenantB}
 	db.Create(&roleB)
 
-	rc := NewRoleController(db)
+	rc := NewRoleController(&sqlitePermRepo{db})
 
 	c, w := setupTestContext(t, db, tenantA)
 	c.Params = gin.Params{gin.Param{Key: "roleId", Value: "1"}}
@@ -219,7 +242,7 @@ func TestRoleController_Delete_SameTenant_Success(t *testing.T) {
 	roleA := models.Role{Name: "Role A", TenantID: tenantA}
 	db.Create(&roleA)
 
-	rc := NewRoleController(db)
+	rc := NewRoleController(&sqlitePermRepo{db})
 
 	c, w := setupTestContext(t, db, tenantA)
 	c.Params = gin.Params{gin.Param{Key: "roleId", Value: "1"}}
@@ -245,7 +268,7 @@ func TestRoleController_Update_PermissionAssociation_GlobalScope(t *testing.T) {
 	role := models.Role{Name: "Agent", TenantID: tenantA}
 	db.Create(&role)
 
-	rc := NewRoleController(db)
+	rc := NewRoleController(&sqlitePermRepo{db})
 
 	c, w := setupTestContext(t, db, tenantA)
 	c.Params = gin.Params{gin.Param{Key: "roleId", Value: "1"}}
@@ -277,7 +300,7 @@ func TestGroupController_List_CrossTenantIsolation(t *testing.T) {
 	db.Create(&models.Group{Name: "Group B1", TenantID: tenantB})
 	db.Create(&models.Group{Name: "Group A2", TenantID: tenantA})
 
-	gc := NewGroupController(db)
+	gc := NewGroupController(&sqlitePermRepo{db})
 
 	c, w := setupTestContext(t, db, tenantA)
 	gc.List(c)
@@ -298,7 +321,7 @@ func TestGroupController_Show_CrossTenantBlocked(t *testing.T) {
 	groupB := models.Group{Name: "Secret Group B", TenantID: tenantB}
 	db.Create(&groupB)
 
-	gc := NewGroupController(db)
+	gc := NewGroupController(&sqlitePermRepo{db})
 
 	c, w := setupTestContext(t, db, tenantA)
 	c.Params = gin.Params{gin.Param{Key: "groupId", Value: "1"}}
@@ -313,7 +336,7 @@ func TestGroupController_Create_MassAssignmentPrevention(t *testing.T) {
 	tenantA := uuid.New()
 	tenantB := uuid.New()
 
-	gc := NewGroupController(db)
+	gc := NewGroupController(&sqlitePermRepo{db})
 
 	c, w := setupTestContext(t, db, tenantA)
 	payload := map[string]interface{}{
@@ -342,7 +365,7 @@ func TestGroupController_Delete_CrossTenantBlocked(t *testing.T) {
 	groupB := models.Group{Name: "Group B", TenantID: tenantB}
 	db.Create(&groupB)
 
-	gc := NewGroupController(db)
+	gc := NewGroupController(&sqlitePermRepo{db})
 
 	c, w := setupTestContext(t, db, tenantA)
 	c.Params = gin.Params{gin.Param{Key: "groupId", Value: "1"}}
@@ -363,7 +386,7 @@ func TestGroupController_Delete_SameTenant_Success(t *testing.T) {
 	groupA := models.Group{Name: "Group A", TenantID: tenantA}
 	db.Create(&groupA)
 
-	gc := NewGroupController(db)
+	gc := NewGroupController(&sqlitePermRepo{db})
 
 	c, w := setupTestContext(t, db, tenantA)
 	c.Params = gin.Params{gin.Param{Key: "groupId", Value: "1"}}
@@ -383,7 +406,7 @@ func TestGroupController_ListPermissions_ReturnsGlobal(t *testing.T) {
 	db.Create(&models.Permission{Resource: "users", Action: "read", IsSystem: true})
 	db.Create(&models.Permission{Resource: "users", Action: "write", IsSystem: true})
 
-	gc := NewGroupController(db)
+	gc := NewGroupController(&sqlitePermRepo{db})
 
 	c, w := setupTestContext(t, db, uuid.New())
 	gc.ListPermissions(c)

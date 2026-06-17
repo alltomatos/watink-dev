@@ -18,6 +18,14 @@ func NewContactController(cr domain.ContactRepository) *ContactController {
 	return &ContactController{contactRepo: cr}
 }
 
+// @Summary      Listar contatos
+// @Tags         contacts
+// @Produce      json
+// @Param        searchParam  query     string  false  "Busca por nome ou número"
+// @Success      200          {array}   map[string]interface{}
+// @Failure      401          {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /contacts [get]
 func (cc *ContactController) ListContacts(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Contacts")
 	if !ok {
@@ -36,6 +44,14 @@ func (cc *ContactController) ListContacts(c *gin.Context) {
 	})
 }
 
+// @Summary      Detalhar contato
+// @Tags         contacts
+// @Produce      json
+// @Param        contactId  path      int  true  "ID do contato"
+// @Success      200        {object}  map[string]interface{}
+// @Failure      404        {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /contacts/{contactId} [get]
 func (cc *ContactController) ShowContact(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Contacts")
 	if !ok {
@@ -56,6 +72,14 @@ func (cc *ContactController) ShowContact(c *gin.Context) {
 	c.JSON(http.StatusOK, contact)
 }
 
+// @Summary      Criar contato
+// @Tags         contacts
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados do contato"
+// @Success      200   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /contacts [post]
 func (cc *ContactController) CreateContact(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Contacts")
 	if !ok {
@@ -94,6 +118,15 @@ func (cc *ContactController) CreateContact(c *gin.Context) {
 	c.JSON(http.StatusOK, contact)
 }
 
+// @Summary      Atualizar contato
+// @Tags         contacts
+// @Accept       json
+// @Produce      json
+// @Param        contactId  path      int                     true  "ID do contato"
+// @Param        body       body      map[string]interface{}  true  "Campos a atualizar"
+// @Success      200        {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /contacts/{contactId} [put]
 func (cc *ContactController) UpdateContact(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Contacts")
 	if !ok {
@@ -145,6 +178,13 @@ func (cc *ContactController) UpdateContact(c *gin.Context) {
 	c.JSON(http.StatusOK, contact)
 }
 
+// @Summary      Remover contato
+// @Tags         contacts
+// @Produce      json
+// @Param        contactId  path      int  true  "ID do contato"
+// @Success      200        {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /contacts/{contactId} [delete]
 func (cc *ContactController) DeleteContact(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Contacts")
 	if !ok {
