@@ -201,12 +201,12 @@ func TestWebchatPlugin_POST_CreatesTicketAndContact(t *testing.T) {
 
 	// Verificar persistência no DB (MESMA instância, não nova conexão)
 	var contact models.Contact
-	result := db.Where("email = ? AND tenantId = ?", "joao@test.com", tenantID).First(&contact)
+	result := db.Where(`email = ? AND "tenantId" = ?`, "joao@test.com", tenantID).First(&contact)
 	assert.NoError(t, result.Error)
 	assert.Equal(t, "João", contact.Name)
 
 	var ticket models.Ticket
-	result = db.Where("contactId = ?", contact.ID).First(&ticket)
+	result = db.Where(`"contactId" = ?`, contact.ID).First(&ticket)
 	assert.NoError(t, result.Error)
 	assert.Equal(t, "pending", ticket.Status)
 }
