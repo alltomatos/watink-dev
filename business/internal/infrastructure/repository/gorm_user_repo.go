@@ -105,10 +105,14 @@ func (r *GORMUserRepository) FindAll(ctx context.Context, tenantID uuid.UUID) ([
 	return users, nil
 }
 
-// Create inserts a new user record.
+// Create inserts a new user record and writes the generated ID back to user.
 func (r *GORMUserRepository) Create(ctx context.Context, user *domain.User) error {
 	m := userDomainToModel(user)
-	return r.db.WithContext(ctx).Create(m).Error
+	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
+		return err
+	}
+	user.ID = m.ID
+	return nil
 }
 
 // Save inserts or updates a user record (upsert).

@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020", "DOM"],
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": ".tsc-out",
+    "ignoreDeprecations": "6.0"
+  },
+  "include": ["**/*.ts"],
+  "exclude": [".tsc-out", "node_modules"]
+}
