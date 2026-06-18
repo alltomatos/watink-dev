@@ -37,7 +37,6 @@ func TestRedisService_Ping(t *testing.T) {
 
 func TestRedisService_SetLock_And_DelLock(t *testing.T) {
 	svc := newTestRedis(t)
-	ctx := context.Background()
 
 	key := "integ:lock:test"
 	ok, err := svc.SetLock(key, "owner-1", 5*time.Second)
