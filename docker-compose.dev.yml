@@ -100,31 +100,31 @@ services:
       - watink_net
     restart: unless-stopped
 
-  # engine-go: TEMPORARIAMENTE DESABILITADO
-  # Motivo: engine-go/go.mod e internal/rabbitmq ausentes — serviço incompleto.
-  # Para reabilitar: criar go.mod, internal/rabbitmq e Dockerfile no diretório engine-go.
-  # engine-go:
-  #   build:
-  #     context: ./engine-go
-  #     dockerfile: Dockerfile
-  #   container_name: watink-engine
-  #   environment:
-  #     - AMQP_URL=amqp://guest:guest@rabbitmq:5672
-  #     - DB_HOST=postgres
-  #     - DB_PORT=5432
-  #     - DB_USER=postgres
-  #     - DB_PASS=${DB_PASS:-watink_secret_pass}
-  #     - DB_NAME=watink
-  #   depends_on:
-  #     rabbitmq:
-  #       condition: service_healthy
-  #     postgres:
-  #       condition: service_healthy
-  #   volumes:
-  #     - engine_sessions:/root/.sessions_auth
-  #   networks:
-  #     - watink_net
-  #   restart: unless-stopped
+  watink-engine:
+    build:
+      context: ./engine-go
+      dockerfile: Dockerfile.dev
+    container_name: watink-engine
+    environment:
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=${DB_PASS:-watink_secret_pass}
+      - DB_NAME=watink
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./engine-go:/app
+      - engine_go_mod:/go/pkg/mod
+      - engine_go_cache:/root/.cache/go-build
+      - engine_sessions:/root/.sessions_auth
+    networks:
+      - watink_net
+    restart: unless-stopped
 
   plugin-manager:
     build:
@@ -179,6 +179,8 @@ volumes:
   uploads_data:
   sessions_data:
   engine_sessions:
+  engine_go_mod:
+  engine_go_cache:
   business_go_mod:
   business_go_cache:
   frontend_node_modules:

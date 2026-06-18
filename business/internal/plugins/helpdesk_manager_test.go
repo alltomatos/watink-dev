@@ -69,7 +69,7 @@ func TestNewPluginManager_NotNil(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	group := r.Group("/api")
-	pm := NewPluginManager(nil, group, nil)
+	pm := NewPluginManager(nil, group)
 	assert.NotNil(t, pm)
 	assert.NotNil(t, pm.plugins)
 }
@@ -78,7 +78,7 @@ func TestPluginManager_GetInstalled_Empty(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	group := r.Group("/api")
-	pm := NewPluginManager(nil, group, nil)
+	pm := NewPluginManager(nil, group)
 	installed := pm.GetInstalled()
 	assert.NotNil(t, installed)
 	assert.Len(t, installed, 0)
@@ -88,7 +88,7 @@ func TestPluginManager_Register_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	group := r.Group("/api")
-	pm := NewPluginManager(nil, group, nil)
+	pm := NewPluginManager(nil, group)
 
 	// Use HelpdeskPlugin as a real plugin (OnActivate just registers a route on coreImpl)
 	hp := &HelpdeskPlugin{}
@@ -106,7 +106,7 @@ func TestPluginManager_Register_MultipleDistinctPlugins(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	group := r.Group("/api")
-	pm := NewPluginManager(nil, group, nil)
+	pm := NewPluginManager(nil, group)
 
 	// Register two distinct plugins
 	pm.Register(&HelpdeskPlugin{})
@@ -116,9 +116,9 @@ func TestPluginManager_Register_MultipleDistinctPlugins(t *testing.T) {
 	assert.Len(t, installed, 2)
 }
 
-func TestCoreImpl_GetStatus_NilHubManager(t *testing.T) {
-	c := &coreImpl{hubManager: nil}
-	assert.Equal(t, sdk.StatusReadOnly, c.GetStatus())
+func TestCoreImpl_GetStatus_AlwaysActive(t *testing.T) {
+	c := &coreImpl{}
+	assert.Equal(t, sdk.StatusActive, c.GetStatus())
 }
 
 func TestCoreImpl_GetDB_ReturnsNil(t *testing.T) {

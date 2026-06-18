@@ -4,22 +4,15 @@ import (
 	"net/http"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
-	"github.com/alltomatos/watinkdev/business/internal/plugins"
-	"github.com/alltomatos/watinkdev/business/pkg/auth"
-	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
 type PluginController struct {
 	planLimitSvc domain.PlanLimitServiceInterface
-	hubManager   *plugins.HubManager
 }
 
-func NewPluginController(planLimitSvc domain.PlanLimitServiceInterface, hubManager *plugins.HubManager) *PluginController {
-	return &PluginController{
-		planLimitSvc: planLimitSvc,
-		hubManager:   hubManager,
-	}
+func NewPluginController(planLimitSvc domain.PlanLimitServiceInterface) *PluginController {
+	return &PluginController{planLimitSvc: planLimitSvc}
 }
 
 type checkoutRequest struct {
@@ -29,59 +22,31 @@ type checkoutRequest struct {
 // @Summary      Catálogo de plugins
 // @Tags         plugins
 // @Produce      json
-// @Success      200  {array}   map[string]interface{}
+// @Success      503  {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /plugins/catalog [get]
 func (pc *PluginController) Catalog(c *gin.Context) {
-	c.JSON(http.StatusOK, pc.hubManager.GetCatalog())
+	c.JSON(http.StatusServiceUnavailable, gin.H{"error": "marketplace hub disabled"})
 }
 
 // @Summary      Plugins instalados
 // @Tags         plugins
 // @Produce      json
-// @Success      200  {array}   map[string]interface{}
+// @Success      200  {object}  map[string]interface{}
 // @Security     BearerAuth
 // @Router       /plugins/installed [get]
 func (pc *PluginController) Installed(c *gin.Context) {
-	_, tenantID, ok := auth.GetScoped(c, "PluginInstallations")
-	if !ok {
-		return
-	}
-
-	c.JSON(http.StatusOK, pc.hubManager.GetInstalled(tenantID.String()))
+	c.JSON(http.StatusOK, gin.H{"active": []string{}, "statuses": map[string]string{}})
 }
 
 // @Summary      Ativar/instalar plugin
 // @Tags         plugins
-// @Accept       json
 // @Produce      json
-// @Param        body  body      map[string]interface{}  true  "Dados do checkout"
-// @Success      200   {object}  map[string]interface{}
+// @Success      503  {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /plugins/checkout [post]
 func (pc *PluginController) Checkout(c *gin.Context) {
-	_, tenantID, ok := auth.GetScoped(c, "PluginInstallations")
-	if !ok {
-		return
-	}
-
-	if err := pc.planLimitSvc.CheckLimit(tenantID, "plugins"); err != nil {
-		utils.RespondWithServiceError(c, http.StatusForbidden, err, "Plan limit reached for plugins")
-		return
-	}
-
-	var req checkoutRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.RespondWithBindError(c, err)
-		return
-	}
-
-	out, status, err := pc.hubManager.CreateCheckout(req.Slug)
-	if err != nil {
-		c.JSON(status, gin.H{"error": "hub unavailable"})
-		return
-	}
-	c.JSON(http.StatusOK, out)
+	c.JSON(http.StatusServiceUnavailable, gin.H{"error": "marketplace hub disabled"})
 }
 
 // @Summary      ID da instância
@@ -91,7 +56,7 @@ func (pc *PluginController) Checkout(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /plugins/instance [get]
 func (pc *PluginController) Instance(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"instanceId": pc.hubManager.GetInstanceID()})
+	c.JSON(http.StatusOK, gin.H{"instanceId": ""})
 }
 
 // Legacy stubs — remove once all clients migrate to PluginController
