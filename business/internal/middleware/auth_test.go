@@ -5,10 +5,170 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
+
+// makeTestDB returns an in-memory SQLite DB suitable for middleware tests.
+func makeTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+	if err != nil {
+		t.Fatalf("failed to open test db: %v", err)
+	}
+	return db
+}
+
+// makeValidToken creates a signed JWT with the given claims using the provided secret.
+func makeValidToken(t *testing.T, secret string, extra jwt.MapClaims) string {
+	t.Helper()
+	claims := jwt.MapClaims{
+		"id":       "user-001",
+		"email":    "test@example.com",
+		"profile":  "admin",
+		"tenantId": uuid.New().String(),
+		"exp":      time.Now().Add(time.Hour).Unix(),
+	}
+	for k, v := range extra {
+		claims[k] = v
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := tok.SignedString([]byte(secret))
+	if err != nil {
+		t.Fatalf("failed to sign token: %v", err)
+	}
+	return signed
+}
+
+func TestIsAuth(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	const secret = "test-secret-isauth"
+
+	setup := func(db *gorm.DB) *gin.Engine {
+		r := gin.New()
+		r.Use(IsAuth(db))
+		r.GET("/ping", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"ok": true})
+		})
+		return r
+	}
+
+	t.Run("missing_authorization_header", func(t *testing.T) {
+		os.Setenv("JWT_SECRET", secret)
+		r := setup(makeTestDB(t))
+		req, _ := http.NewRequest("GET", "/ping", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Contains(t, w.Body.String(), "Authorization header required")
+	})
+
+	t.Run("malformed_header_no_bearer", func(t *testing.T) {
+		os.Setenv("JWT_SECRET", secret)
+		r := setup(makeTestDB(t))
+		req, _ := http.NewRequest("GET", "/ping", nil)
+		req.Header.Set("Authorization", "Token abc123")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Contains(t, w.Body.String(), "Invalid authorization header format")
+	})
+
+	t.Run("jwt_secret_not_set", func(t *testing.T) {
+		os.Setenv("JWT_SECRET", "")
+		r := setup(makeTestDB(t))
+		req, _ := http.NewRequest("GET", "/ping", nil)
+		req.Header.Set("Authorization", "Bearer sometoken")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Contains(t, w.Body.String(), "JWT_SECRET not set")
+		os.Setenv("JWT_SECRET", secret)
+	})
+
+	t.Run("invalid_token", func(t *testing.T) {
+		os.Setenv("JWT_SECRET", secret)
+		r := setup(makeTestDB(t))
+		req, _ := http.NewRequest("GET", "/ping", nil)
+		req.Header.Set("Authorization", "Bearer thisisnotavalidjwt")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Contains(t, w.Body.String(), "Invalid token")
+	})
+
+	t.Run("expired_token", func(t *testing.T) {
+		os.Setenv("JWT_SECRET", secret)
+		claims := jwt.MapClaims{
+			"id":       "user-001",
+			"email":    "test@example.com",
+			"profile":  "admin",
+			"tenantId": uuid.New().String(),
+			"exp":      time.Now().Add(-time.Hour).Unix(),
+		}
+		tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		signed, _ := tok.SignedString([]byte(secret))
+
+		r := setup(makeTestDB(t))
+		req, _ := http.NewRequest("GET", "/ping", nil)
+		req.Header.Set("Authorization", "Bearer "+signed)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Contains(t, w.Body.String(), "Invalid token")
+	})
+
+	t.Run("invalid_tenant_uuid", func(t *testing.T) {
+		os.Setenv("JWT_SECRET", secret)
+		signed := makeValidToken(t, secret, jwt.MapClaims{"tenantId": "not-a-uuid"})
+		r := setup(makeTestDB(t))
+		req, _ := http.NewRequest("GET", "/ping", nil)
+		req.Header.Set("Authorization", "Bearer "+signed)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Contains(t, w.Body.String(), "Invalid tenant ID format")
+	})
+
+	t.Run("valid_token_populates_context", func(t *testing.T) {
+		os.Setenv("JWT_SECRET", secret)
+		tenantID := uuid.New().String()
+		signed := makeValidToken(t, secret, jwt.MapClaims{"tenantId": tenantID})
+
+		db := makeTestDB(t)
+		r := gin.New()
+		r.Use(IsAuth(db))
+		r.GET("/ping", func(c *gin.Context) {
+			userId, _ := c.Get("userId")
+			userProfile, _ := c.Get("userProfile")
+			tid, _ := c.Get("tenantId")
+			dbVal, dbExists := c.Get("db")
+			assert.NotNil(t, userId)
+			assert.NotNil(t, userProfile)
+			assert.Equal(t, tenantID, tid)
+			assert.True(t, dbExists)
+			assert.NotNil(t, dbVal)
+			c.JSON(http.StatusOK, gin.H{"ok": true})
+		})
+
+		req, _ := http.NewRequest("GET", "/ping", nil)
+		req.Header.Set("Authorization", "Bearer "+signed)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+}
+
+// GetScoped tests are kept below (existing placeholder — no separate file was present).
 
 func TestSuperAdminOnly_Middleware(t *testing.T) {
 	// Set up Gin with test mode
