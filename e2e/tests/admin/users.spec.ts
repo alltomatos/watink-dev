@@ -16,7 +16,8 @@ test.describe("API — Users CRUD", () => {
     // Deve aparecer na listagem
     const list = await authedApi.get("users");
     expect(list.status()).toBe(200);
-    const users: { id: number; email: string }[] = await list.json();
+    const body: { users: { id: number; email: string }[] } = await list.json();
+    const users = Array.isArray(body) ? body : body.users ?? [];
     expect(users.some((u) => u.id === user.id)).toBe(true);
 
     // Cleanup
