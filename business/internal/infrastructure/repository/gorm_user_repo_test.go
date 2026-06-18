@@ -20,8 +20,8 @@ type TenantTest struct {
 	ID        uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	Name      string    `gorm:"not null" json:"name"`
 	Status    string    `gorm:"default:'active'" json:"status"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt time.Time `gorm:"column:createdAt"`
+	UpdatedAt time.Time `gorm:"column:updatedAt"`
 }
 
 func (TenantTest) TableName() string { return "Tenants" }
