@@ -12,9 +12,9 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/infrastructure/repository"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -22,43 +22,7 @@ func setupTicketControllerTest(t *testing.T) (*gorm.DB, *TicketController) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Exec(`DROP TABLE IF EXISTS "TicketLogs"`).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Exec(`DROP TABLE IF EXISTS "Tickets"`).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Exec(`CREATE TABLE "Tickets" (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		status TEXT NOT NULL DEFAULT 'pending',
-		"lastMessage" TEXT,
-		"contactId" INTEGER,
-		"userId" INTEGER,
-		"whatsappId" INTEGER,
-		"isGroup" BOOLEAN NOT NULL DEFAULT false,
-		"unreadMessages" INTEGER,
-		"queueId" INTEGER,
-		"tenantId" TEXT NOT NULL,
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Exec(`CREATE TABLE "TicketLogs" (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		"ticketId" INTEGER NOT NULL,
-		"userId" INTEGER,
-		type TEXT NOT NULL,
-		payload TEXT,
-		"tenantId" TEXT NOT NULL,
-		"createdAt" DATETIME
-	)`).Error; err != nil {
-		t.Fatal(err)
-	}
+	db := testutil.NewTestDB(t)
 
 	// DI pura: instanciar dependências via construtores
 	ticketRepo := repository.NewGORMTicketRepo(db)

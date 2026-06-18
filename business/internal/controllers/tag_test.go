@@ -12,54 +12,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 )
 
 func setupTagTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/tag_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-	ddls := []string{
-		`CREATE TABLE "Tags" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			color TEXT DEFAULT 'blue',
-			icon TEXT DEFAULT '',
-			description TEXT DEFAULT '',
-			archived BOOLEAN DEFAULT false,
-			"groupId" INTEGER,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE "TagGroups" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE "EntityTags" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			"tagId" INTEGER NOT NULL,
-			"entityType" TEXT NOT NULL,
-			"entityId" INTEGER NOT NULL,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-	}
-	for _, ddl := range ddls {
-		db.Exec(ddl)
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func setupTagContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path string, body []byte) (*gin.Context, *httptest.ResponseRecorder) {
@@ -128,7 +88,7 @@ func TestTagController_Update_Success(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "Antigo", "green", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	payload, _ := json.Marshal(map[string]string{"name": "Novo", "color": "purple"})
 	ctrl := NewTagController()
@@ -151,7 +111,7 @@ func TestTagController_Update_CrossTenant404(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "Secret", "black", tenantA)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	payload, _ := json.Marshal(map[string]string{"name": "Hacked"})
 	ctrl := NewTagController()
@@ -170,7 +130,7 @@ func TestTagController_Delete_Archive(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "Temp", "gray", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewTagController()
 	c, w := setupTagContext(t, db, tenantID, "DELETE", fmt.Sprintf("/tags/%d", id), nil)
@@ -191,7 +151,7 @@ func TestTagController_Delete_ForceDelete(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "ToDelete", "red", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewTagController()
 	c, w := setupTagContext(t, db, tenantID, "DELETE", fmt.Sprintf("/tags/%d?forceDelete=true", id), nil)
@@ -214,7 +174,7 @@ func TestTagController_Delete_CrossTenant404(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "Private", "orange", tenantA)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewTagController()
 	c, w := setupTagContext(t, db, tenantB, "DELETE", fmt.Sprintf("/tags/%d", id), nil)
@@ -232,7 +192,7 @@ func TestTagController_SyncEntityTags(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "T1", "red", tenantID)
 	var tagID int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&tagID)
+	db.Raw(`SELECT LASTVAL()`).Scan(&tagID)
 
 	payload, _ := json.Marshal(map[string]interface{}{"tagIds": []int{tagID}})
 	ctrl := NewTagController()

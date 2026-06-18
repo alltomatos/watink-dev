@@ -3,8 +3,8 @@ package services
 import (
 	"testing"
 
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -12,72 +12,27 @@ import (
 
 func setupPlanLimitDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to open sqlite: %v", err)
-	}
-
-	// Use test structs without gen_random_uuid()
-	type PlanTest struct {
-		ID             int    `gorm:"primaryKey"`
-		Name           string `gorm:"unique;not null"`
-		UsersLimit     int    `gorm:"column:usersLimit;default:0"`
-		ConnectionsLimit int  `gorm:"column:connectionsLimit;default:0"`
-		QueuesLimit    int    `gorm:"column:queuesLimit;default:0"`
-		PluginQuota   int    `gorm:"column:pluginQuota;default:0"`
-		Price         float64 `gorm:"type:decimal(10,2)"`
-		Active        bool    `gorm:"default:true"`
-	}
-
-	type TenantSubscriptionTest struct {
-		ID       uuid.UUID `gorm:"type:uuid;primaryKey"`
-		TenantID uuid.UUID `gorm:"column:tenantId;type:uuid;not null"`
-		PlanID   int       `gorm:"column:planId;not null"`
-		Status   string    `gorm:"default:'active'"`
-	}
-
-	type PluginInstallationTest struct {
-		ID       uuid.UUID `gorm:"type:uuid;primaryKey"`
-		TenantID uuid.UUID `gorm:"column:tenantId;type:uuid;not null"`
-		PluginID string    `gorm:"column:pluginId"`
-		Active   bool      `gorm:"default:true"`
-	}
-
-	_ = PlanTest{}
-	_ = TenantSubscriptionTest{}
-	_ = PluginInstallationTest{}
-
-	statements := []string{
-		`CREATE TABLE Plans (id INTEGER PRIMARY KEY, name TEXT, usersLimit INTEGER, connectionsLimit INTEGER, queuesLimit INTEGER, pluginQuota INTEGER, price REAL, active BOOLEAN);`,
-		`CREATE TABLE TenantSubscriptions (id TEXT PRIMARY KEY, tenantId TEXT NOT NULL, planId INTEGER NOT NULL, status TEXT);`,
-		`CREATE TABLE PluginInstallations (id TEXT PRIMARY KEY, tenantId TEXT NOT NULL, pluginId TEXT, active BOOLEAN);`,
-	}
-	for _, stmt := range statements {
-		if err := db.Exec(stmt).Error; err != nil {
-			t.Fatalf("failed to create test table: %v", err)
-		}
-	}
-
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func seedPlanLimitData(db *gorm.DB, tenantID uuid.UUID, pluginQuota int, pluginCount int) {
-	// Create plan
+	// Create plan (no fixed id — let the DB assign a sequence value)
 	plan := map[string]interface{}{
-		"id":          1,
 		"name":        "Pro",
 		"pluginQuota": pluginQuota,
 		"active":      true,
 	}
 	db.Table("Plans").Create(&plan)
+	var planID int
+	db.Raw(`SELECT LASTVAL()`).Scan(&planID)
 
 	// Create subscription
 	subID := uuid.New()
 	sub := map[string]interface{}{
-		"id":        subID.String(),
-		"tenantId":  tenantID.String(),
-		"planId":    1,
-		"status":    "active",
+		"id":       subID.String(),
+		"tenantId": tenantID.String(),
+		"planId":   planID,
+		"status":   "active",
 	}
 	db.Table("TenantSubscriptions").Create(&sub)
 

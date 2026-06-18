@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alltomatos/watinkdev/engine-go/internal/health"
 	"github.com/alltomatos/watinkdev/engine-go/internal/rabbitmq"
 	"github.com/alltomatos/watinkdev/engine-go/internal/whatsapp"
 	"github.com/joho/godotenv"
@@ -25,6 +27,12 @@ type commandEnvelope struct {
 
 func main() {
 	_ = godotenv.Load()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Health server — responde /health antes mesmo do RabbitMQ conectar
+	go health.Start(ctx)
 
 	rabbit := rabbitmq.NewRabbitMQService()
 	if err := rabbit.Connect(); err != nil {
@@ -68,12 +76,14 @@ func main() {
 
 	log.Println("Watink Engine Go (whatsmeow) started — PostgreSQL store, RabbitMQ connected")
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	<-sig
 
-	log.Println("Shutting down...")
+	log.Println("Shutting down gracefully...")
+	cancel() // para health server
 	_ = rabbit.Close()
+	log.Println("Engine stopped")
 }
 
 // commandType extracts the logical command type from a routing key like
@@ -138,7 +148,7 @@ func handleCommand(d amqp.Delivery, svc *whatsapp.WhatsAppService) error {
 		if ts == 0 {
 			ts = time.Now().UnixMilli()
 		}
-		return svc.StartClient(sessionID, tenantID, p.Name, ts, p.ProxyURL, p.UsePairingCode, p.PhoneNumber)
+		return svc.StartClient(sessionID, tenantID, p.Name, ts, p.ProxyURL, p.UsePairingCode, p.PhoneNumber, "")
 
 	case "session.stop":
 		return svc.StopClient(sessionID)

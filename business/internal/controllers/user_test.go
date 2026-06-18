@@ -11,11 +11,11 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -86,7 +86,7 @@ func (m *mockUserRepo) FindByEmailForAuth(ctx context.Context, email string) (*d
 
 func (m *mockUserRepo) Create(ctx context.Context, user *domain.User) error {
 	res := m.db.Exec(
-		`INSERT INTO "Users" (name, email, "passwordHash", profile, "tenantId", configs, "createdAt", "updatedAt") VALUES (?,?,?,?,?,?, datetime('now'), datetime('now'))`,
+		`INSERT INTO "Users" (name, email, "passwordHash", profile, "tenantId", configs, "createdAt", "updatedAt") VALUES (?,?,?,?,?,?, NOW(), NOW())`,
 		user.Name, user.Email, user.PasswordHash, user.Profile, user.TenantID, user.Configs,
 	)
 	if res.Error != nil {
@@ -94,7 +94,7 @@ func (m *mockUserRepo) Create(ctx context.Context, user *domain.User) error {
 	}
 	// fetch the last inserted id
 	var id int
-	m.db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	m.db.Raw(`SELECT LASTVAL()`).Scan(&id)
 	user.ID = id
 	return nil
 }
@@ -127,29 +127,7 @@ func (m *mockPlanLimit) CheckLimit(tenantID uuid.UUID, resource string) error { 
 
 func setupUserTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/user_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-	db.Exec(`CREATE TABLE "Users" (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT,
-		email TEXT UNIQUE,
-		"passwordHash" TEXT,
-		"tokenVersion" INTEGER DEFAULT 0,
-		profile TEXT DEFAULT 'user',
-		"whatsappId" INTEGER,
-		"tenantId" TEXT NOT NULL,
-		"groupId" INTEGER,
-		configs TEXT DEFAULT '{}',
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func setupUserContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path string, body []byte) (*gin.Context, *httptest.ResponseRecorder) {
@@ -204,7 +182,7 @@ func TestUserController_ShowUser_Found(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?,?,?,?)`, "Carol", "carol@test.com", "hash", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	repo := &mockUserRepo{db: db}
 	ctrl := NewUserController(repo, &mockPlanLimit{})
@@ -227,7 +205,7 @@ func TestUserController_ShowUser_CrossTenant404(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?,?,?,?)`, "Dave", "dave@test.com", "hash", tenantA)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	repo := &mockUserRepo{db: db}
 	ctrl := NewUserController(repo, &mockPlanLimit{})
@@ -286,7 +264,7 @@ func TestUserController_UpdateUser_Success(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?,?,?,?)`, "Frank", "frank@test.com", "hash", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	payload, _ := json.Marshal(map[string]string{"name": "Franklin"})
 	repo := &mockUserRepo{db: db}
@@ -306,7 +284,7 @@ func TestUserController_DeleteUser_Success(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?,?,?,?)`, "Grace", "grace@test.com", "hash", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	repo := &mockUserRepo{db: db}
 	ctrl := NewUserController(repo, &mockPlanLimit{})

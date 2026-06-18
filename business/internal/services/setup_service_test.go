@@ -3,48 +3,17 @@ package services
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-var setupTestDBCounter int
-
 func newSetupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-
-	// DB isolado por teste — cada teste recebe arquivo SQLite único em memória
-	setupTestDBCounter++
-	dsn := fmt.Sprintf("file:setup_test_%d?mode=memory&cache=shared", setupTestDBCounter)
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-
-	ddl := []string{
-		`CREATE TABLE IF NOT EXISTS Plans (id integer primary key autoincrement, name text not null unique, usersLimit integer default 0, connectionsLimit integer default 0, queuesLimit integer default 0, pluginQuota integer default 0, price decimal(10,2), active boolean default true, createdAt datetime, updatedAt datetime);`,
-		`CREATE TABLE IF NOT EXISTS Tenants (id text primary key, name text not null, status text default 'active', ownerId integer, document text, createdAt datetime, updatedAt datetime);`,
-		`CREATE TABLE IF NOT EXISTS Groups (id integer primary key autoincrement, name text not null, tenantId text not null, createdAt datetime, updatedAt datetime);`,
-		`CREATE TABLE IF NOT EXISTS Permissions (id integer primary key autoincrement, resource text not null, action text not null, description text, isSystem boolean default true, createdAt datetime, updatedAt datetime);`,
-		`CREATE TABLE IF NOT EXISTS group_permissions (group_id integer not null, permission_id integer not null);`,
-		`CREATE TABLE IF NOT EXISTS Users (id integer primary key autoincrement, name text not null, email text not null unique, passwordHash text not null, tokenVersion integer default 0, profile text default 'admin', whatsappId integer, tenantId text not null, groupId integer, configs text, createdAt datetime, updatedAt datetime);`,
-		`CREATE TABLE IF NOT EXISTS Queues (id integer primary key autoincrement, name text not null, color text not null, greetingMessage text, distributionStrategy text default 'MANUAL', prioritizeWallet boolean default false, parentId integer, tenantId text not null, createdAt datetime, updatedAt datetime);`,
-		`CREATE TABLE IF NOT EXISTS Tags (id integer primary key autoincrement, name text not null, color text default 'blue', icon text, description text, archived boolean default false, groupId integer, tenantId text not null, createdAt datetime, updatedAt datetime);`,
-		`CREATE TABLE IF NOT EXISTS Settings (key text not null, value text, tenantId text not null, createdAt datetime, updatedAt datetime, primary key (key, tenantId));`,
-		`CREATE TABLE IF NOT EXISTS TenantSubscriptions (id text primary key, tenantId text not null, planId integer not null, status text default 'active', expiresAt datetime, createdAt datetime, updatedAt datetime);`,
-	}
-
-	for _, stmt := range ddl {
-		if err := db.Exec(stmt).Error; err != nil {
-			t.Fatalf("create test schema: %v", err)
-		}
-	}
-
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func seedPermissions(t *testing.T, db *gorm.DB) {
@@ -92,7 +61,7 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 
 	// Subscription
 	var sub models.TenantSubscription
-	if err := db.First(&sub, "tenantId = ?", tenant.ID).Error; err != nil {
+	if err := db.First(&sub, `"tenantId" = ?`, tenant.ID).Error; err != nil {
 		t.Fatalf("subscription not created: %v", err)
 	}
 	if sub.Status != "active" {
@@ -133,7 +102,7 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 
 	// Queue
 	var queue models.Queue
-	if err := db.First(&queue, "tenantId = ? AND name = ?", tenant.ID, "Atendimento Inicial").Error; err != nil {
+	if err := db.First(&queue, `"tenantId" = ? AND name = ?`, tenant.ID, "Atendimento Inicial").Error; err != nil {
 		t.Fatalf("default queue not created: %v", err)
 	}
 	if queue.Color == "" || queue.DistributionStrategy != "MANUAL" {
@@ -142,7 +111,7 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 
 	// Tag
 	var tag models.Tag
-	if err := db.First(&tag, "tenantId = ? AND name = ?", tenant.ID, "Novo Cliente").Error; err != nil {
+	if err := db.First(&tag, `"tenantId" = ? AND name = ?`, tenant.ID, "Novo Cliente").Error; err != nil {
 		t.Fatalf("default tag not created: %v", err)
 	}
 	if tag.Color != "#28a745" {
@@ -151,7 +120,7 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 
 	// Settings
 	var backend models.Setting
-	if err := db.First(&backend, "tenantId = ? AND key = ?", tenant.ID, "backendUrl").Error; err != nil {
+	if err := db.First(&backend, `"tenantId" = ? AND key = ?`, tenant.ID, "backendUrl").Error; err != nil {
 		t.Fatalf("backendUrl setting not created: %v", err)
 	}
 	if backend.Value != "https://api.example.com" {
@@ -159,7 +128,7 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 	}
 
 	var sysTitle models.Setting
-	if err := db.First(&sysTitle, "tenantId = ? AND key = ?", tenant.ID, "systemTitle").Error; err != nil {
+	if err := db.First(&sysTitle, `"tenantId" = ? AND key = ?`, tenant.ID, "systemTitle").Error; err != nil {
 		t.Fatalf("systemTitle setting not created: %v", err)
 	}
 	if sysTitle.Value != "Watink" {
@@ -171,7 +140,7 @@ func TestSetupServiceInitializeTenantRollsBackOnFailure(t *testing.T) {
 	db := newSetupTestDB(t)
 
 	// Sabotage: drop Queues so transaction will fail at step 8
-	if err := db.Exec(`DROP TABLE Queues`).Error; err != nil {
+	if err := db.Exec(`DROP TABLE "Queues"`).Error; err != nil {
 		t.Fatalf("drop queues: %v", err)
 	}
 

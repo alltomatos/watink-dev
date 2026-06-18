@@ -164,7 +164,7 @@ func (rc *RoleController) Update(c *gin.Context) {
 			if len(permissions) != len(req.Permissions) {
 				return gorm.ErrRecordNotFound
 			}
-			if err := tx.Model(&role).Association("Permissions").Replace(permissions); err != nil {
+			if err := tx.Session(&gorm.Session{NewDB: true}).Model(&role).Association("Permissions").Replace(permissions); err != nil {
 				return err
 			}
 		}

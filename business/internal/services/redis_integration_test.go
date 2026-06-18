@@ -79,6 +79,11 @@ func TestRedisService_Publish_And_Subscribe(t *testing.T) {
 	sub := svc.Subscribe(ctx, channel)
 	defer sub.Close()
 
+	// Wait for subscription confirmation so Publish doesn't race ahead of the handshake.
+	if _, err := sub.Receive(ctx); err != nil {
+		t.Fatalf("waiting for subscription confirmation failed: %v", err)
+	}
+
 	msg := "hello-integration"
 	if err := svc.Publish(ctx, channel, msg); err != nil {
 		t.Fatalf("Publish() failed: %v", err)
@@ -90,7 +95,7 @@ func TestRedisService_Publish_And_Subscribe(t *testing.T) {
 		if m.Payload != msg {
 			t.Errorf("expected %q, got %q", msg, m.Payload)
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(5 * time.Second):
 		t.Error("Subscribe() did not receive published message within timeout")
 	}
 }
