@@ -60,16 +60,21 @@ func NewTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("testutil.NewTestDB: get sql.DB: %v", err)
 	}
 
-	// Register explicit join table for User<->Queue so GORM uses camelCase column names
-	// (userId, queueId) matching the production schema created by Sequelize.
-	// joinForeignKey:UserID uses the Go field name so LookUpField finds it by FieldsByName,
-	// then uses the field's DBName (userId) in generated SQL — avoids NamingStrategy snake_case.
-	if err := db.SetupJoinTable(&models.User{}, "Queues", &models.UserQueue{}); err != nil {
-		t.Fatalf("testutil.NewTestDB: SetupJoinTable User->Queues: %v", err)
-	}
-
 	if err := db.AutoMigrate(allModels()...); err != nil {
 		t.Fatalf("testutil.NewTestDB: AutoMigrate: %v", err)
+	}
+
+	// GORM AutoMigrate creates join table columns in snake_case (user_id, queue_id).
+	// Production schema uses camelCase (userId, queueId) — rename to match.
+	// GORM's SetupJoinTable cannot be used because joinForeignKey always goes through
+	// ToDBName() snake_case conversion, making camelCase column registration impossible.
+	for _, stmt := range []string{
+		`ALTER TABLE user_queues RENAME COLUMN user_id TO "userId"`,
+		`ALTER TABLE user_queues RENAME COLUMN queue_id TO "queueId"`,
+	} {
+		if err := db.Exec(stmt).Error; err != nil {
+			t.Fatalf("testutil.NewTestDB: rename join column: %v", err)
+		}
 	}
 
 	t.Cleanup(func() {
