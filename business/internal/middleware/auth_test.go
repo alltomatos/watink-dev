@@ -11,6 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -63,7 +64,7 @@ func TestIsAuth(t *testing.T) {
 	}
 
 	t.Run("missing_authorization_header", func(t *testing.T) {
-		os.Setenv("JWT_SECRET", secret)
+		require.NoError(t, os.Setenv("JWT_SECRET", secret))
 		r := setup(makeTestDB(t))
 		req, _ := http.NewRequest("GET", "/ping", nil)
 		w := httptest.NewRecorder()
@@ -73,7 +74,7 @@ func TestIsAuth(t *testing.T) {
 	})
 
 	t.Run("malformed_header_no_bearer", func(t *testing.T) {
-		os.Setenv("JWT_SECRET", secret)
+		require.NoError(t, os.Setenv("JWT_SECRET", secret))
 		r := setup(makeTestDB(t))
 		req, _ := http.NewRequest("GET", "/ping", nil)
 		req.Header.Set("Authorization", "Token abc123")
@@ -84,7 +85,7 @@ func TestIsAuth(t *testing.T) {
 	})
 
 	t.Run("jwt_secret_not_set", func(t *testing.T) {
-		os.Setenv("JWT_SECRET", "")
+		require.NoError(t, os.Setenv("JWT_SECRET", ""))
 		r := setup(makeTestDB(t))
 		req, _ := http.NewRequest("GET", "/ping", nil)
 		req.Header.Set("Authorization", "Bearer sometoken")
