@@ -16,7 +16,8 @@
 | Epic 3 | Security (filippo.io upgrade) + Lint governance | ✅ Mergeado (PR #59) |
 | Epic 3.5 | Backend test coverage + fix UpdateQueue | ✅ Mergeado (PR #60) |
 | Epic 4 | E2E Playwright — 21 testes + CI job | ✅ Mergeado (PR #61) |
-| Epic 5 | Dependabot Go deps upgrade (3 alerts: 1 high, 1 mod, 1 low) | 🔄 Em andamento |
+| Epic 5 | Dependabot Go deps upgrade (crypto/net) | ✅ Mergeado (PR #62) |
+| Epic 6 | Lint zero frontend + cobertura Go +5pp + fix UpdateFlow | ✅ Mergeado (PR #63) |
 
 ---
 
