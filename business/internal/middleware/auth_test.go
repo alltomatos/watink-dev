@@ -93,11 +93,11 @@ func TestIsAuth(t *testing.T) {
 		r.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 		assert.Contains(t, w.Body.String(), "JWT_SECRET not set")
-		os.Setenv("JWT_SECRET", secret)
+		require.NoError(t, os.Setenv("JWT_SECRET", secret))
 	})
 
 	t.Run("invalid_token", func(t *testing.T) {
-		os.Setenv("JWT_SECRET", secret)
+		require.NoError(t, os.Setenv("JWT_SECRET", secret))
 		r := setup(makeTestDB(t))
 		req, _ := http.NewRequest("GET", "/ping", nil)
 		req.Header.Set("Authorization", "Bearer thisisnotavalidjwt")
@@ -108,7 +108,7 @@ func TestIsAuth(t *testing.T) {
 	})
 
 	t.Run("expired_token", func(t *testing.T) {
-		os.Setenv("JWT_SECRET", secret)
+		require.NoError(t, os.Setenv("JWT_SECRET", secret))
 		claims := jwt.MapClaims{
 			"id":       "user-001",
 			"email":    "test@example.com",
@@ -129,7 +129,7 @@ func TestIsAuth(t *testing.T) {
 	})
 
 	t.Run("invalid_tenant_uuid", func(t *testing.T) {
-		os.Setenv("JWT_SECRET", secret)
+		require.NoError(t, os.Setenv("JWT_SECRET", secret))
 		signed := makeValidToken(t, secret, jwt.MapClaims{"tenantId": "not-a-uuid"})
 		r := setup(makeTestDB(t))
 		req, _ := http.NewRequest("GET", "/ping", nil)
@@ -141,7 +141,7 @@ func TestIsAuth(t *testing.T) {
 	})
 
 	t.Run("valid_token_populates_context", func(t *testing.T) {
-		os.Setenv("JWT_SECRET", secret)
+		require.NoError(t, os.Setenv("JWT_SECRET", secret))
 		tenantID := uuid.New().String()
 		signed := makeValidToken(t, secret, jwt.MapClaims{"tenantId": tenantID})
 
@@ -248,8 +248,8 @@ func TestSuperAdminOnly_Middleware(t *testing.T) {
 	t.Run("jwt_secret_required", func(t *testing.T) {
 		// Limpa JWT_SECRET para testar falha de configuração
 		originalSecret := os.Getenv("JWT_SECRET")
-		defer os.Setenv("JWT_SECRET", originalSecret)
-		os.Setenv("JWT_SECRET", "")
+		defer os.Setenv("JWT_SECRET", originalSecret) //nolint:errcheck
+		require.NoError(t, os.Setenv("JWT_SECRET", ""))
 
 		// Criar um mock do IsAuth para simular falha de JWT_SECRET
 		r := gin.New()
@@ -273,7 +273,7 @@ func TestSuperAdminOnly_ChainWithIsAuth(t *testing.T) {
 	// Testa o fluxo real: IsAuth → SuperAdminOnly
 	t.Run("full_auth_chain", func(t *testing.T) {
 		// Configura JWT_SECRET para teste
-		os.Setenv("JWT_SECRET", "test-secret-key")
+		require.NoError(t, os.Setenv("JWT_SECRET", "test-secret-key"))
 
 		r := gin.New()
 		r.Use(IsAuth(nil)) // DB nil permitida pois validação JWT falha antes
