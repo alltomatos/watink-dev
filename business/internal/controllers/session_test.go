@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // MockUserRepo implements domain.UserRepository for testing.
@@ -160,9 +161,9 @@ func TestAuthController_Login_InvalidPayload(t *testing.T) {
 
 func TestAuthController_Login_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	os.Setenv("JWT_SECRET", "test-secret-key-at-least-32chars!!")
-	os.Setenv("JWT_REFRESH_SECRET", "test-refresh-secret-key-32chars!")
-	os.Setenv("GIN_MODE", "test")
+	require.NoError(t, os.Setenv("JWT_SECRET", "test-secret-key-at-least-32chars!!"))
+	require.NoError(t, os.Setenv("JWT_REFRESH_SECRET", "test-refresh-secret-key-32chars!"))
+	require.NoError(t, os.Setenv("GIN_MODE", "test"))
 
 	mockRepo := new(MockUserRepo)
 	controller := NewAuthController(mockRepo)
@@ -216,7 +217,7 @@ func TestAuthController_Logout_Success(t *testing.T) {
 
 func TestAuthController_RefreshToken_NoCookie(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	os.Setenv("JWT_REFRESH_SECRET", "test-refresh-secret-key-32chars!")
+	require.NoError(t, os.Setenv("JWT_REFRESH_SECRET", "test-refresh-secret-key-32chars!"))
 
 	mockRepo := new(MockUserRepo)
 	controller := NewAuthController(mockRepo)
@@ -235,7 +236,7 @@ func TestAuthController_RefreshToken_NoCookie(t *testing.T) {
 
 func TestAuthController_RefreshToken_InvalidToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	os.Setenv("JWT_REFRESH_SECRET", "test-refresh-secret-key-32chars!")
+	require.NoError(t, os.Setenv("JWT_REFRESH_SECRET", "test-refresh-secret-key-32chars!"))
 
 	mockRepo := new(MockUserRepo)
 	controller := NewAuthController(mockRepo)
@@ -256,8 +257,8 @@ func TestAuthController_RefreshToken_InvalidToken(t *testing.T) {
 func TestAuthController_RefreshToken_UserNotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	refreshSecret := "test-refresh-secret-key-32chars!"
-	os.Setenv("JWT_REFRESH_SECRET", refreshSecret)
-	os.Setenv("JWT_SECRET", "test-secret-key-at-least-32chars!!")
+	require.NoError(t, os.Setenv("JWT_REFRESH_SECRET", refreshSecret))
+	require.NoError(t, os.Setenv("JWT_SECRET", "test-secret-key-at-least-32chars!!"))
 
 	tenantID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	tokenClaims := jwt.MapClaims{
@@ -290,8 +291,8 @@ func TestAuthController_RefreshToken_UserNotFound(t *testing.T) {
 func TestAuthController_RefreshToken_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	refreshSecret := "test-refresh-secret-key-32chars!"
-	os.Setenv("JWT_REFRESH_SECRET", refreshSecret)
-	os.Setenv("JWT_SECRET", "test-secret-key-at-least-32chars!!")
+	require.NoError(t, os.Setenv("JWT_REFRESH_SECRET", refreshSecret))
+	require.NoError(t, os.Setenv("JWT_SECRET", "test-secret-key-at-least-32chars!!"))
 
 	tenantID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 	tokenClaims := jwt.MapClaims{
