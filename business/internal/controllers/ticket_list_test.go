@@ -84,7 +84,7 @@ func TestTicketController_ShowTicket_Found(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tickets" (status, "lastMessage", "tenantId") VALUES (?,?,?)`, "open", "hello", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := &TicketController{updateTicket: nil, broadcast: nil}
 	c, w := newTicketListContext(t, db, tenantID, "GET", fmt.Sprintf("/tickets/%d", id))
@@ -106,7 +106,7 @@ func TestTicketController_ShowTicket_CrossTenant404(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tickets" (status, "tenantId") VALUES (?,?)`, "open", tenantA)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := &TicketController{updateTicket: nil, broadcast: nil}
 	c, w := newTicketListContext(t, db, tenantB, "GET", fmt.Sprintf("/tickets/%d", id))

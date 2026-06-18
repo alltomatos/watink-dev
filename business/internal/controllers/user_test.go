@@ -94,7 +94,7 @@ func (m *mockUserRepo) Create(ctx context.Context, user *domain.User) error {
 	}
 	// fetch the last inserted id
 	var id int
-	m.db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	m.db.Raw(`SELECT LASTVAL()`).Scan(&id)
 	user.ID = id
 	return nil
 }
@@ -182,7 +182,7 @@ func TestUserController_ShowUser_Found(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?,?,?,?)`, "Carol", "carol@test.com", "hash", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	repo := &mockUserRepo{db: db}
 	ctrl := NewUserController(repo, &mockPlanLimit{})
@@ -205,7 +205,7 @@ func TestUserController_ShowUser_CrossTenant404(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?,?,?,?)`, "Dave", "dave@test.com", "hash", tenantA)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	repo := &mockUserRepo{db: db}
 	ctrl := NewUserController(repo, &mockPlanLimit{})
@@ -264,7 +264,7 @@ func TestUserController_UpdateUser_Success(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?,?,?,?)`, "Frank", "frank@test.com", "hash", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	payload, _ := json.Marshal(map[string]string{"name": "Franklin"})
 	repo := &mockUserRepo{db: db}
@@ -284,7 +284,7 @@ func TestUserController_DeleteUser_Success(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?,?,?,?)`, "Grace", "grace@test.com", "hash", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	repo := &mockUserRepo{db: db}
 	ctrl := NewUserController(repo, &mockPlanLimit{})

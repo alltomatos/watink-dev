@@ -18,7 +18,7 @@ type User struct {
 	WhatsappID   *int      `gorm:"column:whatsappId" json:"whatsappId"`
 	TenantID     uuid.UUID `gorm:"column:tenantId;type:uuid" json:"tenantId"`
 	GroupID      *int      `gorm:"column:groupId" json:"groupId"`
-	Configs      string    `gorm:"type:json" json:"configs"`
+	Configs      string    `gorm:"type:json;default:'{}'" json:"configs"`
 	CreatedAt    time.Time `gorm:"column:createdAt" json:"createdAt"`
 	UpdatedAt    time.Time `gorm:"column:updatedAt" json:"updatedAt"`
 

@@ -103,7 +103,7 @@ func TestKnowledgeBaseController_Show_CrossTenant404(t *testing.T) {
 
 	db.Exec(`INSERT INTO "KnowledgeBases" (name, "tenantId") VALUES (?,?)`, "KB-A", tenantA)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewKnowledgeBaseController()
 	c, w := setupKBContext(t, db, tenantB, "GET", "/knowledge-bases/1", nil)
@@ -142,7 +142,7 @@ func TestKnowledgeBaseController_Delete_Success(t *testing.T) {
 
 	db.Exec(`INSERT INTO "KnowledgeBases" (name, "tenantId") VALUES (?,?)`, "To Delete", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewKnowledgeBaseController()
 	c, w := setupKBContext(t, db, tenantID, "DELETE", "/knowledge-bases/1", nil)

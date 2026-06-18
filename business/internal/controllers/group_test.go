@@ -70,7 +70,7 @@ func TestGroupController_Show_Found(t *testing.T) {
 	db, tenantID := setupGroupCRUDTestDB(t)
 	db.Exec(`INSERT INTO "Groups" (name, "tenantId") VALUES (?,?)`, "Agents", tenantID.String())
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	router := newGroupRouter(db, tenantID.String(), &mockPermRepo{})
 	req := httptest.NewRequest(http.MethodGet, "/groups/"+strconv.Itoa(id), nil)
@@ -140,7 +140,7 @@ func TestGroupController_Update_Name(t *testing.T) {
 	db, tenantID := setupGroupCRUDTestDB(t)
 	db.Exec(`INSERT INTO "Groups" (name, "tenantId") VALUES (?,?)`, "OldName", tenantID.String())
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	payload, _ := json.Marshal(map[string]interface{}{"name": "NewName"})
 	router := newGroupRouter(db, tenantID.String(), &mockPermRepo{})
@@ -159,7 +159,7 @@ func TestGroupController_Delete_Success(t *testing.T) {
 	db, tenantID := setupGroupCRUDTestDB(t)
 	db.Exec(`INSERT INTO "Groups" (name, "tenantId") VALUES (?,?)`, "ToDelete", tenantID.String())
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	router := newGroupRouter(db, tenantID.String(), &mockPermRepo{})
 	req := httptest.NewRequest(http.MethodDelete, "/groups/"+strconv.Itoa(id), nil)

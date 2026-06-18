@@ -86,7 +86,7 @@ func TestQuickAnswerController_Show_Success(t *testing.T) {
 
 	db.Exec(`INSERT INTO "QuickAnswers" (shortcut, message, "tenantId") VALUES (?,?,?)`, "/show", "Show msg", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewQuickAnswerController()
 	c, w := setupQAContext(t, db, tenantID, "GET", fmt.Sprintf("/quickAnswers/%d", id), nil)
@@ -108,7 +108,7 @@ func TestQuickAnswerController_Show_CrossTenant(t *testing.T) {
 
 	db.Exec(`INSERT INTO "QuickAnswers" (shortcut, message, "tenantId") VALUES (?,?,?)`, "/secret", "Secret", tenantA)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewQuickAnswerController()
 	c, w := setupQAContext(t, db, tenantB, "GET", fmt.Sprintf("/quickAnswers/%d", id), nil)
@@ -141,7 +141,7 @@ func TestQuickAnswerController_Delete_Success(t *testing.T) {
 
 	db.Exec(`INSERT INTO "QuickAnswers" (shortcut, message, "tenantId") VALUES (?,?,?)`, "/del", "Del msg", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewQuickAnswerController()
 	c, w := setupQAContext(t, db, tenantID, "DELETE", fmt.Sprintf("/quickAnswers/%d", id), nil)
