@@ -21,10 +21,16 @@ func NewTestDB(t *testing.T) *gorm.DB {
 	dsn := testDSN()
 	cfg := &gorm.Config{Logger: logger.Discard}
 
+	// Root connection — used only to create/drop the schema.
 	root, err := gorm.Open(postgres.Open(dsn), cfg)
 	if err != nil {
 		t.Fatalf("testutil.NewTestDB: connect: %v", err)
 	}
+	defer func() {
+		if sqlDB, err := root.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	}()
 
 	schema := "test_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
 
@@ -32,10 +38,20 @@ func NewTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("testutil.NewTestDB: create schema %q: %v", schema, err)
 	}
 
-	schemaDSN := appendSearchPath(dsn, schema)
-	db, err := gorm.Open(postgres.Open(schemaDSN), cfg)
+	// Test connection — single connection so SET search_path persists.
+	db, err := gorm.Open(postgres.Open(dsn), cfg)
 	if err != nil {
-		t.Fatalf("testutil.NewTestDB: connect with schema: %v", err)
+		t.Fatalf("testutil.NewTestDB: connect for schema: %v", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("testutil.NewTestDB: get sql.DB: %v", err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+
+	if err := db.Exec("SET search_path TO " + schema).Error; err != nil {
+		t.Fatalf("testutil.NewTestDB: SET search_path: %v", err)
 	}
 
 	if err := db.AutoMigrate(allModels()...); err != nil {
@@ -43,13 +59,12 @@ func NewTestDB(t *testing.T) *gorm.DB {
 	}
 
 	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
+		_ = sqlDB.Close()
+
 		clean, _ := gorm.Open(postgres.Open(dsn), cfg)
 		clean.Exec("DROP SCHEMA " + schema + " CASCADE")
-		if sqlDB, err := clean.DB(); err == nil {
-			_ = sqlDB.Close()
+		if cleanSQL, err := clean.DB(); err == nil {
+			_ = cleanSQL.Close()
 		}
 	})
 
@@ -73,13 +88,6 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
-}
-
-func appendSearchPath(dsn, schema string) string {
-	if strings.Contains(dsn, "?") {
-		return dsn + "&search_path=" + schema
-	}
-	return dsn + "?search_path=" + schema
 }
 
 func allModels() []interface{} {
