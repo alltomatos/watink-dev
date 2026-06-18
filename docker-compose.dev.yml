@@ -105,6 +105,8 @@ services:
       context: ./engine-go
       dockerfile: Dockerfile.dev
     container_name: watink-engine
+    ports:
+      - "8083:8083"
     environment:
       - AMQP_URL=amqp://guest:guest@rabbitmq:5672
       - DB_HOST=postgres
@@ -112,11 +114,18 @@ services:
       - DB_USER=postgres
       - DB_PASS=${DB_PASS:-watink_secret_pass}
       - DB_NAME=watink
+      - HEALTH_PORT=8083
     depends_on:
       rabbitmq:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     volumes:
       - ./engine-go:/app
       - engine_go_mod:/go/pkg/mod
