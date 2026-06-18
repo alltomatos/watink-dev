@@ -212,7 +212,9 @@ func TestDistributionService_RoundRobin_EmptyUserList_DoesNothing(t *testing.T) 
 	}
 
 	var userID *int
-	db.Raw("SELECT userId FROM Tickets WHERE id = 10").Row().Scan(&userID)
+	if err := db.Raw("SELECT userId FROM Tickets WHERE id = 10").Row().Scan(&userID); err != nil && err.Error() != "sql: no rows in result set" {
+		t.Fatalf("scan error: %v", err)
+	}
 	if userID != nil {
 		t.Errorf("no users in queue — ticket should remain unassigned, got userId: %v", *userID)
 	}
@@ -238,7 +240,9 @@ func TestDistributionService_RoundRobin_NoLastTicket_AssignsFirstUser(t *testing
 	}
 
 	var assignedUser *int
-	db.Raw("SELECT userId FROM Tickets WHERE id = 10").Row().Scan(&assignedUser)
+	if err := db.Raw("SELECT userId FROM Tickets WHERE id = 10").Row().Scan(&assignedUser); err != nil {
+		t.Fatalf("scan error: %v", err)
+	}
 	if assignedUser == nil || *assignedUser != user1 {
 		t.Errorf("expected first user (%d) when no previous ticket, got: %v", user1, assignedUser)
 	}

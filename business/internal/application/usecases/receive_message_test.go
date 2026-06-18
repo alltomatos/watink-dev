@@ -94,7 +94,7 @@ func TestReceiveMessage_NewTicketCreated(t *testing.T) {
 	cr := &mockContactRepo{contact: defaultContact()}
 	mr := &mockMessageRepo{}
 	tr := &receiveTicketRepo{} // openTicket nil → creates pending
-	tr.mockTicketRepo.ticket = &domain.Ticket{ID: 10, ContactID: 1, TenantID: tenantID}
+	tr.ticket = &domain.Ticket{ID: 10, ContactID: 1, TenantID: tenantID}
 	eb := &mockEventBus{}
 
 	uc := newReceiveUC(cr, tr, mr, eb)
