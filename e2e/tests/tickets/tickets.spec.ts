@@ -1,7 +1,7 @@
 import { test, expect } from "../../fixtures/auth.fixture";
 
 const BASE = process.env.E2E_BASE_URL || "http://localhost:3000";
-const API = process.env.E2E_API_URL || "http://localhost:8082/api/v1";
+const API = process.env.E2E_API_URL || "http://localhost:8082/api/v1/";
 
 test.describe("API — Tickets (via authedApi)", () => {
   test("GET /tickets retorna lista paginada", async ({ authedApi }) => {

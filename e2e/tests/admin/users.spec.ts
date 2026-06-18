@@ -41,7 +41,7 @@ test.describe("API — Users CRUD", () => {
 
   test("listar usuários requer autenticação", async ({ playwright }) => {
     const api = await playwright.request.newContext({
-      baseURL: process.env.E2E_API_URL || "http://localhost:8082/api/v1",
+      baseURL: process.env.E2E_API_URL || "http://localhost:8082/api/v1/",
     });
     const resp = await api.get("users");
     expect(resp.status()).toBe(401);

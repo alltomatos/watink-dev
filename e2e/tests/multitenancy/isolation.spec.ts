@@ -1,7 +1,7 @@
 import { test as base, expect, request } from "@playwright/test";
 import { createQueue, deleteQueue } from "../../fixtures/api.fixture";
 
-const API = process.env.E2E_API_URL || "http://localhost:8082/api/v1";
+const API = process.env.E2E_API_URL || "http://localhost:8082/api/v1/";
 
 // Helpers para criar um tenant secundário e logar como ele
 async function setupSecondTenant(name: string, email: string, password: string) {
