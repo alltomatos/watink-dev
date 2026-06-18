@@ -539,3 +539,76 @@ func TestExecute_Balanced_AssignsTicket(t *testing.T) {
 		t.Fatal("expected ticket to be updated (assigned)")
 	}
 }
+
+// --- Execute: uncovered branches ---
+
+// TestExecute_RoundRobin_UpdateError covers assignTicket returning an error from ticketRepo.Update.
+func TestExecute_RoundRobin_UpdateError(t *testing.T) {
+	db := setupDistributeTestDB(t)
+	tenantID := uuid.New()
+	queueID := 5
+
+	db.Exec(`INSERT INTO "Users" (name, email, tenantId) VALUES (?, ?, ?)`, "UserX", "ux@t.com", tenantID.String())
+	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, queueID)
+
+	ticket := &domain.Ticket{ID: 55, ContactID: 1}
+	queue := &domain.Queue{ID: queueID, DistributionStrategy: "AUTO_ROUND_ROBIN"}
+	tr := &mockTicketRepo{ticket: ticket, updateErr: errors.New("update failed")}
+	qr := &mockQueueRepo{queue: queue}
+	eb := &mockEventBus{}
+
+	uc := newUCWithDB(tr, qr, eb, db)
+	err := uc.Execute(context.Background(), 55, queueID, tenantID)
+	if err == nil {
+		t.Fatal("expected error when ticketRepo.Update fails")
+	}
+}
+
+// TestExecute_RoundRobin_EmptyQueue covers the no-users path for AUTO strategies.
+func TestExecute_RoundRobin_EmptyQueue(t *testing.T) {
+	db := setupDistributeTestDB(t)
+	tenantID := uuid.New()
+	queueID := 6
+
+	// No users associated with this queue
+	ticket := &domain.Ticket{ID: 77, ContactID: 1}
+	queue := &domain.Queue{ID: queueID, DistributionStrategy: "AUTO_ROUND_ROBIN"}
+	tr := &mockTicketRepo{ticket: ticket}
+	qr := &mockQueueRepo{queue: queue}
+	eb := &mockEventBus{}
+
+	uc := newUCWithDB(tr, qr, eb, db)
+	err := uc.Execute(context.Background(), 77, queueID, tenantID)
+	if err != nil {
+		t.Fatalf("empty queue should return nil, got %v", err)
+	}
+	if tr.updated {
+		t.Error("ticket should not be updated when no users in queue")
+	}
+}
+
+// TestExecute_UnknownStrategy_WithDB covers the default: return nil branch inside the switch.
+func TestExecute_UnknownStrategy_WithDB(t *testing.T) {
+	db := setupDistributeTestDB(t)
+	tenantID := uuid.New()
+	queueID := 9
+
+	// Provide a user in the queue so we reach the switch statement
+	db.Exec(`INSERT INTO "Users" (name, email, tenantId) VALUES (?, ?, ?)`, "UserZ", "uz@t.com", tenantID.String())
+	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, queueID)
+
+	ticket := &domain.Ticket{ID: 88, ContactID: 1}
+	queue := &domain.Queue{ID: queueID, DistributionStrategy: "UNKNOWN_STRATEGY"}
+	tr := &mockTicketRepo{ticket: ticket}
+	qr := &mockQueueRepo{queue: queue}
+	eb := &mockEventBus{}
+
+	uc := newUCWithDB(tr, qr, eb, db)
+	err := uc.Execute(context.Background(), 88, queueID, tenantID)
+	if err != nil {
+		t.Fatalf("unknown strategy should return nil, got %v", err)
+	}
+	if tr.updated {
+		t.Error("ticket should not be updated for unknown strategy")
+	}
+}
