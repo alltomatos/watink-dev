@@ -79,7 +79,7 @@ const NotificationsPopOver = () => {
     };
 
     if (!("Notification" in window)) {
-      console.log("This browser doesn't support notifications");
+      // browser doesn't support the Notifications API — silent skip
     } else {
       Notification.requestPermission();
     }
@@ -159,6 +159,8 @@ const NotificationsPopOver = () => {
     return () => {
       socket.disconnect();
     };
+    // handleNotifications is defined below and recreated each render; user is the real trigger
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleNotifications = (data: { message: Message; ticket: Ticket; contact: Contact }) => {

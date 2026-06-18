@@ -99,6 +99,8 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       }
     };
     fetchSettings();
+    // setAppTheme/setDarkMode come from context — stable refs, intentionally omitted to run once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Frontend version ──
@@ -151,6 +153,8 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return () => {
       socket.disconnect();
     };
+    // setAppTheme/setDarkMode are stable context refs; socket listener is intentionally mount-only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleDrawer = useCallback(() => {

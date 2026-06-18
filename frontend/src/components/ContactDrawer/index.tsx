@@ -143,6 +143,8 @@ const ContactDrawer = ({
       fetchDeals();
       fetchPipelines();
     }
+    // fetchDeals/fetchPipelines are defined below; open+ticketId are the real triggers
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, ticketId]);
 
   const fetchDeals = async () => {

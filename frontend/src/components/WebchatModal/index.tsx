@@ -121,6 +121,8 @@ const WebchatModal: React.FC<WebchatModalProps> = ({ open, onClose, whatsAppId, 
     if (open) {
       fetchSession();
     }
+    // initialState is a stable reset object; whatsAppId+open are the real triggers
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [whatsAppId, open]);
 
   const handleSaveWhatsApp = async (values: WhatsAppData) => {

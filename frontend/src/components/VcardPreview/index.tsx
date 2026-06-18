@@ -43,7 +43,6 @@ const VcardPreview: React.FC<VcardPreviewProps> = ({ contact, numbers }) => {
           const { data } = await api.post("/contact", contactObj);
           setContact(data);
         } catch (err) {
-          console.log(err);
           toastError(err);
         }
       };

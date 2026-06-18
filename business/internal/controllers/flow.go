@@ -8,6 +8,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 // FlowController encapsulates flow operations with RLS-scoped DB from auth middleware.
@@ -138,7 +139,7 @@ func (fc *FlowController) Update(c *gin.Context) {
 	flow.Edges = req.Edges
 	flow.Active = req.Active
 
-	if err := db.Where("\"tenantId\" = ?", tenantID).Save(&flow).Error; err != nil {
+	if err := db.Session(&gorm.Session{NewDB: true}).Save(&flow).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "UpdateFlow")
 		return
 	}
