@@ -44,12 +44,12 @@ func NewTestDB(t *testing.T) *gorm.DB {
 
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {
-			sqlDB.Close()
+			_ = sqlDB.Close()
 		}
 		clean, _ := gorm.Open(postgres.Open(dsn), cfg)
 		clean.Exec("DROP SCHEMA " + schema + " CASCADE")
 		if sqlDB, err := clean.DB(); err == nil {
-			sqlDB.Close()
+			_ = sqlDB.Close()
 		}
 	})
 
