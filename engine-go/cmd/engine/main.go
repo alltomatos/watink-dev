@@ -14,17 +14,10 @@ import (
 	"github.com/alltomatos/watinkdev/engine-go/internal/rabbitmq"
 	"github.com/alltomatos/watinkdev/engine-go/internal/whatsapp"
 	"github.com/joho/godotenv"
-	"github.com/streadway/amqp"
+	amqp "github.com/streadway/amqp"
 )
 
-type StartCommandPayload struct {
-	ProxyURL       string `json:"proxyUrl"`
-	UsePairingCode bool   `json:"usePairingCode"`
-	PhoneNumber    string `json:"phoneNumber"`
-	Name           string `json:"name"`
-}
-
-type CommandEnvelope struct {
+type commandEnvelope struct {
 	Type      string          `json:"type"`
 	Timestamp int64           `json:"timestamp"`
 	Payload   json.RawMessage `json:"payload"`
@@ -53,6 +46,10 @@ func main() {
 		"wbot.*.*.session.delete",
 		"wbot.*.*.message.send.text",
 		"wbot.*.*.message.send.media",
+		"wbot.*.*.message.send.buttons",
+		"wbot.*.*.message.send.list",
+		"wbot.*.*.message.send.poll",
+		"wbot.*.*.message.send.interactive",
 		"wbot.*.*.message.markAsRead",
 		"wbot.*.*.contact.sync",
 		"wbot.*.*.contact.import",
@@ -69,32 +66,39 @@ func main() {
 		log.Fatalf("Failed to start command consumer: %v", err)
 	}
 
-	log.Println("Watink Engine Go (WhatsMeow) started with PostgreSQL Store")
+	log.Println("Watink Engine Go (whatsmeow) started — PostgreSQL store, RabbitMQ connected")
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 
 	log.Println("Shutting down...")
+	_ = rabbit.Close()
 }
 
-func commandTypeFromRoutingKey(d amqp.Delivery) (string, error) {
-	parts := strings.Split(d.RoutingKey, ".")
+// commandType extracts the logical command type from a routing key like
+// "wbot.<tenantId>.<sessionId>.message.send.text" → "message.send.text"
+func commandType(routingKey string) (string, error) {
+	parts := strings.Split(routingKey, ".")
 	if len(parts) < 4 {
-		return "", fmt.Errorf("invalid routing key: %s", d.RoutingKey)
+		return "", fmt.Errorf("invalid routing key: %s", routingKey)
 	}
-
-	commandType := strings.Join(parts[3:], ".")
-	switch commandType {
-	case "session.start", "session.stop", "session.delete", "message.send.text", "message.send.media", "message.markAsRead", "contact.sync", "contact.import", "history.sync":
-		return commandType, nil
+	cmd := strings.Join(parts[3:], ".")
+	switch cmd {
+	case "session.start", "session.stop", "session.delete",
+		"message.send.text", "message.send.media",
+		"message.send.buttons", "message.send.list", "message.send.poll", "message.send.interactive",
+		"message.markAsRead",
+		"contact.sync", "contact.import", "history.sync":
+		return cmd, nil
 	default:
-		return "", fmt.Errorf("unknown command type: %s", commandType)
+		return "", fmt.Errorf("unknown command type: %s", cmd)
 	}
 }
 
-func handleCommand(d amqp.Delivery, waService *whatsapp.WhatsAppService) error {
+func handleCommand(d amqp.Delivery, svc *whatsapp.WhatsAppService) error {
 	log.Printf("Received command: %s", d.RoutingKey)
+
 	parts := strings.Split(d.RoutingKey, ".")
 	if len(parts) < 4 {
 		log.Printf("Invalid routing key: %s", d.RoutingKey)
@@ -107,58 +111,106 @@ func handleCommand(d amqp.Delivery, waService *whatsapp.WhatsAppService) error {
 		log.Printf("Invalid session ID in routing key %s: %v", d.RoutingKey, err)
 		return nil
 	}
-	commandType, err := commandTypeFromRoutingKey(d)
+
+	cmd, err := commandType(d.RoutingKey)
 	if err != nil {
-		log.Printf("Failed to parse command type from %s: %v", d.RoutingKey, err)
+		log.Printf("%v", err)
 		return nil
 	}
 
-	var envelope CommandEnvelope
-	if err := json.Unmarshal(d.Body, &envelope); err != nil {
-		return err
+	var env commandEnvelope
+	if err := json.Unmarshal(d.Body, &env); err != nil {
+		return fmt.Errorf("unmarshal envelope: %w", err)
 	}
 
-	switch commandType {
+	switch cmd {
 	case "session.start":
-		var payload StartCommandPayload
-		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		var p struct {
+			ProxyURL       string `json:"proxyUrl"`
+			UsePairingCode bool   `json:"usePairingCode"`
+			PhoneNumber    string `json:"phoneNumber"`
+			Name           string `json:"name"`
+		}
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
 			return err
 		}
-		ts := envelope.Timestamp
+		ts := env.Timestamp
 		if ts == 0 {
 			ts = time.Now().UnixMilli()
 		}
-		return waService.StartClient(sessionID, tenantID, payload.Name, ts, payload.ProxyURL, payload.UsePairingCode, payload.PhoneNumber)
+		return svc.StartClient(sessionID, tenantID, p.Name, ts, p.ProxyURL, p.UsePairingCode, p.PhoneNumber)
+
 	case "session.stop":
-		return waService.StopClient(sessionID)
+		return svc.StopClient(sessionID)
+
 	case "session.delete":
-		if err := waService.StopClient(sessionID); err != nil {
+		if err := svc.StopClient(sessionID); err != nil {
 			log.Printf("Stop client warning for %d: %v", sessionID, err)
 		}
-		return waService.ForceLogout(sessionID)
+		return svc.ForceLogout(sessionID)
+
 	case "message.send.text":
-		var payload whatsapp.TextCommandPayload
-		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		var p whatsapp.TextCommandPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
 			return err
 		}
-		return waService.SendText(sessionID, tenantID, payload)
+		return svc.SendText(sessionID, tenantID, p)
+
 	case "message.send.media":
-		var payload whatsapp.MediaCommandPayload
-		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		var p whatsapp.MediaCommandPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
 			return err
 		}
-		return waService.SendMedia(sessionID, tenantID, payload)
+		return svc.SendMedia(sessionID, tenantID, p)
+
+	case "message.send.buttons":
+		var p whatsapp.ButtonsCommandPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return err
+		}
+		return svc.SendButtons(sessionID, tenantID, p)
+
+	case "message.send.list":
+		var p whatsapp.ListCommandPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return err
+		}
+		return svc.SendList(sessionID, tenantID, p)
+
+	case "message.send.poll":
+		var p whatsapp.PollCommandPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return err
+		}
+		return svc.SendPoll(sessionID, tenantID, p)
+
+	case "message.send.interactive":
+		var p whatsapp.InteractiveCommandPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return err
+		}
+		return svc.SendInteractive(sessionID, tenantID, p)
+
 	case "message.markAsRead":
-		var payload whatsapp.MarkReadCommandPayload
-		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		var p whatsapp.MarkReadCommandPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
 			return err
 		}
-		return waService.MarkRead(sessionID, payload)
-	case "contact.sync", "contact.import", "history.sync":
-		log.Printf("Command %s received but not implemented in engine-go", commandType)
+		return svc.MarkRead(sessionID, p)
+
+	case "contact.sync":
+		var p whatsapp.SyncContactPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return err
+		}
+		return svc.SyncContact(sessionID, tenantID, p)
+
+	case "contact.import", "history.sync":
+		log.Printf("Command %s received but not implemented in engine-go", cmd)
 		return nil
+
 	default:
-		log.Printf("Unknown command type: %s", commandType)
+		log.Printf("Unknown command type: %s", cmd)
 		return nil
 	}
 }
