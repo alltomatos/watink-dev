@@ -124,6 +124,38 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+  build-engine-go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-engine-go-${{ hashFiles('engine-go/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-engine-go-
+
+      - name: Download dependencies
+        working-directory: engine-go
+        run: go mod download
+
+      - name: Build
+        working-directory: engine-go
+        run: go build ./...
+
+      - name: Vet
+        working-directory: engine-go
+        run: go vet ./...
+
   smoke-test:
     runs-on: ubuntu-latest
     needs: build-backend
@@ -285,8 +317,22 @@ jobs:
       - name: Install root deps (Playwright)
         run: npm ci
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium --with-deps
+
+      - name: Install Playwright system deps (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       - name: Start backend
         working-directory: business

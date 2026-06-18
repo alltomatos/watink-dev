@@ -90,7 +90,7 @@ func main() {
 			c.JSON(200, gin.H{"status": "OK", "service": "watink-business"})
 		})
 
-		pluginManager := plugins.NewPluginManager(database.DB, apiGroup, container.HubManager)
+		pluginManager := plugins.NewPluginManager(database.DB, apiGroup)
 		pluginManager.Register(&plugins.HelpdeskPlugin{})
 		pluginManager.Register(&plugins.WebchatPlugin{})
 		pluginManager.Register(&plugins.ClientesPlugin{})
@@ -102,7 +102,7 @@ func main() {
 	r.GET("/api/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "OK", "service": "watink-business"})
 	})
-	setupCtrl := controllers.NewSetupController(services.NewSetupService(database.DB), container.HubManager)
+	setupCtrl := controllers.NewSetupController(services.NewSetupService(database.DB))
 	r.GET("/api/initial-setup/check", setupCtrl.CheckSetup)
 	r.POST("/api/initial-setup", setupCtrl.InitialSetup)
 

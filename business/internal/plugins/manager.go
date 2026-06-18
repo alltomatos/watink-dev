@@ -16,10 +16,9 @@ type PluginManager struct {
 }
 
 type coreImpl struct {
-	db         *gorm.DB
-	router     *gin.RouterGroup
-	hubManager *HubManager
-	slug       string
+	db     *gorm.DB
+	router *gin.RouterGroup
+	slug   string
 }
 
 func (c *coreImpl) GetDB() *gorm.DB {
@@ -27,15 +26,7 @@ func (c *coreImpl) GetDB() *gorm.DB {
 }
 
 func (c *coreImpl) GetStatus() sdk.PluginStatus {
-	if c.hubManager == nil {
-		return sdk.StatusReadOnly
-	}
-	statuses := c.hubManager.readLicenseStatus()
-	status, ok := statuses[c.slug]
-	if !ok || status == "" {
-		return sdk.StatusActive
-	}
-	return sdk.PluginStatus(status)
+	return sdk.StatusActive
 }
 
 func (c *coreImpl) RegisterRoute(method string, path string, handler gin.HandlerFunc) {
@@ -57,13 +48,12 @@ func (c *coreImpl) RegisterRoute(method string, path string, handler gin.Handler
 
 func (c *coreImpl) EmitSocketEvent(room string, event string, payload interface{}) {}
 
-func NewPluginManager(db *gorm.DB, router *gin.RouterGroup, hm *HubManager) *PluginManager {
+func NewPluginManager(db *gorm.DB, router *gin.RouterGroup) *PluginManager {
 	return &PluginManager{
 		plugins: make(map[string]sdk.WatinkPlugin),
 		core: &coreImpl{
-			db:         db,
-			router:     router,
-			hubManager: hm,
+			db:     db,
+			router: router,
 		},
 	}
 }
@@ -78,10 +68,9 @@ func (pm *PluginManager) Register(p sdk.WatinkPlugin) {
 	}
 	log.Printf("Registering plugin: %s (%s)", manifest.Name, manifest.Slug)
 	pluginCore := &coreImpl{
-		db:         pm.core.db,
-		router:     pm.core.router,
-		hubManager: pm.core.hubManager,
-		slug:       manifest.Slug,
+		db:     pm.core.db,
+		router: pm.core.router,
+		slug:   manifest.Slug,
 	}
 	if err := p.OnActivate(pluginCore); err != nil {
 		log.Printf("Error activating plugin %s: %v", manifest.Slug, err)
