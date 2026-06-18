@@ -4,39 +4,15 @@ import (
 	"testing"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func setupFlowTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/flow_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-	// DDL manual — SQLite não suporta gen_random_uuid() nem type:uuid
-	db.Exec(`CREATE TABLE IF NOT EXISTS "Flows" (
-		"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-		"name" TEXT,
-		"triggerType" TEXT,
-		"triggerValue" TEXT,
-		"nodes" TEXT,
-		"edges" TEXT,
-		"active" BOOLEAN DEFAULT false,
-		"whatsappId" INTEGER,
-		"tenantId" TEXT,
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	return db
+	return testutil.NewTestDB(t)
 }
 
 // ---- DI Tests ----

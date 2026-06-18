@@ -9,9 +9,9 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -48,10 +48,7 @@ var _ domain.RedisService = (*mockRedisService)(nil)
 
 func newTestWhatsAppSessionService(t *testing.T) *WhatsAppSessionService {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to open sqlite: %v", err)
-	}
+	db := testutil.NewTestDB(t)
 	pub := &mockCommandPublisher{}
 	mockRedis := &mockRedisService{}
 	mockBroadcast := NewRedisBroadcast(mockRedis, nil)
@@ -88,7 +85,7 @@ func TestBuildDeleteSessionCommand_DelegatesToBuildSessionCommand(t *testing.T) 
 
 // TestPublishWhatsAppSessionCommand_DelegatesToPublisher verifies the publisher is called with the correct args.
 func TestPublishWhatsAppSessionCommand_DelegatesToPublisher(t *testing.T) {
-	db, _ := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db := testutil.NewTestDB(t)
 	pub := &mockCommandPublisher{}
 	mockRedis := &mockRedisService{}
 	mockBroadcast := NewRedisBroadcast(mockRedis, nil)
@@ -106,7 +103,7 @@ func TestPublishWhatsAppSessionCommand_DelegatesToPublisher(t *testing.T) {
 
 // TestStopWhatsAppSession_PublishesStop verifies StopWhatsAppSession publishes the right command.
 func TestStopWhatsAppSession_PublishesStop(t *testing.T) {
-	db, _ := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db := testutil.NewTestDB(t)
 	pub := &mockCommandPublisher{}
 	mockRedis := &mockRedisService{}
 	mockBroadcast := NewRedisBroadcast(mockRedis, nil)
@@ -126,7 +123,7 @@ func TestStopWhatsAppSession_PublishesStop(t *testing.T) {
 
 // TestDeleteWhatsAppSession_PublishesDelete verifies DeleteWhatsAppSession publishes the right command.
 func TestDeleteWhatsAppSession_PublishesDelete(t *testing.T) {
-	db, _ := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db := testutil.NewTestDB(t)
 	pub := &mockCommandPublisher{}
 	mockRedis := &mockRedisService{}
 	mockBroadcast := NewRedisBroadcast(mockRedis, nil)
@@ -172,16 +169,10 @@ func (m *mockRedisServiceLockError) SetLock(key string, value string, expiration
 	return false, fmt.Errorf("redis unavailable")
 }
 
-// newTestDBWithWhatsapp opens an in-memory SQLite DB with the Whatsapp table migrated.
+// newTestDBWithWhatsapp opens a PostgreSQL test DB with the Whatsapp table migrated.
 func newTestDBWithWhatsapp(t *testing.T) (*gorm.DB, models.Whatsapp) {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to open sqlite: %v", err)
-	}
-	if err := db.AutoMigrate(&models.Whatsapp{}); err != nil {
-		t.Fatalf("failed to migrate Whatsapp: %v", err)
-	}
+	db := testutil.NewTestDB(t)
 	tenantID := uuid.New()
 	w := models.Whatsapp{ID: 1, TenantID: tenantID, Name: "test-session"}
 	if err := db.Create(&w).Error; err != nil {

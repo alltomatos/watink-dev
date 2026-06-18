@@ -8,12 +8,12 @@ import (
 	"testing"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/alltomatos/watinkdev/business/pkg/sdk"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -58,89 +58,7 @@ func (m *MockWatinkCore) GetStatus() sdk.PluginStatus {
 
 func setupPluginTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	// Usar arquivo temporário para garantir persistência entre conexões GORM
-	// (SQLite :memory: com cache=shared perde tabelas quando a conexão original fecha)
-	tmpFile := t.TempDir() + "/test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-	// DDL manual completo para todas as tabelas compatível com SQLite
-	db.Exec(`CREATE TABLE IF NOT EXISTS "Tenants" (
-		"id" TEXT PRIMARY KEY,
-		"name" TEXT NOT NULL,
-		"status" TEXT DEFAULT 'active',
-		"ownerId" INTEGER,
-		"document" TEXT,
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	db.Exec(`CREATE TABLE IF NOT EXISTS "Whatsapps" (
-		"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-		"name" TEXT NOT NULL UNIQUE,
-		"session" TEXT,
-		"qrcode" TEXT,
-		"status" TEXT,
-		"battery" TEXT,
-		"plugged" BOOLEAN,
-		"isDefault" BOOLEAN DEFAULT false,
-		"retries" INTEGER DEFAULT 0,
-		"greetingMessage" TEXT,
-		"farewellMessage" TEXT,
-		"tenantId" TEXT,
-		"syncHistory" BOOLEAN DEFAULT false,
-		"syncPeriod" TEXT,
-		"number" TEXT,
-		"profilePicUrl" TEXT,
-		"keepAlive" BOOLEAN DEFAULT false,
-		"engineType" TEXT DEFAULT 'whatsmeow',
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME,
-		"firstConnection" DATETIME
-	)`)
-	db.Exec(`CREATE TABLE IF NOT EXISTS "Contacts" (
-		"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-		"name" TEXT NOT NULL,
-		"number" TEXT UNIQUE,
-		"profilePicUrl" TEXT,
-		"email" TEXT NOT NULL DEFAULT '',
-		"isGroup" BOOLEAN DEFAULT false,
-		"tenantId" TEXT,
-		"lid" TEXT UNIQUE,
-		"walletUserId" INTEGER,
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	db.Exec(`CREATE TABLE IF NOT EXISTS "Tickets" (
-		"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-		"status" TEXT NOT NULL DEFAULT 'pending',
-		"lastMessage" TEXT,
-		"contactId" INTEGER,
-		"userId" INTEGER,
-		"whatsappId" INTEGER,
-		"isGroup" BOOLEAN DEFAULT false,
-		"unreadMessages" INTEGER,
-		"queueId" INTEGER,
-		"tenantId" TEXT,
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	db.Exec(`CREATE TABLE IF NOT EXISTS "Clients" (
-		"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-		"name" TEXT NOT NULL,
-		"document" TEXT,
-		"email" TEXT,
-		"phone" TEXT,
-		"tenantId" TEXT,
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	return db
+	return testutil.NewTestDB(t)
 }
 
 // ---- WebchatPlugin Tests ----

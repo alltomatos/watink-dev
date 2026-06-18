@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -19,53 +19,7 @@ import (
 
 func setupGroupCRUDTestDB(t *testing.T) (*gorm.DB, uuid.UUID) {
 	t.Helper()
-	tmpFile := t.TempDir() + "/group_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if sqlDB, e := db.DB(); e == nil {
-			_ = sqlDB.Close()
-		}
-	})
-	db.Exec(`CREATE TABLE "Groups" (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		"tenantId" TEXT NOT NULL,
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	db.Exec(`CREATE TABLE "Permissions" (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		resource TEXT NOT NULL,
-		action TEXT NOT NULL,
-		description TEXT,
-		"isSystem" BOOLEAN DEFAULT true,
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	db.Exec(`CREATE TABLE group_permissions (
-		group_id INTEGER NOT NULL,
-		permission_id INTEGER NOT NULL,
-		PRIMARY KEY (group_id, permission_id)
-	)`)
-	db.Exec(`CREATE TABLE "Roles" (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		description TEXT,
-		"isSystem" BOOLEAN DEFAULT false,
-		"tenantId" TEXT NOT NULL,
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	db.Exec(`CREATE TABLE group_roles (
-		group_id INTEGER NOT NULL,
-		role_id INTEGER NOT NULL,
-		PRIMARY KEY (group_id, role_id)
-	)`)
-	tenantID := uuid.New()
-	return db, tenantID
+	return testutil.NewTestDB(t), uuid.New()
 }
 
 func newGroupRouter(db *gorm.DB, tenantID string, permRepo *mockPermRepo) *gin.Engine {

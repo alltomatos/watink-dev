@@ -3,50 +3,15 @@ package services
 import (
 	"testing"
 
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func setupTicketLogDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(t.TempDir()+"/ticketlog_test.db"), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-
-	ddls := []string{
-		`CREATE TABLE IF NOT EXISTS "Tickets" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"status" TEXT NOT NULL DEFAULT 'pending',
-			"tenantId" TEXT NOT NULL,
-			"contactId" INTEGER,
-			"userId" INTEGER,
-			"queueId" INTEGER,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "TicketLogs" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"ticketId" INTEGER NOT NULL,
-			"userId" INTEGER,
-			"type" TEXT NOT NULL,
-			"payload" TEXT,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-	}
-	for _, ddl := range ddls {
-		db.Exec(ddl)
-	}
-
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func TestTicketLogService_CreateLog_Success(t *testing.T) {

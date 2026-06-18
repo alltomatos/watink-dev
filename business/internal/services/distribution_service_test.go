@@ -3,8 +3,8 @@ package services
 import (
 	"testing"
 
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -12,64 +12,7 @@ import (
 
 func setupDistributionDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("failed to open sqlite: %v", err)
-	}
-
-	// Simplified structs
-	type QueueTest struct {
-		ID                   int       `gorm:"primaryKey"`
-		DistributionStrategy string    `gorm:"column:distributionStrategy"`
-		PrioritizeWallet     bool      `gorm:"column:prioritizeWallet"`
-		TenantID             uuid.UUID `gorm:"column:tenantId;type:uuid"`
-	}
-
-	type UserTest struct {
-		ID       int       `gorm:"primaryKey"`
-		TenantID uuid.UUID `gorm:"column:tenantId;type:uuid"`
-	}
-
-	type TicketTest struct {
-		ID        int       `gorm:"primaryKey"`
-		ContactID int       `gorm:"column:contactId"`
-		UserID    *int      `gorm:"column:userId"`
-		QueueID   *int      `gorm:"column:queueId"`
-		TenantID  uuid.UUID `gorm:"column:tenantId;type:uuid"`
-		Status    string    `gorm:"default:'pending'"`
-	}
-
-	type ContactTest struct {
-		ID           int       `gorm:"primaryKey"`
-		WalletUserID *int      `gorm:"column:walletUserId"`
-		TenantID     uuid.UUID `gorm:"column:tenantId;type:uuid"`
-	}
-
-	type UserQueue struct {
-		UserID  int `gorm:"column:userId"`
-		QueueID int `gorm:"column:queueId"`
-	}
-
-	_ = QueueTest{}
-	_ = UserTest{}
-	_ = TicketTest{}
-	_ = ContactTest{}
-	_ = UserQueue{}
-
-	statements := []string{
-	`CREATE TABLE Queues (id INTEGER PRIMARY KEY, distributionStrategy TEXT, prioritizeWallet BOOLEAN, tenantId TEXT, name TEXT, color TEXT, greetingMessage TEXT, parentId INTEGER NULL, createdAt TEXT, updatedAt TEXT);`,
-	`CREATE TABLE Users (id INTEGER PRIMARY KEY, tenantId TEXT, name TEXT, email TEXT, passwordHash TEXT, tokenVersion INTEGER, profile TEXT, whatsappId INTEGER NULL, groupId INTEGER NULL, configs TEXT, createdAt TEXT, updatedAt TEXT);`,
-	`CREATE TABLE Tickets (id INTEGER PRIMARY KEY, contactId INTEGER, userId INTEGER NULL, queueId INTEGER NULL, tenantId TEXT, status TEXT, lastMessage TEXT, whatsappId INTEGER, isGroup BOOLEAN, unreadMessages INTEGER, createdAt TEXT, updatedAt TEXT);`,
-	`CREATE TABLE Contacts (id INTEGER PRIMARY KEY, walletUserId INTEGER NULL, tenantId TEXT, name TEXT, number TEXT, profilePicUrl TEXT, email TEXT, isGroup BOOLEAN, lid TEXT, createdAt TEXT, updatedAt TEXT);`,
-	`CREATE TABLE user_queues (userId INTEGER, queueId INTEGER);`,
-	}
-for _, stmt := range statements {
-		if err := db.Exec(stmt).Error; err != nil {
-			t.Fatalf("failed to create test table: %v", err)
-		}
-	}
-
-	return db
+	return testutil.NewTestDB(t)
 }
 
 // --- Tests ---
@@ -161,8 +104,7 @@ func TestDistributionService_Balanced_AssignsLeastLoadedUser(t *testing.T) {
 	if err := db.Raw("SELECT userId FROM Tickets WHERE id = 999").Row().Scan(&assignedUser); err != nil {
 		t.Fatalf("failed to scan ticket userId: %v", err)
 	}
-	// In SQLite the GROUP BY with quoted column name degrades gracefully — we only
-	// assert that a user was assigned; the actual balancing logic is exercised via the
+	// We assert that a user was assigned; the actual balancing logic is exercised via the
 	// PostgreSQL-backed E2E suite and production smoke tests.
 	if assignedUser == nil {
 		t.Fatal("AUTO_BALANCED strategy should assign some user")
@@ -288,7 +230,7 @@ func TestDistributionService_WalletPriority(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 4. Verify — use raw SQL to avoid GORM model-mapping issues in SQLite
+	// 4. Verify
 	var userIDResult *int
 	row := db.Raw("SELECT userId FROM Tickets WHERE id = 10").Row()
 	if err := row.Scan(&userIDResult); err != nil {

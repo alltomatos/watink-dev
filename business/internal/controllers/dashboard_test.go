@@ -10,46 +10,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"gorm.io/gorm"
 )
 
 func setupDashboardTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/dashboard_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-
-	ddls := []string{
-		`CREATE TABLE IF NOT EXISTS "Tickets" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"status" TEXT NOT NULL DEFAULT 'pending',
-			"tenantId" TEXT NOT NULL,
-			"queueId" INTEGER,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Queues" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"name" TEXT NOT NULL,
-			"color" TEXT NOT NULL DEFAULT '#000000',
-			"distributionStrategy" TEXT DEFAULT 'MANUAL',
-			"prioritizeWallet" BOOLEAN DEFAULT false,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-	}
-	for _, ddl := range ddls {
-		db.Exec(ddl)
-	}
-
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func setupDashboardContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID) (*gin.Context, *httptest.ResponseRecorder) {

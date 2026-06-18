@@ -7,8 +7,8 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -179,71 +179,7 @@ func TestNewDistributeTicketUseCase_NotNil(t *testing.T) {
 
 func setupDistributeTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/dist_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-
-	ddls := []string{
-		`CREATE TABLE IF NOT EXISTS "Contacts" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"name" TEXT NOT NULL,
-			"number" TEXT UNIQUE,
-			"profilePicUrl" TEXT,
-			"email" TEXT NOT NULL DEFAULT '',
-			"isGroup" BOOLEAN NOT NULL DEFAULT false,
-			"tenantId" TEXT,
-			"lid" TEXT UNIQUE,
-			"walletUserId" INTEGER,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Users" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"name" TEXT NOT NULL,
-			"email" TEXT UNIQUE NOT NULL,
-			"passwordHash" TEXT NOT NULL DEFAULT '',
-			"tokenVersion" INTEGER DEFAULT 0,
-			"profile" TEXT DEFAULT 'admin',
-			"whatsappId" INTEGER,
-			"tenantId" TEXT,
-			"groupId" INTEGER,
-			"configs" TEXT,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Tickets" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"status" TEXT NOT NULL DEFAULT 'pending',
-			"lastMessage" TEXT,
-			"contactId" INTEGER,
-			"userId" INTEGER,
-			"whatsappId" INTEGER,
-			"isGroup" BOOLEAN NOT NULL DEFAULT false,
-			"unreadMessages" INTEGER,
-			"queueId" INTEGER,
-			"tenantId" TEXT,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "user_queues" (
-			"userId" INTEGER NOT NULL,
-			"queueId" INTEGER NOT NULL,
-			PRIMARY KEY ("userId", "queueId")
-		)`,
-	}
-	for _, ddl := range ddls {
-		if err := db.Exec(ddl).Error; err != nil {
-			t.Fatalf("DDL failed: %v\nSQL: %s", err, ddl)
-		}
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 // newUCWithDB creates a DistributeTicketUseCase backed by a real SQLite DB.
