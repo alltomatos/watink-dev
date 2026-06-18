@@ -26,6 +26,12 @@ func (s *WhatsAppService) handleEvent(id int, tenantID string, evt interface{}) 
 		s.handleReceiptEvent(id, tenantID, v)
 	case *events.Connected:
 		s.emitStatus(id, tenantID, "CONNECTED")
+		if client.Store.ID != nil {
+			s.publishEvent(tenantID, id, "session.jid_registered", map[string]interface{}{
+				"sessionId": fmt.Sprintf("%d", id),
+				"jid":       client.Store.ID.String(),
+			})
+		}
 	case *events.Disconnected:
 		s.emitStatus(id, tenantID, "DISCONNECTED")
 	case *events.LoggedOut:

@@ -148,7 +148,7 @@ func handleCommand(d amqp.Delivery, svc *whatsapp.WhatsAppService) error {
 		if ts == 0 {
 			ts = time.Now().UnixMilli()
 		}
-		return svc.StartClient(sessionID, tenantID, p.Name, ts, p.ProxyURL, p.UsePairingCode, p.PhoneNumber)
+		return svc.StartClient(sessionID, tenantID, p.Name, ts, p.ProxyURL, p.UsePairingCode, p.PhoneNumber, "")
 
 	case "session.stop":
 		return svc.StopClient(sessionID)
