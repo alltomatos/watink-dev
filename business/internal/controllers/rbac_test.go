@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"gorm.io/gorm"
 )
 
@@ -33,65 +33,10 @@ func (r *sqlitePermRepo) FindByIDs(_ context.Context, ids []int) ([]models.Permi
 
 var _ domain.PermissionRepository = (*sqlitePermRepo)(nil)
 
-// setupRBACTestDB cria DB SQLite com DDL manual compatível para testes de RBAC.
+// setupRBACTestDB cria DB PostgreSQL para testes de RBAC.
 func setupRBACTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/rbac_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-
-	ddls := []string{
-		`CREATE TABLE IF NOT EXISTS "Roles" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"name" TEXT NOT NULL,
-			"description" TEXT,
-			"isSystem" BOOLEAN DEFAULT false,
-			"tenantId" TEXT,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Permissions" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"resource" TEXT NOT NULL,
-			"action" TEXT NOT NULL,
-			"description" TEXT,
-			"isSystem" BOOLEAN DEFAULT true,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "role_permissions" (
-			"role_id" INTEGER NOT NULL,
-			"permission_id" INTEGER NOT NULL,
-			PRIMARY KEY ("role_id", "permission_id")
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Groups" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"name" TEXT NOT NULL,
-			"tenantId" TEXT,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "group_permissions" (
-			"group_id" INTEGER NOT NULL,
-			"permission_id" INTEGER NOT NULL,
-			PRIMARY KEY ("group_id", "permission_id")
-		)`,
-		`CREATE TABLE IF NOT EXISTS "group_roles" (
-			"group_id" INTEGER NOT NULL,
-			"role_id" INTEGER NOT NULL,
-			PRIMARY KEY ("group_id", "role_id")
-		)`,
-	}
-	for _, ddl := range ddls {
-		db.Exec(ddl)
-	}
-
-	return db
+	return testutil.NewTestDB(t)
 }
 
 // setupTestContext simula o middleware IsAuth + TenantMiddleware completo.

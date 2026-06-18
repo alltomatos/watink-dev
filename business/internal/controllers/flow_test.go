@@ -8,32 +8,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func setupFlowTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared&_flow_"+t.Name()), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.Exec(`CREATE TABLE IF NOT EXISTS "Flows" (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		"triggerType" TEXT DEFAULT '',
-		"triggerValue" TEXT DEFAULT '',
-		nodes TEXT DEFAULT '{}',
-		edges TEXT DEFAULT '{}',
-		active BOOLEAN DEFAULT false,
-		"whatsappId" INTEGER,
-		"tenantId" TEXT NOT NULL,
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`).Error)
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func setupFlowContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path string, body []byte) (*gin.Context, *httptest.ResponseRecorder) {

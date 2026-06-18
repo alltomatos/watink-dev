@@ -11,11 +11,11 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -82,14 +82,10 @@ func (m *MockPlanLimitSvc) CheckLimit(tenantID uuid.UUID, resource string) error
 
 var testTenantID = uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 
-// newWhatsappTestDB returns an in-memory SQLite DB to satisfy auth.GetDB.
+// newWhatsappTestDB returns a PostgreSQL test DB via testutil.
 func newWhatsappTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open test db: %v", err)
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 // setupWhatsappRouter creates a test router with tenantId and db injected into context.

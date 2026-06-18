@@ -9,59 +9,17 @@ import (
 	"testing"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func setupQueueTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/queue_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-
-	ddls := []string{
-		`CREATE TABLE IF NOT EXISTS "Queues" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"name" TEXT NOT NULL,
-			"color" TEXT NOT NULL DEFAULT '#000000',
-			"greetingMessage" TEXT,
-			"distributionStrategy" TEXT DEFAULT 'MANUAL',
-			"prioritizeWallet" BOOLEAN DEFAULT false,
-			"parentId" INTEGER,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "whatsapp_queues" (
-			"whatsapp_id" INTEGER NOT NULL,
-			"queue_id"    INTEGER NOT NULL,
-			PRIMARY KEY ("whatsapp_id", "queue_id")
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Whatsapps" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"name" TEXT,
-			"tenantId" TEXT
-		)`,
-		`CREATE TABLE IF NOT EXISTS "PlanSubscriptions" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"tenantId" TEXT,
-			"maxQueues" INTEGER DEFAULT 999
-		)`,
-	}
-	for _, ddl := range ddls {
-		db.Exec(ddl)
-	}
-
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func setupQueueContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path string, body []byte) (*gin.Context, *httptest.ResponseRecorder) {

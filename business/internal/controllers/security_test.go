@@ -12,9 +12,9 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -30,6 +30,15 @@ func (r *sqliteVersionRepo) GetPostgresVersion(ctx context.Context) (string, err
 }
 
 var _ domain.VersionRepository = (*sqliteVersionRepo)(nil)
+
+// brokenVersionRepo simulates a DB that always returns an error.
+type brokenVersionRepo struct{}
+
+func (r *brokenVersionRepo) GetPostgresVersion(_ context.Context) (string, error) {
+	return "", fmt.Errorf("database unavailable")
+}
+
+var _ domain.VersionRepository = (*brokenVersionRepo)(nil)
 
 // sqliteSwaggerPermRepo adapts *gorm.DB to domain.SwaggerPermissionRepository for tests.
 type sqliteSwaggerPermRepo struct{ db *gorm.DB }
@@ -50,73 +59,10 @@ func (r *sqliteSwaggerPermRepo) HasSwaggerPermission(userID int, tenantID uuid.U
 
 var _ domain.SwaggerPermissionRepository = (*sqliteSwaggerPermRepo)(nil)
 
-// setupGroupTestDB cria um SQLite in-memory com DDL manual para Groups, Roles, Permissions, Users e join tables.
-// Nota: GORM gera colunas de join tables em snake_case (group_id, role_id, permission_id),
-// mesmo com joinForeignKey:groupId no tag — o nome da constraint é diferente do nome da coluna.
+// setupGroupTestDB cria um banco PostgreSQL de teste com AutoMigrate para todos os modelos.
 func setupGroupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ddls := []string{
-		`CREATE TABLE IF NOT EXISTS "Groups" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Roles" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			description TEXT,
-			"isSystem" BOOLEAN DEFAULT false,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Permissions" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			resource TEXT NOT NULL,
-			action TEXT NOT NULL,
-			description TEXT,
-			"isSystem" BOOLEAN DEFAULT true,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Users" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			email TEXT NOT NULL UNIQUE,
-			"passwordHash" TEXT NOT NULL,
-			"tokenVersion" INTEGER DEFAULT 0,
-			profile TEXT DEFAULT 'admin',
-			"whatsappId" INTEGER,
-			"tenantId" TEXT NOT NULL,
-			"groupId" INTEGER,
-			configs TEXT DEFAULT '{}',
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS group_permissions (
-			group_id INTEGER NOT NULL,
-			permission_id INTEGER NOT NULL,
-			PRIMARY KEY (group_id, permission_id)
-		)`,
-		`CREATE TABLE IF NOT EXISTS group_roles (
-			group_id INTEGER NOT NULL,
-			role_id INTEGER NOT NULL,
-			PRIMARY KEY (group_id, role_id)
-		)`,
-	}
-	for _, ddl := range ddls {
-		if err := db.Exec(ddl).Error; err != nil {
-			t.Fatal(err)
-		}
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 // TestGroupUpdateRejectsCrossTenantRole verifica que GroupController.Update
@@ -267,41 +213,7 @@ func TestGroupUpdateRejectsInvalidPermission(t *testing.T) {
 func TestRoleUpdateRejectsInvalidPermission(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ddls := []string{
-		`CREATE TABLE IF NOT EXISTS "Roles" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			description TEXT,
-			"isSystem" BOOLEAN DEFAULT false,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Permissions" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			resource TEXT NOT NULL,
-			action TEXT NOT NULL,
-			description TEXT,
-			"isSystem" BOOLEAN DEFAULT true,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS role_permissions (
-			role_id INTEGER NOT NULL,
-			permission_id INTEGER NOT NULL,
-			PRIMARY KEY (role_id, permission_id)
-		)`,
-	}
-	for _, ddl := range ddls {
-		if err := db.Exec(ddl).Error; err != nil {
-			t.Fatal(err)
-		}
-	}
+	db := testutil.NewTestDB(t)
 
 	controller := NewRoleController(&sqlitePermRepo{db})
 	tenantA := uuid.New()
@@ -337,7 +249,7 @@ func TestRoleUpdateRejectsInvalidPermission(t *testing.T) {
 // TestVersionController_GetVersion testa o endpoint de versão básico (mocked).
 func TestVersionController_GetVersion(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	db := testutil.NewTestDB(t)
 	controller := NewVersionController(&sqliteVersionRepo{db})
 
 	router := gin.New()
@@ -366,8 +278,7 @@ func TestVersionController_GetVersion(t *testing.T) {
 // retornaria 200 com a versão real. Aqui validamos que 503 é retornado sem crash.
 func TestVersionController_GetPostgresVersion_DBError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	controller := NewVersionController(&sqliteVersionRepo{db})
+	controller := NewVersionController(&brokenVersionRepo{})
 
 	router := gin.New()
 	router.GET("/version/postgres", controller.GetPostgresVersion)
@@ -385,7 +296,7 @@ func TestVersionController_GetPostgresVersion_DBError(t *testing.T) {
 // TestSwaggerController_SwaggerUI_AccessDenied testa que o endpoint SwaggerUI recusa sem token.
 func TestSwaggerController_SwaggerUI_AccessDenied(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	db := testutil.NewTestDB(t)
 	controller := NewSwaggerController(&sqliteSwaggerPermRepo{db})
 
 	router := gin.New()
@@ -403,7 +314,7 @@ func TestSwaggerController_SwaggerUI_AccessDenied(t *testing.T) {
 // TestSwaggerController_SwaggerJSON_AccessDenied testa que o endpoint SwaggerJSON recusa sem token.
 func TestSwaggerController_SwaggerJSON_AccessDenied(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	db := testutil.NewTestDB(t)
 	controller := NewSwaggerController(&sqliteSwaggerPermRepo{db})
 
 	router := gin.New()

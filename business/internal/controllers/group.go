@@ -184,7 +184,7 @@ func (gc *GroupController) Update(c *gin.Context) {
 			if len(roles) != len(req.Roles) {
 				return gorm.ErrRecordNotFound
 			}
-			if err := tx.Model(&group).Association("Roles").Replace(roles); err != nil {
+			if err := tx.Session(&gorm.Session{NewDB: true}).Model(&group).Association("Roles").Replace(roles); err != nil {
 				return err
 			}
 		}

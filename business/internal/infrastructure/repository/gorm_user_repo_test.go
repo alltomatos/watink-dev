@@ -7,10 +7,10 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -20,20 +20,16 @@ type TenantTest struct {
 	ID        uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	Name      string    `gorm:"not null" json:"name"`
 	Status    string    `gorm:"default:'active'" json:"status"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt time.Time `gorm:"column:createdAt"`
+	UpdatedAt time.Time `gorm:"column:updatedAt"`
 }
 
 func (TenantTest) TableName() string { return "Tenants" }
 
-// setupUserTestDB cria um DB SQLite in-memory com AutoMigrate e retorna
-// o *gorm.DB já migrado. Cada teste chama esta função para ter isolamento total.
+// setupUserTestDB cria um DB PostgreSQL isolado e retorna o *gorm.DB já migrado.
 func setupUserTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err, "falha ao abrir SQLite in-memory")
-	require.NoError(t, db.AutoMigrate(&TenantTest{}, &models.User{}), "falha no AutoMigrate")
-	return db
+	return testutil.NewTestDB(t)
 }
 
 // seedTwoTenantsUsers cria 2 usuários em tenants diferentes e retorna os UUIDs.
