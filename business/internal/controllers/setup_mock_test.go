@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
-	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/gin-gonic/gin"
 )
 
@@ -41,7 +40,7 @@ func TestSetupController_CheckSetup_NeedsSetup(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	svc := &mockSetupService{needsSetup: true}
-	ctrl := NewSetupController(svc, plugins.NewHubManager())
+	ctrl := NewSetupController(svc)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -67,7 +66,7 @@ func TestSetupController_CheckSetup_AlreadyConfigured(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	svc := &mockSetupService{needsSetup: false}
-	ctrl := NewSetupController(svc, plugins.NewHubManager())
+	ctrl := NewSetupController(svc)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -93,7 +92,7 @@ func TestSetupController_CheckSetup_ServiceError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	svc := &mockSetupService{needsErr: errors.New("db connection lost")}
-	ctrl := NewSetupController(svc, plugins.NewHubManager())
+	ctrl := NewSetupController(svc)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -112,7 +111,7 @@ func TestSetupController_InitialSetup_AlreadyInitialized(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	svc := &mockSetupService{needsSetup: false}
-	ctrl := NewSetupController(svc, plugins.NewHubManager())
+	ctrl := NewSetupController(svc)
 
 	payload := map[string]string{
 		"firstName": "Admin",
@@ -142,7 +141,7 @@ func TestSetupController_InitialSetup_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	svc := &mockSetupService{needsSetup: true}
-	ctrl := NewSetupController(svc, plugins.NewHubManager())
+	ctrl := NewSetupController(svc)
 
 	payload := map[string]string{
 		"firstName": "Ronaldo",
@@ -176,7 +175,7 @@ func TestSetupController_InitialSetup_MissingRequiredFields(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	svc := &mockSetupService{needsSetup: true}
-	ctrl := NewSetupController(svc, plugins.NewHubManager())
+	ctrl := NewSetupController(svc)
 
 	// email ausente — campo obrigatório
 	payload := map[string]string{"firstName": "Admin", "password": "pass"}

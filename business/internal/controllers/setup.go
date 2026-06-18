@@ -1,27 +1,19 @@
 package controllers
 
 import (
-	"log"
 	"net/http"
-	"os"
-	"strings"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
-	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
 type SetupController struct {
 	setupService domain.SetupServiceInterface
-	hubManager   *plugins.HubManager
 }
 
-func NewSetupController(setupService domain.SetupServiceInterface, hubManager *plugins.HubManager) *SetupController {
-	return &SetupController{
-		setupService: setupService,
-		hubManager:   hubManager,
-	}
+func NewSetupController(setupService domain.SetupServiceInterface) *SetupController {
+	return &SetupController{setupService: setupService}
 }
 
 // @Summary      Verificar setup inicial
@@ -84,29 +76,6 @@ func (ctrl *SetupController) InitialSetup(c *gin.Context) {
 	if err := ctrl.setupService.InitializeTenant(seedData); err != nil {
 		utils.RespondWithInternalError(c, err, "InitializeTenant")
 		return
-	}
-
-	// Register instance in Marketplace Hub (best effort, side effect)
-	if ctrl.hubManager != nil {
-		instanceURL := strings.TrimSpace(req.BackendURL)
-		if instanceURL == "" {
-			instanceURL = strings.TrimSpace(os.Getenv("FRONTEND_URL"))
-		}
-		if instanceURL == "" {
-			instanceURL = strings.TrimSpace(os.Getenv("BACKEND_URL"))
-		}
-
-		err := ctrl.hubManager.RegisterInstance(map[string]string{
-			"ownerEmail":      req.Email,
-			"superAdminEmail": req.Email,
-			"ownerName":       req.FirstName + " " + req.LastName,
-			"document":        req.Document,
-			"tenantName":      req.FirstName + "'s Workspace",
-			"instanceUrl":     instanceURL,
-		})
-		if err != nil {
-			log.Printf("⚠️ marketplace hub register failed: %v", err)
-		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "System initialized successfully"})
