@@ -158,6 +158,60 @@ func TestGORMContactRepo_Update_TenantIsolation(t *testing.T) {
 	assert.Equal(t, "Carlos Updated", found.Name, "update com tenant correto deveria alterar o nome")
 }
 
+func TestGORMContactRepo_FindByLID(t *testing.T) {
+	db := setupContactTestDB(t)
+	tenantA, tenantB, _, _ := seedTwoTenantsContacts(t, db)
+	repo := NewGORMContactRepo(db)
+	ctx := context.Background()
+
+	lid := "lid-abc123"
+	c := &models.Contact{
+		Name:     "LID Contact",
+		Number:   "5599009900",
+		TenantID: tenantA,
+		Lid:      &lid,
+	}
+	require.NoError(t, db.Create(c).Error)
+
+	// FindByLID com tenant correto
+	found, err := repo.FindByLID(ctx, tenantA, lid, false)
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	assert.Equal(t, "LID Contact", found.Name)
+
+	// FindByLID com tenant errado → nil (isolamento)
+	leaked, err := repo.FindByLID(ctx, tenantB, lid, false)
+	require.NoError(t, err)
+	assert.Nil(t, leaked, "FindByLID com tenant errado deve retornar nil")
+
+	// FindByLID com LID inexistente → nil
+	notFound, err := repo.FindByLID(ctx, tenantA, "nonexistent-lid", false)
+	require.NoError(t, err)
+	assert.Nil(t, notFound)
+}
+
+func TestGORMContactRepo_Create(t *testing.T) {
+	db := setupContactTestDB(t)
+	tenantA, _, _, _ := seedTwoTenantsContacts(t, db)
+	repo := NewGORMContactRepo(db)
+	ctx := context.Background()
+
+	contact := &domain.Contact{
+		Name:     "New Contact",
+		Number:   "5599887766",
+		Email:    "new@tenant-a.com",
+		TenantID: tenantA,
+	}
+	err := repo.Create(ctx, contact)
+	require.NoError(t, err)
+
+	found, err := repo.FindByNumber(ctx, tenantA, "5599887766", false)
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	assert.Equal(t, "New Contact", found.Name)
+	assert.Equal(t, tenantA, found.TenantID)
+}
+
 func TestGORMContactRepo_FindOrCreate_TenantIsolation(t *testing.T) {
 	db := setupContactTestDB(t)
 	tenantA, _, _, _ := seedTwoTenantsContacts(t, db)

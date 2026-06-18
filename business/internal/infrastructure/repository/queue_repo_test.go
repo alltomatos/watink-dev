@@ -156,6 +156,83 @@ func TestGORMQueueRepo_Delete_TenantIsolation(t *testing.T) {
 	assert.Nil(t, found, "fila deveria ter sido removida")
 }
 
+func TestGORMQueueRepo_FindByIDWithAssociations(t *testing.T) {
+	db := setupQueueTestDB(t)
+	tenantA := uuid.New()
+	tenantB := uuid.New()
+	require.NoError(t, db.Create(&TenantTest{ID: tenantA, Name: "A"}).Error)
+	require.NoError(t, db.Create(&TenantTest{ID: tenantB, Name: "B"}).Error)
+
+	repo := NewGORMQueueRepo(db)
+	ctx := context.Background()
+
+	q := seedQueue(t, db, tenantA, "Queue With Assoc", "#333333")
+
+	// Encontrar com tenant correto
+	found, err := repo.FindByIDWithAssociations(ctx, q.ID, tenantA)
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	assert.Equal(t, "Queue With Assoc", found.Name)
+
+	// Tenant errado → nil
+	leaked, err := repo.FindByIDWithAssociations(ctx, q.ID, tenantB)
+	require.NoError(t, err)
+	assert.Nil(t, leaked, "FindByIDWithAssociations com tenant errado deve retornar nil")
+
+	// ID inexistente → nil
+	notFound, err := repo.FindByIDWithAssociations(ctx, 99999, tenantA)
+	require.NoError(t, err)
+	assert.Nil(t, notFound)
+}
+
+func TestGORMQueueRepo_FindAllWithAssociations(t *testing.T) {
+	db := setupQueueTestDB(t)
+	tenantA := uuid.New()
+	tenantB := uuid.New()
+	require.NoError(t, db.Create(&TenantTest{ID: tenantA, Name: "A"}).Error)
+	require.NoError(t, db.Create(&TenantTest{ID: tenantB, Name: "B"}).Error)
+
+	repo := NewGORMQueueRepo(db)
+	ctx := context.Background()
+
+	seedQueue(t, db, tenantA, "Queue Assoc A1", "#444444")
+	seedQueue(t, db, tenantA, "Queue Assoc A2", "#555555")
+	seedQueue(t, db, tenantB, "Queue Assoc B1", "#666666")
+
+	queuesA, err := repo.FindAllWithAssociations(ctx, tenantA)
+	require.NoError(t, err)
+	assert.Len(t, queuesA, 2)
+
+	queuesB, err := repo.FindAllWithAssociations(ctx, tenantB)
+	require.NoError(t, err)
+	assert.Len(t, queuesB, 1)
+}
+
+func TestGORMQueueRepo_Save(t *testing.T) {
+	db := setupQueueTestDB(t)
+	tenantA := uuid.New()
+	require.NoError(t, db.Create(&TenantTest{ID: tenantA, Name: "A"}).Error)
+
+	repo := NewGORMQueueRepo(db)
+	ctx := context.Background()
+
+	q := seedQueue(t, db, tenantA, "Queue Save", "#777777")
+
+	// Save deve persistir sem erro
+	err := repo.Save(ctx, &domain.Queue{
+		ID:       q.ID,
+		Name:     "Queue Save Updated",
+		Color:    "#888888",
+		TenantID: tenantA,
+	})
+	require.NoError(t, err)
+
+	found, err := repo.FindByID(ctx, q.ID, tenantA)
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	assert.Equal(t, "Queue Save Updated", found.Name)
+}
+
 func TestGORMQueueRepo_FindAll_Empty(t *testing.T) {
 	db := setupQueueTestDB(t)
 	tenantA := uuid.New()
