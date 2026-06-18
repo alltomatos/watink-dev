@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -193,6 +194,41 @@ func TestSetupServiceInitializeTenantRollsBackOnFailure(t *testing.T) {
 		if count != 0 {
 			t.Fatalf("expected rollback to leave %s empty, got %d rows", table, count)
 		}
+	}
+}
+
+func TestSetupService_NeedsSetup_True(t *testing.T) {
+	db := newSetupTestDB(t)
+	svc := NewSetupService(db)
+
+	needs, err := svc.NeedsSetup(context.Background())
+	if err != nil {
+		t.Fatalf("NeedsSetup: %v", err)
+	}
+	if !needs {
+		t.Fatal("expected NeedsSetup=true when DB is empty")
+	}
+}
+
+func TestSetupService_NeedsSetup_False(t *testing.T) {
+	db := newSetupTestDB(t)
+	seedPermissions(t, db)
+
+	svc := NewSetupService(db)
+	if err := svc.InitializeTenant(TenantSeedData{
+		FirstName: "Ana",
+		Email:     "ana@example.com",
+		Password:  "pass123",
+	}); err != nil {
+		t.Fatalf("InitializeTenant: %v", err)
+	}
+
+	needs, err := svc.NeedsSetup(context.Background())
+	if err != nil {
+		t.Fatalf("NeedsSetup: %v", err)
+	}
+	if needs {
+		t.Fatal("expected NeedsSetup=false when tenant exists")
 	}
 }
 

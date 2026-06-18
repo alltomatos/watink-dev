@@ -141,7 +141,7 @@ func (tc *TagController) Update(c *gin.Context) {
 		tag.GroupID = input.GroupID
 	}
 
-	if err := db.Where("\"tenantId\" = ?", tenantID).Save(&tag).Error; err != nil {
+	if err := db.Session(&gorm.Session{NewDB: true}).Save(&tag).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "UpdateTag")
 		return
 	}
@@ -185,7 +185,7 @@ func (tc *TagController) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := db.Model(&tag).Update("archived", true).Error; err != nil {
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&tag).Update("archived", true).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "ArchiveTag")
 		return
 	}

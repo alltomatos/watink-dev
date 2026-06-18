@@ -72,6 +72,10 @@ func (pm *PluginManager) Register(p sdk.WatinkPlugin) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 	manifest := p.GetManifest()
+	if pm.plugins[manifest.Slug] != nil {
+		log.Printf("Plugin already registered, skipping: %s", manifest.Slug)
+		return
+	}
 	log.Printf("Registering plugin: %s (%s)", manifest.Name, manifest.Slug)
 	pluginCore := &coreImpl{
 		db:         pm.core.db,
