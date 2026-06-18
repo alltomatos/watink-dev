@@ -61,7 +61,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ modalOpen, onClo
           <Button variant="outline" onClick={onClose} disabled={loading}>
             {i18n.t("newTicketModal.buttons.cancel")}
           </Button>
-          <Button onClick={() => console.log("Implementar lógica de seleção")} disabled={loading}>
+          <Button onClick={() => {}} disabled={loading}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : i18n.t("newTicketModal.buttons.ok")}
           </Button>
         </DialogFooter>

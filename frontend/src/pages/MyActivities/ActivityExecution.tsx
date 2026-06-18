@@ -133,6 +133,8 @@ const ActivityExecution: React.FC<{
 
   useEffect(() => {
     if (open && activityId) loadActivity();
+    // loadActivity is defined below; open+activityId are the real triggers
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, activityId]);
 
   const loadActivity = async () => {

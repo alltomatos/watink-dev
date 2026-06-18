@@ -65,6 +65,8 @@ const TagModal: React.FC<TagModalProps> = ({ open, onClose, tagId }) => {
     } else {
       setTag(initialState);
     }
+    // initialState is a stable const defined outside; tagId+open are the real triggers
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tagId, open]);
 
   const handleSaveTag = async (values: typeof initialState) => {

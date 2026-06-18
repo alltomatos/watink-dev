@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { VirtuosoMessageList, VirtuosoMessageListMethods } from '@virtuoso.dev/message-list';
+import { VirtuosoMessageList } from '@virtuoso.dev/message-list';
 import connectToSocket from '../../services/socket-io';
 import MessageItem from './MessageItem';
 import { Message } from '../../types/Message';

@@ -195,6 +195,8 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
       scrollToBottom(shouldScrollRef.current === "smooth" ? "smooth" : "auto");
       shouldScrollRef.current = null;
     }
+    // scrollToBottom is a stable ref-based helper; messagesList is the real trigger
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messagesList]);
 
   useEffect(() => {

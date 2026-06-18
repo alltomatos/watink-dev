@@ -14,7 +14,7 @@ const HelpdeskTvMode: React.FC = () => {
           await document.documentElement.requestFullscreen();
         }
       } catch (err) {
-        console.log("Fullscreen request failed:", err);
+        void err; // fullscreen request failed — silent
       }
     };
 
