@@ -9,10 +9,10 @@ async function setupSecondTenant(name: string, email: string, password: string) 
 
   // Se o sistema ainda aceitar setup (ambiente fresh) use o endpoint de setup
   // Caso contrário crie via /users (admin já existe)
-  const check = await anon.get("/initial-setup/check");
+  const check = await anon.get("initial-setup/check");
   const { needsSetup } = await check.json();
   if (needsSetup) {
-    await anon.post("/initial-setup", {
+    await anon.post("initial-setup", {
       data: { firstName: name, lastName: "Tenant", email, password },
     });
   }
@@ -21,7 +21,7 @@ async function setupSecondTenant(name: string, email: string, password: string) 
 
 async function loginAs(email: string, password: string) {
   const ctx = await request.newContext({ baseURL: API });
-  const resp = await ctx.post("/auth/login", { data: { email, password } });
+  const resp = await ctx.post("auth/login", { data: { email, password } });
   if (!resp.ok()) {
     await ctx.dispose();
     return null;
@@ -55,7 +55,7 @@ base.describe("Multitenancy — Isolamento de dados", () => {
 
     // Tenta acessar a fila com uma requisição sem autenticação (simula outro tenant)
     const anonApi = await playwright.request.newContext({ baseURL: API });
-    const resp = await anonApi.get("/queue");
+    const resp = await anonApi.get("queue");
     expect(resp.status()).toBe(401);
 
     // Cleanup
@@ -80,7 +80,7 @@ base.describe("Multitenancy — Isolamento de dados", () => {
       extraHTTPHeaders: { Authorization: `Bearer ${token}` },
     });
 
-    const resp = await api.get("/dashboard");
+    const resp = await api.get("dashboard");
     expect(resp.status()).toBe(200);
 
     const body = await resp.json();

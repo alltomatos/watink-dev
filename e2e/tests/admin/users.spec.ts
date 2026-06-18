@@ -14,7 +14,7 @@ test.describe("API — Users CRUD", () => {
     expect(user.email).toBe(email);
 
     // Deve aparecer na listagem
-    const list = await authedApi.get("/users");
+    const list = await authedApi.get("users");
     expect(list.status()).toBe(200);
     const users: { id: number; email: string }[] = await list.json();
     expect(users.some((u) => u.id === user.id)).toBe(true);
@@ -31,7 +31,7 @@ test.describe("API — Users CRUD", () => {
       password: "senha123",
     });
 
-    const resp = await authedApi.post("/users", {
+    const resp = await authedApi.post("users", {
       data: { name: "Dup2", email, password: "senha456", profile: "user" },
     });
     expect(resp.status()).toBeGreaterThanOrEqual(400);
@@ -43,7 +43,7 @@ test.describe("API — Users CRUD", () => {
     const api = await playwright.request.newContext({
       baseURL: process.env.E2E_API_URL || "http://localhost:8082/api/v1",
     });
-    const resp = await api.get("/users");
+    const resp = await api.get("users");
     expect(resp.status()).toBe(401);
     await api.dispose();
   });

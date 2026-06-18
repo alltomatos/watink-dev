@@ -15,7 +15,7 @@ export interface AuthFixtures {
 
 // Login via API, retorna o Bearer token
 async function loginApi(api: APIRequestContext, email: string, password: string): Promise<string> {
-  const resp = await api.post("/auth/login", { data: { email, password } });
+  const resp = await api.post("auth/login", { data: { email, password } });
   expect(resp.ok(), `Login failed: ${await resp.text()}`).toBeTruthy();
   const body = await resp.json();
   return body.token as string;

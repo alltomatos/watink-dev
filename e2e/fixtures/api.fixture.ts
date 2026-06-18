@@ -16,20 +16,20 @@ export async function createQueue(
   name: string,
   color = "#3498DB"
 ): Promise<QueueSeed> {
-  const resp = await api.post("/queue", { data: { name, color } });
+  const resp = await api.post("queue", { data: { name, color } });
   expect(resp.ok(), `createQueue failed: ${await resp.text()}`).toBeTruthy();
   return resp.json();
 }
 
 export async function deleteQueue(api: APIRequestContext, id: number): Promise<void> {
-  await api.delete(`/queue/${id}`);
+  await api.delete(`queue/${id}`);
 }
 
 export async function createUser(
   api: APIRequestContext,
   opts: { name: string; email: string; password: string; profile?: string }
 ): Promise<UserSeed> {
-  const resp = await api.post("/users", {
+  const resp = await api.post("users", {
     data: {
       name: opts.name,
       email: opts.email,
@@ -42,5 +42,5 @@ export async function createUser(
 }
 
 export async function deleteUser(api: APIRequestContext, id: number): Promise<void> {
-  await api.delete(`/users/${id}`);
+  await api.delete(`users/${id}`);
 }

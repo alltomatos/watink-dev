@@ -10,7 +10,7 @@ test.describe("API — Queues CRUD", () => {
     expect(queue.name).toBe(name);
 
     // Confirmar que aparece na listagem
-    const list = await authedApi.get("/queue");
+    const list = await authedApi.get("queue");
     expect(list.status()).toBe(200);
     const queues: { id: number; name: string }[] = await list.json();
     expect(queues.some((q) => q.id === queue.id)).toBe(true);
@@ -19,7 +19,7 @@ test.describe("API — Queues CRUD", () => {
     await deleteQueue(authedApi, queue.id);
 
     // Confirmar remoção
-    const afterDelete = await authedApi.get("/queue");
+    const afterDelete = await authedApi.get("queue");
     const remaining: { id: number }[] = await afterDelete.json();
     expect(remaining.some((q) => q.id === queue.id)).toBe(false);
   });
@@ -28,7 +28,7 @@ test.describe("API — Queues CRUD", () => {
     const name = `E2E-Dup-${Date.now()}`;
     const q1 = await createQueue(authedApi, name, "#111111");
 
-    const resp = await authedApi.post("/queue", {
+    const resp = await authedApi.post("queue", {
       data: { name, color: "#222222" },
     });
     // UNIQUE constraint — deve retornar 4xx ou 5xx
@@ -41,7 +41,7 @@ test.describe("API — Queues CRUD", () => {
     const api = await playwright.request.newContext({
       baseURL: process.env.E2E_API_URL || "http://localhost:8082/api/v1",
     });
-    const resp = await api.get("/queue");
+    const resp = await api.get("queue");
     expect(resp.status()).toBe(401);
     await api.dispose();
   });

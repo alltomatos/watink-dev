@@ -8,11 +8,11 @@ async function globalSetup() {
   const api = await request.newContext({ baseURL: API_URL });
 
   // Check if system already needs setup
-  const checkResp = await api.get("/initial-setup/check");
+  const checkResp = await api.get("initial-setup/check");
   const { needsSetup } = await checkResp.json();
 
   if (needsSetup) {
-    const setupResp = await api.post("/initial-setup", {
+    const setupResp = await api.post("initial-setup", {
       data: {
         firstName: "Admin",
         lastName: "E2E",
