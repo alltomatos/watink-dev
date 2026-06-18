@@ -99,6 +99,7 @@ func setupPluginTestDB(t *testing.T) *gorm.DB {
 		"profilePicUrl" TEXT,
 		"keepAlive" BOOLEAN DEFAULT false,
 		"engineType" TEXT DEFAULT 'whatsmeow',
+		"wid" TEXT DEFAULT '',
 		"createdAt" DATETIME,
 		"updatedAt" DATETIME,
 		"firstConnection" DATETIME

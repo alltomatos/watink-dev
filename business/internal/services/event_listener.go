@@ -46,6 +46,7 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 		"wbot.*.*.message.revoke",
 		"wbot.*.*.message.reaction",
 		"wbot.*.*.contact.update",
+		"wbot.*.*.session.jid_registered",
 	}
 
 	err := rabbitMQ.ConsumeEvents("api.events.process.go", routingKeys, func(d amqp.Delivery) error {
@@ -90,6 +91,8 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 				return handleMessageReaction(tx, env.Payload, tid)
 			case "contact.update":
 				return handleContactUpdate(tx, env.Payload, tid)
+			case "session.jid_registered":
+				return handleJIDRegistered(tx, env.Payload, tid)
 			default:
 				return nil
 			}
@@ -272,4 +275,21 @@ func handleContactUpdate(tx *gorm.DB, payload json.RawMessage, tenantID uuid.UUI
 	_ = tenantID
 	log.Printf("Contact update received: %+v", p)
 	return nil
+}
+
+func handleJIDRegistered(tx *gorm.DB, payload json.RawMessage, tenantID uuid.UUID) error {
+	var p struct {
+		SessionID string `json:"sessionId"`
+		JID       string `json:"jid"`
+	}
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return err
+	}
+	sessionID := getSessionID(p.SessionID)
+	if p.JID == "" || sessionID == 0 {
+		return nil
+	}
+	return tx.Model(&models.Whatsapp{}).
+		Where("id = ? AND \"tenantId\" = ?", sessionID, tenantID).
+		Update("wid", p.JID).Error
 }
