@@ -57,14 +57,19 @@ func NewTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("testutil.NewTestDB: SET search_path: %v", err)
 	}
 
-	// Register explicit join table structs so AutoMigrate creates camelCase columns
-	// (userId, queueId) matching the legacy production schema.
-	if err := db.SetupJoinTable(&models.User{}, "Queues", &models.UserQueue{}); err != nil {
-		t.Fatalf("testutil.NewTestDB: SetupJoinTable User->Queues: %v", err)
-	}
-
 	if err := db.AutoMigrate(allModels()...); err != nil {
 		t.Fatalf("testutil.NewTestDB: AutoMigrate: %v", err)
+	}
+
+	// GORM AutoMigrate creates join table columns as snake_case (user_id, queue_id).
+	// Production schema uses camelCase (userId, queueId) — rename to match.
+	for _, stmt := range []string{
+		`ALTER TABLE user_queues RENAME COLUMN user_id TO "userId"`,
+		`ALTER TABLE user_queues RENAME COLUMN queue_id TO "queueId"`,
+	} {
+		if err := db.Exec(stmt).Error; err != nil {
+			t.Fatalf("testutil.NewTestDB: rename join column: %v", err)
+		}
 	}
 
 	t.Cleanup(func() {
@@ -126,6 +131,5 @@ func allModels() []interface{} {
 		&models.EntityTag{},
 		&models.TicketLog{},
 		&models.ConversationEmbedding{},
-		&models.UserQueue{},
 	}
 }
