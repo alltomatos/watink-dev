@@ -58,7 +58,7 @@ module.exports = {
 			},
 		],
 
-		// GAP-003: prop-contract dos componentes DS v2 (ported from _adherence.oxlintrc.json)
+		// GAP-003: prop-contract dos componentes DS v2 (shadcn/ui + Watink tokens)
 		"no-restricted-syntax": [
 			"warn",
 			{
@@ -66,12 +66,12 @@ module.exports = {
 				message: "<Avatar> size must be one of 'xs' | 'sm' | 'md' | 'lg' | 'xl'.",
 			},
 			{
-				selector: "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:primary|outlined|ghost|danger)$/]",
-				message: "<Button> variant must be one of 'primary' | 'outlined' | 'ghost' | 'danger'.",
+				selector: "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:default|destructive|outline|secondary|ghost|link)$/]",
+				message: "<Button> variant must be one of 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'.",
 			},
 			{
-				selector: "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:sm|md|lg)$/]",
-				message: "<Button> size must be one of 'sm' | 'md' | 'lg'.",
+				selector: "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:default|sm|lg|icon)$/]",
+				message: "<Button> size must be one of 'default' | 'sm' | 'lg' | 'icon'.",
 			},
 			{
 				selector: "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='type'] > Literal[value!=/^(?:button|submit|reset)$/]",
