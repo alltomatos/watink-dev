@@ -89,6 +89,13 @@ jobs:
         working-directory: business
         run: go test ./... -v -short -count=1
 
+      - name: Run integration tests
+        working-directory: business
+        env:
+          RABBITMQ_URL: amqp://guest:guest@localhost:5672/
+          REDIS_URL: redis://localhost:6379
+        run: CGO_ENABLED=1 go test ./... -tags integration -v -count=1 -timeout 60s
+
   build-frontend:
     runs-on: ubuntu-latest
     steps:
