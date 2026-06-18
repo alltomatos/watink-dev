@@ -472,6 +472,153 @@ func TestSaaSPlugin_GET_ReturnsAllTenants(t *testing.T) {
 	assert.Len(t, tenants, 2)
 }
 
+// TestSaaSPlugin_OnInstall verifica que OnInstall não retorna erro (no-op)
+func TestSaaSPlugin_OnInstall(t *testing.T) {
+	mockCore := new(MockWatinkCore)
+	p := &SaaSPlugin{}
+	assert.NoError(t, p.OnInstall(mockCore))
+}
+
+// TestSaaSPlugin_POST_CreatesTenant verifica que o handler POST cria um Tenant
+func TestSaaSPlugin_POST_CreatesTenant(t *testing.T) {
+	db := setupPluginTestDB(t)
+
+	mockCore := new(MockWatinkCore)
+	mockCore.On("GetDB").Return(db)
+	mockCore.On("RegisterRoute", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	plugin := &SaaSPlugin{}
+	if err := plugin.OnActivate(mockCore); err != nil {
+		t.Fatal(err)
+	}
+
+	r := gin.New()
+	r.POST("/saas/manager/tenants", mockCore.registeredRoutes[1].Handler)
+
+	payload := map[string]interface{}{
+		"id":   uuid.New().String(),
+		"name": "New Tenant",
+	}
+	body, _ := json.Marshal(payload)
+
+	req := httptest.NewRequest("POST", "/saas/manager/tenants", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	var resp models.Tenant
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "New Tenant", resp.Name)
+}
+
+// TestSaaSPlugin_POST_BadJSON_ReturnsBadRequest verifica tratamento de JSON inválido
+func TestSaaSPlugin_POST_BadJSON_ReturnsBadRequest(t *testing.T) {
+	db := setupPluginTestDB(t)
+
+	mockCore := new(MockWatinkCore)
+	mockCore.On("GetDB").Return(db)
+	mockCore.On("RegisterRoute", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	plugin := &SaaSPlugin{}
+	if err := plugin.OnActivate(mockCore); err != nil {
+		t.Fatal(err)
+	}
+
+	r := gin.New()
+	r.POST("/saas/manager/tenants", mockCore.registeredRoutes[1].Handler)
+
+	req := httptest.NewRequest("POST", "/saas/manager/tenants", bytes.NewReader([]byte(`{bad json`)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// TestClientesPlugin_GET_MissingTenantID_ReturnsBadRequest verifica que GET sem tenantId no contexto retorna 400
+func TestClientesPlugin_GET_MissingTenantID_ReturnsBadRequest(t *testing.T) { //nolint:misspell
+	db := setupPluginTestDB(t)
+
+	mockCore := new(MockWatinkCore)
+	mockCore.On("GetDB").Return(db)
+	mockCore.On("RegisterRoute", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	plugin := &ClientesPlugin{}
+	if err := plugin.OnActivate(mockCore); err != nil {
+		t.Fatal(err)
+	}
+
+	r := gin.New()
+	// No tenantId in context — TenantUUIDFromContext will fail
+	r.GET("/clientes", mockCore.registeredRoutes[0].Handler) //nolint:misspell
+
+	req := httptest.NewRequest("GET", "/clientes", nil) //nolint:misspell
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// TestClientesPlugin_POST_MissingTenantID_ReturnsBadRequest verifica que POST sem tenantId no contexto retorna 400
+func TestClientesPlugin_POST_MissingTenantID_ReturnsBadRequest(t *testing.T) { //nolint:misspell
+	db := setupPluginTestDB(t)
+
+	mockCore := new(MockWatinkCore)
+	mockCore.On("GetDB").Return(db)
+	mockCore.On("RegisterRoute", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	plugin := &ClientesPlugin{}
+	if err := plugin.OnActivate(mockCore); err != nil {
+		t.Fatal(err)
+	}
+
+	r := gin.New()
+	// No tenantId in context — TenantUUIDFromContext will fail
+	r.POST("/clientes", mockCore.registeredRoutes[1].Handler) //nolint:misspell
+
+	payload := map[string]string{"name": "Test"}
+	body, _ := json.Marshal(payload)
+
+	req := httptest.NewRequest("POST", "/clientes", bytes.NewReader(body)) //nolint:misspell
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// TestClientesPlugin_POST_BadJSON_ReturnsBadRequest verifica tratamento de JSON inválido no plugin. //nolint:misspell
+func TestClientesPlugin_POST_BadJSON_ReturnsBadRequest(t *testing.T) { //nolint:misspell
+	db := setupPluginTestDB(t)
+	tenantA := uuid.New()
+
+	mockCore := new(MockWatinkCore)
+	mockCore.On("GetDB").Return(db)
+	mockCore.On("RegisterRoute", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	plugin := &ClientesPlugin{}
+	if err := plugin.OnActivate(mockCore); err != nil {
+		t.Fatal(err)
+	}
+
+	r := gin.New()
+	r.POST("/clientes", func(c *gin.Context) { //nolint:misspell
+		c.Set("tenantId", tenantA)
+		mockCore.registeredRoutes[1].Handler(c)
+	})
+
+	req := httptest.NewRequest("POST", "/clientes", bytes.NewReader([]byte(`{bad json`))) //nolint:misspell
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 // ---- OnDeactivate smoke tests ----
 
 func TestWebchatPlugin_OnDeactivate(t *testing.T) {
