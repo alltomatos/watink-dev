@@ -213,7 +213,7 @@ func TestNewDistributeTicketUseCase_NotNil(t *testing.T) {
 	qr := &mockQueueRepo{}
 	tr := &mockTicketRepo{}
 	eb := &mockEventBus{}
-	uc := NewDistributeTicketUseCase(tr, qr, eb, nil)
+	uc := NewDistributeTicketUseCase(tr, qr, eb, nil, nil)
 	if uc == nil {
 		t.Fatal("NewDistributeTicketUseCase returned nil")
 	}
