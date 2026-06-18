@@ -6,6 +6,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // QueueController encapsulates queue operations with RLS-scoped DB from auth middleware.
@@ -127,7 +128,7 @@ func (qc *QueueController) UpdateQueue(c *gin.Context) {
 		return
 	}
 
-	if err := db.Where("\"tenantId\" = ?", tenantID).Save(&queue).Error; err != nil {
+	if err := db.Session(&gorm.Session{NewDB: true}).Save(&queue).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "UpdateQueue")
 		return
 	}
