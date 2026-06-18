@@ -68,6 +68,95 @@ func TestBuildSessionCommandPublishesStopIntent(t *testing.T) {
 	assertSessionCommand(t, wss, "session.stop")
 }
 
+// TestBuildDeleteSessionCommand_DelegatesToBuildSessionCommand tests buildDeleteSessionCommand directly.
+func TestBuildDeleteSessionCommand_DelegatesToBuildSessionCommand(t *testing.T) {
+	wss := newTestWhatsAppSessionService(t)
+	tenantID := uuid.New()
+	whatsapp := models.Whatsapp{ID: 7, TenantID: tenantID}
+
+	routingKey, command := wss.buildDeleteSessionCommand(whatsapp)
+
+	expectedKey := "wbot." + tenantID.String() + ".7.session.delete"
+	if routingKey != expectedKey {
+		t.Fatalf("routing key = %q, want %q", routingKey, expectedKey)
+	}
+	if command["type"] != "session.delete" {
+		t.Fatalf("type = %v", command["type"])
+	}
+}
+
+// TestPublishWhatsAppSessionCommand_DelegatesToPublisher verifies the publisher is called with the correct args.
+func TestPublishWhatsAppSessionCommand_DelegatesToPublisher(t *testing.T) {
+	db, _ := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	pub := &mockCommandPublisher{}
+	mockRedis := &mockRedisService{}
+	mockBroadcast := NewRedisBroadcast(mockRedis, nil)
+	wss := NewWhatsAppSessionService(db, pub, mockRedis, mockBroadcast)
+
+	routingKey := "test.routing.key"
+	command := map[string]interface{}{"type": "session.stop"}
+	if err := wss.publishWhatsAppSessionCommand(routingKey, command); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if pub.lastRoutingKey != routingKey {
+		t.Errorf("routing key = %q, want %q", pub.lastRoutingKey, routingKey)
+	}
+}
+
+// TestStopWhatsAppSession_PublishesStop verifies StopWhatsAppSession publishes the right command.
+func TestStopWhatsAppSession_PublishesStop(t *testing.T) {
+	db, _ := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	pub := &mockCommandPublisher{}
+	mockRedis := &mockRedisService{}
+	mockBroadcast := NewRedisBroadcast(mockRedis, nil)
+	wss := NewWhatsAppSessionService(db, pub, mockRedis, mockBroadcast)
+
+	tenantID := uuid.New()
+	whatsapp := models.Whatsapp{ID: 99, TenantID: tenantID}
+
+	if err := wss.StopWhatsAppSession(whatsapp); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expectedKey := "wbot." + tenantID.String() + ".99.session.stop"
+	if pub.lastRoutingKey != expectedKey {
+		t.Errorf("routing key = %q, want %q", pub.lastRoutingKey, expectedKey)
+	}
+}
+
+// TestDeleteWhatsAppSession_PublishesDelete verifies DeleteWhatsAppSession publishes the right command.
+func TestDeleteWhatsAppSession_PublishesDelete(t *testing.T) {
+	db, _ := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	pub := &mockCommandPublisher{}
+	mockRedis := &mockRedisService{}
+	mockBroadcast := NewRedisBroadcast(mockRedis, nil)
+	wss := NewWhatsAppSessionService(db, pub, mockRedis, mockBroadcast)
+
+	tenantID := uuid.New()
+	whatsapp := models.Whatsapp{ID: 55, TenantID: tenantID}
+
+	if err := wss.DeleteWhatsAppSession(whatsapp); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expectedKey := "wbot." + tenantID.String() + ".55.session.delete"
+	if pub.lastRoutingKey != expectedKey {
+		t.Errorf("routing key = %q, want %q", pub.lastRoutingKey, expectedKey)
+	}
+}
+
+// TestLegacyGlobalFunctions_ReturnErrors ensures legacy functions fail closed.
+func TestLegacyGlobalFunctions_ReturnErrors(t *testing.T) {
+	w := models.Whatsapp{}
+	if err := StartWhatsAppSession(w, false, "", false); err == nil {
+		t.Error("legacy StartWhatsAppSession should return error")
+	}
+	if err := StopWhatsAppSession(w); err == nil {
+		t.Error("legacy StopWhatsAppSession should return error")
+	}
+	if err := DeleteWhatsAppSession(w); err == nil {
+		t.Error("legacy DeleteWhatsAppSession should return error")
+	}
+}
+
 func assertSessionCommand(t *testing.T, wss *WhatsAppSessionService, commandType string) {
 	t.Helper()
 	tenantID := uuid.New()
