@@ -21,9 +21,12 @@ Frontend (React/Vite) ←REST/Socket.io→ Backend Go (Gin/GORM) ←SQL→ Postg
 | Frontend — migração MUI v4 → shadcn/ui | ✅ Concluída |
 | Frontend — JS/JSX → TypeScript (163 arquivos) | ✅ Concluída |
 | Frontend — Design Token System (3 camadas) | ✅ Concluída |
-| Frontend — ESLint/Lint governance | ✅ Concluída (70 `no-explicit-any` pendentes) |
-| Backend Go — DI & organização de pacotes | 🔄 Em andamento (`refactor/backend-di-packages`) |
+| Frontend — ESLint/Lint governance | ✅ Concluída (15 warnings `react-hooks/exhaustive-deps`) |
+| Backend Go — DI & organização de pacotes | ✅ Concluída (PR #58) |
 | Backend Go — API Docs (Scalar + swaggo) | ✅ Concluída |
+| Backend Go — Testes unitários (coverage +5pp) | ✅ Concluída (PR #60) |
+| E2E — Playwright suite (21 testes + CI job) | ✅ Concluída (PR #61) |
+| Dependabot Go deps (crypto/net upgrade) | ✅ Concluída (PR #62) |
 
 ## Services & Ports
 
