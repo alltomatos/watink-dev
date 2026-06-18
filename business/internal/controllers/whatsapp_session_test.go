@@ -12,8 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"gorm.io/gorm"
 )
 
@@ -46,9 +45,7 @@ func (m *mockChannelSessionRepo) DeleteWithRelations(_ context.Context, _ int, _
 
 func newSessionTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared&mode=memory"), &gorm.Config{})
-	require.NoError(t, err)
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func setupSessionGinContext(tenantID uuid.UUID, method, path string, db *gorm.DB) (*gin.Context, *httptest.ResponseRecorder) {

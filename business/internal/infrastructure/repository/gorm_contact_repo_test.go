@@ -6,19 +6,16 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func setupContactTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err, "falha ao abrir SQLite in-memory")
-	require.NoError(t, db.AutoMigrate(&TenantTest{}, &models.Contact{}), "falha no AutoMigrate")
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func seedTwoTenantsContacts(t *testing.T, db *gorm.DB) (tenantA, tenantB uuid.UUID, contactA, contactB *models.Contact) {

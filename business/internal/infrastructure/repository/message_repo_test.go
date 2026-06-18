@@ -7,19 +7,16 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func setupMessageTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&TenantTest{}, &models.Contact{}, &models.Whatsapp{}, &models.Ticket{}, &models.Message{}))
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func seedMessagePrereqs(t *testing.T, db *gorm.DB) (tenantID uuid.UUID, ticketID int) {

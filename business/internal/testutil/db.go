@@ -1,0 +1,153 @@
+package testutil
+
+import (
+	"fmt"
+	"os"
+	"strings"
+	"testing"
+
+	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/google/uuid"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+// NewTestDB creates an isolated PostgreSQL schema for one test and returns a *gorm.DB scoped to it.
+// All production models are auto-migrated. The schema is dropped via t.Cleanup.
+func NewTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	dsn := testDSN()
+	cfg := &gorm.Config{
+		Logger:                                   logger.Discard,
+		DisableForeignKeyConstraintWhenMigrating: true,
+	}
+
+	// Root connection — used only to create/drop the schema.
+	root, err := gorm.Open(postgres.Open(dsn), cfg)
+	if err != nil {
+		t.Fatalf("testutil.NewTestDB: connect: %v", err)
+	}
+	defer func() {
+		if sqlDB, err := root.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	}()
+
+	schema := "test_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
+
+	if err := root.Exec("CREATE SCHEMA " + schema).Error; err != nil {
+		t.Fatalf("testutil.NewTestDB: create schema %q: %v", schema, err)
+	}
+
+	// Embed search_path in DSN so every pool connection uses the schema automatically.
+	// This allows MaxOpenConns > 1, preventing deadlocks in GORM many2many operations.
+	var schemaDSN string
+	if strings.Contains(dsn, "?") {
+		schemaDSN = dsn + "&search_path=" + schema
+	} else {
+		schemaDSN = dsn + "?search_path=" + schema
+	}
+
+	db, err := gorm.Open(postgres.Open(schemaDSN), cfg)
+	if err != nil {
+		t.Fatalf("testutil.NewTestDB: connect for schema: %v", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("testutil.NewTestDB: get sql.DB: %v", err)
+	}
+
+	if err := db.AutoMigrate(allModels()...); err != nil {
+		t.Fatalf("testutil.NewTestDB: AutoMigrate: %v", err)
+	}
+
+	// GORM AutoMigrate creates join table columns in snake_case (user_id, queue_id).
+	// Production schema uses camelCase (userId, queueId) — rename to match.
+	// GORM's SetupJoinTable cannot be used because joinForeignKey always goes through
+	// ToDBName() snake_case conversion, making camelCase column registration impossible.
+	for _, stmt := range []string{
+		`ALTER TABLE user_queues RENAME COLUMN user_id TO "userId"`,
+		`ALTER TABLE user_queues RENAME COLUMN queue_id TO "queueId"`,
+		// PluginInstallations is managed outside GORM models (plugin-manager service).
+		// Create a minimal version for unit tests that query it.
+		`CREATE TABLE IF NOT EXISTS "PluginInstallations" (
+			id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+			"tenantId" uuid NOT NULL,
+			"pluginId" uuid NOT NULL,
+			active    boolean NOT NULL DEFAULT true,
+			"createdAt" timestamptz,
+			"updatedAt" timestamptz
+		)`,
+	} {
+		if err := db.Exec(stmt).Error; err != nil {
+			t.Fatalf("testutil.NewTestDB: schema fixup: %v", err)
+		}
+	}
+
+	t.Cleanup(func() {
+		_ = sqlDB.Close()
+
+		clean, _ := gorm.Open(postgres.Open(dsn), cfg)
+		clean.Exec("DROP SCHEMA " + schema + " CASCADE")
+		if cleanSQL, err := clean.DB(); err == nil {
+			_ = cleanSQL.Close()
+		}
+	})
+
+	return db
+}
+
+func testDSN() string {
+	if dsn := os.Getenv("TEST_DATABASE_URL"); dsn != "" {
+		return dsn
+	}
+	host := envOr("DB_HOST", "localhost")
+	port := envOr("DB_PORT", "5432")
+	user := envOr("DB_USER", "postgres")
+	pass := envOr("DB_PASS", "postgres")
+	name := envOr("DB_NAME", "watink")
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, pass, host, port, name)
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+func allModels() []interface{} {
+	return []interface{}{
+		&models.Plan{},
+		&models.Tenant{},
+		&models.TenantSubscription{},
+		&models.User{},
+		&models.Setting{},
+		&models.Contact{},
+		&models.Client{},
+		&models.Deal{},
+		&models.Protocol{},
+		&models.Whatsapp{},
+		&models.Queue{},
+		&models.Ticket{},
+		&models.Message{},
+		&models.Group{},
+		&models.Permission{},
+		&models.Role{},
+		&models.RolePermission{},
+		&models.Flow{},
+		&models.QuickAnswer{},
+		&models.KnowledgeBase{},
+		&models.KnowledgeBaseSource{},
+		&models.Pipeline{},
+		&models.PipelineStage{},
+		&models.TagGroup{},
+		&models.Tag{},
+		&models.EntityTag{},
+		&models.TicketLog{},
+		&models.ConversationEmbedding{},
+	}
+}

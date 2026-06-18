@@ -12,21 +12,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
-// makeTestDB returns an in-memory SQLite DB suitable for middleware tests.
+// makeTestDB returns a PostgreSQL test DB suitable for middleware tests.
 func makeTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		t.Fatalf("failed to open test db: %v", err)
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 // makeValidToken creates a signed JWT with the given claims using the provided secret.

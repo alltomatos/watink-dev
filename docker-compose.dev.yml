@@ -10,7 +10,9 @@ services:
   # ──────────────────────────────────────────────
 
   postgres:
-    image: watink/postgres-postgis-pgvector:16-optimized
+    build:
+      context: ./infra/postgres
+      dockerfile: Dockerfile
     container_name: watink-postgres
     environment:
       POSTGRES_DB: watink

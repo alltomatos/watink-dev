@@ -7,8 +7,8 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -179,71 +179,7 @@ func TestNewDistributeTicketUseCase_NotNil(t *testing.T) {
 
 func setupDistributeTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/dist_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-
-	ddls := []string{
-		`CREATE TABLE IF NOT EXISTS "Contacts" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"name" TEXT NOT NULL,
-			"number" TEXT UNIQUE,
-			"profilePicUrl" TEXT,
-			"email" TEXT NOT NULL DEFAULT '',
-			"isGroup" BOOLEAN NOT NULL DEFAULT false,
-			"tenantId" TEXT,
-			"lid" TEXT UNIQUE,
-			"walletUserId" INTEGER,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Users" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"name" TEXT NOT NULL,
-			"email" TEXT UNIQUE NOT NULL,
-			"passwordHash" TEXT NOT NULL DEFAULT '',
-			"tokenVersion" INTEGER DEFAULT 0,
-			"profile" TEXT DEFAULT 'admin',
-			"whatsappId" INTEGER,
-			"tenantId" TEXT,
-			"groupId" INTEGER,
-			"configs" TEXT,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Tickets" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"status" TEXT NOT NULL DEFAULT 'pending',
-			"lastMessage" TEXT,
-			"contactId" INTEGER,
-			"userId" INTEGER,
-			"whatsappId" INTEGER,
-			"isGroup" BOOLEAN NOT NULL DEFAULT false,
-			"unreadMessages" INTEGER,
-			"queueId" INTEGER,
-			"tenantId" TEXT,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "user_queues" (
-			"userId" INTEGER NOT NULL,
-			"queueId" INTEGER NOT NULL,
-			PRIMARY KEY ("userId", "queueId")
-		)`,
-	}
-	for _, ddl := range ddls {
-		if err := db.Exec(ddl).Error; err != nil {
-			t.Fatalf("DDL failed: %v\nSQL: %s", err, ddl)
-		}
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 // newUCWithDB creates a DistributeTicketUseCase backed by a real SQLite DB.
@@ -258,7 +194,7 @@ func TestFindContactWithWallet_Found(t *testing.T) {
 	tenantID := uuid.New()
 	walletUser := 42
 
-	db.Exec(`INSERT INTO "Contacts" (name, number, email, tenantId, walletUserId) VALUES (?, ?, ?, ?, ?)`,
+	db.Exec(`INSERT INTO "Contacts" (name, number, email, "tenantId", "walletUserId") VALUES (?, ?, ?, ?, ?)`,
 		"Alice", "+5511999990001", "alice@test.com", tenantID.String(), walletUser)
 
 	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
@@ -279,7 +215,7 @@ func TestFindContactWithWallet_WrongTenant(t *testing.T) {
 	tenantA := uuid.New()
 	tenantB := uuid.New()
 
-	db.Exec(`INSERT INTO "Contacts" (name, number, email, tenantId) VALUES (?, ?, ?, ?)`,
+	db.Exec(`INSERT INTO "Contacts" (name, number, email, "tenantId") VALUES (?, ?, ?, ?)`,
 		"Bob", "+5511999990002", "bob@test.com", tenantB.String())
 
 	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
@@ -333,8 +269,8 @@ func TestFindQueueUsers_ReturnsUsersInQueue(t *testing.T) {
 	db := setupDistributeTestDB(t)
 	tenantID := uuid.New()
 
-	db.Exec(`INSERT INTO "Users" (name, email, tenantId) VALUES (?, ?, ?)`, "Ana", "ana@test.com", tenantID.String())
-	db.Exec(`INSERT INTO "Users" (name, email, tenantId) VALUES (?, ?, ?)`, "Beto", "beto@test.com", tenantID.String())
+	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "Ana", "ana@test.com", "x", tenantID.String())
+	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "Beto", "beto@test.com", "x", tenantID.String())
 	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, 5)
 	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 2, 5)
 
@@ -385,7 +321,7 @@ func TestRoundRobin_Rotates(t *testing.T) {
 	userID1 := 10
 	userID2 := 20
 	// Last ticket was assigned to user 10
-	db.Exec(`INSERT INTO "Tickets" (status, contactId, userId, whatsappId, queueId, tenantId) VALUES (?, ?, ?, ?, ?, ?)`,
+	db.Exec(`INSERT INTO "Tickets" (status, "contactId", "userId", "whatsappId", "queueId", "tenantId") VALUES (?, ?, ?, ?, ?, ?)`,
 		"open", 1, userID1, 1, queueID, tenantID.String())
 
 	users := []models.User{{ID: userID1}, {ID: userID2}}
@@ -403,7 +339,7 @@ func TestRoundRobin_Wraps(t *testing.T) {
 
 	userID1 := 10
 	// Only one user, last ticket also assigned to them → wraps to index 0
-	db.Exec(`INSERT INTO "Tickets" (status, contactId, userId, whatsappId, queueId, tenantId) VALUES (?, ?, ?, ?, ?, ?)`,
+	db.Exec(`INSERT INTO "Tickets" (status, "contactId", "userId", "whatsappId", "queueId", "tenantId") VALUES (?, ?, ?, ?, ?, ?)`,
 		"open", 1, userID1, 1, queueID, tenantID.String())
 
 	users := []models.User{{ID: userID1}}
@@ -428,10 +364,10 @@ func TestBalanced_PicksUserWithFewestOpenTickets(t *testing.T) {
 	// fall back to 0. In that case balanced() returns the first user (userA).
 	// This test verifies that balanced() always returns a valid user ID from the list.
 	for i := 0; i < 3; i++ {
-		db.Exec(`INSERT INTO "Tickets" (status, contactId, userId, whatsappId, tenantId) VALUES (?, ?, ?, ?, ?)`,
+		db.Exec(`INSERT INTO "Tickets" (status, "contactId", "userId", "whatsappId", "tenantId") VALUES (?, ?, ?, ?, ?)`,
 			"open", i+1, userA, 1, tenantID.String())
 	}
-	db.Exec(`INSERT INTO "Tickets" (status, contactId, userId, whatsappId, tenantId) VALUES (?, ?, ?, ?, ?)`,
+	db.Exec(`INSERT INTO "Tickets" (status, "contactId", "userId", "whatsappId", "tenantId") VALUES (?, ?, ?, ?, ?)`,
 		"open", 10, userB, 1, tenantID.String())
 
 	users := []models.User{{ID: userA}, {ID: userB}}
@@ -470,7 +406,7 @@ func TestBalanced_EqualTickets_ReturnsFirstUser(t *testing.T) {
 	userA := 1
 	userB := 2
 	for _, u := range []int{userA, userB} {
-		db.Exec(`INSERT INTO "Tickets" (status, contactId, userId, whatsappId, tenantId) VALUES (?, ?, ?, ?, ?)`,
+		db.Exec(`INSERT INTO "Tickets" (status, "contactId", "userId", "whatsappId", "tenantId") VALUES (?, ?, ?, ?, ?)`,
 			"open", u, u, 1, tenantID.String())
 	}
 
@@ -490,8 +426,8 @@ func TestExecute_RoundRobin_AssignsTicket(t *testing.T) {
 	tenantID := uuid.New()
 	queueID := 3
 
-	db.Exec(`INSERT INTO "Users" (name, email, tenantId) VALUES (?, ?, ?)`, "User1", "u1@t.com", tenantID.String())
-	db.Exec(`INSERT INTO "Users" (name, email, tenantId) VALUES (?, ?, ?)`, "User2", "u2@t.com", tenantID.String())
+	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "User1", "u1@t.com", "x", tenantID.String())
+	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "User2", "u2@t.com", "x", tenantID.String())
 	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, queueID)
 	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 2, queueID)
 
@@ -519,8 +455,8 @@ func TestExecute_Balanced_AssignsTicket(t *testing.T) {
 	tenantID := uuid.New()
 	queueID := 4
 
-	db.Exec(`INSERT INTO "Users" (name, email, tenantId) VALUES (?, ?, ?)`, "UserA", "ua@t.com", tenantID.String())
-	db.Exec(`INSERT INTO "Users" (name, email, tenantId) VALUES (?, ?, ?)`, "UserB", "ub@t.com", tenantID.String())
+	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "UserA", "ua@t.com", "x", tenantID.String())
+	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "UserB", "ub@t.com", "x", tenantID.String())
 	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, queueID)
 	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 2, queueID)
 
@@ -548,7 +484,7 @@ func TestExecute_RoundRobin_UpdateError(t *testing.T) {
 	tenantID := uuid.New()
 	queueID := 5
 
-	db.Exec(`INSERT INTO "Users" (name, email, tenantId) VALUES (?, ?, ?)`, "UserX", "ux@t.com", tenantID.String())
+	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "UserX", "ux@t.com", "x", tenantID.String())
 	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, queueID)
 
 	ticket := &domain.Ticket{ID: 55, ContactID: 1}
@@ -594,7 +530,7 @@ func TestExecute_UnknownStrategy_WithDB(t *testing.T) {
 	queueID := 9
 
 	// Provide a user in the queue so we reach the switch statement
-	db.Exec(`INSERT INTO "Users" (name, email, tenantId) VALUES (?, ?, ?)`, "UserZ", "uz@t.com", tenantID.String())
+	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "UserZ", "uz@t.com", "x", tenantID.String())
 	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, queueID)
 
 	ticket := &domain.Ticket{ID: 88, ContactID: 1}
