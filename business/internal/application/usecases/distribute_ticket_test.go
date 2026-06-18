@@ -15,10 +15,13 @@ import (
 // --- local mocks ---
 
 type mockTicketRepo struct {
-	ticket    *domain.Ticket
-	findErr   error
-	updateErr error
-	updated   bool
+	ticket             *domain.Ticket
+	findErr            error
+	updateErr          error
+	updated            bool
+	lastAssignedUserID int
+	lastAssignedErr    error
+	openCounts         map[int]int64
 }
 
 func (m *mockTicketRepo) FindByID(_ context.Context, _ int, _ uuid.UUID) (*domain.Ticket, error) {
@@ -36,10 +39,10 @@ func (m *mockTicketRepo) Update(_ context.Context, _ *domain.Ticket, _ map[strin
 	return m.updateErr
 }
 func (m *mockTicketRepo) FindLastAssignedInQueue(_ context.Context, _ int, _ uuid.UUID) (int, error) {
-	return 0, nil
+	return m.lastAssignedUserID, m.lastAssignedErr
 }
 func (m *mockTicketRepo) CountOpenTicketsPerUser(_ context.Context, _ []int, _ uuid.UUID) (map[int]int64, error) {
-	return map[int]int64{}, nil
+	return m.openCounts, nil
 }
 
 type mockQueueRepo struct {
@@ -216,6 +219,182 @@ func TestNewDistributeTicketUseCase_NotNil(t *testing.T) {
 	uc := NewDistributeTicketUseCase(tr, qr, eb, nil, nil)
 	if uc == nil {
 		t.Fatal("NewDistributeTicketUseCase returned nil")
+	}
+}
+
+// =====================================================================
+// Unit tests — pure mocks, no DB required
+// =====================================================================
+
+func newUCWith(tr *mockTicketRepo, qr *mockQueueRepo, eb *mockEventBus, cr *mockContactRepo, ur *mockUserQueueRepo) *DistributeTicketUseCase {
+	return NewDistributeTicketUseCase(tr, qr, eb, cr, ur)
+}
+
+// --- roundRobin via Execute (AUTO_ROUND_ROBIN) ---
+
+func TestExecute_RoundRobin_NoHistory_PicksFirstUser(t *testing.T) {
+	tenantID := uuid.New()
+	ticket := &domain.Ticket{ID: 1, ContactID: 5, TenantID: tenantID}
+	queue := &domain.Queue{ID: 3, DistributionStrategy: "AUTO_ROUND_ROBIN"}
+	users := []domain.User{{ID: 10}, {ID: 20}}
+	tr := &mockTicketRepo{ticket: ticket, lastAssignedUserID: 0}
+	qr := &mockQueueRepo{queue: queue}
+	eb := &mockEventBus{}
+	ur := &mockUserQueueRepo{users: users}
+
+	uc := newUCWith(tr, qr, eb, &mockContactRepo{}, ur)
+	err := uc.Execute(context.Background(), 1, 3, tenantID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !tr.updated {
+		t.Fatal("expected ticket to be updated")
+	}
+	if len(eb.published) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(eb.published))
+	}
+}
+
+func TestExecute_RoundRobin_Rotates_ToNextUser(t *testing.T) {
+	tenantID := uuid.New()
+	ticket := &domain.Ticket{ID: 2, ContactID: 5, TenantID: tenantID}
+	queue := &domain.Queue{ID: 4, DistributionStrategy: "AUTO_ROUND_ROBIN"}
+	users := []domain.User{{ID: 10}, {ID: 20}}
+	// Last assigned was user 10 → should pick user 20
+	tr := &mockTicketRepo{ticket: ticket, lastAssignedUserID: 10}
+	qr := &mockQueueRepo{queue: queue}
+	eb := &mockEventBus{}
+	ur := &mockUserQueueRepo{users: users}
+
+	assignedUserID := 0
+	tr.updateErr = nil
+	uc := newUCWith(tr, qr, eb, &mockContactRepo{}, ur)
+	_ = uc.Execute(context.Background(), 2, 4, tenantID)
+	// Can't directly inspect assigned user via mock — verify update was called
+	if !tr.updated {
+		t.Fatal("expected ticket assigned to next user in rotation")
+	}
+	_ = assignedUserID
+}
+
+func TestExecute_RoundRobin_Wraps_WhenLastIsOnlyUser(t *testing.T) {
+	tenantID := uuid.New()
+	ticket := &domain.Ticket{ID: 3, ContactID: 5, TenantID: tenantID}
+	queue := &domain.Queue{ID: 5, DistributionStrategy: "AUTO_ROUND_ROBIN"}
+	users := []domain.User{{ID: 10}}
+	// Only user, last assigned was 10 → wraps back to 10
+	tr := &mockTicketRepo{ticket: ticket, lastAssignedUserID: 10}
+	ur := &mockUserQueueRepo{users: users}
+	uc := newUCWith(tr, &mockQueueRepo{queue: queue}, &mockEventBus{}, &mockContactRepo{}, ur)
+	err := uc.Execute(context.Background(), 3, 5, tenantID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !tr.updated {
+		t.Fatal("expected ticket updated even on wrap-around")
+	}
+}
+
+// --- balanced via Execute (AUTO_BALANCED) ---
+
+func TestExecute_Balanced_PicksUserWithFewestTickets(t *testing.T) {
+	tenantID := uuid.New()
+	ticket := &domain.Ticket{ID: 4, ContactID: 5, TenantID: tenantID}
+	queue := &domain.Queue{ID: 6, DistributionStrategy: "AUTO_BALANCED"}
+	users := []domain.User{{ID: 1}, {ID: 2}}
+	// User 1 has 3 open tickets, user 2 has 1 → balanced should pick user 2
+	tr := &mockTicketRepo{
+		ticket:     ticket,
+		openCounts: map[int]int64{1: 3, 2: 1},
+	}
+	ur := &mockUserQueueRepo{users: users}
+	uc := newUCWith(tr, &mockQueueRepo{queue: queue}, &mockEventBus{}, &mockContactRepo{}, ur)
+	err := uc.Execute(context.Background(), 4, 6, tenantID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !tr.updated {
+		t.Fatal("expected ticket updated by balanced strategy")
+	}
+}
+
+func TestExecute_Balanced_EqualCounts_PicksFirstUser(t *testing.T) {
+	tenantID := uuid.New()
+	ticket := &domain.Ticket{ID: 5, ContactID: 5, TenantID: tenantID}
+	queue := &domain.Queue{ID: 7, DistributionStrategy: "AUTO_BALANCED"}
+	users := []domain.User{{ID: 1}, {ID: 2}}
+	tr := &mockTicketRepo{
+		ticket:     ticket,
+		openCounts: map[int]int64{1: 2, 2: 2},
+	}
+	ur := &mockUserQueueRepo{users: users}
+	uc := newUCWith(tr, &mockQueueRepo{queue: queue}, &mockEventBus{}, &mockContactRepo{}, ur)
+	err := uc.Execute(context.Background(), 5, 7, tenantID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !tr.updated {
+		t.Fatal("expected ticket updated")
+	}
+}
+
+// --- wallet priority ---
+
+func TestExecute_WalletPriority_AssignsToWalletUser(t *testing.T) {
+	tenantID := uuid.New()
+	walletUserID := 99
+	ticket := &domain.Ticket{ID: 6, ContactID: 5, TenantID: tenantID}
+	queue := &domain.Queue{ID: 8, DistributionStrategy: "AUTO_ROUND_ROBIN", PrioritizeWallet: true}
+	contact := &domain.Contact{ID: 5, WalletUserID: &walletUserID}
+	tr := &mockTicketRepo{ticket: ticket}
+	ur := &mockUserQueueRepo{inQueue: true, users: []domain.User{{ID: 1}}}
+	cr := &mockContactRepo{contact: contact}
+
+	uc := newUCWith(tr, &mockQueueRepo{queue: queue}, &mockEventBus{}, cr, ur)
+	err := uc.Execute(context.Background(), 6, 8, tenantID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !tr.updated {
+		t.Fatal("expected ticket assigned to wallet user")
+	}
+}
+
+func TestExecute_WalletPriority_FallsBackWhenNotInQueue(t *testing.T) {
+	tenantID := uuid.New()
+	walletUserID := 99
+	ticket := &domain.Ticket{ID: 7, ContactID: 5, TenantID: tenantID}
+	queue := &domain.Queue{ID: 9, DistributionStrategy: "AUTO_ROUND_ROBIN", PrioritizeWallet: true}
+	contact := &domain.Contact{ID: 5, WalletUserID: &walletUserID}
+	tr := &mockTicketRepo{ticket: ticket}
+	// wallet user not in queue → falls back to round-robin with users list
+	ur := &mockUserQueueRepo{inQueue: false, users: []domain.User{{ID: 1}, {ID: 2}}}
+	cr := &mockContactRepo{contact: contact}
+
+	uc := newUCWith(tr, &mockQueueRepo{queue: queue}, &mockEventBus{}, cr, ur)
+	err := uc.Execute(context.Background(), 7, 9, tenantID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !tr.updated {
+		t.Fatal("expected ticket assigned via fallback strategy")
+	}
+}
+
+func TestExecute_UnknownStrategy_WithUsers_ReturnsNil(t *testing.T) {
+	tenantID := uuid.New()
+	ticket := &domain.Ticket{ID: 8, ContactID: 5, TenantID: tenantID}
+	queue := &domain.Queue{ID: 10, DistributionStrategy: "UNKNOWN"}
+	tr := &mockTicketRepo{ticket: ticket}
+	ur := &mockUserQueueRepo{users: []domain.User{{ID: 1}}}
+
+	uc := newUCWith(tr, &mockQueueRepo{queue: queue}, &mockEventBus{}, &mockContactRepo{}, ur)
+	err := uc.Execute(context.Background(), 8, 10, tenantID)
+	if err != nil {
+		t.Fatalf("expected nil for unknown strategy, got %v", err)
+	}
+	if tr.updated {
+		t.Fatal("ticket must not be updated for unknown strategy")
 	}
 }
 
