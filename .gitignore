@@ -33,7 +33,6 @@ coverage/
 Thumbs.db
 
 # --- Compiled Binaries ---
-engine-go/
 business/backend-go
 business/watink-core
 business/watink-business
