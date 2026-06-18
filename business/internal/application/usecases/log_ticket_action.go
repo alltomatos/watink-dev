@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
-// LogTicketActionInput carries the data for ticket log creation.
 type LogTicketActionInput struct {
 	TicketID int
 	TenantID uuid.UUID
@@ -19,17 +18,15 @@ type LogTicketActionInput struct {
 	Payload  map[string]interface{}
 }
 
-// LogTicketActionUseCase handles ticket audit logging.
-// Extracted from services/ticket_log_service.go.
 type LogTicketActionUseCase struct {
-	db *gorm.DB // transitional: needed for complex queries not yet in domain
+	ticketRepo    domain.TicketRepository
+	ticketLogRepo domain.TicketLogRepository
 }
 
-func NewLogTicketActionUseCase(db *gorm.DB) *LogTicketActionUseCase {
-	return &LogTicketActionUseCase{db: db}
+func NewLogTicketActionUseCase(ticketRepo domain.TicketRepository, ticketLogRepo domain.TicketLogRepository) *LogTicketActionUseCase {
+	return &LogTicketActionUseCase{ticketRepo: ticketRepo, ticketLogRepo: ticketLogRepo}
 }
 
-// Execute creates an audit log entry for a ticket action.
 func (uc *LogTicketActionUseCase) Execute(ctx context.Context, input LogTicketActionInput) error {
 	payloadStr := ""
 	if input.Payload != nil {
@@ -37,15 +34,15 @@ func (uc *LogTicketActionUseCase) Execute(ctx context.Context, input LogTicketAc
 		payloadStr = string(b)
 	}
 
-	var ticket models.Ticket
-	err := uc.db.WithContext(ctx).
-		Where("id = ? AND \"tenantId\" = ?", input.TicketID, input.TenantID).
-		First(&ticket).Error
+	ticket, err := uc.ticketRepo.FindByID(ctx, input.TicketID, input.TenantID)
 	if err != nil {
 		return err
 	}
+	if ticket == nil {
+		return domain.ErrTicketNotFound
+	}
 
-	ticketLog := models.TicketLog{
+	ticketLog := &models.TicketLog{
 		TicketID:  input.TicketID,
 		UserID:    input.UserID,
 		Type:      input.LogType,
@@ -54,5 +51,5 @@ func (uc *LogTicketActionUseCase) Execute(ctx context.Context, input LogTicketAc
 		CreatedAt: time.Now(),
 	}
 
-	return uc.db.WithContext(ctx).Create(&ticketLog).Error
+	return uc.ticketLogRepo.Create(ctx, ticketLog)
 }

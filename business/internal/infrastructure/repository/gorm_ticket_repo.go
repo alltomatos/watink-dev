@@ -89,6 +89,49 @@ func (r *GORMTicketRepository) Update(ctx context.Context, ticket *domain.Ticket
 		Updates(fields).Error
 }
 
+// FindLastAssignedInQueue returns the userID of the last agent assigned in a queue,
+// or 0 if no assigned ticket exists.
+func (r *GORMTicketRepository) FindLastAssignedInQueue(ctx context.Context, queueID int, tenantID uuid.UUID) (int, error) {
+	var m models.Ticket
+	err := r.db.WithContext(ctx).
+		Where(`"queueId" = ? AND "tenantId" = ? AND "userId" IS NOT NULL`, queueID, tenantID).
+		Order("id desc").
+		First(&m).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	if m.UserID == nil {
+		return 0, nil
+	}
+	return *m.UserID, nil
+}
+
+// CountOpenTicketsPerUser returns a map of userID → open ticket count for the given user IDs.
+func (r *GORMTicketRepository) CountOpenTicketsPerUser(ctx context.Context, userIDs []int, tenantID uuid.UUID) (map[int]int64, error) {
+	var rows []struct {
+		UserID int
+		Count  int64
+	}
+	err := r.db.WithContext(ctx).
+		Model(&models.Ticket{}).
+		Select(`"userId" AS user_id, count(*) AS count`).
+		Where(`"userId" IN ? AND status = 'open' AND "tenantId" = ?`, userIDs, tenantID).
+		Group(`"userId"`).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	counts := make(map[int]int64, len(rows))
+	for _, row := range rows {
+		counts[row.UserID] = row.Count
+	}
+	return counts, nil
+}
+
 // --- Mapping helpers ---
 
 func ticketModelToDomain(m *models.Ticket) *domain.Ticket {
