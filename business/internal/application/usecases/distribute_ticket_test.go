@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
-	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/infrastructure/repository"
 	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -35,6 +35,12 @@ func (m *mockTicketRepo) Update(_ context.Context, _ *domain.Ticket, _ map[strin
 	m.updated = true
 	return m.updateErr
 }
+func (m *mockTicketRepo) FindLastAssignedInQueue(_ context.Context, _ int, _ uuid.UUID) (int, error) {
+	return 0, nil
+}
+func (m *mockTicketRepo) CountOpenTicketsPerUser(_ context.Context, _ []int, _ uuid.UUID) (map[int]int64, error) {
+	return map[int]int64{}, nil
+}
 
 type mockQueueRepo struct {
 	queue   *domain.Queue
@@ -49,6 +55,46 @@ func (m *mockQueueRepo) FindAll(_ context.Context, _ uuid.UUID) ([]domain.Queue,
 }
 func (m *mockQueueRepo) Save(_ context.Context, _ *domain.Queue) error { return nil }
 
+type mockContactRepo struct {
+	contact *domain.Contact
+	err     error
+}
+
+func (m *mockContactRepo) FindByID(_ context.Context, _ int, _ uuid.UUID) (*domain.Contact, error) {
+	return m.contact, m.err
+}
+func (m *mockContactRepo) FindByNumber(_ context.Context, _ uuid.UUID, _ string, _ bool) (*domain.Contact, error) {
+	return nil, nil
+}
+func (m *mockContactRepo) FindByLID(_ context.Context, _ uuid.UUID, _ string, _ bool) (*domain.Contact, error) {
+	return nil, nil
+}
+func (m *mockContactRepo) Find(_ context.Context, _ uuid.UUID, _ string) ([]domain.Contact, error) {
+	return nil, nil
+}
+func (m *mockContactRepo) Create(_ context.Context, _ *domain.Contact) error { return nil }
+func (m *mockContactRepo) Update(_ context.Context, _ *domain.Contact, _ map[string]interface{}) error {
+	return nil
+}
+func (m *mockContactRepo) Delete(_ context.Context, _ int, _ uuid.UUID) error { return nil }
+func (m *mockContactRepo) FindOrCreate(_ context.Context, _ uuid.UUID, _, _, _ string, _, _ bool, _ string) (*domain.Contact, error) {
+	return nil, nil
+}
+
+type mockUserQueueRepo struct {
+	users     []domain.User
+	inQueue   bool
+	usersErr  error
+	inQueueErr error
+}
+
+func (m *mockUserQueueRepo) IsUserInQueue(_ context.Context, _ int, _ int) (bool, error) {
+	return m.inQueue, m.inQueueErr
+}
+func (m *mockUserQueueRepo) FindQueueUsers(_ context.Context, _ int, _ uuid.UUID) ([]domain.User, error) {
+	return m.users, m.usersErr
+}
+
 type mockEventBus struct {
 	published []domain.DomainEvent
 }
@@ -62,7 +108,7 @@ func (m *mockEventBus) Subscribe(_ string, _ domain.EventHandler) error { return
 // --- helpers ---
 
 func newUseCase(tr *mockTicketRepo, qr *mockQueueRepo, eb *mockEventBus) *DistributeTicketUseCase {
-	return NewDistributeTicketUseCase(tr, qr, eb, nil)
+	return NewDistributeTicketUseCase(tr, qr, eb, &mockContactRepo{}, &mockUserQueueRepo{})
 }
 
 // --- tests ---
@@ -174,7 +220,7 @@ func TestNewDistributeTicketUseCase_NotNil(t *testing.T) {
 }
 
 // =====================================================================
-// SQLite-backed tests for internal DB-dependent methods
+// DB-backed Execute tests (PostgreSQL real via testutil)
 // =====================================================================
 
 func setupDistributeTestDB(t *testing.T) *gorm.DB {
@@ -182,244 +228,15 @@ func setupDistributeTestDB(t *testing.T) *gorm.DB {
 	return testutil.NewTestDB(t)
 }
 
-// newUCWithDB creates a DistributeTicketUseCase backed by a real SQLite DB.
+// newUCWithDB creates a DistributeTicketUseCase with mock ticket/queue repos
+// but real GORM repos for contact and user-queue (DB-backed).
 func newUCWithDB(tr *mockTicketRepo, qr *mockQueueRepo, eb *mockEventBus, db *gorm.DB) *DistributeTicketUseCase {
-	return NewDistributeTicketUseCase(tr, qr, eb, db)
+	contactRepo := repository.NewGORMContactRepo(db)
+	userQueueRepo := repository.NewGormUserQueueRepository(db)
+	return NewDistributeTicketUseCase(tr, qr, eb, contactRepo, userQueueRepo)
 }
 
-// --- findContactWithWallet ---
-
-func TestFindContactWithWallet_Found(t *testing.T) {
-	db := setupDistributeTestDB(t)
-	tenantID := uuid.New()
-	walletUser := 42
-
-	db.Exec(`INSERT INTO "Contacts" (name, number, email, "tenantId", "walletUserId") VALUES (?, ?, ?, ?, ?)`,
-		"Alice", "+5511999990001", "alice@test.com", tenantID.String(), walletUser)
-
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	contact, err := uc.findContactWithWallet(context.Background(), 1, tenantID)
-	if err != nil {
-		t.Fatalf("expected contact, got err: %v", err)
-	}
-	if contact == nil {
-		t.Fatal("expected non-nil contact")
-	}
-	if contact.WalletUserID == nil || *contact.WalletUserID != walletUser {
-		t.Fatalf("expected walletUserId=%d, got %v", walletUser, contact.WalletUserID)
-	}
-}
-
-func TestFindContactWithWallet_WrongTenant(t *testing.T) {
-	db := setupDistributeTestDB(t)
-	tenantA := uuid.New()
-	tenantB := uuid.New()
-
-	db.Exec(`INSERT INTO "Contacts" (name, number, email, "tenantId") VALUES (?, ?, ?, ?)`,
-		"Bob", "+5511999990002", "bob@test.com", tenantB.String())
-
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	_, err := uc.findContactWithWallet(context.Background(), 1, tenantA)
-	if err == nil {
-		t.Fatal("expected error for wrong tenant, got nil")
-	}
-}
-
-func TestFindContactWithWallet_NotFound(t *testing.T) {
-	db := setupDistributeTestDB(t)
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	_, err := uc.findContactWithWallet(context.Background(), 9999, uuid.New())
-	if err == nil {
-		t.Fatal("expected record-not-found error")
-	}
-}
-
-// --- isUserInQueue ---
-
-func TestIsUserInQueue_True(t *testing.T) {
-	db := setupDistributeTestDB(t)
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, 10)
-
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	inQueue, err := uc.isUserInQueue(context.Background(), 1, 10)
-	if err != nil {
-		t.Fatalf("unexpected err: %v", err)
-	}
-	if !inQueue {
-		t.Fatal("expected user to be in queue")
-	}
-}
-
-func TestIsUserInQueue_False(t *testing.T) {
-	db := setupDistributeTestDB(t)
-
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	inQueue, err := uc.isUserInQueue(context.Background(), 1, 10)
-	if err != nil {
-		t.Fatalf("unexpected err: %v", err)
-	}
-	if inQueue {
-		t.Fatal("expected user NOT to be in queue")
-	}
-}
-
-// --- findQueueUsers ---
-
-func TestFindQueueUsers_ReturnsUsersInQueue(t *testing.T) {
-	db := setupDistributeTestDB(t)
-	tenantID := uuid.New()
-
-	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "Ana", "ana@test.com", "x", tenantID.String())
-	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "Beto", "beto@test.com", "x", tenantID.String())
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, 5)
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 2, 5)
-
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	users, err := uc.findQueueUsers(context.Background(), 5, tenantID)
-	if err != nil {
-		t.Fatalf("unexpected err: %v", err)
-	}
-	if len(users) != 2 {
-		t.Fatalf("expected 2 users, got %d", len(users))
-	}
-}
-
-func TestFindQueueUsers_EmptyQueue(t *testing.T) {
-	db := setupDistributeTestDB(t)
-	tenantID := uuid.New()
-
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	users, err := uc.findQueueUsers(context.Background(), 99, tenantID)
-	if err != nil {
-		t.Fatalf("unexpected err: %v", err)
-	}
-	if len(users) != 0 {
-		t.Fatalf("expected 0 users, got %d", len(users))
-	}
-}
-
-// --- roundRobin ---
-
-func TestRoundRobin_NoLastTicket_ReturnsFirstUser(t *testing.T) {
-	db := setupDistributeTestDB(t)
-	tenantID := uuid.New()
-
-	// No tickets in DB → err branch → returns users[0]
-	users := []models.User{{ID: 10}, {ID: 20}}
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	got := uc.roundRobin(context.Background(), users, 1, tenantID)
-	if got != 10 {
-		t.Fatalf("expected 10 (first user), got %d", got)
-	}
-}
-
-func TestRoundRobin_Rotates(t *testing.T) {
-	db := setupDistributeTestDB(t)
-	tenantID := uuid.New()
-	queueID := 7
-
-	userID1 := 10
-	userID2 := 20
-	// Last ticket was assigned to user 10
-	db.Exec(`INSERT INTO "Tickets" (status, "contactId", "userId", "whatsappId", "queueId", "tenantId") VALUES (?, ?, ?, ?, ?, ?)`,
-		"open", 1, userID1, 1, queueID, tenantID.String())
-
-	users := []models.User{{ID: userID1}, {ID: userID2}}
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	got := uc.roundRobin(context.Background(), users, queueID, tenantID)
-	if got != userID2 {
-		t.Fatalf("expected roundRobin to pick user %d after %d, got %d", userID2, userID1, got)
-	}
-}
-
-func TestRoundRobin_Wraps(t *testing.T) {
-	db := setupDistributeTestDB(t)
-	tenantID := uuid.New()
-	queueID := 8
-
-	userID1 := 10
-	// Only one user, last ticket also assigned to them → wraps to index 0
-	db.Exec(`INSERT INTO "Tickets" (status, "contactId", "userId", "whatsappId", "queueId", "tenantId") VALUES (?, ?, ?, ?, ?, ?)`,
-		"open", 1, userID1, 1, queueID, tenantID.String())
-
-	users := []models.User{{ID: userID1}}
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	got := uc.roundRobin(context.Background(), users, queueID, tenantID)
-	if got != userID1 {
-		t.Fatalf("expected wrap-around to same user %d, got %d", userID1, got)
-	}
-}
-
-// --- balanced ---
-
-func TestBalanced_PicksUserWithFewestOpenTickets(t *testing.T) {
-	db := setupDistributeTestDB(t)
-	tenantID := uuid.New()
-
-	userA := 1
-	userB := 2
-	// Insert open tickets; the balanced() algorithm scans counts per userId.
-	// Note: SQLite does not resolve double-quoted column references in SELECT aliases
-	// the same way PostgreSQL does, so the Scan may return no rows and all counts
-	// fall back to 0. In that case balanced() returns the first user (userA).
-	// This test verifies that balanced() always returns a valid user ID from the list.
-	for i := 0; i < 3; i++ {
-		db.Exec(`INSERT INTO "Tickets" (status, "contactId", "userId", "whatsappId", "tenantId") VALUES (?, ?, ?, ?, ?)`,
-			"open", i+1, userA, 1, tenantID.String())
-	}
-	db.Exec(`INSERT INTO "Tickets" (status, "contactId", "userId", "whatsappId", "tenantId") VALUES (?, ?, ?, ?, ?)`,
-		"open", 10, userB, 1, tenantID.String())
-
-	users := []models.User{{ID: userA}, {ID: userB}}
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	got := uc.balanced(context.Background(), users, tenantID)
-	// balanced must return a user that is in the list
-	found := false
-	for _, u := range users {
-		if u.ID == got {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatalf("balanced returned user id %d not present in users list", got)
-	}
-}
-
-func TestBalanced_NoOpenTickets_ReturnsFirstUser(t *testing.T) {
-	db := setupDistributeTestDB(t)
-	tenantID := uuid.New()
-
-	users := []models.User{{ID: 5}, {ID: 6}}
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	got := uc.balanced(context.Background(), users, tenantID)
-	// Both counts are 0 → first user wins (stable: minCount check picks first that equals min)
-	if got != 5 {
-		t.Fatalf("expected first user (5) when counts are equal, got %d", got)
-	}
-}
-
-func TestBalanced_EqualTickets_ReturnsFirstUser(t *testing.T) {
-	db := setupDistributeTestDB(t)
-	tenantID := uuid.New()
-
-	userA := 1
-	userB := 2
-	for _, u := range []int{userA, userB} {
-		db.Exec(`INSERT INTO "Tickets" (status, "contactId", "userId", "whatsappId", "tenantId") VALUES (?, ?, ?, ?, ?)`,
-			"open", u, u, 1, tenantID.String())
-	}
-
-	users := []models.User{{ID: userA}, {ID: userB}}
-	uc := newUCWithDB(&mockTicketRepo{}, &mockQueueRepo{}, &mockEventBus{}, db)
-	got := uc.balanced(context.Background(), users, tenantID)
-	// Equal counts → first evaluated user wins
-	if got != userA {
-		t.Fatalf("expected first user (%d) on equal counts, got %d", userA, got)
-	}
-}
-
-// --- Execute with AUTO_ROUND_ROBIN via SQLite ---
+// --- Execute with AUTO_ROUND_ROBIN ---
 
 func TestExecute_RoundRobin_AssignsTicket(t *testing.T) {
 	db := setupDistributeTestDB(t)
