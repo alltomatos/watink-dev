@@ -61,7 +61,7 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 
 	// Subscription
 	var sub models.TenantSubscription
-	if err := db.First(&sub, "tenantId = ?", tenant.ID).Error; err != nil {
+	if err := db.First(&sub, `"tenantId" = ?`, tenant.ID).Error; err != nil {
 		t.Fatalf("subscription not created: %v", err)
 	}
 	if sub.Status != "active" {
@@ -102,7 +102,7 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 
 	// Queue
 	var queue models.Queue
-	if err := db.First(&queue, "tenantId = ? AND name = ?", tenant.ID, "Atendimento Inicial").Error; err != nil {
+	if err := db.First(&queue, `"tenantId" = ? AND name = ?`, tenant.ID, "Atendimento Inicial").Error; err != nil {
 		t.Fatalf("default queue not created: %v", err)
 	}
 	if queue.Color == "" || queue.DistributionStrategy != "MANUAL" {
@@ -111,7 +111,7 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 
 	// Tag
 	var tag models.Tag
-	if err := db.First(&tag, "tenantId = ? AND name = ?", tenant.ID, "Novo Cliente").Error; err != nil {
+	if err := db.First(&tag, `"tenantId" = ? AND name = ?`, tenant.ID, "Novo Cliente").Error; err != nil {
 		t.Fatalf("default tag not created: %v", err)
 	}
 	if tag.Color != "#28a745" {
@@ -120,7 +120,7 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 
 	// Settings
 	var backend models.Setting
-	if err := db.First(&backend, "tenantId = ? AND key = ?", tenant.ID, "backendUrl").Error; err != nil {
+	if err := db.First(&backend, `"tenantId" = ? AND key = ?`, tenant.ID, "backendUrl").Error; err != nil {
 		t.Fatalf("backendUrl setting not created: %v", err)
 	}
 	if backend.Value != "https://api.example.com" {
@@ -128,7 +128,7 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 	}
 
 	var sysTitle models.Setting
-	if err := db.First(&sysTitle, "tenantId = ? AND key = ?", tenant.ID, "systemTitle").Error; err != nil {
+	if err := db.First(&sysTitle, `"tenantId" = ? AND key = ?`, tenant.ID, "systemTitle").Error; err != nil {
 		t.Fatalf("systemTitle setting not created: %v", err)
 	}
 	if sysTitle.Value != "Watink" {
@@ -140,7 +140,7 @@ func TestSetupServiceInitializeTenantRollsBackOnFailure(t *testing.T) {
 	db := newSetupTestDB(t)
 
 	// Sabotage: drop Queues so transaction will fail at step 8
-	if err := db.Exec(`DROP TABLE Queues`).Error; err != nil {
+	if err := db.Exec(`DROP TABLE "Queues"`).Error; err != nil {
 		t.Fatalf("drop queues: %v", err)
 	}
 

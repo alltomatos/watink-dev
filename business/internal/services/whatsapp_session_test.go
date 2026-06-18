@@ -237,7 +237,7 @@ func TestStartWhatsAppSession_LockAlreadyAcquired(t *testing.T) {
 func TestStartWhatsAppSession_DBError(t *testing.T) {
 	db, whatsapp := newTestDBWithWhatsapp(t)
 	// Drop the table so the UPDATE fails with a DB error.
-	if err := db.Exec("DROP TABLE whatsapps").Error; err != nil {
+	if err := db.Exec(`DROP TABLE "Whatsapps"`).Error; err != nil {
 		t.Fatalf("failed to drop table: %v", err)
 	}
 	pub := &mockCommandPublisher{}

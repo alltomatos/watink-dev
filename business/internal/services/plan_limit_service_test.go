@@ -16,22 +16,23 @@ func setupPlanLimitDB(t *testing.T) *gorm.DB {
 }
 
 func seedPlanLimitData(db *gorm.DB, tenantID uuid.UUID, pluginQuota int, pluginCount int) {
-	// Create plan
+	// Create plan (no fixed id — let the DB assign a sequence value)
 	plan := map[string]interface{}{
-		"id":          1,
 		"name":        "Pro",
 		"pluginQuota": pluginQuota,
 		"active":      true,
 	}
 	db.Table("Plans").Create(&plan)
+	var planID int
+	db.Raw(`SELECT LASTVAL()`).Scan(&planID)
 
 	// Create subscription
 	subID := uuid.New()
 	sub := map[string]interface{}{
-		"id":        subID.String(),
-		"tenantId":  tenantID.String(),
-		"planId":    1,
-		"status":    "active",
+		"id":       subID.String(),
+		"tenantId": tenantID.String(),
+		"planId":   planID,
+		"status":   "active",
 	}
 	db.Table("TenantSubscriptions").Create(&sub)
 
