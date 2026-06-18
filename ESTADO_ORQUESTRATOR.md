@@ -1,120 +1,53 @@
 # ESTADO_ORQUESTRATOR.md
 
 > Arquivo de estado vivo do Orchestrator.
-> **Última atualização**: 2026-06-17
-> **Branch**: `main` (próxima: `test/e2e-playwright`)
-> **Epic**: Epic 4 — E2E Tests (Playwright)
+> **Última atualização**: 2026-06-18
+> **Branch**: `main`
+> **Epic**: Epic 5 — Dependabot Go deps upgrade
 
 ---
 
-## Contexto da Sessão
+## Histórico de Epics
 
-Com Epic 2 (DI/refactor), Epic 3 (security/lint) e cobertura unitária do backend mergeados em `main`, o próximo investimento é **testes E2E** com Playwright para cobrir os fluxos críticos de usuário que os testes unitários não alcançam.
-
-O projeto já tem:
-- `scripts/playwright-smoke.js` — smoke de navegação básico (8 rotas, login)
-- `scripts/smoke_test.py` — smoke de API via Python/requests (usado no CI)
-- Job `smoke-test` no CI com Postgres + Redis + RabbitMQ reais
-
----
-
-## GAPs Identificados (Epic 4)
-
-| ID | GAP | Prioridade |
-|----|-----|-----------|
-| E1 | Sem suite E2E estruturada (Playwright Test) — só smoke script ad-hoc | P1 |
-| E2 | Fluxos críticos sem cobertura: login, criação de ticket, resposta de ticket | P1 |
-| E3 | Sem fixtures/factories para estado inicial de testes | P1 |
-| E4 | Smoke CI usa Playwright CLI imperativo — difícil expandir e ver relatório | P2 |
-| E5 | Sem cobertura E2E de multitenancy (dois usuários, dois tenants isolados) | P2 |
-| E6 | Sem cobertura E2E de fluxos admin (filas, usuários, conexões) | P2 |
+| Epic | Descrição | Status |
+|------|-----------|--------|
+| Epic 1 | Migração MUI → shadcn/ui + TypeScript | ✅ Mergeado |
+| Epic 2 | DI Backend Go + TS Strict Frontend | ✅ Mergeado (PR #58) |
+| Epic 3 | Security (filippo.io upgrade) + Lint governance | ✅ Mergeado (PR #59) |
+| Epic 3.5 | Backend test coverage + fix UpdateQueue | ✅ Mergeado (PR #60) |
+| Epic 4 | E2E Playwright — 21 testes + CI job | ✅ Mergeado (PR #61) |
+| Epic 5 | Dependabot Go deps upgrade (3 alerts: 1 high, 1 mod, 1 low) | 🔄 Em andamento |
 
 ---
 
-## Análise de Arquitetura E2E
+## GAPs Identificados (P1 — Segurança)
 
-### Stack escolhida
-- **Playwright Test** (`@playwright/test`) — runner nativo com fixtures, paralelismo, relatórios HTML
-- **Localização**: `e2e/` na raiz do monorepo (não dentro de `frontend/`)
-- **Ambiente**: usa o backend Go real + Postgres (mesmo do CI `smoke-test`)
-- **Autenticação**: `storageState` (salva cookies/localStorage após login, reutiliza sem re-login)
+Os 3 alertas Dependabot que aparecem em cada push para `main`:
 
-### Estrutura de diretórios
-```
-e2e/
-├── playwright.config.ts
-├── fixtures/
-│   ├── auth.fixture.ts      # login + storageState por usuário
-│   └── api.fixture.ts       # helpers para seed de dados via API
-├── tests/
-│   ├── auth/
-│   │   └── login.spec.ts    # login válido, inválido, logout
-│   ├── tickets/
-│   │   └── tickets.spec.ts  # criar, aceitar, responder, fechar ticket
-│   ├── admin/
-│   │   ├── queues.spec.ts   # CRUD de filas
-│   │   └── users.spec.ts    # CRUD de usuários
-│   └── multitenancy/
-│       └── isolation.spec.ts # tenant A não vê dados de tenant B
-└── global-setup.ts           # seed do banco (admin + tenant) antes da suite
-```
+| ID | Pacote | Versão atual | Versão latest | Severidade |
+|----|--------|-------------|--------------|-----------|
+| D1 | `golang.org/x/crypto` | v0.51.0 | v0.53.0 | High |
+| D2 | `golang.org/x/net` | v0.55.0 | v0.56.0 | Moderate |
+| D3 | (terceiro — a confirmar via GitHub UI) | — | — | Low |
 
-### Integração com CI
-- Novo job `e2e-tests` no `ci.yml`, depende de `build-backend` e `build-frontend`
-- Usa os mesmos services (Postgres, Redis, RabbitMQ)
-- Artefato: relatório HTML Playwright (`playwright-report/`)
-- Variáveis de ambiente: `E2E_BASE_URL`, `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASS`
+> `golang.org/x/crypto` e `golang.org/x/net` são frequentemente alertados juntos (net depende de crypto via transport).
 
 ---
 
-## DAG de Tarefas
+## DAG de Tarefas — Epic 5
 
-### Legenda
-- `pending` ⏳
-- `in_progress` 🔄
-- `done` ✅
-
-### Bloco F — Fundação (sem dependências entre si)
-
-| ID | Tarefa | Arquivo(s) | Status | Depende de |
-|----|--------|-----------|--------|-----------|
-| F1 | Instalar `@playwright/test` e configurar `playwright.config.ts` | `e2e/`, `package.json` da raiz | ⏳ | — |
-| F2 | `global-setup.ts` — seed inicial via API (cria admin + tenant) | `e2e/global-setup.ts` | ⏳ | F1 |
-| F3 | `auth.fixture.ts` — login + `storageState` reutilizável | `e2e/fixtures/auth.fixture.ts` | ⏳ | F1 |
-| F4 | `api.fixture.ts` — helpers de seed (criar ticket, fila, usuário via API) | `e2e/fixtures/api.fixture.ts` | ⏳ | F1 |
-
-### Bloco T — Testes (dependem de F)
-
-| ID | Tarefa | Arquivo(s) | Status | Depende de |
-|----|--------|-----------|--------|-----------|
-| T1 | `login.spec.ts` — login válido, inválido, persistência de sessão, logout | `e2e/tests/auth/login.spec.ts` | ⏳ | F2, F3 |
-| T2 | `tickets.spec.ts` — criar ticket, aceitar, enviar mensagem, fechar | `e2e/tests/tickets/tickets.spec.ts` | ⏳ | F3, F4 |
-| T3 | `queues.spec.ts` — listar, criar, editar, remover fila | `e2e/tests/admin/queues.spec.ts` | ⏳ | F3, F4 |
-| T4 | `users.spec.ts` — listar, convidar, desativar usuário | `e2e/tests/admin/users.spec.ts` | ⏳ | F3, F4 |
-| T5 | `isolation.spec.ts` — tenant A não enxerga tickets/filas de tenant B | `e2e/tests/multitenancy/isolation.spec.ts` | ⏳ | F2, F3, F4 |
-
-### Bloco C — CI (depende de T)
-
-| ID | Tarefa | Arquivo(s) | Status | Depende de |
-|----|--------|-----------|--------|-----------|
-| C1 | Job `e2e-tests` no CI com Playwright + upload de relatório | `.github/workflows/ci.yml` | ⏳ | T1–T5 |
-| C2 | Migrar `playwright-smoke.js` para spec Playwright Test | `e2e/tests/smoke/navigation.spec.ts` | ⏳ | F3 |
+| ID | Tarefa | Status |
+|----|--------|--------|
+| D1 | `go get golang.org/x/crypto@latest` + `go mod tidy` | ⏳ |
+| D2 | `go get golang.org/x/net@latest` + verificar se resolve D3 | ⏳ |
+| D3 | Confirmar 3º alerta e atualizar se necessário | ⏳ |
+| D4 | `go build ./...` + `go test ./...` — sem regressão | ⏳ |
+| D5 | PR `hardening/epic5-go-deps` → main | ⏳ |
 
 ---
 
-## Checkpoints de Sanidade
+## Checkpoints
 
-- [ ] **CP-F** — Após Bloco F: `npx playwright test --list` mostra 0 testes (infra ok, ainda sem specs)
-- [ ] **CP-T** — Após T1–T3: `npx playwright test` passa localmente com Postgres real
-- [ ] **CP-C** — Após C1: CI verde com job `e2e-tests`; relatório HTML disponível como artefato
-
----
-
-## Histórico de Ações
-
-| Data | Ação | Status |
-|------|------|--------|
-| 2026-06-17 | Branch `hardening/epic3-security-lint` — Bloco S + L concluídos | ✅ |
-| 2026-06-17 | PR #59 mergeado — security + lint | ✅ |
-| 2026-06-17 | PR #60 mergeado — 12 testes unitários + fix UpdateQueue | ✅ |
-| 2026-06-17 | Epic 4 planejada — E2E com Playwright Test | ✅ |
+- [ ] `go build ./...` verde após upgrades
+- [ ] CI verde (build-backend + smoke-test)
+- [ ] 0 alertas Dependabot após merge
