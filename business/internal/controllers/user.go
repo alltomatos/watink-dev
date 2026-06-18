@@ -152,6 +152,11 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		profile = "user"
 	}
 
+	configs := req.Configs
+	if configs == "" {
+		configs = "{}"
+	}
+
 	domainUser := &domain.User{
 		Name:         req.Name,
 		Email:        req.Email,
@@ -160,7 +165,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		Profile:      profile,
 		WhatsappID:   req.WhatsappID,
 		GroupID:      req.GroupID,
-		Configs:      req.Configs,
+		Configs:      configs,
 	}
 
 	if err := uc.userRepo.Create(c.Request.Context(), domainUser); err != nil {
