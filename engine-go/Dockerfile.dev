@@ -1,0 +1,9 @@
+FROM golang:1.25-alpine
+
+ENV GOTOOLCHAIN=auto
+
+RUN apk add --no-cache git
+
+WORKDIR /app
+
+CMD ["go", "run", "./cmd/engine/main.go"]
