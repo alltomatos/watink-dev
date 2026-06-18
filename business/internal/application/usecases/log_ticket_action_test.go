@@ -4,41 +4,83 @@ import (
 	"context"
 	"testing"
 
+	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/internal/infrastructure/repository"
+	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
+// --- mocks for unit test ---
+
+type mockLogTicketRepo struct {
+	ticket  *domain.Ticket
+	findErr error
+}
+
+func (m *mockLogTicketRepo) FindByID(_ context.Context, _ int, _ uuid.UUID) (*domain.Ticket, error) {
+	return m.ticket, m.findErr
+}
+func (m *mockLogTicketRepo) FindOpenByContact(_ context.Context, _ uuid.UUID, _ int, _ int) (*domain.Ticket, error) {
+	return nil, nil
+}
+func (m *mockLogTicketRepo) FindOrCreatePending(_ context.Context, _ *domain.Ticket) (*domain.Ticket, error) {
+	return nil, nil
+}
+func (m *mockLogTicketRepo) Save(_ context.Context, _ *domain.Ticket) error { return nil }
+func (m *mockLogTicketRepo) Update(_ context.Context, _ *domain.Ticket, _ map[string]interface{}) error {
+	return nil
+}
+func (m *mockLogTicketRepo) FindLastAssignedInQueue(_ context.Context, _ int, _ uuid.UUID) (int, error) {
+	return 0, nil
+}
+func (m *mockLogTicketRepo) CountOpenTicketsPerUser(_ context.Context, _ []int, _ uuid.UUID) (map[int]int64, error) {
+	return nil, nil
+}
+
+type mockTicketLogRepo struct {
+	createErr error
+	created   bool
+}
+
+func (m *mockTicketLogRepo) Create(_ context.Context, _ *models.TicketLog) error {
+	m.created = true
+	return m.createErr
+}
+
 func TestNewLogTicketActionUseCase_NotNil(t *testing.T) {
-	uc := NewLogTicketActionUseCase(&gorm.DB{})
+	uc := NewLogTicketActionUseCase(&mockLogTicketRepo{}, &mockTicketLogRepo{})
 	if uc == nil {
 		t.Fatal("NewLogTicketActionUseCase returned nil")
 	}
 }
 
-func TestNewLogTicketActionUseCase_StoresDB(t *testing.T) {
-	db := &gorm.DB{}
-	uc := NewLogTicketActionUseCase(db)
-	if uc.db != db {
-		t.Fatal("expected stored db to match provided db")
-	}
-}
+// --- integration tests ---
 
 func setupLogTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	return testutil.NewTestDB(t)
 }
 
-// insertLogTicket inserts a ticket row using raw SQL so that the column name
-// "tenantId" (camelCase, matching the production WHERE clause) is respected.
 func insertLogTicket(t *testing.T, db *gorm.DB, tenantID uuid.UUID) int {
 	t.Helper()
 	var id int
-	res := db.Raw(`INSERT INTO "Tickets" (status, "tenantId") VALUES (?, ?) RETURNING id`, "open", tenantID.String()).Scan(&id)
+	res := db.Raw(
+		`INSERT INTO "Tickets" (status, "contactId", "whatsappId", "tenantId") VALUES (?, ?, ?, ?) RETURNING id`,
+		"open", 1, 1, tenantID.String(),
+	).Scan(&id)
 	if res.Error != nil {
 		t.Fatalf("insert ticket: %v", res.Error)
 	}
 	return id
+}
+
+func newLogUCWithDB(db *gorm.DB) *LogTicketActionUseCase {
+	return NewLogTicketActionUseCase(
+		repository.NewGORMTicketRepo(db),
+		repository.NewGormTicketLogRepository(db),
+	)
 }
 
 func TestLogTicketAction_Execute_Success(t *testing.T) {
@@ -46,7 +88,7 @@ func TestLogTicketAction_Execute_Success(t *testing.T) {
 	tenantID := uuid.New()
 	ticketID := insertLogTicket(t, db, tenantID)
 
-	uc := NewLogTicketActionUseCase(db)
+	uc := newLogUCWithDB(db)
 	input := LogTicketActionInput{
 		TicketID: ticketID,
 		TenantID: tenantID,
@@ -59,9 +101,8 @@ func TestLogTicketAction_Execute_Success(t *testing.T) {
 		t.Fatalf("expected nil error, got %v", err)
 	}
 
-	// Verify the log entry was persisted
 	var count int64
-	db.Table("TicketLogs").Where(`"ticketId" = ?`, ticketID).Count(&count)
+	db.Model(&models.TicketLog{}).Where(`"ticketId" = ?`, ticketID).Count(&count)
 	if count != 1 {
 		t.Fatalf("expected 1 TicketLog row, got %d", count)
 	}
@@ -72,12 +113,12 @@ func TestLogTicketAction_Execute_NilPayload(t *testing.T) {
 	tenantID := uuid.New()
 	ticketID := insertLogTicket(t, db, tenantID)
 
-	uc := NewLogTicketActionUseCase(db)
+	uc := newLogUCWithDB(db)
 	input := LogTicketActionInput{
 		TicketID: ticketID,
 		TenantID: tenantID,
 		LogType:  "close",
-		Payload:  nil, // covers the nil-payload branch
+		Payload:  nil,
 	}
 
 	err := uc.Execute(context.Background(), input)
@@ -90,9 +131,9 @@ func TestLogTicketAction_Execute_TicketNotFound(t *testing.T) {
 	db := setupLogTestDB(t)
 	tenantID := uuid.New()
 
-	uc := NewLogTicketActionUseCase(db)
+	uc := newLogUCWithDB(db)
 	input := LogTicketActionInput{
-		TicketID: 9999, // does not exist
+		TicketID: 9999,
 		TenantID: tenantID,
 		LogType:  "transfer",
 	}
@@ -109,7 +150,7 @@ func TestLogTicketAction_Execute_WithUserID(t *testing.T) {
 	ticketID := insertLogTicket(t, db, tenantID)
 
 	userID := 42
-	uc := NewLogTicketActionUseCase(db)
+	uc := newLogUCWithDB(db)
 	input := LogTicketActionInput{
 		TicketID: ticketID,
 		TenantID: tenantID,
