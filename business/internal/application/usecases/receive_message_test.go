@@ -1,0 +1,289 @@
+package usecases
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/google/uuid"
+)
+
+// --- local mocks for ReceiveMessage ---
+
+type mockContactRepo struct {
+	contact        *domain.Contact
+	findOrCreateErr error
+}
+
+func (m *mockContactRepo) FindByNumber(_ context.Context, _ uuid.UUID, _ string, _ bool) (*domain.Contact, error) {
+	return nil, nil
+}
+func (m *mockContactRepo) FindByID(_ context.Context, _ int, _ uuid.UUID) (*domain.Contact, error) {
+	return nil, nil
+}
+func (m *mockContactRepo) Find(_ context.Context, _ uuid.UUID, _ string) ([]domain.Contact, error) {
+	return nil, nil
+}
+func (m *mockContactRepo) Create(_ context.Context, _ *domain.Contact) error { return nil }
+func (m *mockContactRepo) Update(_ context.Context, _ *domain.Contact, _ map[string]interface{}) error {
+	return nil
+}
+func (m *mockContactRepo) Delete(_ context.Context, _ int, _ uuid.UUID) error { return nil }
+func (m *mockContactRepo) FindOrCreate(_ context.Context, _ uuid.UUID, _ string, _ string, _ string, _ bool, _ bool, _ string) (*domain.Contact, error) {
+	return m.contact, m.findOrCreateErr
+}
+
+type mockMessageRepo struct {
+	existsByIDResult bool
+	existsByIDErr    error
+	createIfNotExistsErr error
+}
+
+func (m *mockMessageRepo) Create(_ context.Context, _ *domain.Message) error { return nil }
+func (m *mockMessageRepo) CreateIfNotExists(_ context.Context, _ *domain.Message) error {
+	return m.createIfNotExistsErr
+}
+func (m *mockMessageRepo) FindByID(_ context.Context, _ string, _ uuid.UUID) (*domain.Message, error) {
+	return nil, nil
+}
+func (m *mockMessageRepo) ExistsByID(_ context.Context, _ string, _ uuid.UUID) (bool, error) {
+	return m.existsByIDResult, m.existsByIDErr
+}
+func (m *mockMessageRepo) Update(_ context.Context, _ *domain.Message, _ map[string]interface{}) error {
+	return nil
+}
+
+// receiveTicketRepo extends mockTicketRepo with open-ticket control
+type receiveTicketRepo struct {
+	mockTicketRepo
+	openTicket    *domain.Ticket
+	openTicketErr error
+}
+
+func (m *receiveTicketRepo) FindOpenByContact(_ context.Context, _ uuid.UUID, _ int, _ int) (*domain.Ticket, error) {
+	return m.openTicket, m.openTicketErr
+}
+
+// --- helpers ---
+
+func defaultContact() *domain.Contact {
+	return &domain.Contact{ID: 1, Name: "Test"}
+}
+
+func defaultInput(tenantID uuid.UUID) ReceiveMessageInput {
+	return ReceiveMessageInput{
+		ID:        "msg-1",
+		From:      "5511999999999@s.whatsapp.net",
+		Body:      "Hello",
+		Type:      "chat",
+		Timestamp: 1700000000,
+		TenantID:  tenantID,
+		SessionID: 1,
+	}
+}
+
+func newReceiveUC(cr domain.ContactRepository, tr domain.TicketRepository, mr domain.MessageRepository, eb domain.EventBus) *ReceiveMessageUseCase {
+	return NewReceiveMessageUseCase(eb, mr, cr, tr)
+}
+
+// --- tests ---
+
+func TestReceiveMessage_NewTicketCreated(t *testing.T) {
+	tenantID := uuid.New()
+	cr := &mockContactRepo{contact: defaultContact()}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{} // openTicket nil → creates pending
+	tr.ticket = &domain.Ticket{ID: 10, ContactID: 1, TenantID: tenantID}
+	eb := &mockEventBus{}
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	result, err := uc.Execute(context.Background(), defaultInput(tenantID))
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected result, got nil")
+	}
+	if result.Message == nil {
+		t.Error("expected message in result")
+	}
+	if result.Contact == nil {
+		t.Error("expected contact in result")
+	}
+	if len(eb.published) == 0 {
+		t.Error("expected event published")
+	}
+}
+
+func TestReceiveMessage_ExistingOpenTicket_UpdatesUnread(t *testing.T) {
+	tenantID := uuid.New()
+	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID, UnreadMessages: 2}
+	cr := &mockContactRepo{contact: defaultContact()}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{openTicket: existingTicket}
+	eb := &mockEventBus{}
+
+	input := defaultInput(tenantID)
+	input.FromMe = false
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	result, err := uc.Execute(context.Background(), input)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Ticket.UnreadMessages != 3 {
+		t.Errorf("expected 3 unread messages, got %d", result.Ticket.UnreadMessages)
+	}
+}
+
+func TestReceiveMessage_FromMe_NoUnreadIncrement(t *testing.T) {
+	tenantID := uuid.New()
+	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID, UnreadMessages: 1}
+	cr := &mockContactRepo{contact: defaultContact()}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{openTicket: existingTicket}
+	eb := &mockEventBus{}
+
+	input := defaultInput(tenantID)
+	input.FromMe = true
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	result, err := uc.Execute(context.Background(), input)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Ticket.UnreadMessages != 1 {
+		t.Errorf("expected unread to stay at 1, got %d", result.Ticket.UnreadMessages)
+	}
+}
+
+func TestReceiveMessage_EmptySender_ReturnsError(t *testing.T) {
+	tenantID := uuid.New()
+	cr := &mockContactRepo{}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{}
+	eb := &mockEventBus{}
+
+	input := defaultInput(tenantID)
+	input.From = ""
+	input.Participant = ""
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	_, err := uc.Execute(context.Background(), input)
+
+	if err == nil {
+		t.Fatal("expected error for empty sender")
+	}
+}
+
+func TestReceiveMessage_ContactRepoError_ReturnsError(t *testing.T) {
+	tenantID := uuid.New()
+	cr := &mockContactRepo{findOrCreateErr: errors.New("db error")}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{}
+	eb := &mockEventBus{}
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	_, err := uc.Execute(context.Background(), defaultInput(tenantID))
+
+	if err == nil {
+		t.Fatal("expected error from contact repo")
+	}
+}
+
+func TestReceiveMessage_TicketRepoFindError_ReturnsError(t *testing.T) {
+	tenantID := uuid.New()
+	cr := &mockContactRepo{contact: defaultContact()}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{openTicketErr: errors.New("ticket db error")}
+	eb := &mockEventBus{}
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	_, err := uc.Execute(context.Background(), defaultInput(tenantID))
+
+	if err == nil {
+		t.Fatal("expected error from ticket repo")
+	}
+}
+
+func TestReceiveMessage_MessageCreateError_ReturnsError(t *testing.T) {
+	tenantID := uuid.New()
+	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID}
+	cr := &mockContactRepo{contact: defaultContact()}
+	mr := &mockMessageRepo{createIfNotExistsErr: errors.New("msg create error")}
+	tr := &receiveTicketRepo{openTicket: existingTicket}
+	eb := &mockEventBus{}
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	_, err := uc.Execute(context.Background(), defaultInput(tenantID))
+
+	if err == nil {
+		t.Fatal("expected error from message repo")
+	}
+}
+
+func TestReceiveMessage_QuotedMsg_SetsQuotedMsgID(t *testing.T) {
+	tenantID := uuid.New()
+	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID}
+	cr := &mockContactRepo{contact: defaultContact()}
+	mr := &mockMessageRepo{existsByIDResult: true}
+	tr := &receiveTicketRepo{openTicket: existingTicket}
+	eb := &mockEventBus{}
+
+	input := defaultInput(tenantID)
+	input.QuotedMsgID = "quoted-123"
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	result, err := uc.Execute(context.Background(), input)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Message.QuotedMsgID == nil || *result.Message.QuotedMsgID != "quoted-123" {
+		t.Error("expected QuotedMsgID to be set")
+	}
+}
+
+func TestReceiveMessage_QuotedMsg_NotFound_DoesNotSet(t *testing.T) {
+	tenantID := uuid.New()
+	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID}
+	cr := &mockContactRepo{contact: defaultContact()}
+	mr := &mockMessageRepo{existsByIDResult: false}
+	tr := &receiveTicketRepo{openTicket: existingTicket}
+	eb := &mockEventBus{}
+
+	input := defaultInput(tenantID)
+	input.QuotedMsgID = "nonexistent-msg"
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	result, err := uc.Execute(context.Background(), input)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Message.QuotedMsgID != nil {
+		t.Error("expected QuotedMsgID to be nil when message not found")
+	}
+}
+
+func TestJidNumber(t *testing.T) {
+	cases := []struct {
+		jid  string
+		want string
+	}{
+		{"5511999999999@s.whatsapp.net", "5511999999999"},
+		{"5511999999999:10@s.whatsapp.net", "5511999999999"},
+		{"", ""},
+		{"noatsign", "noatsign"},
+	}
+	for _, c := range cases {
+		got := jidNumber(c.jid)
+		if got != c.want {
+			t.Errorf("jidNumber(%q) = %q, want %q", c.jid, got, c.want)
+		}
+	}
+}
