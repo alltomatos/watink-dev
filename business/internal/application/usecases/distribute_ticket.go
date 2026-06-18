@@ -171,34 +171,32 @@ func (uc *DistributeTicketUseCase) roundRobin(ctx context.Context, users []model
 }
 
 func (uc *DistributeTicketUseCase) balanced(ctx context.Context, users []models.User, tenantID uuid.UUID) int {
-	type UserCount struct {
-		UserID int
-		Count  int64
-	}
-
 	var userIDs []int
 	for _, u := range users {
 		userIDs = append(userIDs, u.ID)
 	}
 
-	var results []UserCount
+	// Fetch open tickets for the candidate users and count in Go to avoid
+	// SQL dialect differences (PostgreSQL requires double-quoted identifiers;
+	// SQLite treats them as string literals).
+	var tickets []models.Ticket
 	uc.db.WithContext(ctx).
 		Model(&models.Ticket{}).
-		Select("\"userId\" as user_id, count(*) as count").
-		Where("\"userId\" IN ? AND status = 'open' AND \"tenantId\" = ?", userIDs, tenantID).
-		Group("\"userId\"").
-		Scan(&results)
+		Select("userId").
+		Where("userId IN ? AND status = 'open' AND tenantId = ?", userIDs, tenantID).
+		Find(&tickets)
 
 	counts := make(map[int]int64)
-	for _, r := range results {
-		counts[r.UserID] = r.Count
+	for _, t := range tickets {
+		if t.UserID != nil {
+			counts[*t.UserID]++
+		}
 	}
 
 	minCount := int64(999999)
 	bestUserID := users[0].ID
 	for _, u := range users {
-		c := counts[u.ID]
-		if c < minCount {
+		if c := counts[u.ID]; c < minCount {
 			minCount = c
 			bestUserID = u.ID
 		}
