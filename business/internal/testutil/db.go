@@ -19,7 +19,10 @@ func NewTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	dsn := testDSN()
-	cfg := &gorm.Config{Logger: logger.Discard}
+	cfg := &gorm.Config{
+		Logger:                                   logger.Discard,
+		DisableForeignKeyConstraintWhenMigrating: true,
+	}
 
 	// Root connection — used only to create/drop the schema.
 	root, err := gorm.Open(postgres.Open(dsn), cfg)

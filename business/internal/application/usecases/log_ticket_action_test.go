@@ -33,12 +33,11 @@ func setupLogTestDB(t *testing.T) *gorm.DB {
 // "tenantId" (camelCase, matching the production WHERE clause) is respected.
 func insertLogTicket(t *testing.T, db *gorm.DB, tenantID uuid.UUID) int {
 	t.Helper()
-	res := db.Exec(`INSERT INTO "tickets" (status, "tenantId") VALUES (?, ?)`, "open", tenantID.String())
+	var id int
+	res := db.Raw(`INSERT INTO "Tickets" (status, "tenantId") VALUES (?, ?) RETURNING id`, "open", tenantID.String()).Scan(&id)
 	if res.Error != nil {
 		t.Fatalf("insert ticket: %v", res.Error)
 	}
-	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
 	return id
 }
 
