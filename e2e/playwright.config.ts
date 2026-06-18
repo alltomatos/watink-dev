@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const BASE_URL = process.env.E2E_BASE_URL || "http://localhost:3000";
-const API_URL = process.env.E2E_API_URL || "http://localhost:8082/api/v1";
+const API_URL = (process.env.E2E_API_URL || "http://localhost:8082/api/v1/").replace(/\/?$/, "/");
 
 export default defineConfig({
   testDir: "./tests",

@@ -2,7 +2,7 @@ import { test as base, expect, APIRequestContext } from "@playwright/test";
 import path from "path";
 import fs from "fs";
 
-const API_URL = process.env.E2E_API_URL || "http://localhost:8082/api/v1";
+const API_URL = (process.env.E2E_API_URL || "http://localhost:8082/api/v1/").replace(/\/?$/, "/");
 export const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || "admin@e2e.test";
 export const ADMIN_PASS = process.env.E2E_ADMIN_PASS || "e2e_password_123";
 
