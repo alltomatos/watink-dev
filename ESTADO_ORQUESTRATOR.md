@@ -3,7 +3,7 @@
 > Arquivo de estado vivo do Orchestrator.
 > **Última atualização**: 2026-06-18
 > **Branch**: `develop` (release PR #75 → main em revisão)
-> **Epic atual**: Epic 17 — health endpoint + graceful shutdown engine-go
+> **Epic atual**: Epic 18 — device store multitenancy via JID (PR #78)
 
 ---
 
@@ -83,8 +83,7 @@ Para cobri-los: job CI de integração com `docker-compose` + `//go:build integr
 
 | ID | Tarefa | Tier | Status |
 |----|--------|------|--------|
-| Release | Merge develop → main (PR #75) | T2 | ⏳ CI rodando |
-| Epic 17 | Health endpoint HTTP + graceful shutdown engine-go | T2 | 🔜 Próximo |
-| Epic 18 | Device store multitenancy (resolveDeviceStore por sessionID) | T3 — **aguarda aprovação** | ⏸ Bloqueado |
+| Epic 17 | Health endpoint HTTP + graceful shutdown engine-go | T2 | ✅ Mergeado (PR #73) |
+| Epic 18 | Device store multitenancy via Whatsapps.wid | T3 | ⏳ CI rodando (PR #78) |
 | P4-A | Fix 15 warnings `react-hooks/exhaustive-deps` no frontend | T2 | 🔜 |
 | P4-B | Dashboard controller — calculateTMR/calculateTME coverage | P3 | 🔜 |

@@ -4,17 +4,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func setupVersionTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func TestNewGORMVersionRepo(t *testing.T) {

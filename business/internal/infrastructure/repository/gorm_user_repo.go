@@ -44,7 +44,6 @@ func (r *GORMUserRepository) FindByID(ctx context.Context, id int, tenantID uuid
 func (r *GORMUserRepository) FindByIDDetail(ctx context.Context, id int, tenantID uuid.UUID) (*models.User, error) {
 	var m models.User
 	err := r.db.WithContext(ctx).
-		Preload("Queues").
 		Preload("Permissions").
 		Preload("Roles").
 		Where("id = ? AND \"tenantId\" = ?", id, tenantID).

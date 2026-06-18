@@ -11,59 +11,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"gorm.io/gorm"
 )
 
 func setupTicketListDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/ticket_list_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-	ddls := []string{
-		`CREATE TABLE "Tickets" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			status TEXT DEFAULT 'pending',
-			"lastMessage" TEXT,
-			"contactId" INTEGER,
-			"userId" INTEGER,
-			"queueId" INTEGER,
-			"whatsappId" INTEGER,
-			"isGroup" BOOLEAN DEFAULT false,
-			"unreadMessages" INTEGER DEFAULT 0,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE "Contacts" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT,
-			number TEXT,
-			"tenantId" TEXT
-		)`,
-		`CREATE TABLE "Users" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT,
-			email TEXT,
-			"passwordHash" TEXT,
-			"tenantId" TEXT
-		)`,
-		`CREATE TABLE "Messages" (
-			id TEXT PRIMARY KEY,
-			body TEXT,
-			"ticketId" INTEGER,
-			"tenantId" TEXT
-		)`,
-	}
-	for _, ddl := range ddls {
-		db.Exec(ddl)
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func newTicketListContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path string) (*gin.Context, *httptest.ResponseRecorder) {
@@ -130,7 +84,7 @@ func TestTicketController_ShowTicket_Found(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tickets" (status, "lastMessage", "tenantId") VALUES (?,?,?)`, "open", "hello", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := &TicketController{updateTicket: nil, broadcast: nil}
 	c, w := newTicketListContext(t, db, tenantID, "GET", fmt.Sprintf("/tickets/%d", id))
@@ -152,7 +106,7 @@ func TestTicketController_ShowTicket_CrossTenant404(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tickets" (status, "tenantId") VALUES (?,?)`, "open", tenantA)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := &TicketController{updateTicket: nil, broadcast: nil}
 	c, w := newTicketListContext(t, db, tenantB, "GET", fmt.Sprintf("/tickets/%d", id))

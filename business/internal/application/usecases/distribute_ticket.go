@@ -182,8 +182,8 @@ func (uc *DistributeTicketUseCase) balanced(ctx context.Context, users []models.
 	var tickets []models.Ticket
 	uc.db.WithContext(ctx).
 		Model(&models.Ticket{}).
-		Select("userId").
-		Where("userId IN ? AND status = 'open' AND tenantId = ?", userIDs, tenantID).
+		Select("\"userId\"").
+		Where("\"userId\" IN ? AND status = 'open' AND \"tenantId\" = ?", userIDs, tenantID).
 		Find(&tickets)
 
 	counts := make(map[int]int64)

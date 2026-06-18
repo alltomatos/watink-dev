@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -38,7 +37,7 @@ func (uc *LogTicketActionUseCase) Execute(ctx context.Context, input LogTicketAc
 		payloadStr = string(b)
 	}
 
-	var ticket domain.Ticket
+	var ticket models.Ticket
 	err := uc.db.WithContext(ctx).
 		Where("id = ? AND \"tenantId\" = ?", input.TicketID, input.TenantID).
 		First(&ticket).Error

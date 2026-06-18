@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"gorm.io/gorm"
 )
 
@@ -19,34 +19,7 @@ import (
 
 func setupKBTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/kb_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-	db.Exec(`CREATE TABLE "KnowledgeBases" (
-		"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-		"name" TEXT NOT NULL,
-		"description" TEXT,
-		"tenantId" TEXT NOT NULL,
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	db.Exec(`CREATE TABLE "KnowledgeBaseSources" (
-		"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-		"knowledgeBaseId" INTEGER NOT NULL,
-		"tenantId" TEXT NOT NULL,
-		"type" TEXT NOT NULL,
-		"url" TEXT,
-		"fileName" TEXT,
-		"status" TEXT DEFAULT 'ready',
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func setupKBContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path string, body []byte) (*gin.Context, *httptest.ResponseRecorder) {
@@ -130,7 +103,7 @@ func TestKnowledgeBaseController_Show_CrossTenant404(t *testing.T) {
 
 	db.Exec(`INSERT INTO "KnowledgeBases" (name, "tenantId") VALUES (?,?)`, "KB-A", tenantA)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewKnowledgeBaseController()
 	c, w := setupKBContext(t, db, tenantB, "GET", "/knowledge-bases/1", nil)
@@ -169,7 +142,7 @@ func TestKnowledgeBaseController_Delete_Success(t *testing.T) {
 
 	db.Exec(`INSERT INTO "KnowledgeBases" (name, "tenantId") VALUES (?,?)`, "To Delete", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewKnowledgeBaseController()
 	c, w := setupKBContext(t, db, tenantID, "DELETE", "/knowledge-bases/1", nil)

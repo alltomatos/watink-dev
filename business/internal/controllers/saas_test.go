@@ -12,49 +12,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"gorm.io/gorm"
 )
 
-// setupSaasTestDB creates an in-memory SQLite DB with the tables used by saas controllers.
+// setupSaasTestDB creates a PostgreSQL test DB with the tables used by saas controllers.
 func setupSaasTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/saas_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-
-	ddls := []string{
-		`CREATE TABLE IF NOT EXISTS "Tenants" (
-			"id" TEXT PRIMARY KEY,
-			"name" TEXT NOT NULL,
-			"status" TEXT DEFAULT 'active',
-			"ownerId" INTEGER,
-			"document" TEXT,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Plans" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"name" TEXT NOT NULL UNIQUE,
-			"usersLimit" INTEGER DEFAULT 0,
-			"connectionsLimit" INTEGER DEFAULT 0,
-			"queuesLimit" INTEGER DEFAULT 0,
-			"pluginQuota" INTEGER DEFAULT 0,
-			"price" REAL,
-			"active" BOOLEAN DEFAULT true,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-	}
-	for _, ddl := range ddls {
-		db.Exec(ddl)
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 // injectSaasContext injects DB and superadmin identity into a gin context.

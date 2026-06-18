@@ -12,31 +12,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"gorm.io/gorm"
 )
 
 func setupQATestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/qa_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-	db.Exec(`CREATE TABLE "QuickAnswers" (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		shortcut TEXT,
-		message TEXT,
-		"mediaType" TEXT DEFAULT '',
-		"dataJson" TEXT DEFAULT '',
-		"tenantId" TEXT NOT NULL,
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func setupQAContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path string, body []byte) (*gin.Context, *httptest.ResponseRecorder) {
@@ -104,7 +86,7 @@ func TestQuickAnswerController_Show_Success(t *testing.T) {
 
 	db.Exec(`INSERT INTO "QuickAnswers" (shortcut, message, "tenantId") VALUES (?,?,?)`, "/show", "Show msg", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewQuickAnswerController()
 	c, w := setupQAContext(t, db, tenantID, "GET", fmt.Sprintf("/quickAnswers/%d", id), nil)
@@ -126,7 +108,7 @@ func TestQuickAnswerController_Show_CrossTenant(t *testing.T) {
 
 	db.Exec(`INSERT INTO "QuickAnswers" (shortcut, message, "tenantId") VALUES (?,?,?)`, "/secret", "Secret", tenantA)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewQuickAnswerController()
 	c, w := setupQAContext(t, db, tenantB, "GET", fmt.Sprintf("/quickAnswers/%d", id), nil)
@@ -159,7 +141,7 @@ func TestQuickAnswerController_Delete_Success(t *testing.T) {
 
 	db.Exec(`INSERT INTO "QuickAnswers" (shortcut, message, "tenantId") VALUES (?,?,?)`, "/del", "Del msg", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewQuickAnswerController()
 	c, w := setupQAContext(t, db, tenantID, "DELETE", fmt.Sprintf("/quickAnswers/%d", id), nil)
