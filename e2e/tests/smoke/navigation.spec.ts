@@ -43,7 +43,7 @@ test.describe("Smoke — Navegação autenticada", () => {
 
       // Nenhum erro 5xx nem console.error crítico
       const criticalErrors = errors.filter(
-        (e) => !e.includes("favicon") && !e.includes("socket.io")
+        (e) => !e.includes("favicon") && !/[/:.]socket\.io(\/|$)/.test(e)
       );
       expect(criticalErrors, `Erros em ${route}: ${criticalErrors.join("; ")}`).toHaveLength(0);
     });
