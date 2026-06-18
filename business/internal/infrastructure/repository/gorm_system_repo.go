@@ -18,7 +18,7 @@ func NewGORMSystemRepo(db *gorm.DB) *GORMSystemRepository {
 }
 
 func (r *GORMSystemRepository) GetTenantConsumption(ctx context.Context) ([]domain.TenantConsumption, error) {
-	var result []domain.TenantConsumption
+	result := make([]domain.TenantConsumption, 0)
 	err := r.db.WithContext(ctx).Raw(`
 		SELECT
 			t.id::text AS tenant_id,

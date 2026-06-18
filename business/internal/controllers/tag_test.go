@@ -88,7 +88,7 @@ func TestTagController_Update_Success(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "Antigo", "green", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	payload, _ := json.Marshal(map[string]string{"name": "Novo", "color": "purple"})
 	ctrl := NewTagController()
@@ -111,7 +111,7 @@ func TestTagController_Update_CrossTenant404(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "Secret", "black", tenantA)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	payload, _ := json.Marshal(map[string]string{"name": "Hacked"})
 	ctrl := NewTagController()
@@ -130,7 +130,7 @@ func TestTagController_Delete_Archive(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "Temp", "gray", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewTagController()
 	c, w := setupTagContext(t, db, tenantID, "DELETE", fmt.Sprintf("/tags/%d", id), nil)
@@ -151,7 +151,7 @@ func TestTagController_Delete_ForceDelete(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "ToDelete", "red", tenantID)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewTagController()
 	c, w := setupTagContext(t, db, tenantID, "DELETE", fmt.Sprintf("/tags/%d?forceDelete=true", id), nil)
@@ -174,7 +174,7 @@ func TestTagController_Delete_CrossTenant404(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "Private", "orange", tenantA)
 	var id int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
 	ctrl := NewTagController()
 	c, w := setupTagContext(t, db, tenantB, "DELETE", fmt.Sprintf("/tags/%d", id), nil)
@@ -192,7 +192,7 @@ func TestTagController_SyncEntityTags(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "T1", "red", tenantID)
 	var tagID int
-	db.Raw(`SELECT last_insert_rowid()`).Scan(&tagID)
+	db.Raw(`SELECT LASTVAL()`).Scan(&tagID)
 
 	payload, _ := json.Marshal(map[string]interface{}{"tagIds": []int{tagID}})
 	ctrl := NewTagController()
