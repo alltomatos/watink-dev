@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestTicketAssignedEvent(t *testing.T) {
@@ -89,6 +90,28 @@ func TestSessionStatusChangedEvent(t *testing.T) {
 
 	if event.TenantID() != tenantID {
 		t.Errorf("Expected tenant ID %s, got %s", tenantID, event.TenantID())
+	}
+}
+
+func TestUser_CheckPassword_Correct(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("secret123"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	u := &User{PasswordHash: string(hash)}
+	if !u.CheckPassword("secret123") {
+		t.Error("expected CheckPassword to return true for correct password")
+	}
+}
+
+func TestUser_CheckPassword_Wrong(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("secret123"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	u := &User{PasswordHash: string(hash)}
+	if u.CheckPassword("wrongpassword") {
+		t.Error("expected CheckPassword to return false for wrong password")
 	}
 }
 
