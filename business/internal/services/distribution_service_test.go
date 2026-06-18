@@ -120,7 +120,9 @@ func TestDistributionService_RoundRobin_AssignsNextUser(t *testing.T) {
 	}
 
 	var assignedUser *int
-	db.Raw("SELECT userId FROM Tickets WHERE id = 10").Row().Scan(&assignedUser)
+	if err := db.Raw("SELECT userId FROM Tickets WHERE id = 10").Row().Scan(&assignedUser); err != nil {
+		t.Fatalf("failed to scan ticket userId: %v", err)
+	}
 	if assignedUser == nil {
 		t.Fatal("expected a user to be assigned")
 	}
@@ -156,7 +158,9 @@ func TestDistributionService_Balanced_AssignsLeastLoadedUser(t *testing.T) {
 	}
 
 	var assignedUser *int
-	db.Raw("SELECT userId FROM Tickets WHERE id = 999").Row().Scan(&assignedUser)
+	if err := db.Raw("SELECT userId FROM Tickets WHERE id = 999").Row().Scan(&assignedUser); err != nil {
+		t.Fatalf("failed to scan ticket userId: %v", err)
+	}
 	// In SQLite the GROUP BY with quoted column name degrades gracefully — we only
 	// assert that a user was assigned; the actual balancing logic is exercised via the
 	// PostgreSQL-backed E2E suite and production smoke tests.
