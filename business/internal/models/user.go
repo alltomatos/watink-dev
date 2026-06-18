@@ -24,7 +24,7 @@ type User struct {
 
 	// Relations
 	Tenant      Tenant       `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
-	Queues      []Queue      `gorm:"many2many:user_queues;joinForeignKey:userId;joinReferences:queueId" json:"queues,omitempty"`
+	Queues      []Queue      `gorm:"many2many:user_queues;joinForeignKey:UserID;joinReferences:QueueID" json:"queues,omitempty"`
 	Permissions []Permission `gorm:"many2many:user_permissions;" json:"permissions,omitempty"`
 	Roles       []Role       `gorm:"many2many:user_roles;" json:"roles,omitempty"`
 }

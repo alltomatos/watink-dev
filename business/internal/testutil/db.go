@@ -41,8 +41,16 @@ func NewTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("testutil.NewTestDB: create schema %q: %v", schema, err)
 	}
 
-	// Test connection — single connection so SET search_path persists.
-	db, err := gorm.Open(postgres.Open(dsn), cfg)
+	// Embed search_path in DSN so every pool connection uses the schema automatically.
+	// This allows MaxOpenConns > 1, preventing deadlocks in GORM many2many operations.
+	var schemaDSN string
+	if strings.Contains(dsn, "?") {
+		schemaDSN = dsn + "&search_path=" + schema
+	} else {
+		schemaDSN = dsn + "?search_path=" + schema
+	}
+
+	db, err := gorm.Open(postgres.Open(schemaDSN), cfg)
 	if err != nil {
 		t.Fatalf("testutil.NewTestDB: connect for schema: %v", err)
 	}
@@ -51,25 +59,17 @@ func NewTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("testutil.NewTestDB: get sql.DB: %v", err)
 	}
-	sqlDB.SetMaxOpenConns(1)
 
-	if err := db.Exec("SET search_path TO " + schema).Error; err != nil {
-		t.Fatalf("testutil.NewTestDB: SET search_path: %v", err)
+	// Register explicit join table for User<->Queue so GORM uses camelCase column names
+	// (userId, queueId) matching the production schema created by Sequelize.
+	// joinForeignKey:UserID uses the Go field name so LookUpField finds it by FieldsByName,
+	// then uses the field's DBName (userId) in generated SQL — avoids NamingStrategy snake_case.
+	if err := db.SetupJoinTable(&models.User{}, "Queues", &models.UserQueue{}); err != nil {
+		t.Fatalf("testutil.NewTestDB: SetupJoinTable User->Queues: %v", err)
 	}
 
 	if err := db.AutoMigrate(allModels()...); err != nil {
 		t.Fatalf("testutil.NewTestDB: AutoMigrate: %v", err)
-	}
-
-	// GORM AutoMigrate creates join table columns as snake_case (user_id, queue_id).
-	// Production schema uses camelCase (userId, queueId) — rename to match.
-	for _, stmt := range []string{
-		`ALTER TABLE user_queues RENAME COLUMN user_id TO "userId"`,
-		`ALTER TABLE user_queues RENAME COLUMN queue_id TO "queueId"`,
-	} {
-		if err := db.Exec(stmt).Error; err != nil {
-			t.Fatalf("testutil.NewTestDB: rename join column: %v", err)
-		}
 	}
 
 	t.Cleanup(func() {
@@ -112,6 +112,9 @@ func allModels() []interface{} {
 		&models.User{},
 		&models.Setting{},
 		&models.Contact{},
+		&models.Client{},
+		&models.Deal{},
+		&models.Protocol{},
 		&models.Whatsapp{},
 		&models.Queue{},
 		&models.Ticket{},
