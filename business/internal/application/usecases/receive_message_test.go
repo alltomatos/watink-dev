@@ -11,26 +11,26 @@ import (
 
 // --- local mocks for ReceiveMessage ---
 
-type mockContactRepo struct {
-	contact        *domain.Contact
+type mockRcvContactRepo struct {
+	contact         *domain.Contact
 	findOrCreateErr error
 }
 
-func (m *mockContactRepo) FindByNumber(_ context.Context, _ uuid.UUID, _ string, _ bool) (*domain.Contact, error) {
+func (m *mockRcvContactRepo) FindByNumber(_ context.Context, _ uuid.UUID, _ string, _ bool) (*domain.Contact, error) {
 	return nil, nil
 }
-func (m *mockContactRepo) FindByID(_ context.Context, _ int, _ uuid.UUID) (*domain.Contact, error) {
+func (m *mockRcvContactRepo) FindByID(_ context.Context, _ int, _ uuid.UUID) (*domain.Contact, error) {
 	return nil, nil
 }
-func (m *mockContactRepo) Find(_ context.Context, _ uuid.UUID, _ string) ([]domain.Contact, error) {
+func (m *mockRcvContactRepo) Find(_ context.Context, _ uuid.UUID, _ string) ([]domain.Contact, error) {
 	return nil, nil
 }
-func (m *mockContactRepo) Create(_ context.Context, _ *domain.Contact) error { return nil }
-func (m *mockContactRepo) Update(_ context.Context, _ *domain.Contact, _ map[string]interface{}) error {
+func (m *mockRcvContactRepo) Create(_ context.Context, _ *domain.Contact) error { return nil }
+func (m *mockRcvContactRepo) Update(_ context.Context, _ *domain.Contact, _ map[string]interface{}) error {
 	return nil
 }
-func (m *mockContactRepo) Delete(_ context.Context, _ int, _ uuid.UUID) error { return nil }
-func (m *mockContactRepo) FindOrCreate(_ context.Context, _ uuid.UUID, _ string, _ string, _ string, _ bool, _ bool, _ string) (*domain.Contact, error) {
+func (m *mockRcvContactRepo) Delete(_ context.Context, _ int, _ uuid.UUID) error { return nil }
+func (m *mockRcvContactRepo) FindOrCreate(_ context.Context, _ uuid.UUID, _ string, _ string, _ string, _ bool, _ bool, _ string) (*domain.Contact, error) {
 	return m.contact, m.findOrCreateErr
 }
 
@@ -91,7 +91,7 @@ func newReceiveUC(cr domain.ContactRepository, tr domain.TicketRepository, mr do
 
 func TestReceiveMessage_NewTicketCreated(t *testing.T) {
 	tenantID := uuid.New()
-	cr := &mockContactRepo{contact: defaultContact()}
+	cr := &mockRcvContactRepo{contact: defaultContact()}
 	mr := &mockMessageRepo{}
 	tr := &receiveTicketRepo{} // openTicket nil → creates pending
 	tr.ticket = &domain.Ticket{ID: 10, ContactID: 1, TenantID: tenantID}
@@ -120,7 +120,7 @@ func TestReceiveMessage_NewTicketCreated(t *testing.T) {
 func TestReceiveMessage_ExistingOpenTicket_UpdatesUnread(t *testing.T) {
 	tenantID := uuid.New()
 	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID, UnreadMessages: 2}
-	cr := &mockContactRepo{contact: defaultContact()}
+	cr := &mockRcvContactRepo{contact: defaultContact()}
 	mr := &mockMessageRepo{}
 	tr := &receiveTicketRepo{openTicket: existingTicket}
 	eb := &mockEventBus{}
@@ -142,7 +142,7 @@ func TestReceiveMessage_ExistingOpenTicket_UpdatesUnread(t *testing.T) {
 func TestReceiveMessage_FromMe_NoUnreadIncrement(t *testing.T) {
 	tenantID := uuid.New()
 	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID, UnreadMessages: 1}
-	cr := &mockContactRepo{contact: defaultContact()}
+	cr := &mockRcvContactRepo{contact: defaultContact()}
 	mr := &mockMessageRepo{}
 	tr := &receiveTicketRepo{openTicket: existingTicket}
 	eb := &mockEventBus{}
@@ -163,7 +163,7 @@ func TestReceiveMessage_FromMe_NoUnreadIncrement(t *testing.T) {
 
 func TestReceiveMessage_EmptySender_ReturnsError(t *testing.T) {
 	tenantID := uuid.New()
-	cr := &mockContactRepo{}
+	cr := &mockRcvContactRepo{}
 	mr := &mockMessageRepo{}
 	tr := &receiveTicketRepo{}
 	eb := &mockEventBus{}
@@ -182,7 +182,7 @@ func TestReceiveMessage_EmptySender_ReturnsError(t *testing.T) {
 
 func TestReceiveMessage_ContactRepoError_ReturnsError(t *testing.T) {
 	tenantID := uuid.New()
-	cr := &mockContactRepo{findOrCreateErr: errors.New("db error")}
+	cr := &mockRcvContactRepo{findOrCreateErr: errors.New("db error")}
 	mr := &mockMessageRepo{}
 	tr := &receiveTicketRepo{}
 	eb := &mockEventBus{}
@@ -197,7 +197,7 @@ func TestReceiveMessage_ContactRepoError_ReturnsError(t *testing.T) {
 
 func TestReceiveMessage_TicketRepoFindError_ReturnsError(t *testing.T) {
 	tenantID := uuid.New()
-	cr := &mockContactRepo{contact: defaultContact()}
+	cr := &mockRcvContactRepo{contact: defaultContact()}
 	mr := &mockMessageRepo{}
 	tr := &receiveTicketRepo{openTicketErr: errors.New("ticket db error")}
 	eb := &mockEventBus{}
@@ -213,7 +213,7 @@ func TestReceiveMessage_TicketRepoFindError_ReturnsError(t *testing.T) {
 func TestReceiveMessage_MessageCreateError_ReturnsError(t *testing.T) {
 	tenantID := uuid.New()
 	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID}
-	cr := &mockContactRepo{contact: defaultContact()}
+	cr := &mockRcvContactRepo{contact: defaultContact()}
 	mr := &mockMessageRepo{createIfNotExistsErr: errors.New("msg create error")}
 	tr := &receiveTicketRepo{openTicket: existingTicket}
 	eb := &mockEventBus{}
@@ -229,7 +229,7 @@ func TestReceiveMessage_MessageCreateError_ReturnsError(t *testing.T) {
 func TestReceiveMessage_QuotedMsg_SetsQuotedMsgID(t *testing.T) {
 	tenantID := uuid.New()
 	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID}
-	cr := &mockContactRepo{contact: defaultContact()}
+	cr := &mockRcvContactRepo{contact: defaultContact()}
 	mr := &mockMessageRepo{existsByIDResult: true}
 	tr := &receiveTicketRepo{openTicket: existingTicket}
 	eb := &mockEventBus{}
@@ -251,7 +251,7 @@ func TestReceiveMessage_QuotedMsg_SetsQuotedMsgID(t *testing.T) {
 func TestReceiveMessage_QuotedMsg_NotFound_DoesNotSet(t *testing.T) {
 	tenantID := uuid.New()
 	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID}
-	cr := &mockContactRepo{contact: defaultContact()}
+	cr := &mockRcvContactRepo{contact: defaultContact()}
 	mr := &mockMessageRepo{existsByIDResult: false}
 	tr := &receiveTicketRepo{openTicket: existingTicket}
 	eb := &mockEventBus{}

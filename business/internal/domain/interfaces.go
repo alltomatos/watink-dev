@@ -1,11 +1,15 @@
 package domain
 
 import (
+	"errors"
 	"context"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/google/uuid"
 )
+
+// ErrTicketNotFound is returned when a ticket lookup yields no result.
+var ErrTicketNotFound = errors.New("ticket not found")
 
 // QueueMetrics represents RabbitMQ queue monitoring data.
 type QueueMetrics struct {
@@ -27,6 +31,8 @@ type TicketRepository interface {
 	FindOrCreatePending(ctx context.Context, ticket *Ticket) (*Ticket, error)
 	Save(ctx context.Context, ticket *Ticket) error
 	Update(ctx context.Context, ticket *Ticket, fields map[string]interface{}) error
+	FindLastAssignedInQueue(ctx context.Context, queueID int, tenantID uuid.UUID) (int, error)
+	CountOpenTicketsPerUser(ctx context.Context, userIDs []int, tenantID uuid.UUID) (map[int]int64, error)
 }
 
 type MessageRepository interface {
@@ -144,6 +150,18 @@ type SwaggerPermissionRepository interface {
 // VersionRepository provides infrastructure version diagnostics.
 type VersionRepository interface {
 	GetPostgresVersion(ctx context.Context) (string, error)
+}
+
+// UserQueueRepository handles user↔queue membership queries.
+type UserQueueRepository interface {
+	IsUserInQueue(ctx context.Context, userID int, queueID int) (bool, error)
+	FindQueueUsers(ctx context.Context, queueID int, tenantID uuid.UUID) ([]User, error)
+}
+
+
+// TicketLogRepository persists audit log entries for ticket actions.
+type TicketLogRepository interface {
+	Create(ctx context.Context, log *models.TicketLog) error
 }
 
 // Service Interfaces
