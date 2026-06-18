@@ -2,8 +2,10 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
@@ -89,6 +91,82 @@ func TestPluginController_Catalog_OfflineHub(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	offline, _ := resp["offline"].(bool)
 	assert.True(t, offline, "offline flag should be true when hub is unreachable")
+}
+
+func TestPluginController_Checkout_HubOfflineReturns503(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	hm := newTestHubManager(t)
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, hm)
+
+	tenantID := uuid.New()
+	db := newInMemoryDB(t)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	body := strings.NewReader(`{"slug":"some-plugin"}`)
+	req, _ := http.NewRequest("POST", "/plugins/checkout", body)
+	req.Header.Set("Content-Type", "application/json")
+	c.Request = req
+	c.Set("tenantId", tenantID)
+	c.Set("userProfile", "admin")
+	c.Set("userId", float64(1))
+	c.Set("db", db)
+
+	ctrl.Checkout(c)
+
+	// Hub is offline → CreateCheckout returns error → controller returns non-200
+	assert.NotEqual(t, http.StatusOK, w.Code)
+	var resp map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	_, ok := resp["error"]
+	assert.True(t, ok, "response must contain error key when hub is offline")
+}
+
+func TestPluginController_Checkout_PlanLimitExceeded(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	hm := newTestHubManager(t)
+	ctrl := NewPluginController(&mockPlanLimitSvc{err: errors.New("limit reached")}, hm)
+
+	tenantID := uuid.New()
+	db := newInMemoryDB(t)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	body := strings.NewReader(`{"slug":"some-plugin"}`)
+	req, _ := http.NewRequest("POST", "/plugins/checkout", body)
+	req.Header.Set("Content-Type", "application/json")
+	c.Request = req
+	c.Set("tenantId", tenantID)
+	c.Set("userProfile", "admin")
+	c.Set("userId", float64(1))
+	c.Set("db", db)
+
+	ctrl.Checkout(c)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestLegacyPluginStubs(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cases := []struct {
+		name    string
+		handler gin.HandlerFunc
+	}{
+		{"PluginsCatalog", PluginsCatalog},
+		{"PluginsInstalled", PluginsInstalled},
+		{"PluginsCheckout", PluginsCheckout},
+		{"PluginsInstance", PluginsInstance},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			req, _ := http.NewRequest("GET", "/", nil)
+			c.Request = req
+			tc.handler(c)
+			assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+		})
+	}
 }
 
 func TestPluginController_Installed_NoPluginsReturnsActiveList(t *testing.T) {
