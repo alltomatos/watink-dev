@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -117,15 +118,27 @@ func TestPipelineController_Create_Success(t *testing.T) {
 	assert.Len(t, stages, 3)
 }
 
-// TestPipelineController_Update_SQLiteAmbiguousColumn documents a known SQLite
-// limitation in the Update controller: auth.GetScopedDB already applies
-// WHERE "tenantId" = ? to the session DB, and then the Update transaction
-// calls tx.Where("\"tenantId\" = ?", tenantID).Save(&pipeline), which causes
-// SQLite to report "ambiguous column name: tenantId". This does not happen in
-// PostgreSQL because quoted identifiers are resolved unambiguously.
-// Bug: pipeline.go Update — duplicate tenantId WHERE in transaction Save.
+// TestPipelineController_Update_SQLiteAmbiguousColumn verifies that Update no
+// longer stacks two tenantId WHERE clauses (auth.GetScopedDB + tx.Where).
+// Previously caused "ambiguous column name: tenantId" on SQLite.
+// Fixed in pipeline.go: tx.Session(&gorm.Session{NewDB:true}).Save(&pipeline).
 func TestPipelineController_Update_SQLiteAmbiguousColumn(t *testing.T) {
-	t.Skip("SQLite limitation: controller stacks two tenantId WHERE clauses in Update transaction; passes in PostgreSQL")
+	gin.SetMode(gin.TestMode)
+	db := setupPipelineTestDB(t)
+	tenantID := uuid.New()
+
+	// seed a pipeline
+	db.Exec(`INSERT INTO "Pipelines" (name, "tenantId") VALUES (?, ?)`, "Before", tenantID.String())
+	var id int
+	_ = db.Raw(`SELECT id FROM "Pipelines" WHERE "tenantId" = ?`, tenantID.String()).Row().Scan(&id)
+
+	payload, _ := json.Marshal(map[string]interface{}{"name": "After"})
+	ctrl := NewPipelineController()
+	c, w := setupPipelineContext(t, db, tenantID, "PUT", "/pipelines/"+strconv.Itoa(id), payload)
+	c.Params = gin.Params{{Key: "pipelineId", Value: strconv.Itoa(id)}}
+	ctrl.Update(c)
+
+	assert.Equal(t, http.StatusOK, w.Code, "Update should not fail with ambiguous column after fix: %s", w.Body.String())
 }
 
 func TestPipelineController_Update_NotFound(t *testing.T) {
