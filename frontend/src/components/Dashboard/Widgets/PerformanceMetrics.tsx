@@ -4,7 +4,7 @@ import { useDashboardStats } from "../../../hooks/useDashboardStats";
 import MetricCard from "../../../components/ui/metric-card";
 
 const PerformanceMetrics: React.FC = () => {
-  const { data, isLoading, error } = useDashboardStats();
+  const { data, isLoading } = useDashboardStats();
 
   const formatTime = (minutes?: number): string => {
     if (!minutes) return "0m";

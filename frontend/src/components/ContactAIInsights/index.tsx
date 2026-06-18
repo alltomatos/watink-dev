@@ -70,6 +70,8 @@ const ContactAIInsights = ({ contactId }: ContactAIInsightsProps) => {
     if (contactId) {
       fetchInsights();
     }
+    // fetchInsights is defined below and recreated each render; contactId is the real trigger
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contactId]);
 
   const fetchInsights = async () => {
