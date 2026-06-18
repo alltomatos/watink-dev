@@ -18,8 +18,8 @@ type SettingTenantTest struct {
 	ID        uuid.UUID `gorm:"type:uuid;primaryKey"`
 	Name      string    `gorm:"not null"`
 	Status    string    `gorm:"default:'active'"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt time.Time `gorm:"column:createdAt"`
+	UpdatedAt time.Time `gorm:"column:updatedAt"`
 }
 
 func (SettingTenantTest) TableName() string { return "Tenants" }
