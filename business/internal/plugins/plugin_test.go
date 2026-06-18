@@ -591,7 +591,7 @@ func TestClientesPlugin_POST_MissingTenantID_ReturnsBadRequest(t *testing.T) { /
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-// TestClientesPlugin_POST_BadJSON_ReturnsBadRequest verifica tratamento de JSON inválido no plugin clientes
+// TestClientesPlugin_POST_BadJSON_ReturnsBadRequest verifica tratamento de JSON inválido no plugin. //nolint:misspell
 func TestClientesPlugin_POST_BadJSON_ReturnsBadRequest(t *testing.T) { //nolint:misspell
 	db := setupPluginTestDB(t)
 	tenantA := uuid.New()
