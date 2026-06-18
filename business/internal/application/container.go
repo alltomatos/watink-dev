@@ -6,7 +6,6 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/application/usecases"
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/infrastructure/repository"
-	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"gorm.io/gorm"
 )
@@ -25,7 +24,6 @@ type Container struct {
 	PlanLimitSvc      domain.PlanLimitServiceInterface
 	SwaggerPermRepo   domain.SwaggerPermissionRepository
 	VersionRepo       domain.VersionRepository
-	HubManager        *plugins.HubManager
 	EventBus          domain.EventBus
 	RedisSvc          domain.RedisService
 	Broadcast         *services.RedisBroadcast
@@ -52,7 +50,6 @@ func NewContainer(db *gorm.DB, redisSvc domain.RedisService, broadcast *services
 	planLimitSvc := services.NewPlanLimitService(db)
 	swaggerPermRepo := repository.NewGORMSwaggerPermissionRepo(db)
 	versionRepo := repository.NewGORMVersionRepo(db)
-	hubManager := plugins.NewHubManager()
 	eventBus := NewInMemoryEventBus()
 	logTicketAction := usecases.NewLogTicketActionUseCase(db)
 	distributeTicket := usecases.NewDistributeTicketUseCase(ticketRepo, queueRepo, eventBus, db)
@@ -73,7 +70,6 @@ func NewContainer(db *gorm.DB, redisSvc domain.RedisService, broadcast *services
 		PlanLimitSvc:      planLimitSvc,
 		SwaggerPermRepo:   swaggerPermRepo,
 		VersionRepo:       versionRepo,
-		HubManager:        hubManager,
 		EventBus:          eventBus,
 		RedisSvc:          redisSvc,
 		Broadcast:         broadcast,
