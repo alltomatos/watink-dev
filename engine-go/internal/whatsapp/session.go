@@ -12,6 +12,7 @@ import (
 
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store"
+	"go.mau.fi/whatsmeow/types"
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
@@ -22,6 +23,7 @@ type autoRestartSession struct {
 	SyncHistory bool
 	SyncPeriod  sql.NullString
 	KeepAlive   bool
+	Wid         string
 }
 
 // AutoRestartSessions queries DB for sessions that should be reconnected and starts them.
@@ -33,7 +35,7 @@ func (s *WhatsAppService) AutoRestartSessions() {
 	}
 	defer db.Close()
 
-	rows, err := db.Query(`SELECT id, "tenantId"::text, name, COALESCE("syncHistory", false), "syncPeriod", COALESCE("keepAlive", false) FROM "Whatsapps" WHERE COALESCE("engineType", 'whatsmeow') = 'whatsmeow' AND status IN ('CONNECTED', 'OPENING', 'QRCODE')`)
+	rows, err := db.Query(`SELECT id, "tenantId"::text, name, COALESCE("syncHistory", false), "syncPeriod", COALESCE("keepAlive", false), COALESCE(wid, '') FROM "Whatsapps" WHERE COALESCE("engineType", 'whatsmeow') = 'whatsmeow' AND status IN ('CONNECTED', 'OPENING', 'QRCODE')`)
 	if err != nil {
 		log.Printf("Failed to query sessions for auto-restart: %v", err)
 		return
@@ -42,12 +44,12 @@ func (s *WhatsAppService) AutoRestartSessions() {
 
 	for rows.Next() {
 		var sess autoRestartSession
-		if err := rows.Scan(&sess.ID, &sess.TenantID, &sess.Name, &sess.SyncHistory, &sess.SyncPeriod, &sess.KeepAlive); err != nil {
+		if err := rows.Scan(&sess.ID, &sess.TenantID, &sess.Name, &sess.SyncHistory, &sess.SyncPeriod, &sess.KeepAlive, &sess.Wid); err != nil {
 			log.Printf("Failed to scan auto-restart session: %v", err)
 			continue
 		}
 		log.Printf("Auto-restarting WhatsMeow session %d tenant %s", sess.ID, sess.TenantID)
-		if err := s.StartClient(sess.ID, sess.TenantID, sess.Name, time.Now().UnixMilli(), "", false, ""); err != nil {
+		if err := s.StartClient(sess.ID, sess.TenantID, sess.Name, time.Now().UnixMilli(), "", false, "", sess.Wid); err != nil {
 			log.Printf("Failed to auto-restart session %d: %v", sess.ID, err)
 			s.emitStatus(sess.ID, sess.TenantID, "DISCONNECTED")
 		}
@@ -56,7 +58,7 @@ func (s *WhatsAppService) AutoRestartSessions() {
 
 // StartClient creates or reconnects a whatsmeow client for the given session.
 // Supports proxy, QR code and pairing code (usePairingCode=true).
-func (s *WhatsAppService) StartClient(id int, tenantID, name string, timestamp int64, proxyURL string, usePairingCode bool, phoneNumber string) error {
+func (s *WhatsAppService) StartClient(id int, tenantID, name string, timestamp int64, proxyURL string, usePairingCode bool, phoneNumber string, jid string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -65,7 +67,7 @@ func (s *WhatsAppService) StartClient(id int, tenantID, name string, timestamp i
 		return nil
 	}
 
-	deviceStore, err := s.resolveDeviceStore(id)
+	deviceStore, err := s.resolveDeviceStore(id, jid)
 	if err != nil {
 		return err
 	}
@@ -162,7 +164,20 @@ func (s *WhatsAppService) ForceLogout(id int) error {
 	return nil
 }
 
-func (s *WhatsAppService) resolveDeviceStore(id int) (*store.Device, error) {
+func (s *WhatsAppService) resolveDeviceStore(id int, jid string) (*store.Device, error) {
+	if jid != "" {
+		parsed, err := types.ParseJID(jid)
+		if err == nil && !parsed.IsEmpty() {
+			device, err := s.container.GetDevice(context.Background(), parsed)
+			if err != nil {
+				return nil, fmt.Errorf("GetDevice by JID %s: %w", jid, err)
+			}
+			if device != nil {
+				log.Printf("Resolved device for session %d via JID %s", id, jid)
+				return device, nil
+			}
+		}
+	}
 	devices, err := s.container.GetAllDevices(context.Background())
 	if err != nil {
 		return nil, err
@@ -173,7 +188,7 @@ func (s *WhatsAppService) resolveDeviceStore(id int) (*store.Device, error) {
 	case 1:
 		return devices[0], nil
 	default:
-		return nil, fmt.Errorf("multiple WhatsMeow devices found without session mapping for session %d", id)
+		return nil, fmt.Errorf("multiple WhatsMeow devices found without JID mapping for session %d", id)
 	}
 }
 
