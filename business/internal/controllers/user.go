@@ -114,33 +114,53 @@ func (uc *UserController) ShowUser(c *gin.Context) {
 // @Success      200   {object}  map[string]interface{}
 // @Security     BearerAuth
 // @Router       /users [post]
+type createUserRequest struct {
+	Name       string `json:"name" binding:"required"`
+	Email      string `json:"email" binding:"required,email"`
+	Password   string `json:"password" binding:"required"`
+	Profile    string `json:"profile"`
+	WhatsappID *int   `json:"whatsappId"`
+	GroupID    *int   `json:"groupId"`
+	Configs    string `json:"configs"`
+}
+
 func (uc *UserController) CreateUser(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
 		return
 	}
 
-	// SaaS Limit Check
 	if err := uc.planLimitSvc.CheckLimit(tenantID, "users"); err != nil {
 		utils.RespondWithServiceError(c, http.StatusForbidden, err, "User limit reached for this plan")
 		return
 	}
 
-	var input models.User
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var req createUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.RespondWithBindError(c, err)
 		return
 	}
 
+	tmp := models.User{}
+	if err := tmp.HashPassword(req.Password); err != nil {
+		utils.RespondWithInternalError(c, err, "HashPassword")
+		return
+	}
+
+	profile := req.Profile
+	if profile == "" {
+		profile = "user"
+	}
+
 	domainUser := &domain.User{
-		Name:         input.Name,
-		Email:        input.Email,
-		PasswordHash: input.PasswordHash,
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: tmp.PasswordHash,
 		TenantID:     tenantID,
-		Profile:      input.Profile,
-		WhatsappID:   input.WhatsappID,
-		GroupID:      input.GroupID,
-		Configs:      input.Configs,
+		Profile:      profile,
+		WhatsappID:   req.WhatsappID,
+		GroupID:      req.GroupID,
+		Configs:      req.Configs,
 	}
 
 	if err := uc.userRepo.Create(c.Request.Context(), domainUser); err != nil {
