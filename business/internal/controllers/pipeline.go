@@ -121,7 +121,7 @@ func (pc *PipelineController) Update(c *gin.Context) {
 	}
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("\"tenantId\" = ?", tenantID).Save(&pipeline).Error; err != nil {
+		if err := tx.Session(&gorm.Session{NewDB: true}).Save(&pipeline).Error; err != nil {
 			return err
 		}
 

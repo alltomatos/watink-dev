@@ -106,6 +106,9 @@ type MockContactRepo struct{ db *gorm.DB }
 func (m *MockContactRepo) FindByID(ctx context.Context, id int, tenantID uuid.UUID) (*domain.Contact, error) {
 	var c models.Contact
 	if err := m.db.Where("id = ? AND \"tenantId\" = ?", id, tenantID).First(&c).Error; err != nil {
+		if err.Error() == "record not found" {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &domain.Contact{ID: c.ID, Name: c.Name, TenantID: c.TenantID}, nil
@@ -128,4 +131,139 @@ func (m *MockContactRepo) FindOrCreate(ctx context.Context, tenantID uuid.UUID, 
 func (m *MockContactRepo) Create(ctx context.Context, contact *domain.Contact) error { return nil }
 func (m *MockContactRepo) Delete(ctx context.Context, id int, tenantID uuid.UUID) error {
 	return nil
+}
+
+// ── additional contact tests ──────────────────────────────────────────────────
+
+func setupContactTestDB(t *testing.T) (*gorm.DB, uuid.UUID) {
+	t.Helper()
+	tmpFile := t.TempDir() + "/contact_test.db"
+	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if sqlDB, e := db.DB(); e == nil {
+			_ = sqlDB.Close()
+		}
+	})
+	db.Exec(`CREATE TABLE "Contacts" (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		number TEXT,
+		"profilePicUrl" TEXT,
+		email TEXT NOT NULL DEFAULT '',
+		"isGroup" BOOLEAN NOT NULL DEFAULT false,
+		"tenantId" TEXT NOT NULL,
+		lid TEXT,
+		"walletUserId" INTEGER,
+		"createdAt" DATETIME,
+		"updatedAt" DATETIME
+	)`)
+	tenantID := uuid.New()
+	return db, tenantID
+}
+
+func newContactRouter(db *gorm.DB, tenantID string) *gin.Engine {
+	r := gin.New()
+	r.Use(testScopedMiddleware(db, tenantID))
+	repo := &MockContactRepo{db: db}
+	ctrl := NewContactController(repo)
+	r.GET("/contacts", ctrl.ListContacts)
+	r.GET("/contacts/:contactId", ctrl.ShowContact)
+	r.POST("/contacts", ctrl.CreateContact)
+	r.PUT("/contacts/:contactId", ctrl.UpdateContact)
+	r.DELETE("/contacts/:contactId", ctrl.DeleteContact)
+	return r
+}
+
+func TestContactController_ListContacts_ReturnsEnvelope(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db, tenantID := setupContactTestDB(t)
+	db.Exec(`INSERT INTO "Contacts" (name, number, email, "tenantId") VALUES (?,?,?,?)`, "Ana", "5511001", "ana@test.com", tenantID.String())
+
+	router := newContactRouter(db, tenantID.String())
+	req := httptest.NewRequest(http.MethodGet, "/contacts", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := resp["contacts"]; !ok {
+		t.Fatal("response missing 'contacts' key")
+	}
+}
+
+func TestContactController_ShowContact_Found(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db, tenantID := setupContactTestDB(t)
+	db.Exec(`INSERT INTO "Contacts" (name, number, email, "tenantId") VALUES (?,?,?,?)`, "Bob", "5511002", "bob@test.com", tenantID.String())
+	var id int
+	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+
+	router := newContactRouter(db, tenantID.String())
+	req := httptest.NewRequest(http.MethodGet, "/contacts/"+strconv.Itoa(id), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestContactController_ShowContact_NotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db, tenantID := setupContactTestDB(t)
+
+	router := newContactRouter(db, tenantID.String())
+	req := httptest.NewRequest(http.MethodGet, "/contacts/9999", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestContactController_CreateContact_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db, tenantID := setupContactTestDB(t)
+
+	payload, _ := json.Marshal(map[string]interface{}{
+		"name":   "Carlos",
+		"number": "5511003",
+		"email":  "carlos@test.com",
+	})
+
+	router := newContactRouter(db, tenantID.String())
+	req := httptest.NewRequest(http.MethodPost, "/contacts", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestContactController_DeleteContact_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db, tenantID := setupContactTestDB(t)
+	db.Exec(`INSERT INTO "Contacts" (name, number, email, "tenantId") VALUES (?,?,?,?)`, "Diana", "5511004", "diana@test.com", tenantID.String())
+	var id int
+	db.Raw(`SELECT last_insert_rowid()`).Scan(&id)
+
+	router := newContactRouter(db, tenantID.String())
+	req := httptest.NewRequest(http.MethodDelete, "/contacts/"+strconv.Itoa(id), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
 }
