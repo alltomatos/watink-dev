@@ -46,6 +46,11 @@ business/.instance_id
 business/.entitlements_status.json
 business/.license_status.json
 business/coverage.out
+business/coverage_*.out
+
+# --- Playwright ---
+playwright-report/
+test-results/
 
 # --- Screenshots & Temp ---
 *.png

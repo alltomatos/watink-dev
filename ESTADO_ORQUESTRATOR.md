@@ -2,58 +2,68 @@
 
 > Arquivo de estado vivo do Orchestrator.
 > **Última atualização**: 2026-06-17
-> **Branch**: `hardening/epic3-security-lint`
-> **Epic**: Epic 3 — Security Hardening & Lint Governance
+> **Branch**: `main` (próxima: `test/e2e-playwright`)
+> **Epic**: Epic 4 — E2E Tests (Playwright)
 
 ---
 
 ## Contexto da Sessão
 
-Com a Epic 2 mergeada e CI verde em `main`, o foco agora é:
+Com Epic 2 (DI/refactor), Epic 3 (security/lint) e cobertura unitária do backend mergeados em `main`, o próximo investimento é **testes E2E** com Playwright para cobrir os fluxos críticos de usuário que os testes unitários não alcançam.
 
-1. **Segurança** — corrigir 4 vulnerabilidades abertas (1 high, 1 medium, 2 low) e auditar RLS
-2. **Lint governance** — reduzir os 178 warnings de prop-contract e 70 `no-explicit-any` restantes
-
----
-
-## GAPs Identificados (Fase 3)
-
-| ID | GAP | Prioridade | Tier |
-|----|-----|-----------|------|
-| G1 | `path-to-regexp < 0.1.13` — ReDoS (HIGH, npm) | P1 | T1 |
-| G2 | `qs >= 6.11.1 <= 6.15.1` — DoS stringify (MEDIUM, npm) | P1 | T1 |
-| G3 | `filippo.io/edwards25519 < 1.1.1` — crypto bug (LOW, go) | P1 | T1 |
-| G4 | `saas.go` usa `auth.GetDB` (raw, sem escopo de tenant) em 4 handlers | P1 | T2 |
-| G5 | 178 warnings `no-restricted-syntax` — prop-contract DS v2 | P2 | T2 |
-| G6 | 70 `no-explicit-any` restantes — gradual typing migration | P2 | T2 |
+O projeto já tem:
+- `scripts/playwright-smoke.js` — smoke de navegação básico (8 rotas, login)
+- `scripts/smoke_test.py` — smoke de API via Python/requests (usado no CI)
+- Job `smoke-test` no CI com Postgres + Redis + RabbitMQ reais
 
 ---
 
-## Análise de Segurança
+## GAPs Identificados (Epic 4)
 
-### G1 — path-to-regexp (HIGH)
-- **Alerta Dependabot #114**
-- Dependência transitiva npm — identificar pacote pai e atualizar
-- Fix disponível: `>= 0.1.13`
+| ID | GAP | Prioridade |
+|----|-----|-----------|
+| E1 | Sem suite E2E estruturada (Playwright Test) — só smoke script ad-hoc | P1 |
+| E2 | Fluxos críticos sem cobertura: login, criação de ticket, resposta de ticket | P1 |
+| E3 | Sem fixtures/factories para estado inicial de testes | P1 |
+| E4 | Smoke CI usa Playwright CLI imperativo — difícil expandir e ver relatório | P2 |
+| E5 | Sem cobertura E2E de multitenancy (dois usuários, dois tenants isolados) | P2 |
+| E6 | Sem cobertura E2E de fluxos admin (filas, usuários, conexões) | P2 |
 
-### G2 — qs (MEDIUM)
-- **Alerta Dependabot #226**
-- Fix disponível: `6.15.2`
-- Dependência transitiva npm
+---
 
-### G3 — filippo.io/edwards25519 (LOW)
-- **Alertas #57 e #239** (2 ocorrências — módulos Go)
-- Fix: `go get filippo.io/edwards25519@v1.1.1`
+## Análise de Arquitetura E2E
 
-### G4 — saas.go sem escopo de tenant (RLS GAP)
-- `saas.go` usa `auth.GetDB(c)` (DB bruto, sem WHERE tenantId) em:
-  - `ListTenants` (linha 23) — lista TODOS os tenants
-  - `GetTenant` (linha 47) — busca por id sem tenantId filter
-  - `ListPlans` (linha 65) — sem escopo
-  - `CreatePlan` (linha 88) — sem escopo
-- **Contexto**: SaaS é um plugin de manager multi-tenant — pode ser intencional (superadmin),
-  mas precisa ser auditado e documentado explicitamente com comentário de segurança.
-- Todos os demais controllers (17 arquivos) usam `auth.GetScoped` ou `auth.GetScopedDB` ✅
+### Stack escolhida
+- **Playwright Test** (`@playwright/test`) — runner nativo com fixtures, paralelismo, relatórios HTML
+- **Localização**: `e2e/` na raiz do monorepo (não dentro de `frontend/`)
+- **Ambiente**: usa o backend Go real + Postgres (mesmo do CI `smoke-test`)
+- **Autenticação**: `storageState` (salva cookies/localStorage após login, reutiliza sem re-login)
+
+### Estrutura de diretórios
+```
+e2e/
+├── playwright.config.ts
+├── fixtures/
+│   ├── auth.fixture.ts      # login + storageState por usuário
+│   └── api.fixture.ts       # helpers para seed de dados via API
+├── tests/
+│   ├── auth/
+│   │   └── login.spec.ts    # login válido, inválido, logout
+│   ├── tickets/
+│   │   └── tickets.spec.ts  # criar, aceitar, responder, fechar ticket
+│   ├── admin/
+│   │   ├── queues.spec.ts   # CRUD de filas
+│   │   └── users.spec.ts    # CRUD de usuários
+│   └── multitenancy/
+│       └── isolation.spec.ts # tenant A não vê dados de tenant B
+└── global-setup.ts           # seed do banco (admin + tenant) antes da suite
+```
+
+### Integração com CI
+- Novo job `e2e-tests` no `ci.yml`, depende de `build-backend` e `build-frontend`
+- Usa os mesmos services (Postgres, Redis, RabbitMQ)
+- Artefato: relatório HTML Playwright (`playwright-report/`)
+- Variáveis de ambiente: `E2E_BASE_URL`, `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASS`
 
 ---
 
@@ -64,32 +74,39 @@ Com a Epic 2 mergeada e CI verde em `main`, o foco agora é:
 - `in_progress` 🔄
 - `done` ✅
 
----
-
-### Bloco S — Segurança (sem dependências entre si)
+### Bloco F — Fundação (sem dependências entre si)
 
 | ID | Tarefa | Arquivo(s) | Status | Depende de |
 |----|--------|-----------|--------|-----------|
-| S1 | Fix `path-to-regexp` — auto-resolvido (pacote removido na Epic 2) | `frontend/package-lock.json` | ✅ | — |
-| S2 | Fix `qs` — auto-resolvido (pacote removido na Epic 2) | `frontend/package-lock.json` | ✅ | — |
-| S3 | Fix `filippo.io/edwards25519` — `go get` para v1.1.1 | `business/go.mod`, `go.sum` | ✅ | — |
-| S4 | Auditar `saas.go` — uso de `auth.GetDB` é intencional (SuperAdminOnly middleware); comentários já documentam | `business/internal/controllers/saas.go` | ✅ | — |
+| F1 | Instalar `@playwright/test` e configurar `playwright.config.ts` | `e2e/`, `package.json` da raiz | ⏳ | — |
+| F2 | `global-setup.ts` — seed inicial via API (cria admin + tenant) | `e2e/global-setup.ts` | ⏳ | F1 |
+| F3 | `auth.fixture.ts` — login + `storageState` reutilizável | `e2e/fixtures/auth.fixture.ts` | ⏳ | F1 |
+| F4 | `api.fixture.ts` — helpers de seed (criar ticket, fila, usuário via API) | `e2e/fixtures/api.fixture.ts` | ⏳ | F1 |
 
-### Bloco L — Lint Governance (depende de S)
+### Bloco T — Testes (dependem de F)
 
 | ID | Tarefa | Arquivo(s) | Status | Depende de |
 |----|--------|-----------|--------|-----------|
-| L1–L4 | Corrigir prop-contract — regras de lint atualizadas para contrato shadcn/ui real | `.eslintrc.js` | ✅ | S1–S4 |
-| L5–L6 | `no-explicit-any` — desativado como tech debt documentado (Epic 2) | `.eslintrc.js` | ✅ | L1 |
-| L7 | Atualizar baseline `--max-warnings` 200 → 20 | `frontend/package.json` | ✅ | L6 |
+| T1 | `login.spec.ts` — login válido, inválido, persistência de sessão, logout | `e2e/tests/auth/login.spec.ts` | ⏳ | F2, F3 |
+| T2 | `tickets.spec.ts` — criar ticket, aceitar, enviar mensagem, fechar | `e2e/tests/tickets/tickets.spec.ts` | ⏳ | F3, F4 |
+| T3 | `queues.spec.ts` — listar, criar, editar, remover fila | `e2e/tests/admin/queues.spec.ts` | ⏳ | F3, F4 |
+| T4 | `users.spec.ts` — listar, convidar, desativar usuário | `e2e/tests/admin/users.spec.ts` | ⏳ | F3, F4 |
+| T5 | `isolation.spec.ts` — tenant A não enxerga tickets/filas de tenant B | `e2e/tests/multitenancy/isolation.spec.ts` | ⏳ | F2, F3, F4 |
+
+### Bloco C — CI (depende de T)
+
+| ID | Tarefa | Arquivo(s) | Status | Depende de |
+|----|--------|-----------|--------|-----------|
+| C1 | Job `e2e-tests` no CI com Playwright + upload de relatório | `.github/workflows/ci.yml` | ⏳ | T1–T5 |
+| C2 | Migrar `playwright-smoke.js` para spec Playwright Test | `e2e/tests/smoke/navigation.spec.ts` | ⏳ | F3 |
 
 ---
 
 ## Checkpoints de Sanidade
 
-- [x] **CP-1** — Após Bloco S: `go build ./...` limpo; 0 alertas open no Dependabot ✅ 2026-06-17
-- [x] **CP-2** — Após L1–L4: 0 `no-restricted-syntax` warnings (eram 178) ✅ 2026-06-17
-- [x] **CP-3** — L5–L7: `no-explicit-any` desativado como tech debt; `--max-warnings` = 20; 15 warnings totais ✅ 2026-06-17
+- [ ] **CP-F** — Após Bloco F: `npx playwright test --list` mostra 0 testes (infra ok, ainda sem specs)
+- [ ] **CP-T** — Após T1–T3: `npx playwright test` passa localmente com Postgres real
+- [ ] **CP-C** — Após C1: CI verde com job `e2e-tests`; relatório HTML disponível como artefato
 
 ---
 
@@ -97,7 +114,7 @@ Com a Epic 2 mergeada e CI verde em `main`, o foco agora é:
 
 | Data | Ação | Status |
 |------|------|--------|
-| 2026-06-17 | Branch `hardening/epic3-security-lint` criado a partir de `main` | ✅ |
-| 2026-06-17 | Auditoria de segurança — 4 alertas open, 1 RLS gap em saas.go | ✅ |
-| 2026-06-17 | Bloco S concluído — S1–S4 ✅; CP-1 atingido; 0 alertas Dependabot open | ✅ |
-| 2026-06-17 | Bloco L concluído — regras atualizadas para shadcn; 178→0 warnings; threshold 20; CP-2/CP-3 ✅ | ✅ |
+| 2026-06-17 | Branch `hardening/epic3-security-lint` — Bloco S + L concluídos | ✅ |
+| 2026-06-17 | PR #59 mergeado — security + lint | ✅ |
+| 2026-06-17 | PR #60 mergeado — 12 testes unitários + fix UpdateQueue | ✅ |
+| 2026-06-17 | Epic 4 planejada — E2E com Playwright Test | ✅ |

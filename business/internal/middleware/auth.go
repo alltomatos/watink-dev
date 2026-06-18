@@ -71,8 +71,7 @@ func IsAuth(db *gorm.DB) gin.HandlerFunc {
 		c.Set("tenantId", tenantID)
 
 		tx := db.Session(&gorm.Session{})
-		// PostgreSQL SET for RLS — Safe since tenantID is validated as UUID
-		tx.Exec(fmt.Sprintf("SET LOCAL app.current_tenant = '%s'", tenantID))
+		tx.Exec("SET LOCAL app.current_tenant = ?", tenantID)
 		c.Set("db", tx)
 
 		c.Next()
