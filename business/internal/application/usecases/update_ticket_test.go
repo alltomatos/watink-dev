@@ -41,6 +41,12 @@ func (m *updateTicketRepo) Update(_ context.Context, _ *domain.Ticket, _ map[str
 	m.updated = true
 	return m.updateErr
 }
+func (m *updateTicketRepo) FindLastAssignedInQueue(_ context.Context, _ int, _ uuid.UUID) (int, error) {
+	return 0, nil
+}
+func (m *updateTicketRepo) CountOpenTicketsPerUser(_ context.Context, _ []int, _ uuid.UUID) (map[int]int64, error) {
+	return nil, nil
+}
 
 // --- tests ---
 
