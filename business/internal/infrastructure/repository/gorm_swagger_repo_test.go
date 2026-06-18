@@ -3,52 +3,16 @@ package repository
 import (
 	"testing"
 
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-// setupSwaggerTestDB creates an in-memory SQLite database with the minimal
-// schema needed to exercise GORMSwaggerPermissionRepository.
-// We use raw DDL because models.User references uuid types that SQLite
-// does not support natively via AutoMigrate.
 func setupSwaggerTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-
-	ddl := []string{
-		`CREATE TABLE IF NOT EXISTS "Users" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			email TEXT NOT NULL UNIQUE,
-			"passwordHash" TEXT NOT NULL,
-			"tokenVersion" INTEGER DEFAULT 0,
-			profile TEXT DEFAULT 'admin',
-			"whatsappId" INTEGER,
-			"tenantId" TEXT,
-			"groupId" INTEGER,
-			configs TEXT,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Permissions" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			resource TEXT NOT NULL,
-			action TEXT NOT NULL,
-			description TEXT
-		)`,
-		`CREATE TABLE IF NOT EXISTS group_permissions (
-			group_id INTEGER,
-			permission_id INTEGER
-		)`,
-	}
-	for _, q := range ddl {
-		require.NoError(t, db.Exec(q).Error)
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func TestNewGORMSwaggerPermissionRepo(t *testing.T) {

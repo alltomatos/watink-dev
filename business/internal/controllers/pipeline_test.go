@@ -13,42 +13,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"gorm.io/gorm"
 )
 
 func setupPipelineTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/pipeline_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-
-	ddls := []string{
-		`CREATE TABLE IF NOT EXISTS "Pipelines" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"name" TEXT NOT NULL,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "PipelineStages" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"name" TEXT NOT NULL,
-			"pipelineId" INTEGER NOT NULL,
-			"order" INTEGER DEFAULT 0,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-	}
-	for _, ddl := range ddls {
-		db.Exec(ddl)
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func setupPipelineContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path string, body []byte) (*gin.Context, *httptest.ResponseRecorder) {

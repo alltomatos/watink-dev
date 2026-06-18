@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:15
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -70,6 +70,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Enable PostgreSQL extensions
+        run: psql -h localhost -U postgres -d watink -c "CREATE EXTENSION IF NOT EXISTS vector;"
+        env:
+          PGPASSWORD: postgres
+
       - name: Download dependencies
         working-directory: business
         run: go mod download
@@ -94,7 +99,7 @@ jobs:
         env:
           RABBITMQ_URL: amqp://guest:guest@localhost:5672/
           REDIS_URL: redis://localhost:6379
-        run: CGO_ENABLED=1 go test ./... -tags integration -v -count=1 -timeout 60s
+        run: go test ./... -tags integration -v -count=1 -timeout 60s
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -161,7 +166,7 @@ jobs:
     needs: build-backend
     services:
       postgres:
-        image: postgres:15
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -279,7 +284,7 @@ jobs:
     needs: [build-backend, build-frontend]
     services:
       postgres:
-        image: postgres:15
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres

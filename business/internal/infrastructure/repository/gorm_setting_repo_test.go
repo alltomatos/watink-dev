@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-// SettingTenantTest é um tenant compatível com SQLite (sem gen_random_uuid()).
+// SettingTenantTest é um tenant compatível com PostgreSQL.
 type SettingTenantTest struct {
 	ID        uuid.UUID `gorm:"type:uuid;primaryKey"`
 	Name      string    `gorm:"not null"`
@@ -26,10 +26,7 @@ func (SettingTenantTest) TableName() string { return "Tenants" }
 
 func setupSettingTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&SettingTenantTest{}, &models.Setting{}))
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func TestGORMSettingRepo_FindPublicSettings_ReturnsKeys(t *testing.T) {

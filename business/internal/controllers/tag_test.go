@@ -12,54 +12,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 )
 
 func setupTagTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/tag_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-	ddls := []string{
-		`CREATE TABLE "Tags" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			color TEXT DEFAULT 'blue',
-			icon TEXT DEFAULT '',
-			description TEXT DEFAULT '',
-			archived BOOLEAN DEFAULT false,
-			"groupId" INTEGER,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE "TagGroups" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE "EntityTags" (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			"tagId" INTEGER NOT NULL,
-			"entityType" TEXT NOT NULL,
-			"entityId" INTEGER NOT NULL,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-	}
-	for _, ddl := range ddls {
-		db.Exec(ddl)
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func setupTagContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path string, body []byte) (*gin.Context, *httptest.ResponseRecorder) {

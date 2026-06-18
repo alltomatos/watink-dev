@@ -11,11 +11,11 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -127,29 +127,7 @@ func (m *mockPlanLimit) CheckLimit(tenantID uuid.UUID, resource string) error { 
 
 func setupUserTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/user_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-	db.Exec(`CREATE TABLE "Users" (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT,
-		email TEXT UNIQUE,
-		"passwordHash" TEXT,
-		"tokenVersion" INTEGER DEFAULT 0,
-		profile TEXT DEFAULT 'user',
-		"whatsappId" INTEGER,
-		"tenantId" TEXT NOT NULL,
-		"groupId" INTEGER,
-		configs TEXT DEFAULT '{}',
-		"createdAt" DATETIME,
-		"updatedAt" DATETIME
-	)`)
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func setupUserContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path string, body []byte) (*gin.Context, *httptest.ResponseRecorder) {

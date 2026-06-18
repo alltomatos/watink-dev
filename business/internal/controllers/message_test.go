@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"gorm.io/gorm"
 )
 
@@ -31,52 +31,7 @@ func (m *mockPublisher) PublishCommand(routingKey string, payload interface{}) e
 
 func setupMessageTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/message_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-
-	ddls := []string{
-		`CREATE TABLE IF NOT EXISTS "Tickets" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"status" TEXT NOT NULL DEFAULT 'pending',
-			"lastMessage" TEXT,
-			"contactId" INTEGER DEFAULT 0,
-			"whatsappId" INTEGER DEFAULT 0,
-			"isGroup" BOOLEAN DEFAULT false,
-			"unreadMessages" INTEGER DEFAULT 0,
-			"tenantId" TEXT NOT NULL,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "Messages" (
-			"id" TEXT PRIMARY KEY,
-			"body" TEXT NOT NULL DEFAULT '',
-			"ack" INTEGER NOT NULL DEFAULT 0,
-			"read" BOOLEAN NOT NULL DEFAULT false,
-			"mediaType" TEXT,
-			"mediaUrl" TEXT,
-			"ticketId" INTEGER NOT NULL,
-			"fromMe" BOOLEAN NOT NULL DEFAULT false,
-			"isDeleted" BOOLEAN NOT NULL DEFAULT false,
-			"contactId" INTEGER,
-			"quotedMsgId" TEXT,
-			"tenantId" TEXT NOT NULL,
-			"reactions" TEXT DEFAULT '[]',
-			"dataJson" TEXT DEFAULT '{}',
-			"participant" TEXT,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-	}
-	for _, ddl := range ddls {
-		db.Exec(ddl)
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 func setupMessageContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path string, body []byte) (*gin.Context, *httptest.ResponseRecorder) {

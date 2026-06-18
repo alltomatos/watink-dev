@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -24,59 +24,9 @@ func TestNewLogTicketActionUseCase_StoresDB(t *testing.T) {
 	}
 }
 
-// setupLogTestDB creates an in-memory SQLite DB with the tables required by LogTicketActionUseCase.
 func setupLogTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	tmpFile := t.TempDir() + "/log_test.db"
-	db, err := gorm.Open(sqlite.Open(tmpFile), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	t.Cleanup(func() {
-		if sqlDB, err := db.DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-	})
-
-	// domain.Ticket has no TableName() → GORM default = "tickets"
-	// GORM maps TenantID → tenant_id (snake_case). The Execute WHERE uses "tenantId"
-	// which SQLite treats as a string literal when quoted with double-quotes, so it
-	// effectively skips tenant filtering — the ticket lookup succeeds by id alone.
-	// models.TicketLog has TableName() = "TicketLogs"
-	ddls := []string{
-		// Column must be named "tenantId" (not snake_case) so the WHERE clause
-		// WHERE "tenantId" = ? in log_ticket_action.go resolves to the actual column.
-		// We insert rows via raw SQL to bypass GORM's snake_case mapping.
-		`CREATE TABLE IF NOT EXISTS "tickets" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"status" TEXT NOT NULL DEFAULT 'pending',
-			"lastMessage" TEXT,
-			"contactId" INTEGER,
-			"userId" INTEGER,
-			"whatsappId" INTEGER,
-			"isGroup" BOOLEAN NOT NULL DEFAULT false,
-			"unreadMessages" INTEGER,
-			"queueId" INTEGER,
-			"tenantId" TEXT,
-			"createdAt" DATETIME,
-			"updatedAt" DATETIME
-		)`,
-		`CREATE TABLE IF NOT EXISTS "TicketLogs" (
-			"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"ticketId" INTEGER NOT NULL,
-			"userId" INTEGER,
-			"type" TEXT NOT NULL,
-			"payload" TEXT,
-			"tenantId" TEXT,
-			"createdAt" DATETIME
-		)`,
-	}
-	for _, ddl := range ddls {
-		if err := db.Exec(ddl).Error; err != nil {
-			t.Fatalf("DDL failed: %v\nSQL: %s", err, ddl)
-		}
-	}
-	return db
+	return testutil.NewTestDB(t)
 }
 
 // insertLogTicket inserts a ticket row using raw SQL so that the column name
@@ -153,11 +103,6 @@ func TestLogTicketAction_Execute_TicketNotFound(t *testing.T) {
 		t.Fatal("expected error when ticket not found, got nil")
 	}
 }
-
-// Note: TestLogTicketAction_Execute_WrongTenant is omitted because SQLite treats
-// double-quoted identifiers like "tenantId" as string literals, so the tenant
-// filter in the WHERE clause has no effect in the test DB. This is a known
-// SQLite/PostgreSQL dialect difference; the production query is correct for PG.
 
 func TestLogTicketAction_Execute_WithUserID(t *testing.T) {
 	db := setupLogTestDB(t)
