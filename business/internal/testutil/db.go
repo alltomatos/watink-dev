@@ -71,9 +71,19 @@ func NewTestDB(t *testing.T) *gorm.DB {
 	for _, stmt := range []string{
 		`ALTER TABLE user_queues RENAME COLUMN user_id TO "userId"`,
 		`ALTER TABLE user_queues RENAME COLUMN queue_id TO "queueId"`,
+		// PluginInstallations is managed outside GORM models (plugin-manager service).
+		// Create a minimal version for unit tests that query it.
+		`CREATE TABLE IF NOT EXISTS "PluginInstallations" (
+			id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+			"tenantId" uuid NOT NULL,
+			"pluginId" uuid NOT NULL,
+			active    boolean NOT NULL DEFAULT true,
+			"createdAt" timestamptz,
+			"updatedAt" timestamptz
+		)`,
 	} {
 		if err := db.Exec(stmt).Error; err != nil {
-			t.Fatalf("testutil.NewTestDB: rename join column: %v", err)
+			t.Fatalf("testutil.NewTestDB: schema fixup: %v", err)
 		}
 	}
 

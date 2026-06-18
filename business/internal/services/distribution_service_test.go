@@ -15,6 +15,33 @@ func setupDistributionDB(t *testing.T) *gorm.DB {
 	return testutil.NewTestDB(t)
 }
 
+// createQueue inserts a Queue with required NOT NULL fields.
+func createQueue(db *gorm.DB, id int, strategy string, prioritizeWallet bool, tenantID uuid.UUID) {
+	db.Table("Queues").Create(&map[string]interface{}{
+		"id": id, "name": "Test Queue", "color": "#000000",
+		"distributionStrategy": strategy, "prioritizeWallet": prioritizeWallet, "tenantId": tenantID,
+	})
+}
+
+// createUser inserts a User with required NOT NULL fields.
+func createUser(db *gorm.DB, id int, tenantID uuid.UUID) {
+	db.Table("Users").Create(&map[string]interface{}{
+		"id": id, "name": "User", "email": uuid.New().String() + "@test.com",
+		"passwordHash": "x", "tenantId": tenantID,
+	})
+}
+
+// createContact inserts a Contact with required NOT NULL fields.
+func createContact(db *gorm.DB, id int, tenantID uuid.UUID, extra map[string]interface{}) {
+	row := map[string]interface{}{
+		"id": id, "name": "Contact", "email": "", "tenantId": tenantID,
+	}
+	for k, v := range extra {
+		row[k] = v
+	}
+	db.Table("Contacts").Create(&row)
+}
+
 // --- Tests ---
 
 func TestDistributionService_ManualStrategy_DoesNothing(t *testing.T) {
@@ -22,11 +49,8 @@ func TestDistributionService_ManualStrategy_DoesNothing(t *testing.T) {
 	svc := NewDistributionService(db)
 	tenantID := uuid.New()
 
-	q := map[string]interface{}{"id": 1, "distributionStrategy": "MANUAL", "tenantId": tenantID}
-	db.Table("Queues").Create(&q)
-
-	ticket := map[string]interface{}{"id": 10, "queueId": 1, "tenantId": tenantID}
-	db.Table("Tickets").Create(&ticket)
+	createQueue(db, 1, "MANUAL", false, tenantID)
+	db.Table("Tickets").Create(&map[string]interface{}{"id": 10, "queueId": 1, "tenantId": tenantID})
 
 	if err := svc.DistributeTicket(10, 1, tenantID); err != nil {
 		t.Errorf("DistributeTicket failed: %v", err)
@@ -45,17 +69,15 @@ func TestDistributionService_RoundRobin_AssignsNextUser(t *testing.T) {
 	tenantID := uuid.New()
 
 	user1, user2 := 1, 2
-	db.Table("Users").Create(&map[string]interface{}{"id": user1, "tenantId": tenantID})
-	db.Table("Users").Create(&map[string]interface{}{"id": user2, "tenantId": tenantID})
-	db.Table("Queues").Create(&map[string]interface{}{
-		"id": 1, "distributionStrategy": "AUTO_ROUND_ROBIN", "prioritizeWallet": false, "tenantId": tenantID,
-	})
+	createUser(db, user1, tenantID)
+	createUser(db, user2, tenantID)
+	createQueue(db, 1, "AUTO_ROUND_ROBIN", false, tenantID)
 	db.Table("user_queues").Create(&map[string]interface{}{"userId": user1, "queueId": 1})
 	db.Table("user_queues").Create(&map[string]interface{}{"userId": user2, "queueId": 1})
 
 	// Previous ticket was assigned to user1 — next should be user2
 	db.Table("Tickets").Create(&map[string]interface{}{"id": 5, "queueId": 1, "userId": user1, "tenantId": tenantID, "status": "open"})
-	db.Table("Contacts").Create(&map[string]interface{}{"id": 1, "tenantId": tenantID})
+	createContact(db, 1, tenantID, nil)
 	db.Table("Tickets").Create(&map[string]interface{}{"id": 10, "contactId": 1, "queueId": 1, "tenantId": tenantID})
 
 	if err := svc.DistributeTicket(10, 1, tenantID); err != nil {
@@ -63,7 +85,7 @@ func TestDistributionService_RoundRobin_AssignsNextUser(t *testing.T) {
 	}
 
 	var assignedUser *int
-	if err := db.Raw("SELECT userId FROM Tickets WHERE id = 10").Row().Scan(&assignedUser); err != nil {
+	if err := db.Raw(`SELECT "userId" FROM "Tickets" WHERE id = 10`).Row().Scan(&assignedUser); err != nil {
 		t.Fatalf("failed to scan ticket userId: %v", err)
 	}
 	if assignedUser == nil {
@@ -80,11 +102,9 @@ func TestDistributionService_Balanced_AssignsLeastLoadedUser(t *testing.T) {
 	tenantID := uuid.New()
 
 	user1, user2 := 1, 2
-	db.Table("Users").Create(&map[string]interface{}{"id": user1, "tenantId": tenantID})
-	db.Table("Users").Create(&map[string]interface{}{"id": user2, "tenantId": tenantID})
-	db.Table("Queues").Create(&map[string]interface{}{
-		"id": 1, "distributionStrategy": "AUTO_BALANCED", "prioritizeWallet": false, "tenantId": tenantID,
-	})
+	createUser(db, user1, tenantID)
+	createUser(db, user2, tenantID)
+	createQueue(db, 1, "AUTO_BALANCED", false, tenantID)
 	db.Table("user_queues").Create(&map[string]interface{}{"userId": user1, "queueId": 1})
 	db.Table("user_queues").Create(&map[string]interface{}{"userId": user2, "queueId": 1})
 
@@ -93,7 +113,7 @@ func TestDistributionService_Balanced_AssignsLeastLoadedUser(t *testing.T) {
 		db.Table("Tickets").Create(&map[string]interface{}{"id": 100 + i, "queueId": 1, "userId": user1, "tenantId": tenantID, "status": "open"})
 	}
 	db.Table("Tickets").Create(&map[string]interface{}{"id": 200, "queueId": 1, "userId": user2, "tenantId": tenantID, "status": "open"})
-	db.Table("Contacts").Create(&map[string]interface{}{"id": 1, "tenantId": tenantID})
+	createContact(db, 1, tenantID, nil)
 	db.Table("Tickets").Create(&map[string]interface{}{"id": 999, "contactId": 1, "queueId": 1, "tenantId": tenantID})
 
 	if err := svc.DistributeTicket(999, 1, tenantID); err != nil {
@@ -101,11 +121,9 @@ func TestDistributionService_Balanced_AssignsLeastLoadedUser(t *testing.T) {
 	}
 
 	var assignedUser *int
-	if err := db.Raw("SELECT userId FROM Tickets WHERE id = 999").Row().Scan(&assignedUser); err != nil {
+	if err := db.Raw(`SELECT "userId" FROM "Tickets" WHERE id = 999`).Row().Scan(&assignedUser); err != nil {
 		t.Fatalf("failed to scan ticket userId: %v", err)
 	}
-	// We assert that a user was assigned; the actual balancing logic is exercised via the
-	// PostgreSQL-backed E2E suite and production smoke tests.
 	if assignedUser == nil {
 		t.Fatal("AUTO_BALANCED strategy should assign some user")
 	}
@@ -143,10 +161,8 @@ func TestDistributionService_RoundRobin_EmptyUserList_DoesNothing(t *testing.T) 
 	tenantID := uuid.New()
 
 	// Queue has round-robin strategy but no users assigned
-	db.Table("Queues").Create(&map[string]interface{}{
-		"id": 1, "distributionStrategy": "AUTO_ROUND_ROBIN", "prioritizeWallet": false, "tenantId": tenantID,
-	})
-	db.Table("Contacts").Create(&map[string]interface{}{"id": 1, "tenantId": tenantID})
+	createQueue(db, 1, "AUTO_ROUND_ROBIN", false, tenantID)
+	createContact(db, 1, tenantID, nil)
 	db.Table("Tickets").Create(&map[string]interface{}{"id": 10, "contactId": 1, "queueId": 1, "tenantId": tenantID})
 
 	if err := svc.DistributeTicket(10, 1, tenantID); err != nil {
@@ -154,7 +170,7 @@ func TestDistributionService_RoundRobin_EmptyUserList_DoesNothing(t *testing.T) 
 	}
 
 	var userID *int
-	if err := db.Raw("SELECT userId FROM Tickets WHERE id = 10").Row().Scan(&userID); err != nil && err.Error() != "sql: no rows in result set" {
+	if err := db.Raw(`SELECT "userId" FROM "Tickets" WHERE id = 10`).Row().Scan(&userID); err != nil && err.Error() != "sql: no rows in result set" {
 		t.Fatalf("scan error: %v", err)
 	}
 	if userID != nil {
@@ -168,12 +184,10 @@ func TestDistributionService_RoundRobin_NoLastTicket_AssignsFirstUser(t *testing
 	tenantID := uuid.New()
 
 	user1 := 1
-	db.Table("Users").Create(&map[string]interface{}{"id": user1, "tenantId": tenantID})
-	db.Table("Queues").Create(&map[string]interface{}{
-		"id": 1, "distributionStrategy": "AUTO_ROUND_ROBIN", "prioritizeWallet": false, "tenantId": tenantID,
-	})
+	createUser(db, user1, tenantID)
+	createQueue(db, 1, "AUTO_ROUND_ROBIN", false, tenantID)
 	db.Table("user_queues").Create(&map[string]interface{}{"userId": user1, "queueId": 1})
-	db.Table("Contacts").Create(&map[string]interface{}{"id": 1, "tenantId": tenantID})
+	createContact(db, 1, tenantID, nil)
 	// No previous ticket with userId assigned
 	db.Table("Tickets").Create(&map[string]interface{}{"id": 10, "contactId": 1, "queueId": 1, "tenantId": tenantID})
 
@@ -182,7 +196,7 @@ func TestDistributionService_RoundRobin_NoLastTicket_AssignsFirstUser(t *testing
 	}
 
 	var assignedUser *int
-	if err := db.Raw("SELECT userId FROM Tickets WHERE id = 10").Row().Scan(&assignedUser); err != nil {
+	if err := db.Raw(`SELECT "userId" FROM "Tickets" WHERE id = 10`).Row().Scan(&assignedUser); err != nil {
 		t.Fatalf("scan error: %v", err)
 	}
 	if assignedUser == nil || *assignedUser != user1 {
@@ -195,12 +209,10 @@ func TestDistributionService_UnknownStrategy_DoesNothing(t *testing.T) {
 	svc := NewDistributionService(db)
 	tenantID := uuid.New()
 
-	db.Table("Queues").Create(&map[string]interface{}{
-		"id": 1, "distributionStrategy": "UNKNOWN_STRATEGY", "prioritizeWallet": false, "tenantId": tenantID,
-	})
-	db.Table("Contacts").Create(&map[string]interface{}{"id": 1, "tenantId": tenantID})
+	createQueue(db, 1, "UNKNOWN_STRATEGY", false, tenantID)
+	createContact(db, 1, tenantID, nil)
 	db.Table("Tickets").Create(&map[string]interface{}{"id": 10, "contactId": 1, "queueId": 1, "tenantId": tenantID})
-	db.Table("Users").Create(&map[string]interface{}{"id": 1, "tenantId": tenantID})
+	createUser(db, 1, tenantID)
 	db.Table("user_queues").Create(&map[string]interface{}{"userId": 1, "queueId": 1})
 
 	if err := svc.DistributeTicket(10, 1, tenantID); err != nil {
@@ -215,14 +227,12 @@ func TestDistributionService_WalletPriority(t *testing.T) {
 
 	// 1. Setup Wallet User & Queue
 	userID := 100
-	db.Table("Users").Create(&map[string]interface{}{"id": userID, "tenantId": tenantID})
-	db.Table("Queues").Create(&map[string]interface{}{
-		"id": 1, "distributionStrategy": "AUTO_ROUND_ROBIN", "prioritizeWallet": true, "tenantId": tenantID,
-	})
+	createUser(db, userID, tenantID)
+	createQueue(db, 1, "AUTO_ROUND_ROBIN", true, tenantID)
 	db.Table("user_queues").Create(&map[string]interface{}{"userId": userID, "queueId": 1})
 
 	// 2. Setup Contact (Wallet owner 100) & Ticket
-	db.Table("Contacts").Create(&map[string]interface{}{"id": 50, "walletUserId": userID, "tenantId": tenantID})
+	createContact(db, 50, tenantID, map[string]interface{}{"walletUserId": userID})
 	db.Table("Tickets").Create(&map[string]interface{}{"id": 10, "contactId": 50, "queueId": 1, "tenantId": tenantID})
 
 	// 3. Act
@@ -232,7 +242,7 @@ func TestDistributionService_WalletPriority(t *testing.T) {
 
 	// 4. Verify
 	var userIDResult *int
-	row := db.Raw("SELECT userId FROM Tickets WHERE id = 10").Row()
+	row := db.Raw(`SELECT "userId" FROM "Tickets" WHERE id = 10`).Row()
 	if err := row.Scan(&userIDResult); err != nil {
 		t.Fatalf("failed to scan ticket userId: %v", err)
 	}

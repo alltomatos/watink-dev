@@ -86,7 +86,7 @@ func (m *mockUserRepo) FindByEmailForAuth(ctx context.Context, email string) (*d
 
 func (m *mockUserRepo) Create(ctx context.Context, user *domain.User) error {
 	res := m.db.Exec(
-		`INSERT INTO "Users" (name, email, "passwordHash", profile, "tenantId", configs, "createdAt", "updatedAt") VALUES (?,?,?,?,?,?, datetime('now'), datetime('now'))`,
+		`INSERT INTO "Users" (name, email, "passwordHash", profile, "tenantId", configs, "createdAt", "updatedAt") VALUES (?,?,?,?,?,?, NOW(), NOW())`,
 		user.Name, user.Email, user.PasswordHash, user.Profile, user.TenantID, user.Configs,
 	)
 	if res.Error != nil {

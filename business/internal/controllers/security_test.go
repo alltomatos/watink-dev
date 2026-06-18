@@ -31,6 +31,15 @@ func (r *sqliteVersionRepo) GetPostgresVersion(ctx context.Context) (string, err
 
 var _ domain.VersionRepository = (*sqliteVersionRepo)(nil)
 
+// brokenVersionRepo simulates a DB that always returns an error.
+type brokenVersionRepo struct{}
+
+func (r *brokenVersionRepo) GetPostgresVersion(_ context.Context) (string, error) {
+	return "", fmt.Errorf("database unavailable")
+}
+
+var _ domain.VersionRepository = (*brokenVersionRepo)(nil)
+
 // sqliteSwaggerPermRepo adapts *gorm.DB to domain.SwaggerPermissionRepository for tests.
 type sqliteSwaggerPermRepo struct{ db *gorm.DB }
 
@@ -269,8 +278,7 @@ func TestVersionController_GetVersion(t *testing.T) {
 // retornaria 200 com a versão real. Aqui validamos que 503 é retornado sem crash.
 func TestVersionController_GetPostgresVersion_DBError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	db := testutil.NewTestDB(t)
-	controller := NewVersionController(&sqliteVersionRepo{db})
+	controller := NewVersionController(&brokenVersionRepo{})
 
 	router := gin.New()
 	router.GET("/version/postgres", controller.GetPostgresVersion)

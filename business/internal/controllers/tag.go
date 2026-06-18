@@ -171,7 +171,9 @@ func (tc *TagController) Delete(c *gin.Context) {
 	}
 
 	if forceDelete {
-		res := db.Where("\"tenantId\" = ? AND \"tagId\" = ?", tenantID, tag.ID).Delete(&models.EntityTag{})
+		res := db.Session(&gorm.Session{NewDB: true}).
+			Where("\"tenantId\" = ? AND \"tagId\" = ?", tenantID, tag.ID).
+			Delete(&models.EntityTag{})
 		if res.Error != nil {
 			utils.RespondWithInternalError(c, res.Error, "DeleteEntityTags")
 			return
