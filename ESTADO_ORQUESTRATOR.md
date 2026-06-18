@@ -2,8 +2,8 @@
 
 > Arquivo de estado vivo do Orchestrator.
 > **Última atualização**: 2026-06-18
-> **Branch**: `main`
-> **Epic atual**: Concluído — cobertura Go 57%
+> **Branch**: `develop` (release PR #75 → main em revisão)
+> **Epic atual**: Epic 17 — health endpoint + graceful shutdown engine-go
 
 ---
 
@@ -23,11 +23,19 @@
 | Epic 9 | Cobertura Phase 3 — controllers restantes + pipeline fix | ✅ Mergeado (PR #66) |
 | Epic 10 | Cobertura Phase 4 — session/whatsapp/repos/usecases | ✅ Mergeado (PR #67) |
 | Epic 11 | Cobertura Phase 5 — domain/repos finais/plugin wrappers | ✅ Mergeado (PR #68) |
-| Epic 12 | Testes integração RabbitMQ/Redis + handlers event_listener + step CI | 🔄 PR #69 em revisão |
+| Epic 12 | Testes integração RabbitMQ/Redis + handlers event_listener + step CI | ✅ Mergeado (PR #69) |
+| Epic 13 | Bootstrap engine-go (go.mod + whatsmeow + feature parity legacy) | ✅ Mergeado (PR #70) |
+| Epic 14 | CI job `build-engine-go` | ✅ Mergeado (PR #71) |
+| Epic 15 | Dockerfile + docker-compose entry engine-go | ✅ Mergeado (PR #73) |
+| Epic 16 | Remoção HubManager / marketplace-hub | ✅ Mergeado (PR #72) |
+| Security | bump undici 7.27→7.28 (CVE high+medium) | ✅ Mergeado (PR #74) |
 
 ---
 
-## Cobertura de Testes Go — Estado Final
+## Cobertura de Testes Go — Estado (pós Epic 16)
+
+> `hub_manager.go` foi deletado no Epic 16 — as 16 funções que bloqueavam a cobertura foram removidas.
+> Cobertura efetiva pode ter subido ~1-2pp após remoção.
 
 | Pacote | Cobertura |
 |--------|-----------|
@@ -35,27 +43,24 @@
 | `internal/middleware` | 95.2% ✅ |
 | `internal/application/usecases` | 87.6% ✅ |
 | `internal/infrastructure/repository` | 81.4% ✅ |
-| `internal/controllers` | 63.7% |
+| `internal/controllers` | ~65% (estimado pós Epic 16) |
 | `internal/domain` | 58.6% |
 | `internal/application` | 40.5% |
-| `internal/plugins` | 37.0% |
+| `internal/plugins` | ~40% (estimado pós Epic 16) |
 | `internal/services` | 27.9% |
-| **Total** | **57.1%** |
+| **Total** | **~58-59%** (estimado) |
 
-### Teto Real Atingido
-
-Os 43% restantes são código de infraestrutura externa não testável com SQLite/mocks:
+### Teto Real — Infraestrutura externa não testável com SQLite/mocks
 
 | Arquivo | Funções em 0% | Motivo |
 |---------|--------------|--------|
-| `plugins/hub_manager.go` | 16 | HTTP ao Marketplace Hub |
 | `services/rabbitmq.go` | 15 | Conexão AMQP real |
 | `services/event_listener.go` | 12 | Consumer RabbitMQ + Socket.io |
 | `services/redis.go` + `redis_broadcast.go` | 12 | Cliente Redis real |
 | `services/socket.go` | 5 | Socket.io real |
 | `application/container.go` | 1 | Wiring de todas as deps reais |
 
-Para cobri-los: job CI de integração com `docker-compose` + `//go:build integration`.
+Para cobri-los: job CI de integração com `docker-compose` + `//go:build integration` (já existe desde Epic 12).
 
 ---
 
@@ -74,11 +79,12 @@ Para cobri-los: job CI de integração com `docker-compose` + `//go:build integr
 
 ---
 
-## Próximos Passos Sugeridos (P2)
+## DAG Atual — Próximos Epics
 
-| ID | Tarefa | Prioridade |
-|----|--------|-----------|
-| N1 | Job CI de integração com docker-compose (RabbitMQ/Redis/PG) + `go test -tags integration` | ✅ Epic 12 |
-| N2 | Cobrir `services/event_listener.go` handlers com mocks de socket + repo | ✅ Epic 12 |
-| N3 | Abstração de interface para `hub_manager.go` (HTTP client mockável) | P2 |
-| N4 | Dashboard controller — calculateTMR/calculateTME paths não cobertos | P3 |
+| ID | Tarefa | Tier | Status |
+|----|--------|------|--------|
+| Release | Merge develop → main (PR #75) | T2 | ⏳ CI rodando |
+| Epic 17 | Health endpoint HTTP + graceful shutdown engine-go | T2 | 🔜 Próximo |
+| Epic 18 | Device store multitenancy (resolveDeviceStore por sessionID) | T3 — **aguarda aprovação** | ⏸ Bloqueado |
+| P4-A | Fix 15 warnings `react-hooks/exhaustive-deps` no frontend | T2 | 🔜 |
+| P4-B | Dashboard controller — calculateTMR/calculateTME coverage | P3 | 🔜 |
