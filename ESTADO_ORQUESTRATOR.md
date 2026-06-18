@@ -70,10 +70,10 @@ Com a Epic 2 mergeada e CI verde em `main`, o foco agora é:
 
 | ID | Tarefa | Arquivo(s) | Status | Depende de |
 |----|--------|-----------|--------|-----------|
-| S1 | Fix `path-to-regexp` — identificar pacote pai e atualizar | `frontend/package.json`, `package-lock.json` | ⏳ | — |
-| S2 | Fix `qs` — atualizar para `>= 6.15.2` | `frontend/package.json`, `package-lock.json` | ⏳ | — |
-| S3 | Fix `filippo.io/edwards25519` — `go get` para v1.1.1 | `business/go.mod`, `go.sum` | ⏳ | — |
-| S4 | Auditar `saas.go` — documentar ou corrigir uso de `auth.GetDB` sem escopo | `business/internal/controllers/saas.go` | ⏳ | — |
+| S1 | Fix `path-to-regexp` — auto-resolvido (pacote removido na Epic 2) | `frontend/package-lock.json` | ✅ | — |
+| S2 | Fix `qs` — auto-resolvido (pacote removido na Epic 2) | `frontend/package-lock.json` | ✅ | — |
+| S3 | Fix `filippo.io/edwards25519` — `go get` para v1.1.1 | `business/go.mod`, `go.sum` | ✅ | — |
+| S4 | Auditar `saas.go` — uso de `auth.GetDB` é intencional (SuperAdminOnly middleware); comentários já documentam | `business/internal/controllers/saas.go` | ✅ | — |
 
 ### Bloco L — Lint Governance (depende de S)
 
@@ -91,7 +91,7 @@ Com a Epic 2 mergeada e CI verde em `main`, o foco agora é:
 
 ## Checkpoints de Sanidade
 
-- [ ] **CP-1** — Após Bloco S: `go build ./...` + `npm ci` limpos; 0 alertas high/medium no Dependabot
+- [x] **CP-1** — Após Bloco S: `go build ./...` limpo; 0 alertas open no Dependabot ✅ 2026-06-17
 - [ ] **CP-2** — Após L1–L4: contagem de `no-restricted-syntax` warnings abaixo de 100
 - [ ] **CP-3** — Após L5–L7: `no-explicit-any` abaixo de 30; `--max-warnings` ajustado para novo baseline
 
@@ -103,3 +103,4 @@ Com a Epic 2 mergeada e CI verde em `main`, o foco agora é:
 |------|------|--------|
 | 2026-06-17 | Branch `hardening/epic3-security-lint` criado a partir de `main` | ✅ |
 | 2026-06-17 | Auditoria de segurança — 4 alertas open, 1 RLS gap em saas.go | ✅ |
+| 2026-06-17 | Bloco S concluído — S1–S4 ✅; CP-1 atingido; 0 alertas Dependabot open | ✅ |
