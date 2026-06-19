@@ -8,10 +8,10 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
+	"github.com/alltomatos/watinkdev/engine-go/internal/command"
 	"github.com/alltomatos/watinkdev/engine-go/internal/health"
 	"github.com/alltomatos/watinkdev/engine-go/internal/rabbitmq"
 	"github.com/alltomatos/watinkdev/engine-go/internal/whatsapp"
@@ -40,7 +40,8 @@ func main() {
 	}
 	log.Println("Connected to RabbitMQ")
 
-	waService := whatsapp.NewWhatsAppService(rabbit)
+	sessionLoader := whatsapp.NewPostgresSessionLoader(whatsapp.BuildPostgresDSN())
+	waService := whatsapp.NewWhatsAppService(rabbit, sessionLoader)
 
 	go func() {
 		time.Sleep(5 * time.Second)
@@ -86,45 +87,18 @@ func main() {
 	log.Println("Engine stopped")
 }
 
-// commandType extracts the logical command type from a routing key like
-// "wbot.<tenantId>.<sessionId>.message.send.text" → "message.send.text"
-func commandType(routingKey string) (string, error) {
-	parts := strings.Split(routingKey, ".")
-	if len(parts) < 4 {
-		return "", fmt.Errorf("invalid routing key: %s", routingKey)
-	}
-	cmd := strings.Join(parts[3:], ".")
-	switch cmd {
-	case "session.start", "session.stop", "session.delete",
-		"message.send.text", "message.send.media",
-		"message.send.buttons", "message.send.list", "message.send.poll", "message.send.interactive",
-		"message.markAsRead",
-		"contact.sync", "contact.import", "history.sync":
-		return cmd, nil
-	default:
-		return "", fmt.Errorf("unknown command type: %s", cmd)
-	}
-}
-
 func handleCommand(d amqp.Delivery, svc *whatsapp.WhatsAppService) error {
 	log.Printf("Received command: %s", d.RoutingKey)
 
-	parts := strings.Split(d.RoutingKey, ".")
-	if len(parts) < 4 {
-		log.Printf("Invalid routing key: %s", d.RoutingKey)
-		return nil
-	}
-
-	tenantID := parts[1]
-	sessionID, err := strconv.Atoi(parts[2])
-	if err != nil {
-		log.Printf("Invalid session ID in routing key %s: %v", d.RoutingKey, err)
-		return nil
-	}
-
-	cmd, err := commandType(d.RoutingKey)
+	tenantID, sessionIDStr, cmd, err := command.ParseRoutingKey(d.RoutingKey)
 	if err != nil {
 		log.Printf("%v", err)
+		return nil
+	}
+
+	sessionID, err := strconv.Atoi(sessionIDStr)
+	if err != nil {
+		log.Printf("Invalid session ID in routing key %s: %v", d.RoutingKey, err)
 		return nil
 	}
 

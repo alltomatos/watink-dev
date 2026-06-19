@@ -182,19 +182,9 @@ type SetupServiceInterface interface {
 	InitializeTenant(data TenantSeedData) error
 }
 
-// DistributionServiceInterface defines the contract for ticket distribution.
-type DistributionServiceInterface interface {
-	DistributeTicket(ticketID int, queueID int, tenantID uuid.UUID) error
-}
-
 // PlanLimitServiceInterface defines the contract for plan/resource limit checks.
 type PlanLimitServiceInterface interface {
 	CheckLimit(tenantID uuid.UUID, resource string) error
-}
-
-// TicketLogServiceInterface defines the contract for ticket audit logging.
-type TicketLogServiceInterface interface {
-	CreateTicketLog(ticketID int, tenantID uuid.UUID, userID *int, logType string, payload map[string]interface{})
 }
 
 // WhatsAppSessionServiceInterface defines the contract for WhatsApp session lifecycle.

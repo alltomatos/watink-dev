@@ -2,7 +2,6 @@ package whatsapp
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,38 +15,15 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 )
 
-type autoRestartSession struct {
-	ID          int
-	TenantID    string
-	Name        string
-	SyncHistory bool
-	SyncPeriod  sql.NullString
-	KeepAlive   bool
-	Wid         string
-}
-
-// AutoRestartSessions queries DB for sessions that should be reconnected and starts them.
+// AutoRestartSessions loads persisted sessions via SessionLoader and reconnects each one.
 func (s *WhatsAppService) AutoRestartSessions() {
-	db, err := sql.Open("postgres", s.dsn)
+	sessions, err := s.sessionLoader.LoadActiveSessions()
 	if err != nil {
-		log.Printf("Failed to open database for auto-restart: %v", err)
+		log.Printf("Failed to load sessions for auto-restart: %v", err)
 		return
 	}
-	defer db.Close()
 
-	rows, err := db.Query(`SELECT id, "tenantId"::text, name, COALESCE("syncHistory", false), "syncPeriod", COALESCE("keepAlive", false), COALESCE(wid, '') FROM "Whatsapps" WHERE COALESCE("engineType", 'whatsmeow') = 'whatsmeow' AND status IN ('CONNECTED', 'OPENING', 'QRCODE')`)
-	if err != nil {
-		log.Printf("Failed to query sessions for auto-restart: %v", err)
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var sess autoRestartSession
-		if err := rows.Scan(&sess.ID, &sess.TenantID, &sess.Name, &sess.SyncHistory, &sess.SyncPeriod, &sess.KeepAlive, &sess.Wid); err != nil {
-			log.Printf("Failed to scan auto-restart session: %v", err)
-			continue
-		}
+	for _, sess := range sessions {
 		log.Printf("Auto-restarting WhatsMeow session %d tenant %s", sess.ID, sess.TenantID)
 		if err := s.StartClient(sess.ID, sess.TenantID, sess.Name, time.Now().UnixMilli(), "", false, "", sess.Wid); err != nil {
 			log.Printf("Failed to auto-restart session %d: %v", sess.ID, err)
