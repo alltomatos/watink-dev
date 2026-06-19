@@ -81,6 +81,11 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
     navigate(`/tickets/${id}`);
   };
 
+  const handlePeekTicket = (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    navigate(`/tickets/${id}`);
+  };
+
   const isSelected = ticketId !== undefined && +ticketId === ticket.id;
   const isPending =
     ticket.status === "pending" &&
@@ -94,10 +99,7 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
 
   return (
     <div
-      onClick={() => {
-        if (isPending) return;
-        handleSelectTicket(ticket.id);
-      }}
+      onClick={() => handleSelectTicket(ticket.id)}
       className={cn(
         "relative flex cursor-pointer gap-3 px-4 py-2.5",
         "border-b border-black/[0.04]",
@@ -146,7 +148,7 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
 
         {/* Linha 2 — prévia + badge não lidas */}
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-[0.75rem] leading-4 text-muted-foreground">
+          <span className="truncate text-[0.75rem] leading-4 text-muted-foreground pointer-events-none select-none">
             {ticket.lastMessage ? (
               <MarkdownWrapper>{ticket.lastMessage}</MarkdownWrapper>
             ) : (
@@ -175,9 +177,9 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
           </span>
         )}
 
-        {/* Botão aceitar — tickets pendentes */}
+        {/* Botões aceitar / espiar — tickets pendentes individuais */}
         {isPending && (
-          <div className="mt-1.5">
+          <div className="mt-1.5 flex items-center gap-1.5">
             <ButtonWithSpinner
               size="sm"
               loading={loading}
@@ -189,6 +191,13 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
             >
               {i18n.t("ticketsList.buttons.accept")}
             </ButtonWithSpinner>
+            <button
+              type="button"
+              className="rounded-md border border-border px-3 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted/60 transition-colors"
+              onClick={(e) => handlePeekTicket(e, ticket.id)}
+            >
+              Espiar
+            </button>
           </div>
         )}
       </div>
