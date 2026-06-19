@@ -45,6 +45,7 @@ type ReceiveMessageUseCase struct {
 	messageRepo domain.MessageRepository
 	contactRepo domain.ContactRepository
 	ticketRepo  domain.TicketRepository
+	queueRepo   domain.QueueRepository
 }
 
 func NewReceiveMessageUseCase(
@@ -52,13 +53,30 @@ func NewReceiveMessageUseCase(
 	messageRepo domain.MessageRepository,
 	contactRepo domain.ContactRepository,
 	ticketRepo domain.TicketRepository,
+	queueRepo domain.QueueRepository,
 ) *ReceiveMessageUseCase {
 	return &ReceiveMessageUseCase{
 		eventBus:    eventBus,
 		messageRepo: messageRepo,
 		contactRepo: contactRepo,
 		ticketRepo:  ticketRepo,
+		queueRepo:   queueRepo,
 	}
+}
+
+// resolveChannelQueue returns the queue to assign to a new ticket: when the
+// channel is linked to exactly one queue, that queue is inherited so agents of
+// that queue can see the ticket immediately. With 0 or multiple queues it returns
+// nil (triage/flow decides).
+func (uc *ReceiveMessageUseCase) resolveChannelQueue(ctx context.Context, channelID int, tenantID uuid.UUID) *int {
+	if uc.queueRepo == nil {
+		return nil
+	}
+	ids, err := uc.queueRepo.FindQueueIDsByChannel(ctx, channelID, tenantID)
+	if err != nil || len(ids) != 1 {
+		return nil
+	}
+	return &ids[0]
 }
 
 // Execute processes an incoming message and handles contact, ticket and message persistence.
@@ -97,6 +115,7 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 			TenantID:   input.TenantID,
 			WhatsappID: input.SessionID,
 			IsGroup:    input.IsGroup,
+			QueueID:    uc.resolveChannelQueue(ctx, input.SessionID, input.TenantID),
 		})
 		if err != nil {
 			return nil, err

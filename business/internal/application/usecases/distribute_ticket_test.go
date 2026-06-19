@@ -46,8 +46,9 @@ func (m *mockTicketRepo) CountOpenTicketsPerUser(_ context.Context, _ []int, _ u
 }
 
 type mockQueueRepo struct {
-	queue   *domain.Queue
-	findErr error
+	queue           *domain.Queue
+	findErr         error
+	channelQueueIDs []int
 }
 
 func (m *mockQueueRepo) FindByID(_ context.Context, _ int, _ uuid.UUID) (*domain.Queue, error) {
@@ -57,6 +58,9 @@ func (m *mockQueueRepo) FindAll(_ context.Context, _ uuid.UUID) ([]domain.Queue,
 	return nil, nil
 }
 func (m *mockQueueRepo) Save(_ context.Context, _ *domain.Queue) error { return nil }
+func (m *mockQueueRepo) FindQueueIDsByChannel(_ context.Context, _ int, _ uuid.UUID) ([]int, error) {
+	return m.channelQueueIDs, nil
+}
 
 type mockContactRepo struct {
 	contact *domain.Contact
