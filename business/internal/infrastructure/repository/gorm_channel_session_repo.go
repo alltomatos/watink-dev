@@ -122,7 +122,7 @@ func (r *GORMChannelSessionRepository) DeleteWithRelations(ctx context.Context, 
 			return err
 		}
 
-		if err := tx.Exec("DELETE FROM \"WhatsappQueues\" WHERE \"whatsappId\" = ?", id).Error; err != nil {
+		if err := tx.Exec("DELETE FROM whatsapp_queues WHERE whatsapp_id = ?", id).Error; err != nil {
 			return err
 		}
 

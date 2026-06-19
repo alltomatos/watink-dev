@@ -133,7 +133,6 @@ func (tc *TicketController) ListTickets(c *gin.Context) {
 	if !ok {
 		return
 	}
-	userProfile, _ := c.Get("userProfile")
 
 	var tickets []models.Ticket
 	query := db.
@@ -166,10 +165,7 @@ func (tc *TicketController) ListTickets(c *gin.Context) {
 		}
 	}
 
-	showAll := c.Query("showAll")
-	if userProfile == "admin" && showAll == "true" {
-	}
-
+	// Visibility (queue/channel scoping by profile) is enforced by auth.GetScopedDB.
 	isGroup := c.Query("isGroup")
 	if isGroup == "true" {
 		query = query.Where("\"Tickets\".\"isGroup\" = ?", true)
