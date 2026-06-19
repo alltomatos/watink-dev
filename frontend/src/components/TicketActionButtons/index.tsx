@@ -19,6 +19,7 @@ interface TicketUser {
 interface Ticket {
   id: number;
   status: "open" | "closed" | "pending";
+  isGroup?: boolean;
   whatsappId?: number;
   contact: {
     name: string;
@@ -126,7 +127,7 @@ const TicketActionButtons: React.FC<TicketActionButtonsProps> = ({ ticket }) => 
         </>
       )}
 
-      {ticket.status === "pending" && (
+      {ticket.status === "pending" && !ticket.isGroup && (
         <ButtonWithSpinner
           loading={loading}
           size="sm"

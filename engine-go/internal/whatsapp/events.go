@@ -108,10 +108,14 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 		groupName = s.groupSubject(client, v.Info.Chat)
 	}
 
-	// Profile picture only for real phone-number senders (LID/group participants
-	// reject the query with 400 bad-request).
+	// Profile picture: for group contacts use the group JID; for individuals only
+	// real phone-number senders (LID senders reject the query with 400).
 	profilePic := ""
-	if !v.Info.IsFromMe && v.Info.Sender.Server == types.DefaultUserServer {
+	if isGroup {
+		if info, err := client.GetProfilePictureInfo(context.Background(), v.Info.Chat.ToNonAD(), &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
+			profilePic = info.URL
+		}
+	} else if !v.Info.IsFromMe && v.Info.Sender.Server == types.DefaultUserServer {
 		if info, err := client.GetProfilePictureInfo(context.Background(), v.Info.Sender.ToNonAD(), &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
 			profilePic = info.URL
 		}
