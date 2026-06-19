@@ -33,9 +33,8 @@ const TicketsManager: React.FC = () => {
   const [searchParam, setSearchParam] = useState<string>("");
   const [newTicketModalOpen, setNewTicketModalOpen] = useState<boolean>(false);
 
-  // Contadores
-  const [openCount, setOpenCount] = useState<number>(0);
-  const [pendingCount, setPendingCount] = useState<number>(0);
+  // Contador da lista atualmente visível (mostrado na pill ativa)
+  const [currentCount, setCurrentCount] = useState<number>(0);
 
   // Filtros
   const userQueueIds: number[] = (user as any)?.queues?.map((q: any) => q.id) ?? [];
@@ -131,49 +130,27 @@ const TicketsManager: React.FC = () => {
 
           {/* Pills: Todos / Abertos / Aguardando / Fechados */}
           <div className="flex items-center gap-1">
-            <FilterPill label="Todos"      active={statusFilter === "all"}     onClick={() => handleFilterChange("all")} />
-            <FilterPill label="Abertos"    active={statusFilter === "open"}    onClick={() => handleFilterChange("open")}    count={openCount} />
-            <FilterPill label="Aguardando" active={statusFilter === "pending"} onClick={() => handleFilterChange("pending")} count={pendingCount} />
-            <FilterPill label="Fechados"   active={statusFilter === "closed"}  onClick={() => handleFilterChange("closed")} />
+            <FilterPill label="Todos"      active={statusFilter === "all"}     onClick={() => handleFilterChange("all")}     count={statusFilter === "all" ? currentCount : undefined} />
+            <FilterPill label="Abertos"    active={statusFilter === "open"}    onClick={() => handleFilterChange("open")}    count={statusFilter === "open" ? currentCount : undefined} />
+            <FilterPill label="Aguardando" active={statusFilter === "pending"} onClick={() => handleFilterChange("pending")} count={statusFilter === "pending" ? currentCount : undefined} />
+            <FilterPill label="Fechados"   active={statusFilter === "closed"}  onClick={() => handleFilterChange("closed")}  count={statusFilter === "closed" ? currentCount : undefined} />
           </div>
         </header>
 
-        {/* ── Conteúdo das listas ──────────────────────────────────── */}
+        {/* ── Conteúdo da lista ────────────────────────────────────── */}
+        {/* Uma única lista por filtro. "Todos" não envia status (mostra todos)
+            e nenhum filtro de isGroup — grupos e individuais aparecem juntos.
+            key força remontagem ao trocar de filtro. */}
         <div className="flex-1 overflow-hidden">
-          {statusFilter !== "closed" && (
-            <div className="h-full overflow-hidden">
-              <TicketsList
-                status="open"
-                selectedQueueIds={selectedQueueIds}
-                updateCount={(val: number) => setOpenCount(val)}
-                style={statusFilter === "pending" ? { display: "none" } : {}}
-                isGroup="false"
-                tags={selectedTags}
-                searchParam={searchParam}
-              />
-              <TicketsList
-                status="pending"
-                selectedQueueIds={selectedQueueIds}
-                updateCount={(val: number) => setPendingCount(val)}
-                style={statusFilter === "open" ? { display: "none" } : {}}
-                isGroup="false"
-                tags={selectedTags}
-                searchParam={searchParam}
-              />
-            </div>
-          )}
-
-          {statusFilter === "closed" && (
-            <div className="h-full overflow-hidden">
-              <TicketsList
-                status="closed"
-                showAll={true}
-                selectedQueueIds={selectedQueueIds}
-                tags={selectedTags}
-                searchParam={searchParam}
-              />
-            </div>
-          )}
+          <TicketsList
+            key={statusFilter}
+            status={statusFilter === "all" ? undefined : statusFilter}
+            showAll
+            selectedQueueIds={selectedQueueIds}
+            updateCount={(val: number) => setCurrentCount(val)}
+            tags={selectedTags}
+            searchParam={searchParam}
+          />
         </div>
       </div>
     </TooltipProvider>
