@@ -42,7 +42,12 @@ interface TicketData {
   whatsapp?: WhatsApp;
 }
 
-const Ticket: React.FC = () => {
+interface TicketProps {
+  onToggleDetails?: () => void;
+  showDetails?: boolean;
+}
+
+const Ticket: React.FC<TicketProps> = ({ onToggleDetails, showDetails }) => {
   const { ticketId } = useParams<{ ticketId: string }>();
   const navigate = useNavigate();
 
@@ -118,7 +123,11 @@ const Ticket: React.FC = () => {
 
           {/* Right: action buttons (up to 50% width, 100% on mobile) */}
           <div className="flex max-w-full basis-full mb-[5px] md:max-w-[50%] md:basis-[50%] md:mb-0">
-            <TicketActionButtons ticket={ticket} />
+            <TicketActionButtons
+              ticket={ticket}
+              onToggleDetails={onToggleDetails}
+              showDetails={showDetails}
+            />
           </div>
         </TicketHeader>
 

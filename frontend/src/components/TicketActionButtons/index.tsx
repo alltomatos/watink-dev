@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MoreVertical, RotateCcw } from "lucide-react";
+import { MoreVertical, RotateCcw, PanelRight, PanelRightClose } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { i18n } from "../../translate/i18n";
@@ -29,9 +29,11 @@ interface Ticket {
 
 interface TicketActionButtonsProps {
   ticket: Ticket;
+  onToggleDetails?: () => void;
+  showDetails?: boolean;
 }
 
-const TicketActionButtons: React.FC<TicketActionButtonsProps> = ({ ticket }) => {
+const TicketActionButtons: React.FC<TicketActionButtonsProps> = ({ ticket, onToggleDetails, showDetails }) => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -109,6 +111,22 @@ const TicketActionButtons: React.FC<TicketActionButtonsProps> = ({ ticket }) => 
           >
             {i18n.t("messagesList.header.buttons.resolve") as string}
           </ButtonWithSpinner>
+
+          {onToggleDetails && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleDetails}
+              aria-label={showDetails ? "Fechar detalhes" : "Abrir detalhes"}
+              className="hidden lg:inline-flex"
+            >
+              {showDetails ? (
+                <PanelRightClose className="h-4 w-4" />
+              ) : (
+                <PanelRight className="h-4 w-4" />
+              )}
+            </Button>
+          )}
 
           <Button
             variant="ghost"
