@@ -3,7 +3,10 @@ package whatsapp
 import (
 	"context"
 	"fmt"
+	"log"
+	"strings"
 
+	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types"
 )
 
@@ -55,6 +58,57 @@ func (s *WhatsAppService) ImportContacts(sessionID int, tenantID string) error {
 	}
 	flush()
 
+	return nil
+}
+
+// SyncContact checks whether a number is on WhatsApp and emits a contact.update event
+// with the resolved JID (and LID mapping if applicable).
+func (s *WhatsAppService) SyncContact(sessionID int, tenantID string, payload SyncContactPayload) error {
+	client, err := s.getConnectedClient(sessionID)
+	if err != nil {
+		return err
+	}
+
+	number := strings.TrimSpace(payload.Number)
+	if !strings.HasPrefix(number, "+") {
+		number = "+" + number
+	}
+
+	results, err := client.IsOnWhatsApp(context.Background(), []string{number})
+	if err != nil {
+		return fmt.Errorf("IsOnWhatsApp failed: %w", err)
+	}
+
+	for _, r := range results {
+		if !r.IsIn {
+			log.Printf("contact.sync: %s is not on WhatsApp", number)
+			continue
+		}
+
+		contactPayload := map[string]interface{}{
+			"jid":    r.JID.String(),
+			"isLid":  r.JID.Server == types.HiddenUserServer,
+			"number": number,
+		}
+
+		// Resolve LID → phone number if the JID came back as LID.
+		if r.JID.Server == types.HiddenUserServer {
+			if pn, mapErr := client.Store.LIDs.GetPNForLID(context.Background(), r.JID); mapErr == nil && !pn.IsEmpty() {
+				contactPayload["phoneJid"] = pn.String()
+			}
+		}
+
+		profilePic := ""
+		if info, picErr := client.GetProfilePictureInfo(context.Background(), r.JID, &whatsmeow.GetProfilePictureParams{}); picErr == nil && info != nil {
+			profilePic = info.URL
+		}
+		contactPayload["profilePicUrl"] = profilePic
+
+		s.publishEvent(tenantID, sessionID, "contact.update", map[string]interface{}{
+			"sessionId": payload.SessionID,
+			"contact":   contactPayload,
+		})
+	}
 	return nil
 }
 
