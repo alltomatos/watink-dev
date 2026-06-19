@@ -189,7 +189,10 @@ func handleCommand(d amqp.Delivery, svc *whatsapp.WhatsAppService) error {
 		}
 		return svc.SyncContact(sessionID, tenantID, p)
 
-	case "contact.import", "history.sync":
+	case "contact.import":
+		return svc.ImportContacts(sessionID, tenantID)
+
+	case "history.sync":
 		log.Printf("Command %s received but not implemented in engine-go", cmd)
 		return nil
 
