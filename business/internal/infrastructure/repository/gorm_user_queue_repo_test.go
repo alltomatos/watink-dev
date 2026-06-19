@@ -11,7 +11,7 @@ import (
 
 func TestUserQueueRepo_IsUserInQueue_True(t *testing.T) {
 	db := testutil.NewTestDB(t)
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, 10)
+	db.Exec(`INSERT INTO "user_queues" (user_id, queue_id) VALUES (?, ?)`, 1, 10)
 
 	repo := repository.NewGormUserQueueRepository(db)
 	inQueue, err := repo.IsUserInQueue(context.Background(), 1, 10)
@@ -42,8 +42,8 @@ func TestUserQueueRepo_FindQueueUsers_ReturnsTwoUsers(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "Ana", "ana@test.com", "x", tenantID.String())
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "Beto", "beto@test.com", "x", tenantID.String())
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, 5)
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 2, 5)
+	db.Exec(`INSERT INTO "user_queues" (user_id, queue_id) VALUES (?, ?)`, 1, 5)
+	db.Exec(`INSERT INTO "user_queues" (user_id, queue_id) VALUES (?, ?)`, 2, 5)
 
 	repo := repository.NewGormUserQueueRepository(db)
 	users, err := repo.FindQueueUsers(context.Background(), 5, tenantID)
@@ -76,8 +76,8 @@ func TestUserQueueRepo_FindQueueUsers_IsolatesByTenant(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "UserA", "ua@test.com", "x", tenantA.String())
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "UserB", "ub@test.com", "x", tenantB.String())
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, 7)
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 2, 7)
+	db.Exec(`INSERT INTO "user_queues" (user_id, queue_id) VALUES (?, ?)`, 1, 7)
+	db.Exec(`INSERT INTO "user_queues" (user_id, queue_id) VALUES (?, ?)`, 2, 7)
 
 	repo := repository.NewGormUserQueueRepository(db)
 	users, err := repo.FindQueueUsers(context.Background(), 7, tenantA)
