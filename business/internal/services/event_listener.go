@@ -18,11 +18,12 @@ type EventListener struct {
 	sessions       domain.ChannelSessionRepository
 	messages       domain.MessageRepository
 	contacts       domain.ContactRepository
+	tickets        domain.TicketRepository
 	receiveMessage *usecases.ReceiveMessageUseCase
 }
 
-func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, rm *usecases.ReceiveMessageUseCase) *EventListener {
-	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, receiveMessage: rm}
+func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase) *EventListener {
+	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm}
 }
 
 func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener) {
@@ -63,7 +64,7 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 		case "session.status":
 			return handleSessionStatus(ctx, eventListener.sessions, env.Payload, tid)
 		case "session.history_sync":
-			return handleHistorySync(ctx, env.Payload, tid, eventListener)
+			return eventListener.handleHistorySync(ctx, env.Payload, tid)
 		case "message.received":
 			var p MessageReceivedPayload
 			if err := json.Unmarshal(env.Payload, &p); err != nil {
@@ -191,18 +192,76 @@ func handleSessionStatus(ctx context.Context, sessions domain.ChannelSessionRepo
 	return nil
 }
 
-func handleHistorySync(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID, el *EventListener) error {
+// handleHistorySync inserts recovered conversation history into a ticket.
+//
+// On-demand recovery (ticketId > 0) inserts each message into the given ticket
+// WITHOUT reopening it, changing its status, bumping unread counters or firing
+// new-message notifications — it only backfills the timeline. Bootstrap syncs
+// (no ticketId / no messages) are ignored.
+func (el *EventListener) handleHistorySync(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID) error {
 	var p HistorySyncPayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err
 	}
 
-	log.Printf("[EventListener] Processing History Sync for session %s, type %s", p.SessionID, p.Type)
-	for _, msgPayload := range p.Messages {
-		if err := el.processMessage(ctx, msgPayload, p.SessionID, tenantID); err != nil {
-			log.Printf("Error processing history message %s: %v", msgPayload.ID, err)
-		}
+	if p.TicketID == 0 || len(p.Messages) == 0 {
+		log.Printf("[EventListener] History sync for session %s type %s ignored (ticketId=%d, %d messages)", p.SessionID, p.Type, p.TicketID, len(p.Messages))
+		return nil
 	}
+
+	ticket, err := el.tickets.FindByID(ctx, p.TicketID, tenantID)
+	if err != nil {
+		return err
+	}
+	if ticket == nil {
+		log.Printf("[EventListener] History sync target ticket %d not found (tenant %s)", p.TicketID, tenantID)
+		return nil
+	}
+	contactID := ticket.ContactID
+
+	inserted := 0
+	for _, m := range p.Messages {
+		dataJSON, _ := json.Marshal(map[string]interface{}{
+			"jid":       m.From,
+			"isGroup":   m.IsGroup,
+			"isLid":     m.IsLid,
+			"mimetype":  m.Mimetype,
+			"mediaData": m.MediaData,
+			"history":   true,
+		})
+
+		mediaType := m.Type
+		if mediaType == "" {
+			mediaType = "chat"
+		}
+		createdAt := time.Unix(m.Timestamp, 0)
+		if m.Timestamp == 0 {
+			createdAt = time.Now()
+		}
+
+		msg := &domain.Message{
+			ID:          m.ID,
+			Body:        m.Body,
+			TicketID:    ticket.ID,
+			ContactID:   &contactID,
+			FromMe:      m.FromMe,
+			TenantID:    tenantID,
+			MediaType:   mediaType,
+			MediaUrl:    m.MediaUrl,
+			Participant: m.Participant,
+			DataJson:    string(dataJSON),
+			CreatedAt:   createdAt,
+			UpdatedAt:   time.Now(),
+		}
+		if err := el.messages.CreateIfNotExists(ctx, msg); err != nil {
+			log.Printf("[EventListener] history message %s insert failed: %v", m.ID, err)
+			continue
+		}
+		inserted++
+		EmitToRoom("/", strconv.Itoa(ticket.ID), "appMessage", map[string]interface{}{"action": "create", "message": msg, "history": true})
+	}
+
+	log.Printf("[EventListener] History sync ticket %d: %d/%d messages backfilled", ticket.ID, inserted, len(p.Messages))
 	return nil
 }
 

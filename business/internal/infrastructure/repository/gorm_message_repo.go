@@ -66,6 +66,24 @@ func (r *GORMMessageRepository) ExistsByID(ctx context.Context, id string, tenan
 	return count > 0, nil
 }
 
+// FindOldestByTicket returns the earliest message (by createdAt) for the given
+// ticket, or nil if the ticket has no messages yet. Used as the anchor point for
+// on-demand WhatsApp history recovery.
+func (r *GORMMessageRepository) FindOldestByTicket(ctx context.Context, ticketID int, tenantID uuid.UUID) (*domain.Message, error) {
+	var m models.Message
+	err := r.db.WithContext(ctx).
+		Where("\"ticketId\" = ? AND \"tenantId\" = ?", ticketID, tenantID).
+		Order("\"createdAt\" ASC").
+		First(&m).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return messageModelToDomain(&m), nil
+}
+
 // Update applies a partial update on the message identified by msg.ID + msg.TenantID.
 func (r *GORMMessageRepository) Update(ctx context.Context, msg *domain.Message, fields map[string]interface{}) error {
 	return r.db.WithContext(ctx).

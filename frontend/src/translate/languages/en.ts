@@ -459,6 +459,18 @@ const messages = {
           },
         },
       },
+      recoverHistory: {
+        button: "History",
+        title: "Recover history",
+        requested: "History recovery requested. Messages will appear shortly.",
+        ranges: {
+          oneDay: "Last day",
+          twoDays: "Last 2 days",
+          oneWeek: "Last week",
+          oneMonth: "Last month",
+          all: "All available history",
+        },
+      },
       messagesInput: {
         placeholderOpen: "Type a message or press ''/'' to use the registered quick responses",
         placeholderClosed: "Reopen or accept this ticket to send a message.",
