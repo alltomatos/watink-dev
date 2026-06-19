@@ -20,6 +20,7 @@ type ReceiveMessageInput struct {
 	FromMe        bool
 	Timestamp     int64
 	PushName      string
+	GroupName     string
 	QuotedMsgID   string
 	ProfilePicURL string
 	IsLID         bool
@@ -90,11 +91,18 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 		return nil, fmt.Errorf("empty sender number")
 	}
 
+	// For groups the contact represents the group itself, so name it with the
+	// group subject instead of whichever participant happened to message.
+	contactName := input.PushName
+	if input.IsGroup && input.GroupName != "" {
+		contactName = input.GroupName
+	}
+
 	contact, err := uc.contactRepo.FindOrCreate(
 		ctx,
 		input.TenantID,
 		number,
-		input.PushName,
+		contactName,
 		input.ProfilePicURL,
 		input.IsGroup,
 		input.IsLID,
@@ -102,6 +110,14 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// Self-heal: if a group was previously created with a participant's name,
+	// update it to the real group subject once we know it.
+	if input.IsGroup && input.GroupName != "" && contact.Name != input.GroupName {
+		if err := uc.contactRepo.Update(ctx, contact, map[string]interface{}{"name": input.GroupName}); err == nil {
+			contact.Name = input.GroupName
+		}
 	}
 
 	ticket, err := uc.ticketRepo.FindOpenByContact(ctx, input.TenantID, contact.ID, input.SessionID)
