@@ -125,9 +125,13 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 		return nil, err
 	}
 	if ticket == nil {
+		ticketStatus := "pending"
+		if input.IsGroup {
+			ticketStatus = "open"
+		}
 		ticket, err = uc.ticketRepo.FindOrCreatePending(ctx, &domain.Ticket{
 			ContactID:  contact.ID,
-			Status:     "pending",
+			Status:     ticketStatus,
 			TenantID:   input.TenantID,
 			WhatsappID: input.SessionID,
 			IsGroup:    input.IsGroup,
