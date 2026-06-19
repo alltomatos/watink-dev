@@ -57,7 +57,9 @@ func (s *RabbitMQService) handleFailedMessage(d amqp.Delivery, processErr error)
 
 	if retryCount >= dlqMaxRetries {
 		log.Printf("[RabbitMQ] Max retries exceeded, routing to DLQ: %s", d.MessageId)
-		d.Nack(false, false)
+		if err := d.Nack(false, false); err != nil {
+			log.Printf("[RabbitMQ] Nack failed: %v", err)
+		}
 		return
 	}
 
@@ -94,11 +96,15 @@ func (s *RabbitMQService) handleFailedMessage(d amqp.Delivery, processErr error)
 	)
 	if err != nil {
 		log.Printf("[RabbitMQ] Failed to requeue message: %v", err)
-		d.Nack(false, false)
+		if nErr := d.Nack(false, false); nErr != nil {
+			log.Printf("[RabbitMQ] Nack failed: %v", nErr)
+		}
 		return
 	}
 
-	d.Ack(false)
+	if err := d.Ack(false); err != nil {
+		log.Printf("[RabbitMQ] Ack failed: %v", err)
+	}
 }
 
 func getRetryCount(d amqp.Delivery) int {

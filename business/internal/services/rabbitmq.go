@@ -128,7 +128,9 @@ func (s *RabbitMQService) ConsumeEvents(queueName string, routingKeys []string, 
 			if err := handler(d); err != nil {
 				s.handleFailedMessage(d, err)
 			} else {
-				d.Ack(false)
+				if err := d.Ack(false); err != nil {
+					log.Printf("[RabbitMQ] Ack failed: %v", err)
+				}
 			}
 		}
 	}()
