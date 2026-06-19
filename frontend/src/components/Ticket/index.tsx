@@ -42,8 +42,6 @@ interface TicketData {
   whatsapp?: WhatsApp;
 }
 
-const DRAWER_WIDTH = 320;
-
 const Ticket: React.FC = () => {
   const { ticketId } = useParams<{ ticketId: string }>();
   const navigate = useNavigate();
@@ -106,20 +104,8 @@ const Ticket: React.FC = () => {
 
   return (
     <div className="relative flex h-full overflow-hidden" id="drawer-container">
-      {/* Main panel — shifts left when the contact drawer is open */}
-      <div
-        className={cn(
-          "flex flex-1 flex-col overflow-hidden",
-          "border-l-0 rounded-tl-none rounded-bl-none",
-          "transition-[margin] duration-[225ms] ease-in-out",
-          drawerOpen
-            ? "mr-0 transition-[margin] duration-[195ms] ease-out"
-            : `mr-[-${DRAWER_WIDTH}px]`
-        )}
-        style={{
-          marginRight: drawerOpen ? 0 : -DRAWER_WIDTH,
-        }}
-      >
+      {/* Main panel */}
+      <div className="flex flex-1 flex-col overflow-hidden">
         <TicketHeader loading={loading}>
           {/* Left: contact info (up to 50% width, 80% on mobile) */}
           <div className="max-w-[80%] basis-[80%] md:max-w-[50%] md:basis-[50%]">
