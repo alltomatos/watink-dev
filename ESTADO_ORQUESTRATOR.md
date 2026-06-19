@@ -1,9 +1,9 @@
 # ESTADO_ORQUESTRATOR.md
 
 > Arquivo de estado vivo do Orchestrator.
-> **Última atualização**: 2026-06-18
-> **Branch**: `develop` (release PR #82 → main em revisão)
-> **Epic atual**: Fase de cobertura pós-GAP-3 (engine-go tests + unit tests offline)
+> **Última atualização**: 2026-06-19
+> **Branch**: `develop` (main sincronizado via PR #85 + PR #86)
+> **Epic atual**: Fase 3 — Nova inspeção pós-GAP batch (remoção dead-code + engine-go router)
 
 ---
 
@@ -35,6 +35,12 @@
 | P4-B | Dashboard controller — calculateTMR/calculateTME coverage (PostgreSQL) | ✅ Mergeado (PR #81) |
 | Fix | Redis PubSub race condition — sub.Receive() antes de Publish | ✅ Mergeado (PR #80) |
 | GAP-3 | Extract UserQueueRepository + TicketLogRepository — DI pura nos use cases | ✅ Mergeado (PR #83) |
+| GAP-4 | engine-go tests: usecases + pkg/auth/utils (PR #84) | ✅ Mergeado (PR #84) |
+| Epic 19 | Release develop→main (PR #85) | ✅ Mergeado (PR #85) |
+| Epic 20 | Remoção dead-code (distribution+ticketlog services) + engine-go command router testável (PR #86) | ✅ Mergeado (PR #86) |
+| Epic 21 | Modularização rabbitmq.go (3 arquivos) + DI pura EventListener (remove *gorm.DB) | ✅ Mergeado (PR #87) |
+| Epic 22 | Testes offline DLQ/tracing (12 testes) + split send.go/send_types.go engine-go | ✅ Mergeado (PR #88) |
+| Epic 23 | DI pura WhatsAppService engine-go — SessionLoader interface + 4 testes offline | ✅ Mergeado (PR #89) |
 
 ---
 
@@ -84,11 +90,13 @@
 
 ---
 
-## DAG Atual — Sprint de Cobertura
+## DAG Atual — Inspeção Fase 3 (2026-06-19, atualizado)
 
 | ID | Tarefa | Tier | Status |
 |----|--------|------|--------|
-| GAP-1 | Merge release PR #82 (develop→main) | T2 | 🔄 Em andamento |
-| GAP-2 | engine-go: testes unitários (0/8 arquivos) | T2 | 🔜 Próximo |
-| GAP-3 | Unit tests offline distribute_ticket + log_ticket_action | T2 | 🔜 |
-| GAP-4 | pkg/auth + pkg/utils: testes unitários | T2 | 🔜 |
+| NEW-1 | Modularizar event_listener.go + DI pura EventListener | T2/T3 | ✅ PR #87 |
+| NEW-2 | Modularizar rabbitmq.go (3 arquivos) | T2 | ✅ PR #87 |
+| NEW-3 | Split send.go/send_types.go + testes offline DLQ/tracing | T2 | ✅ PR #88 |
+| NEW-4 | SessionLoader DI em WhatsAppService engine-go | T3 | ✅ PR #89 |
+| NEW-5 | Deletar rabbitmq_state.go (Service Locator global — dead code) | T1 | ✅ Aplicado |
+| NEW-6 | send_types_test.go — 6 testes JSON roundtrip offline | T2 | 🔄 Em andamento |
