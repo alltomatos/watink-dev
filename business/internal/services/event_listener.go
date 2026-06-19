@@ -279,6 +279,11 @@ func handleMessageAck(ctx context.Context, messages domain.MessageRepository, pa
 	if err != nil {
 		return nil
 	}
+	if msg == nil {
+		// ack for a message we don't have (e.g. the device's own prior messages
+		// synced on connect) — nothing to update.
+		return nil
+	}
 	if p.Ack > msg.Ack {
 		if err := messages.Update(ctx, msg, map[string]interface{}{"ack": p.Ack}); err != nil {
 			return err
@@ -296,6 +301,9 @@ func handleMessageRevoke(ctx context.Context, messages domain.MessageRepository,
 	}
 	msg, err := messages.FindByID(ctx, p.MessageID, tenantID)
 	if err != nil {
+		return nil
+	}
+	if msg == nil {
 		return nil
 	}
 	if err := messages.Update(ctx, msg, map[string]interface{}{"isDeleted": true}); err != nil {

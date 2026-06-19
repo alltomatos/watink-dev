@@ -62,23 +62,40 @@ func (s *WhatsAppService) StartClient(id int, tenantID, name string, timestamp i
 		}
 	}
 
+	// Preserve any previously-registered client so a transient start failure
+	// (e.g. a DNS hiccup) does not orphan a session that is still working.
+	oldClient, hadOld := s.clients[id]
+
 	s.clients[id] = client
 	client.AddEventHandler(func(evt interface{}) {
 		s.handleEvent(id, tenantID, evt)
 	})
 
+	restoreOnFailure := func() {
+		if hadOld {
+			s.clients[id] = oldClient
+		} else {
+			delete(s.clients, id)
+		}
+	}
+
 	var qrChan <-chan whatsmeow.QRChannelItem
 	if client.Store.ID == nil {
 		qrChan, err = client.GetQRChannel(context.Background())
 		if err != nil {
-			delete(s.clients, id)
+			restoreOnFailure()
 			return err
 		}
 	}
 
 	if err := client.Connect(); err != nil {
-		delete(s.clients, id)
+		restoreOnFailure()
 		return err
+	}
+
+	// New client connected successfully — tear down the old one if it was different.
+	if hadOld && oldClient != nil && oldClient != client {
+		oldClient.Disconnect()
 	}
 
 	if client.Store.ID == nil {
