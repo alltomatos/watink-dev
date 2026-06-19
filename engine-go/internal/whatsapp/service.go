@@ -17,17 +17,17 @@ import (
 
 // WhatsAppService manages all active WhatsApp client sessions for a single engine-go instance.
 type WhatsAppService struct {
-	container *sqlstore.Container
-	clients   map[int]*whatsmeow.Client
-	mu        sync.RWMutex
-	rabbit    *rabbitmq.RabbitMQService
-	dsn       string
+	container     *sqlstore.Container
+	clients       map[int]*whatsmeow.Client
+	mu            sync.RWMutex
+	rabbit        *rabbitmq.RabbitMQService
+	sessionLoader SessionLoader
 }
 
 // NewWhatsAppService creates a WhatsAppService connecting whatsmeow to PostgreSQL via sqlstore.
-func NewWhatsAppService(rabbit *rabbitmq.RabbitMQService) *WhatsAppService {
+func NewWhatsAppService(rabbit *rabbitmq.RabbitMQService, sessionLoader SessionLoader) *WhatsAppService {
 	dbLog := waLog.Stdout("Database", "DEBUG", true)
-	dsn := buildPostgresDSN()
+	dsn := BuildPostgresDSN()
 
 	container, err := sqlstore.New(context.Background(), "postgres", dsn, dbLog)
 	if err != nil {
@@ -35,10 +35,10 @@ func NewWhatsAppService(rabbit *rabbitmq.RabbitMQService) *WhatsAppService {
 	}
 
 	return &WhatsAppService{
-		container: container,
-		clients:   make(map[int]*whatsmeow.Client),
-		rabbit:    rabbit,
-		dsn:       dsn,
+		container:     container,
+		clients:       make(map[int]*whatsmeow.Client),
+		rabbit:        rabbit,
+		sessionLoader: sessionLoader,
 	}
 }
 
@@ -87,7 +87,7 @@ func (s *WhatsAppService) publishEvent(tenantID string, sessionID int, eventType
 	}
 }
 
-func buildPostgresDSN() string {
+func BuildPostgresDSN() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_PASS"),
