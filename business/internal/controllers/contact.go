@@ -1,21 +1,26 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type ContactController struct {
 	contactRepo domain.ContactRepository
+	sessions    domain.ChannelSessionRepository
+	publisher   domain.CommandPublisher
 }
 
-func NewContactController(cr domain.ContactRepository) *ContactController {
-	return &ContactController{contactRepo: cr}
+func NewContactController(cr domain.ContactRepository, sessions domain.ChannelSessionRepository, publisher domain.CommandPublisher) *ContactController {
+	return &ContactController{contactRepo: cr, sessions: sessions, publisher: publisher}
 }
 
 // @Summary      Listar contatos
@@ -176,6 +181,56 @@ func (cc *ContactController) UpdateContact(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, contact)
+}
+
+// @Summary      Importar contatos do WhatsApp
+// @Description  Dispara a importação da agenda de contatos da sessão WhatsApp conectada
+// @Tags         contacts
+// @Produce      json
+// @Success      202  {object}  map[string]string
+// @Failure      409  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /contacts/import [post]
+func (cc *ContactController) ImportContacts(c *gin.Context) {
+	_, tenantID, ok := auth.GetScoped(c, "Contacts")
+	if !ok {
+		return
+	}
+
+	sessions, err := cc.sessions.FindAll(c.Request.Context(), tenantID)
+	if err != nil {
+		utils.RespondWithInternalError(c, err, "ImportContacts")
+		return
+	}
+
+	var session *domain.ChannelSession
+	for i := range sessions {
+		if sessions[i].Status == "CONNECTED" {
+			session = &sessions[i]
+			break
+		}
+	}
+	if session == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "No connected WhatsApp session available to import contacts"})
+		return
+	}
+
+	command := map[string]interface{}{
+		"id":        uuid.New().String(),
+		"timestamp": time.Now().UnixMilli(),
+		"tenantId":  tenantID.String(),
+		"type":      "contact.import",
+		"payload": map[string]interface{}{
+			"sessionId": session.ID,
+		},
+	}
+	routingKey := fmt.Sprintf("wbot.%s.%d.contact.import", tenantID.String(), session.ID)
+	if err := cc.publisher.PublishCommand(routingKey, command); err != nil {
+		utils.RespondWithInternalError(c, err, "ImportContacts")
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{"message": "Contact import started"})
 }
 
 // @Summary      Remover contato

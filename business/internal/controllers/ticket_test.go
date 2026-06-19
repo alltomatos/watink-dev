@@ -30,7 +30,7 @@ func setupTicketControllerTest(t *testing.T) (*gorm.DB, *TicketController) {
 	updateUseCase := usecases.NewUpdateTicketUseCase(ticketRepo, eventBus, nil, nil)
 
 	// broadcast nil = sem emissão socket (teste unitário, sem Redis/Socket.IO)
-	controller := NewTicketController(updateUseCase, nil)
+	controller := NewTicketController(updateUseCase, nil, nil, nil)
 
 	return db, controller
 }

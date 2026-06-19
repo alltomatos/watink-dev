@@ -464,6 +464,18 @@ const messages = {
           },
         },
       },
+      recoverHistory: {
+        button: "Historial",
+        title: "Recuperar historial",
+        requested: "Recuperación de historial solicitada. Los mensajes aparecerán en breve.",
+        ranges: {
+          oneDay: "Último día",
+          twoDays: "Últimos 2 días",
+          oneWeek: "Última semana",
+          oneMonth: "Último mes",
+          all: "Todo el historial disponible",
+        },
+      },
       messagesInput: {
         placeholderOpen: "Escriba un mensaje o presione '' / '' para usar las respuestas rápidas registradas",
         placeholderClosed:

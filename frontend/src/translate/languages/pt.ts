@@ -629,6 +629,18 @@ const messages = {
           },
         },
       },
+      recoverHistory: {
+        button: "Histórico",
+        title: "Recuperar histórico",
+        requested: "Recuperação de histórico solicitada. As mensagens aparecerão em instantes.",
+        ranges: {
+          oneDay: "Último dia",
+          twoDays: "Últimos 2 dias",
+          oneWeek: "Última semana",
+          oneMonth: "Último mês",
+          all: "Todo o histórico disponível",
+        },
+      },
       messagesInput: {
         placeholderOpen: "Digite uma mensagem ou tecle ''/'' para utilizar as respostas rápidas cadastrada",
         placeholderClosed:

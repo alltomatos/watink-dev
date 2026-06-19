@@ -56,6 +56,7 @@ type HistorySyncPayload struct {
 	SessionID string           `json:"sessionId"`
 	Type      string           `json:"type"`
 	Progress  uint32           `json:"progress"`
+	TicketID  int              `json:"ticketId"`
 	Messages  []MessagePayload `json:"messages"`
 }
 
@@ -85,4 +86,16 @@ type ContactUpdatePayload struct {
 	ProfilePicUrl string `json:"profilePicUrl"`
 	Lid           string `json:"lid"`
 	IsGroup       bool   `json:"isGroup"`
+}
+
+type ImportedContact struct {
+	JID      string `json:"jid"`
+	Number   string `json:"number"`
+	Name     string `json:"name"`
+	PushName string `json:"pushName"`
+}
+
+type ContactImportPayload struct {
+	SessionID string            `json:"sessionId"`
+	Contacts  []ImportedContact `json:"contacts"`
 }
