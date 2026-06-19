@@ -1,7 +1,8 @@
 /* @jsxImportSource react */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import openSocket from "../../services/socket-io";
 import { 
   Plus, 
   MoreVertical, 
@@ -57,6 +58,23 @@ const Connections = () => {
   const [webchatModalOpen, setWebchatModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [selectedWhatsApp, setSelectedWhatsApp] = useState<any>(null);
+
+  // Live updates: refetch the list whenever the backend broadcasts a session or
+  // whatsapp change, so the cards reflect status/avatar/number without a manual F5.
+  useEffect(() => {
+    const socket = openSocket();
+    if (!socket) return;
+
+    const refetch = () => { reloadWhatsApps(); };
+    socket.on("whatsappSession", refetch);
+    socket.on("whatsapp", refetch);
+
+    return () => {
+      socket.off("whatsappSession", refetch);
+      socket.off("whatsapp", refetch);
+      socket.disconnect();
+    };
+  }, [reloadWhatsApps]);
 
   // Iniciar/reiniciar sessão usa o endpoint real do backend: /whatsappsession/:id
   const handleStartWhatsAppSession = async (whatsAppId: any) => {
@@ -277,7 +295,19 @@ const Connections = () => {
       <PageContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {whatsApps?.map((whatsApp: any) => (
-            <Card key={whatsApp.id} className="flex flex-col">
+            <Card
+              key={whatsApp.id}
+              className="flex flex-col cursor-pointer transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/connections/${whatsApp.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/connections/${whatsApp.id}`);
+                }
+              }}
+            >
               <CardHeader className="flex flex-row items-start justify-between pb-2">
                 <div className="flex items-center gap-3">
                   <Avatar size="lg" src={getBackendUrl(whatsApp.profilePicUrl)} name={whatsApp.name} />
@@ -302,7 +332,10 @@ const Connections = () => {
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="border-t border-border/50 pt-4 flex justify-between items-center">
+              <CardFooter
+                className="border-t border-border/50 pt-4 flex justify-between items-center"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center gap-1">
                   {whatsApp.status === "CONNECTED" ? (
                     <SignalHigh size={18} className="text-green-500" />
