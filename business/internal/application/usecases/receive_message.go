@@ -146,6 +146,7 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 	dataJSON, _ := json.Marshal(map[string]interface{}{
 		"jid":         contactJID,
 		"participant": input.Participant,
+		"pushName":    input.PushName, // nome do remetente — exibido na bolha em grupos
 		"isGroup":     input.IsGroup,
 		"isLid":       input.IsLID,
 		"mimetype":    input.Mimetype,

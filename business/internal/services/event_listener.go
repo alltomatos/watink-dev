@@ -228,12 +228,14 @@ func (el *EventListener) handleHistorySync(ctx context.Context, payload json.Raw
 	inserted := 0
 	for _, m := range p.Messages {
 		dataJSON, _ := json.Marshal(map[string]interface{}{
-			"jid":       m.From,
-			"isGroup":   m.IsGroup,
-			"isLid":     m.IsLid,
-			"mimetype":  m.Mimetype,
-			"mediaData": m.MediaData,
-			"history":   true,
+			"jid":         m.From,
+			"participant": m.Participant,
+			"pushName":    m.PushName,
+			"isGroup":     m.IsGroup,
+			"isLid":       m.IsLid,
+			"mimetype":    m.Mimetype,
+			"mediaData":   m.MediaData,
+			"history":     true,
 		})
 
 		mediaType := m.Type
