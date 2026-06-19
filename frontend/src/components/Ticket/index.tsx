@@ -109,7 +109,7 @@ const Ticket: React.FC<TicketProps> = ({ onToggleDetails, showDetails }) => {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
       <TicketHeader loading={loading}>
         <div className="max-w-[80%] basis-[80%] md:max-w-[50%] md:basis-[50%]">
           <TicketInfo
