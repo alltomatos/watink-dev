@@ -77,15 +77,17 @@ type MessageRevokePayload struct {
 	FromMe    bool   `json:"fromMe"`
 }
 
+// ContactUpdatePayload mirrors the engine-go contact.update event, whose contact
+// fields are nested under "contact" (see engine handleContactEvent/handlePushNameEvent).
 type ContactUpdatePayload struct {
-	SessionID     string `json:"sessionId"`
-	JID           string `json:"jid"`
-	Number        string `json:"number"`
-	Name          string `json:"name"`
-	PushName      string `json:"pushName"`
-	ProfilePicUrl string `json:"profilePicUrl"`
-	Lid           string `json:"lid"`
-	IsGroup       bool   `json:"isGroup"`
+	SessionID string `json:"sessionId"`
+	Contact   struct {
+		JID           string `json:"jid"`
+		Number        string `json:"number"`
+		Name          string `json:"name"`
+		PushName      string `json:"pushName"`
+		ProfilePicUrl string `json:"profilePicUrl"`
+	} `json:"contact"`
 }
 
 type ImportedContact struct {

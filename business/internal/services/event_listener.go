@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/application/usecases"
@@ -78,7 +79,7 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 		case "message.reaction":
 			return handleMessageReaction(env.Payload, tid)
 		case "contact.update":
-			return handleContactUpdate(env.Payload, tid)
+			return handleContactUpdate(ctx, eventListener.contacts, env.Payload, tid)
 		case "contact.import":
 			return handleContactImport(ctx, eventListener.contacts, env.Payload, tid)
 		case "session.jid_registered":
@@ -315,14 +316,53 @@ func handleMessageReaction(payload json.RawMessage, tenantID uuid.UUID) error {
 	return nil
 }
 
-func handleContactUpdate(payload json.RawMessage, tenantID uuid.UUID) error {
+// handleContactUpdate persists a WhatsApp-pushed contact change (display name /
+// profile picture) when it arrives without a message. It only updates an existing
+// contact and never overwrites a name the user has personalized — the push name is
+// applied only when the stored name is empty or still equals the raw number.
+func handleContactUpdate(ctx context.Context, contacts domain.ContactRepository, payload json.RawMessage, tenantID uuid.UUID) error {
 	var p ContactUpdatePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err
 	}
-	_ = tenantID
-	log.Printf("Contact update received: %+v", p)
-	return nil
+
+	number := jidToNumber(p.Contact.JID)
+	if number == "" {
+		number = p.Contact.Number
+	}
+	if number == "" {
+		return nil
+	}
+
+	contact, err := contacts.FindByNumber(ctx, tenantID, number, false)
+	if err != nil {
+		return err
+	}
+	if contact == nil {
+		return nil
+	}
+
+	fields := map[string]interface{}{}
+	if p.Contact.PushName != "" && (contact.Name == "" || contact.Name == number) {
+		fields["name"] = p.Contact.PushName
+	}
+	if p.Contact.ProfilePicUrl != "" {
+		fields["profilePicUrl"] = p.Contact.ProfilePicUrl
+	}
+	if len(fields) == 0 {
+		return nil
+	}
+
+	return contacts.Update(ctx, contact, fields)
+}
+
+// jidToNumber extracts the bare number from a WhatsApp JID (user part before @/:).
+func jidToNumber(jid string) string {
+	if jid == "" {
+		return ""
+	}
+	base := strings.Split(jid, "@")[0]
+	return strings.Split(base, ":")[0]
 }
 
 // handleContactImport persists a batch of contacts pulled from the WhatsApp
