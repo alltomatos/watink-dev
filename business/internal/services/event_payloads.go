@@ -86,3 +86,15 @@ type ContactUpdatePayload struct {
 	Lid           string `json:"lid"`
 	IsGroup       bool   `json:"isGroup"`
 }
+
+type ImportedContact struct {
+	JID      string `json:"jid"`
+	Number   string `json:"number"`
+	Name     string `json:"name"`
+	PushName string `json:"pushName"`
+}
+
+type ContactImportPayload struct {
+	SessionID string            `json:"sessionId"`
+	Contacts  []ImportedContact `json:"contacts"`
+}
