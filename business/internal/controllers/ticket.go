@@ -2,26 +2,122 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/application/usecases"
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type TicketController struct {
 	updateTicket *usecases.UpdateTicketUseCase
 	broadcast    *services.RedisBroadcast
+	messages     domain.MessageRepository
+	publisher    domain.CommandPublisher
 }
 
-func NewTicketController(ut *usecases.UpdateTicketUseCase, broadcast *services.RedisBroadcast) *TicketController {
+func NewTicketController(ut *usecases.UpdateTicketUseCase, broadcast *services.RedisBroadcast, messages domain.MessageRepository, publisher domain.CommandPublisher) *TicketController {
 	return &TicketController{
 		updateTicket: ut,
 		broadcast:    broadcast,
+		messages:     messages,
+		publisher:    publisher,
 	}
+}
+
+// historyCutoff converts a recovery range token into a unix cutoff timestamp.
+// "all" (or empty) returns 0, meaning "no lower bound — all available history".
+func historyCutoff(rangeToken string, now time.Time) int64 {
+	switch rangeToken {
+	case "1d":
+		return now.Add(-24 * time.Hour).Unix()
+	case "2d":
+		return now.Add(-48 * time.Hour).Unix()
+	case "7d", "1w":
+		return now.Add(-7 * 24 * time.Hour).Unix()
+	case "30d":
+		return now.Add(-30 * 24 * time.Hour).Unix()
+	default:
+		return 0
+	}
+}
+
+// @Summary      Recuperar histórico da conversa
+// @Description  Solicita ao WhatsApp mensagens anteriores e as insere no ticket sem reabri-lo
+// @Tags         tickets
+// @Accept       json
+// @Produce      json
+// @Param        ticketId  path      int                     true  "ID do ticket"
+// @Param        body      body      map[string]interface{}  false  "range: 1d|2d|7d|30d|all"
+// @Success      202       {object}  map[string]string
+// @Failure      404       {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /tickets/{ticketId}/history/recover [post]
+func (tc *TicketController) RecoverHistory(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Tickets")
+	if !ok {
+		return
+	}
+	ticketID, err := strconv.Atoi(c.Param("ticketId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ticket id"})
+		return
+	}
+
+	var input struct {
+		Range string `json:"range"`
+	}
+	_ = c.ShouldBindJSON(&input)
+
+	var ticket models.Ticket
+	if err := db.Where("id = ?", ticketID).Preload("Contact").First(&ticket).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Ticket not found"})
+		return
+	}
+	if ticket.Contact.Number == "" {
+		c.JSON(http.StatusConflict, gin.H{"error": "Ticket contact has no WhatsApp number"})
+		return
+	}
+
+	chatJID := ticket.Contact.Number + "@s.whatsapp.net"
+	if ticket.IsGroup {
+		chatJID = ticket.Contact.Number + "@g.us"
+	}
+
+	payload := map[string]interface{}{
+		"chatJid":         chatJID,
+		"ticketId":        ticket.ID,
+		"cutoffTimestamp": historyCutoff(input.Range, time.Now()),
+	}
+
+	if oldest, err := tc.messages.FindOldestByTicket(c.Request.Context(), ticket.ID, tenantID); err == nil && oldest != nil {
+		payload["oldestMsgId"] = oldest.ID
+		payload["oldestMsgFromMe"] = oldest.FromMe
+		payload["oldestMsgTimestamp"] = oldest.CreatedAt.Unix()
+	}
+
+	command := map[string]interface{}{
+		"id":        uuid.New().String(),
+		"timestamp": time.Now().UnixMilli(),
+		"tenantId":  tenantID.String(),
+		"type":      "history.recover",
+		"payload":   payload,
+	}
+	routingKey := fmt.Sprintf("wbot.%s.%d.history.recover", tenantID.String(), ticket.WhatsappID)
+	if err := tc.publisher.PublishCommand(routingKey, command); err != nil {
+		utils.RespondWithInternalError(c, err, "RecoverHistory")
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{"message": "History recovery requested"})
 }
 
 // @Summary      Listar tickets

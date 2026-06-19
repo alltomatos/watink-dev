@@ -23,7 +23,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	queueController := controllers.NewQueueController()
 	contactController := controllers.NewContactController(container.ContactRepo, container.ChannelSessionRepo, rabbitMQ)
 	sessionController := controllers.NewSessionController(container.ChannelSessionRepo, container.Broadcast, container.SessionService)
-	ticketController := controllers.NewTicketController(container.UpdateTicket, container.Broadcast)
+	ticketController := controllers.NewTicketController(container.UpdateTicket, container.Broadcast, container.MessageRepo, rabbitMQ)
 	whatsappController := controllers.NewWhatsappController(container.ChannelSessionRepo, container.PlanLimitSvc, container.Broadcast, container.SessionService)
 	pluginController := controllers.NewPluginController(container.PlanLimitSvc)
 	authController := controllers.NewAuthController(container.UserRepo)
@@ -89,6 +89,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.GET("/tickets/:ticketId", ticketController.ShowTicket)
 		protected.PUT("/tickets/:ticketId", ticketController.UpdateTicket)
 		protected.GET("/tickets/:ticketId/logs", ticketController.ListTicketLogs)
+		protected.POST("/tickets/:ticketId/history/recover", ticketController.RecoverHistory)
 
 		// Dashboard
 		protected.GET("/dashboard", controllers.GetDashboardData)
