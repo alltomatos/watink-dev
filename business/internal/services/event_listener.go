@@ -184,6 +184,10 @@ func handleSessionStatus(ctx context.Context, sessions domain.ChannelSessionRepo
 		now := time.Now()
 		updates["firstConnection"] = &now
 	}
+	if p.Status == "CONNECTED" {
+		now := time.Now()
+		updates["lastConnectedAt"] = &now
+	}
 
 	if err := sessions.Update(ctx, &domain.ChannelSession{ID: sessionID, TenantID: tenantID}, updates); err != nil {
 		return err
