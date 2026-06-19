@@ -39,6 +39,7 @@ type MessageRepository interface {
 	Create(ctx context.Context, msg *Message) error
 	CreateIfNotExists(ctx context.Context, msg *Message) error
 	FindByID(ctx context.Context, id string, tenantID uuid.UUID) (*Message, error)
+	FindOldestByTicket(ctx context.Context, ticketID int, tenantID uuid.UUID) (*Message, error)
 	ExistsByID(ctx context.Context, id string, tenantID uuid.UUID) (bool, error)
 	Update(ctx context.Context, msg *Message, fields map[string]interface{}) error
 }
