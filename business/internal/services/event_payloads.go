@@ -56,6 +56,7 @@ type HistorySyncPayload struct {
 	SessionID string           `json:"sessionId"`
 	Type      string           `json:"type"`
 	Progress  uint32           `json:"progress"`
+	TicketID  int              `json:"ticketId"`
 	Messages  []MessagePayload `json:"messages"`
 }
 

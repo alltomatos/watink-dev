@@ -63,6 +63,7 @@ func main() {
 		"wbot.*.*.contact.sync",
 		"wbot.*.*.contact.import",
 		"wbot.*.*.history.sync",
+		"wbot.*.*.history.recover",
 	}
 
 	err := rabbit.ConsumeCommands("engine.go.commands", routingKeys, func(d amqp.Delivery) {
@@ -191,6 +192,13 @@ func handleCommand(d amqp.Delivery, svc *whatsapp.WhatsAppService) error {
 
 	case "contact.import":
 		return svc.ImportContacts(sessionID, tenantID)
+
+	case "history.recover":
+		var p whatsapp.HistoryRecoverPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return err
+		}
+		return svc.RecoverHistory(sessionID, tenantID, p)
 
 	case "history.sync":
 		log.Printf("Command %s received but not implemented in engine-go", cmd)
