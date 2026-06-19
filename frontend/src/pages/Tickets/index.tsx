@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Users, User, Phone, Mail, AtSign, X } from "lucide-react";
+import { Users, User, Phone, Mail, AtSign, X, RefreshCw } from "lucide-react";
+import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -34,8 +35,22 @@ interface TicketInfo {
 
 /* ─── Dados tab ──────────────────────────────────────────────────────── */
 const DadosTab: React.FC<{ ticket: TicketInfo | null; loading: boolean }> = ({ ticket, loading }) => {
+  const [syncing, setSyncing] = useState(false);
   const contact = ticket?.contact;
   const isGroup = contact?.isGroup || ticket?.isGroup;
+
+  const handleSyncContact = async () => {
+    if (!contact?.id) return;
+    setSyncing(true);
+    try {
+      await api.post(`/contacts/${contact.id}/sync`);
+      toast.success("Sincronização solicitada ao WhatsApp!");
+    } catch {
+      toast.error("Erro ao solicitar atualização.");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -80,6 +95,16 @@ const DadosTab: React.FC<{ ticket: TicketInfo | null; loading: boolean }> = ({ t
             Contato
           </span>
         )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-1 h-7 gap-1.5 text-xs"
+          disabled={syncing || !contact.id}
+          onClick={handleSyncContact}
+        >
+          <RefreshCw className={`w-3 h-3 ${syncing ? "animate-spin" : ""}`} />
+          Atualizar contato
+        </Button>
       </div>
 
       {/* Details */}
