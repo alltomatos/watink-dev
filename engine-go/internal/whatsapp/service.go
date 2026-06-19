@@ -22,6 +22,9 @@ type WhatsAppService struct {
 	mu            sync.RWMutex
 	rabbit        *rabbitmq.RabbitMQService
 	sessionLoader SessionLoader
+
+	historyMu       sync.Mutex
+	historyRequests map[string]*pendingHistory
 }
 
 // NewWhatsAppService creates a WhatsAppService connecting whatsmeow to PostgreSQL via sqlstore.
@@ -35,10 +38,11 @@ func NewWhatsAppService(rabbit *rabbitmq.RabbitMQService, sessionLoader SessionL
 	}
 
 	return &WhatsAppService{
-		container:     container,
-		clients:       make(map[int]*whatsmeow.Client),
-		rabbit:        rabbit,
-		sessionLoader: sessionLoader,
+		container:       container,
+		clients:         make(map[int]*whatsmeow.Client),
+		rabbit:          rabbit,
+		sessionLoader:   sessionLoader,
+		historyRequests: make(map[string]*pendingHistory),
 	}
 }
 

@@ -7,6 +7,7 @@ import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
 import TicketOptionsMenu from "../TicketOptionsMenu";
 import ButtonWithSpinner from "../ButtonWithSpinner";
+import RecoverHistoryButton from "../RecoverHistoryButton";
 import toastError from "../../errors/toastError";
 import { AuthContext } from "../../context/Auth/AuthContext";
 
@@ -83,6 +84,8 @@ const TicketActionButtons: React.FC<TicketActionButtonsProps> = ({ ticket }) => 
 
       {ticket.status === "open" && (
         <>
+          <RecoverHistoryButton ticketId={ticket.id} />
+
           <ButtonWithSpinner
             loading={loading}
             startIcon={<RotateCcw className="h-4 w-4" />}

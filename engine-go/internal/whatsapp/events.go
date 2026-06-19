@@ -8,6 +8,7 @@ import (
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/proto/waHistorySync"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 )
@@ -43,6 +44,10 @@ func (s *WhatsAppService) handleEvent(id int, tenantID string, evt interface{}) 
 		s.handlePushNameEvent(id, tenantID, v)
 	case *events.HistorySync:
 		log.Printf("History sync (type %s) for session %d", v.Data.SyncType.String(), id)
+		if v.Data.GetSyncType() == waHistorySync.HistorySync_ON_DEMAND {
+			s.handleOnDemandHistory(id, tenantID, v.Data)
+			return
+		}
 		s.publishEvent(tenantID, id, "session.history_sync", map[string]interface{}{
 			"sessionId": fmt.Sprintf("%d", id),
 			"type":      v.Data.SyncType.String(),
