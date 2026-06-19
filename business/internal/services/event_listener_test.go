@@ -177,8 +177,22 @@ func TestHandleMessageReaction_InvalidJSON(t *testing.T) {
 }
 
 func TestHandleContactUpdate_InvalidJSON(t *testing.T) {
-	err := handleContactUpdate(json.RawMessage(`{bad`), uuid.New())
+	err := handleContactUpdate(context.Background(), nil, json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
+	}
+}
+
+func TestJidToNumber(t *testing.T) {
+	cases := map[string]string{
+		"5511999999999@s.whatsapp.net":   "5511999999999",
+		"5511999999999:12@s.whatsapp.net": "5511999999999",
+		"5511999999999":                  "5511999999999",
+		"":                               "",
+	}
+	for in, want := range cases {
+		if got := jidToNumber(in); got != want {
+			t.Errorf("jidToNumber(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
