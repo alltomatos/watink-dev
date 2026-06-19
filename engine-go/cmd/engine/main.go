@@ -40,7 +40,8 @@ func main() {
 	}
 	log.Println("Connected to RabbitMQ")
 
-	waService := whatsapp.NewWhatsAppService(rabbit)
+	sessionLoader := whatsapp.NewPostgresSessionLoader(whatsapp.BuildPostgresDSN())
+	waService := whatsapp.NewWhatsAppService(rabbit, sessionLoader)
 
 	go func() {
 		time.Sleep(5 * time.Second)
