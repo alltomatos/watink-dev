@@ -17,7 +17,7 @@ func TestBuildPostgresDSN_UsesEnvVars(t *testing.T) {
 		}
 	})
 
-	dsn := buildPostgresDSN()
+	dsn := BuildPostgresDSN()
 	expected := "postgres://pguser:pgpass@dbhost:5432/mydb?sslmode=disable"
 	if dsn != expected {
 		t.Fatalf("expected %q, got %q", expected, dsn)

@@ -1,18 +1,24 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
+	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/internal/infrastructure/repository"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-func setupEventListenerDB(t *testing.T) *gorm.DB {
+// --- Test helpers ---
+
+func setupEventListenerRepos(t *testing.T) (*gorm.DB, domain.ChannelSessionRepository, domain.MessageRepository) {
 	t.Helper()
-	return testutil.NewTestDB(t)
+	db := testutil.NewTestDB(t)
+	return db, repository.NewGORMChannelSessionRepo(db), repository.NewGORMMessageRepo(db)
 }
 
 func seedWhatsapp(t *testing.T, db *gorm.DB, id int, tenantID uuid.UUID) {
@@ -28,6 +34,8 @@ func seedWhatsapp(t *testing.T, db *gorm.DB, id int, tenantID uuid.UUID) {
 	}
 }
 
+// --- getSessionID (pure, offline) ---
+
 func TestGetSessionID(t *testing.T) {
 	cases := []struct {
 		input string
@@ -37,6 +45,7 @@ func TestGetSessionID(t *testing.T) {
 		{"0", 0},
 		{"abc", 0},
 		{"", 0},
+		{"uuid-tenant-99", 99},
 	}
 	for _, tc := range cases {
 		got := getSessionID(tc.input)
@@ -46,13 +55,15 @@ func TestGetSessionID(t *testing.T) {
 	}
 }
 
+// --- handleQrCode ---
+
 func TestHandleQrCode_UpdatesWhatsapp(t *testing.T) {
-	db := setupEventListenerDB(t)
+	db, sessions, _ := setupEventListenerRepos(t)
 	tenantID := uuid.New()
 	seedWhatsapp(t, db, 1, tenantID)
 
 	payload, _ := json.Marshal(map[string]string{"sessionId": "1", "qrCode": "data:image/png;base64,abc=="})
-	if err := handleQrCode(db, payload, tenantID); err != nil {
+	if err := handleQrCode(context.Background(), sessions, payload, tenantID); err != nil {
 		t.Fatalf("handleQrCode() error: %v", err)
 	}
 
@@ -64,20 +75,21 @@ func TestHandleQrCode_UpdatesWhatsapp(t *testing.T) {
 }
 
 func TestHandleQrCode_InvalidJSON(t *testing.T) {
-	db := setupEventListenerDB(t)
-	err := handleQrCode(db, json.RawMessage(`{bad json`), uuid.New())
+	err := handleQrCode(context.Background(), nil, json.RawMessage(`{bad json`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}
 }
 
+// --- handleSessionStatus ---
+
 func TestHandleSessionStatus_UpdatesStatus(t *testing.T) {
-	db := setupEventListenerDB(t)
+	db, sessions, _ := setupEventListenerRepos(t)
 	tenantID := uuid.New()
 	seedWhatsapp(t, db, 2, tenantID)
 
 	payload, _ := json.Marshal(map[string]string{"sessionId": "2", "status": "DISCONNECTED", "number": "+5511999999999"})
-	if err := handleSessionStatus(db, payload, tenantID); err != nil {
+	if err := handleSessionStatus(context.Background(), sessions, payload, tenantID); err != nil {
 		t.Fatalf("handleSessionStatus() error: %v", err)
 	}
 
@@ -89,29 +101,30 @@ func TestHandleSessionStatus_UpdatesStatus(t *testing.T) {
 }
 
 func TestHandleSessionStatus_InvalidJSON(t *testing.T) {
-	db := setupEventListenerDB(t)
-	err := handleSessionStatus(db, json.RawMessage(`{bad`), uuid.New())
+	err := handleSessionStatus(context.Background(), nil, json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}
 }
 
 func TestHandleSessionStatus_NoRowsAffected(t *testing.T) {
-	db := setupEventListenerDB(t)
+	_, sessions, _ := setupEventListenerRepos(t)
 	// session does not exist — should return nil (no-op)
 	payload, _ := json.Marshal(map[string]string{"sessionId": "999", "status": "CONNECTED"})
-	if err := handleSessionStatus(db, payload, uuid.New()); err != nil {
+	if err := handleSessionStatus(context.Background(), sessions, payload, uuid.New()); err != nil {
 		t.Fatalf("handleSessionStatus() with missing row returned error: %v", err)
 	}
 }
 
+// --- handlePairingCode ---
+
 func TestHandlePairingCode_UpdatesStatus(t *testing.T) {
-	db := setupEventListenerDB(t)
+	db, sessions, _ := setupEventListenerRepos(t)
 	tenantID := uuid.New()
 	seedWhatsapp(t, db, 3, tenantID)
 
 	payload, _ := json.Marshal(map[string]string{"sessionId": "3", "status": "PAIRING", "pairingCode": "ABC-123"})
-	if err := handlePairingCode(db, payload, tenantID); err != nil {
+	if err := handlePairingCode(context.Background(), sessions, payload, tenantID); err != nil {
 		t.Fatalf("handlePairingCode() error: %v", err)
 	}
 
@@ -123,13 +136,13 @@ func TestHandlePairingCode_UpdatesStatus(t *testing.T) {
 }
 
 func TestHandlePairingCode_DefaultStatus(t *testing.T) {
-	db := setupEventListenerDB(t)
+	db, sessions, _ := setupEventListenerRepos(t)
 	tenantID := uuid.New()
 	seedWhatsapp(t, db, 4, tenantID)
 
 	// No status field — should default to "QRCODE"
 	payload, _ := json.Marshal(map[string]string{"sessionId": "4", "pairingCode": "XYZ-789"})
-	if err := handlePairingCode(db, payload, tenantID); err != nil {
+	if err := handlePairingCode(context.Background(), sessions, payload, tenantID); err != nil {
 		t.Fatalf("handlePairingCode() error: %v", err)
 	}
 
@@ -140,33 +153,31 @@ func TestHandlePairingCode_DefaultStatus(t *testing.T) {
 	}
 }
 
+// --- handleMessageAck / Revoke / Reaction / ContactUpdate (invalid JSON, offline) ---
+
 func TestHandleMessageAck_InvalidJSON(t *testing.T) {
-	db := setupEventListenerDB(t)
-	err := handleMessageAck(db, json.RawMessage(`{bad`), uuid.New())
+	err := handleMessageAck(context.Background(), nil, json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}
 }
 
 func TestHandleMessageRevoke_InvalidJSON(t *testing.T) {
-	db := setupEventListenerDB(t)
-	err := handleMessageRevoke(db, json.RawMessage(`{bad`), uuid.New())
+	err := handleMessageRevoke(context.Background(), nil, json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}
 }
 
 func TestHandleMessageReaction_InvalidJSON(t *testing.T) {
-	db := setupEventListenerDB(t)
-	err := handleMessageReaction(db, json.RawMessage(`{bad`), uuid.New())
+	err := handleMessageReaction(json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}
 }
 
 func TestHandleContactUpdate_InvalidJSON(t *testing.T) {
-	db := setupEventListenerDB(t)
-	err := handleContactUpdate(db, json.RawMessage(`{bad`), uuid.New())
+	err := handleContactUpdate(json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}
