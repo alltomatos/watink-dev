@@ -4,12 +4,14 @@ import { Users, User, Phone, Mail, AtSign, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { i18n } from "../../translate/i18n";
 import { getBackendUrl } from "../../helpers/urlUtils";
 import api from "../../services/api";
 
 import TicketsManager from "@/components/TicketsManager/";
 import Ticket from "@/components/Ticket/";
+import TicketHistory from "@/components/TicketHistory";
 
 interface ContactInfo {
   id?: number;
@@ -30,128 +32,168 @@ interface TicketInfo {
   whatsapp?: { name: string };
 }
 
-/* ─── Contact Details Panel ──────────────────────────────────────────── */
-const ContactDetailsPanel: React.FC<{
+/* ─── Dados tab ──────────────────────────────────────────────────────── */
+const DadosTab: React.FC<{ ticket: TicketInfo | null; loading: boolean }> = ({ ticket, loading }) => {
+  const contact = ticket?.contact;
+  const isGroup = contact?.isGroup || ticket?.isGroup;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col p-4 gap-3 animate-pulse">
+        <div className="flex flex-col items-center gap-2 py-4">
+          <div className="w-20 h-20 rounded-full bg-muted" />
+          <div className="h-4 w-32 rounded bg-muted" />
+          <div className="h-3 w-24 rounded bg-muted" />
+        </div>
+        <div className="h-3 w-full rounded bg-muted" />
+        <div className="h-3 w-3/4 rounded bg-muted" />
+      </div>
+    );
+  }
+
+  if (!contact) {
+    return (
+      <div className="flex h-full items-center justify-center text-muted-foreground text-sm p-4 text-center">
+        Selecione um ticket para ver os detalhes
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col">
+      {/* Avatar + name */}
+      <div className="flex flex-col items-center gap-2 px-4 py-6 border-b border-border">
+        <Avatar
+          src={contact.profilePicUrl ? getBackendUrl(contact.profilePicUrl) : null}
+          name={contact.name || "?"}
+          className="w-20 h-20"
+        />
+        <p className="font-semibold text-sm text-center leading-tight">{contact.name}</p>
+        {isGroup ? (
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">
+            <Users className="w-3 h-3" />
+            Grupo do WhatsApp
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">
+            <User className="w-3 h-3" />
+            Contato
+          </span>
+        )}
+      </div>
+
+      {/* Details */}
+      <div className="flex flex-col gap-3 px-4 py-4">
+        {ticket?.id && (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ticket</p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Número</span>
+              <span className="font-medium">#{ticket.id}</span>
+            </div>
+            {ticket.user && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Agente</span>
+                <span className="font-medium">{ticket.user.name}</span>
+              </div>
+            )}
+            {ticket.whatsapp?.name && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Conexão</span>
+                <span className="font-medium truncate max-w-[140px]">{ticket.whatsapp.name}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            {isGroup ? "Grupo" : "Contato"}
+          </p>
+          {contact.number && (
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <a href={`tel:${contact.number}`} className="text-primary hover:underline truncate">
+                {contact.number}
+              </a>
+            </div>
+          )}
+          {contact.email && (
+            <div className="flex items-center gap-2 text-sm">
+              <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <a href={`mailto:${contact.email}`} className="text-primary hover:underline truncate">
+                {contact.email}
+              </a>
+            </div>
+          )}
+          {contact.lid && !contact.number && (
+            <div className="flex items-center gap-2 text-sm">
+              <AtSign className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground truncate">{contact.lid}</span>
+            </div>
+          )}
+          {isGroup && !contact.number && !contact.email && (
+            <p className="text-xs text-muted-foreground">
+              Avatar e detalhes aparecem após receber mensagens do grupo.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Details Panel (com abas) ───────────────────────────────────────── */
+const DetailsPanel: React.FC<{
   ticket: TicketInfo | null;
   loading: boolean;
   onClose: () => void;
 }> = ({ ticket, loading, onClose }) => {
-  const contact = ticket?.contact;
-  const isGroup = contact?.isGroup || ticket?.isGroup;
+  const isGroup = ticket?.contact?.isGroup || ticket?.isGroup;
 
   return (
     <div className="flex flex-col w-full h-full overflow-hidden">
-      {/* Panel header */}
+      {/* Header */}
       <div className="flex items-center justify-between px-4 h-[57px] border-b border-border shrink-0">
         <span className="text-sm font-semibold text-foreground">
           {isGroup ? "Detalhes do Grupo" : "Detalhes do Contato"}
         </span>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} aria-label="Fechar painel">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={onClose}
+          aria-label="Fechar painel"
+        >
           <X className="w-4 h-4" />
         </Button>
       </div>
 
-      {/* Panel body */}
-      <div className="flex-1 overflow-y-auto">
-        {loading ? (
-          <div className="flex flex-col p-4 gap-3 animate-pulse">
-            <div className="flex flex-col items-center gap-2 py-4">
-              <div className="w-20 h-20 rounded-full bg-muted" />
-              <div className="h-4 w-32 rounded bg-muted" />
-              <div className="h-3 w-24 rounded bg-muted" />
-            </div>
-            <div className="h-3 w-full rounded bg-muted" />
-            <div className="h-3 w-3/4 rounded bg-muted" />
-          </div>
-        ) : !contact ? (
-          <div className="flex h-full items-center justify-center text-muted-foreground text-sm p-4 text-center">
-            Selecione um ticket para ver os detalhes
-          </div>
-        ) : (
-          <>
-            {/* Avatar + name */}
-            <div className="flex flex-col items-center gap-2 px-4 py-6 border-b border-border">
-              <Avatar
-                src={contact.profilePicUrl ? getBackendUrl(contact.profilePicUrl) : null}
-                name={contact.name || "?"}
-                className="w-20 h-20"
-              />
-              <p className="font-semibold text-sm text-center leading-tight">{contact.name}</p>
-              {isGroup ? (
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">
-                  <Users className="w-3 h-3" />
-                  Grupo do WhatsApp
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">
-                  <User className="w-3 h-3" />
-                  Contato
-                </span>
-              )}
-            </div>
+      {/* Abas */}
+      <Tabs defaultValue="dados" className="flex flex-col flex-1 overflow-hidden">
+        <TabsList className="w-full rounded-none h-9 gap-0 shrink-0 border-b border-border bg-muted/40">
+          <TabsTrigger value="dados" className="flex-1 rounded-none text-xs h-full">
+            Dados
+          </TabsTrigger>
+          <TabsTrigger value="historico" className="flex-1 rounded-none text-xs h-full">
+            Histórico
+          </TabsTrigger>
+        </TabsList>
 
-            {/* Details */}
-            <div className="flex flex-col gap-3 px-4 py-4">
-              {/* Ticket info */}
-              {ticket?.id && (
-                <div className="flex flex-col gap-1.5">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ticket</p>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Número</span>
-                    <span className="font-medium">#{ticket.id}</span>
-                  </div>
-                  {ticket.user && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Agente</span>
-                      <span className="font-medium">{ticket.user.name}</span>
-                    </div>
-                  )}
-                  {ticket.whatsapp?.name && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Conexão</span>
-                      <span className="font-medium truncate max-w-[140px]">{ticket.whatsapp.name}</span>
-                    </div>
-                  )}
-                </div>
-              )}
+        <TabsContent value="dados" className="flex-1 overflow-y-auto mt-0">
+          <DadosTab ticket={ticket} loading={loading} />
+        </TabsContent>
 
-              {/* Contact / Group info */}
-              <div className="flex flex-col gap-1.5">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  {isGroup ? "Grupo" : "Contato"}
-                </p>
-                {contact.number && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <a href={`tel:${contact.number}`} className="text-primary hover:underline truncate">
-                      {contact.number}
-                    </a>
-                  </div>
-                )}
-                {contact.email && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <a href={`mailto:${contact.email}`} className="text-primary hover:underline truncate">
-                      {contact.email}
-                    </a>
-                  </div>
-                )}
-                {contact.lid && !contact.number && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <AtSign className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground truncate">{contact.lid}</span>
-                  </div>
-                )}
-                {isGroup && !contact.number && !contact.email && (
-                  <p className="text-xs text-muted-foreground">
-                    Avatar e detalhes aparecem após receber mensagens do grupo.
-                  </p>
-                )}
-              </div>
+        <TabsContent value="historico" className="flex-1 overflow-y-auto mt-0">
+          {ticket?.id ? (
+            <TicketHistory ticketId={ticket.id} />
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted-foreground text-sm p-4 text-center">
+              Selecione um ticket para ver o histórico
             </div>
-          </>
-        )}
-      </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
@@ -174,7 +216,6 @@ const Tickets: React.FC = () => {
       setDetailLoading(false);
       return;
     }
-    // Reset immediately so the skeleton shows for the new ticket
     setDetailTicket(null);
     setDetailLoading(true);
     const timer = setTimeout(async () => {
@@ -202,11 +243,14 @@ const Tickets: React.FC = () => {
 
       {/* Coluna 2: Chat */}
       <div className={cn(
-        "flex-col bg-background",
+        "flex-col bg-background min-w-0",
         hasOpenTicket ? "flex flex-1" : "hidden md:flex md:flex-1"
       )}>
         {ticketId ? (
-          <Ticket onToggleDetails={() => setShowDetails((v) => !v)} showDetails={showDetails} />
+          <Ticket
+            onToggleDetails={() => setShowDetails((v) => !v)}
+            showDetails={showDetails}
+          />
         ) : (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             {i18n.t("chat.noTicketMessage")}
@@ -214,10 +258,10 @@ const Tickets: React.FC = () => {
         )}
       </div>
 
-      {/* Coluna 3: Detalhes (toggle via showDetails) */}
+      {/* Coluna 3: Detalhes */}
       {showDetails && (
-        <div className="hidden w-[280px] border-l border-border lg:flex flex-col">
-          <ContactDetailsPanel
+        <div className="hidden w-[280px] shrink-0 border-l border-border lg:flex flex-col">
+          <DetailsPanel
             ticket={detailTicket}
             loading={detailLoading && !!ticketId}
             onClose={() => setShowDetails(false)}
