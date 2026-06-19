@@ -1,17 +1,8 @@
 package services
 
 import (
-	"context"
-
 	amqp "github.com/streadway/amqp"
-	"go.opentelemetry.io/otel"
 )
-
-// extractTraceContext creates a context with trace info from AMQP delivery headers.
-func extractTraceContext(d amqp.Delivery) context.Context {
-	carrier := &amqpHeaderCarrier{headers: d.Headers}
-	return otel.GetTextMapPropagator().Extract(context.Background(), carrier)
-}
 
 // amqpHeaderCarrier implements propagation.TextMapCarrier for AMQP headers.
 type amqpHeaderCarrier struct {
