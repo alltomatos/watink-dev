@@ -78,3 +78,7 @@ script_package_plugins.js
 
 # --- Zone Identifiers (Windows) ---
 *:Zone.Identifier
+
+# Go coverage artifacts
+cover.out
+**/cover.out
