@@ -27,7 +27,7 @@ func engineLatencyMs() int {
 	if err != nil {
 		return -1
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return -1
 	}
@@ -80,7 +80,7 @@ func (wc *WhatsappController) StatsWhatsapp(c *gin.Context) {
 	})
 }
 
-// @Summary      Alternar reconexão automática (keepAlive)
+// @Summary      Atualiza reconexão automática (keepAlive)
 // @Tags         whatsapp
 // @Accept       json
 // @Produce      json
