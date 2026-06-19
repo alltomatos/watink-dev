@@ -21,7 +21,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	setupController := controllers.NewSetupController(services.NewSetupService(container.DB))
 	userController := controllers.NewUserController(container.UserRepo, container.PlanLimitSvc)
 	queueController := controllers.NewQueueController()
-	contactController := controllers.NewContactController(container.ContactRepo)
+	contactController := controllers.NewContactController(container.ContactRepo, container.ChannelSessionRepo, rabbitMQ)
 	sessionController := controllers.NewSessionController(container.ChannelSessionRepo, container.Broadcast, container.SessionService)
 	ticketController := controllers.NewTicketController(container.UpdateTicket, container.Broadcast)
 	whatsappController := controllers.NewWhatsappController(container.ChannelSessionRepo, container.PlanLimitSvc, container.Broadcast, container.SessionService)
@@ -117,6 +117,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.GET("/contacts/:contactId", contactController.ShowContact)
 		protected.POST("/contacts", contactController.CreateContact)
 		protected.POST("/contacts/", contactController.CreateContact)
+		protected.POST("/contacts/import", contactController.ImportContacts)
 		protected.PUT("/contacts/:contactId", contactController.UpdateContact)
 		protected.DELETE("/contacts/:contactId", contactController.DeleteContact)
 

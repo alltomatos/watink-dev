@@ -17,11 +17,12 @@ import (
 type EventListener struct {
 	sessions       domain.ChannelSessionRepository
 	messages       domain.MessageRepository
+	contacts       domain.ContactRepository
 	receiveMessage *usecases.ReceiveMessageUseCase
 }
 
-func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, rm *usecases.ReceiveMessageUseCase) *EventListener {
-	return &EventListener{sessions: sessions, messages: messages, receiveMessage: rm}
+func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, rm *usecases.ReceiveMessageUseCase) *EventListener {
+	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, receiveMessage: rm}
 }
 
 func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener) {
@@ -35,6 +36,7 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 		"wbot.*.*.message.revoke",
 		"wbot.*.*.message.reaction",
 		"wbot.*.*.contact.update",
+		"wbot.*.*.contact.import",
 		"wbot.*.*.session.jid_registered",
 	}
 
@@ -76,6 +78,8 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 			return handleMessageReaction(env.Payload, tid)
 		case "contact.update":
 			return handleContactUpdate(env.Payload, tid)
+		case "contact.import":
+			return handleContactImport(ctx, eventListener.contacts, env.Payload, tid)
 		case "session.jid_registered":
 			return handleJIDRegistered(ctx, eventListener.sessions, env.Payload, tid)
 		default:
@@ -259,6 +263,35 @@ func handleContactUpdate(payload json.RawMessage, tenantID uuid.UUID) error {
 	}
 	_ = tenantID
 	log.Printf("Contact update received: %+v", p)
+	return nil
+}
+
+// handleContactImport persists a batch of contacts pulled from the WhatsApp
+// address book. Each contact is upserted via FindOrCreate, so re-running the
+// import is idempotent and never duplicates existing contacts.
+func handleContactImport(ctx context.Context, contacts domain.ContactRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+	var p ContactImportPayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return err
+	}
+
+	imported := 0
+	for _, c := range p.Contacts {
+		if c.Number == "" {
+			continue
+		}
+		name := c.Name
+		if name == "" {
+			name = c.PushName
+		}
+		if _, err := contacts.FindOrCreate(ctx, tenantID, c.Number, name, "", false, false, ""); err != nil {
+			log.Printf("[ContactImport] failed to upsert contact %s: %v", c.Number, err)
+			continue
+		}
+		imported++
+	}
+
+	log.Printf("[ContactImport] session %s: %d/%d contacts imported (tenant %s)", p.SessionID, imported, len(p.Contacts), tenantID)
 	return nil
 }
 
