@@ -12,13 +12,6 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-const (
-	dlqExchange    = "wbot.dlq"
-	dlqMaxRetries  = 3
-	dlqBaseBackoff = 5 * time.Second
-	dlqMaxBackoff  = 5 * time.Minute
-	dlqMessageTTL  = 86400000 // 24h in ms
-)
 
 type RabbitMQService struct {
 	conn    *amqp.Connection
@@ -143,105 +136,6 @@ func (s *RabbitMQService) ConsumeEvents(queueName string, routingKeys []string, 
 	return nil
 }
 
-func (s *RabbitMQService) declareQueueWithDLQ(queueName, exchange string, routingKeys []string) error {
-	dlqQueueName := queueName + ".dlq"
-
-	// Declare DLQ queue (messages that exceeded max retries)
-	if _, err := s.channel.QueueDeclare(
-		dlqQueueName, true, false, false, false, nil,
-	); err != nil {
-		return fmt.Errorf("DLQ queue %s: %v", dlqQueueName, err)
-	}
-
-	if err := s.channel.QueueBind(dlqQueueName, "#", dlqExchange, false, nil); err != nil {
-		return fmt.Errorf("DLQ bind %s: %v", dlqQueueName, err)
-	}
-
-	// Declare main queue with DLQ routing
-	args := amqp.Table{
-		"x-dead-letter-exchange":    dlqExchange,
-		"x-dead-letter-routing-key": queueName,
-		"x-message-ttl":             int32(dlqMessageTTL),
-	}
-
-	if _, err := s.channel.QueueDeclare(
-		queueName, true, false, false, false, args,
-	); err != nil {
-		return fmt.Errorf("queue %s: %v", queueName, err)
-	}
-
-	for _, key := range routingKeys {
-		if err := s.channel.QueueBind(queueName, key, exchange, false, nil); err != nil {
-			return fmt.Errorf("bind %s -> %s: %v", key, queueName, err)
-		}
-	}
-
-	return nil
-}
-
-func (s *RabbitMQService) handleFailedMessage(d amqp.Delivery, processErr error) {
-	retryCount := getRetryCount(d)
-
-	log.Printf("[RabbitMQ] Message failed (retry %d/%d): %v", retryCount, dlqMaxRetries, processErr)
-
-	if retryCount >= dlqMaxRetries {
-		log.Printf("[RabbitMQ] Max retries exceeded, routing to DLQ: %s", d.MessageId)
-		d.Nack(false, false) // reject without requeue -> goes to DLQ
-		return
-	}
-
-	// Exponential backoff: base * 2^retryCount, capped at max
-	backoff := dlqBaseBackoff * time.Duration(1<<uint(retryCount))
-	if backoff > dlqMaxBackoff {
-		backoff = dlqMaxBackoff
-	}
-
-	log.Printf("[RabbitMQ] Requeuing with %v backoff (retry %d)", backoff, retryCount+1)
-	time.Sleep(backoff)
-
-	// Re-publish with incremented retry header
-	headers := amqp.Table{}
-	if d.Headers != nil {
-		for k, v := range d.Headers {
-			headers[k] = v
-		}
-	}
-	headers["x-retry-count"] = int32(retryCount + 1)
-
-	exchange := d.Exchange
-	if exchange == "" {
-		exchange = "wbot.events"
-	}
-
-	err := s.channel.Publish(
-		exchange, d.RoutingKey, false, false,
-		amqp.Publishing{
-			ContentType:  d.ContentType,
-			DeliveryMode: amqp.Persistent,
-			Body:         d.Body,
-			Headers:      headers,
-			Timestamp:    time.Now(),
-		},
-	)
-	if err != nil {
-		log.Printf("[RabbitMQ] Failed to requeue message: %v", err)
-		d.Nack(false, false)
-		return
-	}
-
-	d.Ack(false) // ack original, re-published copy carries retry header
-}
-
-func getRetryCount(d amqp.Delivery) int {
-	if d.Headers == nil {
-		return 0
-	}
-	if count, ok := d.Headers["x-retry-count"].(int32); ok {
-		return int(count)
-	}
-	return 0
-}
-
 func (s *RabbitMQService) Close() error {
 	if s.channel != nil {
 		s.channel.Close()
@@ -252,43 +146,3 @@ func (s *RabbitMQService) Close() error {
 	return nil
 }
 
-// extractTraceContext creates a context with trace info from AMQP delivery headers
-func extractTraceContext(d amqp.Delivery) context.Context {
-	carrier := &amqpHeaderCarrier{headers: d.Headers}
-	return otel.GetTextMapPropagator().Extract(context.Background(), carrier)
-}
-
-// amqpHeaderCarrier implements propagation.TextMapCarrier for AMQP headers
-type amqpHeaderCarrier struct {
-	headers amqp.Table
-}
-
-func (c *amqpHeaderCarrier) Get(key string) string {
-	if c.headers == nil {
-		return ""
-	}
-	v, ok := c.headers[key]
-	if !ok {
-		return ""
-	}
-	s, ok := v.(string)
-	if !ok {
-		return ""
-	}
-	return s
-}
-
-func (c *amqpHeaderCarrier) Set(key, value string) {
-	if c.headers == nil {
-		c.headers = amqp.Table{}
-	}
-	c.headers[key] = value
-}
-
-func (c *amqpHeaderCarrier) Keys() []string {
-	keys := make([]string, 0, len(c.headers))
-	for k := range c.headers {
-		keys = append(keys, k)
-	}
-	return keys
-}

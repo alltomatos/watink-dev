@@ -69,7 +69,7 @@ func main() {
 
 	if err := rabbitMQ.Connect(); err == nil {
 		rabbitMQ.StartFlowWorker()
-		eventListener := services.NewEventListener(database.DB, container.ReceiveMessage)
+		eventListener := services.NewEventListener(container.ChannelSessionRepo, container.MessageRepo, container.ReceiveMessage)
 		services.StartEventListener(rabbitMQ, eventListener)
 	} else {
 		log.Printf("⚠️ Warning: RabbitMQ connection failed: %v", err)
