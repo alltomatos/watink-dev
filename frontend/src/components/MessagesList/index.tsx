@@ -797,7 +797,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
   };
 
   return (
-    <div className="overflow-hidden relative flex flex-col flex-grow">
+    <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">
       <MessageOptionsMenu
         message={selectedMessage}
         anchorEl={anchorEl}
@@ -851,7 +851,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
 
       <div
         id="messagesList"
-        className="flex flex-col flex-grow p-5 overflow-y-scroll sm:pb-5 pb-[90px]"
+        className="flex flex-col flex-1 min-h-0 p-5 overflow-y-auto sm:pb-5 pb-[90px]"
         style={{ backgroundImage: `url(${whatsBackground})` }}
         onScroll={handleScroll}
         ref={messagesListRef}

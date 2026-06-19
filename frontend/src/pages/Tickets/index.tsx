@@ -205,11 +205,11 @@ const DetailsPanel: React.FC<{
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dados" className="flex-1 overflow-y-auto mt-0">
+        <TabsContent value="dados" className="flex-1 min-h-0 overflow-y-auto mt-0">
           <DadosTab ticket={ticket} loading={loading} />
         </TabsContent>
 
-        <TabsContent value="historico" className="flex-1 overflow-y-auto mt-0">
+        <TabsContent value="historico" className="flex-1 min-h-0 overflow-y-auto mt-0">
           {ticket?.id ? (
             <TicketHistory ticketId={ticket.id} />
           ) : (
@@ -268,7 +268,7 @@ const Tickets: React.FC = () => {
 
       {/* Coluna 2: Chat */}
       <div className={cn(
-        "flex-col bg-background min-w-0",
+        "flex-col bg-background min-w-0 min-h-0 overflow-hidden",
         hasOpenTicket ? "flex flex-1" : "hidden md:flex md:flex-1"
       )}>
         {ticketId ? (
