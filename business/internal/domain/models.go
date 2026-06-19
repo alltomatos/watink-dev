@@ -124,5 +124,6 @@ type ChannelSession struct {
 	CreatedAt       time.Time  `json:"createdAt"`
 	UpdatedAt       time.Time  `json:"updatedAt"`
 	FirstConnection *time.Time `json:"firstConnection"`
+	LastConnectedAt *time.Time `json:"lastConnectedAt"`
 	EngineType      string     `json:"engineType"`
 }

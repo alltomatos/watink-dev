@@ -94,6 +94,8 @@ const messages = {
         toasts: {
           deleted:
             "¡La conexión de WhatsApp ha sido borrada satisfactoriamente!",
+          disconnected: "¡Sesión desconectada!",
+          keepAliveUpdated: "Reconexión automática actualizada.",
         },
         confirmationModal: {
           deleteTitle: "Borrar",
