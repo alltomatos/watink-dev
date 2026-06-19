@@ -105,6 +105,7 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 		FromMe:        p.FromMe,
 		Timestamp:     p.Timestamp,
 		PushName:      p.PushName,
+		GroupName:     p.GroupName,
 		QuotedMsgID:   p.QuotedMsgId,
 		ProfilePicURL: p.ProfilePicUrl,
 		IsLID:         p.IsLid,

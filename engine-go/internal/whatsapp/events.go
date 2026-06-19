@@ -79,24 +79,41 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 	}
 
 	body, msgType, mediaData, mimeType := extractMessageContent(client, v.Message)
+	// Skip system / unsupported / empty messages (no text and no media) so they
+	// don't show up in the chat as blank bubbles rendering the raw number.
+	if msgType == "chat" && body == "" && mediaData == "" {
+		return
+	}
+
+	isGroup := v.Info.IsGroup || v.Info.Chat.Server == types.GroupServer
 	chatJID := v.Info.Chat.String()
-	senderJID := v.Info.Sender.String()
+	// Strip the device suffix (sender:NN) from the participant.
+	senderJID := v.Info.Sender.ToNonAD().String()
 	if chatJID == "" {
 		chatJID = senderJID
 	}
 
-	profilePic := ""
-	if !v.Info.IsFromMe && !v.Info.Sender.IsEmpty() {
-		if info, err := client.GetProfilePictureInfo(context.Background(), v.Info.Sender, &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
-			profilePic = info.URL
-		}
-	}
-
-	// Resolve LID → phone number mapping when sender is identified by LID.
+	// Resolve LID → phone number (also device-stripped).
 	resolvedSender := senderJID
 	if v.Info.Sender.Server == types.HiddenUserServer {
 		if pn, err := client.Store.LIDs.GetPNForLID(context.Background(), v.Info.Sender); err == nil && !pn.IsEmpty() {
-			resolvedSender = pn.String()
+			resolvedSender = pn.ToNonAD().String()
+		}
+	}
+
+	// Group subject becomes the contact name (cached); avoids groups looking like
+	// individuals named after whoever messaged.
+	groupName := ""
+	if isGroup {
+		groupName = s.groupSubject(client, v.Info.Chat)
+	}
+
+	// Profile picture only for real phone-number senders (LID/group participants
+	// reject the query with 400 bad-request).
+	profilePic := ""
+	if !v.Info.IsFromMe && v.Info.Sender.Server == types.DefaultUserServer {
+		if info, err := client.GetProfilePictureInfo(context.Background(), v.Info.Sender.ToNonAD(), &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
+			profilePic = info.URL
 		}
 	}
 
@@ -110,14 +127,38 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 			"fromMe":        v.Info.IsFromMe,
 			"timestamp":     v.Info.Timestamp.Unix(),
 			"pushName":      v.Info.PushName,
+			"groupName":     groupName,
 			"profilePicUrl": profilePic,
 			"isLid":         v.Info.Sender.Server == types.HiddenUserServer,
 			"participant":   resolvedSender,
-			"isGroup":       v.Info.IsGroup || v.Info.Chat.Server == types.GroupServer,
+			"isGroup":       isGroup,
 			"mimetype":      mimeType,
 			"mediaData":     mediaData,
 		},
 	})
+}
+
+// groupSubject returns the group's display name, cached per group JID to avoid
+// a GetGroupInfo round-trip on every message.
+func (s *WhatsAppService) groupSubject(client *whatsmeow.Client, jid types.JID) string {
+	key := jid.String()
+	s.groupNameMu.Lock()
+	if n, ok := s.groupNames[key]; ok {
+		s.groupNameMu.Unlock()
+		return n
+	}
+	s.groupNameMu.Unlock()
+
+	name := ""
+	if info, err := client.GetGroupInfo(context.Background(), jid); err == nil && info != nil {
+		name = info.GroupName.Name
+	}
+	if name != "" {
+		s.groupNameMu.Lock()
+		s.groupNames[key] = name
+		s.groupNameMu.Unlock()
+	}
+	return name
 }
 
 // emitConnected publishes the CONNECTED status enriched with the account's own
