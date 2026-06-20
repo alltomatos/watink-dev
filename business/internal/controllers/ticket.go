@@ -173,6 +173,10 @@ func (tc *TicketController) ListTickets(c *gin.Context) {
 		query = query.Where("\"Tickets\".\"isGroup\" = ?", false)
 	}
 
+	if c.Query("withUnreadMessages") == "true" {
+		query = query.Where("\"Tickets\".\"unreadMessages\" > ?", 0)
+	}
+
 	if err := query.Find(&tickets).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "ListTickets")
 		return

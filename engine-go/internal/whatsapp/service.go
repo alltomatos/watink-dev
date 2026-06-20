@@ -26,8 +26,16 @@ type WhatsAppService struct {
 	historyMu       sync.Mutex
 	historyRequests map[string]*pendingHistory
 
-	groupNameMu sync.Mutex
-	groupNames  map[string]string
+	groupNameMu  sync.Mutex
+	groupNames   map[string]string
+	groupMetaMu  sync.Mutex
+	groupMetaMap map[string]groupMeta
+}
+
+// groupMeta holds cached community/sub-group metadata for a group JID.
+type groupMeta struct {
+	isCommunity bool
+	isSubGroup  bool
 }
 
 // NewWhatsAppService creates a WhatsAppService connecting whatsmeow to PostgreSQL via sqlstore.
@@ -47,6 +55,7 @@ func NewWhatsAppService(rabbit *rabbitmq.RabbitMQService, sessionLoader SessionL
 		sessionLoader:   sessionLoader,
 		historyRequests: make(map[string]*pendingHistory),
 		groupNames:      make(map[string]string),
+		groupMetaMap:    make(map[string]groupMeta),
 	}
 }
 
