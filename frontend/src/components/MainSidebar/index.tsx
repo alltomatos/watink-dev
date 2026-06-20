@@ -13,7 +13,10 @@ import {
   RefreshCw,
   Tags,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UsersRound,
+  Building2,
+  Radio,
 } from "lucide-react";
 import VersionFooter from "../VersionFooter";
 import { getBackendUrl } from "../../helpers/urlUtils";
@@ -22,6 +25,7 @@ import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
 import pluginApi from "../../services/pluginApi";
 import SidebarItem from "../SidebarItem";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import api from "../../services/api";
@@ -224,6 +228,19 @@ const MainSidebar: React.FC<MainSidebarProps> = ({ collapsed, onToggle }) => {
 
         <div className={getDividerClass(isLightSidebar)} />
 
+        {/* Funcionalidades futuras — desabilitadas */}
+        {!collapsed && (
+          <p className={cn("px-3 pb-1 text-[0.625rem] font-semibold uppercase tracking-widest", isLightSidebar ? "text-[var(--text-muted)]" : "text-[var(--slate-500)]")}>
+            Em breve
+          </p>
+        )}
+
+        <ComingSoonItem icon={<UsersRound size={20} />} label="Grupos" collapsed={collapsed} isLightSidebar={isLightSidebar} />
+        <ComingSoonItem icon={<Building2 size={20} />} label="Comunidades" collapsed={collapsed} isLightSidebar={isLightSidebar} />
+        <ComingSoonItem icon={<Radio size={20} />} label="Canais" collapsed={collapsed} isLightSidebar={isLightSidebar} />
+
+        <div className={getDividerClass(isLightSidebar)} />
+
         <Can
           user={user}
           perform="connections:read"
@@ -287,6 +304,50 @@ const MainSidebar: React.FC<MainSidebarProps> = ({ collapsed, onToggle }) => {
       </div>
     </aside>
   );
+};
+
+interface ComingSoonItemProps {
+  icon: React.ReactNode;
+  label: string;
+  collapsed: boolean;
+  isLightSidebar: boolean;
+}
+
+const ComingSoonItem: React.FC<ComingSoonItemProps> = ({ icon, label, collapsed, isLightSidebar }) => {
+  const itemClass = cn(
+    "flex items-center gap-3 px-3 py-2 rounded-lg opacity-40 cursor-not-allowed select-none",
+    collapsed ? "justify-center px-2" : "",
+    isLightSidebar ? "text-[var(--text-muted)]" : "text-[var(--slate-400)]"
+  );
+
+  const content = (
+    <div className={itemClass} aria-disabled="true">
+      <div className="flex shrink-0 items-center justify-center">{icon}</div>
+      {!collapsed && (
+        <span className="flex flex-1 items-center justify-between text-sm truncate">
+          {label}
+          <span className="ml-1 rounded bg-muted px-1 py-px text-[0.55rem] font-bold uppercase tracking-wide text-muted-foreground">
+            breve
+          </span>
+        </span>
+      )}
+    </div>
+  );
+
+  if (collapsed) {
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <span>{content}</span>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="font-semibold">
+          {label} <span className="ml-1 opacity-60">(em breve)</span>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
 };
 
 export default MainSidebar;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { parseISO, format, isSameDay } from "date-fns";
+import { Users, Building2, Radio } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,9 @@ interface Ticket {
   lastMessage?: string;
   unreadMessages: number;
   isGroup?: boolean;
+  isCommunity?: boolean;
+  isSubGroup?: boolean;
+  isNewsletter?: boolean;
   whatsappId?: number;
   contact: Contact;
   queue?: Queue;
@@ -81,11 +85,26 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
     navigate(`/tickets/${id}`);
   };
 
+  const handlePeekTicket = (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    navigate(`/tickets/${id}`);
+  };
+
   const isSelected = ticketId !== undefined && +ticketId === ticket.id;
   const isPending =
     ticket.status === "pending" &&
     !ticket.isGroup &&
     !ticket.contact?.isGroup;
+
+  // Tipo de conversa para badge no avatar
+  const ticketType: "community" | "group" | "newsletter" | "individual" =
+    ticket.isCommunity || ticket.isSubGroup
+      ? "community"
+      : ticket.isNewsletter
+      ? "newsletter"
+      : ticket.isGroup || ticket.contact?.isGroup
+      ? "group"
+      : "individual";
 
   const updatedAt = parseISO(ticket.updatedAt);
   const timeLabel = isSameDay(updatedAt, new Date())
@@ -94,10 +113,7 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
 
   return (
     <div
-      onClick={() => {
-        if (isPending) return;
-        handleSelectTicket(ticket.id);
-      }}
+      onClick={() => handleSelectTicket(ticket.id)}
       className={cn(
         "relative flex cursor-pointer gap-3 px-4 py-2.5",
         "border-b border-black/[0.04]",
@@ -118,7 +134,7 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
         }}
       />
 
-      {/* Avatar circular */}
+      {/* Avatar circular + badge de tipo */}
       <div className="relative shrink-0">
         <Avatar
           src={
@@ -130,6 +146,18 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
           size="md"
           aria-label={ticket.contact.name}
         />
+        {ticketType !== "individual" && (
+          <span className={cn(
+            "absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-background",
+            ticketType === "community" && "bg-violet-500",
+            ticketType === "newsletter" && "bg-sky-500",
+            ticketType === "group" && "bg-emerald-500",
+          )}>
+            {ticketType === "community" && <Building2 className="h-2.5 w-2.5 text-white" />}
+            {ticketType === "newsletter" && <Radio className="h-2.5 w-2.5 text-white" />}
+            {ticketType === "group" && <Users className="h-2.5 w-2.5 text-white" />}
+          </span>
+        )}
       </div>
 
       {/* Conteúdo */}
@@ -146,7 +174,7 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
 
         {/* Linha 2 — prévia + badge não lidas */}
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-[0.75rem] leading-4 text-muted-foreground">
+          <span className="truncate text-[0.75rem] leading-4 text-muted-foreground pointer-events-none select-none">
             {ticket.lastMessage ? (
               <MarkdownWrapper>{ticket.lastMessage}</MarkdownWrapper>
             ) : (
@@ -175,9 +203,9 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
           </span>
         )}
 
-        {/* Botão aceitar — tickets pendentes */}
+        {/* Botões aceitar / espiar — tickets pendentes individuais */}
         {isPending && (
-          <div className="mt-1.5">
+          <div className="mt-1.5 flex items-center gap-1.5">
             <ButtonWithSpinner
               size="sm"
               loading={loading}
@@ -189,6 +217,13 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
             >
               {i18n.t("ticketsList.buttons.accept")}
             </ButtonWithSpinner>
+            <button
+              type="button"
+              className="rounded-md border border-border px-3 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted/60 transition-colors"
+              onClick={(e) => handlePeekTicket(e, ticket.id)}
+            >
+              Espiar
+            </button>
           </div>
         )}
       </div>

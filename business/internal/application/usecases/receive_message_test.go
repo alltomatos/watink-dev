@@ -87,8 +87,35 @@ func defaultInput(tenantID uuid.UUID) ReceiveMessageInput {
 }
 
 func newReceiveUC(cr domain.ContactRepository, tr domain.TicketRepository, mr domain.MessageRepository, eb domain.EventBus) *ReceiveMessageUseCase {
-	return NewReceiveMessageUseCase(eb, mr, cr, tr)
+	// nil queueRepo → resolveChannelQueue returns nil (no auto-assign in these tests).
+	return NewReceiveMessageUseCase(eb, mr, cr, tr, nil)
 }
+
+func TestResolveChannelQueue(t *testing.T) {
+	ctx := context.Background()
+	tid := uuid.New()
+
+	cases := []struct {
+		name string
+		repo domain.QueueRepository
+		want *int
+	}{
+		{"single queue inherits", &mockQueueRepo{channelQueueIDs: []int{7}}, intPtr(7)},
+		{"zero queues -> nil", &mockQueueRepo{channelQueueIDs: nil}, nil},
+		{"multiple queues -> nil", &mockQueueRepo{channelQueueIDs: []int{1, 2}}, nil},
+		{"nil repo -> nil", nil, nil},
+	}
+
+	for _, tc := range cases {
+		uc := NewReceiveMessageUseCase(nil, nil, nil, nil, tc.repo)
+		got := uc.resolveChannelQueue(ctx, 1, tid)
+		if (got == nil) != (tc.want == nil) || (got != nil && *got != *tc.want) {
+			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+func intPtr(v int) *int { return &v }
 
 // --- tests ---
 

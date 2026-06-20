@@ -53,15 +53,34 @@ func GetScopedDB(c *gin.Context, table string) *gorm.DB {
 		tenantID = uuid.Nil
 	}
 
-	if userProfile == "admin" {
+	// admin and superadmin see everything within the tenant.
+	if userProfile == "admin" || userProfile == "superadmin" {
 		return db.Where("\"tenantId\" = ?", tenantID)
 	}
 
+	// Visibility for agents (non-admin): a ticket is visible when it is assigned to
+	// the user, OR its queue is one of the user's queues, OR it arrived on a channel
+	// linked to one of the user's queues (covers unassigned/pending tickets).
+	// NOTE: join tables user_queues / whatsapp_queues use snake_case columns.
 	switch table {
 	case "Tickets":
-		return db.Where("\"tenantId\" = ? AND ( \"userId\" = ? OR \"queueId\" IN (SELECT \"queueId\" FROM user_queues WHERE \"userId\" = ?) )", tenantID, userID, userID)
+		return db.Where(
+			"\"tenantId\" = ? AND ( "+
+				"\"userId\" = ? "+
+				"OR \"queueId\" IN (SELECT queue_id FROM user_queues WHERE user_id = ?) "+
+				"OR \"whatsappId\" IN (SELECT wq.whatsapp_id FROM whatsapp_queues wq WHERE wq.queue_id IN (SELECT queue_id FROM user_queues WHERE user_id = ?)) "+
+				")",
+			tenantID, userID, userID, userID)
 	case "Contacts":
-		return db.Where("\"tenantId\" = ? AND ( \"walletUserId\" = ? OR id IN (SELECT \"contactId\" FROM \"Tickets\" WHERE \"userId\" = ? OR \"queueId\" IN (SELECT \"queueId\" FROM user_queues WHERE \"userId\" = ?)) )", tenantID, userID, userID, userID)
+		return db.Where(
+			"\"tenantId\" = ? AND ( "+
+				"\"walletUserId\" = ? "+
+				"OR id IN (SELECT \"contactId\" FROM \"Tickets\" WHERE "+
+				"\"userId\" = ? "+
+				"OR \"queueId\" IN (SELECT queue_id FROM user_queues WHERE user_id = ?) "+
+				"OR \"whatsappId\" IN (SELECT wq.whatsapp_id FROM whatsapp_queues wq WHERE wq.queue_id IN (SELECT queue_id FROM user_queues WHERE user_id = ?))) "+
+				")",
+			tenantID, userID, userID, userID, userID)
 	default:
 		return db.Where("\"tenantId\" = ?", tenantID)
 	}
