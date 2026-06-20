@@ -65,7 +65,7 @@ const UserModal: React.FC<UserModalProps> = ({ open, onClose, userId }) => {
           {({ touched, errors, isSubmitting, values, setFieldValue }) => (
             <Form className="space-y-4">
               <UserFormFields
-                touched={touched}
+                touched={touched as Partial<Record<"name" | "email" | "password", string>>}
                 errors={errors}
                 showPassword={showPassword}
                 onTogglePassword={() => setShowPassword((p) => !p)}
