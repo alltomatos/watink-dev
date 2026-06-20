@@ -37,11 +37,14 @@ type MessagePayload struct {
 	FromMe        bool   `json:"fromMe"`
 	Timestamp     int64  `json:"timestamp"`
 	PushName      string `json:"pushName"`
+	GroupName     string `json:"groupName"`
 	QuotedMsgId   string `json:"quotedMsgId"`
 	ProfilePicUrl string `json:"profilePicUrl"`
 	IsLid         bool   `json:"isLid"`
 	Participant   string `json:"participant"`
 	IsGroup       bool   `json:"isGroup"`
+	IsCommunity   bool   `json:"isCommunity"`
+	IsSubGroup    bool   `json:"isSubGroup"`
 	MediaUrl      string `json:"mediaUrl"`
 	MediaData     string `json:"mediaData"`
 	Mimetype      string `json:"mimetype"`

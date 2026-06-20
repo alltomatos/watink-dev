@@ -82,6 +82,7 @@ services:
       - DB_NAME=watink
       - AMQP_URL=amqp://guest:guest@rabbitmq:5672
       - REDIS_URL=redis://redis:6379
+      - ENGINE_HEALTH_URL=http://watink-engine:8083/health
       - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_prod}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-dev_jwt_refresh_secret_change_in_prod}
       - PLUGIN_HUB_URL=http://plugin-manager:8081/api/v1/hub
@@ -107,6 +108,11 @@ services:
       context: ./engine-go
       dockerfile: Dockerfile.dev
     container_name: watink-engine
+    # Public DNS resolvers — Docker's embedded resolver (127.0.0.11) intermittently
+    # fails to resolve web.whatsapp.com ("server misbehaving"), breaking reconnects.
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "8083:8083"
     environment:

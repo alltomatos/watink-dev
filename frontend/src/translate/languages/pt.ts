@@ -146,6 +146,7 @@ const messages = {
         toasts: {
           deleted: "Conexão deletada!",
           disconnected: "Sessão desconectada!",
+          keepAliveUpdated: "Reconexão automática atualizada.",
         },
         confirmationModal: {
           deleteTitle: "Deletar",
