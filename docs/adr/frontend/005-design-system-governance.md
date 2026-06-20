@@ -1,13 +1,13 @@
 ---
 name: adr-005-design-system-governance
-description: Define a governança do Design System v2 — tokens CSS, temas dinâmicos, migração MUI→shadcn, regras de componentes.
+description: Define a governança do Design System v2 — tokens CSS, temas dinâmicos, stack obrigatória shadcn/Tailwind, regras de componentes.
 ---
 
 # ADR-005: Governança do Design System Watink v2
 
 **Data**: 2026-06-13  
 **Status**: Ativo  
-**Atualizado**: 2026-06-13 (Epic 4A/4C concluídas)
+**Atualizado**: 2026-06-20 (Migração MUI completa — ver ADR 0008)
 
 ## Contexto
 
@@ -27,22 +27,23 @@ O projeto migrou de MUI v4 para React 18 + TypeScript + Tailwind v4 + shadcn/ui 
 - Composição via Radix UI primitives + Tailwind + `cn()` helper
 - CVA (class-variance-authority) para variantes de componentes
 
-### 3. Proibições estritas
-- **`makeStyles`**: proibido — ESLint `no-makeStyles` falha o build
-- **`@material-ui` imports**: proibido em código novo — legado é READ-ONLY
+### 3. Proibições estritas (ver ADR 0008 para detalhes)
+- **`@material-ui/*` e `@mui/*`**: PROIBIDOS — pacote não existe em `package.json`. Qualquer import é erro de build.
+- **`makeStyles`, `withStyles`, `createStyles`**: proibidos — ESLint `no-makeStyles` falha o build
 - **Hardcoded hex colors**: proibido em componentes — usar `var(--token)` ou Tailwind semantic
 - **Inline `style={{ color: "#..." }}`**: proibido — usar Tailwind ou CSS vars
 - **Default exports** em componentes novos: preferir named exports
+- **Ícones `@material-ui/icons`**: usar `lucide-react` exclusivamente
 
 ### 4. Arquivos novos obrigatoriamente `.tsx`
 - Boy scout rule: arquivos `.js` tocados são convertidos para `.tsx`
 - Interfaces TypeScript explícitas — nunca `any`
 - `React.forwardRef` para componentes que expõem DOM refs
 
-### 5. Componentes legacy (MUI v4) — READ-ONLY
-- 163 arquivos `.js` legados: correções de bug/segurança permitidas
-- Novas funcionalidades: estritamente proibidas
-- Migração: Epic 4B (componentes) → Epic 4D (páginas)
+### 5. Migração MUI v4 — CONCLUÍDA (jun/2026)
+- Todos os 163 arquivos `.js` legados foram migrados para `.tsx`
+- `npm uninstall @material-ui/*` executado — pacote removido do projeto
+- Não existe mais código legado MUI no `src/`. Ver ADR 0008 para a política permanente.
 
 ### 6. Documentação viva
 - **DS v2**: `docs/Watink Design System v2/` — fonte canônica de design
@@ -71,10 +72,11 @@ frontend/src/
 
 ## Consequências
 
-- Build sem erros MUI: ✅ (após Epic 4A — 10.894 módulos)
+- MUI completamente removido: ✅ jun/2026 (Epic 4F)
 - Hardcoded colors em `ui/`: 0 ✅
 - Tokens em formato CSS nativo: ✅ (Epic 4A concluída 2026-06-13)
-- Componentes legados restantes: 46 (Epic 4B) + 66 páginas (Epic 4D)
+- Componentes legados restantes: 0 — todos migrados para `.tsx` + shadcn/ui
+- Proibição formalizada em: ADR 0008 (2026-06-20)
 
 ## Referências
 
