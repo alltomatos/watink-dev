@@ -433,7 +433,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
                 )}
                 <div className="p-2">
                   <div className="font-bold text-[13px] mb-1">{card.title}</div>
-                  <div className="text-xs text-[var(--message-quote-text)] whitespace-pre-wrap">{card.body}</div>
+                  <div className="text-xs text-[hsl(var(--message-quote-text))] whitespace-pre-wrap">{card.body}</div>
                 </div>
                 {card.buttons && card.buttons.length > 0 && (
                   <div className="border-t border-[var(--border-default)] p-1.5">
@@ -466,7 +466,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
     if (message.ack === 3 || message.ack === 4)
       return <CheckCheck className="inline h-[18px] w-[18px] align-middle ml-1 text-[var(--action-primary)]" />;
     if (message.ack === 5)
-      return <AlertCircle className="inline h-[18px] w-[18px] align-middle ml-1 text-[var(--message-error-text)]" />;
+      return <AlertCircle className="inline h-[18px] w-[18px] align-middle ml-1 text-[hsl(var(--message-error-text))]" />;
     return null;
   };
 
@@ -482,9 +482,9 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
     return (
       <span
         key={`timestamp-${message.id}`}
-        className="self-center w-[110px] text-center bg-[var(--message-daily-bg)] mx-2.5 my-2.5 rounded-[10px] shadow-sm"
+        className="self-center w-[110px] text-center bg-[hsl(var(--message-daily-bg))] mx-2.5 my-2.5 rounded-[10px] shadow-sm"
       >
-        <div className="text-[var(--message-daily-text)] p-2 self-center ml-0">
+        <div className="text-[hsl(var(--message-daily-text))] p-2 self-center ml-0">
           {format(parseISO(messagesList[index].createdAt), "dd/MM/yyyy")}
         </div>
       </span>
@@ -494,7 +494,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
   const renderMessageTimestamp = (message: Message) => {
     if (!isDateValid(message.createdAt)) return null;
     return (
-      <span className="text-[11px] absolute bottom-0 right-1.5 text-[var(--message-timestamp-text)]">
+      <span className="text-[11px] absolute bottom-0 right-1.5 text-[hsl(var(--message-timestamp-text))]">
         {format(parseISO(message.createdAt), "HH:mm")}
         {renderMessageAck(message)}
       </span>
@@ -551,19 +551,19 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
     return (
       <div
         className={clsx(
-          "-mt-0.5 -mr-20 mb-1.5 -ml-1.5 overflow-hidden bg-[var(--message-quote-bg)] rounded-[7.5px] flex relative",
+          "-mt-0.5 -mr-20 mb-1.5 -ml-1.5 overflow-hidden bg-[hsl(var(--message-quote-bg))] rounded-[7.5px] flex relative",
           { "-mr-20": !message.fromMe, "overflow-y-hidden": message.fromMe }
         )}
       >
         <span
           className={clsx("flex-none w-1", {
-            "bg-[var(--message-quote-side-left)]": !quoted.fromMe,
-            "bg-[var(--message-quote-side-right)]": quoted.fromMe,
+            "bg-[hsl(var(--message-quote-side-left))]": !quoted.fromMe,
+            "bg-[hsl(var(--message-quote-side-right))]": quoted.fromMe,
           })}
         />
         <div className="p-2.5 max-w-[300px] h-auto whitespace-pre-wrap">
           {!quoted.fromMe && (
-            <span className="flex text-[var(--message-quote-side-left)] font-medium">
+            <span className="flex text-[hsl(var(--message-quote-side-left))] font-medium">
               {quotedSender}
             </span>
           )}
@@ -590,7 +590,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
     }, []);
 
     return (
-      <div className="absolute -bottom-2.5 left-2.5 bg-[var(--message-reaction-bg)] rounded-xl px-1.5 py-0.5 shadow-md text-xs flex items-center z-20 cursor-pointer border border-[var(--message-reaction-border)]">
+      <div className="absolute -bottom-2.5 left-2.5 bg-[hsl(var(--message-reaction-bg))] rounded-xl px-1.5 py-0.5 shadow-md text-xs flex items-center z-20 cursor-pointer border border-[hsl(var(--message-reaction-border))]">
         {aggregated.map((reaction, index) => (
           <span key={index} className="mr-1">
             {reaction.emoji} {reaction.count > 1 ? reaction.count : ""}
@@ -626,7 +626,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
           >
             {preview.title}
           </a>
-          <p className="text-xs text-[var(--message-quote-text)] m-0 line-clamp-3">
+          <p className="text-xs text-[hsl(var(--message-quote-text))] m-0 line-clamp-3">
             {preview.description}
           </p>
         </div>
@@ -700,8 +700,8 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
                   "whitespace-pre-wrap self-start",
                   "pl-1.5 pr-1.5 pt-1.5 pb-0",
                   appTheme === "saas"
-                    ? "bg-[var(--message-saas-bg-alt)] text-[var(--message-left-text)] rounded-tl-xl rounded-tr-xl rounded-bl-none rounded-br-xl border border-[var(--border-default)]"
-                    : "bg-[var(--message-left-bg)] text-[var(--message-left-text)] rounded-tl-none rounded-tr-lg rounded-bl-lg rounded-br-lg shadow-sm",
+                    ? "bg-[hsl(var(--message-saas-bg-alt))] text-[hsl(var(--message-left-text))] rounded-tl-xl rounded-tr-xl rounded-bl-none rounded-br-xl border border-[var(--border-default)]"
+                    : "bg-[hsl(var(--message-left-bg))] text-[hsl(var(--message-left-text))] rounded-tl-none rounded-tr-lg rounded-bl-lg rounded-br-lg shadow-sm",
                   "group"
                 )}
                 style={{ marginTop, maxWidth: maxW }}
@@ -710,7 +710,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
                   type="button"
                   id="messageActionsButton"
                   disabled={message.isDeleted}
-                  className="hidden group-hover:flex absolute top-0 right-0 p-0.5 rounded opacity-90 bg-inherit text-[var(--message-ack-text)] z-10 hover:bg-black/10 transition-colors"
+                  className="hidden group-hover:flex absolute top-0 right-0 p-0.5 rounded opacity-90 bg-inherit text-[hsl(var(--message-ack-text))] z-10 hover:bg-black/10 transition-colors"
                   onClick={(e) => handleOpenMessageOptionsMenu(e, message)}
                   aria-label="Opções da mensagem"
                 >
@@ -753,8 +753,8 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
                 "whitespace-pre-wrap self-end",
                 "pl-1.5 pr-1.5 pt-1.5 pb-0",
                 appTheme === "saas"
-                  ? "bg-[var(--message-saas-bg)] text-[var(--message-saas-text)] rounded-tl-xl rounded-tr-xl rounded-bl-xl rounded-br-none"
-                  : "bg-[var(--message-right-bg)] text-[var(--message-right-text)] rounded-tl-lg rounded-tr-lg rounded-bl-lg rounded-br-none shadow-sm",
+                  ? "bg-[hsl(var(--message-saas-bg))] text-[hsl(var(--message-saas-text))] rounded-tl-xl rounded-tr-xl rounded-bl-xl rounded-br-none"
+                  : "bg-[hsl(var(--message-right-bg))] text-[hsl(var(--message-right-text))] rounded-tl-lg rounded-tr-lg rounded-bl-lg rounded-br-none shadow-sm",
                 "group"
               )}
               style={{ marginTop, maxWidth: maxW }}
@@ -763,7 +763,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
                 type="button"
                 id="messageActionsButton"
                 disabled={message.isDeleted}
-                className="hidden group-hover:flex absolute top-0 right-0 p-0.5 rounded opacity-90 bg-inherit text-[var(--message-ack-text)] z-10 hover:bg-black/10 transition-colors"
+                className="hidden group-hover:flex absolute top-0 right-0 p-0.5 rounded opacity-90 bg-inherit text-[hsl(var(--message-ack-text))] z-10 hover:bg-black/10 transition-colors"
                 onClick={(e) => handleOpenMessageOptionsMenu(e, message)}
                 aria-label="Opções da mensagem"
               >
