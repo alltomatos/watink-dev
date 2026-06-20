@@ -47,7 +47,7 @@ const KanbanColumnCard: React.FC<KanbanColumnCardProps> = ({
                 <ProtocolCard
                   protocol={protocol}
                   isNew={recentlyAdded.has(protocol.id)}
-                  onClick={onCardClick}
+                  onClick={(p) => onCardClick(p as KanbanProtocol)}
                 />
               </motion.div>
             ))

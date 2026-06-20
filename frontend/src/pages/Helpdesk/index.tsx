@@ -82,7 +82,7 @@ const Helpdesk: React.FC = () => {
                 <ProtocolsTable
                   protocols={protocols}
                   loading={loading}
-                  userProfile={user.profile}
+                  userProfile={user.profile ?? ""}
                   onViewProtocol={handleViewProtocol}
                 />
               </div>

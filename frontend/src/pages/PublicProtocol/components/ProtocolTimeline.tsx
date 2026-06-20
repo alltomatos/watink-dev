@@ -25,10 +25,17 @@ const historyIcon = (action: string): React.ReactElement => {
   }
 };
 
-const parseAttachments = (changes: string | undefined): unknown[] => {
+interface Attachment {
+  id: number | string;
+  filePath: string;
+  originalName: string;
+  fileType?: string;
+}
+
+const parseAttachments = (changes: string | undefined): Attachment[] => {
   if (!changes) return [];
   try {
-    const parsed = JSON.parse(changes) as { files?: unknown[] };
+    const parsed = JSON.parse(changes) as { files?: Attachment[] };
     return parsed.files ?? [];
   } catch {
     return [];

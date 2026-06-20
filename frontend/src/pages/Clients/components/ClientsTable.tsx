@@ -10,12 +10,13 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Can } from "../../../components/Can";
+import type { User } from "../../../types/domain";
 import type { Client } from "../hooks/useClients";
 
 interface ClientsTableProps {
   clients: Client[];
   loading: boolean;
-  user: unknown;
+  user: User | undefined;
   onEdit: (client: Client) => void;
   onDelete: (client: Client) => void;
 }
