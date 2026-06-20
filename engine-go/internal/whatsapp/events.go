@@ -102,10 +102,16 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 	}
 
 	// Group subject becomes the contact name (cached); avoids groups looking like
-	// individuals named after whoever messaged.
+	// individuals named after whoever messaged. groupSubject also populates the
+	// groupMetaMap cache used below for community/sub-group detection.
 	groupName := ""
+	isCommunity := false
+	isSubGroup := false
 	if isGroup {
 		groupName = s.groupSubject(client, v.Info.Chat)
+		meta := s.cachedGroupMeta(v.Info.Chat)
+		isCommunity = meta.isCommunity
+		isSubGroup = meta.isSubGroup
 	}
 
 	// Profile picture: for group contacts use the group JID; for individuals only
@@ -136,6 +142,8 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 			"isLid":         v.Info.Sender.Server == types.HiddenUserServer,
 			"participant":   resolvedSender,
 			"isGroup":       isGroup,
+			"isCommunity":   isCommunity,
+			"isSubGroup":    isSubGroup,
 			"mimetype":      mimeType,
 			"mediaData":     mediaData,
 		},
@@ -156,6 +164,12 @@ func (s *WhatsAppService) groupSubject(client *whatsmeow.Client, jid types.JID) 
 	name := ""
 	if info, err := client.GetGroupInfo(context.Background(), jid); err == nil && info != nil {
 		name = info.GroupName.Name
+		s.groupMetaMu.Lock()
+		s.groupMetaMap[key] = groupMeta{
+			isCommunity: info.IsParent,
+			isSubGroup:  info.IsDefaultSubGroup,
+		}
+		s.groupMetaMu.Unlock()
 	}
 	if name != "" {
 		s.groupNameMu.Lock()
@@ -163,6 +177,15 @@ func (s *WhatsAppService) groupSubject(client *whatsmeow.Client, jid types.JID) 
 		s.groupNameMu.Unlock()
 	}
 	return name
+}
+
+// cachedGroupMeta returns the cached community/sub-group metadata for a group JID.
+// Returns zero value (all false) when no info has been cached yet.
+func (s *WhatsAppService) cachedGroupMeta(jid types.JID) groupMeta {
+	key := jid.String()
+	s.groupMetaMu.Lock()
+	defer s.groupMetaMu.Unlock()
+	return s.groupMetaMap[key]
 }
 
 // emitConnected publishes the CONNECTED status enriched with the account's own

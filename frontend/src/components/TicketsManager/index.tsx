@@ -19,7 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, Plus, Filter, Tag } from "lucide-react";
+import { Search, Plus, Filter, Tag, Users, CircleDot } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = "all" | "open" | "pending" | "closed";
@@ -28,20 +28,19 @@ const TicketsManager: React.FC = () => {
   useTicketsContext();
   const { user } = useContext(AuthContext);
 
-  // Estado local
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchParam, setSearchParam] = useState<string>("");
   const [newTicketModalOpen, setNewTicketModalOpen] = useState<boolean>(false);
-
-  // Contador da lista atualmente visível (mostrado na pill ativa)
   const [currentCount, setCurrentCount] = useState<number>(0);
 
-  // Filtros
+  // Filtros secundários (toggleáveis, ortogonais ao status)
+  const [showGroupsOnly, setShowGroupsOnly] = useState<boolean>(false);
+  const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
+
   const userQueueIds: number[] = (user as any)?.queues?.map((q: any) => q.id) ?? [];
   const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>(userQueueIds);
   const [selectedTags, setSelectedTags] = useState<any[]>([]);
 
-  // Popovers
   const [queuePopoverOpen, setQueuePopoverOpen] = useState<boolean>(false);
   const [tagPopoverOpen, setTagPopoverOpen] = useState<boolean>(false);
 
@@ -53,6 +52,9 @@ const TicketsManager: React.FC = () => {
     setStatusFilter(filter);
     setSearchParam("");
   };
+
+  // key agrupa todos os parâmetros que forçam remontagem da lista
+  const listKey = `${statusFilter}-${showGroupsOnly}-${showUnreadOnly}`;
 
   return (
     <TooltipProvider>
@@ -128,28 +130,43 @@ const TicketsManager: React.FC = () => {
             />
           </div>
 
-          {/* Pills: Todos / Abertos / Aguardando / Fechados */}
+          {/* Pills de status: Todos / Abertos / Aguardando / Fechados */}
           <div className="flex items-center gap-1">
             <FilterPill label="Todos"      active={statusFilter === "all"}     onClick={() => handleFilterChange("all")}     count={statusFilter === "all" ? currentCount : undefined} />
             <FilterPill label="Abertos"    active={statusFilter === "open"}    onClick={() => handleFilterChange("open")}    count={statusFilter === "open" ? currentCount : undefined} />
             <FilterPill label="Aguardando" active={statusFilter === "pending"} onClick={() => handleFilterChange("pending")} count={statusFilter === "pending" ? currentCount : undefined} />
             <FilterPill label="Fechados"   active={statusFilter === "closed"}  onClick={() => handleFilterChange("closed")}  count={statusFilter === "closed" ? currentCount : undefined} />
           </div>
+
+          {/* Chips de tipo: Grupos / Não lidas (toggleáveis) */}
+          <div className="flex items-center gap-1.5">
+            <ToggleChip
+              icon={<Users size={11} />}
+              label="Grupos"
+              active={showGroupsOnly}
+              onClick={() => setShowGroupsOnly((v) => !v)}
+            />
+            <ToggleChip
+              icon={<CircleDot size={11} />}
+              label="Não lidas"
+              active={showUnreadOnly}
+              onClick={() => setShowUnreadOnly((v) => !v)}
+            />
+          </div>
         </header>
 
-        {/* ── Conteúdo da lista ────────────────────────────────────── */}
-        {/* Uma única lista por filtro. "Todos" não envia status (mostra todos)
-            e nenhum filtro de isGroup — grupos e individuais aparecem juntos.
-            key força remontagem ao trocar de filtro. */}
+        {/* ── Lista de tickets ─────────────────────────────────────── */}
         <div className="flex-1 overflow-hidden">
           <TicketsList
-            key={statusFilter}
+            key={listKey}
             status={statusFilter === "all" ? undefined : statusFilter}
             showAll
             selectedQueueIds={selectedQueueIds}
             updateCount={(val: number) => setCurrentCount(val)}
             tags={selectedTags}
             searchParam={searchParam}
+            isGroup={showGroupsOnly ? "true" : undefined}
+            withUnreadMessages={showUnreadOnly ? "true" : undefined}
           />
         </div>
       </div>
@@ -157,7 +174,7 @@ const TicketsManager: React.FC = () => {
   );
 };
 
-// ── Componente auxiliar local ──────────────────────────────────────────────────
+// ── Componentes auxiliares locais ─────────────────────────────────────────────
 
 interface FilterPillProps {
   label: string;
@@ -186,6 +203,29 @@ const FilterPill: React.FC<FilterPillProps> = ({ label, active, onClick, count }
         {count}
       </span>
     )}
+  </button>
+);
+
+interface ToggleChipProps {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}
+
+const ToggleChip: React.FC<ToggleChipProps> = ({ icon, label, active, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn(
+      "flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.625rem] font-medium transition-all",
+      active
+        ? "border-primary/40 bg-primary/10 text-primary"
+        : "border-border bg-transparent text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+    )}
+  >
+    {icon}
+    {label}
   </button>
 );
 
