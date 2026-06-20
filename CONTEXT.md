@@ -111,6 +111,12 @@ _Avoid_: Flow executor, automation engine, bot runner
 **Engine**: Microsserviço Go (engine-go) que gerencia conexões WhatsApp via whatsmeow. Consome comandos de sessão e emite eventos de volta ao Business.
 _Avoid_: Bot, connector, wbot engine
 
+**TicketType**: Classificação visual de um Ticket derivada de suas flags booleanas — `individual | group | community | newsletter`. Derivado de `isGroup`, `isCommunity`, `isSubGroup`, `isNewsletter`. Exibido como badge de ícone no avatar do `TicketListItem` (community=violet, group=emerald, newsletter=sky).
+_Avoid_: ChatType, contactType, conversationType
+
+**QueueVisibilityFilter**: Filtros ortogonais aplicados na `TicketsList` para refinar a visualização. `isGroup` exibe apenas Tickets de grupos; `withUnreadMessages` exibe apenas Tickets com mensagens não lidas. Ambos são toggles independentes gerenciados no `TicketsManager`.
+_Avoid_: TicketFilter (genérico), listFilter
+
 ## Entity Relationships (Canonical)
 
 ```
@@ -131,6 +137,7 @@ Contact ──1:N──> Ticket
 Ticket ──1:N──> Message
 Ticket ──N:1──> Queue
 Ticket ──N:1──> User (assignee)
+Ticket.TicketType ← derivado de flags: isGroup, isCommunity, isSubGroup, isNewsletter
 
 Whatsapp ──1:N──> Ticket
 
@@ -152,4 +159,4 @@ Role ──M:N──> Permission     (via role_permissions, com Scope/Conditions
 ### Event Direction (Engine → Business)
 - `wbot.{t}.{s}.session.qrcode|pairing_code|status|history_sync`
 - `wbot.{t}.{s}.message.received|ack|revoke|reaction`
-- `wbot.{t}.{s}.contact.update`
+- `wbot.{t}.{s}.contact.update` — inclui persistência de `isCommunity` via engine event

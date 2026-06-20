@@ -27,6 +27,9 @@ Frontend (React/Vite) ←REST/Socket.io→ Backend Go (Gin/GORM) ←SQL→ Postg
 | Backend Go — Testes unitários (coverage +5pp) | ✅ Concluída (PR #60) |
 | E2E — Playwright suite (21 testes + CI job) | ✅ Concluída (PR #61) |
 | Dependabot Go deps (crypto/net upgrade) | ✅ Concluída (PR #62) |
+| Frontend — Ticket Queue Visibility (filtros `isGroup` + `withUnreadMessages`) | ✅ Concluída (PR #98) |
+| Frontend — TicketListItem type badges (community/group/newsletter) | ✅ Concluída (PR #98) |
+| Frontend — ESLint rule: permite `hsl(var(--token))` como referência de token | ✅ Concluída (PR #98) |
 
 ## Services & Ports
 
@@ -155,6 +158,7 @@ Stack consolidada: **React 18 + TypeScript + Tailwind v4 + shadcn/ui**. MUI v4 c
 - **Plugins**: [`docs/dev/plugins.md`](docs/dev/plugins.md)
 - **Migrations**: [`docs/dev/migrations.md`](docs/dev/migrations.md)
 - **Agent config**: [`docs/agents/`](docs/agents/)
+- **Roadmap**: [`ORCHESTRATOR-ROADMAP.md`](ORCHESTRATOR-ROADMAP.md) — Epics e milestones do projeto
 
 ## Agent Skills
 
