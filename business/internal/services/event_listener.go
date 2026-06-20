@@ -111,6 +111,8 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 		IsLID:         p.IsLid,
 		Participant:   p.Participant,
 		IsGroup:       p.IsGroup,
+		IsCommunity:   p.IsCommunity,
+		IsSubGroup:    p.IsSubGroup,
 		MediaURL:      p.MediaUrl,
 		MediaData:     p.MediaData,
 		Mimetype:      p.Mimetype,

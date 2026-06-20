@@ -161,7 +161,12 @@ func (tc *TicketController) ListTickets(c *gin.Context) {
 	var queueIds []int
 	if queueIdsJson != "" && queueIdsJson != "null" && queueIdsJson != "[]" {
 		if err := json.Unmarshal([]byte(queueIdsJson), &queueIds); err == nil && len(queueIds) > 0 {
-			query = query.Where("\"Tickets\".\"queueId\" IN ?", queueIds)
+			// Grupos não têm fila atribuída (queueId = null) — exemptá-los garante
+			// que apareçam em todas as abas mesmo quando o filtro de fila está ativo.
+			query = query.Where(
+				"(\"Tickets\".\"queueId\" IN ? OR \"Tickets\".\"isGroup\" = ?)",
+				queueIds, true,
+			)
 		}
 	}
 

@@ -43,6 +43,8 @@ type MessagePayload struct {
 	IsLid         bool   `json:"isLid"`
 	Participant   string `json:"participant"`
 	IsGroup       bool   `json:"isGroup"`
+	IsCommunity   bool   `json:"isCommunity"`
+	IsSubGroup    bool   `json:"isSubGroup"`
 	MediaUrl      string `json:"mediaUrl"`
 	MediaData     string `json:"mediaData"`
 	Mimetype      string `json:"mimetype"`
