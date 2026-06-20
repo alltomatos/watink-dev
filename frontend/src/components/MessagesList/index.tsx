@@ -87,7 +87,7 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
               isGroup={isGroup}
               appTheme={appTheme}
               mentionsMap={mentionsMap}
-              colorCache={groupColorCacheRef.current}
+              colorCache={groupColorCacheRef.current ?? new Map()}
               onOpenOptions={handleOpenMessageOptionsMenu}
             />
           ))
