@@ -16,6 +16,8 @@ type Ticket struct {
 	UserID         *int      `json:"userId"`
 	WhatsappID     int       `json:"whatsappId"`
 	IsGroup        bool      `json:"isGroup"`
+	IsCommunity    bool      `json:"isCommunity"`
+	IsSubGroup     bool      `json:"isSubGroup"`
 	UnreadMessages int       `json:"unreadMessages"`
 	QueueID        *int      `json:"queueId"`
 	TenantID       uuid.UUID `json:"tenantId"`

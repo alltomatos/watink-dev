@@ -26,6 +26,8 @@ type ReceiveMessageInput struct {
 	IsLID         bool
 	Participant   string
 	IsGroup       bool
+	IsCommunity   bool
+	IsSubGroup    bool
 	MediaURL      string
 	MediaData     string
 	Mimetype      string
@@ -130,12 +132,14 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 			ticketStatus = "open"
 		}
 		ticket, err = uc.ticketRepo.FindOrCreatePending(ctx, &domain.Ticket{
-			ContactID:  contact.ID,
-			Status:     ticketStatus,
-			TenantID:   input.TenantID,
-			WhatsappID: input.SessionID,
-			IsGroup:    input.IsGroup,
-			QueueID:    uc.resolveChannelQueue(ctx, input.SessionID, input.TenantID),
+			ContactID:   contact.ID,
+			Status:      ticketStatus,
+			TenantID:    input.TenantID,
+			WhatsappID:  input.SessionID,
+			IsGroup:     input.IsGroup,
+			IsCommunity: input.IsCommunity,
+			IsSubGroup:  input.IsSubGroup,
+			QueueID:     uc.resolveChannelQueue(ctx, input.SessionID, input.TenantID),
 		})
 		if err != nil {
 			return nil, err
