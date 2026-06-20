@@ -84,6 +84,27 @@ export const TOKEN_MAP: Record<string, string> = {
   // Motion
   "ease-out": "var(--ease-out)",
   "duration-normal": "var(--duration-normal)",
+  // Layout
+  "card-bg": "var(--card-bg)",
+  "sidebar-width": "var(--sidebar-width)",
+  "appbar-height": "var(--appbar-height)",
+  // Button
+  "button-primary-bg": "var(--button-primary-bg)",
+  "button-secondary-bg": "var(--button-secondary-bg)",
+  "button-danger-bg": "var(--button-danger-bg)",
+  // Input
+  "input-padding": "var(--input-padding)",
+  "input-radius": "var(--input-radius)",
+  "input-error-border": "var(--input-error-border)",
+  // Nav
+  "nav-item-height": "var(--nav-item-height)",
+  "nav-item-radius": "var(--nav-item-radius)",
+  "nav-active-bg": "var(--nav-active-bg)",
+  // Message
+  "message-left-bg": "var(--message-left-bg)",
+  "message-right-bg": "var(--message-right-bg)",
+  "message-quote-bg": "var(--message-quote-bg)",
+  "message-error-text": "var(--message-error-text)",
 };
 
 export interface ThemeTokens {
@@ -97,7 +118,11 @@ export interface ThemeTokens {
     shadow: Record<string, string>;
   };
   layout: Record<string, string>;
+  button: Record<string, string>;
+  input: Record<string, string>;
+  nav: Record<string, string>;
   motion: Record<string, string>;
+  message: Record<string, string>;
   getRaw: (name: string) => string | null;
   getVar: (name: string) => string;
   has: (name: string) => boolean;
@@ -132,30 +157,57 @@ export const useThemeTokens = (): ThemeTokens => {
           error: TOKEN_MAP["status-error"],
           warning: TOKEN_MAP["status-warning"],
           info: TOKEN_MAP["status-info"],
+          successBg: TOKEN_MAP["status-success-bg"],
+          errorBg: TOKEN_MAP["status-error-bg"],
         },
         border: {
           default: TOKEN_MAP["border-default"],
           subtle: TOKEN_MAP["border-subtle"],
           strong: TOKEN_MAP["border-strong"],
+          divider: TOKEN_MAP["border-divider"],
         },
         overlay: {
           light: TOKEN_MAP["overlay-light"],
           medium: TOKEN_MAP["overlay-medium"],
           strong: TOKEN_MAP["overlay-strong"],
+          dark: TOKEN_MAP["overlay-dark"],
         },
         shadow: {
           sm: TOKEN_MAP["shadow-sm"],
           md: TOKEN_MAP["shadow-md"],
           lg: TOKEN_MAP["shadow-lg"],
+          xl: TOKEN_MAP["shadow-xl"],
         },
       },
       layout: {
-        sidebarWidth: "var(--sidebar-width)",
-        appbarHeight: "var(--appbar-height)",
+        cardBg: TOKEN_MAP["card-bg"],
+        sidebarWidth: TOKEN_MAP["sidebar-width"],
+        appbarHeight: TOKEN_MAP["appbar-height"],
+      },
+      button: {
+        primaryBg: TOKEN_MAP["button-primary-bg"],
+        secondaryBg: TOKEN_MAP["button-secondary-bg"],
+        dangerBg: TOKEN_MAP["button-danger-bg"],
+      },
+      input: {
+        padding: TOKEN_MAP["input-padding"],
+        radius: TOKEN_MAP["input-radius"],
+        errorBorder: TOKEN_MAP["input-error-border"],
+      },
+      nav: {
+        itemHeight: TOKEN_MAP["nav-item-height"],
+        itemRadius: TOKEN_MAP["nav-item-radius"],
+        activeBg: TOKEN_MAP["nav-active-bg"],
       },
       motion: {
         easeOut: TOKEN_MAP["ease-out"],
         durationNormal: TOKEN_MAP["duration-normal"],
+      },
+      message: {
+        leftBg: TOKEN_MAP["message-left-bg"],
+        rightBg: TOKEN_MAP["message-right-bg"],
+        quoteBg: TOKEN_MAP["message-quote-bg"],
+        errorText: TOKEN_MAP["message-error-text"],
       },
       getRaw: (name: string) => TOKEN_MAP[name] ?? null,
       getVar: (name: string) => TOKEN_MAP[name] ?? `var(--${name})`,
