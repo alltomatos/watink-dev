@@ -24,10 +24,10 @@ describe("StatusChip Component", () => {
   it("applies correct status class mapping based on status prop", () => {
     const { container, rerender } = render(<StatusChip status="success" label="Active" />);
     let chip = container.firstChild;
-    expect(chip).toHaveClass("bg-[hsl(var(--status-success-bg,152_73%_90%))]");
+    expect(chip).toHaveClass("bg-[hsl(var(--status-success-bg))]");
 
     rerender(<StatusChip status="error" label="Failed" />);
     chip = container.firstChild;
-    expect(chip).toHaveClass("bg-[hsl(var(--status-error-bg,5_79%_95%))]");
+    expect(chip).toHaveClass("bg-[hsl(var(--status-error-bg))]");
   });
 });

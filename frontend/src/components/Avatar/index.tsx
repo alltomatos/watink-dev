@@ -73,7 +73,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         <span
           className={clsx(
             "wt-avatar-status absolute rounded-full border-[var(--card)] box-content",
-            online ? "bg-[var(--color-success)]" : "bg-[var(--muted-foreground)]",
+            online ? "bg-[hsl(var(--status-success))]" : "bg-[hsl(var(--text-muted))]",
             dotSizeMap[size] || dotSizeMap.md
           )}
         />
