@@ -1,9 +1,10 @@
-import { useReducer, useRef, useState, useEffect } from "react";
+import { useReducer, useRef, useState, useEffect, useMemo } from "react";
 import openSocket from "../../../services/socket-io";
 import api from "../../../services/api";
 import toastError from "../../../errors/toastError";
 import { Message, MessagesAction } from "../types";
 import { toast } from "react-toastify";
+import { parseData } from "../utils/messageHelpers";
 
 const sortByDate = (arr: Message[]) =>
   [...arr].sort(
@@ -53,6 +54,7 @@ export interface UseMessagesListReturn {
   messageOptionsMenuOpen: boolean;
   participants: Array<{ number: string; name?: string }>;
   groupColorCacheRef: React.RefObject<Map<string, string>>;
+  mentionsMap: Record<string, string>;
   historyModalOpen: boolean;
   historyFromDate: string;
   historyLoading: boolean;
@@ -192,6 +194,35 @@ export function useMessagesList(
 
   const handleCloseMessageOptionsMenu = () => setAnchorEl(null);
 
+  const mentionsMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    messagesList.forEach((msg) => {
+      let number: string | null = null;
+      let pushName: string | null = null;
+      if (msg.participant) {
+        number = (msg.participant as string).replace(/\D/g, "");
+        try {
+          const data = parseData(msg.dataJson);
+          pushName = data.pushName as string | null;
+        } catch {
+          /* invalid dataJson */
+        }
+      }
+      if (msg.contact) {
+        if (!number) number = msg.contact.number ?? null;
+        if (!pushName) pushName = msg.contact.name ?? null;
+      }
+      if (number && pushName) map[number] = pushName;
+    });
+    participants.forEach((p) => {
+      if (p.number && p.name) {
+        const num = p.number.replace(/\D/g, "");
+        if (!map[num]) map[num] = p.name;
+      }
+    });
+    return map;
+  }, [messagesList, participants]);
+
   const handleSyncHistory = async () => {
     if (!historyFromDate) {
       toast.error("Selecione uma data de início");
@@ -224,6 +255,7 @@ export function useMessagesList(
     messageOptionsMenuOpen,
     participants,
     groupColorCacheRef,
+    mentionsMap,
     historyModalOpen,
     historyFromDate,
     historyLoading,

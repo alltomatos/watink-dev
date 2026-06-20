@@ -66,3 +66,21 @@ export const getFileNameFromUrl = (url?: string): string => {
     return url;
   }
 };
+
+export const getParticipantColor = (
+  message: Message,
+  colorCache: Map<string, string>
+): string => {
+  const participantId =
+    (message.participant as string) ||
+    (parseData(message.dataJson).participant as string) ||
+    "unknown";
+  if (!colorCache.has(participantId)) {
+    const color =
+      PARTICIPANT_COLORS[
+        Math.floor(Math.random() * PARTICIPANT_COLORS.length)
+      ];
+    colorCache.set(participantId, color);
+  }
+  return colorCache.get(participantId)!;
+};
