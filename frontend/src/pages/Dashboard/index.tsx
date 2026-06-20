@@ -1,207 +1,40 @@
 /* @jsxImportSource react */
-import React, { useState, useEffect, useContext } from "react";
-import {
-  Settings,
-  Users,
-  MessageSquare,
-  Clock,
-  CheckCircle,
-  ArrowUp,
-  ArrowDown,
-  Smartphone,
-} from "lucide-react";
-import { toast } from "react-toastify";
-
-import { AuthContext } from "../../context/Auth/AuthContext";
-import api from "../../services/api";
-import { useTickets } from "../../hooks/useTickets";
-import { useWhatsAppsQuery } from "../../hooks/useWhatsAppsQuery";
-import { i18n } from "../../translate/i18n";
+import React from "react";
+import { Settings } from "lucide-react";
 
 import {
   PageContainer,
   PageHeader,
   PageContent,
 } from "../../components/ui/page-layout";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import { MetricCard } from "../../components/ui/metric-card";
-import { StatusChip } from "../../components/ui/status-chip";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "../../components/ui/dialog";
-import { Checkbox } from "../../components/ui/checkbox";
 
-// Widgets (Ainda em processo de refatoração interna, mas envelopados em PageContent)
-import TicketsInfo from "../../components/Dashboard/Widgets/TicketsInfo";
-import AttendanceChart from "../../components/Dashboard/Widgets/AttendanceChart";
-import PerformanceMetrics from "../../components/Dashboard/Widgets/PerformanceMetrics";
-
-interface WidgetConfig {
-  id: string;
-  visible: boolean;
-  width: number;
-  order: number;
-}
-
-const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: "performance_metrics", visible: true, width: 12, order: 1 },
-  { id: "tickets_info", visible: true, width: 12, order: 2 },
-  { id: "attendance_chart", visible: true, width: 12, order: 3 },
-];
-
-const WIDGET_LABELS: Record<string, string> = {
-  performance_metrics: "Métricas de Performance (TMR/TME)",
-  tickets_info: "Resumo de Tickets",
-  attendance_chart: "Gráfico de Atendimentos",
-};
-
-const formatTime = (minutes: number): string => {
-  if (!minutes) return "0m";
-  if (minutes < 1) return `${Math.round(minutes * 60)}s`;
-  if (minutes > 60) {
-    const h = Math.floor(minutes / 60);
-    const m = Math.round(minutes % 60);
-    return `${h}h ${m}m`;
-  }
-  return `${Math.round(minutes)}m`;
-};
+import { useDashboard } from "./hooks/useDashboard";
+import DashboardKpiRow from "./components/DashboardKpiRow";
+import DashboardAttendanceCard from "./components/DashboardAttendanceCard";
+import DashboardConnectionsPanel from "./components/DashboardConnectionsPanel";
+import DashboardWidgets from "./components/DashboardWidgets";
+import DashboardCustomizeModal from "./components/DashboardCustomizeModal";
 
 const Dashboard: React.FC = () => {
-  const { user: _user, setUser } = useContext(AuthContext) as any;
-  const user: any = _user;
-  const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [avgResponseTime, setAvgResponseTime] = useState(0);
+  const {
+    user,
+    sortedWidgets,
+    modalOpen,
+    setModalOpen,
+    stats,
+    whatsApps,
+    connectedCount,
+    userQueueIds,
+    openCount,
+    pendingCount,
+    closedCount,
+    toggleWidget,
+    moveWidget,
+    handleSaveConfigs,
+  } = useDashboard();
 
-  const { data: whatsApps = [] } = useWhatsAppsQuery();
-  const connectedCount = whatsApps.filter((w: any) => w.status === "CONNECTED").length;
-
-  const userQueueIds: number[] = user?.queues?.map((q: any) => q.id) || [];
-  const queueIdsParam = JSON.stringify(userQueueIds);
-
-  // Contagens reais de tickets por status (mesma fonte do legado MUI)
-  const { data: openData } = useTickets({
-    status: "open",
-    showAll: "true",
-    withUnreadMessages: "false",
-    queueIds: queueIdsParam,
-  });
-  const openCount = openData?.count ?? 0;
-  const { data: pendingData } = useTickets({
-    status: "pending",
-    showAll: "true",
-    withUnreadMessages: "false",
-    queueIds: queueIdsParam,
-  });
-  const pendingCount = pendingData?.count ?? 0;
-  const { data: closedData } = useTickets({
-    status: "closed",
-    showAll: "true",
-    withUnreadMessages: "false",
-    queueIds: queueIdsParam,
-  });
-  const closedCount = closedData?.count ?? 0;
-
-  useEffect(() => {
-    if (user?.configs?.dashboard?.widgets) {
-      setWidgets(user.configs.dashboard.widgets);
-    } else {
-      setWidgets(DEFAULT_WIDGETS);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const { data } = await api.get("/dashboard");
-        setAvgResponseTime(data?.metrics?.avgResponseTime || 0);
-      } catch {
-        console.error("Error fetching dashboard data");
-      }
-    };
-    fetchDashboard();
-  }, []);
-
-  const handleSaveConfigs = async () => {
-    try {
-      const newConfigs = {
-        ...user.configs,
-        dashboard: {
-          widgets: widgets,
-        },
-      };
-
-      await api.put(`/users/${user.id}/configs`, { configs: newConfigs });
-
-      // Update local user context
-      setUser({ ...user, configs: newConfigs });
-
-      toast.success("Dashboard preferences saved!");
-      setModalOpen(false);
-    } catch {
-      toast.error("Error saving preferences");
-    }
-  };
-
-  const toggleWidget = (id: string) => {
-    setWidgets(
-      widgets.map((w) => (w.id === id ? { ...w, visible: !w.visible } : w))
-    );
-  };
-
-  const moveWidget = (index: number, direction: number) => {
-    const newWidgets = [...widgets].sort((a, b) => a.order - b.order);
-    const targetIndex = index + direction;
-
-    if (targetIndex < 0 || targetIndex >= newWidgets.length) return;
-
-    // Swap orders
-    const tempOrder = newWidgets[index].order;
-    newWidgets[index].order = newWidgets[targetIndex].order;
-    newWidgets[targetIndex].order = tempOrder;
-
-    setWidgets(newWidgets);
-  };
-
-  const sortedWidgets = [...widgets].sort((a, b) => a.order - b.order);
-
-  const stats = [
-    {
-      title: i18n.t("dashboard.messages.inAttendance.title"),
-      value: String(openCount ?? 0),
-      icon: <MessageSquare />,
-      color: "primary" as const,
-    },
-    {
-      title: i18n.t("dashboard.messages.waiting.title"),
-      value: String(pendingCount ?? 0),
-      icon: <Users />,
-      color: "warning" as const,
-    },
-    {
-      title: i18n.t("dashboard.messages.closed.title"),
-      value: String(closedCount ?? 0),
-      icon: <CheckCircle />,
-      color: "success" as const,
-    },
-    {
-      title: "TMR (Tempo Médio)",
-      value: formatTime(avgResponseTime),
-      icon: <Clock />,
-      color: "info" as const,
-    },
-  ];
+  const totalCount = openCount + pendingCount + closedCount;
 
   return (
     <PageContainer>
@@ -210,11 +43,7 @@ const Dashboard: React.FC = () => {
         description={`Bem-vindo de volta, ${user?.name}. Aqui está o resumo das suas operações.`}
       >
         <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setModalOpen(true)}
-          >
+          <Button variant="ghost" size="sm" onClick={() => setModalOpen(true)}>
             <Settings className="mr-2 h-4 w-4" />
             Personalizar
           </Button>
@@ -222,174 +51,30 @@ const Dashboard: React.FC = () => {
       </PageHeader>
 
       <PageContent className="space-y-6 pb-20">
-        {/* KPI Row — dados reais via useTickets + /dashboard */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat, idx) => (
-            <MetricCard
-              key={idx}
-              label={stat.title}
-              value={stat.value}
-              icon={stat.icon}
-              color={stat.color}
-            />
-          ))}
-        </div>
+        <DashboardKpiRow stats={stats} />
 
-        {/* Linha principal: Gráfico + Painel de Conexões */}
         <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
-          {/* Gráfico de Atendimentos por Hora */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/[0.08]">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--color-info)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                </div>
-                <div>
-                  <CardTitle>Atendimentos por Hora</CardTitle>
-                  <CardDescription>Hoje — {(openCount ?? 0) + (pendingCount ?? 0) + (closedCount ?? 0)} total</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <AttendanceChart />
-            </CardContent>
-          </Card>
-
-          {/* Painel de Conexões */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-success-bg)]">
-                  <Smartphone className="h-6 w-6 text-[var(--color-success)]" />
-                </div>
-                <div>
-                  <CardTitle>Conexões</CardTitle>
-                  <CardDescription>
-                    {connectedCount} de {whatsApps.length} ativas
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col divide-y divide-border">
-                {whatsApps.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-muted-foreground">
-                    Nenhuma conexão configurada
-                  </p>
-                ) : (
-                  whatsApps.map((wa: any) => {
-                    const connected = wa.status === "CONNECTED";
-                    return (
-                      <div
-                        key={wa.id}
-                        className="flex items-center justify-between py-2.5"
-                      >
-                        <span className="text-sm font-medium text-foreground">
-                          {wa.name}
-                        </span>
-                        <StatusChip
-                          status={connected ? "success" : "error"}
-                          label={connected ? "Conectado" : "Offline"}
-                          size="sm"
-                        />
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <DashboardAttendanceCard totalCount={totalCount} />
+          <DashboardConnectionsPanel
+            whatsApps={whatsApps}
+            connectedCount={connectedCount}
+          />
         </div>
 
-        {/* Widgets configuráveis, em ordem definida pelo usuário */}
-        {sortedWidgets.map((widget) => {
-          if (!widget.visible) return null;
-
-          switch (widget.id) {
-            case "performance_metrics":
-              return (
-                <Card key={widget.id}>
-                  <CardHeader>
-                    <CardTitle>Performance por Equipe</CardTitle>
-                    <CardDescription>
-                      Métricas individuais de atendentes
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <PerformanceMetrics />
-                  </CardContent>
-                </Card>
-              );
-            case "tickets_info":
-              return (
-                <Card key={widget.id}>
-                  <CardHeader>
-                    <CardTitle>Resumo de Tickets</CardTitle>
-                    <CardDescription>
-                      Distribuição de estados e filas
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <TicketsInfo userQueueIds={userQueueIds} />
-                  </CardContent>
-                </Card>
-              );
-            case "attendance_chart":
-              // Já renderizado acima na linha principal — ocultar aqui
-              return null;
-            default:
-              return null;
-          }
-        })}
+        <DashboardWidgets
+          sortedWidgets={sortedWidgets}
+          userQueueIds={userQueueIds}
+        />
       </PageContent>
 
-      {/* Modal de personalização (portado do legado MUI → Dialog shadcn) */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-[450px]">
-          <DialogHeader>
-            <DialogTitle>Configurações do Dashboard</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            {sortedWidgets.map((widget, index) => (
-              <div
-                key={widget.id}
-                className="flex items-center justify-between rounded-xl border border-border bg-muted/40 p-4"
-              >
-                <label className="flex items-center gap-3 text-sm font-semibold">
-                  <Checkbox
-                    checked={widget.visible}
-                    onCheckedChange={() => toggleWidget(widget.id)}
-                  />
-                  {WIDGET_LABELS[widget.id] || widget.id}
-                </label>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => moveWidget(index, -1)}
-                    disabled={index === 0}
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => moveWidget(index, 1)}
-                    disabled={index === sortedWidgets.length - 1}
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button className="w-full" onClick={handleSaveConfigs}>
-              Salvar Preferências
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DashboardCustomizeModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        sortedWidgets={sortedWidgets}
+        onToggle={toggleWidget}
+        onMove={moveWidget}
+        onSave={handleSaveConfigs}
+      />
     </PageContainer>
   );
 };

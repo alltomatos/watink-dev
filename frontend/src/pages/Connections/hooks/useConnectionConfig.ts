@@ -5,10 +5,10 @@ import { toast } from "react-toastify";
 import api from "../../../services/api";
 import toastError from "../../../errors/toastError";
 import { i18n } from "../../../translate/i18n";
+import openSocket from "../../../services/socket-io";
 import { WhatsAppsContext } from "../../../context/WhatsApp/WhatsAppsContext";
 
 import type { Stats, WhatsApp, ConfirmationAction } from "../connectionConfigTypes";
-import { useConnectionSocket } from "./useConnectionSocket";
 
 export interface UseConnectionConfigReturn {
   whatsappId: string | undefined;
@@ -103,18 +103,58 @@ export const useConnectionConfig = (): UseConnectionConfigReturn => {
     if (isConnected) fetchStats();
   }, [isConnected, fetchStats]);
 
-  useConnectionSocket({
-    whatsappId,
-    fetchWhatsapp,
-    setWhatsapp,
-    setShowQrCode,
-    setShowPairingInput,
-    setConnecting,
-    setRestarting,
-    setPairingCode,
-    setPairingLoading,
-    setPhoneNumber,
-  });
+  useEffect(() => {
+    const socket = openSocket();
+    if (!socket) return;
+
+    socket.on("whatsappSession", (data: { action: string; session: WhatsApp & { id: number } }) => {
+      if (data.action === "update" && data.session.id === parseInt(whatsappId ?? "0")) {
+        setWhatsapp((prev) => prev ? { ...prev, ...data.session } : (data.session as WhatsApp));
+
+        if (data.session.status === "QRCODE") {
+          setShowQrCode(true);
+          setShowPairingInput(false);
+          setConnecting(false);
+          if (!data.session.qrcode) void fetchWhatsapp();
+        }
+
+        if (data.session.pairingCode) {
+          setPairingCode(data.session.pairingCode);
+          setPairingLoading(false);
+        }
+
+        if (["CONNECTED", "QRCODE", "PAIRING", "DISCONNECTED", "TIMEOUT"].includes(data.session.status)) {
+          setConnecting(false);
+          setRestarting(false);
+        }
+
+        if (data.session.status === "CONNECTED") {
+          setShowPairingInput(false);
+          setShowQrCode(false);
+          setPairingCode("");
+          setPhoneNumber("");
+          setPairingLoading(false);
+          void fetchWhatsapp();
+        }
+
+        if (data.session.status === "DISCONNECTED" || data.session.status === "TIMEOUT") {
+          setShowQrCode(false);
+          setShowPairingInput(false);
+          setPairingLoading(false);
+        }
+      }
+    });
+
+    socket.on("whatsapp", (data: { action: string; whatsapp: WhatsApp & { id: number } }) => {
+      if (data.action === "update" && data.whatsapp.id === parseInt(whatsappId ?? "0")) {
+        setWhatsapp((prev) => prev ? { ...prev, ...data.whatsapp } : (data.whatsapp as WhatsApp));
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [whatsappId, fetchWhatsapp]);
 
   const handleStartSessionQr = async () => {
     if (isConnected || isBusy || connecting) return;

@@ -17,6 +17,7 @@ interface TicketsListProps {
   updateCount?: (count: number) => void;
   style?: React.CSSProperties;
   isGroup?: string;
+  withUnreadMessages?: string;
   tags?: any[];
 }
 
@@ -40,6 +41,7 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
     updateCount,
     style,
     isGroup,
+    withUnreadMessages,
   } = props;
 
   const { user } = useContext(AuthContext);
@@ -52,8 +54,9 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
       showAll,
       queueIds: JSON.stringify(selectedQueueIds),
       isGroup,
+      withUnreadMessages,
     }),
-    [searchParam, status, showAll, selectedQueueIds, isGroup]
+    [searchParam, status, showAll, selectedQueueIds, isGroup, withUnreadMessages]
   );
 
   const {
@@ -85,7 +88,13 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
         ticket.contact?.isGroup ||
         ticket.contact?.number?.includes("g.us") ||
         ticket.isGroup;
-      const groupMatch = isGroup === "true" ? ticketIsGroup : !ticketIsGroup;
+      // isGroup undefined → no group filter (mostra ambos); "true"/"false" filtram.
+      const groupMatch =
+        isGroup === undefined || isGroup === ""
+          ? true
+          : isGroup === "true"
+          ? ticketIsGroup
+          : !ticketIsGroup;
       return (
         !searchParam &&
         (!ticket.userId || ticket.userId === user?.id || showAll) &&

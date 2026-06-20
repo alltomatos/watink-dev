@@ -105,11 +105,14 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 		FromMe:        p.FromMe,
 		Timestamp:     p.Timestamp,
 		PushName:      p.PushName,
+		GroupName:     p.GroupName,
 		QuotedMsgID:   p.QuotedMsgId,
 		ProfilePicURL: p.ProfilePicUrl,
 		IsLID:         p.IsLid,
 		Participant:   p.Participant,
 		IsGroup:       p.IsGroup,
+		IsCommunity:   p.IsCommunity,
+		IsSubGroup:    p.IsSubGroup,
 		MediaURL:      p.MediaUrl,
 		MediaData:     p.MediaData,
 		Mimetype:      p.Mimetype,
@@ -184,6 +187,10 @@ func handleSessionStatus(ctx context.Context, sessions domain.ChannelSessionRepo
 		now := time.Now()
 		updates["firstConnection"] = &now
 	}
+	if p.Status == "CONNECTED" {
+		now := time.Now()
+		updates["lastConnectedAt"] = &now
+	}
 
 	if err := sessions.Update(ctx, &domain.ChannelSession{ID: sessionID, TenantID: tenantID}, updates); err != nil {
 		return err
@@ -223,12 +230,14 @@ func (el *EventListener) handleHistorySync(ctx context.Context, payload json.Raw
 	inserted := 0
 	for _, m := range p.Messages {
 		dataJSON, _ := json.Marshal(map[string]interface{}{
-			"jid":       m.From,
-			"isGroup":   m.IsGroup,
-			"isLid":     m.IsLid,
-			"mimetype":  m.Mimetype,
-			"mediaData": m.MediaData,
-			"history":   true,
+			"jid":         m.From,
+			"participant": m.Participant,
+			"pushName":    m.PushName,
+			"isGroup":     m.IsGroup,
+			"isLid":       m.IsLid,
+			"mimetype":    m.Mimetype,
+			"mediaData":   m.MediaData,
+			"history":     true,
 		})
 
 		mediaType := m.Type
@@ -279,6 +288,11 @@ func handleMessageAck(ctx context.Context, messages domain.MessageRepository, pa
 	if err != nil {
 		return nil
 	}
+	if msg == nil {
+		// ack for a message we don't have (e.g. the device's own prior messages
+		// synced on connect) — nothing to update.
+		return nil
+	}
 	if p.Ack > msg.Ack {
 		if err := messages.Update(ctx, msg, map[string]interface{}{"ack": p.Ack}); err != nil {
 			return err
@@ -296,6 +310,9 @@ func handleMessageRevoke(ctx context.Context, messages domain.MessageRepository,
 	}
 	msg, err := messages.FindByID(ctx, p.MessageID, tenantID)
 	if err != nil {
+		return nil
+	}
+	if msg == nil {
 		return nil
 	}
 	if err := messages.Update(ctx, msg, map[string]interface{}{"isDeleted": true}); err != nil {

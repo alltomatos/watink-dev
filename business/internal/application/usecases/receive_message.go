@@ -20,11 +20,14 @@ type ReceiveMessageInput struct {
 	FromMe        bool
 	Timestamp     int64
 	PushName      string
+	GroupName     string
 	QuotedMsgID   string
 	ProfilePicURL string
 	IsLID         bool
 	Participant   string
 	IsGroup       bool
+	IsCommunity   bool
+	IsSubGroup    bool
 	MediaURL      string
 	MediaData     string
 	Mimetype      string
@@ -45,6 +48,7 @@ type ReceiveMessageUseCase struct {
 	messageRepo domain.MessageRepository
 	contactRepo domain.ContactRepository
 	ticketRepo  domain.TicketRepository
+	queueRepo   domain.QueueRepository
 }
 
 func NewReceiveMessageUseCase(
@@ -52,13 +56,30 @@ func NewReceiveMessageUseCase(
 	messageRepo domain.MessageRepository,
 	contactRepo domain.ContactRepository,
 	ticketRepo domain.TicketRepository,
+	queueRepo domain.QueueRepository,
 ) *ReceiveMessageUseCase {
 	return &ReceiveMessageUseCase{
 		eventBus:    eventBus,
 		messageRepo: messageRepo,
 		contactRepo: contactRepo,
 		ticketRepo:  ticketRepo,
+		queueRepo:   queueRepo,
 	}
+}
+
+// resolveChannelQueue returns the queue to assign to a new ticket: when the
+// channel is linked to exactly one queue, that queue is inherited so agents of
+// that queue can see the ticket immediately. With 0 or multiple queues it returns
+// nil (triage/flow decides).
+func (uc *ReceiveMessageUseCase) resolveChannelQueue(ctx context.Context, channelID int, tenantID uuid.UUID) *int {
+	if uc.queueRepo == nil {
+		return nil
+	}
+	ids, err := uc.queueRepo.FindQueueIDsByChannel(ctx, channelID, tenantID)
+	if err != nil || len(ids) != 1 {
+		return nil
+	}
+	return &ids[0]
 }
 
 // Execute processes an incoming message and handles contact, ticket and message persistence.
@@ -72,11 +93,18 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 		return nil, fmt.Errorf("empty sender number")
 	}
 
+	// For groups the contact represents the group itself, so name it with the
+	// group subject instead of whichever participant happened to message.
+	contactName := input.PushName
+	if input.IsGroup && input.GroupName != "" {
+		contactName = input.GroupName
+	}
+
 	contact, err := uc.contactRepo.FindOrCreate(
 		ctx,
 		input.TenantID,
 		number,
-		input.PushName,
+		contactName,
 		input.ProfilePicURL,
 		input.IsGroup,
 		input.IsLID,
@@ -86,17 +114,32 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 		return nil, err
 	}
 
+	// Self-heal: if a group was previously created with a participant's name,
+	// update it to the real group subject once we know it.
+	if input.IsGroup && input.GroupName != "" && contact.Name != input.GroupName {
+		if err := uc.contactRepo.Update(ctx, contact, map[string]interface{}{"name": input.GroupName}); err == nil {
+			contact.Name = input.GroupName
+		}
+	}
+
 	ticket, err := uc.ticketRepo.FindOpenByContact(ctx, input.TenantID, contact.ID, input.SessionID)
 	if err != nil {
 		return nil, err
 	}
 	if ticket == nil {
+		ticketStatus := "pending"
+		if input.IsGroup {
+			ticketStatus = "open"
+		}
 		ticket, err = uc.ticketRepo.FindOrCreatePending(ctx, &domain.Ticket{
-			ContactID:  contact.ID,
-			Status:     "pending",
-			TenantID:   input.TenantID,
-			WhatsappID: input.SessionID,
-			IsGroup:    input.IsGroup,
+			ContactID:   contact.ID,
+			Status:      ticketStatus,
+			TenantID:    input.TenantID,
+			WhatsappID:  input.SessionID,
+			IsGroup:     input.IsGroup,
+			IsCommunity: input.IsCommunity,
+			IsSubGroup:  input.IsSubGroup,
+			QueueID:     uc.resolveChannelQueue(ctx, input.SessionID, input.TenantID),
 		})
 		if err != nil {
 			return nil, err
@@ -111,6 +154,7 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 	dataJSON, _ := json.Marshal(map[string]interface{}{
 		"jid":         contactJID,
 		"participant": input.Participant,
+		"pushName":    input.PushName, // nome do remetente — exibido na bolha em grupos
 		"isGroup":     input.IsGroup,
 		"isLid":       input.IsLID,
 		"mimetype":    input.Mimetype,

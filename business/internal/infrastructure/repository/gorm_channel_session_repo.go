@@ -122,7 +122,7 @@ func (r *GORMChannelSessionRepository) DeleteWithRelations(ctx context.Context, 
 			return err
 		}
 
-		if err := tx.Exec("DELETE FROM \"WhatsappQueues\" WHERE \"whatsappId\" = ?", id).Error; err != nil {
+		if err := tx.Exec("DELETE FROM whatsapp_queues WHERE whatsapp_id = ?", id).Error; err != nil {
 			return err
 		}
 
@@ -159,6 +159,7 @@ func whatsappModelToDomain(m *models.Whatsapp) *domain.ChannelSession {
 		CreatedAt:       m.CreatedAt,
 		UpdatedAt:       m.UpdatedAt,
 		FirstConnection: m.FirstConnection,
+		LastConnectedAt: m.LastConnectedAt,
 		EngineType:      m.EngineType,
 	}
 }
@@ -185,6 +186,7 @@ func channelSessionDomainToModel(d *domain.ChannelSession) *models.Whatsapp {
 		CreatedAt:       d.CreatedAt,
 		UpdatedAt:       d.UpdatedAt,
 		FirstConnection: d.FirstConnection,
+		LastConnectedAt: d.LastConnectedAt,
 		EngineType:      d.EngineType,
 	}
 }

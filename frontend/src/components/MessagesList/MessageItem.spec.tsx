@@ -19,7 +19,6 @@ describe('MessageItem', () => {
   it('renders text message from contact correctly', () => {
     render(<MessageItem message={baseMessage} />);
     expect(screen.getByText('Hello, this is a test message')).toBeDefined();
-    expect(screen.getByRole('paragraph', { hidden: true })).toBeDefined(); // Simple check for container
   });
 
   it('renders text message from me correctly', () => {

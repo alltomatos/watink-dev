@@ -26,13 +26,7 @@ func (s *WhatsAppService) handleEvent(id int, tenantID string, evt interface{}) 
 	case *events.Receipt:
 		s.handleReceiptEvent(id, tenantID, v)
 	case *events.Connected:
-		s.emitStatus(id, tenantID, "CONNECTED")
-		if client.Store.ID != nil {
-			s.publishEvent(tenantID, id, "session.jid_registered", map[string]interface{}{
-				"sessionId": fmt.Sprintf("%d", id),
-				"jid":       client.Store.ID.String(),
-			})
-		}
+		s.emitConnected(client, id, tenantID)
 	case *events.Disconnected:
 		s.emitStatus(id, tenantID, "DISCONNECTED")
 	case *events.LoggedOut:
@@ -85,24 +79,51 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 	}
 
 	body, msgType, mediaData, mimeType := extractMessageContent(client, v.Message)
+	// Skip system / unsupported / empty messages (no text and no media) so they
+	// don't show up in the chat as blank bubbles rendering the raw number.
+	if msgType == "chat" && body == "" && mediaData == "" {
+		return
+	}
+
+	isGroup := v.Info.IsGroup || v.Info.Chat.Server == types.GroupServer
 	chatJID := v.Info.Chat.String()
-	senderJID := v.Info.Sender.String()
+	// Strip the device suffix (sender:NN) from the participant.
+	senderJID := v.Info.Sender.ToNonAD().String()
 	if chatJID == "" {
 		chatJID = senderJID
 	}
 
-	profilePic := ""
-	if !v.Info.IsFromMe && !v.Info.Sender.IsEmpty() {
-		if info, err := client.GetProfilePictureInfo(context.Background(), v.Info.Sender, &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
-			profilePic = info.URL
-		}
-	}
-
-	// Resolve LID → phone number mapping when sender is identified by LID.
+	// Resolve LID → phone number (also device-stripped).
 	resolvedSender := senderJID
 	if v.Info.Sender.Server == types.HiddenUserServer {
 		if pn, err := client.Store.LIDs.GetPNForLID(context.Background(), v.Info.Sender); err == nil && !pn.IsEmpty() {
-			resolvedSender = pn.String()
+			resolvedSender = pn.ToNonAD().String()
+		}
+	}
+
+	// Group subject becomes the contact name (cached); avoids groups looking like
+	// individuals named after whoever messaged. groupSubject also populates the
+	// groupMetaMap cache used below for community/sub-group detection.
+	groupName := ""
+	isCommunity := false
+	isSubGroup := false
+	if isGroup {
+		groupName = s.groupSubject(client, v.Info.Chat)
+		meta := s.cachedGroupMeta(v.Info.Chat)
+		isCommunity = meta.isCommunity
+		isSubGroup = meta.isSubGroup
+	}
+
+	// Profile picture: for group contacts use the group JID; for individuals only
+	// real phone-number senders (LID senders reject the query with 400).
+	profilePic := ""
+	if isGroup {
+		if info, err := client.GetProfilePictureInfo(context.Background(), v.Info.Chat.ToNonAD(), &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
+			profilePic = info.URL
+		}
+	} else if !v.Info.IsFromMe && v.Info.Sender.Server == types.DefaultUserServer {
+		if info, err := client.GetProfilePictureInfo(context.Background(), v.Info.Sender.ToNonAD(), &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
+			profilePic = info.URL
 		}
 	}
 
@@ -116,14 +137,88 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 			"fromMe":        v.Info.IsFromMe,
 			"timestamp":     v.Info.Timestamp.Unix(),
 			"pushName":      v.Info.PushName,
+			"groupName":     groupName,
 			"profilePicUrl": profilePic,
 			"isLid":         v.Info.Sender.Server == types.HiddenUserServer,
 			"participant":   resolvedSender,
-			"isGroup":       v.Info.IsGroup || v.Info.Chat.Server == types.GroupServer,
+			"isGroup":       isGroup,
+			"isCommunity":   isCommunity,
+			"isSubGroup":    isSubGroup,
 			"mimetype":      mimeType,
 			"mediaData":     mediaData,
 		},
 	})
+}
+
+// groupSubject returns the group's display name, cached per group JID to avoid
+// a GetGroupInfo round-trip on every message.
+func (s *WhatsAppService) groupSubject(client *whatsmeow.Client, jid types.JID) string {
+	key := jid.String()
+	s.groupNameMu.Lock()
+	if n, ok := s.groupNames[key]; ok {
+		s.groupNameMu.Unlock()
+		return n
+	}
+	s.groupNameMu.Unlock()
+
+	name := ""
+	if info, err := client.GetGroupInfo(context.Background(), jid); err == nil && info != nil {
+		name = info.GroupName.Name
+		s.groupMetaMu.Lock()
+		s.groupMetaMap[key] = groupMeta{
+			isCommunity: info.IsParent,
+			isSubGroup:  info.IsDefaultSubGroup,
+		}
+		s.groupMetaMu.Unlock()
+	}
+	if name != "" {
+		s.groupNameMu.Lock()
+		s.groupNames[key] = name
+		s.groupNameMu.Unlock()
+	}
+	return name
+}
+
+// cachedGroupMeta returns the cached community/sub-group metadata for a group JID.
+// Returns zero value (all false) when no info has been cached yet.
+func (s *WhatsAppService) cachedGroupMeta(jid types.JID) groupMeta {
+	key := jid.String()
+	s.groupMetaMu.Lock()
+	defer s.groupMetaMu.Unlock()
+	return s.groupMetaMap[key]
+}
+
+// emitConnected publishes the CONNECTED status enriched with the account's own
+// number and profile picture, plus the jid_registered event. This is what lets
+// the frontend connection card show the real number and avatar instead of placeholders.
+func (s *WhatsAppService) emitConnected(client *whatsmeow.Client, id int, tenantID string) {
+	number := ""
+	var ownJID types.JID
+	if client.Store.ID != nil {
+		ownJID = *client.Store.ID
+		number = ownJID.User
+	}
+
+	profilePic := ""
+	if !ownJID.IsEmpty() {
+		if info, err := client.GetProfilePictureInfo(context.Background(), ownJID.ToNonAD(), &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
+			profilePic = info.URL
+		}
+	}
+
+	s.publishEvent(tenantID, id, "session.status", map[string]interface{}{
+		"sessionId":     fmt.Sprintf("%d", id),
+		"status":        "CONNECTED",
+		"number":        number,
+		"profilePicUrl": profilePic,
+	})
+
+	if client.Store.ID != nil {
+		s.publishEvent(tenantID, id, "session.jid_registered", map[string]interface{}{
+			"sessionId": fmt.Sprintf("%d", id),
+			"jid":       client.Store.ID.String(),
+		})
+	}
 }
 
 func (s *WhatsAppService) handleReceiptEvent(id int, tenantID string, v *events.Receipt) {

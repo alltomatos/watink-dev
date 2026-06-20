@@ -92,6 +92,8 @@ const messages = {
         title: "Connections",
         toasts: {
           deleted: "WhatsApp connection deleted sucessfully!",
+          disconnected: "Session disconnected!",
+          keepAliveUpdated: "Auto-reconnect updated.",
         },
         confirmationModal: {
           deleteTitle: "Delete",

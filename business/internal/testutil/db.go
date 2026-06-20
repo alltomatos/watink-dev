@@ -64,13 +64,10 @@ func NewTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("testutil.NewTestDB: AutoMigrate: %v", err)
 	}
 
-	// GORM AutoMigrate creates join table columns in snake_case (user_id, queue_id).
-	// Production schema uses camelCase (userId, queueId) — rename to match.
-	// GORM's SetupJoinTable cannot be used because joinForeignKey always goes through
-	// ToDBName() snake_case conversion, making camelCase column registration impossible.
+	// Join tables (user_queues, whatsapp_queues) use snake_case columns
+	// (user_id, queue_id, whatsapp_id) — created by GORM's many2many default
+	// naming, matching the runtime schema. Do NOT rename to camelCase.
 	for _, stmt := range []string{
-		`ALTER TABLE user_queues RENAME COLUMN user_id TO "userId"`,
-		`ALTER TABLE user_queues RENAME COLUMN queue_id TO "queueId"`,
 		// PluginInstallations is managed outside GORM models (plugin-manager service).
 		// Create a minimal version for unit tests that query it.
 		`CREATE TABLE IF NOT EXISTS "PluginInstallations" (
