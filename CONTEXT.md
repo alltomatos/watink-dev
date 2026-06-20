@@ -19,7 +19,7 @@ Governança: `docs/adr/frontend/005-design-system-governance.md`.
 ### Princípios de Design
 - **Tokens como fonte de verdade**: Cores em HSL raw (`--token: H S% L%`), consumidas como `hsl(var(--token))`. Nunca hardcoded hex.
 - **Reuso estrito**: Proibido criar componentes base do zero — estender os 22 componentes em `src/components/ui/`.
-- **Sem MUI em código novo**: `@material-ui` imports proibidos em `.tsx`. 46 componentes legados (`.js`) são READ-ONLY.
+- **MUI completamente removido** (jun/2026): `@material-ui/*` não é dependência do projeto. Qualquer import causa erro de build. Stack obrigatória: shadcn/ui + Tailwind + Lucide. Ver ADR 0008.
 - **Componentes DS**: `Button`, `Card`, `MetricCard`, `StatusChip`, `Avatar`, `PageLayout`, `Dialog`, `Input`, `Badge`, `Table`, `Tabs`…
 
 ## Language
