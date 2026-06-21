@@ -9,8 +9,14 @@ import {
 } from "../../../components/ui/card";
 import { StatusChip } from "../../../components/ui/status-chip";
 
+interface WhatsAppItem {
+  id: number;
+  status: string;
+  [key: string]: unknown;
+}
+
 interface DashboardConnectionsPanelProps {
-  whatsApps: any[];
+  whatsApps: WhatsAppItem[];
   connectedCount: number;
 }
 
@@ -40,7 +46,7 @@ const DashboardConnectionsPanel: React.FC<DashboardConnectionsPanelProps> = ({
               Nenhuma conexão configurada
             </p>
           ) : (
-            whatsApps.map((wa: any) => {
+            whatsApps.map((wa) => {
               const connected = wa.status === "CONNECTED";
               return (
                 <div
@@ -48,7 +54,7 @@ const DashboardConnectionsPanel: React.FC<DashboardConnectionsPanelProps> = ({
                   className="flex items-center justify-between py-2.5"
                 >
                   <span className="text-sm font-medium text-foreground">
-                    {wa.name}
+                    {String(wa.name ?? "")}
                   </span>
                   <StatusChip
                     status={connected ? "success" : "error"}

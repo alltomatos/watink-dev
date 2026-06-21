@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { i18n } from "../../translate/i18n";
 
-interface Queue {
+export interface Queue {
   id: number;
   name: string;
   color?: string;

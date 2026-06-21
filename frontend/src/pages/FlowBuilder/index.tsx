@@ -1,8 +1,10 @@
 ﻿/* @jsxImportSource react */
 import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
+import type { NodeTypes } from 'reactflow';
 import { Loader2, ChevronRight, ChevronLeft, MessageSquare } from 'lucide-react';
 
+import type { FlowNode } from './nodeEditorTypes';
 import NodesSidebar from './NodesSidebar';
 import FlowChat from './FlowChat';
 import NodeEditorSidebar from './NodeEditorSidebar';
@@ -104,7 +106,7 @@ const FlowBuilderContent = () => {
                     canvasRef={fb.reactFlowWrapper}
                     nodes={fb.nodes}
                     edges={fb.edges}
-                    nodeTypes={nodeTypes}
+                    nodeTypes={nodeTypes as unknown as NodeTypes}
                     onNodesChange={fb.onNodesChange}
                     onEdgesChange={fb.onEdgesChange}
                     onConnect={fb.onConnect}
@@ -118,7 +120,7 @@ const FlowBuilderContent = () => {
                     <div className="w-80 border-l bg-card z-20 overflow-y-auto shrink-0 animate-in slide-in-from-right duration-300">
                         <NodeEditorSidebar
                             open={fb.isEditorOpen}
-                            node={fb.selectedNode as any}
+                            node={fb.selectedNode as unknown as FlowNode}
                             onClose={fb.handleCloseEditor}
                             onSave={fb.handleNodeConfigSave}
                             onDelete={fb.handleNodeDelete}
@@ -133,7 +135,7 @@ const FlowBuilderContent = () => {
                                 <ChevronRight size={18} />
                             </Button>
                         </div>
-                        <FlowChat onFlowGenerated={fb.handleAIResponse as any} />
+                        <FlowChat onFlowGenerated={fb.handleAIResponse as (nodes: unknown[], edges: unknown[]) => void} />
                     </div>
                 )}
 

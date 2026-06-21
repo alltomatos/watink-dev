@@ -30,8 +30,8 @@ const ProtocolAttachmentsCard: React.FC<ProtocolAttachmentsCardProps> = ({
     </div>
 
     <AttachmentsList
-      attachments={attachments as any}
-      onDelete={onDelete as any}
+      attachments={attachments as { id: number | string; filePath: string; originalName: string; fileType?: string }[]}
+      onDelete={(id) => onDelete(Number(id))}
       canDelete={true}
       showEmpty={false}
     />

@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from "react";
 import { toast } from "react-toastify";
 
 import { AuthContext } from "../../../context/Auth/AuthContext";
+import { AuthUser } from "../../../hooks/useAuth";
 import api from "../../../services/api";
 import { useTickets } from "../../../hooks/useTickets";
 import { useWhatsAppsQuery } from "../../../hooks/useWhatsAppsQuery";
@@ -10,14 +11,25 @@ import { i18n } from "../../../translate/i18n";
 import { MessageSquare, Users, CheckCircle, Clock } from "lucide-react";
 import React from "react";
 
+interface WhatsApp {
+  id: number;
+  status: string;
+  [key: string]: unknown;
+}
+
+interface Queue {
+  id: number;
+  [key: string]: unknown;
+}
+
 export interface UseDashboardReturn {
-  user: any;
+  user: AuthUser;
   widgets: WidgetConfig[];
   sortedWidgets: WidgetConfig[];
   modalOpen: boolean;
   setModalOpen: (open: boolean) => void;
   stats: StatItem[];
-  whatsApps: any[];
+  whatsApps: WhatsApp[];
   connectedCount: number;
   userQueueIds: number[];
   openCount: number;
@@ -29,17 +41,17 @@ export interface UseDashboardReturn {
 }
 
 export function useDashboard(): UseDashboardReturn {
-  const { user: _user, setUser } = useContext(AuthContext) as any;
-  const user: any = _user;
+  const { user } = useContext(AuthContext);
 
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [avgResponseTime, setAvgResponseTime] = useState(0);
 
-  const { data: whatsApps = [] } = useWhatsAppsQuery();
-  const connectedCount = whatsApps.filter((w: any) => w.status === "CONNECTED").length;
+  const { data: whatsAppsRaw = [] } = useWhatsAppsQuery();
+  const whatsApps = whatsAppsRaw as WhatsApp[];
+  const connectedCount = whatsApps.filter((w) => w.status === "CONNECTED").length;
 
-  const userQueueIds: number[] = user?.queues?.map((q: any) => q.id) || [];
+  const userQueueIds: number[] = ((user as unknown as { queues?: Queue[] })?.queues ?? []).map((q) => q.id);
   const queueIdsParam = JSON.stringify(userQueueIds);
 
   const { data: openData } = useTickets({
@@ -67,8 +79,9 @@ export function useDashboard(): UseDashboardReturn {
   const closedCount = closedData?.count ?? 0;
 
   useEffect(() => {
-    if (user?.configs?.dashboard?.widgets) {
-      setWidgets(user.configs.dashboard.widgets);
+    const userConfigs = (user as unknown as { configs?: { dashboard?: { widgets?: WidgetConfig[] } } })?.configs;
+    if (userConfigs?.dashboard?.widgets) {
+      setWidgets(userConfigs.dashboard.widgets);
     } else {
       setWidgets(DEFAULT_WIDGETS);
     }
@@ -88,12 +101,12 @@ export function useDashboard(): UseDashboardReturn {
 
   const handleSaveConfigs = async () => {
     try {
+      const existingConfigs = (user as unknown as { configs?: Record<string, unknown> })?.configs ?? {};
       const newConfigs = {
-        ...user.configs,
+        ...existingConfigs,
         dashboard: { widgets },
       };
       await api.put(`/users/${user.id}/configs`, { configs: newConfigs });
-      setUser({ ...user, configs: newConfigs });
       toast.success("Dashboard preferences saved!");
       setModalOpen(false);
     } catch {
