@@ -84,6 +84,8 @@ func main() {
 	r.GET("/socket.io/*any", gin.WrapH(server))
 	r.POST("/socket.io/*any", gin.WrapH(server))
 
+	r.Static("/public/media", "public/media")
+
 	apiGroup := r.Group("/api/v1")
 	{
 		apiGroup.GET("/health", func(c *gin.Context) {
