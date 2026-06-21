@@ -8,6 +8,7 @@ import TicketsListSkeleton from "../TicketsListSkeleton";
 import { useTicketsInfinite } from "../../hooks/useTicketsInfinite";
 import { i18n } from "../../translate/i18n";
 import { AuthContext } from "../../context/Auth/AuthContext";
+import type { Ticket } from "../../types/Ticket";
 
 interface TicketsListProps {
   status?: string;
@@ -18,7 +19,7 @@ interface TicketsListProps {
   style?: React.CSSProperties;
   isGroup?: string;
   withUnreadMessages?: string;
-  tags?: any[];
+  tags?: number[];
 }
 
 interface TicketShape {
@@ -182,8 +183,7 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
               // TicketListItem already typed – cast required because tickets
               // here is the minimal TicketShape, the full Ticket shape is
               // enforced inside TicketListItem itself.
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              <TicketListItem ticket={ticket as any} key={ticket.id} />
+              <TicketListItem ticket={ticket as unknown as Ticket} key={ticket.id} />
             ))}
             {isFetchingNextPage && <TicketsListSkeleton />}
           </>

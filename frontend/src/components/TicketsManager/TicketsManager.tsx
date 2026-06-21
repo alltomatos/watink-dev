@@ -7,24 +7,23 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Plus, Filter } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import TicketsQueueSelect from "../TicketsQueueSelect";
+import TicketsQueueSelect, { Queue } from "../TicketsQueueSelect";
+
+type TabValue = "open" | "closed";
 
 export const TicketsManager: React.FC = () => {
-  const {
-    tab,
-    setTab,
-    setSearchParam,
-    tabOpen,
-    setTabOpen,
-    newTicketModalOpen,
-    setNewTicketModalOpen,
-  } = useTicketsContext() as any;
+  const { tabOpen, setTabOpen } = useTicketsContext();
 
   const { user } = useContext(AuthContext);
+  const [tab, setTab] = useState<TabValue>("open");
+  const [searchParam, setSearchParam] = useState<string>("");
+  const [newTicketModalOpen, setNewTicketModalOpen] = useState<boolean>(false);
   const [openCount, _setOpenCount] = useState(0);
   const [pendingCount, _setPendingCount] = useState(0);
   const [groupsCount, _setGroupsCount] = useState(0);
-  const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>((user as any)?.queues?.map((q: any) => q.id) || []);
+
+  const userQueues = (user.queues as Queue[] | undefined) ?? [];
+  const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>(userQueues.map((q) => q.id));
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchParam(e.target.value.toLowerCase());
@@ -39,7 +38,7 @@ export const TicketsManager: React.FC = () => {
 
       <header className="border-b bg-card p-4 flex flex-col gap-4">
         <div className="flex items-center justify-between">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="open">Inbox</TabsTrigger>
             <TabsTrigger value="closed">Resolvidos</TabsTrigger>
@@ -56,7 +55,7 @@ export const TicketsManager: React.FC = () => {
               <PopoverContent className="w-64">
                 <TicketsQueueSelect
                   selectedQueueIds={selectedQueueIds}
-                  userQueues={(user as any)?.queues}
+                  userQueues={userQueues}
                   onChange={(values: number[]) => setSelectedQueueIds(values)}
                 />
               </PopoverContent>

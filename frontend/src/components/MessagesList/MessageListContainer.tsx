@@ -17,7 +17,7 @@ interface MessagesResponse {
 
 export const MessageListContainer: React.FC<MessageListContainerProps> = ({ ticketId }) => {
   const queryClient = useQueryClient();
-  const virtuosoRef = useRef<any>(null);
+  const virtuosoRef = useRef<{ scrollToIndex: (index: number) => void } | null>(null);
 
   // Fetch initial history
   const { data: messages = [], isLoading } = useQuery<Message[]>({
@@ -67,8 +67,8 @@ export const MessageListContainer: React.FC<MessageListContainerProps> = ({ tick
     <VirtuosoMessageList
       ref={virtuosoRef}
       data={messages}
-      ItemContent={({ data }: { data: any }) => <MessageItem message={data} />}
-      computeItemKey={({ data }: { data: any }) => String(data.id)}
+      ItemContent={({ data }: { data: Message }) => <MessageItem message={data} />}
+      computeItemKey={({ data }: { data: Message }) => String(data.id)}
       style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
     />
   );

@@ -78,11 +78,11 @@ export const useTagManager = () => {
   useEffect(() => {
     const socket = openSocket();
     if (!socket) return;
-    socket.on("tag", (data: any) => {
-      if (data.action === "update" || data.action === "create") {
+    socket.on("tag", (data: { action: string; tag?: Tag; tagId?: number | string }) => {
+      if ((data.action === "update" || data.action === "create") && data.tag) {
         dispatch({ type: "UPDATE_TAGS", payload: data.tag });
       }
-      if (data.action === "delete") {
+      if (data.action === "delete" && data.tagId !== undefined) {
         dispatch({ type: "DELETE_TAG", payload: +data.tagId });
       }
     });
