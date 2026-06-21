@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"mime"
 	"os"
 	"path/filepath"
@@ -25,6 +26,37 @@ func SaveMediaBase64(mediaData string, mimeType string) (string, error) {
 	raw, err := base64.StdEncoding.DecodeString(mediaData)
 	if err != nil {
 		return "", fmt.Errorf("media_storage: base64 decode: %w", err)
+	}
+
+	ext := extensionForMime(mimeType)
+	hash := fmt.Sprintf("%x", sha256.Sum256(raw))
+	filename := hash + ext
+
+	dir := mediaPublicDir
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("media_storage: mkdir %s: %w", dir, err)
+	}
+
+	dest := filepath.Join(dir, filename)
+	if _, err := os.Stat(dest); os.IsNotExist(err) {
+		if err := os.WriteFile(dest, raw, 0o644); err != nil {
+			return "", fmt.Errorf("media_storage: write %s: %w", dest, err)
+		}
+	}
+
+	return "/public/media/" + filename, nil
+}
+
+// SaveMediaReader reads all bytes from r, persists them under
+// <workdir>/public/media/<sha256>.<ext>, and returns the relative URL
+// "/public/media/<sha256>.<ext>".
+func SaveMediaReader(r io.Reader, mimeType string) (string, error) {
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		return "", fmt.Errorf("media_storage: read: %w", err)
+	}
+	if len(raw) == 0 {
+		return "", nil
 	}
 
 	ext := extensionForMime(mimeType)
