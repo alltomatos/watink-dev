@@ -49,7 +49,9 @@ const MessageMedia: React.FC<Props> = ({ message }) => {
   }
 
   if (message.mediaType === "audio") {
-    return <Audio url={getBackendUrl(message.mediaUrl) ?? ""} />;
+    const audioData = parseData(message.dataJson);
+    const mimetype = typeof audioData?.mimetype === "string" ? audioData.mimetype : undefined;
+    return <Audio url={getBackendUrl(message.mediaUrl) ?? ""} mimetype={mimetype} />;
   }
 
   if (message.mediaType === "video") {
