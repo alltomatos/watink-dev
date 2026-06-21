@@ -69,7 +69,7 @@ func main() {
 
 	if err := rabbitMQ.Connect(); err == nil {
 		rabbitMQ.StartFlowWorker()
-		eventListener := services.NewEventListener(container.ChannelSessionRepo, container.MessageRepo, container.ContactRepo, container.TicketRepo, container.ReceiveMessage)
+		eventListener := services.NewEventListener(container.ChannelSessionRepo, container.MessageRepo, container.ContactRepo, container.TicketRepo, container.ReceiveMessage, broadcast)
 		services.StartEventListener(rabbitMQ, eventListener)
 	} else {
 		log.Printf("⚠️ Warning: RabbitMQ connection failed: %v", err)
@@ -83,6 +83,8 @@ func main() {
 
 	r.GET("/socket.io/*any", gin.WrapH(server))
 	r.POST("/socket.io/*any", gin.WrapH(server))
+
+	r.Static("/public/media", "public/media")
 
 	apiGroup := r.Group("/api/v1")
 	{

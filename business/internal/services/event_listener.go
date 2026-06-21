@@ -21,10 +21,11 @@ type EventListener struct {
 	contacts       domain.ContactRepository
 	tickets        domain.TicketRepository
 	receiveMessage *usecases.ReceiveMessageUseCase
+	broadcast      *RedisBroadcast
 }
 
-func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase) *EventListener {
-	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm}
+func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase, broadcast *RedisBroadcast) *EventListener {
+	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: broadcast}
 }
 
 func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener) {
@@ -59,11 +60,11 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 		ctx := context.Background()
 		switch env.Type {
 		case "session.qrcode":
-			return handleQrCode(ctx, eventListener.sessions, env.Payload, tid)
+			return eventListener.handleQrCode(ctx, env.Payload, tid)
 		case "session.pairing_code":
-			return handlePairingCode(ctx, eventListener.sessions, env.Payload, tid)
+			return eventListener.handlePairingCode(ctx, env.Payload, tid)
 		case "session.status":
-			return handleSessionStatus(ctx, eventListener.sessions, env.Payload, tid)
+			return eventListener.handleSessionStatus(ctx, env.Payload, tid)
 		case "session.history_sync":
 			return eventListener.handleHistorySync(ctx, env.Payload, tid)
 		case "message.received":
@@ -73,11 +74,11 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 			}
 			return eventListener.processMessage(ctx, p.Message, p.SessionID, tid)
 		case "message.ack":
-			return handleMessageAck(ctx, eventListener.messages, env.Payload, tid)
+			return eventListener.handleMessageAck(ctx, env.Payload, tid)
 		case "message.revoke":
-			return handleMessageRevoke(ctx, eventListener.messages, env.Payload, tid)
+			return eventListener.handleMessageRevoke(ctx, env.Payload, tid)
 		case "message.reaction":
-			return handleMessageReaction(env.Payload, tid)
+			return eventListener.handleMessageReaction(ctx, env.Payload, tid)
 		case "contact.update":
 			return handleContactUpdate(ctx, eventListener.contacts, env.Payload, tid)
 		case "contact.import":
@@ -105,11 +106,14 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 		FromMe:        p.FromMe,
 		Timestamp:     p.Timestamp,
 		PushName:      p.PushName,
+		GroupName:     p.GroupName,
 		QuotedMsgID:   p.QuotedMsgId,
 		ProfilePicURL: p.ProfilePicUrl,
 		IsLID:         p.IsLid,
 		Participant:   p.Participant,
 		IsGroup:       p.IsGroup,
+		IsCommunity:   p.IsCommunity,
+		IsSubGroup:    p.IsSubGroup,
 		MediaURL:      p.MediaUrl,
 		MediaData:     p.MediaData,
 		Mimetype:      p.Mimetype,
@@ -121,13 +125,16 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 	}
 
 	room := strconv.Itoa(result.Ticket.ID)
-	EmitToRoom("/", room, "appMessage", map[string]interface{}{"action": "create", "message": result.Message})
-	EmitToNamespace("/", "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket})
+	msgPayload := map[string]interface{}{"action": "create", "message": result.Message, "ticket": result.Ticket, "contact": result.Contact}
+	el.broadcast.EmitToRoom("/", room, "appMessage", msgPayload)
+	el.broadcast.EmitToRoom("/", "notification", "appMessage", msgPayload)
+	el.broadcast.EmitToNamespace("/", "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket})
 
 	return nil
 }
 
-func handleQrCode(ctx context.Context, sessions domain.ChannelSessionRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+func (el *EventListener) handleQrCode(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID) error {
+	sessions := el.sessions
 	var p QrCodePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err
@@ -142,11 +149,12 @@ func handleQrCode(ctx context.Context, sessions domain.ChannelSessionRepository,
 		return err
 	}
 
-	EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "qrcode": p.QrCode, "status": "QRCODE"}})
+	el.broadcast.EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "qrcode": p.QrCode, "status": "QRCODE"}})
 	return nil
 }
 
-func handlePairingCode(ctx context.Context, sessions domain.ChannelSessionRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+func (el *EventListener) handlePairingCode(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID) error {
+	sessions := el.sessions
 	var p PairingCodePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err
@@ -162,11 +170,12 @@ func handlePairingCode(ctx context.Context, sessions domain.ChannelSessionReposi
 		return err
 	}
 
-	EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": status, "pairingCode": p.PairingCode}})
+	el.broadcast.EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": status, "pairingCode": p.PairingCode}})
 	return nil
 }
 
-func handleSessionStatus(ctx context.Context, sessions domain.ChannelSessionRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+func (el *EventListener) handleSessionStatus(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID) error {
+	sessions := el.sessions
 	var p SessionStatusPayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err
@@ -184,12 +193,16 @@ func handleSessionStatus(ctx context.Context, sessions domain.ChannelSessionRepo
 		now := time.Now()
 		updates["firstConnection"] = &now
 	}
+	if p.Status == "CONNECTED" {
+		now := time.Now()
+		updates["lastConnectedAt"] = &now
+	}
 
 	if err := sessions.Update(ctx, &domain.ChannelSession{ID: sessionID, TenantID: tenantID}, updates); err != nil {
 		return err
 	}
 
-	EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": p.Status, "number": p.Number, "profilePicUrl": p.ProfilePicUrl, "firstConnection": updates["firstConnection"]}})
+	el.broadcast.EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": p.Status, "number": p.Number, "profilePicUrl": p.ProfilePicUrl, "firstConnection": updates["firstConnection"]}})
 	return nil
 }
 
@@ -223,12 +236,14 @@ func (el *EventListener) handleHistorySync(ctx context.Context, payload json.Raw
 	inserted := 0
 	for _, m := range p.Messages {
 		dataJSON, _ := json.Marshal(map[string]interface{}{
-			"jid":       m.From,
-			"isGroup":   m.IsGroup,
-			"isLid":     m.IsLid,
-			"mimetype":  m.Mimetype,
-			"mediaData": m.MediaData,
-			"history":   true,
+			"jid":         m.From,
+			"participant": m.Participant,
+			"pushName":    m.PushName,
+			"isGroup":     m.IsGroup,
+			"isLid":       m.IsLid,
+			"mimetype":    m.Mimetype,
+			"mediaData":   m.MediaData,
+			"history":     true,
 		})
 
 		mediaType := m.Type
@@ -259,14 +274,16 @@ func (el *EventListener) handleHistorySync(ctx context.Context, payload json.Raw
 			continue
 		}
 		inserted++
-		EmitToRoom("/", strconv.Itoa(ticket.ID), "appMessage", map[string]interface{}{"action": "create", "message": msg, "history": true})
+		el.broadcast.EmitToRoom("/", strconv.Itoa(ticket.ID), "appMessage", map[string]interface{}{"action": "create", "message": msg, "history": true})
 	}
 
 	log.Printf("[EventListener] History sync ticket %d: %d/%d messages backfilled", ticket.ID, inserted, len(p.Messages))
 	return nil
 }
 
-func handleMessageAck(ctx context.Context, messages domain.MessageRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+func (el *EventListener) handleMessageAck(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID) error {
+	messages := el.messages
+	tickets := el.tickets
 	var p struct {
 		MessageID string `json:"messageId"`
 		Ack       int    `json:"ack"`
@@ -279,17 +296,34 @@ func handleMessageAck(ctx context.Context, messages domain.MessageRepository, pa
 	if err != nil {
 		return nil
 	}
+	if msg == nil {
+		// ack for a message we don't have (e.g. the device's own prior messages
+		// synced on connect) — nothing to update.
+		return nil
+	}
 	if p.Ack > msg.Ack {
 		if err := messages.Update(ctx, msg, map[string]interface{}{"ack": p.Ack}); err != nil {
 			return err
 		}
 		msg.Ack = p.Ack
-		EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
+		el.broadcast.EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
+
+		// ack >= 3 (read by recipient) on an outgoing message means the contact read our messages.
+		// Zero unreadMessages on the ticket and notify the frontend.
+		if p.Ack >= 3 && !msg.FromMe {
+			ticket, err := tickets.FindByID(ctx, msg.TicketID, tenantID)
+			if err == nil && ticket != nil && ticket.UnreadMessages > 0 {
+				_ = tickets.Update(ctx, ticket, map[string]interface{}{"unreadMessages": 0})
+				ticket.UnreadMessages = 0
+				el.broadcast.EmitToNamespace("/", "ticket", map[string]interface{}{"action": "update", "ticket": ticket})
+			}
+		}
 	}
 	return nil
 }
 
-func handleMessageRevoke(ctx context.Context, messages domain.MessageRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+func (el *EventListener) handleMessageRevoke(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID) error {
+	messages := el.messages
 	var p MessageRevokePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err
@@ -298,21 +332,75 @@ func handleMessageRevoke(ctx context.Context, messages domain.MessageRepository,
 	if err != nil {
 		return nil
 	}
+	if msg == nil {
+		return nil
+	}
 	if err := messages.Update(ctx, msg, map[string]interface{}{"isDeleted": true}); err != nil {
 		return err
 	}
 	msg.IsDeleted = true
-	EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
+	el.broadcast.EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
 	return nil
 }
 
-func handleMessageReaction(payload json.RawMessage, tenantID uuid.UUID) error {
+func (el *EventListener) handleMessageReaction(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID) error {
 	var p MessageReactionPayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err
 	}
-	_ = tenantID
-	log.Printf("Reaction received: %+v", p)
+
+	if p.MessageID == "" {
+		return nil
+	}
+
+	msg, err := el.messages.FindByID(ctx, p.MessageID, tenantID)
+	if err != nil || msg == nil {
+		return nil
+	}
+
+	var reactions []map[string]interface{}
+	if msg.Reactions != "" && msg.Reactions != "[]" {
+		_ = json.Unmarshal([]byte(msg.Reactions), &reactions)
+	}
+
+	sender := p.Sender
+	if sender == "" {
+		sender = p.JID
+	}
+
+	updated := false
+	for i, r := range reactions {
+		if s, ok := r["sender"].(string); ok && s == sender {
+			if p.Reaction == "" {
+				reactions = append(reactions[:i], reactions[i+1:]...)
+			} else {
+				reactions[i]["reaction"] = p.Reaction
+				reactions[i]["timestamp"] = p.Timestamp
+			}
+			updated = true
+			break
+		}
+	}
+	if !updated && p.Reaction != "" {
+		reactions = append(reactions, map[string]interface{}{
+			"sender":    sender,
+			"reaction":  p.Reaction,
+			"fromMe":    p.FromMe,
+			"timestamp": p.Timestamp,
+		})
+	}
+
+	reactionsJSON, err := json.Marshal(reactions)
+	if err != nil {
+		return err
+	}
+	msg.Reactions = string(reactionsJSON)
+
+	if err := el.messages.Update(ctx, msg, map[string]interface{}{"reactions": msg.Reactions}); err != nil {
+		return err
+	}
+
+	el.broadcast.EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
 	return nil
 }
 

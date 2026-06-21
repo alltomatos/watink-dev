@@ -122,8 +122,8 @@ function createRule(context) {
 				});
 			}
 
-			// Check for hsl/hsla
-			if (COLOR_HSL_REGEX.test(raw)) {
+			// Check for hsl/hsla — skip hsl(var(--token)) which is a valid token reference
+			if (COLOR_HSL_REGEX.test(raw) && !/\bhsla?\s*\(\s*var\s*\(/.test(raw)) {
 				context.report({
 					node,
 					messageId: "hslColor",
