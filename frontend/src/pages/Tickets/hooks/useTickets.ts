@@ -32,6 +32,9 @@ export function useTickets(ticketId: string | undefined): UseTicketsReturn {
       try {
         const { data } = await api.get(`/tickets/${ticketId}`);
         setDetailTicket(data);
+        if (data?.unreadMessages > 0) {
+          await api.put(`/tickets/${ticketId}`, { unreadMessages: 0 }).catch(() => null);
+        }
       } catch {
         setDetailTicket(null);
       } finally {
