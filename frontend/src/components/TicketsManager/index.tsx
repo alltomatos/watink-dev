@@ -165,7 +165,7 @@ const TicketsManager: React.FC = () => {
             updateCount={(val: number) => setCurrentCount(val)}
             tags={selectedTags}
             searchParam={searchParam}
-            isGroup={showGroupsOnly ? "true" : "false"}
+            isGroup={showGroupsOnly ? "true" : undefined}
             withUnreadMessages={showUnreadOnly ? "true" : undefined}
           />
         </div>

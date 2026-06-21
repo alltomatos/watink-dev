@@ -84,9 +84,9 @@ describe("TicketsManager", () => {
     expect(chip.className).toContain("border-primary");
   });
 
-  it("TicketsList recebe isGroup='false' por padrão", () => {
+  it("TicketsList recebe isGroup=undefined por padrão (mostra todos)", () => {
     render(<TicketsManager />);
     const list = screen.getByTestId("tickets-list");
-    expect(list.getAttribute("data-is-group")).toBe("false");
+    expect(list.getAttribute("data-is-group")).toBe("undefined");
   });
 });
