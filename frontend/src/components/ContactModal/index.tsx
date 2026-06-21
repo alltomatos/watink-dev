@@ -30,20 +30,27 @@ interface ExtraInfo {
   value: string;
 }
 
+interface ContactValues {
+  name: string;
+  number: string;
+  email: string;
+  extraInfo: ExtraInfo[];
+}
+
 interface ContactModalProps {
   open: boolean;
   onClose: () => void;
   contactId?: number | string;
-  initialValues?: any;
-  onSave?: (contact: any) => void;
+  initialValues?: Partial<ContactValues>;
+  onSave?: (contact: ContactValues) => void;
 }
 
 const ContactModal = ({ open, onClose, contactId, initialValues, onSave }: ContactModalProps) => {
-  const [contact, setContact] = useState<any>({ name: "", number: "", email: "", extraInfo: [] });
+  const [contact, setContact] = useState<ContactValues>({ name: "", number: "", email: "", extraInfo: [] });
 
   useEffect(() => {
     if (initialValues) {
-      setContact((prev: any) => ({ ...prev, ...initialValues }));
+      setContact((prev) => ({ ...prev, ...initialValues }));
     }
     if (!contactId) return;
     api.get(`/contacts/${contactId}`)
@@ -56,7 +63,7 @@ const ContactModal = ({ open, onClose, contactId, initialValues, onSave }: Conta
     setContact({ name: "", number: "", email: "", extraInfo: [] });
   };
 
-  const handleSaveContact = async (values: any) => {
+  const handleSaveContact = async (values: ContactValues) => {
     try {
       if (contactId) {
         await api.put(`/contacts/${contactId}`, values);

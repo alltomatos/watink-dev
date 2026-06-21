@@ -6,8 +6,10 @@ import ReactFlow, {
 import type {
     Node,
     Edge,
+    NodeTypes,
     OnNodesChange,
     OnEdgesChange,
+    OnInit,
     Connection,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -16,11 +18,11 @@ interface FlowCanvasProps {
     canvasRef: React.RefObject<HTMLDivElement>;
     nodes: Node[];
     edges: Edge[];
-    nodeTypes: any;
+    nodeTypes: NodeTypes;
     onNodesChange: OnNodesChange;
     onEdgesChange: OnEdgesChange;
     onConnect: (params: Connection) => void;
-    onInit: (instance: any) => void;
+    onInit: OnInit;
     onDrop: (event: React.DragEvent<HTMLDivElement>) => void;
     onDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
     onNodeClick: (event: React.MouseEvent, node: Node) => void;
@@ -51,7 +53,7 @@ export function FlowCanvas({
                 onDrop={onDrop}
                 onDragOver={onDragOver}
                 onNodeClick={onNodeClick}
-                nodeTypes={nodeTypes as any}
+                nodeTypes={nodeTypes}
                 fitView
             >
                 <Background color="var(--border-default)" gap={20} />

@@ -4,7 +4,7 @@ import { AuthContext } from "../../context/Auth/AuthContext";
 import { NewTicketModal } from "../NewTicketModal/NewTicketModal";
 import TicketsList from "../TicketsList";
 import { Can } from "../Can";
-import TicketsQueueSelect from "../TicketsQueueSelect";
+import TicketsQueueSelect, { Queue } from "../TicketsQueueSelect";
 import TicketsTagFilter from "../TicketsTagFilter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,9 +37,9 @@ const TicketsManager: React.FC = () => {
   const [showGroupsOnly, setShowGroupsOnly] = useState<boolean>(false);
   const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
 
-  const userQueueIds: number[] = (user as any)?.queues?.map((q: any) => q.id) ?? [];
+  const userQueueIds: number[] = ((user.queues as Queue[] | undefined) ?? []).map((q) => q.id);
   const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>(userQueueIds);
-  const [selectedTags, setSelectedTags] = useState<any[]>([]);
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
 
   const [queuePopoverOpen, setQueuePopoverOpen] = useState<boolean>(false);
   const [tagPopoverOpen, setTagPopoverOpen] = useState<boolean>(false);
@@ -91,7 +91,7 @@ const TicketsManager: React.FC = () => {
                 </Tooltip>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-64 p-3">
-                <TicketsQueueSelect selectedQueueIds={selectedQueueIds} userQueues={(user as any)?.queues} onChange={(values: number[]) => setSelectedQueueIds(values)} />
+                <TicketsQueueSelect selectedQueueIds={selectedQueueIds} userQueues={(user.queues as Queue[] | undefined) ?? []} onChange={(values: number[]) => setSelectedQueueIds(values)} />
               </PopoverContent>
             </Popover>
 
@@ -108,7 +108,7 @@ const TicketsManager: React.FC = () => {
                 </Tooltip>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-64 p-3">
-                <TicketsTagFilter selectedTags={selectedTags} onChange={(values: any[]) => setSelectedTags(values)} />
+                <TicketsTagFilter selectedTags={selectedTags} onChange={(values: number[]) => setSelectedTags(values)} />
               </PopoverContent>
             </Popover>
 

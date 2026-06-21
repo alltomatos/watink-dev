@@ -28,6 +28,17 @@ import useWhatsApps from "../../hooks/useWhatsApps";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../Can";
 
+interface UserOption {
+  id: number;
+  name: string;
+  queues?: { id: number; name: string }[];
+}
+
+interface QueueOption {
+  id: number;
+  name: string;
+}
+
 interface TransferTicketModalProps {
   modalOpen: boolean;
   onClose: () => void;
@@ -37,12 +48,12 @@ interface TransferTicketModalProps {
 
 const TransferTicketModal = ({ modalOpen, onClose, ticketid, ticketWhatsappId }: TransferTicketModalProps) => {
   const navigate = useNavigate();
-  const [options, setOptions] = useState<any[]>([]);
-  const [queues, setQueues] = useState<any[]>([]);
-  const [allQueues, setAllQueues] = useState<any[]>([]);
+  const [options, setOptions] = useState<UserOption[]>([]);
+  const [queues, setQueues] = useState<QueueOption[]>([]);
+  const [allQueues, setAllQueues] = useState<QueueOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParam, setSearchParam] = useState("");
-  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
   const [selectedQueue, setSelectedQueue] = useState("");
   const [selectedWhatsapp, setSelectedWhatsapp] = useState(ticketWhatsappId ? String(ticketWhatsappId) : "");
 
@@ -96,7 +107,7 @@ const TransferTicketModal = ({ modalOpen, onClose, ticketid, ticketWhatsappId }:
     if (!ticketid) return;
     setLoading(true);
     try {
-      const data: any = {};
+      const data: Record<string, unknown> = {};
 
       if (selectedUser) data.userId = selectedUser.id;
 
@@ -204,7 +215,7 @@ const TransferTicketModal = ({ modalOpen, onClose, ticketid, ticketWhatsappId }:
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Selecione uma conexão</SelectItem>
-                      {whatsApps.map((wa: any) => (
+                      {whatsApps.map((wa) => (
                         <SelectItem key={wa.id} value={String(wa.id)}>
                           {wa.name}
                         </SelectItem>

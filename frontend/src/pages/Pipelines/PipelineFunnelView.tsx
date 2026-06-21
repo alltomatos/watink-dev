@@ -11,6 +11,7 @@ import PipelineKanban from "./PipelineKanban";
 import PipelineKPIs from "./PipelineKPIs";
 import PipelineFunnelChart from "./PipelineFunnelChart";
 import PipelineGantt from "./PipelineGantt";
+import type { ComponentProps } from "react";
 
 interface Stage {
     id: number;
@@ -89,21 +90,21 @@ const PipelineFunnelView: React.FC<PipelineFunnelViewProps> = ({
                 <div className="flex-1 overflow-auto">
                     <TabsContent value="board" className="mt-0 h-full">
                         <PipelineKanban
-                            pipeline={pipeline as any}
-                            columns={columns as any}
-                            setColumns={setColumns as any}
+                            pipeline={pipeline as ComponentProps<typeof PipelineKanban>["pipeline"]}
+                            columns={columns as ComponentProps<typeof PipelineKanban>["columns"]}
+                            setColumns={setColumns as ComponentProps<typeof PipelineKanban>["setColumns"]}
                             onDragEnd={onDragEnd}
                             isEnterprise={true}
                         />
                     </TabsContent>
                     <TabsContent value="gantt" className="mt-0">
-                        <PipelineGantt deals={deals as any} />
+                        <PipelineGantt deals={deals as ComponentProps<typeof PipelineGantt>["deals"]} />
                     </TabsContent>
                     <TabsContent value="kpis" className="mt-0">
-                        <PipelineKPIs pipeline={pipeline as any} deals={deals as any} />
+                        <PipelineKPIs pipeline={pipeline as ComponentProps<typeof PipelineKPIs>["pipeline"]} deals={deals as ComponentProps<typeof PipelineKPIs>["deals"]} />
                     </TabsContent>
                     <TabsContent value="funnel" className="mt-0">
-                        <PipelineFunnelChart pipeline={pipeline as any} deals={deals as any} />
+                        <PipelineFunnelChart pipeline={pipeline as ComponentProps<typeof PipelineFunnelChart>["pipeline"]} deals={deals as ComponentProps<typeof PipelineFunnelChart>["deals"]} />
                     </TabsContent>
                 </div>
             </Tabs>
