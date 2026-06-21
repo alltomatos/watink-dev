@@ -132,7 +132,7 @@ func (mc *MessageController) SendMessage(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "medias file required for multipart"})
 			return
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		mimeType := header.Header.Get("Content-Type")
 		if mimeType == "" {
