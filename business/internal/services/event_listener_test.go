@@ -153,12 +153,122 @@ func TestHandlePairingCode_DefaultStatus(t *testing.T) {
 	}
 }
 
+// --- mock repos for offline handleMessageAck unit tests ---
+
+type ackMockMessageRepo struct {
+	msg    *domain.Message
+	findErr error
+	updated bool
+}
+
+func (m *ackMockMessageRepo) Create(_ context.Context, _ *domain.Message) error { return nil }
+func (m *ackMockMessageRepo) CreateIfNotExists(_ context.Context, _ *domain.Message) error {
+	return nil
+}
+func (m *ackMockMessageRepo) FindByID(_ context.Context, _ string, _ uuid.UUID) (*domain.Message, error) {
+	return m.msg, m.findErr
+}
+func (m *ackMockMessageRepo) FindOldestByTicket(_ context.Context, _ int, _ uuid.UUID) (*domain.Message, error) {
+	return nil, nil
+}
+func (m *ackMockMessageRepo) ExistsByID(_ context.Context, _ string, _ uuid.UUID) (bool, error) {
+	return false, nil
+}
+func (m *ackMockMessageRepo) Update(_ context.Context, _ *domain.Message, _ map[string]interface{}) error {
+	m.updated = true
+	return nil
+}
+
+type ackMockTicketRepo struct {
+	ticket      *domain.Ticket
+	findErr     error
+	updateCalls int
+}
+
+func (m *ackMockTicketRepo) FindByID(_ context.Context, _ int, _ uuid.UUID) (*domain.Ticket, error) {
+	return m.ticket, m.findErr
+}
+func (m *ackMockTicketRepo) FindOpenByContact(_ context.Context, _ uuid.UUID, _ int, _ int) (*domain.Ticket, error) {
+	return nil, nil
+}
+func (m *ackMockTicketRepo) FindOrCreatePending(_ context.Context, t *domain.Ticket) (*domain.Ticket, error) {
+	return t, nil
+}
+func (m *ackMockTicketRepo) Save(_ context.Context, _ *domain.Ticket) error { return nil }
+func (m *ackMockTicketRepo) Update(_ context.Context, _ *domain.Ticket, _ map[string]interface{}) error {
+	m.updateCalls++
+	return nil
+}
+func (m *ackMockTicketRepo) FindLastAssignedInQueue(_ context.Context, _ int, _ uuid.UUID) (int, error) {
+	return 0, nil
+}
+func (m *ackMockTicketRepo) CountOpenTicketsPerUser(_ context.Context, _ []int, _ uuid.UUID) (map[int]int64, error) {
+	return nil, nil
+}
+
 // --- handleMessageAck / Revoke / Reaction / ContactUpdate (invalid JSON, offline) ---
 
 func TestHandleMessageAck_InvalidJSON(t *testing.T) {
 	err := handleMessageAck(context.Background(), nil, nil, json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
+	}
+}
+
+func TestHandleMessageAck_Ack3NotFromMe_ResetsUnread(t *testing.T) {
+	tenantID := uuid.New()
+	msg := &domain.Message{ID: "m1", TicketID: 10, Ack: 1, FromMe: false}
+	ticket := &domain.Ticket{ID: 10, TenantID: tenantID, UnreadMessages: 3}
+	mr := &ackMockMessageRepo{msg: msg}
+	tr := &ackMockTicketRepo{ticket: ticket}
+
+	payload, _ := json.Marshal(map[string]interface{}{"messageId": "m1", "ack": 3})
+	err := handleMessageAck(context.Background(), mr, tr, payload, tenantID)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !mr.updated {
+		t.Error("expected message ack to be updated")
+	}
+	if tr.updateCalls == 0 {
+		t.Error("expected ticket unreadMessages to be reset (Update called)")
+	}
+}
+
+func TestHandleMessageAck_Ack3FromMe_NoUnreadReset(t *testing.T) {
+	tenantID := uuid.New()
+	msg := &domain.Message{ID: "m2", TicketID: 10, Ack: 1, FromMe: true}
+	ticket := &domain.Ticket{ID: 10, TenantID: tenantID, UnreadMessages: 3}
+	mr := &ackMockMessageRepo{msg: msg}
+	tr := &ackMockTicketRepo{ticket: ticket}
+
+	payload, _ := json.Marshal(map[string]interface{}{"messageId": "m2", "ack": 3})
+	err := handleMessageAck(context.Background(), mr, tr, payload, tenantID)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tr.updateCalls != 0 {
+		t.Errorf("expected ticket NOT to be updated for fromMe=true, but got %d update calls", tr.updateCalls)
+	}
+}
+
+func TestHandleMessageAck_LowAck_NoUnreadReset(t *testing.T) {
+	tenantID := uuid.New()
+	msg := &domain.Message{ID: "m3", TicketID: 10, Ack: 1, FromMe: false}
+	ticket := &domain.Ticket{ID: 10, TenantID: tenantID, UnreadMessages: 2}
+	mr := &ackMockMessageRepo{msg: msg}
+	tr := &ackMockTicketRepo{ticket: ticket}
+
+	payload, _ := json.Marshal(map[string]interface{}{"messageId": "m3", "ack": 2})
+	err := handleMessageAck(context.Background(), mr, tr, payload, tenantID)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tr.updateCalls != 0 {
+		t.Errorf("expected ticket NOT to be updated for ack=2, but got %d update calls", tr.updateCalls)
 	}
 }
 
