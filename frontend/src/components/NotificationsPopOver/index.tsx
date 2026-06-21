@@ -130,6 +130,9 @@ const NotificationsPopOver = () => {
     });
 
     socket.on("appMessage", (data: { action: string; message: Message; ticket: Ticket; contact: Contact }) => {
+      if (!data.ticket || !data.message || !data.contact) return;
+      const notifyGroups = localStorage.getItem("notifyGroups") !== "false";
+
       if (
         data.action === "create" &&
         !data.message.read &&
@@ -148,7 +151,7 @@ const NotificationsPopOver = () => {
           (data.message.ticketId === ticketIdRef.current &&
             document.visibilityState === "visible") ||
           (data.ticket.userId && data.ticket.userId !== user?.id) ||
-          data.ticket.isGroup;
+          (data.ticket.isGroup && !notifyGroups);
 
         if (shouldNotNotificate) return;
 
@@ -173,6 +176,8 @@ const NotificationsPopOver = () => {
       renotify: true,
     };
 
+    soundAlertRef.current?.();
+
     const notification = new Notification(
       `${i18n.t("tickets.notification.message")} ${contact.name}`,
       options
@@ -192,8 +197,6 @@ const NotificationsPopOver = () => {
       }
       return [notification, ...prevState];
     });
-
-    soundAlertRef.current?.();
 
     toast(
       <NotificationToast
