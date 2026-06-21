@@ -18,15 +18,22 @@ Frontend (React/Vite) ←REST/Socket.io→ Backend Go (Gin/GORM) ←SQL→ Postg
 
 | Área | Status |
 |---|---|
-| Frontend — migração MUI v4 → shadcn/ui | ✅ Concluída |
+| Frontend — migração MUI v4 → shadcn/ui (163 arquivos, Epic 4B/4D/4F) | ✅ Concluída |
 | Frontend — JS/JSX → TypeScript (163 arquivos) | ✅ Concluída |
 | Frontend — Design Token System (3 camadas) | ✅ Concluída |
-| Frontend — ESLint/Lint governance | ✅ Concluída (15 warnings `react-hooks/exhaustive-deps`) |
+| Frontend — ESLint/Lint governance | ✅ Concluída |
+| Frontend — Política anti-MUI (ADR 0008) | ✅ Concluída |
 | Backend Go — DI & organização de pacotes | ✅ Concluída (PR #58) |
 | Backend Go — API Docs (Scalar + swaggo) | ✅ Concluída |
 | Backend Go — Testes unitários (coverage +5pp) | ✅ Concluída (PR #60) |
 | E2E — Playwright suite (21 testes + CI job) | ✅ Concluída (PR #61) |
 | Dependabot Go deps (crypto/net upgrade) | ✅ Concluída (PR #62) |
+| Frontend — Ticket Queue Visibility (filtros `isGroup` + `withUnreadMessages`) | ✅ Concluída (PR #98) |
+| Frontend — TicketListItem type badges (community/group/newsletter) | ✅ Concluída (PR #98) |
+| Frontend — ESLint rule: permite `hsl(var(--token))` como referência de token | ✅ Concluída (PR #98) |
+| Frontend — MessagesList decomposição (799→362L, 9 módulos, GAP-Q) | ✅ Concluída (PR #99) |
+| Frontend — Testes TicketListItem + TicketsManager (18 casos, GAP-R) | ✅ Concluída (PR #99) |
+| Frontend — Suite de testes 65/65 verde (GAP-T) | ✅ Concluída (PR #100) |
 
 ## Services & Ports
 
@@ -123,14 +130,17 @@ SMOKE_BASE_URL=http://localhost:3000 SMOKE_EMAIL=admin@test.com SMOKE_PASS=test1
 
 → Referência completa em [`docs/frontend/design-system.md`](docs/frontend/design-system.md)
 
-Stack consolidada: **React 18 + TypeScript + Tailwind v4 + shadcn/ui**. MUI v4 completamente removido.
+Stack canônica: **React 18 + TypeScript + Tailwind CSS v4 + shadcn/ui + Lucide React**.  
+MUI v4 **completamente removido** — `@material-ui/*` não é dependência do projeto.
 
-**Regras críticas:**
-- Tokens semânticos em HSL cru — Tailwind adiciona `hsl()` via `@theme inline`, nunca duplique.
-- Cards usam sombra, não borda: `rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.08)]`.
-- Sidebar: fundo `bg-[var(--slate-800)]`, separadores `border-[var(--slate-700)]`.
-- Proibido `makeStyles` ou qualquer import de `@material-ui/*`.
-- Todos os arquivos novos em `.tsx`.
+**Regras críticas (ADR 0008):**
+- `@material-ui/*` e `@mui/*` são **PROIBIDOS** — qualquer import é erro de build.
+- Componentes UI: usar exclusivamente `src/components/ui/` (shadcn/ui + Radix UI).
+- Ícones: usar exclusivamente `lucide-react`. Não usar `@material-ui/icons`.
+- Estilização: Tailwind classes + `cn()`. Proibido `makeStyles`, `withStyles`, JSS.
+- Tokens semânticos em HSL cru — usar `hsl(var(--token))` em valores arbitrários Tailwind.
+- Cards: sombra, não borda — `rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.08)]`.
+- Todos os arquivos novos em `.tsx`. Proibido `.jsx` ou `.js` em `src/`.
 
 ## Security
 
@@ -148,13 +158,14 @@ Stack consolidada: **React 18 + TypeScript + Tailwind v4 + shadcn/ui**. MUI v4 c
 ## Domain Docs
 
 - **Glossário**: [`CONTEXT.md`](CONTEXT.md)
-- **ADRs**: [`docs/adr/`](docs/adr/)
+- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes
 - **Arquitetura**: [`docs/dev/architecture.md`](docs/dev/architecture.md)
 - **Frontend DS**: [`docs/frontend/design-system.md`](docs/frontend/design-system.md)
 - **Git Workflow**: [`docs/dev/git_workflow_policy.md`](docs/dev/git_workflow_policy.md)
 - **Plugins**: [`docs/dev/plugins.md`](docs/dev/plugins.md)
 - **Migrations**: [`docs/dev/migrations.md`](docs/dev/migrations.md)
 - **Agent config**: [`docs/agents/`](docs/agents/)
+- **Roadmap**: [`ORCHESTRATOR-ROADMAP.md`](ORCHESTRATOR-ROADMAP.md) — Epics e milestones do projeto
 
 ## Agent Skills
 

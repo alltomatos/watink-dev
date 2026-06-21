@@ -23,7 +23,7 @@ func (r *GormUserQueueRepository) IsUserInQueue(ctx context.Context, userID int,
 	var count int64
 	err := r.db.WithContext(ctx).
 		Table("user_queues").
-		Where(`"userId" = ? AND "queueId" = ?`, userID, queueID).
+		Where(`user_id = ? AND queue_id = ?`, userID, queueID).
 		Count(&count).Error
 	return count > 0, err
 }
@@ -31,8 +31,8 @@ func (r *GormUserQueueRepository) IsUserInQueue(ctx context.Context, userID int,
 func (r *GormUserQueueRepository) FindQueueUsers(ctx context.Context, queueID int, tenantID uuid.UUID) ([]domain.User, error) {
 	var rows []models.User
 	err := r.db.WithContext(ctx).
-		Joins(`JOIN user_queues uq ON uq."userId" = "Users".id`).
-		Where(`uq."queueId" = ? AND "Users"."tenantId" = ?`, queueID, tenantID).
+		Joins(`JOIN user_queues uq ON uq.user_id = "Users".id`).
+		Where(`uq.queue_id = ? AND "Users"."tenantId" = ?`, queueID, tenantID).
 		Find(&rows).Error
 	if err != nil {
 		return nil, err

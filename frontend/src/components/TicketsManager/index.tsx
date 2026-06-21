@@ -4,7 +4,7 @@ import { AuthContext } from "../../context/Auth/AuthContext";
 import { NewTicketModal } from "../NewTicketModal/NewTicketModal";
 import TicketsList from "../TicketsList";
 import { Can } from "../Can";
-import TicketsQueueSelect from "../TicketsQueueSelect";
+import TicketsQueueSelect, { Queue } from "../TicketsQueueSelect";
 import TicketsTagFilter from "../TicketsTagFilter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, Plus, Filter, Tag } from "lucide-react";
+import { Search, Plus, Filter, Tag, Users, CircleDot } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = "all" | "open" | "pending" | "closed";
@@ -28,21 +28,19 @@ const TicketsManager: React.FC = () => {
   useTicketsContext();
   const { user } = useContext(AuthContext);
 
-  // Estado local
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchParam, setSearchParam] = useState<string>("");
   const [newTicketModalOpen, setNewTicketModalOpen] = useState<boolean>(false);
+  const [currentCount, setCurrentCount] = useState<number>(0);
 
-  // Contadores
-  const [openCount, setOpenCount] = useState<number>(0);
-  const [pendingCount, setPendingCount] = useState<number>(0);
+  // Filtros secundários (toggleáveis, ortogonais ao status)
+  const [showGroupsOnly, setShowGroupsOnly] = useState<boolean>(false);
+  const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
 
-  // Filtros
-  const userQueueIds: number[] = (user as any)?.queues?.map((q: any) => q.id) ?? [];
+  const userQueueIds: number[] = ((user.queues as Queue[] | undefined) ?? []).map((q) => q.id);
   const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>(userQueueIds);
-  const [selectedTags, setSelectedTags] = useState<any[]>([]);
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
 
-  // Popovers
   const [queuePopoverOpen, setQueuePopoverOpen] = useState<boolean>(false);
   const [tagPopoverOpen, setTagPopoverOpen] = useState<boolean>(false);
 
@@ -54,6 +52,9 @@ const TicketsManager: React.FC = () => {
     setStatusFilter(filter);
     setSearchParam("");
   };
+
+  // key agrupa todos os parâmetros que forçam remontagem da lista
+  const listKey = `${statusFilter}-${showGroupsOnly}-${showUnreadOnly}`;
 
   return (
     <TooltipProvider>
@@ -90,7 +91,7 @@ const TicketsManager: React.FC = () => {
                 </Tooltip>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-64 p-3">
-                <TicketsQueueSelect selectedQueueIds={selectedQueueIds} userQueues={(user as any)?.queues} onChange={(values: number[]) => setSelectedQueueIds(values)} />
+                <TicketsQueueSelect selectedQueueIds={selectedQueueIds} userQueues={(user.queues as Queue[] | undefined) ?? []} onChange={(values: number[]) => setSelectedQueueIds(values)} />
               </PopoverContent>
             </Popover>
 
@@ -107,7 +108,7 @@ const TicketsManager: React.FC = () => {
                 </Tooltip>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-64 p-3">
-                <TicketsTagFilter selectedTags={selectedTags} onChange={(values: any[]) => setSelectedTags(values)} />
+                <TicketsTagFilter selectedTags={selectedTags} onChange={(values: number[]) => setSelectedTags(values)} />
               </PopoverContent>
             </Popover>
 
@@ -129,58 +130,51 @@ const TicketsManager: React.FC = () => {
             />
           </div>
 
-          {/* Pills: Todos / Abertos / Aguardando / Fechados */}
+          {/* Pills de status: Todos / Abertos / Aguardando / Fechados */}
           <div className="flex items-center gap-1">
-            <FilterPill label="Todos"      active={statusFilter === "all"}     onClick={() => handleFilterChange("all")} />
-            <FilterPill label="Abertos"    active={statusFilter === "open"}    onClick={() => handleFilterChange("open")}    count={openCount} />
-            <FilterPill label="Aguardando" active={statusFilter === "pending"} onClick={() => handleFilterChange("pending")} count={pendingCount} />
-            <FilterPill label="Fechados"   active={statusFilter === "closed"}  onClick={() => handleFilterChange("closed")} />
+            <FilterPill label="Todos"      active={statusFilter === "all"}     onClick={() => handleFilterChange("all")}     count={statusFilter === "all" ? currentCount : undefined} />
+            <FilterPill label="Abertos"    active={statusFilter === "open"}    onClick={() => handleFilterChange("open")}    count={statusFilter === "open" ? currentCount : undefined} />
+            <FilterPill label="Aguardando" active={statusFilter === "pending"} onClick={() => handleFilterChange("pending")} count={statusFilter === "pending" ? currentCount : undefined} />
+            <FilterPill label="Fechados"   active={statusFilter === "closed"}  onClick={() => handleFilterChange("closed")}  count={statusFilter === "closed" ? currentCount : undefined} />
+          </div>
+
+          {/* Chips de tipo: Grupos / Não lidas (toggleáveis) */}
+          <div className="flex items-center gap-1.5">
+            <ToggleChip
+              icon={<Users size={11} />}
+              label="Grupos"
+              active={showGroupsOnly}
+              onClick={() => setShowGroupsOnly((v) => !v)}
+            />
+            <ToggleChip
+              icon={<CircleDot size={11} />}
+              label="Não lidas"
+              active={showUnreadOnly}
+              onClick={() => setShowUnreadOnly((v) => !v)}
+            />
           </div>
         </header>
 
-        {/* ── Conteúdo das listas ──────────────────────────────────── */}
+        {/* ── Lista de tickets ─────────────────────────────────────── */}
         <div className="flex-1 overflow-hidden">
-          {statusFilter !== "closed" && (
-            <div className="h-full overflow-hidden">
-              <TicketsList
-                status="open"
-                selectedQueueIds={selectedQueueIds}
-                updateCount={(val: number) => setOpenCount(val)}
-                style={statusFilter === "pending" ? { display: "none" } : {}}
-                isGroup="false"
-                tags={selectedTags}
-                searchParam={searchParam}
-              />
-              <TicketsList
-                status="pending"
-                selectedQueueIds={selectedQueueIds}
-                updateCount={(val: number) => setPendingCount(val)}
-                style={statusFilter === "open" ? { display: "none" } : {}}
-                isGroup="false"
-                tags={selectedTags}
-                searchParam={searchParam}
-              />
-            </div>
-          )}
-
-          {statusFilter === "closed" && (
-            <div className="h-full overflow-hidden">
-              <TicketsList
-                status="closed"
-                showAll={true}
-                selectedQueueIds={selectedQueueIds}
-                tags={selectedTags}
-                searchParam={searchParam}
-              />
-            </div>
-          )}
+          <TicketsList
+            key={listKey}
+            status={statusFilter === "all" ? undefined : statusFilter}
+            showAll
+            selectedQueueIds={selectedQueueIds}
+            updateCount={(val: number) => setCurrentCount(val)}
+            tags={selectedTags}
+            searchParam={searchParam}
+            isGroup={showGroupsOnly ? "true" : undefined}
+            withUnreadMessages={showUnreadOnly ? "true" : undefined}
+          />
         </div>
       </div>
     </TooltipProvider>
   );
 };
 
-// ── Componente auxiliar local ──────────────────────────────────────────────────
+// ── Componentes auxiliares locais ─────────────────────────────────────────────
 
 interface FilterPillProps {
   label: string;
@@ -209,6 +203,29 @@ const FilterPill: React.FC<FilterPillProps> = ({ label, active, onClick, count }
         {count}
       </span>
     )}
+  </button>
+);
+
+interface ToggleChipProps {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}
+
+const ToggleChip: React.FC<ToggleChipProps> = ({ icon, label, active, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn(
+      "flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.625rem] font-medium transition-all",
+      active
+        ? "border-primary/40 bg-primary/10 text-primary"
+        : "border-border bg-transparent text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+    )}
+  >
+    {icon}
+    {label}
   </button>
 );
 

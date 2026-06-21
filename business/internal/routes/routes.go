@@ -104,6 +104,8 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.GET("/whatsapp/:id", whatsappController.ShowWhatsapp)
 		protected.POST("/whatsapp", whatsappController.CreateWhatsapp)
 		protected.PUT("/whatsapp/:id", whatsappController.UpdateWhatsapp)
+		protected.GET("/whatsapp/:id/stats", whatsappController.StatsWhatsapp)
+		protected.PUT("/whatsapp/:id/keepalive", whatsappController.ToggleKeepAlive)
 		protected.DELETE("/whatsapp/:id", whatsappController.DeleteWhatsapp)
 
 		// WhatsApp Sessions

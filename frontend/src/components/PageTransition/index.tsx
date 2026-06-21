@@ -30,7 +30,7 @@ const PageTransition: React.FC<PageTransitionProps> = ({
   children,
   className,
 }) => (
-  <div className={`page-transition-enter ${className || ""}`}>{children}</div>
+  <div className={`page-transition-enter h-full ${className || ""}`}>{children}</div>
 );
 
 export default PageTransition;
