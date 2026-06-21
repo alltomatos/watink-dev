@@ -4,10 +4,10 @@
 
 - [x] **Epic 1**: Transição do Sistema de Design (MUI v4 → Tailwind + shadcn/ui) | ✅ Concluída
 - [x] **Epic 3**: Migração Total Frontend (163 JS/JSX → TSX, remoção MUI, design tokens, lint) | ✅ Concluída jun/2026
-- [ ] **Epic 2**: Refatoração DI & organização de pacotes (Backend Go) | 🔄 Em andamento
-- [ ] **Epic 4**: Qualidade residual — 70 `no-explicit-any` no frontend | Pendente
-- [ ] **Epic 5**: Decomposição de God-Files Frontend (GAP-Q) — MessagesList → 9 módulos | Pendente
-- [ ] **Epic 6**: Cobertura de Testes Frontend (GAP-R) — target 40% + testes dos componentes da sprint | Pendente
+- [x] **Epic 2**: Refatoração DI & organização de pacotes (Backend Go) | ✅ Concluída
+- [x] **Epic 4**: Qualidade residual — 56 `no-explicit-any` eliminados em 21 arquivos (GAP-ANY) | ✅ Concluída jun/2026 PR #166
+- [x] **Epic 5**: Decomposição de God-Files Frontend (GAP-Q/GAP-S) — 20+ god-files eliminados | ✅ Concluída jun/2026
+- [x] **Epic 6**: Cobertura de Testes Frontend (GAP-R/GAP-T) — 65/65 testes verdes | ✅ Concluída jun/2026 PR #100
 
 ## Milestones
 
@@ -22,6 +22,10 @@
 | M7 | Sync Documentação Design System | ✅ |
 | M8 | Migração 66+ páginas/modais MUI → shadcn+TSX | ✅ |
 | M13 | Ticket Queue Visibility — filtros isGroup + withUnreadMessages + type badges | ✅ PR #98 jun/2026 |
+| M14 | GAP-MEDIA-1: mídias WhatsApp salvas em disco, MediaUrl preenchido (backend Go) | ✅ PR #163 jun/2026 |
+| M15 | GAP-MEDIA-2: player de áudio customizado com progresso visual e seek | ✅ PR #180 jun/2026 |
+| M16 | GAP-ANY: 56 no-explicit-any eliminados em 21 arquivos frontend | ✅ PR #166 jun/2026 |
+| M17 | GAP-EIO: Vite watcher resiliente a crash WSL2/EIO | ✅ PR #165 jun/2026 |
 | M9 | Storybook + A11y + Visual Regression CI | ⏳ Pendente |
 | M10 | Remoção final MUI v4 (npm uninstall + zero imports) | ✅ jun/2026 |
 | M11 | ESLint governance — 298 → 70 erros (-77%) | ✅ jun/2026 |
