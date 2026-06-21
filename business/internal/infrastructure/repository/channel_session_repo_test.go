@@ -199,8 +199,9 @@ func TestGORMChannelSessionRepo_DeleteWithRelations(t *testing.T) {
 	db := setupChannelSessionTestDB(t)
 	// Precisamos das tabelas de Ticket, User, Flow e da join table WhatsappQueues
 	require.NoError(t, db.AutoMigrate(&models.Contact{}, &models.Ticket{}, &models.User{}, &models.Flow{}, &models.Queue{}))
-	// Criar a tabela WhatsappQueues (usada pelo DeleteWithRelations via raw Exec)
-	require.NoError(t, db.Exec(`CREATE TABLE IF NOT EXISTS "WhatsappQueues" ("whatsappId" integer, "queueId" integer, PRIMARY KEY ("whatsappId","queueId"))`).Error)
+	// Tabela de junção em snake_case (whatsapp_queues), igual ao schema de runtime
+	// criado pelo many2many do GORM e usada pelo DeleteWithRelations via raw Exec.
+	require.NoError(t, db.Exec(`CREATE TABLE IF NOT EXISTS whatsapp_queues (whatsapp_id integer, queue_id integer, PRIMARY KEY (whatsapp_id, queue_id))`).Error)
 
 	tenantA := uuid.New()
 	require.NoError(t, db.Create(&TenantTest{ID: tenantA, Name: "A"}).Error)

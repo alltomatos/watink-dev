@@ -35,10 +35,16 @@ import { Input } from "../../components/ui/input";
 const Roles = () => {
   const navigate = useNavigate();
 
+  interface Role {
+    id: number;
+    name: string;
+    description?: string;
+  }
+
   const [loading, setLoading] = useState(false);
-  const [roles, setRoles] = useState<any[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [searchParam, setSearchParam] = useState("");
-  const [selectedRole, setSelectedRole] = useState<any>(null);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
   useEffect(() => {
@@ -64,11 +70,11 @@ const Roles = () => {
     setSearchParam(event.target.value.toLowerCase());
   };
 
-  const handleEditRole = (roleId: any) => {
+  const handleEditRole = (roleId: number) => {
     navigate(`/roles/${roleId}`);
   };
 
-  const handleDeleteRole = async (roleId: any) => {
+  const handleDeleteRole = async (roleId: number) => {
     try {
       await api.delete(`/roles/${roleId}`);
       toast.success(i18n.t("role.toasts.deleted"));
@@ -88,7 +94,7 @@ const Roles = () => {
         }
         open={confirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}
-        onConfirm={() => handleDeleteRole(selectedRole.id)}
+        onConfirm={() => selectedRole && handleDeleteRole(selectedRole.id)}
       >
         {i18n.t("role.confirmationModal.deleteMessage")}
       </ConfirmationModal>
@@ -125,7 +131,7 @@ const Roles = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {roles.map((role: any) => (
+              {roles.map((role) => (
                 <TableRow key={role.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">

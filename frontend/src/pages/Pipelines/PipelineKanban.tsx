@@ -131,7 +131,7 @@ const PipelineKanban: React.FC<PipelineKanbanProps> = ({
 
                             {/* Droppable area */}
                             <Droppable droppableId={String(stage.id)} key={stage.id}>
-                                {(provided: any, snapshot: any) => (
+                                {(provided: { droppableProps: Record<string, unknown>; innerRef: (el: HTMLElement | null) => void; placeholder: React.ReactNode }, snapshot: { isDraggingOver: boolean }) => (
                                     <div
                                         {...provided.droppableProps}
                                         ref={provided.innerRef}
@@ -158,7 +158,7 @@ const PipelineKanban: React.FC<PipelineKanbanProps> = ({
                                                     draggableId={String(item.id)}
                                                     index={index}
                                                 >
-                                                    {(provided: any, snapshot: any) => (
+                                                    {(provided: { innerRef: (el: HTMLElement | null) => void; draggableProps: Record<string, unknown> & { style?: React.CSSProperties }; dragHandleProps: Record<string, unknown> | null }, snapshot: { isDragging: boolean }) => (
                                                         <div
                                                             ref={provided.innerRef}
                                                             {...provided.draggableProps}

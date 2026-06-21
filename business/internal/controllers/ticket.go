@@ -133,7 +133,6 @@ func (tc *TicketController) ListTickets(c *gin.Context) {
 	if !ok {
 		return
 	}
-	userProfile, _ := c.Get("userProfile")
 
 	var tickets []models.Ticket
 	query := db.
@@ -162,19 +161,25 @@ func (tc *TicketController) ListTickets(c *gin.Context) {
 	var queueIds []int
 	if queueIdsJson != "" && queueIdsJson != "null" && queueIdsJson != "[]" {
 		if err := json.Unmarshal([]byte(queueIdsJson), &queueIds); err == nil && len(queueIds) > 0 {
-			query = query.Where("\"Tickets\".\"queueId\" IN ?", queueIds)
+			// Grupos não têm fila atribuída (queueId = null) — exemptá-los garante
+			// que apareçam em todas as abas mesmo quando o filtro de fila está ativo.
+			query = query.Where(
+				"(\"Tickets\".\"queueId\" IN ? OR \"Tickets\".\"isGroup\" = ?)",
+				queueIds, true,
+			)
 		}
 	}
 
-	showAll := c.Query("showAll")
-	if userProfile == "admin" && showAll == "true" {
-	}
-
+	// Visibility (queue/channel scoping by profile) is enforced by auth.GetScopedDB.
 	isGroup := c.Query("isGroup")
 	if isGroup == "true" {
 		query = query.Where("\"Tickets\".\"isGroup\" = ?", true)
 	} else if isGroup == "false" {
 		query = query.Where("\"Tickets\".\"isGroup\" = ?", false)
+	}
+
+	if c.Query("withUnreadMessages") == "true" {
+		query = query.Where("\"Tickets\".\"unreadMessages\" > ?", 0)
 	}
 
 	if err := query.Find(&tickets).Error; err != nil {

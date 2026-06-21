@@ -2,9 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
-import { cn } from "@/lib/utils";
 import openSocket from "../../services/socket-io";
-import ContactDrawer from "../ContactDrawer";
 import MessageInput from "../MessageInput/";
 import TicketHeader from "../TicketHeader";
 import TicketInfo from "../TicketInfo";
@@ -42,13 +40,15 @@ interface TicketData {
   whatsapp?: WhatsApp;
 }
 
-const DRAWER_WIDTH = 320;
+interface TicketProps {
+  onToggleDetails?: () => void;
+  showDetails?: boolean;
+}
 
-const Ticket: React.FC = () => {
+const Ticket: React.FC<TicketProps> = ({ onToggleDetails, showDetails }) => {
   const { ticketId } = useParams<{ ticketId: string }>();
   const navigate = useNavigate();
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [contact, setContact] = useState<Contact>({} as Contact);
   const [ticket, setTicket] = useState<TicketData>({} as TicketData);
@@ -101,57 +101,39 @@ const Ticket: React.FC = () => {
     };
   }, [ticketId, navigate]);
 
-  const handleDrawerOpen = () => setDrawerOpen(true);
-  const handleDrawerClose = () => setDrawerOpen(false);
+  /* Clicking the contact name/avatar in the header opens Coluna 3 if hidden */
+  const handleContactClick = () => {
+    if (!showDetails && onToggleDetails) {
+      onToggleDetails();
+    }
+  };
 
   return (
-    <div className="relative flex h-full overflow-hidden" id="drawer-container">
-      {/* Main panel — shifts left when the contact drawer is open */}
-      <div
-        className={cn(
-          "flex flex-1 flex-col overflow-hidden",
-          "border-l-0 rounded-tl-none rounded-bl-none",
-          "transition-[margin] duration-[225ms] ease-in-out",
-          drawerOpen
-            ? "mr-0 transition-[margin] duration-[195ms] ease-out"
-            : `mr-[-${DRAWER_WIDTH}px]`
-        )}
-        style={{
-          marginRight: drawerOpen ? 0 : -DRAWER_WIDTH,
-        }}
-      >
-        <TicketHeader loading={loading}>
-          {/* Left: contact info (up to 50% width, 80% on mobile) */}
-          <div className="max-w-[80%] basis-[80%] md:max-w-[50%] md:basis-[50%]">
-            <TicketInfo
-              contact={contact}
-              ticket={ticket}
-              onClick={handleDrawerOpen}
-            />
-          </div>
-
-          {/* Right: action buttons (up to 50% width, 100% on mobile) */}
-          <div className="flex max-w-full basis-full mb-[5px] md:max-w-[50%] md:basis-[50%] md:mb-0">
-            <TicketActionButtons ticket={ticket} />
-          </div>
-        </TicketHeader>
-
-        <ReplyMessageProvider>
-          <MessagesList ticketId={ticketId ?? ""} isGroup={ticket.isGroup} />
-          <MessageInput
-            ticketStatus={ticket.status}
-            whatsappStatus={ticket.whatsapp?.status}
+    <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
+      <TicketHeader loading={loading}>
+        <div className="max-w-[80%] basis-[80%] md:max-w-[50%] md:basis-[50%]">
+          <TicketInfo
+            contact={contact}
+            ticket={ticket}
+            onClick={handleContactClick}
           />
-        </ReplyMessageProvider>
-      </div>
+        </div>
+        <div className="flex max-w-full basis-full mb-[5px] md:max-w-[50%] md:basis-[50%] md:mb-0">
+          <TicketActionButtons
+            ticket={ticket}
+            onToggleDetails={onToggleDetails}
+            showDetails={showDetails}
+          />
+        </div>
+      </TicketHeader>
 
-      <ContactDrawer
-        open={drawerOpen}
-        handleDrawerClose={handleDrawerClose}
-        contact={contact as any}
-        ticketId={Number(ticketId) || 0}
-        loading={loading}
-      />
+      <ReplyMessageProvider>
+        <MessagesList ticketId={ticketId ?? ""} isGroup={ticket.isGroup} />
+        <MessageInput
+          ticketStatus={ticket.status}
+          whatsappStatus={ticket.whatsapp?.status}
+        />
+      </ReplyMessageProvider>
     </div>
   );
 };
