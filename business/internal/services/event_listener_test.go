@@ -292,7 +292,8 @@ func TestHandleMessageRevoke_InvalidJSON(t *testing.T) {
 }
 
 func TestHandleMessageReaction_InvalidJSON(t *testing.T) {
-	err := handleMessageReaction(json.RawMessage(`{bad`), uuid.New())
+	el := &EventListener{}
+	err := el.handleMessageReaction(context.Background(), json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}
