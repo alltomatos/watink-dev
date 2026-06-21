@@ -105,10 +105,22 @@ export default defineConfig({
     open: false,
     host: true,
     allowedHosts: ["app.docker"],
-    // Polling necessário para HMR funcionar com Docker volumes no Windows
+    // Polling necessário para HMR funcionar com Docker volumes no Windows.
+    // awaitWriteFinish + stabilityThreshold evitam crash EIO quando o volume
+    // WSL2 fica momentaneamente inacessível (errno -5).
     watch: {
       usePolling: true,
       interval: 300,
+      awaitWriteFinish: {
+        stabilityThreshold: 500,
+        pollInterval: 100,
+      },
+      ignored: [
+        "**/node_modules/**",
+        "**/.git/**",
+        "**/build/**",
+        "**/dist/**",
+      ],
     },
   },
   build: {

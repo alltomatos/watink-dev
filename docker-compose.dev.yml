@@ -185,6 +185,8 @@ services:
       - watink-business
     networks:
       - watink_net
+    restart: on-failure
+    stop_grace_period: 10s
 
 networks:
   watink_net:
