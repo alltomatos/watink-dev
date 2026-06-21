@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -166,4 +168,58 @@ func TestMessageController_SendMessage_PublishesCommand(t *testing.T) {
 	assert.True(t, pub.called, "publisher should be called")
 	assert.Contains(t, pub.routingKey, "wbot.")
 	assert.Contains(t, pub.routingKey, tenantID.String())
+}
+
+func TestMessageController_SendMessage_Multipart_SavesMediaAndPublishes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupMessageTestDB(t)
+	tenantID := uuid.New()
+
+	db.Exec(`INSERT INTO "Tickets" (status, "whatsappId", "tenantId") VALUES (?,?,?)`, "open", 42, tenantID)
+	var ticketID int
+	db.Raw(`SELECT id FROM "Tickets" WHERE "tenantId" = ?`, tenantID).Scan(&ticketID)
+
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	_ = mw.WriteField("body", "foto aqui")
+	fw, _ := mw.CreateFormFile("medias", "photo.jpg")
+	_, _ = fw.Write([]byte("fakejpegbytes"))
+	mw.Close()
+
+	pub := &mockPublisher{}
+	ctrl := NewMessageController(pub)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/messages/%d", ticketID), &buf)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	c.Request = req
+	c.Set("tenantId", tenantID)
+	c.Set("userProfile", "admin")
+	c.Set("userId", float64(1))
+	scoped := db.Where(`"tenantId" = ?`, tenantID)
+	c.Set("db", scoped)
+	c.Params = gin.Params{{Key: "ticketId", Value: fmt.Sprintf("%d", ticketID)}}
+
+	ctrl.SendMessage(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, pub.called)
+
+	var resp map[string]interface{}
+	_ = json.NewDecoder(strings.NewReader(w.Body.String())).Decode(&resp)
+	assert.Equal(t, "Message sent", resp["message"])
+}
+
+func TestMimeTypeToMediaType(t *testing.T) {
+	cases := []struct{ mime, want string }{
+		{"image/jpeg", "image"},
+		{"video/mp4", "video"},
+		{"audio/ogg", "audio"},
+		{"application/pdf", "document"},
+		{"text/plain", "document"},
+	}
+	for _, tc := range cases {
+		assert.Equal(t, tc.want, mimeTypeToMediaType(tc.mime), tc.mime)
+	}
 }
