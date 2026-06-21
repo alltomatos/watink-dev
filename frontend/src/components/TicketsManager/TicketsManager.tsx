@@ -16,7 +16,7 @@ export const TicketsManager: React.FC = () => {
 
   const { user } = useContext(AuthContext);
   const [tab, setTab] = useState<TabValue>("open");
-  const [searchParam, setSearchParam] = useState<string>("");
+  const [_searchParam, setSearchParam] = useState<string>("");
   const [newTicketModalOpen, setNewTicketModalOpen] = useState<boolean>(false);
   const [openCount, _setOpenCount] = useState(0);
   const [pendingCount, _setPendingCount] = useState(0);
