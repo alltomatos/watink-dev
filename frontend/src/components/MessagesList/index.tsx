@@ -1,9 +1,17 @@
 /* @jsxImportSource react */
-import React, { useState, useEffect, useReducer, useRef } from "react";
+import React from "react";
 import { isSameDay, parseISO, format } from "date-fns";
-import openSocket from "../../services/socket-io";
 import clsx from "clsx";
-import { Clock, Ban, Check, CheckCheck, AlertCircle, ChevronDown, History } from "lucide-react";
+import {
+  Clock,
+  Ban,
+  Check,
+  CheckCheck,
+  AlertCircle,
+  ChevronDown,
+  History,
+  Loader2,
+} from "lucide-react";
 
 import MarkdownWrapper from "../MarkdownWrapper";
 import VcardPreview from "../VcardPreview";
@@ -13,12 +21,10 @@ import MessageOptionsMenu from "../MessageOptionsMenu";
 import FilePreview from "../FilePreview";
 import whatsBackground from "../../assets/wa-background.png";
 
-import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import { useThemeContext } from "../../context/DarkMode";
 import Audio from "../Audio";
 import { getBackendUrl } from "../../helpers/urlUtils";
-import { toast } from "react-toastify";
 
 import { Button } from "../ui/button";
 import { Avatar } from "../ui/avatar";
@@ -31,106 +37,26 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Loader2 } from "lucide-react";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+import { useMessagesList } from "./hooks/useMessagesList";
+import { Message, QuotedMsg } from "./hooks/messagesReducer";
 
-import { Reaction } from "../../types/Message";
+// ─── Constants ───────────────────────────────────────────────────────────────
 
-interface Contact {
-  name?: string;
-  number?: string;
-  isGroup?: boolean;
-}
+const PARTICIPANT_COLORS = [
+  "var(--status-warning)",
+  "var(--status-error)",
+  "var(--text-muted)",
+  "var(--action-primary)",
+  "var(--status-success)",
+  "var(--status-info)",
+];
 
-interface QuotedMsg {
-  id: number | string;
-  fromMe?: boolean;
-  body?: string;
-  mediaType?: string;
-  participant?: string;
-  dataJson?: string | Record<string, unknown>;
-  contact?: Contact;
-}
+// ─── Pure helpers ─────────────────────────────────────────────────────────────
 
-interface Message {
-  id: number | string;
-  body: string;
-  fromMe: boolean;
-  mediaUrl?: string;
-  mediaType?: string;
-  isDeleted?: boolean;
-  ack?: number;
-  createdAt: string;
-  quotedMsg?: QuotedMsg;
-  participant?: string;
-  dataJson?: string | Record<string, unknown>;
-  contact?: Contact;
-  reactions?: Reaction[] | string;
-  /**
-   * Index signature required so this type is structurally assignable to the
-   * `Message` declared in MessageOptionsMenu (which uses `[key: string]: unknown`).
-   * Without it, passing `selectedMessage` to `<MessageOptionsMenu message={…} />`
-   * raises TS2719 ("Two different types with this name exist").
-   */
-  [key: string]: unknown;
-}
-
-interface MessagesListProps {
-  ticketId: string | number;
-  isGroup?: boolean;
-}
-
-// ─── Reducer ─────────────────────────────────────────────────────────────────
-
-type MessagesAction =
-  | { type: "LOAD_MESSAGES"; payload: Message[] }
-  | { type: "ADD_MESSAGE"; payload: Message }
-  | { type: "UPDATE_MESSAGE"; payload: Message }
-  | { type: "RESET" };
-
-const reducer = (state: Message[], action: MessagesAction): Message[] => {
-  const sortByDate = (arr: Message[]) =>
-    [...arr].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
-
-  if (action.type === "LOAD_MESSAGES") {
-    const messages = action.payload || [];
-    const merged = [...state];
-    messages.forEach((message) => {
-      const idx = merged.findIndex((m) => m.id === message.id);
-      if (idx !== -1) merged[idx] = message;
-      else merged.push(message);
-    });
-    return sortByDate(merged);
-  }
-
-  if (action.type === "ADD_MESSAGE") {
-    const newMessage = action.payload;
-    const idx = state.findIndex((m) => m.id === newMessage.id);
-    const updated = [...state];
-    if (idx !== -1) updated[idx] = newMessage;
-    else updated.push(newMessage);
-    return sortByDate(updated);
-  }
-
-  if (action.type === "UPDATE_MESSAGE") {
-    const idx = state.findIndex((m) => m.id === action.payload.id);
-    if (idx === -1) return state;
-    const updated = [...state];
-    updated[idx] = action.payload;
-    return sortByDate(updated);
-  }
-
-  if (action.type === "RESET") return [];
-
-  return state;
-};
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const parseData = (raw: string | Record<string, unknown> | undefined): Record<string, unknown> => {
+const parseData = (
+  raw: string | Record<string, unknown> | undefined
+): Record<string, unknown> => {
   if (!raw) return {};
   if (typeof raw === "string") {
     try {
@@ -148,154 +74,90 @@ const isDateValid = (dateStr?: string): boolean => {
   return !isNaN(date.getTime()) && date.getFullYear() > 2000;
 };
 
-const PARTICIPANT_COLORS = [
-  "var(--status-warning)",
-  "var(--status-error)",
-  "var(--text-muted)",
-  "var(--action-primary)",
-  "var(--status-success)",
-  "var(--status-info)",
-];
+const getFileNameFromUrl = (url?: string): string => {
+  if (!url) return "";
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    return pathname.substring(pathname.lastIndexOf("/") + 1);
+  } catch {
+    return url;
+  }
+};
+
+const getMessageBody = (message: Message | QuotedMsg): string => {
+  if (message.mediaType === "location") return "Localização";
+  if (message.mediaType === "vcard") return "Contato";
+  if (message.mediaType === "carousel") return "Carrossel";
+  return message.body ?? "";
+};
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface MessagesListProps {
+  ticketId: string | number;
+  isGroup?: boolean;
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
   const { appTheme } = useThemeContext();
 
-  const [messagesList, dispatch] = useReducer(reducer, []);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const lastMessageRef = useRef<HTMLDivElement | null>(null);
+  const {
+    messagesList,
+    loading,
+    participants,
+    messagesListRef,
+    lastMessageRef,
+    selectedMessage,
+    anchorEl,
+    messageOptionsMenuOpen,
+    historyModalOpen,
+    historyFromDate,
+    historyLoading,
+    handleScroll,
+    handleOpenMessageOptionsMenu,
+    handleCloseMessageOptionsMenu,
+    handleSyncHistory,
+    setHistoryModalOpen,
+    setHistoryFromDate,
+  } = useMessagesList(ticketId, isGroup);
 
-  const [selectedMessage, setSelectedMessage] = useState<Message>({} as Message);
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const messageOptionsMenuOpen = Boolean(anchorEl);
-  const currentTicketId = useRef(ticketId);
-  const shouldScrollRef = useRef<"smooth" | "auto" | null>(null);
-  const messagesListRef = useRef<HTMLDivElement | null>(null);
+  const groupColorCacheRef = React.useRef(new Map<string, string>());
 
-  const [historyModalOpen, setHistoryModalOpen] = useState(false);
-  const [historyFromDate, setHistoryFromDate] = useState("");
-  const [historyLoading, setHistoryLoading] = useState(false);
+  // ── Memos ─────────────────────────────────────────────────────────────────
 
-  const [participants, setParticipants] = useState<Array<{ number: string; name?: string }>>([]);
-  const groupColorCacheRef = useRef(new Map<string, string>());
-
-  // ── Effects ──────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    dispatch({ type: "RESET" });
-    setPageNumber(1);
-    currentTicketId.current = ticketId;
-  }, [ticketId]);
-
-  useEffect(() => {
-    if (shouldScrollRef.current) {
-      scrollToBottom(shouldScrollRef.current === "smooth" ? "smooth" : "auto");
-      shouldScrollRef.current = null;
-    }
-    // scrollToBottom is a stable ref-based helper; messagesList is the real trigger
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messagesList]);
-
-  useEffect(() => {
-    setLoading(true);
-    const timer = setTimeout(async () => {
-      try {
-        const { data } = await api.get(`/messages/${ticketId}`, {
-          params: { pageNumber },
-        });
-        if (currentTicketId.current === ticketId) {
-          dispatch({ type: "LOAD_MESSAGES", payload: data.messages });
-          setHasMore(data.hasMore);
-          setLoading(false);
+  const mentionsMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    messagesList.forEach((msg) => {
+      let number: string | null = null;
+      let pushName: string | null = null;
+      if (msg.participant) {
+        number = (msg.participant as string).replace(/\D/g, "");
+        try {
+          const data = parseData(msg.dataJson);
+          pushName = data.pushName as string | null;
+        } catch {
+          /* invalid dataJson */
         }
-        if (pageNumber === 1 && data.messages.length > 0) {
-          shouldScrollRef.current = "auto";
-        }
-      } catch (err) {
-        setLoading(false);
-        toastError(err);
       }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [pageNumber, ticketId]);
-
-  useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-    socket.on("connect", () => socket.emit("joinChatBox", ticketId));
-    socket.on("appMessage", (data: { action: string; message: Message }) => {
-      if (data.action === "create") {
-        dispatch({ type: "ADD_MESSAGE", payload: data.message });
-        shouldScrollRef.current = "smooth";
+      if (msg.contact) {
+        if (!number) number = msg.contact.number ?? null;
+        if (!pushName) pushName = msg.contact.name ?? null;
       }
-      if (data.action === "update") {
-        dispatch({ type: "UPDATE_MESSAGE", payload: data.message });
+      if (number && pushName) map[number] = pushName;
+    });
+    participants.forEach((p) => {
+      if (p.number && p.name) {
+        const number = p.number.replace(/\D/g, "");
+        if (!map[number]) map[number] = p.name;
       }
     });
-    return () => { socket.disconnect(); };
-  }, [ticketId]);
+    return map;
+  }, [messagesList, participants]);
 
-  useEffect(() => {
-    if (!isGroup) return;
-    const fetchParticipants = async () => {
-      try {
-        const { data } = await api.get(`/tickets/${ticketId}/participants`);
-        setParticipants(data);
-      } catch {
-        // silent
-      }
-    };
-    fetchParticipants();
-  }, [ticketId, isGroup]);
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  const loadMore = () => setPageNumber((prev) => prev + 1);
-
-  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
-    if (pageNumber > 1) return;
-    setTimeout(() => {
-      lastMessageRef.current?.scrollIntoView({ behavior });
-    }, 100);
-  };
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (!hasMore) return;
-    const { scrollTop } = e.currentTarget;
-    if (scrollTop === 0 && messagesListRef.current) {
-      messagesListRef.current.scrollTop = 1;
-    }
-    if (loading) return;
-    if (scrollTop < 50) loadMore();
-  };
-
-  const handleOpenMessageOptionsMenu = (e: React.MouseEvent<HTMLButtonElement>, message: Message) => {
-    setAnchorEl(e.currentTarget);
-    setSelectedMessage(message);
-  };
-
-  const handleCloseMessageOptionsMenu = () => setAnchorEl(null);
-
-  const handleSyncHistory = async () => {
-    if (!historyFromDate) {
-      toast.error("Selecione uma data de início");
-      return;
-    }
-    setHistoryLoading(true);
-    try {
-      await api.post(`/tickets/${ticketId}/history`, { fromDate: historyFromDate });
-      toast.success("Buscando histórico de mensagens...");
-      setHistoryModalOpen(false);
-      setHistoryFromDate("");
-    } catch (err) {
-      toastError(err);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
+  // ── Render helpers ────────────────────────────────────────────────────────
 
   const getParticipantColor = (message: Message): string => {
     const participantId =
@@ -303,7 +165,10 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
       (parseData(message.dataJson).participant as string) ||
       "unknown";
     if (!groupColorCacheRef.current.has(participantId)) {
-      const color = PARTICIPANT_COLORS[Math.floor(Math.random() * PARTICIPANT_COLORS.length)];
+      const color =
+        PARTICIPANT_COLORS[
+          Math.floor(Math.random() * PARTICIPANT_COLORS.length)
+        ];
       groupColorCacheRef.current.set(participantId, color);
     }
     return groupColorCacheRef.current.get(participantId)!;
@@ -325,56 +190,13 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
     return "other";
   };
 
-  const getMessageBody = (message: Message | QuotedMsg): string => {
-    if (message.mediaType === "location") return "Localização";
-    if (message.mediaType === "vcard") return "Contato";
-    if (message.mediaType === "carousel") return "Carrossel";
-    return message.body ?? "";
-  };
-
-  const getFileNameFromUrl = (url?: string): string => {
-    if (!url) return "";
-    try {
-      const urlObj = new URL(url);
-      const pathname = urlObj.pathname;
-      return pathname.substring(pathname.lastIndexOf("/") + 1);
-    } catch {
-      return url;
-    }
-  };
-
-  // ── Renders ───────────────────────────────────────────────────────────────
-
-  const mentionsMap = React.useMemo(() => {
-    const map: Record<string, string> = {};
-    messagesList.forEach((msg) => {
-      let number: string | null = null;
-      let pushName: string | null = null;
-      if (msg.participant) {
-        number = (msg.participant as string).replace(/\D/g, "");
-        try {
-          const data = parseData(msg.dataJson);
-          pushName = data.pushName as string | null;
-        } catch { /* invalid dataJson */ }
-      }
-      if (msg.contact) {
-        if (!number) number = msg.contact.number ?? null;
-        if (!pushName) pushName = msg.contact.name ?? null;
-      }
-      if (number && pushName) map[number] = pushName;
-    });
-    participants.forEach((p) => {
-      if (p.number && p.name) {
-        const number = p.number.replace(/\D/g, "");
-        if (!map[number]) map[number] = p.name;
-      }
-    });
-    return map;
-  }, [messagesList, participants]);
-
   const checkMessageMedia = (message: Message) => {
-    if (message.mediaType === "location" && message.body.split("|").length >= 2) {
-      const [imageLocation, linkLocation, descriptionLocation] = message.body.split("|");
+    if (
+      message.mediaType === "location" &&
+      message.body.split("|").length >= 2
+    ) {
+      const [imageLocation, linkLocation, descriptionLocation] =
+        message.body.split("|");
       return (
         <LocationPreview
           image={imageLocation}
@@ -396,8 +218,13 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
       }
       return <VcardPreview contact={contact} numbers={obj[0]?.number} />;
     }
-    if (message.mediaType === "image" || message.mediaType === "sticker") {
-      return <ModalImageCors imageUrl={getBackendUrl(message.mediaUrl) ?? ""} />;
+    if (
+      message.mediaType === "image" ||
+      message.mediaType === "sticker"
+    ) {
+      return (
+        <ModalImageCors imageUrl={getBackendUrl(message.mediaUrl) ?? ""} />
+      );
     }
     if (message.mediaType === "audio") {
       return <Audio url={getBackendUrl(message.mediaUrl) ?? ""} />;
@@ -418,22 +245,30 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
       if (data?.cards && Array.isArray(data.cards)) {
         return (
           <div className="flex overflow-x-auto max-w-[350px] gap-2.5 pb-2.5 pt-1.5">
-            {(data.cards as Array<{
-              headerUrl?: string;
-              title?: string;
-              body?: string;
-              buttons?: Array<{ text?: string; url?: string }>;
-            }>).map((card, idx) => (
+            {(
+              data.cards as Array<{
+                headerUrl?: string;
+                title?: string;
+                body?: string;
+                buttons?: Array<{ text?: string; url?: string }>;
+              }>
+            ).map((card, idx) => (
               <div
                 key={idx}
                 className="min-w-[220px] bg-[var(--bg-surface)] rounded-lg border border-[var(--border-default)] overflow-hidden shadow-sm"
               >
                 {card.headerUrl && (
-                  <img src={card.headerUrl} className="w-full h-[120px] object-cover" alt={card.title} />
+                  <img
+                    src={card.headerUrl}
+                    className="w-full h-[120px] object-cover"
+                    alt={card.title}
+                  />
                 )}
                 <div className="p-2">
                   <div className="font-bold text-[13px] mb-1">{card.title}</div>
-                  <div className="text-xs text-[var(--message-quote-text)] whitespace-pre-wrap">{card.body}</div>
+                  <div className="text-xs text-[var(--message-quote-text)] whitespace-pre-wrap">
+                    {card.body}
+                  </div>
                 </div>
                 {card.buttons && card.buttons.length > 0 && (
                   <div className="border-t border-[var(--border-default)] p-1.5">
@@ -455,18 +290,32 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
       }
       return null;
     }
-    return <FilePreview mediaUrl={getBackendUrl(message.mediaUrl) ?? ""} filename={message.body} />;
+    return (
+      <FilePreview
+        mediaUrl={getBackendUrl(message.mediaUrl) ?? ""}
+        filename={message.body}
+      />
+    );
   };
 
   const renderMessageAck = (message: Message) => {
     if (isGroup) return null;
-    if (message.ack === 0) return <Clock className="inline h-[18px] w-[18px] align-middle ml-1" />;
-    if (message.ack === 1) return <Check className="inline h-[18px] w-[18px] align-middle ml-1" />;
-    if (message.ack === 2) return <CheckCheck className="inline h-[18px] w-[18px] align-middle ml-1" />;
+    if (message.ack === 0)
+      return <Clock className="inline h-[18px] w-[18px] align-middle ml-1" />;
+    if (message.ack === 1)
+      return <Check className="inline h-[18px] w-[18px] align-middle ml-1" />;
+    if (message.ack === 2)
+      return (
+        <CheckCheck className="inline h-[18px] w-[18px] align-middle ml-1" />
+      );
     if (message.ack === 3 || message.ack === 4)
-      return <CheckCheck className="inline h-[18px] w-[18px] align-middle ml-1 text-[var(--action-primary)]" />;
+      return (
+        <CheckCheck className="inline h-[18px] w-[18px] align-middle ml-1 text-[var(--action-primary)]" />
+      );
     if (message.ack === 5)
-      return <AlertCircle className="inline h-[18px] w-[18px] align-middle ml-1 text-[var(--message-error-text)]" />;
+      return (
+        <AlertCircle className="inline h-[18px] w-[18px] align-middle ml-1 text-[var(--message-error-text)]" />
+      );
     return null;
   };
 
@@ -475,7 +324,10 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
     const showTimestamp =
       index === 0 ||
       !isDateValid(messagesList[index - 1]?.createdAt) ||
-      !isSameDay(parseISO(messagesList[index].createdAt), parseISO(messagesList[index - 1].createdAt));
+      !isSameDay(
+        parseISO(messagesList[index].createdAt),
+        parseISO(messagesList[index - 1].createdAt)
+      );
 
     if (!showTimestamp) return null;
 
@@ -537,7 +389,9 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
       try {
         const data = parseData(quoted.dataJson);
         pushName = data.pushName as string | null;
-      } catch { /* invalid dataJson */ }
+      } catch {
+        /* invalid dataJson */
+      }
     }
     if (quoted.participant) {
       participantNumber = (quoted.participant as string).replace(/\D/g, "");
@@ -576,18 +430,25 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
   const renderMessageReactions = (message: Message) => {
     let reactions = message.reactions;
     if (typeof reactions === "string") {
-      try { reactions = JSON.parse(reactions); } catch { reactions = []; }
+      try {
+        reactions = JSON.parse(reactions);
+      } catch {
+        reactions = [];
+      }
     }
     if (!Array.isArray(reactions) || reactions.length === 0) return null;
 
-    const aggregated = reactions.reduce<Array<{ emoji: string; count: number }>>((acc, curr) => {
-      const emoji = curr.text || curr.emoji;
-      if (!emoji) return acc;
-      const existing = acc.find((r) => r.emoji === emoji);
-      if (existing) existing.count++;
-      else acc.push({ emoji, count: 1 });
-      return acc;
-    }, []);
+    const aggregated = reactions.reduce<Array<{ emoji: string; count: number }>>(
+      (acc, curr) => {
+        const emoji = curr.text || curr.emoji;
+        if (!emoji) return acc;
+        const existing = acc.find((r) => r.emoji === emoji);
+        if (existing) existing.count++;
+        else acc.push({ emoji, count: 1 });
+        return acc;
+      },
+      []
+    );
 
     return (
       <div className="absolute -bottom-2.5 left-2.5 bg-[var(--message-reaction-bg)] rounded-xl px-1.5 py-0.5 shadow-md text-xs flex items-center z-20 cursor-pointer border border-[var(--message-reaction-border)]">
@@ -615,7 +476,11 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
         onClick={() => preview.url && window.open(preview.url, "_blank")}
       >
         {preview.image && (
-          <img src={preview.image} alt={preview.title} className="w-full h-[150px] object-cover" />
+          <img
+            src={preview.image}
+            alt={preview.title}
+            className="w-full h-[150px] object-cover"
+          />
         )}
         <div className="p-2.5">
           <a
@@ -653,13 +518,17 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
 
     return messagesList.map((message, index) => {
       const currentSenderKey = getSenderKey(message);
-      const previousSenderKey = index > 0 ? getSenderKey(messagesList[index - 1]) : null;
+      const previousSenderKey =
+        index > 0 ? getSenderKey(messagesList[index - 1]) : null;
       const isSameSender = currentSenderKey === previousSenderKey;
       const isSameDayMsg =
         index > 0 &&
         isDateValid(message.createdAt) &&
         isDateValid(messagesList[index - 1]?.createdAt) &&
-        isSameDay(parseISO(message.createdAt), parseISO(messagesList[index - 1].createdAt));
+        isSameDay(
+          parseISO(message.createdAt),
+          parseISO(messagesList[index - 1].createdAt)
+        );
       const showGroupInfo = !isSameSender || !isSameDayMsg;
 
       const marginTop = showGroupInfo ? 10 : 2;
@@ -670,7 +539,6 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
         message.mediaType === "location";
       const maxW = isMedia ? 332 : 600;
 
-      // Sender divider spacer
       const senderDivider =
         index > 0 && currentSenderKey !== previousSenderKey ? (
           <span key={`divider-${message.id}`} className="block h-7 clear-both" />
@@ -732,8 +600,13 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
                   {renderDeletedMessage(message)}
                   {message.quotedMsg && renderQuotedMessage(message)}
                   {renderUrlPreview(message)}
-                  {!(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) && (
-                    <MarkdownWrapper mentionsMap={mentionsMap}>{getMessageBody(message)}</MarkdownWrapper>
+                  {!(
+                    message.mediaUrl &&
+                    getFileNameFromUrl(message.mediaUrl) === message.body
+                  ) && (
+                    <MarkdownWrapper mentionsMap={mentionsMap}>
+                      {getMessageBody(message)}
+                    </MarkdownWrapper>
                   )}
                   {renderMessageTimestamp(message)}
                 </div>
@@ -777,14 +650,21 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
               <div
                 className={clsx(
                   "overflow-wrap-break-word pt-0.5 pb-1.5 pl-1.5",
-                  message.isDeleted ? "italic text-[var(--text-muted)] pr-20" : "pr-20"
+                  message.isDeleted
+                    ? "italic text-[var(--text-muted)] pr-20"
+                    : "pr-20"
                 )}
               >
                 {renderDeletedMessage(message)}
                 {message.quotedMsg && renderQuotedMessage(message)}
                 {renderUrlPreview(message)}
-                {!(message.mediaUrl && getFileNameFromUrl(message.mediaUrl) === message.body) && (
-                  <MarkdownWrapper mentionsMap={mentionsMap}>{getMessageBody(message)}</MarkdownWrapper>
+                {!(
+                  message.mediaUrl &&
+                  getFileNameFromUrl(message.mediaUrl) === message.body
+                ) && (
+                  <MarkdownWrapper mentionsMap={mentionsMap}>
+                    {getMessageBody(message)}
+                  </MarkdownWrapper>
                 )}
                 {renderMessageTimestamp(message)}
               </div>
@@ -795,6 +675,8 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
       }
     });
   };
+
+  // ── JSX ───────────────────────────────────────────────────────────────────
 
   return (
     <div className="overflow-hidden relative flex flex-col flex-grow">
@@ -831,7 +713,9 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
               onClick={handleSyncHistory}
               disabled={historyLoading || !historyFromDate}
             >
-              {historyLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {historyLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
               Buscar
             </Button>
           </DialogFooter>
