@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/pkg/mediastore"
 	"github.com/google/uuid"
 )
 
@@ -166,6 +168,15 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 		mediaType = "chat"
 	}
 
+	mediaURL := input.MediaURL
+	if mediaURL == "" && input.MediaData != "" {
+		if url, err := mediastore.SaveMediaBase64(input.MediaData, input.Mimetype); err != nil {
+			log.Printf("[ReceiveMessage] media save failed (msg %s): %v", input.ID, err)
+		} else {
+			mediaURL = url
+		}
+	}
+
 	createdAt := time.Unix(input.Timestamp, 0)
 	if createdAt.IsZero() || input.Timestamp == 0 {
 		createdAt = time.Now()
@@ -179,7 +190,7 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 		FromMe:      input.FromMe,
 		TenantID:    input.TenantID,
 		MediaType:   mediaType,
-		MediaUrl:    input.MediaURL,
+		MediaUrl:    mediaURL,
 		Participant: input.Participant,
 		DataJson:    string(dataJSON),
 		CreatedAt:   createdAt,
