@@ -20,7 +20,7 @@ const MessageReactions: React.FC<Props> = ({ message }) => {
   const aggregated = (reactions as Reaction[]).reduce<
     Array<{ emoji: string; count: number }>
   >((acc, curr) => {
-    const emoji = curr.text || curr.emoji;
+    const emoji = curr.reaction || curr.emoji || curr.text;
     if (!emoji) return acc;
     const existing = acc.find((r) => r.emoji === emoji);
     if (existing) existing.count++;

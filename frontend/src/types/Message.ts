@@ -5,12 +5,18 @@ import { Contact } from "./Ticket";
  * The backend may send either `text` or `emoji` depending on the WA version.
  */
 export interface Reaction {
-  /** Emoji character (newer WA format). */
+  /** Emoji character — field name used by the Go backend. */
+  reaction?: string;
+  /** Emoji character (newer WA protobuf format). */
   emoji?: string;
   /** Emoji character (legacy WA format). */
   text?: string;
-  /** Sender JID, present when reactions include per-sender detail. */
+  /** Sender JID (Go backend). */
+  sender?: string;
+  /** Sender key hash (legacy format). */
   senderKeyHash?: string;
+  fromMe?: boolean;
+  timestamp?: number;
 }
 
 export interface Message {
