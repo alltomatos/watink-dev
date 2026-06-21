@@ -200,7 +200,20 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 		return nil, err
 	}
 
-	updates := map[string]interface{}{"lastMessage": msg.Body, "updatedAt": time.Now()}
+	lastMsg := msg.Body
+	if lastMsg == "" {
+		switch {
+		case strings.HasPrefix(input.Mimetype, "image/"):
+			lastMsg = "📷 Foto"
+		case strings.HasPrefix(input.Mimetype, "video/"):
+			lastMsg = "📹 Vídeo"
+		case strings.HasPrefix(input.Mimetype, "audio/"):
+			lastMsg = "🎵 Áudio"
+		case input.Mimetype != "":
+			lastMsg = "📎 Arquivo"
+		}
+	}
+	updates := map[string]interface{}{"lastMessage": lastMsg, "updatedAt": time.Now()}
 	if !input.FromMe {
 		updates["unreadMessages"] = ticket.UnreadMessages + 1
 		ticket.UnreadMessages++
@@ -208,7 +221,7 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 	if err := uc.ticketRepo.Update(ctx, ticket, updates); err != nil {
 		return nil, err
 	}
-	ticket.LastMessage = msg.Body
+	ticket.LastMessage = lastMsg
 	ticket.UpdatedAt = time.Now()
 
 	_ = uc.eventBus.Publish(ctx, domain.NewMessageReceivedEvent(msg.ID, ticket.ID, input.TenantID))
