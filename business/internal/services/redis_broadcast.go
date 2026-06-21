@@ -6,8 +6,8 @@ import (
 	"log"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
-	socketio "github.com/googollee/go-socket.io"
 	"github.com/google/uuid"
+	socketio "github.com/googollee/go-socket.io"
 )
 
 var NodeID = uuid.New().String()
@@ -77,7 +77,9 @@ func (rb *RedisBroadcast) Publish(sm SocketMessage) {
 
 // EmitToNamespace broadcasts events to a namespace globally via Redis.
 func (rb *RedisBroadcast) EmitToNamespace(nsp string, event string, payload interface{}) {
-	if rb == nil { return } // Safety check
+	if rb == nil {
+		return
+	} // Safety check
 	if rb.server != nil {
 		rb.server.BroadcastToNamespace(nsp, event, payload)
 	}
@@ -90,6 +92,9 @@ func (rb *RedisBroadcast) EmitToNamespace(nsp string, event string, payload inte
 
 // EmitToRoom broadcasts events to a room globally via Redis.
 func (rb *RedisBroadcast) EmitToRoom(nsp string, room string, event string, payload interface{}) {
+	if rb == nil {
+		return
+	} // Safety check
 	if rb.server != nil {
 		rb.server.BroadcastToRoom(nsp, room, event, payload)
 	}
