@@ -46,8 +46,9 @@ func (m *mockTicketRepo) CountOpenTicketsPerUser(_ context.Context, _ []int, _ u
 }
 
 type mockQueueRepo struct {
-	queue   *domain.Queue
-	findErr error
+	queue           *domain.Queue
+	findErr         error
+	channelQueueIDs []int
 }
 
 func (m *mockQueueRepo) FindByID(_ context.Context, _ int, _ uuid.UUID) (*domain.Queue, error) {
@@ -57,6 +58,9 @@ func (m *mockQueueRepo) FindAll(_ context.Context, _ uuid.UUID) ([]domain.Queue,
 	return nil, nil
 }
 func (m *mockQueueRepo) Save(_ context.Context, _ *domain.Queue) error { return nil }
+func (m *mockQueueRepo) FindQueueIDsByChannel(_ context.Context, _ int, _ uuid.UUID) ([]int, error) {
+	return m.channelQueueIDs, nil
+}
 
 type mockContactRepo struct {
 	contact *domain.Contact
@@ -424,8 +428,8 @@ func TestExecute_RoundRobin_AssignsTicket(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "User1", "u1@t.com", "x", tenantID.String())
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "User2", "u2@t.com", "x", tenantID.String())
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, queueID)
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 2, queueID)
+	db.Exec(`INSERT INTO "user_queues" (user_id, queue_id) VALUES (?, ?)`, 1, queueID)
+	db.Exec(`INSERT INTO "user_queues" (user_id, queue_id) VALUES (?, ?)`, 2, queueID)
 
 	ticket := &domain.Ticket{ID: 99, ContactID: 1}
 	queue := &domain.Queue{ID: queueID, DistributionStrategy: "AUTO_ROUND_ROBIN"}
@@ -453,8 +457,8 @@ func TestExecute_Balanced_AssignsTicket(t *testing.T) {
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "UserA", "ua@t.com", "x", tenantID.String())
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "UserB", "ub@t.com", "x", tenantID.String())
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, queueID)
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 2, queueID)
+	db.Exec(`INSERT INTO "user_queues" (user_id, queue_id) VALUES (?, ?)`, 1, queueID)
+	db.Exec(`INSERT INTO "user_queues" (user_id, queue_id) VALUES (?, ?)`, 2, queueID)
 
 	ticket := &domain.Ticket{ID: 100, ContactID: 1}
 	queue := &domain.Queue{ID: queueID, DistributionStrategy: "AUTO_BALANCED"}
@@ -481,7 +485,7 @@ func TestExecute_RoundRobin_UpdateError(t *testing.T) {
 	queueID := 5
 
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "UserX", "ux@t.com", "x", tenantID.String())
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, queueID)
+	db.Exec(`INSERT INTO "user_queues" (user_id, queue_id) VALUES (?, ?)`, 1, queueID)
 
 	ticket := &domain.Ticket{ID: 55, ContactID: 1}
 	queue := &domain.Queue{ID: queueID, DistributionStrategy: "AUTO_ROUND_ROBIN"}
@@ -527,7 +531,7 @@ func TestExecute_UnknownStrategy_WithDB(t *testing.T) {
 
 	// Provide a user in the queue so we reach the switch statement
 	db.Exec(`INSERT INTO "Users" (name, email, "passwordHash", "tenantId") VALUES (?, ?, ?, ?)`, "UserZ", "uz@t.com", "x", tenantID.String())
-	db.Exec(`INSERT INTO "user_queues" ("userId", "queueId") VALUES (?, ?)`, 1, queueID)
+	db.Exec(`INSERT INTO "user_queues" (user_id, queue_id) VALUES (?, ?)`, 1, queueID)
 
 	ticket := &domain.Ticket{ID: 88, ContactID: 1}
 	queue := &domain.Queue{ID: queueID, DistributionStrategy: "UNKNOWN_STRATEGY"}

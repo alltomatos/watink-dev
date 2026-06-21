@@ -14,6 +14,8 @@ type Ticket struct {
 	UserID         *int      `gorm:"column:userId" json:"userId"`
 	WhatsappID     int       `gorm:"column:whatsappId" json:"whatsappId"`
 	IsGroup        bool      `gorm:"column:isGroup;not null;default:false" json:"isGroup"`
+	IsCommunity    bool      `gorm:"column:isCommunity;not null;default:false" json:"isCommunity"`
+	IsSubGroup     bool      `gorm:"column:isSubGroup;not null;default:false" json:"isSubGroup"`
 	UnreadMessages int       `gorm:"column:unreadMessages" json:"unreadMessages"`
 	QueueID        *int      `gorm:"column:queueId" json:"queueId"`
 	TenantID       uuid.UUID `gorm:"column:tenantId;type:uuid" json:"tenantId"`

@@ -27,6 +27,7 @@ type Whatsapp struct {
 	CreatedAt       time.Time `gorm:"column:createdAt" json:"createdAt"`
 	UpdatedAt       time.Time `gorm:"column:updatedAt" json:"updatedAt"`
 	FirstConnection *time.Time `gorm:"column:firstConnection" json:"firstConnection"`
+	LastConnectedAt *time.Time `gorm:"column:lastConnectedAt" json:"lastConnectedAt"`
 	EngineType      string     `gorm:"column:engineType;default:'whatsmeow'" json:"engineType"`
 	Wid             string     `gorm:"column:wid;size:100" json:"wid"`
 

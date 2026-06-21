@@ -82,9 +82,9 @@ func StartSocket() *socketio.Server {
 		s.Join(msg)
 	})
 
-	server.OnEvent("/", "joinNotification", func(s socketio.Conn, msg string) {
-		log.Println("joinNotification:", msg)
-		s.Join(msg)
+	server.OnEvent("/", "joinNotification", func(s socketio.Conn, _ string) {
+		log.Println("joinNotification: joined notification room")
+		s.Join("notification")
 	})
 
 	server.OnEvent("/", "joinTickets", func(s socketio.Conn, msg string) {

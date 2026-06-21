@@ -56,7 +56,7 @@ func NewContainer(db *gorm.DB, redisSvc domain.RedisService, broadcast *services
 	logTicketAction := usecases.NewLogTicketActionUseCase(ticketRepo, ticketLogRepo)
 	distributeTicket := usecases.NewDistributeTicketUseCase(ticketRepo, queueRepo, eventBus, contactRepo, userQueueRepo)
 	updateTicket := usecases.NewUpdateTicketUseCase(ticketRepo, eventBus, distributeTicket, logTicketAction)
-	receiveMessage := usecases.NewReceiveMessageUseCase(eventBus, messageRepo, contactRepo, ticketRepo)
+	receiveMessage := usecases.NewReceiveMessageUseCase(eventBus, messageRepo, contactRepo, ticketRepo, queueRepo)
 	sessionService := services.NewWhatsAppSessionService(db, publisher, redisSvc, broadcast)
 	return &Container{
 		DB:                db,

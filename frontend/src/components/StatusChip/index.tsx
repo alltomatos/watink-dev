@@ -10,29 +10,29 @@ export interface StatusChipProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const statusMap = {
   success: {
-    bg: "bg-[var(--color-success-bg)]",
-    text: "text-[var(--color-success)]",
-    dot: "bg-[var(--color-success)]"
+    bg: "bg-[hsl(var(--status-success-bg))]",
+    text: "text-[hsl(var(--status-success-text))]",
+    dot: "bg-[hsl(var(--status-success))]"
   },
   error: {
-    bg: "bg-[var(--color-error-bg)]",
-    text: "text-[var(--color-error)]",
-    dot: "bg-[var(--color-error)]"
+    bg: "bg-[hsl(var(--status-error-bg))]",
+    text: "text-[hsl(var(--status-error-text))]",
+    dot: "bg-[hsl(var(--status-error))]"
   },
   warning: {
-    bg: "bg-[var(--color-warning-bg)]",
-    text: "text-[var(--color-warning)]",
-    dot: "bg-[var(--color-warning)]"
+    bg: "bg-[hsl(var(--status-warning-bg))]",
+    text: "text-[hsl(var(--status-warning-text))]",
+    dot: "bg-[hsl(var(--status-warning))]"
   },
   info: {
-    bg: "bg-[var(--color-info-bg)]",
-    text: "text-[var(--color-info)]",
-    dot: "bg-[var(--color-info)]"
+    bg: "bg-[hsl(var(--status-info-bg))]",
+    text: "text-[hsl(var(--status-info-text))]",
+    dot: "bg-[hsl(var(--status-info))]"
   },
   default: {
-    bg: "bg-[var(--secondary)]",
-    text: "text-[var(--secondary-foreground)]",
-    dot: "bg-[var(--muted-foreground)]"
+    bg: "bg-[hsl(var(--status-default-bg))]",
+    text: "text-[hsl(var(--status-default-text))]",
+    dot: "bg-[hsl(var(--text-muted))]"
   }
 };
 

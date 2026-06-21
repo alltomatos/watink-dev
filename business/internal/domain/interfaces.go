@@ -70,6 +70,9 @@ type QueueRepository interface {
 	FindByID(ctx context.Context, id int, tenantID uuid.UUID) (*Queue, error)
 	FindAll(ctx context.Context, tenantID uuid.UUID) ([]Queue, error)
 	Save(ctx context.Context, queue *Queue) error
+	// FindQueueIDsByChannel returns the queue IDs linked to a WhatsApp channel
+	// (via the whatsapp_queues join table), scoped to the tenant.
+	FindQueueIDsByChannel(ctx context.Context, channelID int, tenantID uuid.UUID) ([]int, error)
 }
 
 type ChannelSessionRepository interface {

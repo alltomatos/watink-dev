@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
+import { Contact } from "../../pages/Contacts/contactsTypes";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
@@ -26,10 +27,10 @@ interface NewTicketModalProps {
 
 const NewTicketModal = ({ modalOpen, onClose }: NewTicketModalProps) => {
   const navigate = useNavigate();
-  const [options, setOptions] = useState<any[]>([]);
+  const [options, setOptions] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParam, setSearchParam] = useState("");
-  const [selectedContact, setSelectedContact] = useState<any | null>(null);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [newContact, setNewContact] = useState<{ name?: string }>({});
   const [contactModalOpen, setContactModalOpen] = useState(false);
 
@@ -85,8 +86,8 @@ const NewTicketModal = ({ modalOpen, onClose }: NewTicketModalProps) => {
     }
   };
 
-  const handleAddNewContactTicket = (contact: any) => {
-    handleSaveTicket(contact.id);
+  const handleAddNewContactTicket = (contact: { id?: number | string; name: string; number: string; email: string }) => {
+    if (contact.id !== undefined) handleSaveTicket(contact.id);
   };
 
   return (
@@ -166,7 +167,7 @@ const NewTicketModal = ({ modalOpen, onClose }: NewTicketModalProps) => {
             </Button>
             <Button
               type="button"
-              onClick={() => handleSaveTicket(selectedContact?.id)}
+              onClick={() => { if (selectedContact?.id !== undefined) handleSaveTicket(selectedContact.id); }}
               disabled={loading || !selectedContact}
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

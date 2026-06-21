@@ -1,56 +1,18 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import {
   ClipboardList,
   Users,
   KeyRound,
-  ArrowRight,
   History,
 } from "lucide-react";
 
 import { PageLayout, PageHeader, PageContent } from "../../components/ui/page-layout";
-import PaperCard from "../../components/PaperCard";
-import MetricCard from "../../components/ui/metric-card";
-import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
 import { i18n } from "../../translate/i18n";
-import api from "../../services/api";
-import toastError from "../../errors/toastError";
-
-interface AccessStats {
-  totalRoles: number;
-  totalUsers: number;
-  usersWithoutRole: number;
-}
-
-interface NavCardDef {
-  key: string;
-  icon: React.ReactNode;
-  color: string;
-  getTitle: () => string;
-  getDescription: () => string;
-  getButtonLabel: () => string;
-  getSubtitle: (stats: AccessStats) => string;
-  route: string;
-}
-
-interface LegacyCardDef {
-  key: string;
-  icon: React.ReactNode;
-  color: string;
-  getTitle: () => string;
-  getDescription: () => string;
-  getButtonLabel: () => string;
-  route: string;
-}
-
-interface KpiDef {
-  key: keyof AccessStats;
-  getValue: (stats: AccessStats) => number;
-  labelKey: string;
-  color: "primary" | "error" | "info";
-  icon: React.ReactNode;
-}
+import { useAccess } from "./hooks/useAccess";
+import AccessKpiGrid from "./components/AccessKpiGrid";
+import AccessNavCards from "./components/AccessNavCards";
+import AccessLegacyCards from "./components/AccessLegacyCards";
+import type { NavCardDef, LegacyCardDef, KpiDef } from "./accessTypes";
 
 const NAV_CARDS: NavCardDef[] = [
   {
@@ -127,41 +89,7 @@ const KPI_CONFIG: KpiDef[] = [
 ];
 
 const Access: React.FC = () => {
-  const navigate = useNavigate();
-  const [stats, setStats] = React.useState<AccessStats>({
-    totalRoles: 0,
-    totalUsers: 0,
-    usersWithoutRole: 0,
-  });
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [rolesRes, usersRes] = await Promise.all([
-          api.get("/roles"),
-          api.get("/users?limit=1"),
-        ]);
-        const roles = Array.isArray(rolesRes.data)
-          ? rolesRes.data
-          : rolesRes.data?.roles || [];
-        const users = Array.isArray(usersRes.data)
-          ? usersRes.data
-          : usersRes.data?.users || [];
-
-        setStats({
-          totalRoles: roles.length,
-          totalUsers: users.length,
-          usersWithoutRole: users.filter((u: { roleId?: string }) => !u.roleId).length,
-        });
-      } catch (err) {
-        toastError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
+  const { stats, loading } = useAccess();
 
   if (loading) {
     return (
@@ -175,92 +103,14 @@ const Access: React.FC = () => {
 
   return (
     <PageLayout>
-      <PageHeader title={i18n.t("access.title")} description="Gerencie usuários, funções e permissões do sistema" />
-
+      <PageHeader
+        title={i18n.t("access.title")}
+        description="Gerencie usuários, funções e permissões do sistema"
+      />
       <PageContent>
-        {/* KPIs */}
-        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {KPI_CONFIG.map((kpi) => (
-            <MetricCard
-              key={kpi.key}
-              label={i18n.t(kpi.labelKey)}
-              value={kpi.getValue(stats)}
-              icon={kpi.icon}
-              color={kpi.color}
-            />
-          ))}
-        </div>
-
-        {/* Nav cards */}
-        <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {NAV_CARDS.map((card) => (
-            <PaperCard key={card.key} variant="outlined" padding="default" hoverEffect>
-              <div className="mb-2 flex items-center gap-2">
-                <span
-                  className="flex h-8 w-8 items-center justify-center rounded-xl text-white"
-                  style={{ backgroundColor: card.color }}
-                >
-                  {card.icon}
-                </span>
-                <span className="text-base font-semibold">{card.getTitle()}</span>
-              </div>
-              <p className="mb-1 text-sm text-muted-foreground">
-                {card.getDescription()}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {card.getSubtitle(stats)}
-              </p>
-              <div className="mt-4">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigate(card.route)}
-                >
-                  {card.getButtonLabel()}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </PaperCard>
-          ))}
-        </div>
-
-        {/* Legacy cards */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {LEGACY_CARDS.map((card) => (
-            <div key={card.key} style={{ opacity: 0.7 }}>
-            <PaperCard
-              variant="outlined"
-            >
-              <div className="mb-2 flex items-center gap-2">
-                <span
-                  className="flex h-8 w-8 items-center justify-center rounded-xl text-white"
-                  style={{ backgroundColor: card.color }}
-                >
-                  {card.icon}
-                </span>
-                <span className="flex items-center gap-2 text-base font-semibold">
-                  {card.getTitle()}
-                  <Badge variant="secondary" className="text-xs">
-                    Legado
-                  </Badge>
-                </span>
-              </div>
-              <p className="mb-4 text-sm text-muted-foreground">
-                {card.getDescription()}
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full"
-                onClick={() => navigate(card.route)}
-              >
-                {card.getButtonLabel()}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </PaperCard>
-            </div>
-          ))}
-        </div>
+        <AccessKpiGrid kpis={KPI_CONFIG} stats={stats} />
+        <AccessNavCards cards={NAV_CARDS} stats={stats} />
+        <AccessLegacyCards cards={LEGACY_CARDS} />
       </PageContent>
     </PageLayout>
   );

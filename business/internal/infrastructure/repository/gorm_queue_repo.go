@@ -20,6 +20,22 @@ func NewGORMQueueRepo(db *gorm.DB) *GORMQueueRepository {
 	return &GORMQueueRepository{db: db}
 }
 
+// FindQueueIDsByChannel returns the queue IDs linked to the given channel via the
+// whatsapp_queues join table. The join table uses snake_case columns
+// (whatsapp_id, queue_id) created by GORM's many2many default naming.
+func (r *GORMQueueRepository) FindQueueIDsByChannel(ctx context.Context, channelID int, tenantID uuid.UUID) ([]int, error) {
+	var ids []int
+	err := r.db.WithContext(ctx).
+		Table("whatsapp_queues AS wq").
+		Joins(`JOIN "Queues" q ON q.id = wq.queue_id`).
+		Where(`wq.whatsapp_id = ? AND q."tenantId" = ?`, channelID, tenantID).
+		Pluck("wq.queue_id", &ids).Error
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
 func (r *GORMQueueRepository) FindByID(ctx context.Context, id int, tenantID uuid.UUID) (*domain.Queue, error) {
 	var m models.Queue
 	err := r.db.WithContext(ctx).
