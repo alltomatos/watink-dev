@@ -184,7 +184,7 @@ func TestMessageController_SendMessage_Multipart_SavesMediaAndPublishes(t *testi
 	_ = mw.WriteField("body", "foto aqui")
 	fw, _ := mw.CreateFormFile("medias", "photo.jpg")
 	_, _ = fw.Write([]byte("fakejpegbytes"))
-	mw.Close()
+	require.NoError(t, mw.Close())
 
 	pub := &mockPublisher{}
 	ctrl := NewMessageController(pub)
