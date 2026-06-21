@@ -125,7 +125,9 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 	}
 
 	room := strconv.Itoa(result.Ticket.ID)
-	el.broadcast.EmitToRoom("/", room, "appMessage", map[string]interface{}{"action": "create", "message": result.Message})
+	msgPayload := map[string]interface{}{"action": "create", "message": result.Message, "ticket": result.Ticket, "contact": result.Contact}
+	el.broadcast.EmitToRoom("/", room, "appMessage", msgPayload)
+	el.broadcast.EmitToRoom("/", "notification", "appMessage", msgPayload)
 	el.broadcast.EmitToNamespace("/", "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket})
 
 	return nil
