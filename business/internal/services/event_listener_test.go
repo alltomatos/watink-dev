@@ -62,8 +62,9 @@ func TestHandleQrCode_UpdatesWhatsapp(t *testing.T) {
 	tenantID := uuid.New()
 	seedWhatsapp(t, db, 1, tenantID)
 
+	el := &EventListener{sessions: sessions}
 	payload, _ := json.Marshal(map[string]string{"sessionId": "1", "qrCode": "data:image/png;base64,abc=="})
-	if err := handleQrCode(context.Background(), sessions, payload, tenantID); err != nil {
+	if err := el.handleQrCode(context.Background(), payload, tenantID); err != nil {
 		t.Fatalf("handleQrCode() error: %v", err)
 	}
 
@@ -75,7 +76,8 @@ func TestHandleQrCode_UpdatesWhatsapp(t *testing.T) {
 }
 
 func TestHandleQrCode_InvalidJSON(t *testing.T) {
-	err := handleQrCode(context.Background(), nil, json.RawMessage(`{bad json`), uuid.New())
+	el := &EventListener{}
+	err := el.handleQrCode(context.Background(), json.RawMessage(`{bad json`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}
@@ -88,8 +90,9 @@ func TestHandleSessionStatus_UpdatesStatus(t *testing.T) {
 	tenantID := uuid.New()
 	seedWhatsapp(t, db, 2, tenantID)
 
+	el := &EventListener{sessions: sessions}
 	payload, _ := json.Marshal(map[string]string{"sessionId": "2", "status": "DISCONNECTED", "number": "+5511999999999"})
-	if err := handleSessionStatus(context.Background(), sessions, payload, tenantID); err != nil {
+	if err := el.handleSessionStatus(context.Background(), payload, tenantID); err != nil {
 		t.Fatalf("handleSessionStatus() error: %v", err)
 	}
 
@@ -101,7 +104,8 @@ func TestHandleSessionStatus_UpdatesStatus(t *testing.T) {
 }
 
 func TestHandleSessionStatus_InvalidJSON(t *testing.T) {
-	err := handleSessionStatus(context.Background(), nil, json.RawMessage(`{bad`), uuid.New())
+	el := &EventListener{}
+	err := el.handleSessionStatus(context.Background(), json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}
@@ -110,8 +114,9 @@ func TestHandleSessionStatus_InvalidJSON(t *testing.T) {
 func TestHandleSessionStatus_NoRowsAffected(t *testing.T) {
 	_, sessions, _ := setupEventListenerRepos(t)
 	// session does not exist — should return nil (no-op)
+	el := &EventListener{sessions: sessions}
 	payload, _ := json.Marshal(map[string]string{"sessionId": "999", "status": "CONNECTED"})
-	if err := handleSessionStatus(context.Background(), sessions, payload, uuid.New()); err != nil {
+	if err := el.handleSessionStatus(context.Background(), payload, uuid.New()); err != nil {
 		t.Fatalf("handleSessionStatus() with missing row returned error: %v", err)
 	}
 }
@@ -123,8 +128,9 @@ func TestHandlePairingCode_UpdatesStatus(t *testing.T) {
 	tenantID := uuid.New()
 	seedWhatsapp(t, db, 3, tenantID)
 
+	el := &EventListener{sessions: sessions}
 	payload, _ := json.Marshal(map[string]string{"sessionId": "3", "status": "PAIRING", "pairingCode": "ABC-123"})
-	if err := handlePairingCode(context.Background(), sessions, payload, tenantID); err != nil {
+	if err := el.handlePairingCode(context.Background(), payload, tenantID); err != nil {
 		t.Fatalf("handlePairingCode() error: %v", err)
 	}
 
@@ -141,8 +147,9 @@ func TestHandlePairingCode_DefaultStatus(t *testing.T) {
 	seedWhatsapp(t, db, 4, tenantID)
 
 	// No status field — should default to "QRCODE"
+	el := &EventListener{sessions: sessions}
 	payload, _ := json.Marshal(map[string]string{"sessionId": "4", "pairingCode": "XYZ-789"})
-	if err := handlePairingCode(context.Background(), sessions, payload, tenantID); err != nil {
+	if err := el.handlePairingCode(context.Background(), payload, tenantID); err != nil {
 		t.Fatalf("handlePairingCode() error: %v", err)
 	}
 
@@ -156,7 +163,7 @@ func TestHandlePairingCode_DefaultStatus(t *testing.T) {
 // --- mock repos for offline handleMessageAck unit tests ---
 
 type ackMockMessageRepo struct {
-	msg    *domain.Message
+	msg     *domain.Message
 	findErr error
 	updated bool
 }
@@ -209,7 +216,8 @@ func (m *ackMockTicketRepo) CountOpenTicketsPerUser(_ context.Context, _ []int, 
 // --- handleMessageAck / Revoke / Reaction / ContactUpdate (invalid JSON, offline) ---
 
 func TestHandleMessageAck_InvalidJSON(t *testing.T) {
-	err := handleMessageAck(context.Background(), nil, nil, json.RawMessage(`{bad`), uuid.New())
+	el := &EventListener{}
+	err := el.handleMessageAck(context.Background(), json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}
@@ -222,8 +230,9 @@ func TestHandleMessageAck_Ack3NotFromMe_ResetsUnread(t *testing.T) {
 	mr := &ackMockMessageRepo{msg: msg}
 	tr := &ackMockTicketRepo{ticket: ticket}
 
+	el := &EventListener{messages: mr, tickets: tr}
 	payload, _ := json.Marshal(map[string]interface{}{"messageId": "m1", "ack": 3})
-	err := handleMessageAck(context.Background(), mr, tr, payload, tenantID)
+	err := el.handleMessageAck(context.Background(), payload, tenantID)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -243,8 +252,9 @@ func TestHandleMessageAck_Ack3FromMe_NoUnreadReset(t *testing.T) {
 	mr := &ackMockMessageRepo{msg: msg}
 	tr := &ackMockTicketRepo{ticket: ticket}
 
+	el := &EventListener{messages: mr, tickets: tr}
 	payload, _ := json.Marshal(map[string]interface{}{"messageId": "m2", "ack": 3})
-	err := handleMessageAck(context.Background(), mr, tr, payload, tenantID)
+	err := el.handleMessageAck(context.Background(), payload, tenantID)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -261,8 +271,9 @@ func TestHandleMessageAck_LowAck_NoUnreadReset(t *testing.T) {
 	mr := &ackMockMessageRepo{msg: msg}
 	tr := &ackMockTicketRepo{ticket: ticket}
 
+	el := &EventListener{messages: mr, tickets: tr}
 	payload, _ := json.Marshal(map[string]interface{}{"messageId": "m3", "ack": 2})
-	err := handleMessageAck(context.Background(), mr, tr, payload, tenantID)
+	err := el.handleMessageAck(context.Background(), payload, tenantID)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -273,7 +284,8 @@ func TestHandleMessageAck_LowAck_NoUnreadReset(t *testing.T) {
 }
 
 func TestHandleMessageRevoke_InvalidJSON(t *testing.T) {
-	err := handleMessageRevoke(context.Background(), nil, json.RawMessage(`{bad`), uuid.New())
+	el := &EventListener{}
+	err := el.handleMessageRevoke(context.Background(), json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}
@@ -295,10 +307,10 @@ func TestHandleContactUpdate_InvalidJSON(t *testing.T) {
 
 func TestJidToNumber(t *testing.T) {
 	cases := map[string]string{
-		"5511999999999@s.whatsapp.net":   "5511999999999",
+		"5511999999999@s.whatsapp.net":    "5511999999999",
 		"5511999999999:12@s.whatsapp.net": "5511999999999",
-		"5511999999999":                  "5511999999999",
-		"":                               "",
+		"5511999999999":                   "5511999999999",
+		"":                                "",
 	}
 	for in, want := range cases {
 		if got := jidToNumber(in); got != want {

@@ -21,10 +21,11 @@ type EventListener struct {
 	contacts       domain.ContactRepository
 	tickets        domain.TicketRepository
 	receiveMessage *usecases.ReceiveMessageUseCase
+	broadcast      *RedisBroadcast
 }
 
-func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase) *EventListener {
-	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm}
+func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase, broadcast *RedisBroadcast) *EventListener {
+	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: broadcast}
 }
 
 func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener) {
@@ -59,11 +60,11 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 		ctx := context.Background()
 		switch env.Type {
 		case "session.qrcode":
-			return handleQrCode(ctx, eventListener.sessions, env.Payload, tid)
+			return eventListener.handleQrCode(ctx, env.Payload, tid)
 		case "session.pairing_code":
-			return handlePairingCode(ctx, eventListener.sessions, env.Payload, tid)
+			return eventListener.handlePairingCode(ctx, env.Payload, tid)
 		case "session.status":
-			return handleSessionStatus(ctx, eventListener.sessions, env.Payload, tid)
+			return eventListener.handleSessionStatus(ctx, env.Payload, tid)
 		case "session.history_sync":
 			return eventListener.handleHistorySync(ctx, env.Payload, tid)
 		case "message.received":
@@ -73,9 +74,9 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 			}
 			return eventListener.processMessage(ctx, p.Message, p.SessionID, tid)
 		case "message.ack":
-			return handleMessageAck(ctx, eventListener.messages, eventListener.tickets, env.Payload, tid)
+			return eventListener.handleMessageAck(ctx, env.Payload, tid)
 		case "message.revoke":
-			return handleMessageRevoke(ctx, eventListener.messages, env.Payload, tid)
+			return eventListener.handleMessageRevoke(ctx, env.Payload, tid)
 		case "message.reaction":
 			return handleMessageReaction(env.Payload, tid)
 		case "contact.update":
@@ -124,13 +125,14 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 	}
 
 	room := strconv.Itoa(result.Ticket.ID)
-	EmitToRoom("/", room, "appMessage", map[string]interface{}{"action": "create", "message": result.Message})
-	EmitToNamespace("/", "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket})
+	el.broadcast.EmitToRoom("/", room, "appMessage", map[string]interface{}{"action": "create", "message": result.Message})
+	el.broadcast.EmitToNamespace("/", "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket})
 
 	return nil
 }
 
-func handleQrCode(ctx context.Context, sessions domain.ChannelSessionRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+func (el *EventListener) handleQrCode(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID) error {
+	sessions := el.sessions
 	var p QrCodePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err
@@ -145,11 +147,12 @@ func handleQrCode(ctx context.Context, sessions domain.ChannelSessionRepository,
 		return err
 	}
 
-	EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "qrcode": p.QrCode, "status": "QRCODE"}})
+	el.broadcast.EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "qrcode": p.QrCode, "status": "QRCODE"}})
 	return nil
 }
 
-func handlePairingCode(ctx context.Context, sessions domain.ChannelSessionRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+func (el *EventListener) handlePairingCode(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID) error {
+	sessions := el.sessions
 	var p PairingCodePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err
@@ -165,11 +168,12 @@ func handlePairingCode(ctx context.Context, sessions domain.ChannelSessionReposi
 		return err
 	}
 
-	EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": status, "pairingCode": p.PairingCode}})
+	el.broadcast.EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": status, "pairingCode": p.PairingCode}})
 	return nil
 }
 
-func handleSessionStatus(ctx context.Context, sessions domain.ChannelSessionRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+func (el *EventListener) handleSessionStatus(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID) error {
+	sessions := el.sessions
 	var p SessionStatusPayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err
@@ -196,7 +200,7 @@ func handleSessionStatus(ctx context.Context, sessions domain.ChannelSessionRepo
 		return err
 	}
 
-	EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": p.Status, "number": p.Number, "profilePicUrl": p.ProfilePicUrl, "firstConnection": updates["firstConnection"]}})
+	el.broadcast.EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": p.Status, "number": p.Number, "profilePicUrl": p.ProfilePicUrl, "firstConnection": updates["firstConnection"]}})
 	return nil
 }
 
@@ -268,14 +272,16 @@ func (el *EventListener) handleHistorySync(ctx context.Context, payload json.Raw
 			continue
 		}
 		inserted++
-		EmitToRoom("/", strconv.Itoa(ticket.ID), "appMessage", map[string]interface{}{"action": "create", "message": msg, "history": true})
+		el.broadcast.EmitToRoom("/", strconv.Itoa(ticket.ID), "appMessage", map[string]interface{}{"action": "create", "message": msg, "history": true})
 	}
 
 	log.Printf("[EventListener] History sync ticket %d: %d/%d messages backfilled", ticket.ID, inserted, len(p.Messages))
 	return nil
 }
 
-func handleMessageAck(ctx context.Context, messages domain.MessageRepository, tickets domain.TicketRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+func (el *EventListener) handleMessageAck(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID) error {
+	messages := el.messages
+	tickets := el.tickets
 	var p struct {
 		MessageID string `json:"messageId"`
 		Ack       int    `json:"ack"`
@@ -298,7 +304,7 @@ func handleMessageAck(ctx context.Context, messages domain.MessageRepository, ti
 			return err
 		}
 		msg.Ack = p.Ack
-		EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
+		el.broadcast.EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
 
 		// ack >= 3 (read by recipient) on an outgoing message means the contact read our messages.
 		// Zero unreadMessages on the ticket and notify the frontend.
@@ -307,14 +313,15 @@ func handleMessageAck(ctx context.Context, messages domain.MessageRepository, ti
 			if err == nil && ticket != nil && ticket.UnreadMessages > 0 {
 				_ = tickets.Update(ctx, ticket, map[string]interface{}{"unreadMessages": 0})
 				ticket.UnreadMessages = 0
-				EmitToRoom("/", "notification", "ticket", map[string]interface{}{"action": "update", "ticket": ticket})
+				el.broadcast.EmitToNamespace("/", "ticket", map[string]interface{}{"action": "update", "ticket": ticket})
 			}
 		}
 	}
 	return nil
 }
 
-func handleMessageRevoke(ctx context.Context, messages domain.MessageRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+func (el *EventListener) handleMessageRevoke(ctx context.Context, payload json.RawMessage, tenantID uuid.UUID) error {
+	messages := el.messages
 	var p MessageRevokePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err
@@ -330,7 +337,7 @@ func handleMessageRevoke(ctx context.Context, messages domain.MessageRepository,
 		return err
 	}
 	msg.IsDeleted = true
-	EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
+	el.broadcast.EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
 	return nil
 }
 
