@@ -156,7 +156,7 @@ func TestHandlePairingCode_DefaultStatus(t *testing.T) {
 // --- handleMessageAck / Revoke / Reaction / ContactUpdate (invalid JSON, offline) ---
 
 func TestHandleMessageAck_InvalidJSON(t *testing.T) {
-	err := handleMessageAck(context.Background(), nil, json.RawMessage(`{bad`), uuid.New())
+	err := handleMessageAck(context.Background(), nil, nil, json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}

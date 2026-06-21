@@ -73,7 +73,7 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 			}
 			return eventListener.processMessage(ctx, p.Message, p.SessionID, tid)
 		case "message.ack":
-			return handleMessageAck(ctx, eventListener.messages, env.Payload, tid)
+			return handleMessageAck(ctx, eventListener.messages, eventListener.tickets, env.Payload, tid)
 		case "message.revoke":
 			return handleMessageRevoke(ctx, eventListener.messages, env.Payload, tid)
 		case "message.reaction":
@@ -275,7 +275,7 @@ func (el *EventListener) handleHistorySync(ctx context.Context, payload json.Raw
 	return nil
 }
 
-func handleMessageAck(ctx context.Context, messages domain.MessageRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+func handleMessageAck(ctx context.Context, messages domain.MessageRepository, tickets domain.TicketRepository, payload json.RawMessage, tenantID uuid.UUID) error {
 	var p struct {
 		MessageID string `json:"messageId"`
 		Ack       int    `json:"ack"`
@@ -299,6 +299,17 @@ func handleMessageAck(ctx context.Context, messages domain.MessageRepository, pa
 		}
 		msg.Ack = p.Ack
 		EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
+
+		// ack >= 3 (read by recipient) on an outgoing message means the contact read our messages.
+		// Zero unreadMessages on the ticket and notify the frontend.
+		if p.Ack >= 3 && !msg.FromMe {
+			ticket, err := tickets.FindByID(ctx, msg.TicketID, tenantID)
+			if err == nil && ticket != nil && ticket.UnreadMessages > 0 {
+				_ = tickets.Update(ctx, ticket, map[string]interface{}{"unreadMessages": 0})
+				ticket.UnreadMessages = 0
+				EmitToRoom("/", "notification", "ticket", map[string]interface{}{"action": "update", "ticket": ticket})
+			}
+		}
 	}
 	return nil
 }
