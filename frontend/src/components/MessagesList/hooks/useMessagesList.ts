@@ -1,46 +1,12 @@
-import { useReducer, useRef, useState, useEffect, useMemo } from "react";
-import openSocket from "../../../services/socket-io";
+import React, { useReducer, useRef, useState, useEffect, useMemo } from "react";
 import api from "../../../services/api";
 import toastError from "../../../errors/toastError";
-import { Message, MessagesAction } from "../types";
 import { toast } from "react-toastify";
+import { Message } from "../types";
 import { parseData } from "../utils/messageHelpers";
-
-const sortByDate = (arr: Message[]) =>
-  [...arr].sort(
-    (a, b) =>
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
-
-const reducer = (state: Message[], action: MessagesAction): Message[] => {
-  if (action.type === "LOAD_MESSAGES") {
-    const messages = action.payload || [];
-    const merged = [...state];
-    messages.forEach((message) => {
-      const idx = merged.findIndex((m) => m.id === message.id);
-      if (idx !== -1) merged[idx] = message;
-      else merged.push(message);
-    });
-    return sortByDate(merged);
-  }
-  if (action.type === "ADD_MESSAGE") {
-    const newMessage = action.payload;
-    const idx = state.findIndex((m) => m.id === newMessage.id);
-    const updated = [...state];
-    if (idx !== -1) updated[idx] = newMessage;
-    else updated.push(newMessage);
-    return sortByDate(updated);
-  }
-  if (action.type === "UPDATE_MESSAGE") {
-    const idx = state.findIndex((m) => m.id === action.payload.id);
-    if (idx === -1) return state;
-    const updated = [...state];
-    updated[idx] = action.payload;
-    return sortByDate(updated);
-  }
-  if (action.type === "RESET") return [];
-  return state;
-};
+import { messagesReducer } from "./messagesReducer";
+import { useMessagesSocket } from "./useMessagesSocket";
+import { useMessagesScroll } from "./useMessagesScroll";
 
 export interface UseMessagesListReturn {
   messagesList: Message[];
@@ -74,7 +40,7 @@ export function useMessagesList(
   ticketId: string | number,
   isGroup?: boolean
 ): UseMessagesListReturn {
-  const [messagesList, dispatch] = useReducer(reducer, []);
+  const [messagesList, dispatch] = useReducer(messagesReducer, []);
   const [pageNumber, setPageNumber] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -103,19 +69,6 @@ export function useMessagesList(
   }, [ticketId]);
 
   useEffect(() => {
-    if (shouldScrollRef.current) {
-      const behavior = shouldScrollRef.current === "smooth" ? "smooth" : "auto";
-      if (pageNumber <= 1) {
-        setTimeout(() => {
-          lastMessageRef.current?.scrollIntoView({ behavior });
-        }, 100);
-      }
-      shouldScrollRef.current = null;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messagesList]);
-
-  useEffect(() => {
     setLoading(true);
     const timer = setTimeout(async () => {
       try {
@@ -138,26 +91,7 @@ export function useMessagesList(
     return () => clearTimeout(timer);
   }, [pageNumber, ticketId]);
 
-  useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-    socket.on("connect", () => socket.emit("joinChatBox", ticketId));
-    socket.on(
-      "appMessage",
-      (data: { action: string; message: Message }) => {
-        if (data.action === "create") {
-          dispatch({ type: "ADD_MESSAGE", payload: data.message });
-          shouldScrollRef.current = "smooth";
-        }
-        if (data.action === "update") {
-          dispatch({ type: "UPDATE_MESSAGE", payload: data.message });
-        }
-      }
-    );
-    return () => {
-      socket.disconnect();
-    };
-  }, [ticketId]);
+  useMessagesSocket(ticketId, dispatch, shouldScrollRef);
 
   useEffect(() => {
     if (!isGroup) return;
@@ -174,15 +108,16 @@ export function useMessagesList(
 
   const loadMore = () => setPageNumber((prev) => prev + 1);
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (!hasMore) return;
-    const { scrollTop } = e.currentTarget;
-    if (scrollTop === 0 && messagesListRef.current) {
-      messagesListRef.current.scrollTop = 1;
-    }
-    if (loading) return;
-    if (scrollTop < 50) loadMore();
-  };
+  const { handleScroll } = useMessagesScroll(
+    messagesList,
+    pageNumber,
+    lastMessageRef,
+    messagesListRef,
+    shouldScrollRef,
+    hasMore,
+    loading,
+    loadMore
+  );
 
   const handleOpenMessageOptionsMenu = (
     e: React.MouseEvent<HTMLButtonElement>,
