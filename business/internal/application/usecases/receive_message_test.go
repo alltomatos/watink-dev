@@ -300,6 +300,121 @@ func TestReceiveMessage_QuotedMsg_NotFound_DoesNotSet(t *testing.T) {
 	}
 }
 
+func TestReceiveMessage_ImageMimetype_SetsLastMessageFoto(t *testing.T) {
+	tenantID := uuid.New()
+	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID}
+	cr := &mockRcvContactRepo{contact: defaultContact()}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{openTicket: existingTicket}
+	eb := &mockEventBus{}
+
+	input := defaultInput(tenantID)
+	input.Body = ""
+	input.Mimetype = "image/jpeg"
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	result, err := uc.Execute(context.Background(), input)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Ticket.LastMessage != "📷 Foto" {
+		t.Errorf("expected lastMessage '📷 Foto', got %q", result.Ticket.LastMessage)
+	}
+}
+
+func TestReceiveMessage_AudioMimetype_SetsLastMessageAudio(t *testing.T) {
+	tenantID := uuid.New()
+	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID}
+	cr := &mockRcvContactRepo{contact: defaultContact()}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{openTicket: existingTicket}
+	eb := &mockEventBus{}
+
+	input := defaultInput(tenantID)
+	input.Body = ""
+	input.Mimetype = "audio/ogg"
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	result, err := uc.Execute(context.Background(), input)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Ticket.LastMessage != "🎵 Áudio" {
+		t.Errorf("expected lastMessage '🎵 Áudio', got %q", result.Ticket.LastMessage)
+	}
+}
+
+func TestReceiveMessage_VideoMimetype_SetsLastMessageVideo(t *testing.T) {
+	tenantID := uuid.New()
+	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID}
+	cr := &mockRcvContactRepo{contact: defaultContact()}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{openTicket: existingTicket}
+	eb := &mockEventBus{}
+
+	input := defaultInput(tenantID)
+	input.Body = ""
+	input.Mimetype = "video/mp4"
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	result, err := uc.Execute(context.Background(), input)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Ticket.LastMessage != "📹 Vídeo" {
+		t.Errorf("expected lastMessage '📹 Vídeo', got %q", result.Ticket.LastMessage)
+	}
+}
+
+func TestReceiveMessage_GenericMimetype_SetsLastMessageArquivo(t *testing.T) {
+	tenantID := uuid.New()
+	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID}
+	cr := &mockRcvContactRepo{contact: defaultContact()}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{openTicket: existingTicket}
+	eb := &mockEventBus{}
+
+	input := defaultInput(tenantID)
+	input.Body = ""
+	input.Mimetype = "application/pdf"
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	result, err := uc.Execute(context.Background(), input)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Ticket.LastMessage != "📎 Arquivo" {
+		t.Errorf("expected lastMessage '📎 Arquivo', got %q", result.Ticket.LastMessage)
+	}
+}
+
+func TestReceiveMessage_WithBody_BodyTakesPrecedence(t *testing.T) {
+	tenantID := uuid.New()
+	existingTicket := &domain.Ticket{ID: 5, ContactID: 1, TenantID: tenantID}
+	cr := &mockRcvContactRepo{contact: defaultContact()}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{openTicket: existingTicket}
+	eb := &mockEventBus{}
+
+	input := defaultInput(tenantID)
+	input.Body = "Texto real"
+	input.Mimetype = "image/jpeg"
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	result, err := uc.Execute(context.Background(), input)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Ticket.LastMessage != "Texto real" {
+		t.Errorf("expected body to take precedence, got %q", result.Ticket.LastMessage)
+	}
+}
+
 func TestJidNumber(t *testing.T) {
 	cases := []struct {
 		jid  string
