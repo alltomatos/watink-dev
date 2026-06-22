@@ -2,8 +2,8 @@
 
 > Arquivo de estado vivo do Orchestrator.
 > **Última atualização**: 2026-06-22
-> **Branch**: `develop` (main sincronizado via PRs até #192)
-> **Epic atual**: Fase 3 — Batch GAP-1/GAP-2/GAP-3 (fragmentação event_listener + testes pkg/utils + limpeza órfãos)
+> **Branch**: `develop` (sincronizado via PR #203)
+> **Epic atual**: Fase 4 — Avatar de grupo + sync automático de foto
 
 ---
 
@@ -42,6 +42,7 @@
 | Epic 22 | Testes offline DLQ/tracing (12 testes) + split send.go/send_types.go engine-go | ✅ Mergeado (PR #88) |
 | Epic 23 | DI pura WhatsAppService engine-go — SessionLoader interface + 4 testes offline | ✅ Mergeado (PR #89) |
 | PRs #90–#192 | Batch: GAP-AUTH-COVERAGE (pkg/auth 0%→93.5%), GAP-MEDIA-SEND, GAP-MEDIA-1/2, GAP-ANY, GAP-WS (WebSocket hardening + multitenancy), GAP-VAL-1 (ParseIntParam), DI remoção globals socket/redis, testes Audio/TicketsList/mediastore, feat audio player, API docs sync | ✅ Mergeado |
+| PR #203 | Fase 3 GAP-1/2/3 + fix avatar grupo (senderPicUrl/events.Picture/contact sync) | ✅ Mergeado |
 
 ---
 
@@ -98,5 +99,5 @@
 | B1 | Deletar pr_media1.md (arquivo órfão) | T1 | ✅ Aplicado |
 | B2 | Fragmentar event_listener.go 499L → 4 arquivos (session/message/contact) | T2 | ✅ Aplicado |
 | B3 | Testes pkg/utils/errors.go — 10 casos, build green | T2 | ✅ Aplicado |
-| B4 | Testes internal/services mockáveis — 16 casos offline (revoke/reaction/contact/jid) | T2 | ✅ Aplicado |
+| B4 | Testes internal/services mockáveis — 16 casos offline (revoke/reaction/contact/jid) | T2 | ✅ Mergeado (PR #203) |
 | B5 | Atualizar ESTADO_ORQUESTRATOR.md (PRs #90–#192) | T1 | ✅ Aplicado |
