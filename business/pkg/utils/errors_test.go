@@ -86,7 +86,7 @@ func TestParseIntParam_ErrorMessageContainsParamName(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
 		t.Fatalf("decode body: %v", err)
 	}
-	msg, _ := body["error"]
+	msg := body["error"]
 	if msg != "invalid ticketId" {
 		t.Fatalf("expected error message 'invalid ticketId', got %q", msg)
 	}
