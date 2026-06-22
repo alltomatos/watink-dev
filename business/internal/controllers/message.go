@@ -121,6 +121,18 @@ func (mc *MessageController) SendMessage(c *gin.Context) {
 			utils.RespondWithBindError(c, err)
 			return
 		}
+		if _, err := utils.ValidateStringField(input.Body, "body", 65535); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if _, err := utils.ValidateStringField(input.MediaType, "mediaType", 50); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if _, err := utils.ValidateStringField(input.MediaUrl, "mediaUrl", 2048); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		body = input.Body
 		mediaType = input.MediaType
 		mediaURL = input.MediaUrl

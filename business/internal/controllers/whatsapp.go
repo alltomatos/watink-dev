@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
@@ -60,10 +61,7 @@ func (wc *WhatsappController) ShowWhatsapp(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, ok2 := utils.ParseIntParam(c, "id")
-	if !ok2 {
-		return
-	}
+	id, _ := strconv.Atoi(c.Param("id"))
 
 	// Usa busca enriquecida com relations
 	whatsappModel, err := wc.sessionRepo.FindByIDDetail(c.Request.Context(), id, tenantID)
@@ -130,6 +128,27 @@ func (wc *WhatsappController) CreateWhatsapp(c *gin.Context) {
 		return
 	}
 
+	if _, err := utils.ValidateStringField(input.Name, "name", 255); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(input.Number, "number", 50); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(input.ProfilePicUrl, "profilePicUrl", 2048); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(input.GreetingMessage, "greetingMessage", 2000); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(input.FarewellMessage, "farewellMessage", 2000); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	input.TenantID = tenantID
 	if input.Status == "" {
 		input.Status = "DISCONNECTED"
@@ -164,10 +183,7 @@ func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, ok2 := utils.ParseIntParam(c, "id")
-	if !ok2 {
-		return
-	}
+	id, _ := strconv.Atoi(c.Param("id"))
 
 	whatsapp, err := wc.sessionRepo.FindByID(c.Request.Context(), id, tenantID)
 	if err != nil || whatsapp == nil {
@@ -178,6 +194,27 @@ func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
 	var input domain.ChannelSession
 	if err := c.ShouldBindJSON(&input); err != nil {
 		utils.RespondWithBindError(c, err)
+		return
+	}
+
+	if _, err := utils.ValidateStringField(input.Name, "name", 255); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(input.Number, "number", 50); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(input.ProfilePicUrl, "profilePicUrl", 2048); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(input.GreetingMessage, "greetingMessage", 2000); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(input.FarewellMessage, "farewellMessage", 2000); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -233,10 +270,7 @@ func (wc *WhatsappController) DeleteWhatsapp(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, ok2 := utils.ParseIntParam(c, "id")
-	if !ok2 {
-		return
-	}
+	id, _ := strconv.Atoi(c.Param("id"))
 
 	whatsapp, err := wc.sessionRepo.FindByID(c.Request.Context(), id, tenantID)
 	if err != nil || whatsapp == nil {
@@ -277,7 +311,7 @@ func (wc *WhatsappController) DeleteWhatsapp(c *gin.Context) {
 		return
 	}
 
-	wc.broadcast.EmitToTenantRoom(tenantID.String(), "whatsapp", gin.H{
+	wc.broadcast.EmitToNamespace("/", "whatsapp", gin.H{
 		"action":      "delete",
 		"whatsappId": whatsapp.ID,
 	})
