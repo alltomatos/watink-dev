@@ -10,21 +10,28 @@ export function useMessagesSocket(
   useEffect(() => {
     const socket = openSocket();
     if (!socket) return;
-    socket.on("connect", () => socket.emit("joinChatBox", ticketId));
-    socket.on(
-      "appMessage",
-      (data: { action: string; message: Message }) => {
-        if (data.action === "create") {
-          dispatch({ type: "ADD_MESSAGE", payload: data.message });
-          shouldScrollRef.current = "smooth";
-        }
-        if (data.action === "update") {
-          dispatch({ type: "UPDATE_MESSAGE", payload: data.message });
-        }
+
+    const onConnect = () => socket.emit("joinChatBox", ticketId);
+    const onAppMessage = (data: { action: string; message: Message }) => {
+      if (data.action === "create") {
+        dispatch({ type: "ADD_MESSAGE", payload: data.message });
+        shouldScrollRef.current = "smooth";
       }
-    );
+      if (data.action === "update") {
+        dispatch({ type: "UPDATE_MESSAGE", payload: data.message });
+      }
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("appMessage", onAppMessage);
+
+    if (socket.connected) {
+      socket.emit("joinChatBox", ticketId);
+    }
+
     return () => {
-      socket.disconnect();
+      socket.off("connect", onConnect);
+      socket.off("appMessage", onAppMessage);
     };
   }, [ticketId, dispatch, shouldScrollRef]);
 }
