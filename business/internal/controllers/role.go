@@ -98,9 +98,20 @@ func (rc *RoleController) Create(c *gin.Context) {
 		return
 	}
 
+	roleName, err := utils.ValidateStringField(req.Name, "name", 100)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	roleDesc, err := utils.ValidateStringField(req.Description, "description", 500)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	role := models.Role{
-		Name:        req.Name,
-		Description: req.Description,
+		Name:        roleName,
+		Description: roleDesc,
 		TenantID:    tenantID,
 	}
 
