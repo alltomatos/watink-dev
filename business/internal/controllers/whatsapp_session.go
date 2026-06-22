@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
@@ -38,7 +37,10 @@ func (sc *SessionController) StartSession(c *gin.Context) {
 	if !ok {
 		return
 	}
-	whatsappID, _ := strconv.Atoi(c.Param("whatsappId"))
+	whatsappID, ok2 := utils.ParseIntParam(c, "whatsappId")
+	if !ok2 {
+		return
+	}
 
 	session, err := sc.sessionRepo.FindByID(c.Request.Context(), whatsappID, tenantID)
 	if err != nil || session == nil {
@@ -72,7 +74,10 @@ func (sc *SessionController) StopSession(c *gin.Context) {
 	if !ok {
 		return
 	}
-	whatsappID, _ := strconv.Atoi(c.Param("whatsappId"))
+	whatsappID, ok2 := utils.ParseIntParam(c, "whatsappId")
+	if !ok2 {
+		return
+	}
 
 	session, err := sc.sessionRepo.FindByID(c.Request.Context(), whatsappID, tenantID)
 	if err != nil || session == nil {

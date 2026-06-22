@@ -1,11 +1,24 @@
 package utils
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
+
+// ParseIntParam extracts a named path parameter as int, writes 400 and returns false on failure.
+func ParseIntParam(c *gin.Context, name string) (int, bool) {
+	raw := c.Param(name)
+	v, err := strconv.Atoi(raw)
+	if err != nil || v <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid %s", name)})
+		return 0, false
+	}
+	return v, true
+}
 
 func RespondWithError(c *gin.Context, code int, err error, message string) {
 	slog.Error("API error",
