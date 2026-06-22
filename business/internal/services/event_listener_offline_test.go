@@ -104,32 +104,6 @@ func (m *mockMessageRepo) Update(_ context.Context, _ *domain.Message, fields ma
 	return nil
 }
 
-type mockTicketRepo struct {
-	ticket      *domain.Ticket
-	updateCalls int
-}
-
-func (m *mockTicketRepo) FindByID(_ context.Context, _ int, _ uuid.UUID) (*domain.Ticket, error) {
-	return m.ticket, nil
-}
-func (m *mockTicketRepo) FindOpenByContact(_ context.Context, _ uuid.UUID, _ int, _ int) (*domain.Ticket, error) {
-	return nil, nil
-}
-func (m *mockTicketRepo) FindOrCreatePending(_ context.Context, t *domain.Ticket) (*domain.Ticket, error) {
-	return t, nil
-}
-func (m *mockTicketRepo) Save(_ context.Context, _ *domain.Ticket) error { return nil }
-func (m *mockTicketRepo) Update(_ context.Context, _ *domain.Ticket, _ map[string]interface{}) error {
-	m.updateCalls++
-	return nil
-}
-func (m *mockTicketRepo) FindLastAssignedInQueue(_ context.Context, _ int, _ uuid.UUID) (int, error) {
-	return 0, nil
-}
-func (m *mockTicketRepo) CountOpenTicketsPerUser(_ context.Context, _ []int, _ uuid.UUID) (map[int]int64, error) {
-	return nil, nil
-}
-
 // --- handleMessageRevoke ---
 
 func TestHandleMessageRevoke_MarksDeleted(t *testing.T) {
