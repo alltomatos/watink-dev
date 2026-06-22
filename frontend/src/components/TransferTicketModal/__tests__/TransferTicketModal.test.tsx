@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import TransferTicketModal from "../index";
 
@@ -135,6 +135,7 @@ describe("TransferTicketModal", () => {
     const input = screen.getByPlaceholderText("Buscar usuário...");
     fireEvent.change(input, { target: { value: "ab" } });
     await act(() => vi.advanceTimersByTimeAsync(600));
+    vi.useRealTimers();
     expect(mockApiGet).not.toHaveBeenCalled();
   });
 
@@ -144,6 +145,7 @@ describe("TransferTicketModal", () => {
     const input = screen.getByPlaceholderText("Buscar usuário...");
     fireEvent.change(input, { target: { value: "tes" } });
     await act(() => vi.advanceTimersByTimeAsync(600));
+    vi.useRealTimers();
     expect(mockApiGet).toHaveBeenCalledWith("/users/", { params: { searchParam: "tes" } });
   });
 
@@ -160,6 +162,7 @@ describe("TransferTicketModal", () => {
     const input = screen.getByPlaceholderText("Buscar usuário...");
     fireEvent.change(input, { target: { value: "mar" } });
     await act(() => vi.advanceTimersByTimeAsync(600));
+    vi.useRealTimers();
     await waitFor(() => {
       expect(screen.getByText("Maria Souza")).toBeInTheDocument();
       expect(screen.getByText("João Costa")).toBeInTheDocument();
@@ -176,6 +179,7 @@ describe("TransferTicketModal", () => {
     const input = screen.getByPlaceholderText("Buscar usuário...");
     fireEvent.change(input, { target: { value: "mar" } });
     await act(() => vi.advanceTimersByTimeAsync(600));
+    vi.useRealTimers();
     await waitFor(() => screen.getByText("Maria Souza"));
     fireEvent.click(screen.getByText("Maria Souza"));
     expect((input as HTMLInputElement).value).toBe("Maria Souza");
@@ -198,6 +202,7 @@ describe("TransferTicketModal", () => {
     const input = screen.getByPlaceholderText("Buscar usuário...");
     fireEvent.change(input, { target: { value: "ate" } });
     await act(() => vi.advanceTimersByTimeAsync(600));
+    vi.useRealTimers();
     await waitFor(() => screen.getByText("Atendente X"));
     fireEvent.click(screen.getByText("Atendente X"));
     // A fila específica do usuário deve estar disponível
@@ -214,6 +219,7 @@ describe("TransferTicketModal", () => {
     const input = screen.getByPlaceholderText("Buscar usuário...");
     fireEvent.change(input, { target: { value: "mar" } });
     await act(() => vi.advanceTimersByTimeAsync(600));
+    vi.useRealTimers();
     await waitFor(() => screen.getByText("Maria Souza"));
     fireEvent.click(screen.getByText("Maria Souza"));
     // Alterar o campo novamente deve limpar selectedUser
@@ -232,6 +238,7 @@ describe("TransferTicketModal", () => {
     const input = screen.getByPlaceholderText("Buscar usuário...");
     fireEvent.change(input, { target: { value: "car" } });
     await act(() => vi.advanceTimersByTimeAsync(600));
+    vi.useRealTimers();
     await waitFor(() => screen.getByText("Carlos Lima"));
     fireEvent.click(screen.getByText("Carlos Lima"));
     const submitBtn = screen.getByRole("button", { name: "Transferir" });
@@ -251,6 +258,7 @@ describe("TransferTicketModal", () => {
     const input = screen.getByPlaceholderText("Buscar usuário...");
     fireEvent.change(input, { target: { value: "car" } });
     await act(() => vi.advanceTimersByTimeAsync(600));
+    vi.useRealTimers();
     await waitFor(() => screen.getByText("Carlos Lima"));
     fireEvent.click(screen.getByText("Carlos Lima"));
     await act(async () => {
@@ -272,6 +280,7 @@ describe("TransferTicketModal", () => {
     const input = screen.getByPlaceholderText("Buscar usuário...");
     fireEvent.change(input, { target: { value: "car" } });
     await act(() => vi.advanceTimersByTimeAsync(600));
+    vi.useRealTimers();
     await waitFor(() => screen.getByText("Carlos Lima"));
     fireEvent.click(screen.getByText("Carlos Lima"));
     await act(async () => {
@@ -313,6 +322,7 @@ describe("TransferTicketModal", () => {
     const input = screen.getByPlaceholderText("Buscar usuário...");
     fireEvent.change(input, { target: { value: "car" } });
     await act(() => vi.advanceTimersByTimeAsync(600));
+    vi.useRealTimers();
     await waitFor(() => screen.getByText("Carlos Lima"));
     fireEvent.click(screen.getByText("Carlos Lima"));
     fireEvent.click(screen.getByRole("button", { name: "Transferir" }));

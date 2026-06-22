@@ -71,7 +71,7 @@ func IsAuth(db *gorm.DB) gin.HandlerFunc {
 		c.Set("tenantId", tenantID)
 
 		tx := db.Session(&gorm.Session{})
-		tx.Exec("SET LOCAL app.current_tenant = ?", tenantID)
+		tx.Exec(fmt.Sprintf("SET LOCAL app.current_tenant = '%s'", tenantID))
 		c.Set("db", tx)
 
 		c.Next()
