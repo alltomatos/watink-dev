@@ -109,8 +109,14 @@ func (gc *GroupController) Create(c *gin.Context) {
 		return
 	}
 
+	groupName, err := utils.ValidateStringField(req.Name, "name", 100)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
 	group := models.Group{
-		Name:     req.Name,
+		Name:     groupName,
 		TenantID: tenantID,
 	}
 
@@ -157,7 +163,11 @@ func (gc *GroupController) Update(c *gin.Context) {
 		}
 
 		if req.Name != "" {
-			group.Name = req.Name
+			updName, err := utils.ValidateStringField(req.Name, "name", 100)
+			if err != nil {
+				return err
+			}
+			group.Name = updName
 		}
 		if err := tx.Where("\"tenantId\" = ?", tenantID).Save(&group).Error; err != nil {
 			return err
