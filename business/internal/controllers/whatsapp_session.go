@@ -90,7 +90,7 @@ func (sc *SessionController) StopSession(c *gin.Context) {
 		return
 	}
 
-	sc.broadcast.EmitToNamespace("/", "whatsappSession", map[string]interface{}{
+	sc.broadcast.EmitToTenantRoom(tenantID.String(), "whatsappSession", map[string]interface{}{
 		"action":  "update",
 		"session": session,
 	})

@@ -269,7 +269,7 @@ func (wc *WhatsappController) DeleteWhatsapp(c *gin.Context) {
 		return
 	}
 
-	wc.broadcast.EmitToNamespace("/", "whatsapp", gin.H{
+	wc.broadcast.EmitToTenantRoom(tenantID.String(), "whatsapp", gin.H{
 		"action":      "delete",
 		"whatsappId": whatsapp.ID,
 	})

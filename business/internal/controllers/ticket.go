@@ -273,7 +273,7 @@ func (tc *TicketController) UpdateTicket(c *gin.Context) {
 		return
 	}
 
-	tc.broadcast.EmitToNamespace("/", "ticket", gin.H{"action": "update", "ticket": updatedTicket})
+	tc.broadcast.EmitToTenantRoom(tenantID.String(), "ticket", gin.H{"action": "update", "ticket": updatedTicket})
 	c.JSON(http.StatusOK, updatedTicket)
 }
 
