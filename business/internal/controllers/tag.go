@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
@@ -230,7 +229,10 @@ func (tc *TagController) SyncEntityTags(c *gin.Context) {
 		return
 	}
 	entityType := c.Param("entityType")
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok2 := utils.ParseIntParam(c, "id")
+	if !ok2 {
+		return
+	}
 
 	var payload struct {
 		TagIDs []int `json:"tagIds"`

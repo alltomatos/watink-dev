@@ -3,7 +3,6 @@ package controllers
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
@@ -62,7 +61,10 @@ func (cc *ContactController) ShowContact(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, _ := strconv.Atoi(c.Param("contactId"))
+	id, ok2 := utils.ParseIntParam(c, "contactId")
+	if !ok2 {
+		return
+	}
 
 	contact, err := cc.contactRepo.FindByID(c.Request.Context(), id, tenantID)
 	if err != nil {
@@ -137,7 +139,10 @@ func (cc *ContactController) UpdateContact(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, _ := strconv.Atoi(c.Param("contactId"))
+	id, ok2 := utils.ParseIntParam(c, "contactId")
+	if !ok2 {
+		return
+	}
 
 	var input struct {
 		Name          string `json:"name"`
@@ -245,7 +250,10 @@ func (cc *ContactController) DeleteContact(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, _ := strconv.Atoi(c.Param("contactId"))
+	id, ok2 := utils.ParseIntParam(c, "contactId")
+	if !ok2 {
+		return
+	}
 
 	if err := cc.contactRepo.Delete(c.Request.Context(), id, tenantID); err != nil {
 		utils.RespondWithInternalError(c, err, "DeleteContact")

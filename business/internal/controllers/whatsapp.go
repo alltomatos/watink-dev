@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
@@ -61,7 +60,10 @@ func (wc *WhatsappController) ShowWhatsapp(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok2 := utils.ParseIntParam(c, "id")
+	if !ok2 {
+		return
+	}
 
 	// Usa busca enriquecida com relations
 	whatsappModel, err := wc.sessionRepo.FindByIDDetail(c.Request.Context(), id, tenantID)
@@ -162,7 +164,10 @@ func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok2 := utils.ParseIntParam(c, "id")
+	if !ok2 {
+		return
+	}
 
 	whatsapp, err := wc.sessionRepo.FindByID(c.Request.Context(), id, tenantID)
 	if err != nil || whatsapp == nil {
@@ -228,7 +233,10 @@ func (wc *WhatsappController) DeleteWhatsapp(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, ok2 := utils.ParseIntParam(c, "id")
+	if !ok2 {
+		return
+	}
 
 	whatsapp, err := wc.sessionRepo.FindByID(c.Request.Context(), id, tenantID)
 	if err != nil || whatsapp == nil {
