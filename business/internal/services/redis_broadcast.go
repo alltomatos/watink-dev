@@ -90,6 +90,12 @@ func (rb *RedisBroadcast) EmitToNamespace(nsp string, event string, payload inte
 	})
 }
 
+// EmitToTenantRoom broadcasts to the tenant-scoped room "tenant:{tenantID}",
+// ensuring global events (whatsappSession, ticket) are isolated per tenant.
+func (rb *RedisBroadcast) EmitToTenantRoom(tenantID string, event string, payload interface{}) {
+	rb.EmitToRoom("/", "tenant:"+tenantID, event, payload)
+}
+
 // EmitToRoom broadcasts events to a room globally via Redis.
 func (rb *RedisBroadcast) EmitToRoom(nsp string, room string, event string, payload interface{}) {
 	if rb == nil {

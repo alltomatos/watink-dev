@@ -14,6 +14,17 @@ function parseToken(rawToken: string): string {
   }
 }
 
+function getTenantId(): string {
+  const raw = localStorage.getItem("user");
+  if (!raw) return "";
+  try {
+    const user = JSON.parse(raw);
+    return typeof user?.tenantId === "string" ? user.tenantId : "";
+  } catch {
+    return "";
+  }
+}
+
 function connectToSocket(): ReturnType<typeof openSocket> | undefined {
   const rawToken = localStorage.getItem("token");
   if (!rawToken) return undefined;
@@ -33,6 +44,15 @@ function connectToSocket(): ReturnType<typeof openSocket> | undefined {
       reconnectionDelayMax: 10000,
       randomizationFactor: 0.5,
       timeout: 20000,
+    });
+
+    // On every (re)connect: join tenant room for isolated global broadcasts.
+    socket.on("connect", () => {
+      const tenantId = getTenantId();
+      if (tenantId) {
+        socket?.emit("joinTenant", tenantId);
+        socket?.emit("joinNotification", "");
+      }
     });
   }
 
