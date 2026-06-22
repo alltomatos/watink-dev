@@ -120,9 +120,9 @@ export function useNotifications(): UseNotificationsReturn {
     const socket = openSocket();
     if (!socket) return;
 
-    socket.on("connect", () => socket.emit("joinNotification"));
+    const onConnect = () => socket.emit("joinNotification");
 
-    socket.on("ticket", (data: { action: string; ticketId: number }) => {
+    const onTicket = (data: { action: string; ticketId: number }) => {
       if (data.action === "updateUnread" || data.action === "delete") {
         setNotifications((prevState) => {
           const ticketIndex = prevState.findIndex((t) => t.id === data.ticketId);
@@ -145,11 +145,9 @@ export function useNotifications(): UseNotificationsReturn {
           return prevState;
         });
       }
-    });
+    };
 
-    socket.on(
-      "appMessage",
-      (data: {
+    const onAppMessage = (data: {
         action: string;
         message: Message;
         ticket: Ticket;
@@ -184,11 +182,16 @@ export function useNotifications(): UseNotificationsReturn {
 
           handleNotifications(data);
         }
-      }
-    );
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("ticket", onTicket);
+    socket.on("appMessage", onAppMessage);
 
     return () => {
-      socket.disconnect();
+      socket.off("connect", onConnect);
+      socket.off("ticket", onTicket);
+      socket.off("appMessage", onAppMessage);
     };
     // handleNotifications é definida acima e recriada a cada render; user é o gatilho real
     // eslint-disable-next-line react-hooks/exhaustive-deps

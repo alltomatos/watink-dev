@@ -127,8 +127,8 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 	room := strconv.Itoa(result.Ticket.ID)
 	msgPayload := map[string]interface{}{"action": "create", "message": result.Message, "ticket": result.Ticket, "contact": result.Contact}
 	el.broadcast.EmitToRoom("/", room, "appMessage", msgPayload)
-	el.broadcast.EmitToRoom("/", "notification", "appMessage", msgPayload)
-	el.broadcast.EmitToNamespace("/", "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket})
+	el.broadcast.EmitToTenantRoom(tenantID.String(), "appMessage", msgPayload)
+	el.broadcast.EmitToTenantRoom(tenantID.String(), "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket})
 
 	return nil
 }
@@ -149,7 +149,7 @@ func (el *EventListener) handleQrCode(ctx context.Context, payload json.RawMessa
 		return err
 	}
 
-	el.broadcast.EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "qrcode": p.QrCode, "status": "QRCODE"}})
+	el.broadcast.EmitToTenantRoom(tenantID.String(), "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "qrcode": p.QrCode, "status": "QRCODE"}})
 	return nil
 }
 
@@ -170,7 +170,7 @@ func (el *EventListener) handlePairingCode(ctx context.Context, payload json.Raw
 		return err
 	}
 
-	el.broadcast.EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": status, "pairingCode": p.PairingCode}})
+	el.broadcast.EmitToTenantRoom(tenantID.String(), "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": status, "pairingCode": p.PairingCode}})
 	return nil
 }
 
@@ -202,7 +202,7 @@ func (el *EventListener) handleSessionStatus(ctx context.Context, payload json.R
 		return err
 	}
 
-	el.broadcast.EmitToNamespace("/", "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": p.Status, "number": p.Number, "profilePicUrl": p.ProfilePicUrl, "firstConnection": updates["firstConnection"]}})
+	el.broadcast.EmitToTenantRoom(tenantID.String(), "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": p.Status, "number": p.Number, "profilePicUrl": p.ProfilePicUrl, "firstConnection": updates["firstConnection"]}})
 	return nil
 }
 
@@ -315,7 +315,7 @@ func (el *EventListener) handleMessageAck(ctx context.Context, payload json.RawM
 			if err == nil && ticket != nil && ticket.UnreadMessages > 0 {
 				_ = tickets.Update(ctx, ticket, map[string]interface{}{"unreadMessages": 0})
 				ticket.UnreadMessages = 0
-				el.broadcast.EmitToNamespace("/", "ticket", map[string]interface{}{"action": "update", "ticket": ticket})
+				el.broadcast.EmitToTenantRoom(tenantID.String(), "ticket", map[string]interface{}{"action": "update", "ticket": ticket})
 			}
 		}
 	}
