@@ -40,6 +40,9 @@ func (fc *FlowController) List(c *gin.Context) {
 	c.JSON(http.StatusOK, flows)
 }
 
+// maxFlowJSONSize caps the size of nodes/edges JSON blobs to 1 MiB.
+const maxFlowJSONSize = 1 << 20
+
 type flowInput struct {
 	Name   string         `json:"name" binding:"required"`
 	Nodes  datatypes.JSON `json:"nodes"`
@@ -67,8 +70,22 @@ func (fc *FlowController) Create(c *gin.Context) {
 		return
 	}
 
+	flowName, err := utils.ValidateStringField(req.Name, "name", 255)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if len(req.Nodes) > maxFlowJSONSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "field 'nodes' exceeds maximum allowed size of 1 MiB"})
+		return
+	}
+	if len(req.Edges) > maxFlowJSONSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "field 'edges' exceeds maximum allowed size of 1 MiB"})
+		return
+	}
+
 	flow := models.Flow{
-		Name:     req.Name,
+		Name:     flowName,
 		Nodes:    req.Nodes,
 		Edges:    req.Edges,
 		Active:   req.Active,
@@ -134,7 +151,21 @@ func (fc *FlowController) Update(c *gin.Context) {
 		return
 	}
 
-	flow.Name = req.Name
+	flowName, err := utils.ValidateStringField(req.Name, "name", 255)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if len(req.Nodes) > maxFlowJSONSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "field 'nodes' exceeds maximum allowed size of 1 MiB"})
+		return
+	}
+	if len(req.Edges) > maxFlowJSONSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "field 'edges' exceeds maximum allowed size of 1 MiB"})
+		return
+	}
+
+	flow.Name = flowName
 	flow.Nodes = req.Nodes
 	flow.Edges = req.Edges
 	flow.Active = req.Active
