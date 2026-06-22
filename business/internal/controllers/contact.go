@@ -105,11 +105,32 @@ func (cc *ContactController) CreateContact(c *gin.Context) {
 		return
 	}
 
+	name, err := utils.ValidateStringField(input.Name, "name", 255)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	number, err := utils.ValidateStringField(input.Number, "number", 50)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	profilePicUrl, err := utils.ValidateStringField(input.ProfilePicUrl, "profilePicUrl", 2048)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	email, err := utils.ValidateStringField(input.Email, "email", 255)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	contact := &domain.Contact{
-		Name:          input.Name,
-		Number:        input.Number,
-		ProfilePicUrl: input.ProfilePicUrl,
-		Email:         input.Email,
+		Name:          name,
+		Number:        number,
+		ProfilePicUrl: profilePicUrl,
+		Email:         email,
 		IsGroup:       input.IsGroup,
 		WalletUserID:  input.WalletUserID,
 		TenantID:      tenantID,
@@ -160,16 +181,36 @@ func (cc *ContactController) UpdateContact(c *gin.Context) {
 
 	fields := map[string]interface{}{}
 	if input.Name != "" {
-		fields["name"] = input.Name
+		name, err := utils.ValidateStringField(input.Name, "name", 255)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fields["name"] = name
 	}
 	if input.Number != "" {
-		fields["number"] = input.Number
+		number, err := utils.ValidateStringField(input.Number, "number", 50)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fields["number"] = number
 	}
 	if input.ProfilePicUrl != "" {
-		fields["profilePicUrl"] = input.ProfilePicUrl
+		profilePicUrl, err := utils.ValidateStringField(input.ProfilePicUrl, "profilePicUrl", 2048)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fields["profilePicUrl"] = profilePicUrl
 	}
 	if input.Email != "" {
-		fields["email"] = input.Email
+		email, err := utils.ValidateStringField(input.Email, "email", 255)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fields["email"] = email
 	}
 	if input.WalletUserID != nil {
 		fields["walletUserId"] = input.WalletUserID

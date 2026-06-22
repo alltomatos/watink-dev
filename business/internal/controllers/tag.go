@@ -80,17 +80,36 @@ func (tc *TagController) Create(c *gin.Context) {
 		return
 	}
 
-	name := strings.TrimSpace(input.Name)
+	name, err := utils.ValidateStringField(input.Name, "name", 100)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		return
+	}
+	color, err := utils.ValidateStringField(input.Color, "color", 50)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	icon, err := utils.ValidateStringField(input.Icon, "icon", 100)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	description, err := utils.ValidateStringField(input.Description, "description", 500)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	tag := models.Tag{
 		Name:        name,
-		Color:       defaultStringTag(strings.TrimSpace(input.Color), "blue"),
-		Icon:        strings.TrimSpace(input.Icon),
-		Description: strings.TrimSpace(input.Description),
+		Color:       defaultStringTag(color, "blue"),
+		Icon:        icon,
+		Description: description,
 		Archived:    input.Archived,
 		TenantID:    tenantID,
 		GroupID:     input.GroupID,
@@ -132,10 +151,31 @@ func (tc *TagController) Update(c *gin.Context) {
 		return
 	}
 
-	tag.Name = strings.TrimSpace(input.Name)
-	tag.Color = input.Color
-	tag.Icon = input.Icon
-	tag.Description = input.Description
+	updName, err := utils.ValidateStringField(input.Name, "name", 100)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	updColor, err := utils.ValidateStringField(input.Color, "color", 50)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	updIcon, err := utils.ValidateStringField(input.Icon, "icon", 100)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	updDesc, err := utils.ValidateStringField(input.Description, "description", 500)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	tag.Name = updName
+	tag.Color = updColor
+	tag.Icon = updIcon
+	tag.Description = updDesc
 	tag.Archived = input.Archived
 	if input.GroupID != nil {
 		tag.GroupID = input.GroupID
@@ -230,6 +270,11 @@ func (tc *TagController) SyncEntityTags(c *gin.Context) {
 		return
 	}
 	entityType := c.Param("entityType")
+	validEntityTypes := map[string]bool{"ticket": true, "contact": true}
+	if !validEntityTypes[entityType] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid entityType: must be 'ticket' or 'contact'"})
+		return
+	}
 	id, _ := strconv.Atoi(c.Param("id"))
 
 	var payload struct {

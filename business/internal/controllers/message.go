@@ -82,10 +82,23 @@ func (mc *MessageController) SendMessage(c *gin.Context) {
 	var input struct {
 		Body      string `json:"body"`
 		MediaType string `json:"mediaType"`
-		MediaUrl string `json:"mediaUrl"`
+		MediaUrl  string `json:"mediaUrl"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		utils.RespondWithBindError(c, err)
+		return
+	}
+
+	if _, err := utils.ValidateStringField(input.Body, "body", 65535); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(input.MediaType, "mediaType", 50); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(input.MediaUrl, "mediaUrl", 2048); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
