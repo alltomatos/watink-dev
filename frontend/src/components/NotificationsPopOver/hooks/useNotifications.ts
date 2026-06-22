@@ -120,8 +120,6 @@ export function useNotifications(): UseNotificationsReturn {
     const socket = openSocket();
     if (!socket) return;
 
-    const onConnect = () => socket.emit("joinNotification");
-
     const onTicket = (data: { action: string; ticketId: number }) => {
       if (data.action === "updateUnread" || data.action === "delete") {
         setNotifications((prevState) => {
@@ -184,12 +182,10 @@ export function useNotifications(): UseNotificationsReturn {
         }
     };
 
-    socket.on("connect", onConnect);
     socket.on("ticket", onTicket);
     socket.on("appMessage", onAppMessage);
 
     return () => {
-      socket.off("connect", onConnect);
       socket.off("ticket", onTicket);
       socket.off("appMessage", onAppMessage);
     };
