@@ -126,10 +126,10 @@ func (sc *SwaggerController) SwaggerUI(c *gin.Context) {
  <title>Watink API Docs</title>
  </head>
  <body>
- <script id="api-reference" data-url="/api/swagger.json?token=" type="application/json"></script>
+ <script id="api-reference" data-url="/api/v1/swagger.json?token=" type="application/json"></script>
  <script>
  const token = new URLSearchParams(window.location.search).get('token') || '';
- document.getElementById('api-reference').dataset.url = '/api/swagger.json?token=' + encodeURIComponent(token);
+ document.getElementById('api-reference').dataset.url = '/api/v1/swagger.json?token=' + encodeURIComponent(token);
  </script>
  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
  </body>
