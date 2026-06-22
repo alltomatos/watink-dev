@@ -99,7 +99,7 @@ func (sc *SettingController) UpdateSetting(c *gin.Context) {
 		return
 	}
 
-	sc.broadcast.EmitToNamespace("/", "settings", map[string]interface{}{
+	sc.broadcast.EmitToTenantRoom(tenantUUID.String(), "settings", map[string]interface{}{
 		"action":  "update",
 		"setting": setting,
 	})
