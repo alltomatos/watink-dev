@@ -36,6 +36,8 @@ func (s *WhatsAppService) handleEvent(id int, tenantID string, evt interface{}) 
 		s.handleContactEvent(id, tenantID, v)
 	case *events.PushName:
 		s.handlePushNameEvent(id, tenantID, v)
+	case *events.Picture:
+		s.handlePictureEvent(client, id, tenantID, v)
 	case *events.HistorySync:
 		log.Printf("History sync (type %s) for session %d", v.Data.SyncType.String(), id)
 		if v.Data.GetSyncType() == waHistorySync.HistorySync_ON_DEMAND {
@@ -114,17 +116,17 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 		isSubGroup = meta.isSubGroup
 	}
 
-	// Profile picture: for group contacts use the group JID; for individuals only
-	// real phone-number senders (LID senders reject the query with 400).
+	// Profile picture for the contact record (group's own photo or individual sender's photo).
 	profilePic := ""
+	senderPic := ""
 	if isGroup {
-		if info, err := client.GetProfilePictureInfo(context.Background(), v.Info.Chat.ToNonAD(), &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
-			profilePic = info.URL
+		profilePic = s.getCachedPic(client, v.Info.Chat.ToNonAD())
+		// Individual participant photo — shown in message bubble avatars.
+		if !v.Info.IsFromMe && v.Info.Sender.Server == types.DefaultUserServer {
+			senderPic = s.getCachedPic(client, v.Info.Sender.ToNonAD())
 		}
 	} else if !v.Info.IsFromMe && v.Info.Sender.Server == types.DefaultUserServer {
-		if info, err := client.GetProfilePictureInfo(context.Background(), v.Info.Sender.ToNonAD(), &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
-			profilePic = info.URL
-		}
+		profilePic = s.getCachedPic(client, v.Info.Sender.ToNonAD())
 	}
 
 	s.publishEvent(tenantID, id, "message.received", map[string]interface{}{
@@ -139,6 +141,7 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 			"pushName":      v.Info.PushName,
 			"groupName":     groupName,
 			"profilePicUrl": profilePic,
+			"senderPicUrl":  senderPic,
 			"isLid":         v.Info.Sender.Server == types.HiddenUserServer,
 			"participant":   resolvedSender,
 			"isGroup":       isGroup,
@@ -259,6 +262,60 @@ func (s *WhatsAppService) handlePushNameEvent(id int, tenantID string, v *events
 		},
 	}
 	s.publishEvent(tenantID, id, "contact.update", payload)
+}
+
+// getCachedPic returns the profile picture URL for the given JID, using an
+// in-memory cache to avoid a WhatsApp CDN round-trip on every message.
+func (s *WhatsAppService) getCachedPic(client *whatsmeow.Client, jid types.JID) string {
+	key := jid.String()
+	s.picMu.Lock()
+	if url, ok := s.picCache[key]; ok {
+		s.picMu.Unlock()
+		return url
+	}
+	s.picMu.Unlock()
+
+	url := ""
+	if info, err := client.GetProfilePictureInfo(context.Background(), jid, &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
+		url = info.URL
+	}
+	if url != "" {
+		s.picMu.Lock()
+		s.picCache[key] = url
+		s.picMu.Unlock()
+	}
+	return url
+}
+
+// handlePictureEvent fires when a contact or group changes its profile picture.
+// It invalidates the local cache and publishes a contact.update event so the
+// backend can persist the new URL immediately — without waiting for the next message.
+func (s *WhatsAppService) handlePictureEvent(client *whatsmeow.Client, id int, tenantID string, v *events.Picture) {
+	key := v.JID.String()
+
+	// Invalidate cache entry so getCachedPic fetches fresh on next use.
+	s.picMu.Lock()
+	delete(s.picCache, key)
+	s.picMu.Unlock()
+
+	newURL := ""
+	if !v.Remove {
+		if info, err := client.GetProfilePictureInfo(context.Background(), v.JID.ToNonAD(), &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
+			newURL = info.URL
+			s.picMu.Lock()
+			s.picCache[key] = newURL
+			s.picMu.Unlock()
+		}
+	}
+
+	s.publishEvent(tenantID, id, "contact.update", map[string]interface{}{
+		"sessionId": fmt.Sprintf("%d", id),
+		"contact": map[string]interface{}{
+			"jid":           v.JID.String(),
+			"profilePicUrl": newURL,
+		},
+	})
+	log.Printf("[Picture] %s photo updated (remove=%v)", key, v.Remove)
 }
 
 func receiptAck(receiptType types.ReceiptType) int {
