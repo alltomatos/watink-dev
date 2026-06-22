@@ -227,7 +227,9 @@ func TestHandleMessageReaction_RemovesExistingReaction(t *testing.T) {
 	}
 
 	var reactions []map[string]interface{}
-	json.Unmarshal([]byte(msg.Reactions), &reactions)
+	if err := json.Unmarshal([]byte(msg.Reactions), &reactions); err != nil {
+		t.Fatalf("reactions JSON invalid after remove: %v", err)
+	}
 	if len(reactions) != 0 {
 		t.Errorf("expected reaction removed, got %d reactions", len(reactions))
 	}
