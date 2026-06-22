@@ -59,7 +59,10 @@ func (uc *UserController) ShowUser(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, _ := strconv.Atoi(c.Param("userId"))
+	id, ok2 := utils.ParseIntParam(c, "userId")
+	if !ok2 {
+		return
+	}
 
 	// Usa busca enriquecida com relations
 	userModel, err := uc.userRepo.FindByIDDetail(c.Request.Context(), id, tenantID)
@@ -190,7 +193,10 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, _ := strconv.Atoi(c.Param("userId"))
+	id, ok2 := utils.ParseIntParam(c, "userId")
+	if !ok2 {
+		return
+	}
 
 	user, err := uc.userRepo.FindByID(c.Request.Context(), id, tenantID)
 	if err != nil || user == nil {
@@ -263,7 +269,10 @@ func (uc *UserController) DeleteUser(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, _ := strconv.Atoi(c.Param("userId"))
+	id, ok2 := utils.ParseIntParam(c, "userId")
+	if !ok2 {
+		return
+	}
 
 	if err := uc.userRepo.Delete(c.Request.Context(), id, tenantID); err != nil {
 		utils.RespondWithInternalError(c, err, "DeleteUser")
