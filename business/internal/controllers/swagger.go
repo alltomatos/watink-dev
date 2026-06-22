@@ -86,8 +86,13 @@ func (sc *SwaggerController) hasSwaggerGroupPermission(userID int, tenantID stri
 }
 
 // ensureSwaggerAccess valida token e verifica permissão swagger.
+// Quando DOCS_PUBLIC=true (dev), libera sem autenticação.
 // Retorna true se acesso concedido; envia HTTP error e retorna false caso contrário.
 func (sc *SwaggerController) ensureSwaggerAccess(c *gin.Context) bool {
+	if os.Getenv("DOCS_PUBLIC") == "true" {
+		return true
+	}
+
 	token := extractToken(c)
 	if token == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization required"})
