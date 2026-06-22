@@ -125,9 +125,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               <Avatar
                 className="w-8 h-8 mt-0.5 shrink-0"
                 src={getBackendUrl(
-                  (parseData(message.dataJson).profilePicUrl as string) || ""
+                  (parseData(message.dataJson).senderPicUrl as string) || ""
                 )}
-                name={message.contact?.name}
+                name={
+                  message.contact?.name ||
+                  (parseData(message.dataJson).pushName as string) ||
+                  message.participant?.replace(/\D/g, "") ||
+                  undefined
+                }
               />
             ) : (
               <div className="w-8 h-8 shrink-0" />
