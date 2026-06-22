@@ -208,6 +208,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/contacts/import": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Dispara a importação da agenda de contatos da sessão WhatsApp conectada",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Importar contatos do WhatsApp",
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/contacts/{contactId}": {
             "get": {
                 "security": [
@@ -1117,6 +1154,12 @@ const docTemplate = `{
                         "name": "ticketId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Página",
+                        "name": "pageNumber",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1138,9 +1181,10 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Envia mensagem via engine WhatsApp através do RabbitMQ",
+                "description": "Envia mensagem de texto ou mídia via engine WhatsApp",
                 "consumes": [
-                    "application/json"
+                    "application/json",
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -1158,14 +1202,24 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Conteúdo da mensagem",
+                        "description": "Corpo JSON para texto",
                         "name": "body",
                         "in": "body",
-                        "required": true,
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "type": "object"
                         }
+                    },
+                    {
+                        "type": "file",
+                        "description": "Arquivo de mídia (multipart)",
+                        "name": "medias",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "true/false",
+                        "name": "fromMe",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -1450,13 +1504,12 @@ const docTemplate = `{
                 ],
                 "summary": "Catálogo de plugins",
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "additionalProperties": true
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }
@@ -1470,9 +1523,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -1480,24 +1530,14 @@ const docTemplate = `{
                     "plugins"
                 ],
                 "summary": "Ativar/instalar plugin",
-                "parameters": [
-                    {
-                        "description": "Dados do checkout",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": true
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -1521,11 +1561,8 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "additionalProperties": true
-                            }
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -2803,6 +2840,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/tickets/{ticketId}/history/recover": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Solicita ao WhatsApp mensagens anteriores e as insere no ticket sem reabri-lo",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Recuperar histórico da conversa",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID do ticket",
+                        "name": "ticketId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "range: 1d|2d|7d|30d|all",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/tickets/{ticketId}/logs": {
             "get": {
                 "security": [
@@ -2863,44 +2958,6 @@ const docTemplate = `{
                                 "type": "object",
                                 "additionalProperties": true
                             }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Criar usuário",
-                "parameters": [
-                    {
-                        "description": "Dados do usuário",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
                         }
                     }
                 }
@@ -3202,6 +3259,91 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/whatsapp/{id}/keepalive": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "whatsapp"
+                ],
+                "summary": "Atualiza reconexão automática (keepAlive)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID da conexão",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "keepAlive",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/whatsapp/{id}/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "whatsapp"
+                ],
+                "summary": "Estatísticas da conexão",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID da conexão",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
