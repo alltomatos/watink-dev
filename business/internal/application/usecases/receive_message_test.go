@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -412,6 +413,86 @@ func TestReceiveMessage_WithBody_BodyTakesPrecedence(t *testing.T) {
 	}
 	if result.Ticket.LastMessage != "Texto real" {
 		t.Errorf("expected body to take precedence, got %q", result.Ticket.LastMessage)
+	}
+}
+
+// capturingContactRepo records the profilePicUrl passed to FindOrCreate.
+type capturingContactRepo struct {
+	mockRcvContactRepo
+	capturedProfilePicURL string
+}
+
+func (m *capturingContactRepo) FindOrCreate(_ context.Context, _ uuid.UUID, _, _, profilePicURL string, _ bool, _ bool, _ string) (*domain.Contact, error) {
+	m.capturedProfilePicURL = profilePicURL
+	return m.contact, m.findOrCreateErr
+}
+
+// TestReceiveMessage_Group_PassesGroupPhotoToContact verifies that when a
+// group message arrives, the group's own profilePicUrl (fetched by group JID
+// in the engine) is passed to FindOrCreate — so the group contact record keeps
+// the group's actual avatar, not a participant's photo.
+func TestReceiveMessage_Group_PassesGroupPhotoToContact(t *testing.T) {
+	tenantID := uuid.New()
+	cr := &capturingContactRepo{mockRcvContactRepo: mockRcvContactRepo{contact: defaultContact()}}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{}
+	tr.ticket = &domain.Ticket{ID: 10, ContactID: 1, TenantID: tenantID}
+	eb := &mockEventBus{}
+
+	input := defaultInput(tenantID)
+	input.From = "120363425846044684@g.us"
+	input.IsGroup = true
+	input.GroupName = "OmniRoute"
+	input.ProfilePicURL = "https://cdn.whatsapp.net/group-photo.jpg"
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	if _, err := uc.Execute(context.Background(), input); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cr.capturedProfilePicURL != input.ProfilePicURL {
+		t.Errorf("group contact FindOrCreate should receive group's profilePicUrl %q, got %q", input.ProfilePicURL, cr.capturedProfilePicURL)
+	}
+}
+
+// TestReceiveMessage_Group_StoresSenderPicInDataJson verifies that the
+// individual sender's photo (senderPicUrl) is stored in dataJson separately
+// from the group's profilePicUrl, so the frontend can show the right avatar
+// inside the chat bubble without corrupting the group contact's photo.
+func TestReceiveMessage_Group_StoresSenderPicInDataJson(t *testing.T) {
+	tenantID := uuid.New()
+	cr := &capturingContactRepo{mockRcvContactRepo: mockRcvContactRepo{contact: defaultContact()}}
+	mr := &mockMessageRepo{}
+	tr := &receiveTicketRepo{}
+	tr.ticket = &domain.Ticket{ID: 10, ContactID: 1, TenantID: tenantID}
+	eb := &mockEventBus{}
+
+	input := defaultInput(tenantID)
+	input.From = "120363425846044684@g.us"
+	input.IsGroup = true
+	input.GroupName = "OmniRoute"
+	input.PushName = "Felipe Sartori"
+	input.ProfilePicURL = "https://cdn.whatsapp.net/group-photo.jpg"
+	input.SenderPicURL = "https://cdn.whatsapp.net/sender-photo.jpg"
+
+	uc := newReceiveUC(cr, tr, mr, eb)
+	result, err := uc.Execute(context.Background(), input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(result.Message.DataJson), &data); err != nil {
+		t.Fatalf("dataJson invalid: %v", err)
+	}
+	if data["senderPicUrl"] != input.SenderPicURL {
+		t.Errorf("expected dataJson.senderPicUrl=%q, got %q", input.SenderPicURL, data["senderPicUrl"])
+	}
+	if data["pushName"] != input.PushName {
+		t.Errorf("expected dataJson.pushName=%q, got %q", input.PushName, data["pushName"])
+	}
+	// group photo must NOT leak into dataJson
+	if data["profilePicUrl"] != nil {
+		t.Errorf("expected dataJson to not contain profilePicUrl, got %v", data["profilePicUrl"])
 	}
 }
 

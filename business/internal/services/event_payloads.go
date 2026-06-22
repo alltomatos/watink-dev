@@ -40,6 +40,7 @@ type MessagePayload struct {
 	GroupName     string `json:"groupName"`
 	QuotedMsgId   string `json:"quotedMsgId"`
 	ProfilePicUrl string `json:"profilePicUrl"`
+	SenderPicUrl  string `json:"senderPicUrl"`
 	IsLid         bool   `json:"isLid"`
 	Participant   string `json:"participant"`
 	IsGroup       bool   `json:"isGroup"`

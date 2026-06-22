@@ -25,6 +25,7 @@ type ReceiveMessageInput struct {
 	GroupName     string
 	QuotedMsgID   string
 	ProfilePicURL string
+	SenderPicURL  string
 	IsLID         bool
 	Participant   string
 	IsGroup       bool
@@ -154,13 +155,14 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 	}
 
 	dataJSON, _ := json.Marshal(map[string]interface{}{
-		"jid":         contactJID,
-		"participant": input.Participant,
-		"pushName":    input.PushName, // nome do remetente — exibido na bolha em grupos
-		"isGroup":     input.IsGroup,
-		"isLid":       input.IsLID,
-		"mimetype":    input.Mimetype,
-		"mediaData":   input.MediaData,
+		"jid":          contactJID,
+		"participant":  input.Participant,
+		"pushName":     input.PushName,    // sender name shown in group bubble
+		"senderPicUrl": input.SenderPicURL, // sender's individual photo for group bubble avatar
+		"isGroup":      input.IsGroup,
+		"isLid":        input.IsLID,
+		"mimetype":     input.Mimetype,
+		"mediaData":    input.MediaData,
 	})
 
 	mediaType := input.Type

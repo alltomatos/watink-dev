@@ -107,6 +107,7 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 		GroupName:     p.GroupName,
 		QuotedMsgID:   p.QuotedMsgId,
 		ProfilePicURL: p.ProfilePicUrl,
+		SenderPicURL:  p.SenderPicUrl,
 		IsLID:         p.IsLid,
 		Participant:   p.Participant,
 		IsGroup:       p.IsGroup,
