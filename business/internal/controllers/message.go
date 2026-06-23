@@ -221,14 +221,15 @@ func (mc *MessageController) DownloadMedia(c *gin.Context) {
 
 	messageID := c.Param("messageId")
 
+	// Load the message together with its ticket in a single query. Reusing the
+	// same *gorm.DB for two separate First() calls would accumulate the WHERE
+	// conditions (id = msgID AND id = ticketID), which never matches.
 	var msg models.Message
-	if err := db.Where("id = ? AND \"tenantId\" = ?", messageID, tenantID).First(&msg).Error; err != nil {
+	if err := db.Preload("Ticket").Where("id = ? AND \"tenantId\" = ?", messageID, tenantID).First(&msg).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Message not found"})
 		return
 	}
-
-	var ticket models.Ticket
-	if err := db.Where("id = ? AND \"tenantId\" = ?", msg.TicketID, tenantID).First(&ticket).Error; err != nil {
+	if msg.Ticket.ID == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ticket not found"})
 		return
 	}
@@ -248,14 +249,14 @@ func (mc *MessageController) DownloadMedia(c *gin.Context) {
 		"tenantId":  tenantID.String(),
 		"type":      "media.download",
 		"payload": map[string]interface{}{
-			"sessionId":  ticket.WhatsappID,
+			"sessionId":  msg.Ticket.WhatsappID,
 			"messageId":  msg.ID,
 			"mediaType":  msg.MediaType,
 			"mediaProto": data.MediaProto,
 		},
 	}
 
-	routingKey := fmt.Sprintf("wbot.%s.%d.media.download", tenantID.String(), ticket.WhatsappID)
+	routingKey := fmt.Sprintf("wbot.%s.%d.media.download", tenantID.String(), msg.Ticket.WhatsappID)
 	if err := mc.rabbit.PublishCommand(routingKey, command); err != nil {
 		utils.RespondWithInternalError(c, err, "DownloadMedia")
 		return
