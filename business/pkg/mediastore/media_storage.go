@@ -8,8 +8,14 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+// safeExtRe matches a safe file extension: a dot followed by 1–10 lowercase
+// alphanumeric characters. Any extension that does not match is replaced with
+// ".bin" to prevent path traversal via user-supplied MIME types.
+var safeExtRe = regexp.MustCompile(`^\.[a-z0-9]{1,10}$`)
 
 var mediaPublicDir = "public/media"
 
@@ -28,7 +34,7 @@ func SaveMediaBase64(mediaData string, mimeType string) (string, error) {
 		return "", fmt.Errorf("media_storage: base64 decode: %w", err)
 	}
 
-	ext := extensionForMime(mimeType)
+	ext := safeExt(extensionForMime(mimeType))
 	hash := fmt.Sprintf("%x", sha256.Sum256(raw))
 	filename := hash + ext
 
@@ -40,7 +46,7 @@ func SaveMediaBase64(mediaData string, mimeType string) (string, error) {
 	dest := filepath.Join(dir, filename)
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
 		if err := os.WriteFile(dest, raw, 0o644); err != nil {
-			return "", fmt.Errorf("media_storage: write %s: %w", dest, err)
+			return "", fmt.Errorf("media_storage: write: %w", err)
 		}
 	}
 
@@ -59,7 +65,7 @@ func SaveMediaReader(r io.Reader, mimeType string) (string, error) {
 		return "", nil
 	}
 
-	ext := extensionForMime(mimeType)
+	ext := safeExt(extensionForMime(mimeType))
 	hash := fmt.Sprintf("%x", sha256.Sum256(raw))
 	filename := hash + ext
 
@@ -71,11 +77,20 @@ func SaveMediaReader(r io.Reader, mimeType string) (string, error) {
 	dest := filepath.Join(dir, filename)
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
 		if err := os.WriteFile(dest, raw, 0o644); err != nil {
-			return "", fmt.Errorf("media_storage: write %s: %w", dest, err)
+			return "", fmt.Errorf("media_storage: write: %w", err)
 		}
 	}
 
 	return "/public/media/" + filename, nil
+}
+
+// safeExt ensures ext matches `\.[a-z0-9]{1,10}` to prevent path traversal
+// via user-supplied MIME types. Any non-conforming value is replaced with ".bin".
+func safeExt(ext string) string {
+	if safeExtRe.MatchString(ext) {
+		return ext
+	}
+	return ".bin"
 }
 
 // extensionForMime returns a file extension (with leading dot) for the given
