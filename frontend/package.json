@@ -28,6 +28,8 @@
     "clsx": "^2.1.1",
     "date-fns": "^2.30.0",
     "emoji-mart": "^3.0.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
     "formik": "^2.4.5",
     "framer-motion": "6.5.1",
     "i18next": "^22.5.1",
