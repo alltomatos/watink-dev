@@ -4,11 +4,18 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"mime"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+// safeExtRe matches a safe file extension: a dot followed by 1–10 lowercase
+// alphanumeric characters. Any extension that does not match is replaced with
+// ".bin" to prevent path traversal via user-supplied MIME types.
+var safeExtRe = regexp.MustCompile(`^\.[a-z0-9]{1,10}$`)
 
 var mediaPublicDir = "public/media"
 
@@ -27,7 +34,7 @@ func SaveMediaBase64(mediaData string, mimeType string) (string, error) {
 		return "", fmt.Errorf("media_storage: base64 decode: %w", err)
 	}
 
-	ext := extensionForMime(mimeType)
+	ext := safeExt(extensionForMime(mimeType))
 	hash := fmt.Sprintf("%x", sha256.Sum256(raw))
 	filename := hash + ext
 
@@ -39,11 +46,51 @@ func SaveMediaBase64(mediaData string, mimeType string) (string, error) {
 	dest := filepath.Join(dir, filename)
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
 		if err := os.WriteFile(dest, raw, 0o644); err != nil {
-			return "", fmt.Errorf("media_storage: write %s: %w", dest, err)
+			return "", fmt.Errorf("media_storage: write: %w", err)
 		}
 	}
 
 	return "/public/media/" + filename, nil
+}
+
+// SaveMediaReader reads all bytes from r, persists them under
+// <workdir>/public/media/<sha256>.<ext>, and returns the relative URL
+// "/public/media/<sha256>.<ext>".
+func SaveMediaReader(r io.Reader, mimeType string) (string, error) {
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		return "", fmt.Errorf("media_storage: read: %w", err)
+	}
+	if len(raw) == 0 {
+		return "", nil
+	}
+
+	ext := safeExt(extensionForMime(mimeType))
+	hash := fmt.Sprintf("%x", sha256.Sum256(raw))
+	filename := hash + ext
+
+	dir := mediaPublicDir
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("media_storage: mkdir %s: %w", dir, err)
+	}
+
+	dest := filepath.Join(dir, filename)
+	if _, err := os.Stat(dest); os.IsNotExist(err) {
+		if err := os.WriteFile(dest, raw, 0o644); err != nil {
+			return "", fmt.Errorf("media_storage: write: %w", err)
+		}
+	}
+
+	return "/public/media/" + filename, nil
+}
+
+// safeExt ensures ext matches `\.[a-z0-9]{1,10}` to prevent path traversal
+// via user-supplied MIME types. Any non-conforming value is replaced with ".bin".
+func safeExt(ext string) string {
+	if safeExtRe.MatchString(ext) {
+		return ext
+	}
+	return ".bin"
 }
 
 // extensionForMime returns a file extension (with leading dot) for the given

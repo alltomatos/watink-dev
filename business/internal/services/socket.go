@@ -1,8 +1,11 @@
 package services
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -12,6 +15,7 @@ import (
 	"github.com/googollee/go-socket.io/engineio/transport"
 	"github.com/googollee/go-socket.io/engineio/transport/polling"
 	"github.com/googollee/go-socket.io/engineio/transport/websocket"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 var Server *socketio.Server
@@ -56,6 +60,51 @@ func startSocketStatsMonitor() {
 	}()
 }
 
+// socketConnContext holds parsed JWT claims stored on each socket connection.
+type socketConnContext struct {
+	UserID   int
+	TenantID string
+	Profile  string
+}
+
+// validateSocketToken parses the JWT from the socket query param.
+// Returns an error if the token is absent, invalid, or missing required claims.
+func validateSocketToken(tokenStr string) (*socketConnContext, error) {
+	if tokenStr == "" {
+		return nil, fmt.Errorf("missing token")
+	}
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		return nil, fmt.Errorf("JWT_SECRET not configured")
+	}
+	tok, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return []byte(secret), nil
+	})
+	if err != nil || !tok.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+	claims, ok := tok.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, fmt.Errorf("invalid claims")
+	}
+	tenantID, _ := claims["tenantId"].(string)
+	profile, _ := claims["profile"].(string)
+	userID := 0
+	switch v := claims["id"].(type) {
+	case float64:
+		userID = int(v)
+	case string:
+		userID, _ = strconv.Atoi(v)
+	}
+	if tenantID == "" {
+		return nil, fmt.Errorf("tenantId missing in token")
+	}
+	return &socketConnContext{UserID: userID, TenantID: tenantID, Profile: profile}, nil
+}
+
 func StartSocket() *socketio.Server {
 	server := socketio.NewServer(&engineio.Options{
 		Transports: []transport.Transport{
@@ -70,10 +119,17 @@ func StartSocket() *socketio.Server {
 	startSocketStatsMonitor()
 
 	server.OnConnect("/", func(s socketio.Conn) error {
-		s.SetContext("")
+		u := s.URL()
+		token := u.Query().Get("token")
+		ctx, err := validateSocketToken(token)
+		if err != nil {
+			log.Printf("socket auth rejected id=%s: %v", s.ID(), err)
+			return fmt.Errorf("unauthorized")
+		}
+		s.SetContext(ctx)
 		atomic.AddInt64(&socketStats.connects, 1)
 		atomic.AddInt64(&socketStats.active, 1)
-		log.Println("connected:", s.ID())
+		log.Printf("socket connected id=%s tenant=%s user=%d", s.ID(), ctx.TenantID, ctx.UserID)
 		return nil
 	})
 
@@ -90,6 +146,17 @@ func StartSocket() *socketio.Server {
 	server.OnEvent("/", "joinTickets", func(s socketio.Conn, msg string) {
 		log.Println("joinTickets:", msg)
 		s.Join(msg)
+	})
+
+	// joinTenant places the socket in a tenant-scoped room used for global
+	// broadcasts (whatsappSession, ticket events) — isolates tenants.
+	server.OnEvent("/", "joinTenant", func(s socketio.Conn, tenantID string) {
+		if ctx, ok := s.Context().(*socketConnContext); ok && ctx.TenantID == tenantID {
+			s.Join("tenant:" + tenantID)
+			log.Printf("socket joinTenant id=%s tenant=%s", s.ID(), tenantID)
+		} else {
+			log.Printf("socket joinTenant rejected id=%s claimed=%s", s.ID(), tenantID)
+		}
 	})
 
 	server.OnError("/", func(s socketio.Conn, e error) {
@@ -122,40 +189,6 @@ func StartSocket() *socketio.Server {
 	return server
 }
 
-func GetIO() *socketio.Server {
-	return Server
-}
-
 func SocketHandler(server *socketio.Server) http.Handler {
 	return server
-}
-
-// Cluster-aware Broadcast
-func EmitToRoom(nsp string, room string, event string, payload interface{}) {
-	log.Printf("[DEPRECATION WARNING] EmitToRoom called")
-	// 1. Emit locally
-	if Server != nil {
-		Server.BroadcastToRoom(nsp, room, event, payload)
-	}
-	// 2. Publish to Redis for other nodes
-	PublishSocketMessage(SocketMessage{
-		Namespace: nsp,
-		Room:      room,
-		Event:     event,
-		Payload:   payload,
-	})
-}
-
-func EmitToNamespace(nsp string, event string, payload interface{}) {
-	log.Printf("[DEPRECATION WARNING] EmitToNamespace called")
-	// 1. Emit locally
-	if Server != nil {
-		Server.BroadcastToNamespace(nsp, event, payload)
-	}
-	// 2. Publish to Redis for other nodes
-	PublishSocketMessage(SocketMessage{
-		Namespace: nsp,
-		Event:     event,
-		Payload:   payload,
-	})
 }

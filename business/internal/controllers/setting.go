@@ -79,6 +79,10 @@ func (sc *SettingController) UpdateSetting(c *gin.Context) {
 		return
 	}
 	key := c.Param("key")
+	if _, err := utils.ValidateStringField(key, "key", 100); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	var req struct {
 		Value string `json:"value" binding:"required"`
@@ -88,13 +92,19 @@ func (sc *SettingController) UpdateSetting(c *gin.Context) {
 		return
 	}
 
+	value, err := utils.ValidateStringField(req.Value, "value", 65535)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	setting := models.Setting{
 		Key:      key,
 		TenantID: tenantUUID,
-		Value:    req.Value,
+		Value:    value,
 	}
 
-	if err := db.Where("key = ? AND \"tenantId\" = ?", key, tenantUUID).Assign(models.Setting{Value: req.Value}).FirstOrCreate(&setting).Error; err != nil {
+	if err := db.Where("key = ? AND \"tenantId\" = ?", key, tenantUUID).Assign(models.Setting{Value: value}).FirstOrCreate(&setting).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "UpdateSetting")
 		return
 	}

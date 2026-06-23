@@ -30,6 +30,9 @@ type WhatsAppService struct {
 	groupNames   map[string]string
 	groupMetaMu  sync.Mutex
 	groupMetaMap map[string]groupMeta
+
+	picMu    sync.Mutex
+	picCache map[string]string // JID string → profile picture URL
 }
 
 // groupMeta holds cached community/sub-group metadata for a group JID.
@@ -56,6 +59,7 @@ func NewWhatsAppService(rabbit *rabbitmq.RabbitMQService, sessionLoader SessionL
 		historyRequests: make(map[string]*pendingHistory),
 		groupNames:      make(map[string]string),
 		groupMetaMap:    make(map[string]groupMeta),
+		picCache:        make(map[string]string),
 	}
 }
 

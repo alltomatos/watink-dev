@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { toast } from "react-toastify";
 import React from "react";
 
-import openSocket from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/socket-io";
 import { i18n } from "../../../translate/i18n";
 import alertSound from "../../../assets/sound.mp3";
 import { AuthContext } from "../../../context/Auth/AuthContext";
@@ -41,11 +41,19 @@ export function useNotifications(): UseNotificationsReturn {
       audio.play().catch(() => {});
     };
 
-    if ("Notification" in window) {
-      Notification.requestPermission();
-    }
+    // Browsers block autoplay until a user gesture occurs. Prime the audio
+    // element on first interaction so subsequent programmatic plays succeed.
+    const unlock = () => {
+      audio.play().then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
+      document.removeEventListener("click", unlock);
+      document.removeEventListener("keydown", unlock);
+    };
+    document.addEventListener("click", unlock);
+    document.addEventListener("keydown", unlock);
 
     return () => {
+      document.removeEventListener("click", unlock);
+      document.removeEventListener("keydown", unlock);
       audio.pause();
       audio.src = "";
     };
@@ -117,12 +125,7 @@ export function useNotifications(): UseNotificationsReturn {
 
   // Conexão socket: sala "notification", handlers de ticket e appMessage
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-
-    socket.on("connect", () => socket.emit("joinNotification"));
-
-    socket.on("ticket", (data: { action: string; ticketId: number }) => {
+    const handleTicket = (data: { action: string; ticketId: number }) => {
       if (data.action === "updateUnread" || data.action === "delete") {
         setNotifications((prevState) => {
           const ticketIndex = prevState.findIndex((t) => t.id === data.ticketId);
@@ -145,16 +148,14 @@ export function useNotifications(): UseNotificationsReturn {
           return prevState;
         });
       }
-    });
+    };
 
-    socket.on(
-      "appMessage",
-      (data: {
-        action: string;
-        message: Message;
-        ticket: Ticket;
-        contact: Contact;
-      }) => {
+    const handleAppMessage = (data: {
+      action: string;
+      message: Message;
+      ticket: Ticket;
+      contact: Contact;
+    }) => {
         if (!data.ticket || !data.message || !data.contact) return;
         const notifyGroups = localStorage.getItem("notifyGroups") !== "false";
 
@@ -184,12 +185,12 @@ export function useNotifications(): UseNotificationsReturn {
 
           handleNotifications(data);
         }
-      }
-    );
-
-    return () => {
-      socket.disconnect();
     };
+
+    return subscribeToSocket(
+      { ticket: handleTicket, appMessage: handleAppMessage },
+      (socket) => socket.emit("joinNotification")
+    );
     // handleNotifications é definida acima e recriada a cada render; user é o gatilho real
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);

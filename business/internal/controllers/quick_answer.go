@@ -69,6 +69,9 @@ type updateQuickAnswerInput struct {
 	DataJson  string `json:"dataJson"`
 }
 
+// maxQuickAnswerMessageLen is the maximum allowed length for a quick answer message body.
+const maxQuickAnswerMessageLen = 65535
+
 // @Summary      Criar resposta rápida
 // @Tags         quick-answers
 // @Accept       json
@@ -86,6 +89,19 @@ func (qac *QuickAnswerController) Create(c *gin.Context) {
 	var qa models.QuickAnswer
 	if err := c.ShouldBindJSON(&qa); err != nil {
 		utils.RespondWithBindError(c, err)
+		return
+	}
+
+	if _, err := utils.ValidateStringField(qa.Shortcut, "shortcut", 100); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(qa.Message, "message", maxQuickAnswerMessageLen); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(qa.MediaType, "mediaType", 50); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -126,9 +142,25 @@ func (qac *QuickAnswerController) Update(c *gin.Context) {
 		return
 	}
 
-	qa.Shortcut = input.Shortcut
-	qa.Message = input.Message
-	qa.MediaType = input.MediaType
+	shortcut, err := utils.ValidateStringField(input.Shortcut, "shortcut", 100)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	message, err := utils.ValidateStringField(input.Message, "message", maxQuickAnswerMessageLen)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	mediaType, err := utils.ValidateStringField(input.MediaType, "mediaType", 50)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	qa.Shortcut = shortcut
+	qa.Message = message
+	qa.MediaType = mediaType
 	qa.DataJson = input.DataJson
 
 	if err := db.Where("\"tenantId\" = ?", tenantID).Save(&qa).Error; err != nil {

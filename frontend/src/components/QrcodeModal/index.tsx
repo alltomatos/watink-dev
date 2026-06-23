@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
-import openSocket from "../../services/socket-io";
+import { subscribeToSocket } from "../../services/socket-io";
 import toastError from "../../errors/toastError";
 import { WhatsAppSessionSocketEvent, WhatsAppSession } from "../../types/api";
 
@@ -36,19 +36,17 @@ const QrcodeModal = ({ open, onClose, whatsAppId }: QrcodeModalProps) => {
 
   useEffect(() => {
     if (!whatsAppId) return;
-    const socket = openSocket();
-    if (!socket) return;
 
-    socket.on("whatsappSession", (data: WhatsAppSessionSocketEvent) => {
+    const handleSession = (data: WhatsAppSessionSocketEvent) => {
       if (data.action === "update" && data.session.id === whatsAppId) {
         setQrCode(data.session.qrcode ?? "");
       }
       if (data.action === "update" && data.session.qrcode === "") {
         onClose();
       }
-    });
+    };
 
-    return () => { socket.disconnect(); };
+    return subscribeToSocket({ whatsappSession: handleSession });
   }, [whatsAppId, onClose]);
 
   return (

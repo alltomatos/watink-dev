@@ -1,7 +1,9 @@
 package mediastore
 
 import (
+	"bytes"
 	"encoding/base64"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -62,6 +64,70 @@ func TestSaveMediaBase64_Idempotent(t *testing.T) {
 	if len(entries) != 1 {
 		t.Errorf("expected 1 file, got %d", len(entries))
 	}
+}
+
+func TestSaveMediaReader_Empty(t *testing.T) {
+	url, err := SaveMediaReader(bytes.NewReader([]byte{}), "image/jpeg")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if url != "" {
+		t.Errorf("expected empty url for empty reader, got %q", url)
+	}
+}
+
+func TestSaveMediaReader_SavesFile(t *testing.T) {
+	tmp := t.TempDir()
+	origDir := mediaPublicDir
+	mediaPublicDir = filepath.Join(tmp, "public", "media")
+	defer func() { mediaPublicDir = origDir }()
+
+	url, err := SaveMediaReader(bytes.NewReader([]byte("fake-mp3-data")), "audio/mpeg")
+	if err != nil {
+		t.Fatalf("SaveMediaReader() error: %v", err)
+	}
+	if !strings.HasPrefix(url, "/public/media/") {
+		t.Errorf("expected URL starting with /public/media/, got %q", url)
+	}
+	if !strings.HasSuffix(url, ".mp3") {
+		t.Errorf("expected .mp3 extension, got %q", url)
+	}
+}
+
+func TestSaveMediaReader_Idempotent(t *testing.T) {
+	tmp := t.TempDir()
+	origDir := mediaPublicDir
+	mediaPublicDir = filepath.Join(tmp, "public", "media")
+	defer func() { mediaPublicDir = origDir }()
+
+	data := []byte("idempotent-data")
+	url1, _ := SaveMediaReader(bytes.NewReader(data), "image/png")
+	url2, _ := SaveMediaReader(bytes.NewReader(data), "image/png")
+	if url1 != url2 {
+		t.Errorf("expected same URL on repeat call: %q vs %q", url1, url2)
+	}
+	entries, _ := os.ReadDir(mediaPublicDir)
+	if len(entries) != 1 {
+		t.Errorf("expected 1 file, got %d", len(entries))
+	}
+}
+
+func TestSaveMediaReader_ReadError(t *testing.T) {
+	origDir := mediaPublicDir
+	mediaPublicDir = t.TempDir()
+	defer func() { mediaPublicDir = origDir }()
+
+	errReader := &errorReader{}
+	_, err := SaveMediaReader(errReader, "image/jpeg")
+	if err == nil {
+		t.Error("expected error from failing reader, got nil")
+	}
+}
+
+type errorReader struct{}
+
+func (e *errorReader) Read(_ []byte) (int, error) {
+	return 0, io.ErrUnexpectedEOF
 }
 
 func TestExtensionForMime(t *testing.T) {

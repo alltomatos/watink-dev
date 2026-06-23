@@ -92,6 +92,19 @@ func (qc *QueueController) CreateQueue(c *gin.Context) {
 		return
 	}
 
+	if _, err := utils.ValidateStringField(input.Name, "name", 100); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(input.Color, "color", 50); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(input.GreetingMessage, "greetingMessage", 2000); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
 	input.TenantID = tenantID
 	if err := db.Create(&input).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "CreateQueue")
@@ -125,6 +138,19 @@ func (qc *QueueController) UpdateQueue(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&queue); err != nil {
 		utils.RespondWithBindError(c, err)
+		return
+	}
+
+	if _, err := utils.ValidateStringField(queue.Name, "name", 100); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(queue.Color, "color", 50); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(queue.GreetingMessage, "greetingMessage", 2000); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 

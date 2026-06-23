@@ -25,6 +25,7 @@ type ReceiveMessageInput struct {
 	GroupName     string
 	QuotedMsgID   string
 	ProfilePicURL string
+	SenderPicURL  string
 	IsLID         bool
 	Participant   string
 	IsGroup       bool
@@ -33,6 +34,8 @@ type ReceiveMessageInput struct {
 	MediaURL      string
 	MediaData     string
 	Mimetype      string
+	Thumbnail     string // base64 JPEG preview for pending (not-yet-downloaded) media
+	MediaProto    string // base64 serialized media message for on-demand download
 	SessionID     int
 	TenantID      uuid.UUID
 }
@@ -153,16 +156,6 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 		ticket.IsGroup = input.IsGroup
 	}
 
-	dataJSON, _ := json.Marshal(map[string]interface{}{
-		"jid":         contactJID,
-		"participant": input.Participant,
-		"pushName":    input.PushName, // nome do remetente — exibido na bolha em grupos
-		"isGroup":     input.IsGroup,
-		"isLid":       input.IsLID,
-		"mimetype":    input.Mimetype,
-		"mediaData":   input.MediaData,
-	})
-
 	mediaType := input.Type
 	if mediaType == "" {
 		mediaType = "chat"
@@ -176,6 +169,32 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 			mediaURL = url
 		}
 	}
+
+	// Media is downloaded on demand: when the engine ships a serialized media
+	// proto (and no URL/data yet), the message is "pending" — the frontend shows
+	// the blurred thumbnail + a download button until the operator fetches it.
+	mediaStatus := ""
+	if mediaType != "chat" && mediaURL == "" {
+		if input.MediaProto != "" {
+			mediaStatus = "pending"
+		} else {
+			mediaStatus = "unavailable"
+		}
+	}
+
+	dataJSON, _ := json.Marshal(map[string]interface{}{
+		"jid":          contactJID,
+		"participant":  input.Participant,
+		"pushName":     input.PushName,     // sender name shown in group bubble
+		"senderPicUrl": input.SenderPicURL, // sender's individual photo for group bubble avatar
+		"isGroup":      input.IsGroup,
+		"isLid":        input.IsLID,
+		"mimetype":     input.Mimetype,
+		"mediaData":    input.MediaData,
+		"thumbnail":    input.Thumbnail,
+		"mediaProto":   input.MediaProto,
+		"mediaStatus":  mediaStatus,
+	})
 
 	createdAt := time.Unix(input.Timestamp, 0)
 	if createdAt.IsZero() || input.Timestamp == 0 {

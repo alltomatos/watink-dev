@@ -2,7 +2,7 @@
 import { toast } from "react-toastify";
 
 import api from "../../../services/api";
-import openSocket from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/socket-io";
 import { i18n } from "../../../translate/i18n";
 import toastError from "../../../errors/toastError";
 import { Queue, QueuesAction } from "../queuesTypes";
@@ -64,21 +64,16 @@ export function useQueues(): UseQueuesReturn {
   }, []);
 
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-
-    socket.on("queue", (data: { action: string; queue?: Queue; queueId?: number }) => {
+    const handleQueue = (data: { action: string; queue?: Queue; queueId?: number }) => {
       if (data.action === "update" || data.action === "create") {
         dispatch({ type: "UPDATE_QUEUES", payload: data.queue! });
       }
       if (data.action === "delete") {
         dispatch({ type: "DELETE_QUEUE", payload: data.queueId! });
       }
-    });
-
-    return () => {
-      socket.disconnect();
     };
+
+    return subscribeToSocket({ queue: handleQueue });
   }, []);
 
   const handleOpenQueueModal = () => {

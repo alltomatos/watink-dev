@@ -1,7 +1,9 @@
 # Documentação da API
 
 ## Visão Geral
-A API segue o padrão REST e utiliza JSON para comunicação. A documentação interativa completa (Swagger) está disponível em `/docs` quando a aplicação está rodando.
+A API segue o padrão REST e utiliza JSON para comunicação. A documentação interativa completa (**Scalar**) está disponível em `/api/v1/docs?token=<JWT>` quando a aplicação Go (`business/`) está rodando na porta 8082.
+
+> **Nota**: este arquivo documenta o backend Node.js legado (`legacy/backend/`). O backend Go canônico está em `business/` e sua documentação OpenAPI é gerada via swaggo — ver [`docs/frontend/swagger/OVERVIEW.md`](../frontend/swagger/OVERVIEW.md).
 
 ## Endpoints Principais
 Abaixo estão os prefixos de rota definidos em `src/routes/index.ts`:

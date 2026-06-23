@@ -75,7 +75,10 @@ func (tc *TicketController) RecoverHistory(c *gin.Context) {
 	var input struct {
 		Range string `json:"range"`
 	}
-	_ = c.ShouldBindJSON(&input)
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.RespondWithBindError(c, err)
+		return
+	}
 
 	var ticket models.Ticket
 	if err := db.Where("id = ?", ticketID).Preload("Contact").First(&ticket).Error; err != nil {

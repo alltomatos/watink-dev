@@ -39,7 +39,7 @@ func (wss *WhatsAppSessionService) StartWhatsAppSession(whatsapp models.Whatsapp
 	}
 
 	// Emit via Socket (via injected broadcast)
-	wss.broadcast.EmitToNamespace("/", "whatsappSession", map[string]interface{}{
+	wss.broadcast.EmitToTenantRoom(whatsapp.TenantID.String(), "whatsappSession", map[string]interface{}{
 		"action":  "update",
 		"session": whatsapp,
 	})

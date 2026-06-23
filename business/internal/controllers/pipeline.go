@@ -59,12 +59,25 @@ func (pc *PipelineController) Create(c *gin.Context) {
 		return
 	}
 
+	pipelineName, err := utils.ValidateStringField(input.Name, "name", 255)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	for i, st := range input.Stages {
+		if _, err := utils.ValidateStringField(st.Name, "stage.name", 100); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+		_ = i
+	}
+
 	pipeline := models.Pipeline{
-		Name:     input.Name,
+		Name:     pipelineName,
 		TenantID: tenantID,
 	}
 
-	err := db.Transaction(func(tx *gorm.DB) error {
+	err = db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&pipeline).Error; err != nil {
 			return err
 		}
@@ -117,7 +130,12 @@ func (pc *PipelineController) Update(c *gin.Context) {
 	}
 
 	if strings.TrimSpace(input.Name) != "" {
-		pipeline.Name = input.Name
+		updName, err := utils.ValidateStringField(input.Name, "name", 255)
+		if err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+		pipeline.Name = updName
 	}
 
 	err := db.Transaction(func(tx *gorm.DB) error {
