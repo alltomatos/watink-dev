@@ -34,18 +34,18 @@ func NewSystemController(systemRepo domain.SystemRepository, rabbit SystemRabbit
 }
 
 type RabbitMQStats struct {
-	Connected bool                 `json:"connected"`
+	Connected bool                  `json:"connected"`
 	Queues    []domain.QueueMetrics `json:"queues"`
 }
 
 type SystemStats struct {
-	CPUUsage          float64                  `json:"cpuUsage"`
-	MemoryTotal       uint64                   `json:"memoryTotal"`
-	MemoryUsed        uint64                   `json:"memoryUsed"`
-	MemoryFree        uint64                   `json:"memoryFree"`
-	Uptime            float64                  `json:"uptime"`
+	CPUUsage          float64                    `json:"cpuUsage"`
+	MemoryTotal       uint64                     `json:"memoryTotal"`
+	MemoryUsed        uint64                     `json:"memoryUsed"`
+	MemoryFree        uint64                     `json:"memoryFree"`
+	Uptime            float64                    `json:"uptime"`
 	TenantConsumption []domain.TenantConsumption `json:"tenantConsumption"`
-	RabbitMQ          RabbitMQStats       `json:"rabbitmq"`
+	RabbitMQ          RabbitMQStats              `json:"rabbitmq"`
 	Process           struct {
 		CPUUsage     float64 `json:"cpuUsage"`
 		MemoryUsed   uint64  `json:"memoryUsed"`
