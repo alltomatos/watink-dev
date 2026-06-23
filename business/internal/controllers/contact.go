@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
@@ -17,10 +18,11 @@ type ContactController struct {
 	contactRepo domain.ContactRepository
 	sessions    domain.ChannelSessionRepository
 	publisher   domain.CommandPublisher
+	broadcast   *services.RedisBroadcast
 }
 
-func NewContactController(cr domain.ContactRepository, sessions domain.ChannelSessionRepository, publisher domain.CommandPublisher) *ContactController {
-	return &ContactController{contactRepo: cr, sessions: sessions, publisher: publisher}
+func NewContactController(cr domain.ContactRepository, sessions domain.ChannelSessionRepository, publisher domain.CommandPublisher, broadcast *services.RedisBroadcast) *ContactController {
+	return &ContactController{contactRepo: cr, sessions: sessions, publisher: publisher, broadcast: broadcast}
 }
 
 // @Summary      Listar contatos
@@ -141,6 +143,8 @@ func (cc *ContactController) CreateContact(c *gin.Context) {
 		return
 	}
 
+	cc.broadcast.EmitToTenantRoom(tenantID.String(), "contact", gin.H{"action": "create", "contact": contact})
+
 	c.JSON(http.StatusOK, contact)
 }
 
@@ -220,6 +224,11 @@ func (cc *ContactController) UpdateContact(c *gin.Context) {
 		utils.RespondWithInternalError(c, err, "UpdateContact")
 		return
 	}
+
+	if updated, err := cc.contactRepo.FindByID(c.Request.Context(), id, tenantID); err == nil && updated != nil {
+		contact = updated
+	}
+	cc.broadcast.EmitToTenantRoom(tenantID.String(), "contact", gin.H{"action": "update", "contact": contact})
 
 	c.JSON(http.StatusOK, contact)
 }
@@ -358,6 +367,8 @@ func (cc *ContactController) DeleteContact(c *gin.Context) {
 		utils.RespondWithInternalError(c, err, "DeleteContact")
 		return
 	}
+
+	cc.broadcast.EmitToTenantRoom(tenantID.String(), "contact", gin.H{"action": "delete", "contactId": strconv.Itoa(id)})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Contact deleted successfully"})
 }
