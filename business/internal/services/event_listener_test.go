@@ -300,7 +300,7 @@ func TestHandleMessageReaction_InvalidJSON(t *testing.T) {
 }
 
 func TestHandleContactUpdate_InvalidJSON(t *testing.T) {
-	err := handleContactUpdate(context.Background(), nil, json.RawMessage(`{bad`), uuid.New())
+	err := handleContactUpdate(context.Background(), nil, nil, json.RawMessage(`{bad`), uuid.New())
 	if err == nil {
 		t.Error("expected error for invalid JSON, got nil")
 	}

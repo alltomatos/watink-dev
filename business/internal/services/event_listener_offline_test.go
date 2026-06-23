@@ -13,11 +13,11 @@ import (
 // --- mock repos (offline, no DB) ---
 
 type mockContactRepo struct {
-	contact      *domain.Contact
-	findErr      error
-	updateFields map[string]interface{}
-	updateCalls  int
-	created      []*domain.Contact
+	contact        *domain.Contact
+	findErr        error
+	updateFields   map[string]interface{}
+	updateCalls    int
+	created        []*domain.Contact
 	foundOrCreated []*domain.Contact
 }
 
@@ -68,17 +68,17 @@ func (m *mockSessionRepo) Update(_ context.Context, _ *domain.ChannelSession, fi
 	}
 	return nil
 }
-func (m *mockSessionRepo) Delete(_ context.Context, _ int, _ uuid.UUID) error { return nil }
+func (m *mockSessionRepo) Delete(_ context.Context, _ int, _ uuid.UUID) error    { return nil }
 func (m *mockSessionRepo) ResetDefaultFlag(_ context.Context, _ uuid.UUID) error { return nil }
 func (m *mockSessionRepo) DeleteWithRelations(_ context.Context, _ int, _ uuid.UUID) error {
 	return nil
 }
 
 type mockMessageRepo struct {
-	msg         *domain.Message
-	updated     bool
+	msg           *domain.Message
+	updated       bool
 	updatedFields map[string]interface{}
-	created     []*domain.Message
+	created       []*domain.Message
 }
 
 func (m *mockMessageRepo) Create(_ context.Context, msg *domain.Message) error {
@@ -222,7 +222,7 @@ func TestHandleContactUpdate_UpdatesNameAndPic(t *testing.T) {
 			"profilePicUrl": "https://example.com/pic.jpg",
 		},
 	})
-	if err := handleContactUpdate(context.Background(), cr, payload, uuid.New()); err != nil {
+	if err := handleContactUpdate(context.Background(), cr, nil, payload, uuid.New()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if cr.updateCalls != 1 {
@@ -242,7 +242,7 @@ func TestHandleContactUpdate_ContactNotFound_NoOp(t *testing.T) {
 			"pushName": "Bob",
 		},
 	})
-	if err := handleContactUpdate(context.Background(), cr, payload, uuid.New()); err != nil {
+	if err := handleContactUpdate(context.Background(), cr, nil, payload, uuid.New()); err != nil {
 		t.Fatalf("expected nil for missing contact, got: %v", err)
 	}
 	if cr.updateCalls != 0 {
@@ -254,7 +254,7 @@ func TestHandleContactUpdate_EmptyNumber_NoOp(t *testing.T) {
 	cr := &mockContactRepo{}
 
 	payload, _ := json.Marshal(ContactUpdatePayload{})
-	if err := handleContactUpdate(context.Background(), cr, payload, uuid.New()); err != nil {
+	if err := handleContactUpdate(context.Background(), cr, nil, payload, uuid.New()); err != nil {
 		t.Fatalf("expected nil for empty number, got: %v", err)
 	}
 	if cr.updateCalls != 0 {
