@@ -17,6 +17,22 @@ import {
 import { Message } from "../types";
 import MessageMedia from "./MessageMedia";
 import QuotedMessage from "./QuotedMessage";
+
+// Renders a media bubble when the message has stored media OR is a media type
+// that renders without a URL: location/vcard/carousel (body-driven) and the
+// downloadable types whose blurred placeholder shows before download.
+const MEDIA_BUBBLE_TYPES = [
+  "image",
+  "video",
+  "audio",
+  "document",
+  "sticker",
+  "location",
+  "vcard",
+  "carousel",
+];
+const hasMediaBubble = (m: Message): boolean =>
+  !!m.mediaUrl || MEDIA_BUBBLE_TYPES.includes(m.mediaType ?? "");
 import MessageReactions from "./MessageReactions";
 import MessageMetadata from "./MessageMetadata";
 import LinkPreview from "./LinkPreview";
@@ -157,11 +173,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 colorCache={colorCache}
               />
             )}
-            {(message.mediaUrl ||
-              message.mediaType === "location" ||
-              message.mediaType === "vcard") && (
-              <MessageMedia message={message} />
-            )}
+            {hasMediaBubble(message) && <MessageMedia message={message} />}
             {bodyContent}
             <MessageReactions message={message} />
           </div>
@@ -191,12 +203,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         style={{ marginTop, maxWidth: maxW }}
       >
         {actionsButton}
-        {(message.mediaUrl ||
-          message.mediaType === "location" ||
-          message.mediaType === "vcard" ||
-          message.mediaType === "carousel") && (
-          <MessageMedia message={message} />
-        )}
+        {hasMediaBubble(message) && <MessageMedia message={message} />}
         {bodyContent}
         <MessageReactions message={message} />
       </div>

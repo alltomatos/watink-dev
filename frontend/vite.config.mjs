@@ -110,7 +110,11 @@ export default defineConfig({
     // WSL2 fica momentaneamente inacessível (errno -5).
     watch: {
       usePolling: true,
-      interval: 300,
+      // Polling em bind mount do Docker no Windows custa CPU por arquivo a cada
+      // ciclo. 300ms saturava ~1 core; 1000ms reduz drasticamente o CPU com HMR
+      // ainda responsivo (~1s para detectar a mudança).
+      interval: 1000,
+      binaryInterval: 2000,
       awaitWriteFinish: {
         stabilityThreshold: 500,
         pollInterval: 100,

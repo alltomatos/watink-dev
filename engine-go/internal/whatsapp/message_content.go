@@ -1,0 +1,60 @@
+package whatsapp
+
+import (
+	"encoding/base64"
+	"log"
+
+	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"google.golang.org/protobuf/proto"
+)
+
+type mediaContent struct {
+	body      string
+	msgType   string
+	mimeType  string
+	thumbnail string // base64 JPEG preview (image/video/document); empty otherwise
+	protoB64  string // base64 proto.Marshal of the downloadable media message
+}
+
+func extractMessageContent(msg *waProto.Message) mediaContent {
+	c := mediaContent{msgType: "chat", body: msg.GetConversation()}
+	if ext := msg.GetExtendedTextMessage(); ext != nil {
+		c.body = ext.GetText()
+	}
+	if img := msg.GetImageMessage(); img != nil {
+		return mediaContent{body: img.GetCaption(), msgType: "image", mimeType: img.GetMimetype(), thumbnail: encodeThumb(img.GetJPEGThumbnail()), protoB64: marshalMedia(img)}
+	}
+	if video := msg.GetVideoMessage(); video != nil {
+		return mediaContent{body: video.GetCaption(), msgType: "video", mimeType: video.GetMimetype(), thumbnail: encodeThumb(video.GetJPEGThumbnail()), protoB64: marshalMedia(video)}
+	}
+	if audio := msg.GetAudioMessage(); audio != nil {
+		return mediaContent{msgType: "audio", mimeType: audio.GetMimetype(), protoB64: marshalMedia(audio)}
+	}
+	if doc := msg.GetDocumentMessage(); doc != nil {
+		caption := doc.GetCaption()
+		if caption == "" {
+			caption = doc.GetTitle()
+		}
+		return mediaContent{body: caption, msgType: "document", mimeType: doc.GetMimetype(), thumbnail: encodeThumb(doc.GetJPEGThumbnail()), protoB64: marshalMedia(doc)}
+	}
+	if sticker := msg.GetStickerMessage(); sticker != nil {
+		return mediaContent{msgType: "sticker", mimeType: sticker.GetMimetype(), protoB64: marshalMedia(sticker)}
+	}
+	return c
+}
+
+func encodeThumb(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(b)
+}
+
+func marshalMedia(m proto.Message) string {
+	raw, err := proto.Marshal(m)
+	if err != nil {
+		log.Printf("failed to marshal media proto: %v", err)
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(raw)
+}
