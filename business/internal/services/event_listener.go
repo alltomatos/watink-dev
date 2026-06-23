@@ -36,6 +36,7 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 		"wbot.*.*.message.ack",
 		"wbot.*.*.message.revoke",
 		"wbot.*.*.message.reaction",
+		"wbot.*.*.message.media",
 		"wbot.*.*.contact.update",
 		"wbot.*.*.contact.import",
 		"wbot.*.*.session.jid_registered",
