@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import api from "../../services/api";
-import openSocket from "../../services/socket-io";
+import { subscribeToSocket } from "../../services/socket-io";
 import toastError from "../../errors/toastError";
 import { i18n } from "../../translate/i18n";
 
@@ -29,10 +29,8 @@ const PairingCodeModal = ({ open, onClose, whatsAppId }: PairingCodeModalProps) 
 
   useEffect(() => {
     if (!whatsAppId || !open) return;
-    const socket = openSocket();
-    if (!socket) return;
 
-    socket.on("whatsappSession", (data: WhatsAppSessionSocketEvent) => {
+    const handleSession = (data: WhatsAppSessionSocketEvent) => {
       if (data.action === "update" && data.session.id === whatsAppId) {
         if (data.session.pairingCode) {
           setPairingCode(data.session.pairingCode);
@@ -40,9 +38,9 @@ const PairingCodeModal = ({ open, onClose, whatsAppId }: PairingCodeModalProps) 
         }
         if (data.session.status === "CONNECTED") onClose();
       }
-    });
+    };
 
-    return () => { socket.disconnect(); };
+    return subscribeToSocket({ whatsappSession: handleSession });
   }, [whatsAppId, open, onClose]);
 
   const handleGenerate = async () => {

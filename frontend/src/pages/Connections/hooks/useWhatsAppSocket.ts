@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import openSocket from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/socket-io";
 import type { WhatsApp } from "../connectionConfigTypes";
 
 interface UseWhatsAppSocketOptions {
@@ -28,10 +28,7 @@ export const useWhatsAppSocket = ({
   fetchWhatsapp,
 }: UseWhatsAppSocketOptions): void => {
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-
-    const onSession = (data: { action: string; session: WhatsApp & { id: number } }) => {
+    const handleSession = (data: { action: string; session: WhatsApp & { id: number } }) => {
       if (data.action === "update" && data.session.id === parseInt(whatsappId ?? "0")) {
         setWhatsapp((prev) => prev ? { ...prev, ...data.session } : (data.session as WhatsApp));
 
@@ -69,19 +66,16 @@ export const useWhatsAppSocket = ({
       }
     };
 
-    const onWhatsapp = (data: { action: string; whatsapp: WhatsApp & { id: number } }) => {
+    const handleWhatsapp = (data: { action: string; whatsapp: WhatsApp & { id: number } }) => {
       if (data.action === "update" && data.whatsapp.id === parseInt(whatsappId ?? "0")) {
         setWhatsapp((prev) => prev ? { ...prev, ...data.whatsapp } : (data.whatsapp as WhatsApp));
       }
     };
 
-    socket.on("whatsappSession", onSession);
-    socket.on("whatsapp", onWhatsapp);
-
-    return () => {
-      socket.off("whatsappSession", onSession);
-      socket.off("whatsapp", onWhatsapp);
-    };
+    return subscribeToSocket({
+      whatsappSession: handleSession,
+      whatsapp: handleWhatsapp,
+    });
   }, [
     whatsappId,
     fetchWhatsapp,

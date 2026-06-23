@@ -1,5 +1,5 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
-import openSocket from "../../services/socket-io";
+import { subscribeToSocket } from "../../services/socket-io";
 import toastError from "../../errors/toastError";
 import api from "../../services/api";
 
@@ -84,36 +84,28 @@ const useWhatsApps = (): UseWhatsAppsResult => {
   }, [reloadWhatsApps]);
 
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-
-    socket.on(
-      "whatsapp",
-      (data: { action: string; whatsapp?: WhatsApp; whatsappId?: number }) => {
-        if (data.action === "update" && data.whatsapp) {
-          dispatch({ type: "UPDATE_WHATSAPPS", payload: data.whatsapp });
-        }
-        if (data.action === "delete" && data.whatsappId) {
-          dispatch({ type: "DELETE_WHATSAPPS", payload: data.whatsappId });
-        }
+    const handleWhatsapp = (data: { action: string; whatsapp?: WhatsApp; whatsappId?: number }) => {
+      if (data.action === "update" && data.whatsapp) {
+        dispatch({ type: "UPDATE_WHATSAPPS", payload: data.whatsapp });
       }
-    );
-
-    socket.on(
-      "whatsappSession",
-      (data: {
-        action: string;
-        session?: Partial<WhatsApp> & { id: number };
-      }) => {
-        if (data.action === "update" && data.session) {
-          dispatch({ type: "UPDATE_SESSION", payload: data.session });
-        }
+      if (data.action === "delete" && data.whatsappId) {
+        dispatch({ type: "DELETE_WHATSAPPS", payload: data.whatsappId });
       }
-    );
-
-    return () => {
-      socket.disconnect();
     };
+
+    const handleSession = (data: {
+      action: string;
+      session?: Partial<WhatsApp> & { id: number };
+    }) => {
+      if (data.action === "update" && data.session) {
+        dispatch({ type: "UPDATE_SESSION", payload: data.session });
+      }
+    };
+
+    return subscribeToSocket({
+      whatsapp: handleWhatsapp,
+      whatsappSession: handleSession,
+    });
   }, []);
 
   return { whatsApps, loading, reloadWhatsApps };
