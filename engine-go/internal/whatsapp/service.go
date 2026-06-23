@@ -33,6 +33,10 @@ type WhatsAppService struct {
 
 	picMu    sync.Mutex
 	picCache map[string]string // JID string → profile picture URL
+
+	// publishEvent routes an event envelope to the messaging broker.
+	// Settable in tests to capture emitted events without a real broker.
+	publishEvent func(tenantID string, sessionID int, eventType string, payload map[string]interface{})
 }
 
 // groupMeta holds cached community/sub-group metadata for a group JID.
@@ -51,7 +55,7 @@ func NewWhatsAppService(rabbit *rabbitmq.RabbitMQService, sessionLoader SessionL
 		log.Fatalf("Failed to connect to Postgres for WhatsMeow store: %v", err)
 	}
 
-	return &WhatsAppService{
+	svc := &WhatsAppService{
 		container:       container,
 		clients:         make(map[int]*whatsmeow.Client),
 		rabbit:          rabbit,
@@ -61,6 +65,8 @@ func NewWhatsAppService(rabbit *rabbitmq.RabbitMQService, sessionLoader SessionL
 		groupMetaMap:    make(map[string]groupMeta),
 		picCache:        make(map[string]string),
 	}
+	svc.publishEvent = svc.defaultPublishEvent
+	return svc
 }
 
 // getConnectedClient returns the client for sessionID if it is connected and logged in.
@@ -94,8 +100,8 @@ func (s *WhatsAppService) emitAck(sessionID int, tenantID, messageID string, ack
 	})
 }
 
-// publishEvent wraps payload in an envelope and routes it to wbot.events via RabbitMQ.
-func (s *WhatsAppService) publishEvent(tenantID string, sessionID int, eventType string, payload map[string]interface{}) {
+// defaultPublishEvent wraps payload in an envelope and routes it to wbot.events via RabbitMQ.
+func (s *WhatsAppService) defaultPublishEvent(tenantID string, sessionID int, eventType string, payload map[string]interface{}) {
 	envelope := map[string]interface{}{
 		"id":        fmt.Sprintf("%d-%d", time.Now().UnixNano(), sessionID),
 		"timestamp": time.Now().UnixMilli(),
