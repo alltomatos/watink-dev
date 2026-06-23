@@ -1,9 +1,9 @@
 # ESTADO_ORQUESTRATOR.md
 
 > Arquivo de estado vivo do Orchestrator.
-> **Última atualização**: 2026-06-19
-> **Branch**: `develop` (main sincronizado via PR #85 + PR #86)
-> **Epic atual**: Fase 3 — Nova inspeção pós-GAP batch (remoção dead-code + engine-go router)
+> **Última atualização**: 2026-06-22
+> **Branch**: `develop` (main sincronizado via PRs até #192)
+> **Epic atual**: Fase 3 — Batch GAP-1/GAP-2/GAP-3 (fragmentação event_listener + testes pkg/utils + limpeza órfãos)
 
 ---
 
@@ -41,6 +41,7 @@
 | Epic 21 | Modularização rabbitmq.go (3 arquivos) + DI pura EventListener (remove *gorm.DB) | ✅ Mergeado (PR #87) |
 | Epic 22 | Testes offline DLQ/tracing (12 testes) + split send.go/send_types.go engine-go | ✅ Mergeado (PR #88) |
 | Epic 23 | DI pura WhatsAppService engine-go — SessionLoader interface + 4 testes offline | ✅ Mergeado (PR #89) |
+| PRs #90–#192 | Batch: GAP-AUTH-COVERAGE (pkg/auth 0%→93.5%), GAP-MEDIA-SEND, GAP-MEDIA-1/2, GAP-ANY, GAP-WS (WebSocket hardening + multitenancy), GAP-VAL-1 (ParseIntParam), DI remoção globals socket/redis, testes Audio/TicketsList/mediastore, feat audio player, API docs sync | ✅ Mergeado |
 
 ---
 
@@ -57,8 +58,8 @@
 | `internal/application` | ~40% |
 | `internal/plugins` | ~40% |
 | `internal/services` | ~28% |
-| `pkg/auth` | 0% ⚠️ |
-| `pkg/utils` | 0% ⚠️ |
+| `pkg/auth` | 93.5% ✅ (PR #186) |
+| `pkg/utils` | ~75% ✅ (errors_test.go — 10 casos, 2026-06-22) |
 | `engine-go` | 0% ⚠️ (0 test files) |
 | **Total estimado** | **~55-60%** |
 
@@ -90,13 +91,12 @@
 
 ---
 
-## DAG Atual — Inspeção Fase 3 (2026-06-19, atualizado)
+## DAG Atual — Batch Fase 3 (2026-06-22)
 
 | ID | Tarefa | Tier | Status |
 |----|--------|------|--------|
-| NEW-1 | Modularizar event_listener.go + DI pura EventListener | T2/T3 | ✅ PR #87 |
-| NEW-2 | Modularizar rabbitmq.go (3 arquivos) | T2 | ✅ PR #87 |
-| NEW-3 | Split send.go/send_types.go + testes offline DLQ/tracing | T2 | ✅ PR #88 |
-| NEW-4 | SessionLoader DI em WhatsAppService engine-go | T3 | ✅ PR #89 |
-| NEW-5 | Deletar rabbitmq_state.go (Service Locator global — dead code) | T1 | ✅ Aplicado |
-| NEW-6 | send_types_test.go — 6 testes JSON roundtrip offline | T2 | 🔄 Em andamento |
+| B1 | Deletar pr_media1.md (arquivo órfão) | T1 | ✅ Aplicado |
+| B2 | Fragmentar event_listener.go 499L → 4 arquivos (session/message/contact) | T2 | ✅ Aplicado |
+| B3 | Testes pkg/utils/errors.go — 10 casos, build green | T2 | ✅ Aplicado |
+| B4 | Testes internal/services mockáveis — 16 casos offline (revoke/reaction/contact/jid) | T2 | ✅ Aplicado |
+| B5 | Atualizar ESTADO_ORQUESTRATOR.md (PRs #90–#192) | T1 | ✅ Aplicado |

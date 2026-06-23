@@ -36,3 +36,41 @@ export interface DetailItemProps {
   label: string;
   value: string;
 }
+
+export interface UseConnectionConfigReturn {
+  whatsappId: string | undefined;
+  whatsapp: WhatsApp | null;
+  loading: boolean;
+  stats: Stats | null;
+  keepAliveSaving: boolean;
+  status: string;
+  isConnected: boolean;
+  isBusy: boolean;
+  connecting: boolean;
+  restarting: boolean;
+  pairingModalOpen: boolean;
+  setPairingModalOpen: (v: boolean) => void;
+  whatsappModalOpen: boolean;
+  setWhatsAppModalOpen: (v: boolean) => void;
+  confirmationOpen: boolean;
+  setConfirmationOpen: (v: boolean) => void;
+  confirmationAction: ConfirmationAction;
+  setConfirmationAction: (v: ConfirmationAction) => void;
+  phoneNumber: string;
+  setPhoneNumber: (v: string) => void;
+  pairingCode: string;
+  pairingLoading: boolean;
+  showPairingInput: boolean;
+  setShowPairingInput: (v: boolean) => void;
+  showQrCode: boolean;
+  inputPairingModalOpen: boolean;
+  setInputPairingModalOpen: (v: boolean) => void;
+  fetchWhatsapp: () => Promise<void>;
+  handleStartSessionQr: () => Promise<void>;
+  handleRestart: () => Promise<void>;
+  handleRequestPairingCode: () => Promise<void>;
+  handleDisconnect: () => Promise<void>;
+  handleDelete: () => Promise<void>;
+  handleToggleKeepAlive: (next: boolean) => Promise<void>;
+  handleCancelPairing: () => void;
+}

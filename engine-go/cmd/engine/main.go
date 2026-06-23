@@ -60,6 +60,7 @@ func main() {
 		"wbot.*.*.message.send.poll",
 		"wbot.*.*.message.send.interactive",
 		"wbot.*.*.message.markAsRead",
+		"wbot.*.*.media.download",
 		"wbot.*.*.contact.sync",
 		"wbot.*.*.contact.import",
 		"wbot.*.*.history.sync",
@@ -182,6 +183,13 @@ func handleCommand(d amqp.Delivery, svc *whatsapp.WhatsAppService) error {
 			return err
 		}
 		return svc.MarkRead(sessionID, p)
+
+	case "media.download":
+		var p whatsapp.DownloadMediaCommandPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return err
+		}
+		return svc.DownloadMedia(sessionID, tenantID, p)
 
 	case "contact.sync":
 		var p whatsapp.SyncContactPayload

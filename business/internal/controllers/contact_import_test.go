@@ -20,7 +20,7 @@ func TestContactController_ImportContacts_NoConnectedSession(t *testing.T) {
 	}, nil)
 	pub := &mockPublisher{}
 
-	ctrl := NewContactController(&MockContactRepo{db: db}, sessions, pub)
+	ctrl := NewContactController(&MockContactRepo{db: db}, sessions, pub, nil)
 
 	r := gin.New()
 	r.Use(testScopedMiddleware(db, tenantID.String()))
@@ -48,7 +48,7 @@ func TestContactController_ImportContacts_PublishesCommand(t *testing.T) {
 	}, nil)
 	pub := &mockPublisher{}
 
-	ctrl := NewContactController(&MockContactRepo{db: db}, sessions, pub)
+	ctrl := NewContactController(&MockContactRepo{db: db}, sessions, pub, nil)
 
 	r := gin.New()
 	r.Use(testScopedMiddleware(db, tenantID.String()))

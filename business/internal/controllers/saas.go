@@ -85,6 +85,11 @@ func CreatePlan(c *gin.Context) {
 		return
 	}
 
+	if _, err := utils.ValidateStringField(plan.Name, "name", 100); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := auth.GetDB(c).Create(&plan).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "CreatePlan")
 		return

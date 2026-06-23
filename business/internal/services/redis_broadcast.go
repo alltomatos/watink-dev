@@ -90,6 +90,12 @@ func (rb *RedisBroadcast) EmitToNamespace(nsp string, event string, payload inte
 	})
 }
 
+// EmitToTenantRoom broadcasts to the tenant-scoped room "tenant:{tenantID}",
+// ensuring global events (whatsappSession, ticket) are isolated per tenant.
+func (rb *RedisBroadcast) EmitToTenantRoom(tenantID string, event string, payload interface{}) {
+	rb.EmitToRoom("/", "tenant:"+tenantID, event, payload)
+}
+
 // EmitToRoom broadcasts events to a room globally via Redis.
 func (rb *RedisBroadcast) EmitToRoom(nsp string, room string, event string, payload interface{}) {
 	if rb == nil {
@@ -106,53 +112,3 @@ func (rb *RedisBroadcast) EmitToRoom(nsp string, room string, event string, payl
 	})
 }
 
-// --- DEPRECATED: Global functions kept for backward compatibility during migration ---
-
-// SetupRedisBroadcast — DEPRECATED: use NewRedisBroadcast(redisSvc, server).Start() instead.
-func SetupRedisBroadcast() {
-	log.Printf("[DEPRECATION WARNING] SetupRedisBroadcast called")
-	pubsub := RedisClient.Subscribe(ctx, "socketio:broadcast")
-
-	go func() {
-		ch := pubsub.Channel()
-		for msg := range ch {
-			var sm SocketMessage
-			if err := json.Unmarshal([]byte(msg.Payload), &sm); err != nil {
-				log.Printf("Error unmarshaling socket message from redis: %v", err)
-				continue
-			}
-
-			if sm.SourceID == NodeID {
-				continue
-			}
-
-			if Server != nil {
-				if sm.Room != "" {
-					Server.BroadcastToRoom(sm.Namespace, sm.Room, sm.Event, sm.Payload)
-				} else {
-					Server.BroadcastToNamespace(sm.Namespace, sm.Event, sm.Payload)
-				}
-			}
-		}
-	}()
-}
-
-// PublishSocketMessage — DEPRECATED: use RedisBroadcast.Publish() instead.
-func PublishSocketMessage(sm SocketMessage) {
-	log.Printf("[DEPRECATION WARNING] PublishSocketMessage called")
-	if RedisClient == nil {
-		return
-	}
-
-	sm.SourceID = NodeID
-	payload, err := json.Marshal(sm)
-	if err != nil {
-		log.Printf("Error marshaling socket message: %v", err)
-		return
-	}
-
-	err = RedisClient.Publish(ctx, "socketio:broadcast", payload).Err()
-	if err != nil {
-		log.Printf("Error publishing socket message to redis: %v", err)
-	}
-}

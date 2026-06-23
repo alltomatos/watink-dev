@@ -2,7 +2,7 @@ import { useState, useEffect, useReducer } from "react";
 import { toast } from "react-toastify";
 
 import api from "../../../services/api";
-import openSocket from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/socket-io";
 import { i18n } from "../../../translate/i18n";
 import toastError from "../../../errors/toastError";
 import { QuickAnswer, QuickAnswersAction } from "../quickAnswersTypes";
@@ -98,21 +98,16 @@ export const useQuickAnswers = (): UseQuickAnswersReturn => {
   }, [searchParam, pageNumber]);
 
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-
-    socket.on("quickAnswer", (data: { action: string; quickAnswer?: QuickAnswer; quickAnswerId?: number }) => {
+    const handleQuickAnswer = (data: { action: string; quickAnswer?: QuickAnswer; quickAnswerId?: number }) => {
       if (data.action === "update" || data.action === "create") {
         dispatch({ type: "UPDATE_QUICK_ANSWERS", payload: data.quickAnswer! });
       }
       if (data.action === "delete") {
         dispatch({ type: "DELETE_QUICK_ANSWER", payload: Number(data.quickAnswerId) });
       }
-    });
-
-    return () => {
-      socket.disconnect();
     };
+
+    return subscribeToSocket({ quickAnswer: handleQuickAnswer });
   }, []);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {

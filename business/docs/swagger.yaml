@@ -218,6 +218,29 @@ paths:
       summary: Atualizar contato
       tags:
       - contacts
+  /contacts/import:
+    post:
+      description: Dispara a importação da agenda de contatos da sessão WhatsApp conectada
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Importar contatos do WhatsApp
+      tags:
+      - contacts
   /dashboard:
     get:
       description: Retorna contagens de tickets, TMR, TME e distribuição por fila
@@ -709,6 +732,10 @@ paths:
         name: ticketId
         required: true
         type: integer
+      - description: Página
+        in: query
+        name: pageNumber
+        type: integer
       produces:
       - application/json
       responses:
@@ -727,20 +754,27 @@ paths:
     post:
       consumes:
       - application/json
-      description: Envia mensagem via engine WhatsApp através do RabbitMQ
+      - multipart/form-data
+      description: Envia mensagem de texto ou mídia via engine WhatsApp
       parameters:
       - description: ID do ticket
         in: path
         name: ticketId
         required: true
         type: integer
-      - description: Conteúdo da mensagem
+      - description: Corpo JSON para texto
         in: body
         name: body
-        required: true
         schema:
-          additionalProperties: true
           type: object
+      - description: Arquivo de mídia (multipart)
+        in: formData
+        name: medias
+        type: file
+      - description: true/false
+        in: formData
+        name: fromMe
+        type: string
       produces:
       - application/json
       responses:
@@ -919,13 +953,12 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "503":
+          description: Service Unavailable
           schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
+            additionalProperties:
+              type: string
+            type: object
       security:
       - BearerAuth: []
       summary: Catálogo de plugins
@@ -933,23 +966,14 @@ paths:
       - plugins
   /plugins/checkout:
     post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Dados do checkout
-        in: body
-        name: body
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "503":
+          description: Service Unavailable
           schema:
-            additionalProperties: true
+            additionalProperties:
+              type: string
             type: object
       security:
       - BearerAuth: []
@@ -964,10 +988,8 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
+            additionalProperties: true
+            type: object
       security:
       - BearerAuth: []
       summary: Plugins instalados
@@ -1765,6 +1787,44 @@ paths:
       summary: Atualizar ticket
       tags:
       - tickets
+  /tickets/{ticketId}/history/recover:
+    post:
+      consumes:
+      - application/json
+      description: Solicita ao WhatsApp mensagens anteriores e as insere no ticket
+        sem reabri-lo
+      parameters:
+      - description: ID do ticket
+        in: path
+        name: ticketId
+        required: true
+        type: integer
+      - description: 'range: 1d|2d|7d|30d|all'
+        in: body
+        name: body
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Recuperar histórico da conversa
+      tags:
+      - tickets
   /tickets/{ticketId}/logs:
     get:
       parameters:
@@ -1803,30 +1863,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Listar usuários
-      tags:
-      - users
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Dados do usuário
-        in: body
-        name: body
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Criar usuário
       tags:
       - users
   /users/{userId}:
@@ -2016,6 +2052,59 @@ paths:
       security:
       - BearerAuth: []
       summary: Atualizar conexão WhatsApp
+      tags:
+      - whatsapp
+  /whatsapp/{id}/keepalive:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID da conexão
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: keepAlive
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties:
+            type: boolean
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualiza reconexão automática (keepAlive)
+      tags:
+      - whatsapp
+  /whatsapp/{id}/stats:
+    get:
+      parameters:
+      - description: ID da conexão
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Estatísticas da conexão
       tags:
       - whatsapp
   /whatsappsession/{whatsappId}:

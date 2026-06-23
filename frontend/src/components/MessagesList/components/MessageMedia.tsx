@@ -6,13 +6,22 @@ import Audio from "../../Audio";
 import FilePreview from "../../FilePreview";
 import { getBackendUrl } from "../../../helpers/urlUtils";
 import { parseData } from "../utils/messageHelpers";
+import OnDemandMediaPreview from "./OnDemandMediaPreview";
 import { Message } from "../types";
 
 interface Props {
   message: Message;
 }
 
+const DOWNLOADABLE_TYPES = ["image", "video", "audio", "document", "sticker"];
+
 const MessageMedia: React.FC<Props> = ({ message }) => {
+  // Pending media: a downloadable type with no stored URL yet → show the blurred
+  // thumbnail + download button instead of blocking on a full download.
+  if (!message.mediaUrl && DOWNLOADABLE_TYPES.includes(message.mediaType ?? "")) {
+    return <OnDemandMediaPreview message={message} />;
+  }
+
   if (message.mediaType === "location" && message.body.split("|").length >= 2) {
     const [imageLocation, linkLocation, descriptionLocation] =
       message.body.split("|");
@@ -49,7 +58,9 @@ const MessageMedia: React.FC<Props> = ({ message }) => {
   }
 
   if (message.mediaType === "audio") {
-    return <Audio url={getBackendUrl(message.mediaUrl) ?? ""} />;
+    const audioData = parseData(message.dataJson);
+    const mimetype = typeof audioData?.mimetype === "string" ? audioData.mimetype : undefined;
+    return <Audio url={getBackendUrl(message.mediaUrl) ?? ""} mimetype={mimetype} />;
   }
 
   if (message.mediaType === "video") {

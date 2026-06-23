@@ -85,6 +85,7 @@ services:
       - ENGINE_HEALTH_URL=http://watink-engine:8083/health
       - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_prod}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-dev_jwt_refresh_secret_change_in_prod}
+      - DOCS_PUBLIC=${DOCS_PUBLIC:-false}
       - PLUGIN_HUB_URL=http://plugin-manager:8081/api/v1/hub
     depends_on:
       postgres:

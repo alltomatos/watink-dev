@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
@@ -17,10 +18,11 @@ type ContactController struct {
 	contactRepo domain.ContactRepository
 	sessions    domain.ChannelSessionRepository
 	publisher   domain.CommandPublisher
+	broadcast   *services.RedisBroadcast
 }
 
-func NewContactController(cr domain.ContactRepository, sessions domain.ChannelSessionRepository, publisher domain.CommandPublisher) *ContactController {
-	return &ContactController{contactRepo: cr, sessions: sessions, publisher: publisher}
+func NewContactController(cr domain.ContactRepository, sessions domain.ChannelSessionRepository, publisher domain.CommandPublisher, broadcast *services.RedisBroadcast) *ContactController {
+	return &ContactController{contactRepo: cr, sessions: sessions, publisher: publisher, broadcast: broadcast}
 }
 
 // @Summary      Listar contatos
@@ -105,11 +107,32 @@ func (cc *ContactController) CreateContact(c *gin.Context) {
 		return
 	}
 
+	name, err := utils.ValidateStringField(input.Name, "name", 255)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	number, err := utils.ValidateStringField(input.Number, "number", 50)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	profilePicUrl, err := utils.ValidateStringField(input.ProfilePicUrl, "profilePicUrl", 2048)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	email, err := utils.ValidateStringField(input.Email, "email", 255)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	contact := &domain.Contact{
-		Name:          input.Name,
-		Number:        input.Number,
-		ProfilePicUrl: input.ProfilePicUrl,
-		Email:         input.Email,
+		Name:          name,
+		Number:        number,
+		ProfilePicUrl: profilePicUrl,
+		Email:         email,
 		IsGroup:       input.IsGroup,
 		WalletUserID:  input.WalletUserID,
 		TenantID:      tenantID,
@@ -119,6 +142,8 @@ func (cc *ContactController) CreateContact(c *gin.Context) {
 		utils.RespondWithInternalError(c, err, "CreateContact")
 		return
 	}
+
+	cc.broadcast.EmitToTenantRoom(tenantID.String(), "contact", gin.H{"action": "create", "contact": contact})
 
 	c.JSON(http.StatusOK, contact)
 }
@@ -160,16 +185,36 @@ func (cc *ContactController) UpdateContact(c *gin.Context) {
 
 	fields := map[string]interface{}{}
 	if input.Name != "" {
-		fields["name"] = input.Name
+		name, err := utils.ValidateStringField(input.Name, "name", 255)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fields["name"] = name
 	}
 	if input.Number != "" {
-		fields["number"] = input.Number
+		number, err := utils.ValidateStringField(input.Number, "number", 50)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fields["number"] = number
 	}
 	if input.ProfilePicUrl != "" {
-		fields["profilePicUrl"] = input.ProfilePicUrl
+		profilePicUrl, err := utils.ValidateStringField(input.ProfilePicUrl, "profilePicUrl", 2048)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fields["profilePicUrl"] = profilePicUrl
 	}
 	if input.Email != "" {
-		fields["email"] = input.Email
+		email, err := utils.ValidateStringField(input.Email, "email", 255)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fields["email"] = email
 	}
 	if input.WalletUserID != nil {
 		fields["walletUserId"] = input.WalletUserID
@@ -179,6 +224,11 @@ func (cc *ContactController) UpdateContact(c *gin.Context) {
 		utils.RespondWithInternalError(c, err, "UpdateContact")
 		return
 	}
+
+	if updated, err := cc.contactRepo.FindByID(c.Request.Context(), id, tenantID); err == nil && updated != nil {
+		contact = updated
+	}
+	cc.broadcast.EmitToTenantRoom(tenantID.String(), "contact", gin.H{"action": "update", "contact": contact})
 
 	c.JSON(http.StatusOK, contact)
 }
@@ -233,6 +283,72 @@ func (cc *ContactController) ImportContacts(c *gin.Context) {
 	c.JSON(http.StatusAccepted, gin.H{"message": "Contact import started"})
 }
 
+// @Summary      Sincronizar foto do contato via WhatsApp
+// @Description  Solicita ao engine que busque a foto de perfil atualizada do contato no WhatsApp
+// @Tags         contacts
+// @Produce      json
+// @Param        contactId  path      int  true  "ID do contato"
+// @Success      202        {object}  map[string]string
+// @Failure      404        {object}  map[string]string
+// @Failure      409        {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /contacts/{contactId}/sync [post]
+func (cc *ContactController) SyncContact(c *gin.Context) {
+	_, tenantID, ok := auth.GetScoped(c, "Contacts")
+	if !ok {
+		return
+	}
+	id, ok := utils.ParseIntParam(c, "contactId")
+	if !ok {
+		return
+	}
+
+	contact, err := cc.contactRepo.FindByID(c.Request.Context(), id, tenantID)
+	if err != nil {
+		utils.RespondWithInternalError(c, err, "SyncContact")
+		return
+	}
+	if contact == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Contact not found"})
+		return
+	}
+
+	sessions, err := cc.sessions.FindAll(c.Request.Context(), tenantID)
+	if err != nil {
+		utils.RespondWithInternalError(c, err, "SyncContact")
+		return
+	}
+	var session *domain.ChannelSession
+	for i := range sessions {
+		if sessions[i].Status == "CONNECTED" {
+			session = &sessions[i]
+			break
+		}
+	}
+	if session == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "No connected WhatsApp session available"})
+		return
+	}
+
+	command := map[string]interface{}{
+		"id":        uuid.New().String(),
+		"timestamp": time.Now().UnixMilli(),
+		"tenantId":  tenantID.String(),
+		"type":      "contact.sync",
+		"payload": map[string]interface{}{
+			"sessionId": fmt.Sprintf("%d", session.ID),
+			"number":    contact.Number,
+		},
+	}
+	routingKey := fmt.Sprintf("wbot.%s.%d.contact.sync", tenantID.String(), session.ID)
+	if err := cc.publisher.PublishCommand(routingKey, command); err != nil {
+		utils.RespondWithInternalError(c, err, "SyncContact")
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{"message": "Contact sync requested"})
+}
+
 // @Summary      Remover contato
 // @Tags         contacts
 // @Produce      json
@@ -251,6 +367,8 @@ func (cc *ContactController) DeleteContact(c *gin.Context) {
 		utils.RespondWithInternalError(c, err, "DeleteContact")
 		return
 	}
+
+	cc.broadcast.EmitToTenantRoom(tenantID.String(), "contact", gin.H{"action": "delete", "contactId": strconv.Itoa(id)})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Contact deleted successfully"})
 }

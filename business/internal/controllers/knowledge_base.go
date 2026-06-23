@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
@@ -87,9 +88,20 @@ func (kbc *KnowledgeBaseController) Create(c *gin.Context) {
 		return
 	}
 
+	name, err := utils.ValidateStringField(input.Name, "name", 255)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	description, err := utils.ValidateStringField(input.Description, "description", 1000)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	kb := models.KnowledgeBase{
-		Name:        input.Name,
-		Description: input.Description,
+		Name:        name,
+		Description: description,
 		TenantID:    tenantID,
 	}
 	if err := db.Create(&kb).Error; err != nil {
@@ -133,8 +145,19 @@ func (kbc *KnowledgeBaseController) Update(c *gin.Context) {
 		return
 	}
 
-	kb.Name = input.Name
-	kb.Description = input.Description
+	updName, err := utils.ValidateStringField(input.Name, "name", 255)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	updDesc, err := utils.ValidateStringField(input.Description, "description", 1000)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	kb.Name = updName
+	kb.Description = updDesc
 
 	if err := db.Where("\"tenantId\" = ?", tenantID).Save(&kb).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "UpdateKnowledgeBase")
@@ -195,16 +218,42 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 
 	sourceType := c.PostForm("type")
 	urlValue := c.PostForm("url")
-	name := c.PostForm("name")
+	sourceName := c.PostForm("name")
+
+	if file, err := c.FormFile("file"); err == nil && file != nil {
+		// Use only the base filename, not the full path provided by the client
+		sourceName = filepath.Base(file.Filename)
+		if sourceType == "" || sourceType == "file" {
+			// Derive type from extension; sanitize by stripping the leading dot
+			ext := filepath.Ext(file.Filename)
+			if len(ext) > 1 {
+				sourceType = strings.ToLower(strings.TrimPrefix(ext, "."))
+			} else {
+				sourceType = "file"
+			}
+		}
+	}
+
+	// Allowlist for sourceType to prevent arbitrary DB injection
+	validSourceTypes := map[string]bool{
+		"url": true, "file": true, "pdf": true, "txt": true,
+		"docx": true, "csv": true, "xlsx": true, "md": true,
+	}
 	if sourceType == "" {
 		sourceType = "url"
 	}
+	if !validSourceTypes[sourceType] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid sourceType: must be one of url, file, pdf, txt, docx, csv, xlsx, md"})
+		return
+	}
 
-	if file, err := c.FormFile("file"); err == nil && file != nil {
-		name = file.Filename
-		if sourceType == "" || sourceType == "file" {
-			sourceType = filepath.Ext(file.Filename)
-		}
+	if _, err := utils.ValidateStringField(urlValue, "url", 2048); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(sourceName, "name", 255); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	source := models.KnowledgeBaseSource{
@@ -212,7 +261,7 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 		TenantID:        kb.TenantID,
 		Type:            sourceType,
 		URL:             urlValue,
-		FileName:        name,
+		FileName:        sourceName,
 		Status:          "ready",
 	}
 

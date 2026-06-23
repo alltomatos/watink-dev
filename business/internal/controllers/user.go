@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
@@ -141,6 +142,23 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		return
 	}
 
+	if _, err := utils.ValidateStringField(req.Name, "name", 255); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(req.Password, "password", 128); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(req.Profile, "profile", 50); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(req.Configs, "configs", 65535); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	tmp := models.User{}
 	if err := tmp.HashPassword(req.Password); err != nil {
 		utils.RespondWithInternalError(c, err, "HashPassword")
@@ -208,6 +226,10 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 
 	// Password: hash before persisting
 	if pwd, ok := req["password"].(string); ok && pwd != "" {
+		if _, err := utils.ValidateStringField(pwd, "password", 128); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		tmp := models.User{PasswordHash: user.PasswordHash}
 		if err := tmp.HashPassword(pwd); err != nil {
 			utils.RespondWithInternalError(c, err, "HashPassword")
@@ -218,13 +240,32 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 
 	// Scalar fields
 	if v, ok := req["name"].(string); ok {
-		updateMap["name"] = v
+		name, err := utils.ValidateStringField(v, "name", 255)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		updateMap["name"] = name
 	}
 	if v, ok := req["email"].(string); ok {
-		updateMap["email"] = v
+		email, err := utils.ValidateStringField(v, "email", 255)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if !strings.Contains(email, "@") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "field 'email' must be a valid email address"})
+			return
+		}
+		updateMap["email"] = email
 	}
 	if v, ok := req["profile"].(string); ok {
-		updateMap["profile"] = v
+		profile, err := utils.ValidateStringField(v, "profile", 50)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		updateMap["profile"] = profile
 	}
 	if v, ok := req["whatsappId"]; ok {
 		if v == "" || v == nil {

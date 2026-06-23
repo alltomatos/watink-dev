@@ -65,6 +65,27 @@ func (ctrl *SetupController) InitialSetup(c *gin.Context) {
 		return
 	}
 
+	if _, err := utils.ValidateStringField(req.FirstName, "firstName", 100); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(req.LastName, "lastName", 100); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(req.Password, "password", 128); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(req.Document, "document", 50); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(req.BackendURL, "backendUrl", 2048); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	seedData := domain.TenantSeedData{
 		FirstName:  req.FirstName,
 		LastName:   req.LastName,

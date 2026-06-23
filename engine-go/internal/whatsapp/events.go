@@ -2,7 +2,6 @@ package whatsapp
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log"
 
@@ -36,6 +35,8 @@ func (s *WhatsAppService) handleEvent(id int, tenantID string, evt interface{}) 
 		s.handleContactEvent(id, tenantID, v)
 	case *events.PushName:
 		s.handlePushNameEvent(id, tenantID, v)
+	case *events.Picture:
+		s.handlePictureEvent(client, id, tenantID, v)
 	case *events.HistorySync:
 		log.Printf("History sync (type %s) for session %d", v.Data.SyncType.String(), id)
 		if v.Data.GetSyncType() == waHistorySync.HistorySync_ON_DEMAND {
@@ -52,6 +53,13 @@ func (s *WhatsAppService) handleEvent(id int, tenantID string, evt interface{}) 
 
 func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, tenantID string, v *events.Message) {
 	if v.Message == nil {
+		return
+	}
+
+	// WhatsApp Status/Stories ("status@broadcast") are not conversations and must
+	// not create tickets. They also frequently carry media whose synchronous
+	// download here would stall the serial event loop for the whole session.
+	if v.Info.Chat.String() == "status@broadcast" {
 		return
 	}
 
@@ -78,10 +86,10 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 		return
 	}
 
-	body, msgType, mediaData, mimeType := extractMessageContent(client, v.Message)
+	content := extractMessageContent(v.Message)
 	// Skip system / unsupported / empty messages (no text and no media) so they
 	// don't show up in the chat as blank bubbles rendering the raw number.
-	if msgType == "chat" && body == "" && mediaData == "" {
+	if content.msgType == "chat" && content.body == "" && content.protoB64 == "" {
 		return
 	}
 
@@ -114,17 +122,17 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 		isSubGroup = meta.isSubGroup
 	}
 
-	// Profile picture: for group contacts use the group JID; for individuals only
-	// real phone-number senders (LID senders reject the query with 400).
+	// Profile picture for the contact record (group's own photo or individual sender's photo).
 	profilePic := ""
+	senderPic := ""
 	if isGroup {
-		if info, err := client.GetProfilePictureInfo(context.Background(), v.Info.Chat.ToNonAD(), &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
-			profilePic = info.URL
+		profilePic = s.getCachedPic(client, v.Info.Chat.ToNonAD())
+		// Individual participant photo — shown in message bubble avatars.
+		if !v.Info.IsFromMe && v.Info.Sender.Server == types.DefaultUserServer {
+			senderPic = s.getCachedPic(client, v.Info.Sender.ToNonAD())
 		}
 	} else if !v.Info.IsFromMe && v.Info.Sender.Server == types.DefaultUserServer {
-		if info, err := client.GetProfilePictureInfo(context.Background(), v.Info.Sender.ToNonAD(), &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
-			profilePic = info.URL
-		}
+		profilePic = s.getCachedPic(client, v.Info.Sender.ToNonAD())
 	}
 
 	s.publishEvent(tenantID, id, "message.received", map[string]interface{}{
@@ -132,20 +140,24 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 		"message": map[string]interface{}{
 			"id":            v.Info.ID,
 			"from":          chatJID,
-			"body":          body,
-			"type":          msgType,
+			"body":          content.body,
+			"type":          content.msgType,
 			"fromMe":        v.Info.IsFromMe,
 			"timestamp":     v.Info.Timestamp.Unix(),
 			"pushName":      v.Info.PushName,
 			"groupName":     groupName,
 			"profilePicUrl": profilePic,
+			"senderPicUrl":  senderPic,
 			"isLid":         v.Info.Sender.Server == types.HiddenUserServer,
 			"participant":   resolvedSender,
 			"isGroup":       isGroup,
 			"isCommunity":   isCommunity,
 			"isSubGroup":    isSubGroup,
-			"mimetype":      mimeType,
-			"mediaData":     mediaData,
+			"mimetype":      content.mimeType,
+			// Media is NOT downloaded on receipt (keeps the event loop real-time).
+			// Ship the embedded JPEG thumbnail + serialized proto for on-demand DL.
+			"thumbnail":  content.thumbnail,
+			"mediaProto": content.protoB64,
 		},
 	})
 }
@@ -261,6 +273,60 @@ func (s *WhatsAppService) handlePushNameEvent(id int, tenantID string, v *events
 	s.publishEvent(tenantID, id, "contact.update", payload)
 }
 
+// getCachedPic returns the profile picture URL for the given JID, using an
+// in-memory cache to avoid a WhatsApp CDN round-trip on every message.
+func (s *WhatsAppService) getCachedPic(client *whatsmeow.Client, jid types.JID) string {
+	key := jid.String()
+	s.picMu.Lock()
+	if url, ok := s.picCache[key]; ok {
+		s.picMu.Unlock()
+		return url
+	}
+	s.picMu.Unlock()
+
+	url := ""
+	if info, err := client.GetProfilePictureInfo(context.Background(), jid, &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
+		url = info.URL
+	}
+	if url != "" {
+		s.picMu.Lock()
+		s.picCache[key] = url
+		s.picMu.Unlock()
+	}
+	return url
+}
+
+// handlePictureEvent fires when a contact or group changes its profile picture.
+// It invalidates the local cache and publishes a contact.update event so the
+// backend can persist the new URL immediately — without waiting for the next message.
+func (s *WhatsAppService) handlePictureEvent(client *whatsmeow.Client, id int, tenantID string, v *events.Picture) {
+	key := v.JID.String()
+
+	// Invalidate cache entry so getCachedPic fetches fresh on next use.
+	s.picMu.Lock()
+	delete(s.picCache, key)
+	s.picMu.Unlock()
+
+	newURL := ""
+	if !v.Remove {
+		if info, err := client.GetProfilePictureInfo(context.Background(), v.JID.ToNonAD(), &whatsmeow.GetProfilePictureParams{}); err == nil && info != nil {
+			newURL = info.URL
+			s.picMu.Lock()
+			s.picCache[key] = newURL
+			s.picMu.Unlock()
+		}
+	}
+
+	s.publishEvent(tenantID, id, "contact.update", map[string]interface{}{
+		"sessionId": fmt.Sprintf("%d", id),
+		"contact": map[string]interface{}{
+			"jid":           v.JID.String(),
+			"profilePicUrl": newURL,
+		},
+	})
+	log.Printf("[Picture] %s photo updated (remove=%v)", key, v.Remove)
+}
+
 func receiptAck(receiptType types.ReceiptType) int {
 	switch receiptType {
 	case types.ReceiptTypeDelivered:
@@ -274,39 +340,6 @@ func receiptAck(receiptType types.ReceiptType) int {
 	}
 }
 
-func extractMessageContent(client *whatsmeow.Client, msg *waProto.Message) (body, msgType, mediaData, mimeType string) {
-	msgType = "chat"
-	body = msg.GetConversation()
-	if ext := msg.GetExtendedTextMessage(); ext != nil {
-		body = ext.GetText()
-	}
-	if img := msg.GetImageMessage(); img != nil {
-		return downloadMedia(client, img, img.GetCaption(), "image", img.GetMimetype())
-	}
-	if video := msg.GetVideoMessage(); video != nil {
-		return downloadMedia(client, video, video.GetCaption(), "video", video.GetMimetype())
-	}
-	if audio := msg.GetAudioMessage(); audio != nil {
-		return downloadMedia(client, audio, "", "audio", audio.GetMimetype())
-	}
-	if doc := msg.GetDocumentMessage(); doc != nil {
-		caption := doc.GetCaption()
-		if caption == "" {
-			caption = doc.GetTitle()
-		}
-		return downloadMedia(client, doc, caption, "document", doc.GetMimetype())
-	}
-	if sticker := msg.GetStickerMessage(); sticker != nil {
-		return downloadMedia(client, sticker, "", "sticker", sticker.GetMimetype())
-	}
-	return body, msgType, "", ""
-}
-
-func downloadMedia(client *whatsmeow.Client, msg whatsmeow.DownloadableMessage, caption, msgType, mimeType string) (string, string, string, string) {
-	data, err := client.Download(context.Background(), msg)
-	if err != nil {
-		log.Printf("Failed to download media: %v", err)
-		return caption, msgType, "", mimeType
-	}
-	return caption, msgType, base64.StdEncoding.EncodeToString(data), mimeType
-}
+// extractMessageContent and the media helpers live in message_content.go — they
+// no longer download media inline; the engine ships a thumbnail + serialized
+// proto so the backend can download on demand.

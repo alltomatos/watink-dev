@@ -57,8 +57,12 @@ cd business && go run cmd/server/main.go
 cd business && go test ./...
 
 # Regenerar documentação OpenAPI (obrigatório após adicionar/alterar rotas)
+# Commitar docs/docs.go + docs/swagger.json + docs/swagger.yaml no mesmo PR
 cd business && go run github.com/swaggo/swag/cmd/swag@latest init -g cmd/server/main.go -o docs/
 ```
+
+> **API Docs (Scalar)**: `http://localhost:8082/api/v1/docs?token=<JWT>` — requer perfil `superadmin` ou permissão `swagger`.
+> JSON OpenAPI: `http://localhost:8082/api/v1/swagger.json?token=<JWT>`
 
 ### Engine Go (`engine-go/`)
 ```bash

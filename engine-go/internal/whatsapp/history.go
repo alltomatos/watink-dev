@@ -93,8 +93,7 @@ func (s *WhatsAppService) RecoverHistory(sessionID int, tenantID string, p Histo
 // conversation against a pending recovery request and emitting the recovered
 // messages to the backend tagged with the originating ticket.
 func (s *WhatsAppService) handleOnDemandHistory(sessionID int, tenantID string, data *waHistorySync.HistorySync) {
-	client, ok := s.clients[sessionID]
-	if !ok {
+	if _, ok := s.clients[sessionID]; !ok {
 		return
 	}
 
@@ -125,17 +124,18 @@ func (s *WhatsAppService) handleOnDemandHistory(sessionID int, tenantID string, 
 			if key == nil {
 				continue
 			}
-			body, msgType, mediaData, mimeType := extractMessageContent(client, wmi.GetMessage())
+			content := extractMessageContent(wmi.GetMessage())
 			messages = append(messages, map[string]interface{}{
-				"id":        key.GetID(),
-				"from":      chatJID,
-				"body":      body,
-				"type":      msgType,
-				"fromMe":    key.GetFromMe(),
-				"timestamp": ts,
-				"pushName":  wmi.GetPushName(),
-				"mimetype":  mimeType,
-				"mediaData": mediaData,
+				"id":         key.GetID(),
+				"from":       chatJID,
+				"body":       content.body,
+				"type":       content.msgType,
+				"fromMe":     key.GetFromMe(),
+				"timestamp":  ts,
+				"pushName":   wmi.GetPushName(),
+				"mimetype":   content.mimeType,
+				"thumbnail":  content.thumbnail,
+				"mediaProto": content.protoB64,
 			})
 		}
 

@@ -21,7 +21,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	setupController := controllers.NewSetupController(services.NewSetupService(container.DB))
 	userController := controllers.NewUserController(container.UserRepo, container.PlanLimitSvc)
 	queueController := controllers.NewQueueController()
-	contactController := controllers.NewContactController(container.ContactRepo, container.ChannelSessionRepo, rabbitMQ)
+	contactController := controllers.NewContactController(container.ContactRepo, container.ChannelSessionRepo, rabbitMQ, container.Broadcast)
 	sessionController := controllers.NewSessionController(container.ChannelSessionRepo, container.Broadcast, container.SessionService)
 	ticketController := controllers.NewTicketController(container.UpdateTicket, container.Broadcast, container.MessageRepo, rabbitMQ)
 	whatsappController := controllers.NewWhatsappController(container.ChannelSessionRepo, container.PlanLimitSvc, container.Broadcast, container.SessionService)
@@ -97,6 +97,9 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		// Messages
 		protected.GET("/messages/:ticketId", messageController.ListMessages)
 		protected.POST("/messages/:ticketId", messageController.SendMessage)
+		// On-demand media download (separate path to avoid Gin wildcard conflict
+		// with :ticketId at the same position)
+		protected.POST("/media/:messageId/download", messageController.DownloadMedia)
 
 		// WhatsApp Connections
 		protected.GET("/whatsapp", whatsappController.ListWhatsapps)
@@ -121,6 +124,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.POST("/contacts", contactController.CreateContact)
 		protected.POST("/contacts/", contactController.CreateContact)
 		protected.POST("/contacts/import", contactController.ImportContacts)
+		protected.POST("/contacts/:contactId/sync", contactController.SyncContact)
 		protected.PUT("/contacts/:contactId", contactController.UpdateContact)
 		protected.DELETE("/contacts/:contactId", contactController.DeleteContact)
 
