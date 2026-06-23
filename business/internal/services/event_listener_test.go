@@ -306,6 +306,34 @@ func TestHandleContactUpdate_InvalidJSON(t *testing.T) {
 	}
 }
 
+// --- StartEventListener routing-key regression ---
+
+// TestEventListenerRoutingKeys_ContainsRequiredKeys guards against the bug
+// where "wbot.*.*.message.media" was missing from the binding list, causing
+// on-demand media download events to be silently discarded by RabbitMQ.
+func TestEventListenerRoutingKeys_ContainsRequiredKeys(t *testing.T) {
+	required := []string{
+		"wbot.*.*.message.received",
+		"wbot.*.*.message.media",
+		"wbot.*.*.message.ack",
+		"wbot.*.*.message.revoke",
+		"wbot.*.*.message.reaction",
+		"wbot.*.*.session.qrcode",
+		"wbot.*.*.session.status",
+	}
+
+	index := make(map[string]bool, len(eventListenerRoutingKeys))
+	for _, k := range eventListenerRoutingKeys {
+		index[k] = true
+	}
+
+	for _, key := range required {
+		if !index[key] {
+			t.Errorf("routing key %q is missing from eventListenerRoutingKeys", key)
+		}
+	}
+}
+
 func TestJidToNumber(t *testing.T) {
 	cases := map[string]string{
 		"5511999999999@s.whatsapp.net":    "5511999999999",

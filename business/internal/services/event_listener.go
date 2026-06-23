@@ -26,23 +26,26 @@ func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.
 	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: broadcast}
 }
 
-func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener) {
-	routingKeys := []string{
-		"wbot.*.*.session.qrcode",
-		"wbot.*.*.session.pairing_code",
-		"wbot.*.*.session.status",
-		"wbot.*.*.session.history_sync",
-		"wbot.*.*.message.received",
-		"wbot.*.*.message.ack",
-		"wbot.*.*.message.revoke",
-		"wbot.*.*.message.reaction",
-		"wbot.*.*.message.media",
-		"wbot.*.*.contact.update",
-		"wbot.*.*.contact.import",
-		"wbot.*.*.session.jid_registered",
-	}
+// eventListenerRoutingKeys is the canonical list of RabbitMQ routing-key
+// patterns bound by StartEventListener. Kept as a package-level var so tests
+// can assert completeness without duplicating the list.
+var eventListenerRoutingKeys = []string{
+	"wbot.*.*.session.qrcode",
+	"wbot.*.*.session.pairing_code",
+	"wbot.*.*.session.status",
+	"wbot.*.*.session.history_sync",
+	"wbot.*.*.message.received",
+	"wbot.*.*.message.ack",
+	"wbot.*.*.message.revoke",
+	"wbot.*.*.message.reaction",
+	"wbot.*.*.message.media",
+	"wbot.*.*.contact.update",
+	"wbot.*.*.contact.import",
+	"wbot.*.*.session.jid_registered",
+}
 
-	err := rabbitMQ.ConsumeEvents("api.events.process.go", routingKeys, func(d amqp.Delivery) error {
+func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener) {
+	err := rabbitMQ.ConsumeEvents("api.events.process.go", eventListenerRoutingKeys, func(d amqp.Delivery) error {
 		var env EventEnvelope
 		if err := json.Unmarshal(d.Body, &env); err != nil {
 			log.Printf("Error unmarshaling event: %v", err)
