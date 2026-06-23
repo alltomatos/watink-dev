@@ -3,23 +3,23 @@ module github.com/alltomatos/watinkdev/business
 go 1.25.0
 
 require (
-	github.com/gin-gonic/gin v1.10.1
+	github.com/gin-gonic/gin v1.12.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/googollee/go-socket.io v1.7.0
 	github.com/joho/godotenv v1.5.1
-	github.com/redis/go-redis/v9 v9.17.3
+	github.com/redis/go-redis/v9 v9.20.1
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/streadway/amqp v1.1.0
 	github.com/stretchr/testify v1.11.1
 	github.com/swaggo/swag v1.16.6
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.63.0
-	go.opentelemetry.io/otel v1.43.0
+	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.43.0
-	go.opentelemetry.io/otel/sdk v1.43.0
-	go.opentelemetry.io/otel/trace v1.43.0
+	go.opentelemetry.io/otel/sdk v1.44.0
+	go.opentelemetry.io/otel/trace v1.44.0
 	golang.org/x/crypto v0.53.0
-	gorm.io/datatypes v1.0.5
+	gorm.io/datatypes v1.2.7
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.30.5
@@ -37,7 +37,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/gin-contrib/sse v1.1.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -52,6 +51,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.2 // indirect
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
+	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/gomodule/redigo v1.8.4 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
@@ -75,6 +75,8 @@ require (
 	github.com/pelletier/go-toml/v2 v2.3.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
+	github.com/quic-go/qpack v0.6.0 // indirect
+	github.com/quic-go/quic-go v0.59.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
@@ -82,10 +84,12 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
+	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.43.0 // indirect
-	go.opentelemetry.io/otel/metric v1.43.0 // indirect
+	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/arch v0.25.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
