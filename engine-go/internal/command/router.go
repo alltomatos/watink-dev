@@ -21,8 +21,8 @@ func ParseRoutingKey(routingKey string) (tenantID string, sessionID string, cmd 
 	case "session.start", "session.stop", "session.delete",
 		"message.send.text", "message.send.media",
 		"message.send.buttons", "message.send.list", "message.send.poll", "message.send.interactive",
-		"message.markAsRead",
-		"contact.sync", "contact.import", "history.sync":
+		"message.markAsRead", "media.download",
+		"contact.sync", "contact.import", "history.sync", "history.recover":
 		return tenantID, sessionID, cmd, nil
 	default:
 		return "", "", "", fmt.Errorf("unknown command type: %s", cmd)
