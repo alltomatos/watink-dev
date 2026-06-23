@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
@@ -149,14 +150,11 @@ func (mc *MessageController) SendMessage(c *gin.Context) {
 		}
 		defer func() { _ = file.Close() }()
 
-		mimeType := header.Header.Get("Content-Type")
-		if mimeType == "" {
-			mimeType = "application/octet-stream"
-		}
+		mimeType := sanitizeMimeType(header.Header.Get("Content-Type"))
 
 		savedURL, err := mediastore.SaveMediaReader(file, mimeType)
 		if err != nil {
-			log.Printf("[SendMessage] media save failed (ticket %d): %v", ticketID, err)
+			log.Printf("[SendMessage] media save failed (ticket %d)", ticketID)
 			utils.RespondWithInternalError(c, err, "SendMessage.SaveMedia")
 			return
 		}
@@ -187,6 +185,22 @@ func (mc *MessageController) SendMessage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Message sent"})
+}
+
+// sanitizeMimeType strips newlines and control characters from a user-supplied
+// Content-Type header to prevent log injection. Falls back to
+// "application/octet-stream" when the value is empty after sanitization.
+func sanitizeMimeType(raw string) string {
+	safe := strings.Map(func(r rune) rune {
+		if r == '\n' || r == '\r' || r < 0x20 {
+			return -1
+		}
+		return r
+	}, raw)
+	if safe == "" {
+		return "application/octet-stream"
+	}
+	return safe
 }
 
 func mimeTypeToMediaType(mimeType string) string {
