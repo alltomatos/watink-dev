@@ -11,16 +11,43 @@ import {
 import { componentTokens } from './tokens/components';
 
 // ──────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────
+export type ThemeMode = 'light' | 'dark';
+export type AppTheme = 'apple' | 'whatsapp' | 'saas' | 'google';
+type TokenMap = Record<string, string>;
+
+export interface BrandOverrides {
+  primary?: string;
+  primaryHover?: string;
+  sidebarBg?: string;
+}
+
+export interface ApplyThemeOptions {
+  /** Dark mode toggle */
+  mode?: ThemeMode;
+  /** Visual family */
+  appTheme?: AppTheme;
+  /** Runtime brand overrides (legacy white-label compat) */
+  brand?: BrandOverrides;
+}
+
+interface ThemePreset {
+  light: TokenMap;
+  dark: TokenMap;
+}
+
+// ──────────────────────────────────────────────
 // Theme preset registry
 // ──────────────────────────────────────────────
-const presets = {
-  apple:     { light: appleLight,     dark: appleDark },
-  google:    { light: googleLight,    dark: googleDark },
+const presets: Record<AppTheme, ThemePreset> = {
+  apple:     { light: appleLight,    dark: appleDark },
+  google:    { light: googleLight,   dark: googleDark },
   whatsapp:  { light: whatsappLight, dark: whatsappDark },
-  saas:      { light: saasLight,      dark: saasDark },
+  saas:      { light: saasLight,     dark: saasDark },
 };
 
-const resolvePreset = (appTheme = 'apple', mode = 'light') => {
+const resolvePreset = (appTheme: AppTheme = 'apple', mode: ThemeMode = 'light'): TokenMap => {
   const family = presets[appTheme] || presets.apple;
   return family[mode] || family.light;
 };
@@ -28,7 +55,7 @@ const resolvePreset = (appTheme = 'apple', mode = 'light') => {
 // ──────────────────────────────────────────────
 // CSS Variable injection
 // ──────────────────────────────────────────────
-const hexToHslRaw = (hex) => {
+const hexToHslRaw = (hex: string): string => {
   if (typeof hex !== 'string') return hex;
   const match = hex.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
   if (!match) return hex;
@@ -62,7 +89,7 @@ const hexToHslRaw = (hex) => {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 };
 
-const setCssVars = (tokens) => {
+const setCssVars = (tokens: TokenMap): void => {
   const root = document.documentElement;
   Object.entries(tokens).forEach(([key, value]) => {
     root.style.setProperty(`--${key}`, hexToHslRaw(value));
@@ -74,20 +101,12 @@ const setCssVars = (tokens) => {
 // ──────────────────────────────────────────────
 /**
  * Apply design tokens to the document root.
- *
- * @param {Object}  opts
- * @param {'light'|'dark'}  opts.mode      — Dark mode toggle
- * @param {'apple'|'whatsapp'|'saas'|'google'} opts.appTheme — Visual family
- * @param {Object}  opts.brand             — Runtime brand overrides (legacy compat)
- * @param {string}  opts.brand.primary
- * @param {string}  opts.brand.primaryHover
- * @param {string}  opts.brand.sidebarBg
  */
 export const applyThemeTokens = ({
   mode = 'light',
   appTheme = 'apple',
   brand = {},
-} = {}) => {
+}: ApplyThemeOptions = {}): void => {
   // 1. Semantic tokens from preset
   const semanticTokens = resolvePreset(appTheme, mode);
   setCssVars(semanticTokens);
