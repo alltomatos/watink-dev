@@ -312,7 +312,7 @@ func (wc *WhatsappController) DeleteWhatsapp(c *gin.Context) {
 	}
 
 	wc.broadcast.EmitToNamespace("/", "whatsapp", gin.H{
-		"action":      "delete",
+		"action":     "delete",
 		"whatsappId": whatsapp.ID,
 	})
 
