@@ -27,7 +27,8 @@ function rateLimiter(req, res, next) {
 
 app.use(rateLimiter);
 app.use(express.static(path.join(__dirname, "build")));
-app.get("/*", function (req, res) {
+// Rate limiting is applied via the rateLimiter middleware above. // lgtm[js/missing-rate-limiting]
+app.get("/*", function (req, res) { // lgtm[js/missing-rate-limiting]
   res.sendFile(path.join(__dirname, "build", "index.html"));
 });
 app.listen(3333);
