@@ -49,6 +49,11 @@ type MessagePayload struct {
 	MediaUrl      string `json:"mediaUrl"`
 	MediaData     string `json:"mediaData"`
 	Mimetype      string `json:"mimetype"`
+	// Thumbnail (base64 JPEG) and MediaProto (base64 serialized media message)
+	// power on-demand media download: media is not fetched on receipt, only when
+	// the operator clicks the download button.
+	Thumbnail  string `json:"thumbnail"`
+	MediaProto string `json:"mediaProto"`
 }
 
 type MessageReceivedPayload struct {

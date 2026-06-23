@@ -2,7 +2,6 @@ package whatsapp
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log"
 
@@ -57,6 +56,13 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 		return
 	}
 
+	// WhatsApp Status/Stories ("status@broadcast") are not conversations and must
+	// not create tickets. They also frequently carry media whose synchronous
+	// download here would stall the serial event loop for the whole session.
+	if v.Info.Chat.String() == "status@broadcast" {
+		return
+	}
+
 	if protocolMsg := v.Message.GetProtocolMessage(); protocolMsg != nil {
 		if protocolMsg.GetType() == waProto.ProtocolMessage_REVOKE && protocolMsg.GetKey() != nil {
 			s.publishEvent(tenantID, id, "message.revoke", map[string]interface{}{
@@ -80,10 +86,10 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 		return
 	}
 
-	body, msgType, mediaData, mimeType := extractMessageContent(client, v.Message)
+	content := extractMessageContent(v.Message)
 	// Skip system / unsupported / empty messages (no text and no media) so they
 	// don't show up in the chat as blank bubbles rendering the raw number.
-	if msgType == "chat" && body == "" && mediaData == "" {
+	if content.msgType == "chat" && content.body == "" && content.protoB64 == "" {
 		return
 	}
 
@@ -134,8 +140,8 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 		"message": map[string]interface{}{
 			"id":            v.Info.ID,
 			"from":          chatJID,
-			"body":          body,
-			"type":          msgType,
+			"body":          content.body,
+			"type":          content.msgType,
 			"fromMe":        v.Info.IsFromMe,
 			"timestamp":     v.Info.Timestamp.Unix(),
 			"pushName":      v.Info.PushName,
@@ -147,8 +153,11 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 			"isGroup":       isGroup,
 			"isCommunity":   isCommunity,
 			"isSubGroup":    isSubGroup,
-			"mimetype":      mimeType,
-			"mediaData":     mediaData,
+			"mimetype":      content.mimeType,
+			// Media is NOT downloaded on receipt (keeps the event loop real-time).
+			// Ship the embedded JPEG thumbnail + serialized proto for on-demand DL.
+			"thumbnail":  content.thumbnail,
+			"mediaProto": content.protoB64,
 		},
 	})
 }
@@ -331,39 +340,6 @@ func receiptAck(receiptType types.ReceiptType) int {
 	}
 }
 
-func extractMessageContent(client *whatsmeow.Client, msg *waProto.Message) (body, msgType, mediaData, mimeType string) {
-	msgType = "chat"
-	body = msg.GetConversation()
-	if ext := msg.GetExtendedTextMessage(); ext != nil {
-		body = ext.GetText()
-	}
-	if img := msg.GetImageMessage(); img != nil {
-		return downloadMedia(client, img, img.GetCaption(), "image", img.GetMimetype())
-	}
-	if video := msg.GetVideoMessage(); video != nil {
-		return downloadMedia(client, video, video.GetCaption(), "video", video.GetMimetype())
-	}
-	if audio := msg.GetAudioMessage(); audio != nil {
-		return downloadMedia(client, audio, "", "audio", audio.GetMimetype())
-	}
-	if doc := msg.GetDocumentMessage(); doc != nil {
-		caption := doc.GetCaption()
-		if caption == "" {
-			caption = doc.GetTitle()
-		}
-		return downloadMedia(client, doc, caption, "document", doc.GetMimetype())
-	}
-	if sticker := msg.GetStickerMessage(); sticker != nil {
-		return downloadMedia(client, sticker, "", "sticker", sticker.GetMimetype())
-	}
-	return body, msgType, "", ""
-}
-
-func downloadMedia(client *whatsmeow.Client, msg whatsmeow.DownloadableMessage, caption, msgType, mimeType string) (string, string, string, string) {
-	data, err := client.Download(context.Background(), msg)
-	if err != nil {
-		log.Printf("Failed to download media: %v", err)
-		return caption, msgType, "", mimeType
-	}
-	return caption, msgType, base64.StdEncoding.EncodeToString(data), mimeType
-}
+// extractMessageContent and the media helpers live in message_content.go — they
+// no longer download media inline; the engine ships a thumbnail + serialized
+// proto so the backend can download on demand.

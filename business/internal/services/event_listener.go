@@ -77,6 +77,8 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 			return eventListener.handleMessageRevoke(ctx, env.Payload, tid)
 		case "message.reaction":
 			return eventListener.handleMessageReaction(ctx, env.Payload, tid)
+		case "message.media":
+			return eventListener.handleMediaDownloaded(ctx, env.Payload, tid)
 		case "contact.update":
 			return handleContactUpdate(ctx, eventListener.contacts, env.Payload, tid)
 		case "contact.import":
@@ -116,6 +118,8 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 		MediaURL:      p.MediaUrl,
 		MediaData:     p.MediaData,
 		Mimetype:      p.Mimetype,
+		Thumbnail:     p.Thumbnail,
+		MediaProto:    p.MediaProto,
 		SessionID:     sessionID,
 		TenantID:      tenantID,
 	})
