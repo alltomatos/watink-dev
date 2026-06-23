@@ -41,11 +41,19 @@ export function useNotifications(): UseNotificationsReturn {
       audio.play().catch(() => {});
     };
 
-    if ("Notification" in window) {
-      Notification.requestPermission();
-    }
+    // Browsers block autoplay until a user gesture occurs. Prime the audio
+    // element on first interaction so subsequent programmatic plays succeed.
+    const unlock = () => {
+      audio.play().then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
+      document.removeEventListener("click", unlock);
+      document.removeEventListener("keydown", unlock);
+    };
+    document.addEventListener("click", unlock);
+    document.addEventListener("keydown", unlock);
 
     return () => {
+      document.removeEventListener("click", unlock);
+      document.removeEventListener("keydown", unlock);
       audio.pause();
       audio.src = "";
     };
