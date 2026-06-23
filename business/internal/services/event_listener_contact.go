@@ -14,7 +14,7 @@ import (
 // profile picture) when it arrives without a message. It only updates an existing
 // contact and never overwrites a name the user has personalized — the push name is
 // applied only when the stored name is empty or still equals the raw number.
-func handleContactUpdate(ctx context.Context, contacts domain.ContactRepository, payload json.RawMessage, tenantID uuid.UUID) error {
+func handleContactUpdate(ctx context.Context, contacts domain.ContactRepository, broadcast *RedisBroadcast, payload json.RawMessage, tenantID uuid.UUID) error {
 	var p ContactUpdatePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err
@@ -47,7 +47,15 @@ func handleContactUpdate(ctx context.Context, contacts domain.ContactRepository,
 		return nil
 	}
 
-	return contacts.Update(ctx, contact, fields)
+	if err := contacts.Update(ctx, contact, fields); err != nil {
+		return err
+	}
+
+	if updated, err := contacts.FindByID(ctx, contact.ID, tenantID); err == nil && updated != nil {
+		contact = updated
+	}
+	broadcast.EmitToTenantRoom(tenantID.String(), "contact", map[string]interface{}{"action": "update", "contact": contact})
+	return nil
 }
 
 // jidToNumber extracts the bare number from a WhatsApp JID (user part before @/:).

@@ -78,7 +78,7 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 		case "message.reaction":
 			return eventListener.handleMessageReaction(ctx, env.Payload, tid)
 		case "contact.update":
-			return handleContactUpdate(ctx, eventListener.contacts, env.Payload, tid)
+			return handleContactUpdate(ctx, eventListener.contacts, eventListener.broadcast, env.Payload, tid)
 		case "contact.import":
 			return handleContactImport(ctx, eventListener.contacts, env.Payload, tid)
 		case "session.jid_registered":
