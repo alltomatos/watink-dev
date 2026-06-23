@@ -6,7 +6,7 @@ import api from "../../../services/api";
 import toastError from "../../../errors/toastError";
 import { i18n } from "../../../translate/i18n";
 import { useWhatsAppsQuery } from "../../../hooks/useWhatsAppsQuery";
-import openSocket from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/socket-io";
 
 import type { ConnectionSession } from "../connectionsTypes";
 
@@ -41,18 +41,8 @@ export const useConnections = (): UseConnectionsReturn => {
   const [selectedWhatsApp, setSelectedWhatsApp] = useState<ConnectionSession | null>(null);
 
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-
     const refetch = () => { reloadWhatsApps(); };
-    socket.on("whatsappSession", refetch);
-    socket.on("whatsapp", refetch);
-
-    return () => {
-      socket.off("whatsappSession", refetch);
-      socket.off("whatsapp", refetch);
-      socket.disconnect();
-    };
+    return subscribeToSocket({ whatsappSession: refetch, whatsapp: refetch });
   }, [reloadWhatsApps]);
 
   const handleStartSession = async (id: number) => {

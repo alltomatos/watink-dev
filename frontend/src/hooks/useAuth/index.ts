@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import openSocket from "../../services/socket-io";
+import { subscribeToSocket } from "../../services/socket-io";
 import { toast } from "react-toastify";
 import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
@@ -131,21 +131,13 @@ const useAuth = (): UseAuthResult => {
 
   // Socket — live user updates
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-
-    socket.on(
-      "user",
-      (data: { action: string; user: AuthUser }) => {
-        if (data.action === "update" && data.user.id === user.id) {
-          setUser(data.user);
-        }
+    const handleUser = (data: { action: string; user: AuthUser }) => {
+      if (data.action === "update" && data.user.id === user.id) {
+        setUser(data.user);
       }
-    );
-
-    return () => {
-      socket.disconnect();
     };
+
+    return subscribeToSocket({ user: handleUser });
   }, [user]);
 
   const handleLogin = async (

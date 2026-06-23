@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useContext } from "react";
 import { toast } from "react-toastify";
-import openSocket from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/socket-io";
 import api from "../../../services/api";
 import { i18n } from "../../../translate/i18n";
 import toastError from "../../../errors/toastError";
@@ -121,21 +121,16 @@ const useUsers = (): UseUsersReturn => {
   }, [searchParam, pageNumber]);
 
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-
-    socket.on("user", (data: { action: string; user?: User; userId?: number | string }) => {
+    const handleUser = (data: { action: string; user?: User; userId?: number | string }) => {
       if (data.action === "update" || data.action === "create") {
         dispatch({ type: "UPDATE_USERS", payload: data.user! });
       }
       if (data.action === "delete") {
         dispatch({ type: "DELETE_USER", payload: data.userId! });
       }
-    });
-
-    return () => {
-      socket.disconnect();
     };
+
+    return subscribeToSocket({ user: handleUser });
   }, [loggedInUser]);
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
-import openSocket from "../../services/socket-io";
+import { subscribeToSocket } from "../../services/socket-io";
 import MessageInput from "../MessageInput/";
 import TicketHeader from "../TicketHeader";
 import TicketInfo from "../TicketInfo";
@@ -70,12 +70,7 @@ const Ticket: React.FC<TicketProps> = ({ onToggleDetails, showDetails }) => {
   }, [ticketId]);
 
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-
-    socket.on("connect", () => socket.emit("joinChatBox", ticketId));
-
-    socket.on("ticket", (data: { action: string; ticket?: TicketData }) => {
+    const handleTicket = (data: { action: string; ticket?: TicketData }) => {
       if (data.action === "update" && data.ticket) {
         setTicket(data.ticket);
       }
@@ -83,9 +78,9 @@ const Ticket: React.FC<TicketProps> = ({ onToggleDetails, showDetails }) => {
         toast.success("Ticket deleted sucessfully.");
         navigate("/tickets");
       }
-    });
+    };
 
-    socket.on("contact", (data: { action: string; contact?: Contact }) => {
+    const handleContact = (data: { action: string; contact?: Contact }) => {
       if (data.action === "update" && data.contact) {
         setContact((prev) => {
           if (prev.id === data.contact!.id) {
@@ -94,11 +89,12 @@ const Ticket: React.FC<TicketProps> = ({ onToggleDetails, showDetails }) => {
           return prev;
         });
       }
-    });
-
-    return () => {
-      socket.disconnect();
     };
+
+    return subscribeToSocket(
+      { ticket: handleTicket, contact: handleContact },
+      (socket) => socket.emit("joinChat", ticketId)
+    );
   }, [ticketId, navigate]);
 
   /* Clicking the contact name/avatar in the header opens Coluna 3 if hidden */

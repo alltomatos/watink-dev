@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import { AuthContext } from "../context/Auth/AuthContext";
 import api from "../services/api";
 import { getBackendUrl } from "../helpers/urlUtils";
-import openSocket from "../services/socket-io";
+import { subscribeToSocket } from "../services/socket-io";
 import type { SettingSocketEvent } from "../types/api";
 
 import MainSidebar from "../components/MainSidebar";
@@ -121,9 +121,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   // ── Socket listener ──
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-    socket.on("settings", (data: SettingSocketEvent) => {
+    const handleSettings = (data: SettingSocketEvent) => {
       if (data.action === "update") {
         if (data.setting.key === "systemLogo") setSystemLogo(data.setting.value);
         if (data.setting.key === "systemTitle") {
@@ -148,11 +146,9 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           link.href = getBackendUrl(data.setting.value) ?? "";
         }
       }
-    });
-
-    return () => {
-      socket.disconnect();
     };
+
+    return subscribeToSocket({ settings: handleSettings });
     // setAppTheme/setDarkMode are stable context refs; socket listener is intentionally mount-only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

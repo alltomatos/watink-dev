@@ -2,7 +2,7 @@ import { useState, useEffect, useReducer } from "react";
 import { toast } from "react-toastify";
 
 import api from "../../../services/api";
-import openSocket from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/socket-io";
 import { i18n } from "../../../translate/i18n";
 import toastError from "../../../errors/toastError";
 import { Tag, TagAction } from "../tagManagerTypes";
@@ -76,17 +76,15 @@ export const useTagManager = () => {
   }, [searchParam, showArchived]);
 
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-    socket.on("tag", (data: { action: string; tag?: Tag; tagId?: number | string }) => {
+    const handleTag = (data: { action: string; tag?: Tag; tagId?: number | string }) => {
       if ((data.action === "update" || data.action === "create") && data.tag) {
         dispatch({ type: "UPDATE_TAGS", payload: data.tag });
       }
       if (data.action === "delete" && data.tagId !== undefined) {
         dispatch({ type: "DELETE_TAG", payload: +data.tagId });
       }
-    });
-    return () => { socket.disconnect(); };
+    };
+    return subscribeToSocket({ tag: handleTag });
   }, []);
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
