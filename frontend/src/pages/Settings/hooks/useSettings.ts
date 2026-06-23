@@ -5,7 +5,7 @@ import api from "../../../services/api";
 import pluginApi from "../../../services/pluginApi";
 import { i18n } from "../../../translate/i18n";
 import toastError from "../../../errors/toastError";
-import openSocket from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/socket-io";
 
 const DB_THEME_MAP: Record<string, { appTheme: string; darkMode?: boolean }> = {
   whaticket: { appTheme: "google" },
@@ -88,10 +88,7 @@ export const useSettings = (): UseSettingsReturn => {
   }, []);
 
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-
-    socket.on("settings", (data: { action: string; setting: Setting }) => {
+    const handleSettings = (data: { action: string; setting: Setting }) => {
       if (data.action === "update" && data.setting) {
         setSettings((prev) => {
           const exists = prev.some((s) => s.key === data.setting.key);
@@ -106,9 +103,9 @@ export const useSettings = (): UseSettingsReturn => {
           try { setSlaConfig(JSON.parse(data.setting.value)); } catch { /* silence */ }
         }
       }
-    });
+    };
 
-    return () => { socket.disconnect(); };
+    return subscribeToSocket({ settings: handleSettings });
   }, []);
 
   const getSettingValue = (key: string) =>

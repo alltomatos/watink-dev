@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 import api from "../../../services/api";
-import openSocket from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/socket-io";
 import { i18n } from "../../../translate/i18n";
 import toastError from "../../../errors/toastError";
 import { AuthContext } from "../../../context/Auth/AuthContext";
@@ -54,17 +54,15 @@ export function useContacts(): UseContactsReturn {
   }, [searchParam, pageNumber]);
 
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-    socket.on("contact", (data: { action: string; contact?: Contact; contactId?: string }) => {
+    const handleContact = (data: { action: string; contact?: Contact; contactId?: string }) => {
       if (data.action === "update" || data.action === "create") {
         dispatch({ type: "UPDATE_CONTACTS", payload: data.contact! });
       }
       if (data.action === "delete") {
         dispatch({ type: "DELETE_CONTACT", payload: Number(data.contactId) });
       }
-    });
-    return () => { socket.disconnect(); };
+    };
+    return subscribeToSocket({ contact: handleContact });
   }, []);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {

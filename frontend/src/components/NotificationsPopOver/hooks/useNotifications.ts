@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { toast } from "react-toastify";
 import React from "react";
 
-import openSocket from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/socket-io";
 import { i18n } from "../../../translate/i18n";
 import alertSound from "../../../assets/sound.mp3";
 import { AuthContext } from "../../../context/Auth/AuthContext";
@@ -117,10 +117,7 @@ export function useNotifications(): UseNotificationsReturn {
 
   // Conexão socket: sala "notification", handlers de ticket e appMessage
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-
-    const onTicket = (data: { action: string; ticketId: number }) => {
+    const handleTicket = (data: { action: string; ticketId: number }) => {
       if (data.action === "updateUnread" || data.action === "delete") {
         setNotifications((prevState) => {
           const ticketIndex = prevState.findIndex((t) => t.id === data.ticketId);
@@ -145,12 +142,12 @@ export function useNotifications(): UseNotificationsReturn {
       }
     };
 
-    const onAppMessage = (data: {
-        action: string;
-        message: Message;
-        ticket: Ticket;
-        contact: Contact;
-      }) => {
+    const handleAppMessage = (data: {
+      action: string;
+      message: Message;
+      ticket: Ticket;
+      contact: Contact;
+    }) => {
         if (!data.ticket || !data.message || !data.contact) return;
         const notifyGroups = localStorage.getItem("notifyGroups") !== "false";
 
@@ -182,13 +179,10 @@ export function useNotifications(): UseNotificationsReturn {
         }
     };
 
-    socket.on("ticket", onTicket);
-    socket.on("appMessage", onAppMessage);
-
-    return () => {
-      socket.off("ticket", onTicket);
-      socket.off("appMessage", onAppMessage);
-    };
+    return subscribeToSocket(
+      { ticket: handleTicket, appMessage: handleAppMessage },
+      (socket) => socket.emit("joinNotification")
+    );
     // handleNotifications é definida acima e recriada a cada render; user é o gatilho real
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);

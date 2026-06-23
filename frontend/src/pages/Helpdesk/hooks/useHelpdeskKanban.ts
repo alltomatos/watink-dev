@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../../../services/api";
-import openSocket from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/socket-io";
 
 export interface KanbanProtocol {
   id: number;
@@ -112,17 +112,10 @@ export function useHelpdeskKanban({
   useEffect(() => {
     loadKanbanData();
 
-    const socket = openSocket();
-    if (socket) {
-      socket.emit("joinHelpdeskKanban");
-      socket.on("protocol", handleProtocolEvent);
-    }
-
-    return () => {
-      if (socket) {
-        socket.disconnect();
-      }
-    };
+    return subscribeToSocket(
+      { protocol: handleProtocolEvent },
+      (socket) => socket.emit("joinHelpdeskKanban")
+    );
   }, [loadKanbanData, handleProtocolEvent]);
 
   const handleCardClick = useCallback(

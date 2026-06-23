@@ -1,5 +1,5 @@
 import React, { useEffect, useContext, useMemo } from "react";
-import openSocket from "../../services/socket-io";
+import { subscribeToSocket } from "../../services/socket-io";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { cn } from "@/lib/utils";
@@ -80,8 +80,6 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
   }, [tickets.length, updateCount]);
 
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
     const queryKey = ["tickets", params];
 
     const shouldUpdateTicket = (ticket: TicketShape) => {
@@ -104,24 +102,19 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
       );
     };
 
-    socket.on("connect", () => {
-      if (status) socket.emit("joinTickets", status);
-      else socket.emit("joinNotification");
-    });
-
-    socket.on("ticket", (data: { action: string; ticket?: TicketShape; ticketId?: number }) => {
+    const handleTicket = (data: { action: string; ticket?: TicketShape; ticketId?: number }) => {
       if (data.action === "update" && data.ticket && shouldUpdateTicket(data.ticket)) {
+        const ticket = data.ticket;
         queryClient.setQueryData(queryKey, (oldData: { pages: { tickets: TicketShape[] }[] } | undefined) => {
-          if (!oldData) return oldData;
-          return {
-            ...oldData,
-            pages: oldData.pages.map((page) => ({
-              ...page,
-              tickets: page.tickets.map((t) =>
-                t.id === data.ticket!.id ? data.ticket! : t
-              ),
-            })),
-          };
+          if (!oldData || oldData.pages.length === 0) return oldData;
+          // Remove qualquer ocorrência anterior e insere no topo da 1ª página,
+          // espelhando o comportamento do WhatsApp (conversa nova sobe ao topo).
+          const pages = oldData.pages.map((page) => ({
+            ...page,
+            tickets: page.tickets.filter((t) => t.id !== ticket.id),
+          }));
+          pages[0] = { ...pages[0], tickets: [ticket, ...pages[0].tickets] };
+          return { ...oldData, pages };
         });
       } else if (data.action === "delete") {
         queryClient.setQueryData(queryKey, (oldData: { pages: { tickets: TicketShape[] }[] } | undefined) => {
@@ -135,11 +128,12 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
           };
         });
       }
-    });
-
-    return () => {
-      socket.disconnect();
     };
+
+    return subscribeToSocket({ ticket: handleTicket }, (socket) => {
+      if (status) socket.emit("joinTickets", status);
+      else socket.emit("joinNotification");
+    });
   }, [params, user, queryClient, status, searchParam, showAll, selectedQueueIds, isGroup]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {

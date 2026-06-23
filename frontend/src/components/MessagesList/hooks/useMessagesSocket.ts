@@ -1,5 +1,5 @@
 import { useEffect, MutableRefObject } from "react";
-import openSocket from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/socket-io";
 import { Message, MessagesAction } from "../types";
 
 export function useMessagesSocket(
@@ -8,11 +8,7 @@ export function useMessagesSocket(
   shouldScrollRef: MutableRefObject<"smooth" | "auto" | null>
 ): void {
   useEffect(() => {
-    const socket = openSocket();
-    if (!socket) return;
-
-    const onConnect = () => socket.emit("joinChatBox", ticketId);
-    const onAppMessage = (data: { action: string; message: Message }) => {
+    const handleAppMessage = (data: { action: string; message: Message }) => {
       if (data.action === "create") {
         dispatch({ type: "ADD_MESSAGE", payload: data.message });
         shouldScrollRef.current = "smooth";
@@ -22,16 +18,9 @@ export function useMessagesSocket(
       }
     };
 
-    socket.on("connect", onConnect);
-    socket.on("appMessage", onAppMessage);
-
-    if (socket.connected) {
-      socket.emit("joinChatBox", ticketId);
-    }
-
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("appMessage", onAppMessage);
-    };
+    return subscribeToSocket(
+      { appMessage: handleAppMessage },
+      (socket) => socket.emit("joinChat", ticketId)
+    );
   }, [ticketId, dispatch, shouldScrollRef]);
 }
