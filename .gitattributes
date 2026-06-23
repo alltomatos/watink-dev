@@ -1,5 +1,8 @@
 * text=auto
 *.sh text eol=lf
+.husky/pre-commit text eol=lf
+.husky/pre-push text eol=lf
+.husky/commit-msg text eol=lf
 Dockerfile eol=lf
 docker-compose.yml eol=lf
 docker-compose.*.yml eol=lf
