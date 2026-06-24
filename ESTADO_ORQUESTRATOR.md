@@ -1,7 +1,7 @@
 # ESTADO_ORQUESTRATOR.md
 
 > Arquivo de estado vivo do Orchestrator.
-> **Última atualização**: 2026-06-23
+> **Última atualização**: 2026-06-24
 > **Branch**: `develop` (main sincronizado via PRs até #192; PRs #211–#213 em revisão)
 > **Epic atual**: Fase 3 — Batch Ondas 1-2-3 (GAP-1/GAP-2/GAP-3/GAP-4/INFO) em 3 PRs
 
@@ -45,6 +45,10 @@
 | GAP-4 + INFO | TS-only frontend/src (loader.js→ts, test.js→ts, .gitignore media cache) | ✅ Mergeado (PR #211) |
 | GAP-2 (3 piores) | Decompõe controllers god-files: contact/tag/user < 250L (5 novos arquivos) | ✅ Mergeado (PR #212) |
 | GAP-1 + GAP-3 | engine-go: decomp events.go (4 arquivos) + MessageBroker interface + 13 testes offline | ✅ Mergeado (PR #213) |
+| GAP-SEC + Z1 | quic-go v0.59.1 (CVE-2026-40898) + remove QueueVisibilityFilter vocab | ✅ Mergeado (PR fix/quic-go-cve) |
+| GAP-GOD-2 | Decompõe 5 controllers god-files round-2: whatsapp/ticket/kb/message/pipeline < 250L | ✅ Mergeado (refactor/controllers-decompose-2) |
+| GAP-ENG-2 | WhatsAppClient interface + testes offline send_poll/contacts engine-go | ✅ Em revisão (test/engine-go-coverage-2) |
+| GAP-SVC | Split event_listener_message.go por tipo de evento | ✅ Em revisão (refactor/services-event-split) |
 
 ---
 
@@ -126,4 +130,22 @@
 | E3 | 4 testes offline session (whatsapp) | T2 | #213 | ✅ Mergeado |
 
 ### God-files remanescentes (próximo ciclo)
-whatsapp.go (320L), ticket.go (308L), knowledge_base.go (304L), message.go (280L), pipeline.go (258L)
+
+Ciclo 4 concluído — todos os god-files controllers decompostos.
+
+---
+
+## DAG Onda 4 (2026-06-24)
+
+| ID | Tarefa | Tier | PR | Status |
+|----|--------|------|----|--------|
+| S1 | bump quic-go v0.59.1 (CVE-2026-40898) | T1 | fix/quic-go-cve | ✅ |
+| Z1 | remove QueueVisibilityFilter de CONTEXT.md | T1 | fix/quic-go-cve | ✅ |
+| D1 | whatsapp.go (320L) → whatsapp_session.go + whatsapp_status.go | T2 | refactor/controllers-decompose-2 | ✅ |
+| D2 | ticket.go (308L) → ticket_mutation.go + ticket_query.go | T2 | refactor/controllers-decompose-2 | ✅ |
+| D3 | knowledge_base.go (304L) → knowledge_base_mutation.go | T2 | refactor/controllers-decompose-2 | ✅ |
+| D4 | message.go (280L) → message_send.go + message_query.go | T2 | refactor/controllers-decompose-2 | ✅ |
+| D5 | pipeline.go (258L) → pipeline_mutation.go | T2 | refactor/controllers-decompose-2 | ✅ |
+| X1 | WhatsAppClient interface mínima engine-go | T2 | test/engine-go-coverage-2 | ✅ |
+| X2 | Testes offline send_poll + contacts engine-go | T2 | test/engine-go-coverage-2 | ✅ |
+| V1 | Split event_listener_message.go por tipo evento | T2 | refactor/services-event-split | ✅ |
