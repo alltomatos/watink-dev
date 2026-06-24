@@ -169,10 +169,28 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 - **Redis cache**: mensagens com TTL 24h em `wbot:msg:{jid}:{id}`.
 - **Plugin activation**: flipa `PluginInstallations.active` no DB após validação no Manager.
 
+## Módulo: Pipeline
+
+**Responsabilidade:** Funis de vendas com estágios sequenciais, visualizações Kanban/Funil/Gantt/KPIs, e assistente de IA para criação de stages.
+
+**Invariants:**
+- Sempre usar `auth.GetScoped(c, "Pipelines")` — nunca `c.Get("tenantId")` bruto
+- Create/Update são transacionais (GORM `Transaction()`)
+- Stage upsert por nome (ADR 0009) — nunca delete+recreate simples
+- `pipeline.type` persiste no banco e determina a view do board
+
+**O que NÃO fazer:**
+- Não retornar stages fixas em `AISuggest` — chamar o LLM via settings do tenant
+- Não deletar stages sem migrar os Deals vinculados para `stages[0]`
+- Não usar `PipelineWizard` — foi removido; fluxo único é `PipelineCreator`
+- Não exibir sidebar de chat sem checar `aiPipelineEnabled = "true"`
+
+**Referência:** [`docs/agents/pipeline.md`](docs/agents/pipeline.md)
+
 ## Domain Docs
 
 - **Glossário**: [`CONTEXT.md`](CONTEXT.md)
-- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes
+- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0009** para stage upsert, **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes
 - **Arquitetura**: [`docs/dev/architecture.md`](docs/dev/architecture.md)
 - **Frontend DS**: [`docs/frontend/design-system.md`](docs/frontend/design-system.md)
 - **Git Workflow**: [`docs/dev/git_workflow_policy.md`](docs/dev/git_workflow_policy.md)

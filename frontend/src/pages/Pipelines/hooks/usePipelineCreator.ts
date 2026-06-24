@@ -17,8 +17,10 @@ export function usePipelineCreator() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const [data, setData] = useState<PipelineFormData>(INITIAL_FORM_DATA);
+    const [originalStages, setOriginalStages] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [aiEnabled, setAiEnabled] = useState(false);
+    const [pendingSave, setPendingSave] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_CHAT_MESSAGE]);
     const [input, setInput] = useState("");
     const [aiLoading, setAiLoading] = useState(false);
@@ -49,12 +51,14 @@ export function usePipelineCreator() {
                     (p) => p.id === Number(pipelineId)
                 );
                 if (pipeline) {
+                    const stageNames = pipeline.stages.map((s) => s.name);
                     setData({
                         name: pipeline.name,
                         description: pipeline.description ?? "",
                         type: pipeline.type ?? "kanban",
-                        stages: pipeline.stages.map((s) => s.name),
+                        stages: stageNames,
                     });
+                    setOriginalStages(stageNames);
                     setMessages((prev) => [
                         ...prev,
                         {
@@ -76,11 +80,20 @@ export function usePipelineCreator() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
+    const removedStages = pipelineId
+        ? originalStages.filter((s) => !data.stages.includes(s))
+        : [];
+
     const handleSave = async () => {
         if (!data.name) {
             toast.error("O nome do pipeline é obrigatório");
             return;
         }
+        if (pipelineId && removedStages.length > 0 && !pendingSave) {
+            setPendingSave(true);
+            return;
+        }
+        setPendingSave(false);
         setLoading(true);
         try {
             const payload = {
@@ -192,5 +205,8 @@ export function usePipelineCreator() {
         handleSendMessage,
         handleKeyDown,
         navigate,
+        pendingSave,
+        setPendingSave,
+        removedStages,
     };
 }

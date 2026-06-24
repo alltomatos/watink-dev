@@ -45,6 +45,13 @@ func setupPipelineContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method,
 	return c, w
 }
 
+func setupPipelineContextWithParam(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path string, body []byte, paramKey, paramVal string) (*gin.Context, *httptest.ResponseRecorder) {
+	t.Helper()
+	c, w := setupPipelineContext(t, db, tenantID, method, path, body)
+	c.Params = gin.Params{{Key: paramKey, Value: paramVal}}
+	return c, w
+}
+
 func TestPipelineController_List_ReturnsOnlyOwnTenant(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupPipelineTestDB(t)
@@ -182,60 +189,129 @@ func TestPipelineController_Import_DelegatesToCreate(t *testing.T) {
 	assert.Equal(t, "Importado", resp["name"])
 }
 
-func TestPipelineController_AISuggest_DefaultStages(t *testing.T) {
+func TestPipelineController_AISuggest_AIDisabled(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	db := setupPipelineTestDB(t)
 	tenantID := uuid.New()
 
+	// No settings seeded → aiEnabled defaults to ""  → ERR_AI_DISABLED
 	payload, _ := json.Marshal(map[string]interface{}{
 		"messages": []map[string]string{
 			{"role": "user", "content": "quero montar um funil de vendas"},
 		},
 	})
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest("POST", "/pipelines/ai-suggest", bytes.NewReader(payload))
-	req.Header.Set("Content-Type", "application/json")
-	c.Request = req
-	c.Set("tenantId", tenantID)
-
+	c, w := setupPipelineContext(t, db, tenantID, "POST", "/pipelines/ai-suggest", payload)
 	ctrl := NewPipelineController()
 	ctrl.AISuggest(c)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 	var resp map[string]interface{}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.NotEmpty(t, resp["stages"])
+	assert.Equal(t, "ERR_AI_DISABLED", resp["error"])
 }
 
-func TestPipelineController_AISuggest_SuporteStages(t *testing.T) {
+func TestPipelineController_AISuggest_NoAPIKey(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	db := setupPipelineTestDB(t)
+	tenantID := uuid.New()
+
+	// Seed aiEnabled + aiPipelineEnabled but no apiKey
+	require.NoError(t, db.Exec(`INSERT INTO "Settings" (key, value, "tenantId") VALUES (?,?,?)`, "aiEnabled", "true", tenantID).Error)
+	require.NoError(t, db.Exec(`INSERT INTO "Settings" (key, value, "tenantId") VALUES (?,?,?)`, "aiPipelineEnabled", "true", tenantID).Error)
 
 	payload, _ := json.Marshal(map[string]interface{}{
 		"messages": []map[string]string{
-			{"role": "user", "content": "preciso de um pipeline de suporte técnico"},
+			{"role": "user", "content": "funil de vendas"},
 		},
 	})
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest("POST", "/pipelines/ai-suggest", bytes.NewReader(payload))
-	req.Header.Set("Content-Type", "application/json")
-	c.Request = req
-
+	c, w := setupPipelineContext(t, db, tenantID, "POST", "/pipelines/ai-suggest", payload)
 	ctrl := NewPipelineController()
 	ctrl.AISuggest(c)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 	var resp map[string]interface{}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	stages := resp["stages"].([]interface{})
-	// Should include helpdesk/suporte-specific stages
-	found := false
+	assert.Equal(t, "ERR_NO_AI_API_KEY", resp["error"])
+}
+
+func TestPipelineController_Update_StageUpsert(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupPipelineTestDB(t)
+	tenantID := uuid.New()
+
+	// Create pipeline with 2 stages
+	createPayload, _ := json.Marshal(map[string]interface{}{
+		"name": "Funil Teste",
+		"type": "kanban",
+		"stages": []map[string]string{
+			{"name": "Novo"}, {"name": "Em Andamento"}, {"name": "Fechado"},
+		},
+	})
+	c, w := setupPipelineContext(t, db, tenantID, "POST", "/pipelines", createPayload)
+	NewPipelineController().Create(c)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var created map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+	pipelineID := int(created["id"].(float64))
+
+	stages := created["stages"].([]interface{})
+	var stageNovoID float64
 	for _, s := range stages {
-		if s.(string) == "Triagem" {
-			found = true
+		sm := s.(map[string]interface{})
+		if sm["name"].(string) == "Novo" {
+			stageNovoID = sm["id"].(float64)
 		}
 	}
-	assert.True(t, found, "expected 'Triagem' in suporte stages")
+	require.NotZero(t, stageNovoID, "stage 'Novo' must have an ID")
+
+	// Update: keep "Novo" (should preserve ID), rename nothing, remove "Fechado", add "Concluído"
+	updatePayload, _ := json.Marshal(map[string]interface{}{
+		"name": "Funil Teste",
+		"stages": []map[string]string{
+			{"name": "Novo"}, {"name": "Em Andamento"}, {"name": "Concluído"},
+		},
+	})
+	c2, w2 := setupPipelineContextWithParam(t, db, tenantID, "PUT", fmt.Sprintf("/pipelines/%d", pipelineID), updatePayload, "pipelineId", strconv.Itoa(pipelineID))
+	NewPipelineController().Update(c2)
+	require.Equal(t, http.StatusOK, w2.Code)
+
+	var updated map[string]interface{}
+	require.NoError(t, json.Unmarshal(w2.Body.Bytes(), &updated))
+
+	updatedStages := updated["stages"].([]interface{})
+	var updatedNovoID float64
+	for _, s := range updatedStages {
+		sm := s.(map[string]interface{})
+		if sm["name"].(string) == "Novo" {
+			updatedNovoID = sm["id"].(float64)
+		}
+	}
+	assert.Equal(t, stageNovoID, updatedNovoID, "stage 'Novo' must preserve its ID after update")
+}
+
+func TestPipelineController_Update_ZeroStagesBlocked(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupPipelineTestDB(t)
+	tenantID := uuid.New()
+
+	createPayload, _ := json.Marshal(map[string]interface{}{
+		"name":   "Pipeline Zero",
+		"stages": []map[string]string{{"name": "Único"}},
+	})
+	c, w := setupPipelineContext(t, db, tenantID, "POST", "/pipelines", createPayload)
+	NewPipelineController().Create(c)
+	require.Equal(t, http.StatusOK, w.Code)
+	var created map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+	pipelineID := int(created["id"].(float64))
+
+	updatePayload, _ := json.Marshal(map[string]interface{}{
+		"stages": []map[string]string{{"name": "   "}},
+	})
+	c2, w2 := setupPipelineContextWithParam(t, db, tenantID, "PUT", fmt.Sprintf("/pipelines/%d", pipelineID), updatePayload, "pipelineId", strconv.Itoa(pipelineID))
+	NewPipelineController().Update(c2)
+	assert.Equal(t, http.StatusUnprocessableEntity, w2.Code)
 }
