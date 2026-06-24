@@ -2,6 +2,7 @@ package whatsapp
 
 import (
 	"context"
+	"time"
 
 	"go.mau.fi/whatsmeow"
 	waE2E "go.mau.fi/whatsmeow/proto/waE2E"
@@ -9,9 +10,7 @@ import (
 )
 
 // WhatsAppClient is the minimal interface over *whatsmeow.Client needed for
-// testable send and contact helpers. Only methods actually called in
-// send_poll.go are included here; contacts.go accesses the Store field
-// directly and is tested via pure-helper coverage instead.
+// testable send and contact helpers.
 type WhatsAppClient interface {
 	// SendMessage sends a WhatsApp message to the given JID.
 	SendMessage(ctx context.Context, to types.JID, message *waE2E.Message, extra ...whatsmeow.SendRequestExtra) (whatsmeow.SendResponse, error)
@@ -24,6 +23,15 @@ type WhatsAppClient interface {
 
 	// GetProfilePictureInfo retrieves the profile picture metadata for a JID.
 	GetProfilePictureInfo(ctx context.Context, jid types.JID, params *whatsmeow.GetProfilePictureParams) (*types.ProfilePictureInfo, error)
+
+	// Download downloads the full media bytes for a downloadable WhatsApp message.
+	Download(ctx context.Context, msg whatsmeow.DownloadableMessage) ([]byte, error)
+
+	// Upload encrypts and uploads plaintext media bytes to WhatsApp servers.
+	Upload(ctx context.Context, plaintext []byte, appInfo whatsmeow.MediaType) (whatsmeow.UploadResponse, error)
+
+	// MarkRead marks a set of messages as read in the given chat.
+	MarkRead(ctx context.Context, ids []types.MessageID, timestamp time.Time, chat, sender types.JID, receiptTypeExtra ...types.ReceiptType) error
 }
 
 // compile-time assertion: *whatsmeow.Client must satisfy WhatsAppClient.
