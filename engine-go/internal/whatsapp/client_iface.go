@@ -10,7 +10,7 @@ import (
 )
 
 // WhatsAppClient is the minimal interface over *whatsmeow.Client needed for
-// testable send and contact helpers.
+// testable send, download and contact helpers.
 type WhatsAppClient interface {
 	// SendMessage sends a WhatsApp message to the given JID.
 	SendMessage(ctx context.Context, to types.JID, message *waE2E.Message, extra ...whatsmeow.SendRequestExtra) (whatsmeow.SendResponse, error)
