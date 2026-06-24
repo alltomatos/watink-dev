@@ -29,12 +29,14 @@ interface AISettingsProps {
 const providerModels: Record<string, string[]> = {
   openai: ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
   grok: ["grok-beta", "grok-2"],
-  anthropic: ["claude-3-5-sonnet", "claude-3-opus", "claude-3-haiku"]
+  anthropic: ["claude-3-5-sonnet", "claude-3-opus", "claude-3-haiku"],
+  custom: [],
 };
 
 const AISettings: React.FC<AISettingsProps> = ({ getSettingValue, handleUpdateSetting }) => {
   const provider = getSettingValue("aiProvider") || "openai";
   const models = providerModels[provider] || [];
+  const isCustomProvider = provider === "custom";
 
   return (
     <div className="space-y-6">
@@ -76,6 +78,19 @@ const AISettings: React.FC<AISettingsProps> = ({ getSettingValue, handleUpdateSe
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
+                <Label>IA no Pipeline</Label>
+                <p className="text-xs text-muted-foreground">Assistente de IA ativo na criação e edição de pipelines</p>
+              </div>
+              <Switch
+                checked={getSettingValue("aiPipelineEnabled") === "true"}
+                onCheckedChange={(checked) => handleUpdateSetting("aiPipelineEnabled", checked ? "true" : "false")}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
                 <Label>Co-Piloto de Respostas no Chat</Label>
                 <p className="text-xs text-muted-foreground">Sugestões de atendimento inteligentes e automáticas em tempo real</p>
               </div>
@@ -108,27 +123,49 @@ const AISettings: React.FC<AISettingsProps> = ({ getSettingValue, handleUpdateSe
                   <SelectItem value="openai">OpenAI (GPT-4/GPT-3.5)</SelectItem>
                   <SelectItem value="grok">xAI Grok (Grok-2/Grok-Beta)</SelectItem>
                   <SelectItem value="anthropic">Anthropic (Claude 3.5)</SelectItem>
+                  <SelectItem value="custom">Provedor Customizado (OpenAI-compatível)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="ai-model">Modelo de Linguagem (LLM)</Label>
-              <Select
-                value={getSettingValue("aiModel") || models[0] || ""}
-                onValueChange={(v) => handleUpdateSetting("aiModel", v)}
-                disabled={models.length === 0}
-              >
-                <SelectTrigger id="ai-model">
-                  <SelectValue placeholder="Selecione o modelo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {models.map((mod) => (
-                    <SelectItem key={mod} value={mod}>{mod}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isCustomProvider ? (
+                <Input
+                  id="ai-model"
+                  placeholder="Ex: llama3, mistral, gpt-4o-mini"
+                  defaultValue={getSettingValue("aiModel")}
+                  onBlur={(e) => handleUpdateSetting("aiModel", e.target.value)}
+                />
+              ) : (
+                <Select
+                  value={getSettingValue("aiModel") || models[0] || ""}
+                  onValueChange={(v) => handleUpdateSetting("aiModel", v)}
+                  disabled={models.length === 0}
+                >
+                  <SelectTrigger id="ai-model">
+                    <SelectValue placeholder="Selecione o modelo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models.map((mod) => (
+                      <SelectItem key={mod} value={mod}>{mod}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
+
+            {isCustomProvider && (
+              <div className="grid gap-2">
+                <Label htmlFor="ai-base-url">URL Base da API</Label>
+                <Input
+                  id="ai-base-url"
+                  placeholder="http://localhost:11434/v1"
+                  defaultValue={getSettingValue("aiCustomBaseURL")}
+                  onBlur={(e) => handleUpdateSetting("aiCustomBaseURL", e.target.value)}
+                />
+              </div>
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="ai-key">Chave da API (Credentials/API Key)</Label>

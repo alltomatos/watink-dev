@@ -6,7 +6,7 @@ echo "[pre-push] running quality gates"
 # Backend checks
 if [ -f "business/go.mod" ]; then
   echo "[pre-push] go test ./..."
-  (cd business && go test ./...)
+  (cd business && DB_HOST=localhost DB_PORT=5432 DB_NAME=watink DB_USER=postgres DB_PASS=watink_secret_pass go test ./...)
 
   if command -v golangci-lint >/dev/null 2>&1; then
     echo "[pre-push] golangci-lint run (new issues only)"
