@@ -49,6 +49,9 @@
 | GAP-GOD-2 | Decompõe 5 controllers god-files round-2: whatsapp/ticket/kb/message/pipeline < 250L | ✅ Mergeado (PR #215) |
 | GAP-ENG-2 | WhatsAppClient interface + testes offline send_poll/contacts engine-go | ✅ Mergeado (PR #214) |
 | GAP-SVC | Split event_listener_message.go por tipo de evento (4 arquivos) | ✅ Mergeado (PR #217) |
+| GAP-N1 | Fix N+1 em TagController.List() — batch GROUP BY (tag.go) | ✅ Mergeado (PR fix/tag-n1-query) |
+| GAP-SIZE R1 | Split receive_message.go(273L) → + receive_message_enrich.go | ✅ Mergeado (refactor/receive-message-split) |
+| GAP-ENG-3 | Expande WhatsAppClient interface + testes offline send/download | ✅ Mergeado (test/engine-go-coverage-3) |
 
 ---
 
@@ -149,3 +152,14 @@ Ciclo 4 concluído — todos os god-files controllers decompostos.
 | X1 | WhatsAppClient interface mínima engine-go | T2 | test/engine-go-coverage-2 | ✅ |
 | X2 | Testes offline send_poll + contacts engine-go | T2 | test/engine-go-coverage-2 | ✅ |
 | V1 | Split event_listener_message.go por tipo evento | T2 | refactor/services-event-split | ✅ |
+
+---
+
+## DAG Onda 5 (2026-06-24)
+
+| ID | Tarefa | Tier | PR | Status |
+|----|--------|------|----|--------|
+| N1 | Fix N+1 TagController.List() — batch GROUP BY | T2 | fix/tag-n1-query | ✅ |
+| R1 | Split receive_message.go(273L) → receive_message_enrich.go | T2 | refactor/receive-message-split | ✅ |
+| X1b | Expande WhatsAppClient interface (Download+MarkRead) | T2 | test/engine-go-coverage-3 | ✅ |
+| X2b | Testes offline send.go + download.go helpers | T2 | test/engine-go-coverage-3 | ✅ |
