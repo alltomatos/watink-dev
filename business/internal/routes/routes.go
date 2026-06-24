@@ -30,6 +30,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	settingController := controllers.NewSettingController(container.SettingRepo, container.Broadcast)
 	tagController := controllers.NewTagController()
 	pipelineController := controllers.NewPipelineController()
+	dealController := controllers.NewDealController()
 	kbController := controllers.NewKnowledgeBaseController()
 	groupController := controllers.NewGroupController(container.PermissionRepo)
 	roleController := controllers.NewRoleController(container.PermissionRepo)
@@ -203,6 +204,10 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.DELETE("/tags/:id", tagController.Delete)
 		protected.GET("/tag-groups", tagController.ListGroups)
 		protected.PUT("/entities/:entityType/:id/tags/sync", tagController.SyncEntityTags)
+
+		// Deals
+		protected.GET("/deals", dealController.List)
+		protected.PUT("/deals/:id", dealController.Update)
 
 		// Pipelines
 		protected.GET("/pipelines", pipelineController.List)
