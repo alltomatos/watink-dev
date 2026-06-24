@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
@@ -98,12 +97,7 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 		return nil, fmt.Errorf("empty sender number")
 	}
 
-	// For groups the contact represents the group itself, so name it with the
-	// group subject instead of whichever participant happened to message.
-	contactName := input.PushName
-	if input.IsGroup && input.GroupName != "" {
-		contactName = input.GroupName
-	}
+	contactName := contactDisplayName(input.PushName, input.GroupName, input.IsGroup)
 
 	contact, err := uc.contactRepo.FindOrCreate(
 		ctx,
@@ -232,16 +226,7 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 
 	lastMsg := msg.Body
 	if lastMsg == "" {
-		switch {
-		case strings.HasPrefix(input.Mimetype, "image/"):
-			lastMsg = "📷 Foto"
-		case strings.HasPrefix(input.Mimetype, "video/"):
-			lastMsg = "📹 Vídeo"
-		case strings.HasPrefix(input.Mimetype, "audio/"):
-			lastMsg = "🎵 Áudio"
-		case input.Mimetype != "":
-			lastMsg = "📎 Arquivo"
-		}
+		lastMsg = mimeTypeLabel(input.Mimetype)
 	}
 	updates := map[string]interface{}{"lastMessage": lastMsg, "updatedAt": time.Now()}
 	if !input.FromMe {
@@ -261,13 +246,4 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 		Ticket:  ticket,
 		Message: msg,
 	}, nil
-}
-
-func jidNumber(jid string) string {
-	if jid == "" {
-		return ""
-	}
-	base := strings.Split(jid, "@")[0]
-	base = strings.Split(base, ":")[0]
-	return base
 }
