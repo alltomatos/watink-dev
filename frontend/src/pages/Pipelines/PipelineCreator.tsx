@@ -6,6 +6,14 @@ import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { usePipelineCreator } from "./hooks/usePipelineCreator";
 import PipelineFormFields from "./components/PipelineFormFields";
 import PipelineStageList from "./components/PipelineStageList";
@@ -30,9 +38,32 @@ const PipelineCreator: React.FC = () => {
         handleSendMessage,
         handleKeyDown,
         navigate,
+        pendingSave,
+        setPendingSave,
+        removedStages,
     } = usePipelineCreator();
 
     return (
+        <>
+        <Dialog open={pendingSave} onOpenChange={setPendingSave}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Confirmar alteração de etapas</DialogTitle>
+                    <DialogDescription>
+                        As seguintes etapas serão removidas:{" "}
+                        <strong>{removedStages.join(", ")}</strong>. Os deals nessas etapas
+                        serão movidos automaticamente para a primeira etapa disponível.
+                        Deseja continuar?
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setPendingSave(false)}>
+                        Cancelar
+                    </Button>
+                    <Button onClick={handleSave}>Confirmar e Salvar</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
         <MainContainer>
             <MainHeader>
                 <div className="flex items-center gap-2">
@@ -89,6 +120,7 @@ const PipelineCreator: React.FC = () => {
                 )}
             </div>
         </MainContainer>
+        </>
     );
 };
 
