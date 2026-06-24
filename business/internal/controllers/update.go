@@ -115,10 +115,10 @@ func performUpdate(version string) {
 	timestamp := time.Now().Format("20060102-150405")
 	backupFile := fmt.Sprintf("/tmp/watink_backup_%s.sql", timestamp)
 
-		slog.Info("update started",
-			"version", version,
-			"timestamp", timestamp,
-		)
+	slog.Info("update started",
+		"version", version,
+		"timestamp", timestamp,
+	)
 
 	// A. Backup do Banco de Dados
 	// Nota: Em ambiente Docker, precisaríamos do pg_dump instalado ou rodar via exec no container do banco

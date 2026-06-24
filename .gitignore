@@ -12,6 +12,10 @@ logs.txt
 .sessions_auth/
 backend/public/uploads/
 
+# --- Media cache (mediastore runtime, relative to CWD) ---
+business/public/media/
+business/**/public/media/
+
 # --- Dependencies ---
 node_modules/
 **/node_modules/

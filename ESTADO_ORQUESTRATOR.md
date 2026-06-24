@@ -1,9 +1,9 @@
 # ESTADO_ORQUESTRATOR.md
 
 > Arquivo de estado vivo do Orchestrator.
-> **Última atualização**: 2026-06-22
-> **Branch**: `develop` (main sincronizado via PRs até #192)
-> **Epic atual**: Fase 3 — Batch GAP-1/GAP-2/GAP-3 (fragmentação event_listener + testes pkg/utils + limpeza órfãos)
+> **Última atualização**: 2026-06-24
+> **Branch**: `develop` (main sincronizado via PRs até #192; PRs #211–#217 mergeados)
+> **Epic atual**: Fase 4 — Onda 4 completa (GAP-SEC/GAP-GOD-2/GAP-ENG-2/GAP-SVC — PRs #214–#217)
 
 ---
 
@@ -42,10 +42,20 @@
 | Epic 22 | Testes offline DLQ/tracing (12 testes) + split send.go/send_types.go engine-go | ✅ Mergeado (PR #88) |
 | Epic 23 | DI pura WhatsAppService engine-go — SessionLoader interface + 4 testes offline | ✅ Mergeado (PR #89) |
 | PRs #90–#192 | Batch: GAP-AUTH-COVERAGE (pkg/auth 0%→93.5%), GAP-MEDIA-SEND, GAP-MEDIA-1/2, GAP-ANY, GAP-WS (WebSocket hardening + multitenancy), GAP-VAL-1 (ParseIntParam), DI remoção globals socket/redis, testes Audio/TicketsList/mediastore, feat audio player, API docs sync | ✅ Mergeado |
+| GAP-4 + INFO | TS-only frontend/src (loader.js→ts, test.js→ts, .gitignore media cache) | ✅ Mergeado (PR #211) |
+| GAP-2 (3 piores) | Decompõe controllers god-files: contact/tag/user < 250L (5 novos arquivos) | ✅ Mergeado (PR #212) |
+| GAP-1 + GAP-3 | engine-go: decomp events.go (4 arquivos) + MessageBroker interface + 13 testes offline | ✅ Mergeado (PR #213) |
+| GAP-SEC + Z1 | quic-go v0.59.1 (CVE-2026-40898) + remove QueueVisibilityFilter vocab | ✅ Mergeado (PR #216) |
+| GAP-GOD-2 | Decompõe 5 controllers god-files round-2: whatsapp/ticket/kb/message/pipeline < 250L | ✅ Mergeado (PR #215) |
+| GAP-ENG-2 | WhatsAppClient interface + testes offline send_poll/contacts engine-go | ✅ Mergeado (PR #214) |
+| GAP-SVC | Split event_listener_message.go por tipo de evento (4 arquivos) | ✅ Mergeado (PR #217) |
+| GAP-N1 | Fix N+1 em TagController.List() — batch GROUP BY (tag.go) | ✅ Mergeado (PR fix/tag-n1-query) |
+| GAP-SIZE R1 | Split receive_message.go(273L) → + receive_message_enrich.go | ✅ Mergeado (refactor/receive-message-split) |
+| GAP-ENG-3 | Expande WhatsAppClient interface + testes offline send/download | ✅ Mergeado (test/engine-go-coverage-3) |
 
 ---
 
-## Cobertura de Testes Go — Estado (pós PR #83)
+## Cobertura de Testes Go — Estado (pós PR #213, 2026-06-23)
 
 | Pacote | Cobertura (CI com PostgreSQL) |
 |--------|-------------------------------|
@@ -60,8 +70,12 @@
 | `internal/services` | ~28% |
 | `pkg/auth` | 93.5% ✅ (PR #186) |
 | `pkg/utils` | ~75% ✅ (errors_test.go — 10 casos, 2026-06-22) |
-| `engine-go` | 0% ⚠️ (0 test files) |
-| **Total estimado** | **~55-60%** |
+| `engine-go/internal/rabbitmq` | 22.2% ✅ (PR #213, broker_test.go — 4 testes) |
+| `engine-go/internal/whatsapp` | 11.4% ✅ (PR #213, events+session offline — 9 testes) |
+| **Total business estimado** | **~55-60%** |
+
+> Teto real engine-go: maioria dos arquivos em whatsapp/ depende de `whatsmeow.Client` I/O externo.
+> Cobertura adicional requer interface para o próprio client (escopo next cycle).
 
 ### Teto Real — Infraestrutura externa não testável sem infra real
 
@@ -91,7 +105,7 @@
 
 ---
 
-## DAG Atual — Batch Fase 3 (2026-06-22)
+## DAG Anterior — Batch B1–B5 (2026-06-22) — CONCLUÍDO
 
 | ID | Tarefa | Tier | Status |
 |----|--------|------|--------|
@@ -100,3 +114,52 @@
 | B3 | Testes pkg/utils/errors.go — 10 casos, build green | T2 | ✅ Aplicado |
 | B4 | Testes internal/services mockáveis — 16 casos offline (revoke/reaction/contact/jid) | T2 | ✅ Aplicado |
 | B5 | Atualizar ESTADO_ORQUESTRATOR.md (PRs #90–#192) | T1 | ✅ Aplicado |
+
+---
+
+## DAG Atual — Batch Ondas 1-2-3 (2026-06-23)
+
+| ID | Tarefa | Tier | PR | Status |
+|----|--------|------|----|--------|
+| F1 | loader.js → loader.ts (tipos ApplyThemeOptions/BrandOverrides) | T1 | #211 | ✅ Mergeado |
+| F2 | useThemeTokens.test.js → .test.ts (rename + assinaturas null-safe) | T1 | #211 | ✅ Mergeado |
+| F3 | .gitignore: business/**/public/media/ (cache runtime mediastore) | T1 | #211 | ✅ Mergeado |
+| C1 | Decompor contact.go (374L) → contact.go + contact_mutation.go + contact_sync.go | T2 | #212 | ✅ Mergeado |
+| C2 | Decompor tag.go (334L) → tag.go + tag_mutation.go + tag_groups.go | T2 | #212 | ✅ Mergeado |
+| C3 | Decompor user.go (327L) → user.go + user_mutation.go | T2 | #212 | ✅ Mergeado |
+| G1 | Decompor events.go (346L) → events.go + events_message.go + events_pic.go + events_status.go | T2 | #213 | ✅ Mergeado |
+| E1 | Interface MessageBroker + 4 testes offline (rabbitmq) | T2 | #213 | ✅ Mergeado |
+| E2 | 5 testes offline events handlers (whatsapp) | T2 | #213 | ✅ Mergeado |
+| E3 | 4 testes offline session (whatsapp) | T2 | #213 | ✅ Mergeado |
+
+### God-files remanescentes (próximo ciclo)
+
+Ciclo 4 concluído — todos os god-files controllers decompostos.
+
+---
+
+## DAG Onda 4 (2026-06-24)
+
+| ID | Tarefa | Tier | PR | Status |
+|----|--------|------|----|--------|
+| S1 | bump quic-go v0.59.1 (CVE-2026-40898) | T1 | fix/quic-go-cve | ✅ |
+| Z1 | remove QueueVisibilityFilter de CONTEXT.md | T1 | fix/quic-go-cve | ✅ |
+| D1 | whatsapp.go (320L) → whatsapp_session.go + whatsapp_status.go | T2 | refactor/controllers-decompose-2 | ✅ |
+| D2 | ticket.go (308L) → ticket_mutation.go + ticket_query.go | T2 | refactor/controllers-decompose-2 | ✅ |
+| D3 | knowledge_base.go (304L) → knowledge_base_mutation.go | T2 | refactor/controllers-decompose-2 | ✅ |
+| D4 | message.go (280L) → message_send.go + message_query.go | T2 | refactor/controllers-decompose-2 | ✅ |
+| D5 | pipeline.go (258L) → pipeline_mutation.go | T2 | refactor/controllers-decompose-2 | ✅ |
+| X1 | WhatsAppClient interface mínima engine-go | T2 | test/engine-go-coverage-2 | ✅ |
+| X2 | Testes offline send_poll + contacts engine-go | T2 | test/engine-go-coverage-2 | ✅ |
+| V1 | Split event_listener_message.go por tipo evento | T2 | refactor/services-event-split | ✅ |
+
+---
+
+## DAG Onda 5 (2026-06-24)
+
+| ID | Tarefa | Tier | PR | Status |
+|----|--------|------|----|--------|
+| N1 | Fix N+1 TagController.List() — batch GROUP BY | T2 | fix/tag-n1-query | ✅ |
+| R1 | Split receive_message.go(273L) → receive_message_enrich.go | T2 | refactor/receive-message-split | ✅ |
+| X1b | Expande WhatsAppClient interface (Download+MarkRead) | T2 | test/engine-go-coverage-3 | ✅ |
+| X2b | Testes offline send.go + download.go helpers | T2 | test/engine-go-coverage-3 | ✅ |

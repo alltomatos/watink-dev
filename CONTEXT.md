@@ -114,8 +114,6 @@ _Avoid_: Bot, connector, wbot engine
 **TicketType**: Classificação visual de um Ticket derivada de suas flags booleanas — `individual | group | community | newsletter`. Derivado de `isGroup`, `isCommunity`, `isSubGroup`, `isNewsletter`. Exibido como badge de ícone no avatar do `TicketListItem` (community=violet, group=emerald, newsletter=sky).
 _Avoid_: ChatType, contactType, conversationType
 
-**QueueVisibilityFilter**: Filtros ortogonais aplicados na `TicketsList` para refinar a visualização. `isGroup` exibe apenas Tickets de grupos; `withUnreadMessages` exibe apenas Tickets com mensagens não lidas. Ambos são toggles independentes gerenciados no `TicketsManager`.
-_Avoid_: TicketFilter (genérico), listFilter
 
 ## Entity Relationships (Canonical)
 

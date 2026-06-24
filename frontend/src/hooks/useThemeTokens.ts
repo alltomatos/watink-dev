@@ -123,9 +123,9 @@ export interface ThemeTokens {
   nav: Record<string, string>;
   motion: Record<string, string>;
   message: Record<string, string>;
-  getRaw: (name: string) => string | null;
-  getVar: (name: string) => string;
-  has: (name: string) => boolean;
+  getRaw: (name?: string | null) => string | null;
+  getVar: (name?: string | null) => string;
+  has: (name?: string | null) => boolean;
 }
 
 export const useThemeTokens = (): ThemeTokens => {
@@ -209,9 +209,9 @@ export const useThemeTokens = (): ThemeTokens => {
         quoteBg: TOKEN_MAP["message-quote-bg"],
         errorText: TOKEN_MAP["message-error-text"],
       },
-      getRaw: (name: string) => TOKEN_MAP[name] ?? null,
-      getVar: (name: string) => TOKEN_MAP[name] ?? `var(--${name})`,
-      has: (name: string) => name in TOKEN_MAP,
+      getRaw: (name?: string | null) => TOKEN_MAP[name as string] ?? null,
+      getVar: (name?: string | null) => TOKEN_MAP[name as string] ?? `var(--${name})`,
+      has: (name?: string | null) => (name as string) in TOKEN_MAP,
     }),
     []
   );

@@ -18,7 +18,7 @@ type DashboardData struct {
 		Pending int64 `json:"pending"`
 		Closed  int64 `json:"closed"`
 	} `json:"tickets"`
-	Queues []QueueCount `json:"queues"`
+	Queues  []QueueCount `json:"queues"`
 	Metrics struct {
 		AvgResponseTime float64 `json:"avgResponseTime"` // in minutes
 		AvgWaitTime     float64 `json:"avgWaitTime"`     // in minutes
