@@ -34,6 +34,16 @@ Frontend (React/Vite) ←REST/Socket.io→ Backend Go (Gin/GORM) ←SQL→ Postg
 | Frontend — MessagesList decomposição (799→362L, 9 módulos, GAP-Q) | ✅ Concluída (PR #99) |
 | Frontend — Testes TicketListItem + TicketsManager (18 casos, GAP-R) | ✅ Concluída (PR #99) |
 | Frontend — Suite de testes 65/65 verde (GAP-T) | ✅ Concluída (PR #100) |
+| Frontend — TS-only enforcement (loader.js→ts, ADR 0008, GAP-4) | ✅ Concluída (PR #211) |
+| Backend Go — Decomposição god-files controllers round-1 contact/tag/user < 250L | ✅ Concluída (PR #212) |
+| Engine Go — events.go decomp + MessageBroker interface + 13 testes offline | ✅ Concluída (PR #213) |
+| Engine Go — WhatsAppClient interface + testes offline send_poll/contacts | ✅ Concluída (PR #214) |
+| Backend Go — Decomposição god-files controllers round-2 whatsapp/ticket/kb/message/pipeline | ✅ Concluída (PR #215) |
+| Security — quic-go v0.59.1 (CVE-2026-40898 DoS) | ✅ Concluída (PR #216) |
+| Backend Go — event_listener_message.go split por tipo de evento | ✅ Concluída (PR #217) |
+| Backend Go — receive_message.go split dispatch vs enrich | ✅ Concluída (PR #218) |
+| Backend Go — Fix N+1 TagController.List() — batch GROUP BY | ✅ Concluída (PR #219) |
+| Engine Go — WhatsAppClient interface expansion (Download+MarkRead) + testes send/download | ✅ Concluída (PR #220) |
 
 ## Services & Ports
 
