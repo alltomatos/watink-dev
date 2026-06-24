@@ -136,8 +136,8 @@ func (pc *PipelineController) AISuggest(c *gin.Context) {
 	// Build system prompt
 	systemPrompt := settingMap["aiGuidePrompt"]
 	if systemPrompt == "" {
-		systemPrompt = "Você é um assistente especializado em processos de negócio. " +
-			"Quando o usuário descrever um processo ou contexto, sugira etapas de pipeline adequadas. " +
+		systemPrompt = "Voce e um assistente especializado em fluxos de negocio. " +
+			"Quando o usuario descrever um fluxo ou contexto, sugira etapas de pipeline adequadas. " +
 			"Responda SEMPRE em JSON válido no formato: {\"message\": \"texto explicativo\", \"stages\": [\"Etapa 1\", \"Etapa 2\", ...]}. " +
 			"Sugira entre 3 e 7 etapas relevantes ao contexto descrito. Não inclua nenhum texto fora do JSON."
 	} else {

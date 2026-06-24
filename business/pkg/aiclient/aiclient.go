@@ -76,7 +76,7 @@ func callOpenAICompatible(cfg Config, messages []Message) (*Response, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ERR_AI_SERVICE_FAILED: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
@@ -141,7 +141,7 @@ func callAnthropic(cfg Config, messages []Message) (*Response, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ERR_AI_SERVICE_FAILED: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
