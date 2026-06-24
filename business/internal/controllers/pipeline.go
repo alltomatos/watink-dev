@@ -1,9 +1,12 @@
 package controllers
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/pkg/aiclient"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
@@ -83,6 +86,11 @@ func (pc *PipelineController) Export(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /pipelines/ai-suggest [post]
 func (pc *PipelineController) AISuggest(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Settings")
+	if !ok {
+		return
+	}
+
 	var req struct {
 		Messages []struct {
 			Role    string `json:"role"`
@@ -94,35 +102,121 @@ func (pc *PipelineController) AISuggest(c *gin.Context) {
 		return
 	}
 
-	last := ""
-	for i := len(req.Messages) - 1; i >= 0; i-- {
-		if strings.TrimSpace(req.Messages[i].Content) != "" {
-			last = req.Messages[i].Content
-			break
-		}
+	// Load AI settings for this tenant
+	var settings []models.Setting
+	db.Where("\"tenantId\" = ? AND key IN ?", tenantID,
+		[]string{"aiEnabled", "aiPipelineEnabled", "aiProvider", "aiModel", "aiApiKey", "aiCustomBaseURL", "aiGuidePrompt"},
+	).Find(&settings)
+
+	settingMap := make(map[string]string, len(settings))
+	for _, s := range settings {
+		settingMap[s.Key] = s.Value
 	}
 
-	stages := []string{"Novo", "Qualificação", "Em Andamento", "Fechado"}
-	if strings.Contains(strings.ToLower(last), "suporte") || strings.Contains(strings.ToLower(last), "helpdesk") {
-		stages = []string{"Novo", "Triagem", "Atendimento", "Resolvido"}
+	if settingMap["aiEnabled"] != "true" || settingMap["aiPipelineEnabled"] != "true" {
+		c.JSON(400, gin.H{"error": "ERR_AI_DISABLED"})
+		return
+	}
+
+	apiKey := settingMap["aiApiKey"]
+	if strings.TrimSpace(apiKey) == "" {
+		c.JSON(400, gin.H{"error": "ERR_NO_AI_API_KEY"})
+		return
+	}
+
+	provider := settingMap["aiProvider"]
+	if provider == "" {
+		provider = "openai"
+	}
+	if provider == "custom" && strings.TrimSpace(settingMap["aiCustomBaseURL"]) == "" {
+		c.JSON(400, gin.H{"error": "ERR_NO_AI_BASE_URL"})
+		return
+	}
+
+	// Build system prompt
+	systemPrompt := settingMap["aiGuidePrompt"]
+	if systemPrompt == "" {
+		systemPrompt = "Você é um assistente especializado em processos de negócio. " +
+			"Quando o usuário descrever um processo ou contexto, sugira etapas de pipeline adequadas. " +
+			"Responda SEMPRE em JSON válido no formato: {\"message\": \"texto explicativo\", \"stages\": [\"Etapa 1\", \"Etapa 2\", ...]}. " +
+			"Sugira entre 3 e 7 etapas relevantes ao contexto descrito. Não inclua nenhum texto fora do JSON."
+	} else {
+		systemPrompt += "\n\nResponda SEMPRE em JSON válido no formato: {\"message\": \"texto explicativo\", \"stages\": [\"Etapa 1\", \"Etapa 2\", ...]}."
+	}
+
+	// Convert messages
+	var msgs []aiclient.Message
+	if provider != "anthropic" {
+		msgs = append(msgs, aiclient.Message{Role: "system", Content: systemPrompt})
+	}
+	for _, m := range req.Messages {
+		role := m.Role
+		if role == "ai" {
+			role = "assistant"
+		}
+		msgs = append(msgs, aiclient.Message{Role: role, Content: m.Content})
+	}
+
+	cfg := aiclient.Config{
+		Provider: provider,
+		Model:    settingMap["aiModel"],
+		APIKey:   apiKey,
+		BaseURL:  settingMap["aiCustomBaseURL"],
+		System:   systemPrompt,
+	}
+
+	result, err := aiclient.Complete(cfg, msgs)
+	if err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "ERR_NO_AI_API_KEY") {
+			c.JSON(400, gin.H{"error": "ERR_NO_AI_API_KEY"})
+		} else {
+			c.JSON(502, gin.H{"error": fmt.Sprintf("ERR_AI_SERVICE_FAILED: %s", errMsg)})
+		}
+		return
+	}
+
+	// Parse JSON response from LLM
+	var parsed struct {
+		Message string   `json:"message"`
+		Stages  []string `json:"stages"`
+	}
+	content := strings.TrimSpace(result.Content)
+	// Strip markdown code fences if present
+	content = strings.TrimPrefix(content, "```json")
+	content = strings.TrimPrefix(content, "```")
+	content = strings.TrimSuffix(content, "```")
+	content = strings.TrimSpace(content)
+
+	if err := json.Unmarshal([]byte(content), &parsed); err != nil || len(parsed.Stages) == 0 {
+		// Fallback: return raw content as message, no stages
+		c.JSON(200, gin.H{
+			"message": result.Content,
+			"stages":  []string{},
+		})
+		return
 	}
 
 	c.JSON(200, gin.H{
-		"message": "Sugestão gerada com sucesso.",
-		"stages":  stages,
+		"message": parsed.Message,
+		"stages":  parsed.Stages,
 	})
 }
 
 type createPipelineInput struct {
-	Name   string `json:"name"`
-	Stages []struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Type        string `json:"type"`
+	Stages      []struct {
 		Name string `json:"name"`
 	} `json:"stages"`
 }
 
 type updatePipelineInput struct {
-	Name   string `json:"name"`
-	Stages []struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Type        string `json:"type"`
+	Stages      []struct {
 		Name string `json:"name"`
 	} `json:"stages"`
 }

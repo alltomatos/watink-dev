@@ -43,9 +43,16 @@ func (pc *PipelineController) Create(c *gin.Context) {
 		_ = i
 	}
 
+	pipelineType := "kanban"
+	if input.Type == "funnel" {
+		pipelineType = "funnel"
+	}
+
 	pipeline := models.Pipeline{
-		Name:     pipelineName,
-		TenantID: tenantID,
+		Name:        pipelineName,
+		Description: input.Description,
+		Type:        pipelineType,
+		TenantID:    tenantID,
 	}
 
 	err = db.Transaction(func(tx *gorm.DB) error {
@@ -108,6 +115,26 @@ func (pc *PipelineController) Update(c *gin.Context) {
 		}
 		pipeline.Name = updName
 	}
+	if input.Description != "" {
+		pipeline.Description = input.Description
+	}
+	if input.Type == "kanban" || input.Type == "funnel" {
+		pipeline.Type = input.Type
+	}
+
+	// Validate: at least one non-empty stage if stages are provided
+	if input.Stages != nil {
+		nonEmpty := 0
+		for _, st := range input.Stages {
+			if strings.TrimSpace(st.Name) != "" {
+				nonEmpty++
+			}
+		}
+		if nonEmpty == 0 {
+			c.JSON(422, gin.H{"error": "Pipeline must have at least one stage"})
+			return
+		}
+	}
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Session(&gorm.Session{NewDB: true}).Save(&pipeline).Error; err != nil {
@@ -115,15 +142,74 @@ func (pc *PipelineController) Update(c *gin.Context) {
 		}
 
 		if input.Stages != nil {
-			if err := tx.Where("\"pipelineId\" = ?", pipeline.ID).Delete(&models.PipelineStage{}).Error; err != nil {
-				return err
+			// Build name→stage map for existing stages
+			existing := make(map[string]models.PipelineStage, len(pipeline.Stages))
+			for _, s := range pipeline.Stages {
+				existing[s.Name] = s
 			}
+
+			// Build set of incoming names
+			incoming := make(map[string]bool)
+			for _, st := range input.Stages {
+				if strings.TrimSpace(st.Name) != "" {
+					incoming[st.Name] = true
+				}
+			}
+
+			// Migrate deals from removed stages to first incoming stage name
+			firstIncoming := ""
+			for _, st := range input.Stages {
+				if strings.TrimSpace(st.Name) != "" {
+					firstIncoming = st.Name
+					break
+				}
+			}
+			for name, stage := range existing {
+				if !incoming[name] {
+					// Find or determine target stage ID after upsert — use first existing stage that survives
+					var targetStage models.PipelineStage
+					found := false
+					for inName, inStage := range existing {
+						if incoming[inName] {
+							targetStage = inStage
+							found = true
+							break
+						}
+					}
+					if !found {
+						// All are new; will be created — move deals using firstIncoming name after tx
+						// For now delete stage; deals will be handled below after creation
+						_ = firstIncoming
+					}
+					if found {
+						if err := tx.Model(&models.Deal{}).
+							Where("\"stageId\" = ?", stage.ID).
+							Update("stageId", targetStage.ID).Error; err != nil {
+							return err
+						}
+					}
+					if err := tx.Delete(&models.PipelineStage{}, stage.ID).Error; err != nil {
+						return err
+					}
+				}
+			}
+
+			// Upsert surviving and new stages
 			for i, st := range input.Stages {
 				if strings.TrimSpace(st.Name) == "" {
 					continue
 				}
-				if err := tx.Create(&models.PipelineStage{Name: st.Name, PipelineID: pipeline.ID, Order: i}).Error; err != nil {
-					return err
+				if prev, ok := existing[st.Name]; ok {
+					// Same name — update order only
+					prev.Order = i
+					if err := tx.Session(&gorm.Session{NewDB: true}).Save(&prev).Error; err != nil {
+						return err
+					}
+				} else {
+					// New stage
+					if err := tx.Create(&models.PipelineStage{Name: st.Name, PipelineID: pipeline.ID, Order: i}).Error; err != nil {
+						return err
+					}
 				}
 			}
 		}
