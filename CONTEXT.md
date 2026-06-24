@@ -48,11 +48,20 @@ _Avoid_: Msg, texto, notificação
 **Flow**: Automação visual construída no FlowBuilder. Define chatbots, menus de navegação, e integrações API/Webhook. Executado pelo FlowWorker via RabbitMQ.
 _Avoid_: Automation, workflow, bot, chatbot
 
-**Pipeline**: Funil de vendas com estágios sequenciais. Cada Deal pertence a um PipelineStage e opcionalmente a um Ticket.
+**Pipeline**: Funil de vendas com estágios sequenciais. Possui `type` ("kanban" ou "funnel") que determina a visualização padrão no board — kanban abre a view de colunas com drag-drop; funnel abre a view de 4 tabs (Quadro, Gantt, KPIs, Funil). Campo `description` opcional descreve o propósito do funil. Cada Pipeline pertence a um tenant (RLS).
 _Avoid_: Funnel, CRM, sales-flow
 
-**Deal**: Oportunidade comercial dentro de um Pipeline. Rastreia progresso de vendas vinculado a um Contact.
+**PipelineStage**: Etapa/coluna dentro de um Pipeline. Possui `name`, `order` (posição sequencial) e `pipelineId`. IDs de stages são estáveis — ao editar um pipeline, stages são preservadas por nome (upsert); stages removidas têm seus Deals migrados para a primeira stage disponível antes da remoção.
+_Avoid_: Column, step, fase
+
+**PipelineType**: Enum `"kanban" | "funnel"`. Determina a view padrão do board e ativa features visuais enterprise (alerta de estagnação 7+ dias, totais monetários por coluna) quando `"funnel"`. O threshold de estagnação será configurável via plugin Helpdesk/SLA no futuro.
+_Avoid_: board-type, view-mode
+
+**Deal**: Oportunidade comercial dentro de um Pipeline. Rastreia progresso de vendas vinculado a um Contact. Possui `value` (decimal), `status` ("open" por padrão), `stageId` (FK para PipelineStage — preservado pelo upsert de stages), e `ticketId` opcional.
 _Avoid_: Opportunity, lead, negócio
+
+**AISuggest (Pipeline)**: Funcionalidade de sugestão de stages via chat integrado ao PipelineCreator. Usa o provedor de IA configurado nas Settings do tenant (`aiProvider`, `aiModel`, `aiApiKey`). Requer `aiEnabled = "true"` e `aiPipelineEnabled = "true"`. Provedor `"custom"` usa `aiCustomBaseURL` como base URL OpenAI-compatível.
+_Avoid_: IA automática, bot de pipeline
 
 **Tag**: Marcador categorial aplicado polimorficamente a entidades (Tickets, Contacts, etc.) via EntityTag. Agrupa-se em TagGroups.
 _Avoid_: Label, marca, categoria
