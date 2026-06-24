@@ -181,14 +181,15 @@ func (pc *PipelineController) Update(c *gin.Context) {
 						// For now delete stage; deals will be handled below after creation
 						_ = firstIncoming
 					}
+					freshTx := tx.Session(&gorm.Session{NewDB: true})
 					if found {
-						if err := tx.Model(&models.Deal{}).
+						if err := freshTx.Model(&models.Deal{}).
 							Where("\"stageId\" = ?", stage.ID).
 							Update("stageId", targetStage.ID).Error; err != nil {
 							return err
 						}
 					}
-					if err := tx.Delete(&models.PipelineStage{}, stage.ID).Error; err != nil {
+					if err := freshTx.Delete(&models.PipelineStage{}, stage.ID).Error; err != nil {
 						return err
 					}
 				}
@@ -199,15 +200,16 @@ func (pc *PipelineController) Update(c *gin.Context) {
 				if strings.TrimSpace(st.Name) == "" {
 					continue
 				}
+				freshTxStage := tx.Session(&gorm.Session{NewDB: true})
 				if prev, ok := existing[st.Name]; ok {
 					// Same name — update order only
 					prev.Order = i
-					if err := tx.Session(&gorm.Session{NewDB: true}).Save(&prev).Error; err != nil {
+					if err := freshTxStage.Save(&prev).Error; err != nil {
 						return err
 					}
 				} else {
 					// New stage
-					if err := tx.Create(&models.PipelineStage{Name: st.Name, PipelineID: pipeline.ID, Order: i}).Error; err != nil {
+					if err := freshTxStage.Create(&models.PipelineStage{Name: st.Name, PipelineID: pipeline.ID, Order: i}).Error; err != nil {
 						return err
 					}
 				}
