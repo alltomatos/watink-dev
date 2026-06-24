@@ -2,8 +2,8 @@
 
 > Arquivo de estado vivo do Orchestrator.
 > **Última atualização**: 2026-06-24
-> **Branch**: `develop` (main sincronizado via PRs até #192; PRs #211–#213 em revisão)
-> **Epic atual**: Fase 3 — Batch Ondas 1-2-3 (GAP-1/GAP-2/GAP-3/GAP-4/INFO) em 3 PRs
+> **Branch**: `develop` (main sincronizado via PRs até #192; PRs #211–#217 mergeados)
+> **Epic atual**: Fase 4 — Onda 4 completa (GAP-SEC/GAP-GOD-2/GAP-ENG-2/GAP-SVC — PRs #214–#217)
 
 ---
 
@@ -45,10 +45,10 @@
 | GAP-4 + INFO | TS-only frontend/src (loader.js→ts, test.js→ts, .gitignore media cache) | ✅ Mergeado (PR #211) |
 | GAP-2 (3 piores) | Decompõe controllers god-files: contact/tag/user < 250L (5 novos arquivos) | ✅ Mergeado (PR #212) |
 | GAP-1 + GAP-3 | engine-go: decomp events.go (4 arquivos) + MessageBroker interface + 13 testes offline | ✅ Mergeado (PR #213) |
-| GAP-SEC + Z1 | quic-go v0.59.1 (CVE-2026-40898) + remove QueueVisibilityFilter vocab | ✅ Mergeado (PR fix/quic-go-cve) |
-| GAP-GOD-2 | Decompõe 5 controllers god-files round-2: whatsapp/ticket/kb/message/pipeline < 250L | ✅ Mergeado (refactor/controllers-decompose-2) |
-| GAP-ENG-2 | WhatsAppClient interface + testes offline send_poll/contacts engine-go | ✅ Em revisão (test/engine-go-coverage-2) |
-| GAP-SVC | Split event_listener_message.go por tipo de evento | ✅ Em revisão (refactor/services-event-split) |
+| GAP-SEC + Z1 | quic-go v0.59.1 (CVE-2026-40898) + remove QueueVisibilityFilter vocab | ✅ Mergeado (PR #216) |
+| GAP-GOD-2 | Decompõe 5 controllers god-files round-2: whatsapp/ticket/kb/message/pipeline < 250L | ✅ Mergeado (PR #215) |
+| GAP-ENG-2 | WhatsAppClient interface + testes offline send_poll/contacts engine-go | ✅ Mergeado (PR #214) |
+| GAP-SVC | Split event_listener_message.go por tipo de evento (4 arquivos) | ✅ Mergeado (PR #217) |
 
 ---
 
