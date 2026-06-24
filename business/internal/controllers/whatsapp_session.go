@@ -12,14 +12,14 @@ import (
 )
 
 type SessionController struct {
-	sessionRepo     domain.ChannelSessionRepository
+	sessionRepo    domain.ChannelSessionRepository
 	broadcast      *services.RedisBroadcast
 	sessionService *services.WhatsAppSessionService
 }
 
 func NewSessionController(sr domain.ChannelSessionRepository, broadcast *services.RedisBroadcast, sessionService *services.WhatsAppSessionService) *SessionController {
 	return &SessionController{
-		sessionRepo:     sr,
+		sessionRepo:    sr,
 		broadcast:      broadcast,
 		sessionService: sessionService,
 	}

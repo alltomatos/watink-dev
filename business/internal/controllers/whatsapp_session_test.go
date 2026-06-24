@@ -9,18 +9,18 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"gorm.io/gorm"
 )
 
 // mockChannelSessionRepo implements domain.ChannelSessionRepository for testing.
 type mockChannelSessionRepo struct {
-	session  *domain.ChannelSession
-	sessions []domain.ChannelSession
-	findErr  error
+	session   *domain.ChannelSession
+	sessions  []domain.ChannelSession
+	findErr   error
 	updateErr error
 }
 
@@ -33,11 +33,13 @@ func (m *mockChannelSessionRepo) FindByIDDetail(_ context.Context, _ int, _ uuid
 func (m *mockChannelSessionRepo) FindAll(_ context.Context, _ uuid.UUID) ([]domain.ChannelSession, error) {
 	return m.sessions, m.findErr
 }
-func (m *mockChannelSessionRepo) Create(_ context.Context, _ *domain.ChannelSession) error { return nil }
+func (m *mockChannelSessionRepo) Create(_ context.Context, _ *domain.ChannelSession) error {
+	return nil
+}
 func (m *mockChannelSessionRepo) Update(_ context.Context, _ *domain.ChannelSession, _ map[string]interface{}) error {
 	return m.updateErr
 }
-func (m *mockChannelSessionRepo) Delete(_ context.Context, _ int, _ uuid.UUID) error { return nil }
+func (m *mockChannelSessionRepo) Delete(_ context.Context, _ int, _ uuid.UUID) error    { return nil }
 func (m *mockChannelSessionRepo) ResetDefaultFlag(_ context.Context, _ uuid.UUID) error { return nil }
 func (m *mockChannelSessionRepo) DeleteWithRelations(_ context.Context, _ int, _ uuid.UUID) error {
 	return nil
