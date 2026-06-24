@@ -3,7 +3,7 @@
 > Arquivo de estado vivo do Orchestrator.
 > **Última atualização**: 2026-06-24
 > **Branch**: `develop` (main sincronizado via PRs até #192; PRs #211–#217 mergeados)
-> **Epic atual**: Fase 4 — Onda 4 completa (GAP-SEC/GAP-GOD-2/GAP-ENG-2/GAP-SVC — PRs #214–#217)
+> **Epic atual**: Fase 5 — Onda 6 (GAP-TEST-FRONT/GAP-COV-MUT — PRs fix/frontend-test-timeouts, test/controllers-mutation-coverage, test/engine-go-coverage-4)
 
 ---
 
@@ -52,6 +52,10 @@
 | GAP-N1 | Fix N+1 em TagController.List() — batch GROUP BY (tag.go) | ✅ Mergeado (PR fix/tag-n1-query) |
 | GAP-SIZE R1 | Split receive_message.go(273L) → + receive_message_enrich.go | ✅ Mergeado (refactor/receive-message-split) |
 | GAP-ENG-3 | Expande WhatsAppClient interface + testes offline send/download | ✅ Mergeado (test/engine-go-coverage-3) |
+| GAP-TEST-FRONT | Fix 15 timeouts em TransferTicketModal (waitFor + mock async) | ✅ Mergeado (fix/frontend-test-timeouts) |
+| GAP-COV-MUT M1 | Testes mutation controllers: knowledge_base/message/ticket | ✅ Mergeado (test/controllers-mutation-coverage) |
+| GAP-COV-MUT M2+M3 | Testes offline engine-go: event handlers + send_interactive | ✅ Mergeado (test/engine-go-coverage-4) |
+| DOCS D1 | CLAUDE.md Status Atual atualizado (PRs #211-#220) | ✅ Aplicado (T1 auto) |
 
 ---
 
@@ -163,3 +167,15 @@ Ciclo 4 concluído — todos os god-files controllers decompostos.
 | R1 | Split receive_message.go(273L) → receive_message_enrich.go | T2 | refactor/receive-message-split | ✅ |
 | X1b | Expande WhatsAppClient interface (Download+MarkRead) | T2 | test/engine-go-coverage-3 | ✅ |
 | X2b | Testes offline send.go + download.go helpers | T2 | test/engine-go-coverage-3 | ✅ |
+
+---
+
+## DAG Onda 6 (2026-06-24)
+
+| ID | Tarefa | Tier | PR | Status |
+|----|--------|------|----|--------|
+| D1 | CLAUDE.md Status Atual — PRs #211-#220 | T1 | (auto-commit) | ✅ |
+| T1 | Fix timeouts TransferTicketModal (15 casos) | T2 | fix/frontend-test-timeouts | ✅ |
+| M1 | Testes knowledge_base_mutation + message_send + ticket_mutation | T2 | test/controllers-mutation-coverage | ✅ |
+| M2 | Testes offline events_message + events_pic + events_status | T2 | test/engine-go-coverage-4 | ✅ |
+| M3 | Testes offline send_interactive engine-go | T2 | test/engine-go-coverage-4 | ✅ |
