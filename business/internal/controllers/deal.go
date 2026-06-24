@@ -41,12 +41,13 @@ func (dc *DealController) List(c *gin.Context) {
 		return
 	}
 
-	// Verify pipeline belongs to tenant
+	// Collect stage IDs for the pipeline (NewDB avoids scope accumulation on PipelineStages)
+	freshDB := db.Session(&gorm.Session{NewDB: true})
 	var stageIDs []int
-	if err := db.Model(&models.PipelineStage{}).
+	if err := freshDB.Model(&models.PipelineStage{}).
 		Joins(`JOIN "Pipelines" ON "Pipelines".id = "PipelineStages"."pipelineId"`).
 		Where(`"Pipelines".id = ? AND "Pipelines"."tenantId" = ?`, pipelineID, tenantID).
-		Pluck("PipelineStages.id", &stageIDs).Error; err != nil {
+		Pluck(`"PipelineStages".id`, &stageIDs).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "DealList")
 		return
 	}
