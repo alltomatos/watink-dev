@@ -22,8 +22,8 @@ function SectionHeader({
     icon,
     title,
     subtitle,
-    iconColor = "var(--status-info)",
-    iconBg = "var(--status-info-bg)",
+    iconColor = "hsl(var(--status-info))",
+    iconBg = "hsl(var(--status-info-bg))",
 }: {
     icon: React.ReactNode;
     title: React.ReactNode;
@@ -137,8 +137,8 @@ const PipelineCreator: React.FC = () => {
                                 icon={<Layers className="h-4 w-4" />}
                                 title="Etapas"
                                 subtitle="Defina o nome e a cor de cada estágio do funil"
-                                iconColor="var(--status-info)"
-                                iconBg="var(--status-info-bg)"
+                                iconColor="hsl(var(--status-info))"
+                                iconBg="hsl(var(--status-info-bg))"
                             />
                             <PipelineStageList
                                 stages={data.stages}
@@ -157,16 +157,16 @@ const PipelineCreator: React.FC = () => {
                                 icon={<Eye className="h-4 w-4" />}
                                 title="Prévia do funil"
                                 subtitle="Veja como suas etapas aparecerão para a equipe"
-                                iconColor="var(--status-success)"
-                                iconBg="var(--status-success-bg)"
+                                iconColor="hsl(var(--status-success))"
+                                iconBg="hsl(var(--status-success-bg))"
                             />
 
                             {/* Info banner */}
                             <div
                                 className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-4 text-xs"
                                 style={{
-                                    backgroundColor: "var(--status-warning-bg)",
-                                    color: "var(--status-warning)",
+                                    backgroundColor: "hsl(var(--status-warning-bg))",
+                                    color: "hsl(var(--status-warning))",
                                 }}
                             >
                                 <span className="shrink-0">💡</span>
