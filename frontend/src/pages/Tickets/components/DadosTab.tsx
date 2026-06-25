@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { getBackendUrl } from "../../../helpers/urlUtils";
 import api from "../../../services/api";
 import { TicketInfo } from "../ticketsTypes";
+import PipelinesSection from "./PipelinesSection";
 
 interface DadosTabProps {
   ticket: TicketInfo | null;
@@ -60,6 +61,7 @@ const DadosTab: React.FC<DadosTabProps> = ({ ticket, loading }) => {
           src={contact.profilePicUrl ? getBackendUrl(contact.profilePicUrl) : null}
           name={contact.name || "?"}
           className="w-20 h-20"
+          isGroup={!!isGroup}
         />
         <p className="font-semibold text-sm text-center leading-tight">{contact.name}</p>
         {isGroup ? (
@@ -141,6 +143,15 @@ const DadosTab: React.FC<DadosTabProps> = ({ ticket, loading }) => {
             </p>
           )}
         </div>
+
+        {/* Pipelines — somente para tickets individuais */}
+        {!isGroup && ticket?.id && contact?.id && (
+          <PipelinesSection
+            ticketId={ticket.id}
+            contactId={contact.id}
+            contactName={contact.name}
+          />
+        )}
       </div>
     </div>
   );

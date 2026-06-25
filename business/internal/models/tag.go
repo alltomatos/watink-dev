@@ -35,10 +35,10 @@ func (Tag) TableName() string { return "Tags" }
 
 type EntityTag struct {
 	ID         int       `gorm:"primaryKey" json:"id"`
-	TagID      int       `gorm:"column:tagId;not null" json:"tagId"`
-	EntityType string    `gorm:"column:entityType;not null" json:"entityType"`
-	EntityID   int       `gorm:"column:entityId;not null" json:"entityId"`
-	TenantID   uuid.UUID `gorm:"column:tenantId;type:uuid" json:"tenantId"`
+	TagID      int       `gorm:"column:tagId;not null;uniqueIndex:idx_entity_tag_unique" json:"tagId"`
+	EntityType string    `gorm:"column:entityType;not null;uniqueIndex:idx_entity_tag_unique" json:"entityType"`
+	EntityID   int       `gorm:"column:entityId;not null;uniqueIndex:idx_entity_tag_unique" json:"entityId"`
+	TenantID   uuid.UUID `gorm:"column:tenantId;type:uuid;uniqueIndex:idx_entity_tag_unique" json:"tenantId"`
 	CreatedAt  time.Time `gorm:"column:createdAt" json:"createdAt"`
 	UpdatedAt  time.Time `gorm:"column:updatedAt" json:"updatedAt"`
 }

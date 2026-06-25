@@ -8,6 +8,7 @@ import { getBackendUrl } from "../../helpers/urlUtils";
 interface Contact {
   name: string;
   profilePicUrl?: string | null;
+  isGroup?: boolean;
 }
 
 interface TicketUser {
@@ -49,6 +50,7 @@ const TicketInfo: React.FC<TicketInfoProps> = ({ contact, ticket, onClick }) => 
         src={contact.profilePicUrl ? getBackendUrl(contact.profilePicUrl) : null}
         name={contact.name}
         size="md"
+        isGroup={contact.isGroup}
         aria-label={contact.name}
       />
 
