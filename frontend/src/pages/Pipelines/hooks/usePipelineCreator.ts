@@ -6,9 +6,11 @@ import api from "@/services/api";
 import type { Pipeline } from "@/types/domain";
 import {
     type PipelineFormData,
+    type StageFormItem,
     type ChatMessage,
     INITIAL_FORM_DATA,
     INITIAL_CHAT_MESSAGE,
+    getDefaultColorKey,
 } from "../pipelineCreatorTypes";
 
 export function usePipelineCreator() {
@@ -51,14 +53,17 @@ export function usePipelineCreator() {
                     (p) => p.id === Number(pipelineId)
                 );
                 if (pipeline) {
-                    const stageNames = pipeline.stages.map((s) => s.name);
+                    const names = pipeline.stages.map((s) => s.name);
                     setData({
                         name: pipeline.name,
                         description: pipeline.description ?? "",
                         type: pipeline.type ?? "kanban",
-                        stages: stageNames,
+                        stages: pipeline.stages.map((s, i) => ({
+                            name: s.name,
+                            colorKey: getDefaultColorKey(i),
+                        })),
                     });
-                    setOriginalStages(stageNames);
+                    setOriginalStages(names);
                     setMessages((prev) => [
                         ...prev,
                         {
@@ -81,7 +86,7 @@ export function usePipelineCreator() {
     }, [messages]);
 
     const removedStages = pipelineId
-        ? originalStages.filter((s) => !data.stages.includes(s))
+        ? originalStages.filter((s) => !data.stages.some((st) => st.name === s))
         : [];
 
     const handleSave = async () => {
@@ -98,7 +103,7 @@ export function usePipelineCreator() {
         try {
             const payload = {
                 ...data,
-                stages: data.stages.map((stage) => ({ name: stage })),
+                stages: data.stages.map((s) => ({ name: s.name })),
             };
             if (pipelineId) {
                 await api.put(`/pipelines/${pipelineId}`, payload);
@@ -116,12 +121,23 @@ export function usePipelineCreator() {
 
     const handleStageChange = (index: number, value: string) => {
         const newStages = [...data.stages];
-        newStages[index] = value;
+        newStages[index] = { ...newStages[index], name: value };
         setData({ ...data, stages: newStages });
     };
 
-    const handleAddStage = () =>
-        setData({ ...data, stages: [...data.stages, "Nova Etapa"] });
+    const handleStageColorChange = (index: number, colorKey: string) => {
+        const newStages = [...data.stages];
+        newStages[index] = { ...newStages[index], colorKey };
+        setData({ ...data, stages: newStages });
+    };
+
+    const handleAddStage = () => {
+        const newStage: StageFormItem = {
+            name: "Nova Etapa",
+            colorKey: getDefaultColorKey(data.stages.length),
+        };
+        setData({ ...data, stages: [...data.stages, newStage] });
+    };
 
     const handleRemoveStage = (index: number) =>
         setData({ ...data, stages: data.stages.filter((_, i) => i !== index) });
@@ -150,16 +166,14 @@ export function usePipelineCreator() {
                 setMessages((prev) => [...prev, { role: "ai", content: aiData.message }]);
             }
 
-            if (
-                aiData.stages &&
-                Array.isArray(aiData.stages) &&
-                aiData.stages.length > 0
-            ) {
-                setData((prev) => ({ ...prev, stages: aiData.stages }));
+            if (Array.isArray(aiData.stages) && aiData.stages.length > 0) {
+                const newStages: StageFormItem[] = (aiData.stages as string[]).map(
+                    (name, i) => ({ name, colorKey: getDefaultColorKey(i) })
+                );
+                setData((prev) => ({ ...prev, stages: newStages }));
                 toast.success("Etapas geradas e aplicadas!");
             }
         } catch (err) {
-            console.error(err);
             const axiosErr = err as AxiosError<{ error?: string }>;
             const errorMessage =
                 axiosErr.response?.data?.error ?? axiosErr.message ?? "Erro desconhecido";
@@ -200,6 +214,7 @@ export function usePipelineCreator() {
         messagesEndRef,
         handleSave,
         handleStageChange,
+        handleStageColorChange,
         handleAddStage,
         handleRemoveStage,
         handleSendMessage,
