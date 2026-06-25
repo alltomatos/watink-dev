@@ -15,6 +15,7 @@ import NotificationToast from "../NotificationToast";
 
 export interface UseNotificationsReturn {
   notifications: Ticket[];
+  clearNotifications: () => void;
 }
 
 export function useNotifications(): UseNotificationsReturn {
@@ -202,5 +203,13 @@ export function useNotifications(): UseNotificationsReturn {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  return { notifications };
+  const clearNotifications = () => {
+    setDesktopNotifications((prev) => {
+      prev.forEach((n) => n.close());
+      return [];
+    });
+    setNotifications([]);
+  };
+
+  return { notifications, clearNotifications };
 }
