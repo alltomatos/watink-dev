@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -152,7 +153,10 @@ func TestMessageController_SendMessage_PublishesCommand(t *testing.T) {
 	db := setupMessageTestDB(t)
 	tenantID := uuid.New()
 
-	db.Exec(`INSERT INTO "Tickets" (status, "whatsappId", "tenantId") VALUES (?,?,?)`, "open", 42, tenantID)
+	db.Exec(`INSERT INTO "Contacts" (name, number, "isGroup", "tenantId") VALUES (?,?,?,?)`, "Fulano", "5511999998888", false, tenantID)
+	var contactID int
+	db.Raw(`SELECT id FROM "Contacts" WHERE "tenantId" = ?`, tenantID).Scan(&contactID)
+	db.Exec(`INSERT INTO "Tickets" (status, "whatsappId", "contactId", "tenantId") VALUES (?,?,?,?)`, "open", 42, contactID, tenantID)
 	var ticketID int
 	db.Raw(`SELECT id FROM "Tickets" WHERE "tenantId" = ?`, tenantID).Scan(&ticketID)
 
@@ -168,6 +172,15 @@ func TestMessageController_SendMessage_PublishesCommand(t *testing.T) {
 	assert.True(t, pub.called, "publisher should be called")
 	assert.Contains(t, pub.routingKey, "wbot.")
 	assert.Contains(t, pub.routingKey, tenantID.String())
+	// The command type must be encoded in the routing key so the engine's
+	// topic binding (wbot.*.*.message.send.text) actually receives it.
+	assert.Contains(t, pub.routingKey, "message.send.text")
+
+	// The outgoing message must be persisted (fromMe) so it shows in the UI
+	// and the later ack event can find it.
+	var sentCount int64
+	db.Model(&models.Message{}).Where(`"ticketId" = ? AND "fromMe" = ?`, ticketID, true).Count(&sentCount)
+	assert.Equal(t, int64(1), sentCount, "outgoing message should be persisted")
 }
 
 func TestMessageController_SendMessage_Multipart_SavesMediaAndPublishes(t *testing.T) {
@@ -175,7 +188,10 @@ func TestMessageController_SendMessage_Multipart_SavesMediaAndPublishes(t *testi
 	db := setupMessageTestDB(t)
 	tenantID := uuid.New()
 
-	db.Exec(`INSERT INTO "Tickets" (status, "whatsappId", "tenantId") VALUES (?,?,?)`, "open", 42, tenantID)
+	db.Exec(`INSERT INTO "Contacts" (name, number, "isGroup", "tenantId") VALUES (?,?,?,?)`, "Fulano", "5511999998888", false, tenantID)
+	var contactID int
+	db.Raw(`SELECT id FROM "Contacts" WHERE "tenantId" = ?`, tenantID).Scan(&contactID)
+	db.Exec(`INSERT INTO "Tickets" (status, "whatsappId", "contactId", "tenantId") VALUES (?,?,?,?)`, "open", 42, contactID, tenantID)
 	var ticketID int
 	db.Raw(`SELECT id FROM "Tickets" WHERE "tenantId" = ?`, tenantID).Scan(&ticketID)
 
