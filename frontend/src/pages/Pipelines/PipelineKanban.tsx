@@ -1,9 +1,8 @@
 import React from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
-import { differenceInDays, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Plus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 
 interface Contact {
     name?: string;
@@ -37,193 +36,148 @@ interface PipelineKanbanProps {
     setColumns: React.Dispatch<React.SetStateAction<Record<string | number, ColumnData>>>;
     onDragEnd: (result: DropResult) => void;
     isEnterprise?: boolean;
+    onNewDeal?: (stageId: number) => void;
 }
 
-const stageColors = [
-    { bg: "var(--status-info-bg)", header: "var(--status-info)", light: "var(--status-info-8)" },
-    { bg: "var(--status-warning-bg)", header: "var(--status-warning)", light: "var(--status-warning-bg)" },
-    { bg: "var(--status-success-bg)", header: "var(--status-success)", light: "var(--status-success-10)" },
-    { bg: "var(--status-error-bg)", header: "var(--status-error)", light: "var(--status-error-10)" },
-    { bg: "var(--status-default-bg)", header: "var(--status-default-text)", light: "var(--status-default-bg)" },
-    { bg: "var(--status-info-bg)", header: "var(--status-info)", light: "var(--status-info-8)" },
-    { bg: "var(--status-warning-bg)", header: "var(--status-warning)", light: "var(--status-warning-bg)" },
-    { bg: "var(--status-default-bg)", header: "var(--status-default-text)", light: "var(--status-default-bg)" },
-    { bg: "var(--status-info-bg)", header: "var(--status-info)", light: "var(--status-info-15)" },
-    { bg: "var(--status-error-bg)", header: "var(--status-error)", light: "var(--status-error-10)" },
+// Paired: solid header color + light bg — using hsl() wrapper so HSL channel tokens resolve correctly
+const COLUMN_PALETTE = [
+    { header: "hsl(var(--status-info))",        bg: "hsl(var(--status-info-bg))" },
+    { header: "hsl(var(--status-warning))",     bg: "hsl(var(--status-warning-bg))" },
+    { header: "hsl(var(--status-success))",     bg: "hsl(var(--status-success-bg))" },
+    { header: "hsl(var(--status-error))",       bg: "hsl(var(--status-error-bg))" },
+    { header: "hsl(var(--status-default-text))", bg: "hsl(var(--status-default-bg))" },
 ];
 
-const getStageColor = (index: number) => stageColors[index % stageColors.length];
+const getColumnColor = (index: number) => COLUMN_PALETTE[index % COLUMN_PALETTE.length];
 
-const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+const fmt = (value: number | string | undefined) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+        parseFloat(String(value ?? 0)) || 0
+    );
 
-const calculateTotal = (items: Deal[]) =>
-    items.reduce((acc, item) => acc + (parseFloat(String(item.value)) || 0), 0);
+const calcTotal = (items: Deal[]) =>
+    items.reduce((acc, d) => acc + (parseFloat(String(d.value)) || 0), 0);
 
 const PipelineKanban: React.FC<PipelineKanbanProps> = ({
     pipeline,
     columns,
     onDragEnd,
-    isEnterprise = false,
-}) => {
-    return (
-        <div className="flex flex-grow overflow-x-auto h-full p-4">
-            <DragDropContext onDragEnd={onDragEnd}>
-                {pipeline?.stages.map((stage, stageIndex) => {
-                    const columnData = columns[stage.id];
-                    if (!columnData) return null;
+    onNewDeal,
+}) => (
+    <div className="flex h-full overflow-x-auto p-4 gap-3">
+        <DragDropContext onDragEnd={onDragEnd}>
+            {pipeline?.stages.map((stage, stageIndex) => {
+                const col = columns[stage.id];
+                if (!col) return null;
+                const palette = getColumnColor(stageIndex);
+                const total = calcTotal(col.items);
 
-                    const color = getStageColor(stageIndex);
-                    const totalValue = calculateTotal(columnData.items);
-
-                    return (
+                return (
+                    <div
+                        key={stage.id}
+                        className="flex flex-col w-[280px] shrink-0 rounded-2xl overflow-hidden shadow-[0px_2px_12px_rgba(0,0,0,0.08)]"
+                        style={{ backgroundColor: palette.bg }}
+                    >
+                        {/* ── Column header ── */}
                         <div
-                            key={stage.id}
-                            className="min-w-[300px] w-[300px] mr-4 rounded-lg flex flex-col max-h-full overflow-hidden"
-                            style={{
-                                backgroundColor: isEnterprise ? "var(--bg-surface-alt)" : color.bg,
-                                boxShadow: "0 1px 3px var(--border-divider), 0 1px 2px var(--overlay-dark)",
-                            }}
+                            className="px-4 py-3 flex items-center justify-between"
+                            style={{ backgroundColor: palette.header }}
                         >
-                            {/* Column header */}
-                            {isEnterprise ? (
+                            <span className="text-sm font-semibold text-white truncate">{stage.name}</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                                {total > 0 && (
+                                    <span className="text-[11px] text-white/80 font-medium">
+                                        {fmt(total)}
+                                    </span>
+                                )}
+                                <span className="h-5 min-w-[1.25rem] rounded-full bg-white/20 text-white text-[11px] font-bold flex items-center justify-center px-1.5">
+                                    {col.items.length}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* ── Cards area ── */}
+                        <Droppable droppableId={String(stage.id)}>
+                            {(provided: { droppableProps: Record<string, unknown>; innerRef: (el: HTMLElement | null) => void; placeholder: React.ReactNode }, snapshot: { isDraggingOver: boolean }) => (
                                 <div
-                                    className="p-3 font-bold flex flex-col items-start bg-card border-b"
-                                    style={{ borderTop: `4px solid ${color.header}` }}
-                                >
-                                    <div className="flex justify-between w-full items-center">
-                                        <span className="text-sm font-semibold">{stage.name}</span>
-                                        <span
-                                            className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                                            style={{
-                                                backgroundColor: "var(--border-default)",
-                                                color: "var(--text-primary)",
-                                            }}
-                                        >
-                                            {columnData.items.length}
-                                        </span>
-                                    </div>
-                                    <div className="text-xs text-muted-foreground mt-1">
-                                        Total: {formatCurrency(totalValue)}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div
-                                    className="p-3 font-bold flex justify-between items-center"
+                                    {...provided.droppableProps}
+                                    ref={provided.innerRef}
+                                    className="flex-1 overflow-y-auto p-2 flex flex-col gap-2 min-h-[120px] transition-colors"
                                     style={{
-                                        backgroundColor: color.header,
-                                        color: "var(--bg-surface)",
-                                        textShadow: "0 1px 2px var(--overlay-dark)",
+                                        backgroundColor: snapshot.isDraggingOver
+                                            ? `color-mix(in srgb, ${palette.header} 12%, transparent)`
+                                            : undefined,
                                     }}
                                 >
-                                    <span className="text-sm">{stage.name}</span>
-                                    <span
-                                        className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                                        style={{
-                                            backgroundColor: "var(--overlay-light)",
-                                            color: "var(--bg-surface)",
-                                        }}
-                                    >
-                                        {columnData.items.length}
-                                    </span>
+                                    {col.items.map((deal, index) => (
+                                        <Draggable
+                                            key={deal.id}
+                                            draggableId={String(deal.id)}
+                                            index={index}
+                                        >
+                                            {(prov: { innerRef: (el: HTMLElement | null) => void; draggableProps: Record<string, unknown> & { style?: React.CSSProperties }; dragHandleProps: Record<string, unknown> | null }, snap: { isDragging: boolean }) => (
+                                                <div
+                                                    ref={prov.innerRef}
+                                                    {...prov.draggableProps}
+                                                    {...prov.dragHandleProps}
+                                                    className={cn(
+                                                        "rounded-xl bg-white px-3 py-2.5 shadow-sm transition-all cursor-grab active:cursor-grabbing",
+                                                        "border border-transparent",
+                                                        snap.isDragging
+                                                            ? "shadow-lg rotate-[1deg] border-primary/20"
+                                                            : "hover:-translate-y-0.5 hover:shadow-md"
+                                                    )}
+                                                    style={prov.draggableProps.style}
+                                                >
+                                                    {/* Deal title */}
+                                                    <p className="text-sm font-semibold text-foreground leading-tight">
+                                                        {deal.title}
+                                                    </p>
+
+                                                    {/* Contact & value row */}
+                                                    <div className="flex items-center justify-between mt-1.5">
+                                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                            <User className="h-3 w-3 shrink-0" />
+                                                            <span className="truncate max-w-[120px]">
+                                                                {deal.contact?.name ?? "Sem contato"}
+                                                            </span>
+                                                        </div>
+                                                        {deal.value && parseFloat(String(deal.value)) > 0 && (
+                                                            <span
+                                                                className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md shrink-0"
+                                                                style={{
+                                                                    backgroundColor: palette.bg,
+                                                                    color: palette.header,
+                                                                }}
+                                                            >
+                                                                {fmt(deal.value)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </Draggable>
+                                    ))}
+                                    {provided.placeholder}
                                 </div>
                             )}
+                        </Droppable>
 
-                            {/* Droppable area */}
-                            <Droppable droppableId={String(stage.id)} key={stage.id}>
-                                {(provided: { droppableProps: Record<string, unknown>; innerRef: (el: HTMLElement | null) => void; placeholder: React.ReactNode }, snapshot: { isDraggingOver: boolean }) => (
-                                    <div
-                                        {...provided.droppableProps}
-                                        ref={provided.innerRef}
-                                        className="p-2 flex-grow overflow-y-auto min-h-[100px] transition-colors"
-                                        style={{
-                                            background: isEnterprise
-                                                ? snapshot.isDraggingOver
-                                                    ? "var(--status-info-bg)"
-                                                    : "transparent"
-                                                : snapshot.isDraggingOver
-                                                ? color.light
-                                                : color.bg,
-                                        }}
-                                    >
-                                        {columnData.items.map((item, index) => {
-                                            const isStagnant =
-                                                isEnterprise &&
-                                                item.updatedAt &&
-                                                differenceInDays(new Date(), parseISO(item.updatedAt)) > 7;
-
-                                            return (
-                                                <Draggable
-                                                    key={item.id}
-                                                    draggableId={String(item.id)}
-                                                    index={index}
-                                                >
-                                                    {(provided: { innerRef: (el: HTMLElement | null) => void; draggableProps: Record<string, unknown> & { style?: React.CSSProperties }; dragHandleProps: Record<string, unknown> | null }, snapshot: { isDragging: boolean }) => (
-                                                        <div
-                                                            ref={provided.innerRef}
-                                                            {...provided.draggableProps}
-                                                            {...provided.dragHandleProps}
-                                                            className={cn(
-                                                                "mb-2 rounded-lg bg-white shadow-sm transition-transform duration-200 relative",
-                                                                "hover:-translate-y-0.5 hover:shadow-md",
-                                                                isStagnant && "border-l-4 border-[var(--status-error)]"
-                                                            )}
-                                                            style={{
-                                                                ...provided.draggableProps.style,
-                                                                opacity: snapshot.isDragging ? 0.8 : 1,
-                                                            }}
-                                                        >
-                                                            <div className="px-3 py-2">
-                                                                {isEnterprise && (
-                                                                    <span
-                                                                        className="absolute top-2 right-2 text-[0.7rem] font-bold px-1.5 py-0.5 rounded"
-                                                                        style={{
-                                                                            backgroundColor: "var(--status-success-bg)",
-                                                                            color: "var(--status-success)",
-                                                                        }}
-                                                                    >
-                                                                        {formatCurrency(
-                                                                            parseFloat(String(item.value)) || 0
-                                                                        )}
-                                                                    </span>
-                                                                )}
-                                                                <p
-                                                                    className="font-semibold text-[0.9rem]"
-                                                                    style={{
-                                                                        paddingRight: isEnterprise ? "60px" : 0,
-                                                                    }}
-                                                                >
-                                                                    {item.title}
-                                                                </p>
-                                                                <p className="text-[0.8rem] text-muted-foreground">
-                                                                    {item.contact?.name ?? "Sem contato"}
-                                                                </p>
-                                                                {!isEnterprise && (
-                                                                    <p className="text-[0.8rem] text-muted-foreground">
-                                                                        R$ {item.value ?? "0,00"}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </Draggable>
-                                            );
-                                        })}
-                                        {provided.placeholder}
-                                    </div>
-                                )}
-                            </Droppable>
-
-                            <Button variant="ghost" className="w-full rounded-none rounded-b-lg text-sm">
-                                <Plus className="mr-1 h-4 w-4" />
-                                Novo Deal
-                            </Button>
-                        </div>
-                    );
-                })}
-            </DragDropContext>
-        </div>
-    );
-};
+                        {/* ── Add deal button ── */}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="m-2 mt-0 text-xs rounded-xl text-muted-foreground hover:text-foreground hover:bg-white/70"
+                            onClick={() => onNewDeal?.(stage.id)}
+                        >
+                            <Plus className="h-3.5 w-3.5 mr-1" />
+                            Novo Deal
+                        </Button>
+                    </div>
+                );
+            })}
+        </DragDropContext>
+    </div>
+);
 
 export default PipelineKanban;

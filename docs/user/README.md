@@ -11,7 +11,7 @@ Bem-vindo ao manual oficial de uso do **Watink**. Este guia foi desenhado para a
 
 *   **[Gerenciando Conversas (Tickets)](./chats/USING_CHATS.md)**: Como aceitar, transferir, responder e finalizar atendimentos.
 *   **[Gestão de Contatos](./contacts/MANAGING_CONTACTS.md)**: Criar, editar e importar contatos.
-*   **[Organização com Kanban (Pipelines)](./pipelines/USING_KANBAN.md)**: Movendo cards e organizando fluxos de venda/atendimento.
+*   **[Gestão de Oportunidades (Pipelines)](./pipelines/USING_KANBAN.md)**: Criar pipelines, mover cards entre estágios e acompanhar fluxos de venda/atendimento.
 
 ## ⚙️ Configurações Avançadas
 

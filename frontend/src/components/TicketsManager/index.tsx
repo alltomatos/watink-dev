@@ -22,19 +22,16 @@ import {
 import { Search, Plus, Filter, Tag, Users, CircleDot } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type StatusFilter = "all" | "open" | "pending" | "closed";
+type ActiveTab = "all" | "open" | "pending" | "closed" | "groups";
 
 const TicketsManager: React.FC = () => {
   useTicketsContext();
   const { user } = useContext(AuthContext);
 
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("all");
   const [searchParam, setSearchParam] = useState<string>("");
   const [newTicketModalOpen, setNewTicketModalOpen] = useState<boolean>(false);
   const [currentCount, setCurrentCount] = useState<number>(0);
-
-  // Filtros secundários (toggleáveis, ortogonais ao status)
-  const [showGroupsOnly, setShowGroupsOnly] = useState<boolean>(false);
   const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
 
   const userQueueIds: number[] = ((user.queues as Queue[] | undefined) ?? []).map((q) => q.id);
@@ -44,17 +41,18 @@ const TicketsManager: React.FC = () => {
   const [queuePopoverOpen, setQueuePopoverOpen] = useState<boolean>(false);
   const [tagPopoverOpen, setTagPopoverOpen] = useState<boolean>(false);
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchParam(e.target.value.toLowerCase());
-  };
+  const isGroupsTab = activeTab === "groups";
 
-  const handleFilterChange = (filter: StatusFilter) => {
-    setStatusFilter(filter);
+  const handleTabChange = (tab: ActiveTab) => {
+    setActiveTab(tab);
     setSearchParam("");
   };
 
-  // key agrupa todos os parâmetros que forçam remontagem da lista
-  const listKey = `${statusFilter}-${showGroupsOnly}-${showUnreadOnly}`;
+  const listKey = `${activeTab}-${showUnreadOnly}`;
+
+  // Derive TicketsList props from activeTab
+  const listStatus = !isGroupsTab && activeTab !== "all" ? activeTab : undefined;
+  const listIsGroup: string | undefined = isGroupsTab ? "true" : "false";
 
   return (
     <TooltipProvider>
@@ -74,7 +72,7 @@ const TicketsManager: React.FC = () => {
                 className="pl-8 text-sm h-8 bg-muted/60 border-0 focus-visible:ring-1"
                 placeholder="Buscar..."
                 value={searchParam}
-                onChange={handleSearch}
+                onChange={(e) => setSearchParam(e.target.value.toLowerCase())}
               />
             </div>
 
@@ -130,22 +128,27 @@ const TicketsManager: React.FC = () => {
             />
           </div>
 
-          {/* Pills de status: Todos / Abertos / Aguardando / Fechados */}
-          <div className="flex items-center gap-1">
-            <FilterPill label="Todos"      active={statusFilter === "all"}     onClick={() => handleFilterChange("all")}     count={statusFilter === "all" ? currentCount : undefined} />
-            <FilterPill label="Abertos"    active={statusFilter === "open"}    onClick={() => handleFilterChange("open")}    count={statusFilter === "open" ? currentCount : undefined} />
-            <FilterPill label="Aguardando" active={statusFilter === "pending"} onClick={() => handleFilterChange("pending")} count={statusFilter === "pending" ? currentCount : undefined} />
-            <FilterPill label="Fechados"   active={statusFilter === "closed"}  onClick={() => handleFilterChange("closed")}  count={statusFilter === "closed" ? currentCount : undefined} />
+          {/* Pills de abas: individuais (Todos/Abertos/Aguardando/Fechados) + Grupos */}
+          <div className="flex items-center gap-1 flex-wrap">
+            {!isGroupsTab && (
+              <>
+                <FilterPill label="Todos"      active={activeTab === "all"}     onClick={() => handleTabChange("all")}     count={activeTab === "all" ? currentCount : undefined} />
+                <FilterPill label="Abertos"    active={activeTab === "open"}    onClick={() => handleTabChange("open")}    count={activeTab === "open" ? currentCount : undefined} />
+                <FilterPill label="Aguardando" active={activeTab === "pending"} onClick={() => handleTabChange("pending")} count={activeTab === "pending" ? currentCount : undefined} />
+                <FilterPill label="Fechados"   active={activeTab === "closed"}  onClick={() => handleTabChange("closed")}  count={activeTab === "closed" ? currentCount : undefined} />
+              </>
+            )}
+            <FilterPill
+              label="Grupos"
+              active={isGroupsTab}
+              onClick={() => handleTabChange(isGroupsTab ? "all" : "groups")}
+              count={isGroupsTab ? currentCount : undefined}
+              icon={<Users size={10} />}
+            />
           </div>
 
-          {/* Chips de tipo: Grupos / Não lidas (toggleáveis) */}
+          {/* Chip "Não lidas" (disponível em todas as abas) */}
           <div className="flex items-center gap-1.5">
-            <ToggleChip
-              icon={<Users size={11} />}
-              label="Grupos"
-              active={showGroupsOnly}
-              onClick={() => setShowGroupsOnly((v) => !v)}
-            />
             <ToggleChip
               icon={<CircleDot size={11} />}
               label="Não lidas"
@@ -159,13 +162,13 @@ const TicketsManager: React.FC = () => {
         <div className="flex-1 overflow-hidden">
           <TicketsList
             key={listKey}
-            status={statusFilter === "all" ? undefined : statusFilter}
+            status={listStatus}
             showAll
             selectedQueueIds={selectedQueueIds}
             updateCount={(val: number) => setCurrentCount(val)}
             tags={selectedTags}
             searchParam={searchParam}
-            isGroup={showGroupsOnly ? "true" : undefined}
+            isGroup={listIsGroup}
             withUnreadMessages={showUnreadOnly ? "true" : undefined}
           />
         </div>
@@ -181,9 +184,10 @@ interface FilterPillProps {
   active: boolean;
   onClick: () => void;
   count?: number;
+  icon?: React.ReactNode;
 }
 
-const FilterPill: React.FC<FilterPillProps> = ({ label, active, onClick, count }) => (
+const FilterPill: React.FC<FilterPillProps> = ({ label, active, onClick, count, icon }) => (
   <button
     type="button"
     onClick={onClick}
@@ -194,6 +198,7 @@ const FilterPill: React.FC<FilterPillProps> = ({ label, active, onClick, count }
         : "text-muted-foreground hover:bg-muted hover:text-foreground"
     )}
   >
+    {icon}
     {label}
     {count !== undefined && count > 0 && (
       <span className={cn(

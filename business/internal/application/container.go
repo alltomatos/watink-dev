@@ -11,27 +11,27 @@ import (
 )
 
 type Container struct {
-	DB                *gorm.DB
-	TicketRepo        domain.TicketRepository
-	MessageRepo       domain.MessageRepository
-	ContactRepo       domain.ContactRepository
-	QueueRepo         domain.QueueRepository
-	UserRepo          domain.UserRepository
+	DB                 *gorm.DB
+	TicketRepo         domain.TicketRepository
+	MessageRepo        domain.MessageRepository
+	ContactRepo        domain.ContactRepository
+	QueueRepo          domain.QueueRepository
+	UserRepo           domain.UserRepository
 	ChannelSessionRepo domain.ChannelSessionRepository
 	PermissionRepo     domain.PermissionRepository
 	SettingRepo        domain.SettingRepository
 	SystemRepo         domain.SystemRepository
-	PlanLimitSvc      domain.PlanLimitServiceInterface
-	SwaggerPermRepo   domain.SwaggerPermissionRepository
-	VersionRepo       domain.VersionRepository
-	EventBus          domain.EventBus
-	RedisSvc          domain.RedisService
-	Broadcast         *services.RedisBroadcast
-	SessionService    *services.WhatsAppSessionService
-	ReceiveMessage    *usecases.ReceiveMessageUseCase
-	DistributeTicket  *usecases.DistributeTicketUseCase
-	UpdateTicket      *usecases.UpdateTicketUseCase
-	LogTicketAction   *usecases.LogTicketActionUseCase
+	PlanLimitSvc       domain.PlanLimitServiceInterface
+	SwaggerPermRepo    domain.SwaggerPermissionRepository
+	VersionRepo        domain.VersionRepository
+	EventBus           domain.EventBus
+	RedisSvc           domain.RedisService
+	Broadcast          *services.RedisBroadcast
+	SessionService     *services.WhatsAppSessionService
+	ReceiveMessage     *usecases.ReceiveMessageUseCase
+	DistributeTicket   *usecases.DistributeTicketUseCase
+	UpdateTicket       *usecases.UpdateTicketUseCase
+	LogTicketAction    *usecases.LogTicketActionUseCase
 }
 
 func NewContainer(db *gorm.DB, redisSvc domain.RedisService, broadcast *services.RedisBroadcast, publisher domain.CommandPublisher) *Container {
@@ -52,33 +52,35 @@ func NewContainer(db *gorm.DB, redisSvc domain.RedisService, broadcast *services
 	versionRepo := repository.NewGORMVersionRepo(db)
 	userQueueRepo := repository.NewGormUserQueueRepository(db)
 	ticketLogRepo := repository.NewGormTicketLogRepository(db)
+	tagRepo := repository.NewGORMTagRepository(db)
+	entityTagRepo := repository.NewGORMEntityTagRepository(db)
 	eventBus := NewInMemoryEventBus()
 	logTicketAction := usecases.NewLogTicketActionUseCase(ticketRepo, ticketLogRepo)
 	distributeTicket := usecases.NewDistributeTicketUseCase(ticketRepo, queueRepo, eventBus, contactRepo, userQueueRepo)
 	updateTicket := usecases.NewUpdateTicketUseCase(ticketRepo, eventBus, distributeTicket, logTicketAction)
-	receiveMessage := usecases.NewReceiveMessageUseCase(eventBus, messageRepo, contactRepo, ticketRepo, queueRepo)
+	receiveMessage := usecases.NewReceiveMessageUseCase(eventBus, messageRepo, contactRepo, ticketRepo, queueRepo, tagRepo, entityTagRepo)
 	sessionService := services.NewWhatsAppSessionService(db, publisher, redisSvc, broadcast)
 	return &Container{
-		DB:                db,
-		TicketRepo:        ticketRepo,
-		MessageRepo:       messageRepo,
-		ContactRepo:       contactRepo,
-		QueueRepo:         queueRepo,
-		UserRepo:          userRepo,
+		DB:                 db,
+		TicketRepo:         ticketRepo,
+		MessageRepo:        messageRepo,
+		ContactRepo:        contactRepo,
+		QueueRepo:          queueRepo,
+		UserRepo:           userRepo,
 		ChannelSessionRepo: sessionRepo,
 		PermissionRepo:     permissionRepo,
 		SettingRepo:        settingRepo,
 		SystemRepo:         systemRepo,
-		PlanLimitSvc:      planLimitSvc,
-		SwaggerPermRepo:   swaggerPermRepo,
-		VersionRepo:       versionRepo,
-		EventBus:          eventBus,
-		RedisSvc:          redisSvc,
-		Broadcast:         broadcast,
-		SessionService:    sessionService,
-		ReceiveMessage:    receiveMessage,
-		DistributeTicket:  distributeTicket,
-		UpdateTicket:      updateTicket,
-		LogTicketAction:   logTicketAction,
+		PlanLimitSvc:       planLimitSvc,
+		SwaggerPermRepo:    swaggerPermRepo,
+		VersionRepo:        versionRepo,
+		EventBus:           eventBus,
+		RedisSvc:           redisSvc,
+		Broadcast:          broadcast,
+		SessionService:     sessionService,
+		ReceiveMessage:     receiveMessage,
+		DistributeTicket:   distributeTicket,
+		UpdateTicket:       updateTicket,
+		LogTicketAction:    logTicketAction,
 	}
 }

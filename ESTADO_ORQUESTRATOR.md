@@ -3,7 +3,7 @@
 > Arquivo de estado vivo do Orchestrator.
 > **Última atualização**: 2026-06-24
 > **Branch**: `develop` (main sincronizado via PRs até #192; PRs #211–#217 mergeados)
-> **Epic atual**: Fase 4 — Onda 4 completa (GAP-SEC/GAP-GOD-2/GAP-ENG-2/GAP-SVC — PRs #214–#217)
+> **Epic atual**: Fase 5 — Onda 6 (GAP-TEST-FRONT/GAP-COV-MUT — PRs fix/frontend-test-timeouts, test/controllers-mutation-coverage, test/engine-go-coverage-4)
 
 ---
 
@@ -52,6 +52,10 @@
 | GAP-N1 | Fix N+1 em TagController.List() — batch GROUP BY (tag.go) | ✅ Mergeado (PR fix/tag-n1-query) |
 | GAP-SIZE R1 | Split receive_message.go(273L) → + receive_message_enrich.go | ✅ Mergeado (refactor/receive-message-split) |
 | GAP-ENG-3 | Expande WhatsAppClient interface + testes offline send/download | ✅ Mergeado (test/engine-go-coverage-3) |
+| GAP-TEST-FRONT | Fix 15 timeouts em TransferTicketModal (waitFor + mock async) | ✅ Mergeado (fix/frontend-test-timeouts) |
+| GAP-COV-MUT M1 | Testes mutation controllers: knowledge_base/message/ticket | ✅ Mergeado (test/controllers-mutation-coverage) |
+| GAP-COV-MUT M2+M3 | Testes offline engine-go: event handlers + send_interactive | ✅ Mergeado (test/engine-go-coverage-4) |
+| DOCS D1 | CLAUDE.md Status Atual atualizado (PRs #211-#220) | ✅ Aplicado (T1 auto) |
 
 ---
 
@@ -163,3 +167,52 @@ Ciclo 4 concluído — todos os god-files controllers decompostos.
 | R1 | Split receive_message.go(273L) → receive_message_enrich.go | T2 | refactor/receive-message-split | ✅ |
 | X1b | Expande WhatsAppClient interface (Download+MarkRead) | T2 | test/engine-go-coverage-3 | ✅ |
 | X2b | Testes offline send.go + download.go helpers | T2 | test/engine-go-coverage-3 | ✅ |
+
+---
+
+## DAG Onda 6 (2026-06-24)
+
+| ID | Tarefa | Tier | PR | Status |
+|----|--------|------|----|--------|
+| D1 | CLAUDE.md Status Atual — PRs #211-#220 | T1 | (auto-commit) | ✅ |
+| T1 | Fix timeouts TransferTicketModal (15 casos) | T2 | fix/frontend-test-timeouts | ✅ |
+| M1 | Testes knowledge_base_mutation + message_send + ticket_mutation | T2 | test/controllers-mutation-coverage | ✅ |
+| M2 | Testes offline events_message + events_pic + events_status | T2 | test/engine-go-coverage-4 | ✅ |
+| M3 | Testes offline send_interactive engine-go | T2 | test/engine-go-coverage-4 | ✅ |
+
+---
+
+## DAG Onda 7 — Epic Pipeline (2026-06-24)
+
+> Documentação preparada via /grill-feature-with-docs: CONTEXT.md, docs/agents/pipeline.md, ADR 0009.
+> Branch: `feat/pipeline-improvements`
+
+### Grupo A — Paralelo (sem dependências entre si)
+
+| ID | Tarefa | Tier | Arquivo(s) | Status |
+|----|--------|------|------------|--------|
+| P-BE-1 | Pipeline model: adicionar `Description string` + `Type string` com gorm tags | T2 | `business/internal/models/pipeline.go` | [ ] |
+| P-FE-1 | AISettings: provider "custom" + SelectItem + Input aiCustomBaseURL condicional + modelo livre | T1 | `frontend/src/pages/Settings/components/AISettings.tsx` | [ ] |
+| P-FE-2 | AISettings: Switch aiPipelineEnabled (após aiFlowBuilderEnabled) | T1 | `frontend/src/pages/Settings/components/AISettings.tsx` | [ ] |
+| P-FE-3 | Remover PipelineWizard: deletar componente + sub-componentes wizard/ + corrigir routing | T1 | `frontend/src/pages/Pipelines/PipelineWizard.tsx` + wizard/ | [ ] |
+
+### Grupo B — Após P-BE-1
+
+| ID | Tarefa | Tier | Arquivo(s) | depends_on | Status |
+|----|--------|------|------------|------------|--------|
+| P-BE-2 | Input structs Create/Update: adicionar `Description` + `Type`; persistir nos handlers | T2 | `business/internal/controllers/pipeline.go` + `pipeline_mutation.go` | P-BE-1 | [ ] |
+| P-BE-3 | AISuggest: novo pkg/aiclient/ (openai/anthropic/grok/custom); ler settings do tenant; ERR_NO_AI_API_KEY / ERR_AI_SERVICE_FAILED | T2 | `business/pkg/aiclient/` + `business/internal/controllers/pipeline.go` | P-BE-1 | [ ] |
+| P-BE-4 | Stage upsert por nome no Update: match-name preserva ID; removidas migram deals→stages[0]; 422 se zero stages | T2 | `business/internal/controllers/pipeline_mutation.go` | P-BE-1 | [ ] |
+
+### Grupo C — Após P-BE-2 + P-FE-2
+
+| ID | Tarefa | Tier | Arquivo(s) | depends_on | Status |
+|----|--------|------|------------|------------|--------|
+| P-FE-4 | Modal confirmação ao salvar stages (AlertDialog quando stages removidas e pipelineId existe) | T1 | `frontend/src/pages/Pipelines/hooks/usePipelineCreator.ts` + `PipelineCreator.tsx` | P-BE-2, P-FE-2 | [ ] |
+
+### Grupo D — Testes
+
+| ID | Tarefa | Tier | Arquivo(s) | depends_on | Status |
+|----|--------|------|------------|------------|--------|
+| P-TEST-1 | Testes pipeline_mutation: upsert por nome, migração deals, 422 zero-stages | T2 | `business/internal/controllers/pipeline_test.go` | P-BE-4 | [ ] |
+| P-TEST-2 | Testes AISuggest: ERR_NO_AI_API_KEY, provider custom, resposta LLM mockada | T2 | `business/internal/controllers/pipeline_test.go` | P-BE-3 | [ ] |

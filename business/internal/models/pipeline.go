@@ -7,11 +7,13 @@ import (
 )
 
 type Pipeline struct {
-	ID        int       `gorm:"primaryKey" json:"id"`
-	Name      string    `gorm:"not null" json:"name"`
-	TenantID  uuid.UUID `gorm:"column:tenantId;type:uuid" json:"tenantId"`
-	CreatedAt time.Time `gorm:"column:createdAt" json:"createdAt"`
-	UpdatedAt time.Time `gorm:"column:updatedAt" json:"updatedAt"`
+	ID          int       `gorm:"primaryKey" json:"id"`
+	Name        string    `gorm:"not null" json:"name"`
+	Description string    `gorm:"default:''" json:"description"`
+	Type        string    `gorm:"default:'kanban'" json:"type"`
+	TenantID    uuid.UUID `gorm:"column:tenantId;type:uuid" json:"tenantId"`
+	CreatedAt   time.Time `gorm:"column:createdAt" json:"createdAt"`
+	UpdatedAt   time.Time `gorm:"column:updatedAt" json:"updatedAt"`
 
 	// Relations
 	Stages []PipelineStage `gorm:"foreignKey:PipelineID" json:"stages,omitempty"`
@@ -28,6 +30,8 @@ type PipelineStage struct {
 	Order      int       `gorm:"default:0" json:"order"`
 	CreatedAt  time.Time `gorm:"column:createdAt" json:"createdAt"`
 	UpdatedAt  time.Time `gorm:"column:updatedAt" json:"updatedAt"`
+
+	Pipeline *Pipeline `gorm:"foreignKey:PipelineID" json:"pipeline,omitempty"`
 }
 
 func (PipelineStage) TableName() string {

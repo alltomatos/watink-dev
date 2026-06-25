@@ -144,6 +144,7 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
           }
           name={ticket.contact.name}
           size="md"
+          isGroup={ticket.isGroup || ticket.contact?.isGroup}
           aria-label={ticket.contact.name}
         />
         {ticketType !== "individual" && (
