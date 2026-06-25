@@ -1,11 +1,13 @@
 import React from "react";
 import clsx from "clsx";
+import { Users } from "lucide-react";
 
 export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
   src?: string;
   name: string;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   online?: boolean;
+  isGroup?: boolean;
 }
 
 const sizeMap = {
@@ -35,11 +37,20 @@ const getInitials = (name: string): string => {
   return (first + second).toUpperCase();
 };
 
+const groupIconSizeMap = {
+  xs: 10,
+  sm: 14,
+  md: 18,
+  lg: 22,
+  xl: 28,
+};
+
 export const Avatar: React.FC<AvatarProps> = ({
   src,
   name,
   size = "md",
   online,
+  isGroup,
   className,
   style,
   ...rest
@@ -64,6 +75,12 @@ export const Avatar: React.FC<AvatarProps> = ({
           alt={name}
           className="w-full h-full object-cover rounded-full"
           onError={() => setImgError(true)}
+        />
+      ) : isGroup ? (
+        <Users
+          size={groupIconSizeMap[size] || groupIconSizeMap.md}
+          className="text-[hsl(var(--muted-foreground))]"
+          strokeWidth={1.5}
         />
       ) : (
         <span>{initials}</span>

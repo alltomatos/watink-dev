@@ -36,8 +36,8 @@ func (m *mockRcvContactRepo) FindOrCreate(_ context.Context, _ uuid.UUID, _ stri
 }
 
 type mockMessageRepo struct {
-	existsByIDResult bool
-	existsByIDErr    error
+	existsByIDResult     bool
+	existsByIDErr        error
 	createIfNotExistsErr error
 }
 
@@ -88,8 +88,8 @@ func defaultInput(tenantID uuid.UUID) ReceiveMessageInput {
 }
 
 func newReceiveUC(cr domain.ContactRepository, tr domain.TicketRepository, mr domain.MessageRepository, eb domain.EventBus) *ReceiveMessageUseCase {
-	// nil queueRepo → resolveChannelQueue returns nil (no auto-assign in these tests).
-	return NewReceiveMessageUseCase(eb, mr, cr, tr, nil)
+	// nil queueRepo/tagRepo/entityTagRepo → auto-assign and auto-tag skipped in tests.
+	return NewReceiveMessageUseCase(eb, mr, cr, tr, nil, nil, nil)
 }
 
 func TestResolveChannelQueue(t *testing.T) {
@@ -108,7 +108,7 @@ func TestResolveChannelQueue(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		uc := NewReceiveMessageUseCase(nil, nil, nil, nil, tc.repo)
+		uc := NewReceiveMessageUseCase(nil, nil, nil, nil, tc.repo, nil, nil)
 		got := uc.resolveChannelQueue(ctx, 1, tid)
 		if (got == nil) != (tc.want == nil) || (got != nil && *got != *tc.want) {
 			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)

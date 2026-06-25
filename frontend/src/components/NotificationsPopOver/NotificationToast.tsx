@@ -30,6 +30,7 @@ const NotificationToast = ({
         className="w-10 h-10 shrink-0"
         src={contact.profilePicUrl}
         name={contact.name || "?"}
+        isGroup={ticket.isGroup || contact.isGroup}
       />
       <div className="flex flex-col min-w-0">
         <span className="font-semibold text-sm truncate">
