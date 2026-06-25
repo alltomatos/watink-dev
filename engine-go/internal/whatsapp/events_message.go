@@ -94,6 +94,15 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 		profilePic = s.getCachedPic(client, v.Info.Sender.ToNonAD())
 	}
 
+	// For outbound individual messages (fromMe=true, non-group), PushName is the
+	// connection owner's name — publishing it would rename the recipient contact to
+	// the agent's name. Send empty string so FindOrCreate never overwrites the
+	// recipient's existing name with the owner's.
+	pushName := v.Info.PushName
+	if v.Info.IsFromMe && !isGroup {
+		pushName = ""
+	}
+
 	s.publishEvent(tenantID, id, "message.received", map[string]interface{}{
 		"sessionId": fmt.Sprintf("%d", id),
 		"message": map[string]interface{}{
@@ -103,7 +112,7 @@ func (s *WhatsAppService) handleMessageEvent(client *whatsmeow.Client, id int, t
 			"type":          content.msgType,
 			"fromMe":        v.Info.IsFromMe,
 			"timestamp":     v.Info.Timestamp.Unix(),
-			"pushName":      v.Info.PushName,
+			"pushName":      pushName,
 			"groupName":     groupName,
 			"profilePicUrl": profilePic,
 			"senderPicUrl":  senderPic,
