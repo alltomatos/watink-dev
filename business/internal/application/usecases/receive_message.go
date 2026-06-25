@@ -48,11 +48,13 @@ type ReceiveMessageResult struct {
 
 // ReceiveMessageUseCase handles the business logic for receiving messages.
 type ReceiveMessageUseCase struct {
-	eventBus    domain.EventBus
-	messageRepo domain.MessageRepository
-	contactRepo domain.ContactRepository
-	ticketRepo  domain.TicketRepository
-	queueRepo   domain.QueueRepository
+	eventBus      domain.EventBus
+	messageRepo   domain.MessageRepository
+	contactRepo   domain.ContactRepository
+	ticketRepo    domain.TicketRepository
+	queueRepo     domain.QueueRepository
+	tagRepo       domain.TagRepository
+	entityTagRepo domain.EntityTagRepository
 }
 
 func NewReceiveMessageUseCase(
@@ -61,13 +63,17 @@ func NewReceiveMessageUseCase(
 	contactRepo domain.ContactRepository,
 	ticketRepo domain.TicketRepository,
 	queueRepo domain.QueueRepository,
+	tagRepo domain.TagRepository,
+	entityTagRepo domain.EntityTagRepository,
 ) *ReceiveMessageUseCase {
 	return &ReceiveMessageUseCase{
-		eventBus:    eventBus,
-		messageRepo: messageRepo,
-		contactRepo: contactRepo,
-		ticketRepo:  ticketRepo,
-		queueRepo:   queueRepo,
+		eventBus:      eventBus,
+		messageRepo:   messageRepo,
+		contactRepo:   contactRepo,
+		ticketRepo:    ticketRepo,
+		queueRepo:     queueRepo,
+		tagRepo:       tagRepo,
+		entityTagRepo: entityTagRepo,
 	}
 }
 
@@ -118,6 +124,14 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 	if input.IsGroup && input.GroupName != "" && contact.Name != input.GroupName {
 		if err := uc.contactRepo.Update(ctx, contact, map[string]interface{}{"name": input.GroupName}); err == nil {
 			contact.Name = input.GroupName
+		}
+	}
+
+	// Auto-tag group participants with their group origin so agents can
+	// later filter contacts by which group they came from.
+	if input.IsGroup && input.GroupName != "" && uc.tagRepo != nil && uc.entityTagRepo != nil {
+		if tag, tagErr := uc.tagRepo.FindOrCreateByName(ctx, input.TenantID, input.GroupName); tagErr == nil {
+			_ = uc.entityTagRepo.AddIfAbsent(ctx, "contact", contact.ID, tag.ID, input.TenantID)
 		}
 	}
 

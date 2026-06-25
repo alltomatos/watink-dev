@@ -1,8 +1,8 @@
 package domain
 
 import (
-	"errors"
 	"context"
+	"errors"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/google/uuid"
@@ -13,14 +13,14 @@ var ErrTicketNotFound = errors.New("ticket not found")
 
 // QueueMetrics represents RabbitMQ queue monitoring data.
 type QueueMetrics struct {
-	Name          string `json:"name"`
-	Messages      int    `json:"messages"`
-	Consumers     int    `json:"consumers"`
-	Ready         int    `json:"ready"`
-	Unacknowledged int   `json:"unacknowledged"`
-	Vhost         string `json:"vhost,omitempty"`
-	State         string `json:"state,omitempty"`
-	Error         string `json:"error,omitempty"`
+	Name           string `json:"name"`
+	Messages       int    `json:"messages"`
+	Consumers      int    `json:"consumers"`
+	Ready          int    `json:"ready"`
+	Unacknowledged int    `json:"unacknowledged"`
+	Vhost          string `json:"vhost,omitempty"`
+	State          string `json:"state,omitempty"`
+	Error          string `json:"error,omitempty"`
 }
 
 // Repository Interfaces
@@ -162,10 +162,19 @@ type UserQueueRepository interface {
 	FindQueueUsers(ctx context.Context, queueID int, tenantID uuid.UUID) ([]User, error)
 }
 
-
 // TicketLogRepository persists audit log entries for ticket actions.
 type TicketLogRepository interface {
 	Create(ctx context.Context, log *models.TicketLog) error
+}
+
+// TagRepository handles tag lookups and creation.
+type TagRepository interface {
+	FindOrCreateByName(ctx context.Context, tenantID uuid.UUID, name string) (*models.Tag, error)
+}
+
+// EntityTagRepository handles the generic many-to-many tag links.
+type EntityTagRepository interface {
+	AddIfAbsent(ctx context.Context, entityType string, entityID int, tagID int, tenantID uuid.UUID) error
 }
 
 // Service Interfaces

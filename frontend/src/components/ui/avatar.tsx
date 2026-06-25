@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -52,6 +53,8 @@ export interface AvatarProps
   name?: string;
   /** Exibe o dot de status online no canto inferior direito */
   online?: boolean;
+  /** Quando true, o fallback mostra ícone de grupo em vez de iniciais */
+  isGroup?: boolean;
 }
 
 /* ─── Helpers ───────────────────────────────────────────────────────── */
@@ -84,12 +87,20 @@ function getColorByName(name: string): string {
 
 /* ─── Componente ────────────────────────────────────────────────────── */
 
+const groupIconSize: Record<string, number> = {
+  xs: 10, sm: 14, md: 18, lg: 22, xl: 28,
+};
+
 const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
-  ({ className, src, name, size, online, ...props }, ref) => {
+  ({ className, src, name, size, online, isGroup, ...props }, ref) => {
     const [imgError, setImgError] = React.useState(false);
     const showImage = src && !imgError;
     const initials = name ? getInitials(name) : "?";
-    const fallbackColor = name ? getColorByName(name) : "bg-muted text-muted-foreground";
+    const fallbackColor = isGroup
+      ? "bg-muted text-muted-foreground"
+      : name
+      ? getColorByName(name)
+      : "bg-muted text-muted-foreground";
 
     return (
       <div
@@ -107,6 +118,12 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
             alt={name ?? "Avatar"}
             className="h-full w-full object-cover"
             onError={() => setImgError(true)}
+          />
+        ) : isGroup ? (
+          <Users
+            size={groupIconSize[size ?? "md"] ?? 18}
+            strokeWidth={1.5}
+            aria-hidden="true"
           />
         ) : (
           <span className="font-semibold leading-none">{initials}</span>
