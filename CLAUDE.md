@@ -42,8 +42,14 @@ Frontend (React/Vite) ←REST/Socket.io→ Backend Go (Gin/GORM) ←SQL→ Postg
 | Security — quic-go v0.59.1 (CVE-2026-40898 DoS) | ✅ Concluída (PR #216) |
 | Backend Go — event_listener_message.go split por tipo de evento | ✅ Concluída (PR #217) |
 | Backend Go — receive_message.go split dispatch vs enrich | ✅ Concluída (PR #218) |
-| Backend Go — Fix N+1 TagController.List() — batch GROUP BY | ✅ Concluída (PR #219) |
+| Backend Go — Fix N+1 TagController.List() — batch GROUP BY | ✅ Concluída (PR #219/#225) |
 | Engine Go — WhatsAppClient interface expansion (Download+MarkRead) + testes send/download | ✅ Concluída (PR #220) |
+| Frontend — Fix timeouts TransferTicketModal (waitFor + mock async) | ✅ Concluída (PR #222) |
+| Engine Go — testes offline events_message + send_interactive (coverage +) | ✅ Concluída (PR #223) |
+| Backend Go — Pipeline: description/type fields, AISuggest real LLM, stage upsert por nome | ✅ Concluída (PR #224) |
+| Frontend — Módulo Tickets: separação grupos, avatar, auto-tag, notificações, pipeline integration | ✅ Concluída (PR #225) |
+| Backend Go + Frontend — DealController GET/PUT + Pipeline UI redesign (creator/kanban/listing) | ✅ Concluída (PR #225) |
+| Backend Go — DealController testes unitários (5 casos List + Update) | ⏳ Em review (PR #227) |
 
 ## Services & Ports
 
