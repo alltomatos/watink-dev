@@ -1,9 +1,9 @@
 # ESTADO_ORQUESTRATOR.md
 
 > Arquivo de estado vivo do Orchestrator.
-> **Última atualização**: 2026-06-24
-> **Branch**: `develop` (main sincronizado via PRs até #192; PRs #211–#217 mergeados)
-> **Epic atual**: Fase 5 — Onda 6 (GAP-TEST-FRONT/GAP-COV-MUT — PRs fix/frontend-test-timeouts, test/controllers-mutation-coverage, test/engine-go-coverage-4)
+> **Última atualização**: 2026-06-25
+> **Branch**: `develop` (PRs #211–#227 mergeados ou abertos)
+> **Epic atual**: Onda 8 concluída — PR #226 (fix/tag-n1 já no develop via #225), PR #227 (test/deal-controller) aberto para review
 
 ---
 
@@ -182,37 +182,28 @@ Ciclo 4 concluído — todos os god-files controllers decompostos.
 
 ---
 
-## DAG Onda 7 — Epic Pipeline (2026-06-24)
+## DAG Onda 7 — Epic Pipeline (2026-06-24) ✅ CONCLUÍDA
 
-> Documentação preparada via /grill-feature-with-docs: CONTEXT.md, docs/agents/pipeline.md, ADR 0009.
-> Branch: `feat/pipeline-improvements`
+> PRs #224 (pipeline improvements) e #225 (deal-controller + UI redesign) mergeados em develop.
 
-### Grupo A — Paralelo (sem dependências entre si)
+| ID | Tarefa | Status | PR |
+|----|--------|--------|----|
+| P-BE-1 | Pipeline model description + type | ✅ | #224 |
+| P-BE-2 | Input structs Create/Update | ✅ | #224 |
+| P-BE-3 | AISuggest real LLM (aiclient) | ✅ | #224 |
+| P-BE-4 | Stage upsert por nome | ✅ | #224 |
+| P-FE-1/2 | AISettings custom provider + aiPipelineEnabled | ✅ | #224 |
+| P-FE-3 | Remover PipelineWizard | ✅ | #224 |
+| P-FE-4 | Modal confirmação stages removidas | ✅ | #225 |
+| P-TEST-1/2 | Testes pipeline_mutation + AISuggest | ✅ | #225 |
+| DEAL | DealController GET/PUT + fix 404/500 | ✅ | #225 |
+| UI | Pipeline listing + Kanban + Creator redesign | ✅ | #225 |
 
-| ID | Tarefa | Tier | Arquivo(s) | Status |
-|----|--------|------|------------|--------|
-| P-BE-1 | Pipeline model: adicionar `Description string` + `Type string` com gorm tags | T2 | `business/internal/models/pipeline.go` | [ ] |
-| P-FE-1 | AISettings: provider "custom" + SelectItem + Input aiCustomBaseURL condicional + modelo livre | T1 | `frontend/src/pages/Settings/components/AISettings.tsx` | [ ] |
-| P-FE-2 | AISettings: Switch aiPipelineEnabled (após aiFlowBuilderEnabled) | T1 | `frontend/src/pages/Settings/components/AISettings.tsx` | [ ] |
-| P-FE-3 | Remover PipelineWizard: deletar componente + sub-componentes wizard/ + corrigir routing | T1 | `frontend/src/pages/Pipelines/PipelineWizard.tsx` + wizard/ | [ ] |
+---
 
-### Grupo B — Após P-BE-1
+## DAG Onda 8 — Testes DealController (2026-06-25)
 
-| ID | Tarefa | Tier | Arquivo(s) | depends_on | Status |
-|----|--------|------|------------|------------|--------|
-| P-BE-2 | Input structs Create/Update: adicionar `Description` + `Type`; persistir nos handlers | T2 | `business/internal/controllers/pipeline.go` + `pipeline_mutation.go` | P-BE-1 | [ ] |
-| P-BE-3 | AISuggest: novo pkg/aiclient/ (openai/anthropic/grok/custom); ler settings do tenant; ERR_NO_AI_API_KEY / ERR_AI_SERVICE_FAILED | T2 | `business/pkg/aiclient/` + `business/internal/controllers/pipeline.go` | P-BE-1 | [ ] |
-| P-BE-4 | Stage upsert por nome no Update: match-name preserva ID; removidas migram deals→stages[0]; 422 se zero stages | T2 | `business/internal/controllers/pipeline_mutation.go` | P-BE-1 | [ ] |
-
-### Grupo C — Após P-BE-2 + P-FE-2
-
-| ID | Tarefa | Tier | Arquivo(s) | depends_on | Status |
-|----|--------|------|------------|------------|--------|
-| P-FE-4 | Modal confirmação ao salvar stages (AlertDialog quando stages removidas e pipelineId existe) | T1 | `frontend/src/pages/Pipelines/hooks/usePipelineCreator.ts` + `PipelineCreator.tsx` | P-BE-2, P-FE-2 | [ ] |
-
-### Grupo D — Testes
-
-| ID | Tarefa | Tier | Arquivo(s) | depends_on | Status |
-|----|--------|------|------------|------------|--------|
-| P-TEST-1 | Testes pipeline_mutation: upsert por nome, migração deals, 422 zero-stages | T2 | `business/internal/controllers/pipeline_test.go` | P-BE-4 | [ ] |
-| P-TEST-2 | Testes AISuggest: ERR_NO_AI_API_KEY, provider custom, resposta LLM mockada | T2 | `business/internal/controllers/pipeline_test.go` | P-BE-3 | [ ] |
+| ID | Tarefa | Tier | Status | PR |
+|----|--------|------|--------|----|
+| N1 | Fix N+1 tag.go | T1 | ✅ (incluído em #225 via commit d27739ac) | — |
+| D1 | deal_test.go — 5 casos unitários | T2 | ✅ pushed | #227 |
