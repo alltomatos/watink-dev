@@ -132,7 +132,7 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 	msgPayload := map[string]interface{}{"action": "create", "message": result.Message, "ticket": result.Ticket, "contact": result.Contact}
 	el.broadcast.EmitToRoom("/", room, "appMessage", msgPayload)
 	el.broadcast.EmitToTenantRoom(tenantID.String(), "appMessage", msgPayload)
-	el.broadcast.EmitToTenantRoom(tenantID.String(), "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket})
+	el.broadcast.EmitToTenantRoom(tenantID.String(), "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket, "contact": result.Contact})
 
 	return nil
 }
