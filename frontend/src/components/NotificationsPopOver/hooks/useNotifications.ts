@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
 import React from "react";
@@ -19,9 +19,10 @@ export interface UseNotificationsReturn {
 
 export function useNotifications(): UseNotificationsReturn {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useContext(AuthContext);
 
-  const ticketIdUrl = +window.location.pathname.split("/")[2];
+  const ticketIdUrl = +location.pathname.split("/")[2];
   const ticketIdRef = useRef(ticketIdUrl);
 
   const [notifications, setNotifications] = useState<Ticket[]>([]);
@@ -85,25 +86,31 @@ export function useNotifications(): UseNotificationsReturn {
 
     soundAlertRef.current?.();
 
-    const notification = new Notification(
-      `${i18n.t("tickets.notification.message")} ${contact.name}`,
-      options
-    );
-
-    notification.onclick = (e) => {
-      e.preventDefault();
-      window.focus();
-      navigate(`/tickets/${ticket.id}`);
-    };
-
-    setDesktopNotifications((prevState) => {
-      const notfIndex = prevState.findIndex((n) => n.tag === notification.tag);
-      if (notfIndex !== -1) {
-        prevState[notfIndex] = notification;
-        return [...prevState];
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      try {
+        const notification = new Notification(
+          `${i18n.t("tickets.notification.message")} ${contact.name}`,
+          options
+        );
+        notification.onclick = (e) => {
+          e.preventDefault();
+          window.focus();
+          navigate(`/tickets/${ticket.id}`);
+        };
+        setDesktopNotifications((prevState) => {
+          const notfIndex = prevState.findIndex((n) => n.tag === notification.tag);
+          if (notfIndex !== -1) {
+            prevState[notfIndex] = notification;
+            return [...prevState];
+          }
+          return [notification, ...prevState];
+        });
+      } catch {
+        // Browser blocked desktop notification — toast is sufficient fallback
       }
-      return [notification, ...prevState];
-    });
+    } else if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
 
     toast(
       React.createElement(NotificationToast, {

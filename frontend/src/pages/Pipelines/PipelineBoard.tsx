@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { DropResult } from "react-beautiful-dnd";
-import { Loader2, FileDown } from "lucide-react";
+import { ArrowLeft, FileDown, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import api from "../../services/api";
@@ -41,6 +41,7 @@ interface Pipeline {
 
 const PipelineBoard: React.FC = () => {
     const { pipelineId } = useParams<{ pipelineId: string }>();
+    const navigate = useNavigate();
     const [pipeline, setPipeline] = useState<Pipeline | null>(null);
     const [columns, setColumns] = useState<Record<string | number, ColumnData>>({});
     const [loading, setLoading] = useState(true);
@@ -55,10 +56,10 @@ const PipelineBoard: React.FC = () => {
         try {
             setLoading(true);
             const { data } = await api.get(`/pipelines`);
-            const selectedPipeline = data.find((p: Pipeline) => p.id === Number(pipelineId));
+            const selected = data.find((p: Pipeline) => p.id === Number(pipelineId));
 
-            if (selectedPipeline) {
-                setPipeline(selectedPipeline);
+            if (selected) {
+                setPipeline(selected);
 
                 const { data: dealData } = await api.get(`/deals`, {
                     params: { pipelineId },
@@ -67,13 +68,12 @@ const PipelineBoard: React.FC = () => {
                 setDeals(dealData.deals);
 
                 const stageMap: Record<string | number, ColumnData> = {};
-                selectedPipeline.stages.forEach((stage: Stage) => {
+                selected.stages.forEach((stage: Stage) => {
                     stageMap[stage.id] = {
                         ...stage,
                         items: dealData.deals.filter((d: Deal) => d.stageId === stage.id),
                     };
                 });
-
                 setColumns(stageMap);
             }
             setLoading(false);
@@ -85,32 +85,24 @@ const PipelineBoard: React.FC = () => {
 
     const handleDragEnd = async (result: DropResult) => {
         if (!result.destination) return;
-
         const { source, destination, draggableId } = result;
 
         if (source.droppableId !== destination.droppableId) {
-            const sourceColumn = columns[source.droppableId];
-            const destColumn = columns[destination.droppableId];
-            const sourceItems = [...sourceColumn.items];
-            const destItems = [...destColumn.items];
+            const sourceCol = columns[source.droppableId];
+            const destCol = columns[destination.droppableId];
+            const sourceItems = [...sourceCol.items];
+            const destItems = [...destCol.items];
             const [removed] = sourceItems.splice(source.index, 1);
-
-            // Speculatively update UI
-            destItems.splice(destination.index, 0, removed);
-
-            // Update item locally (stageId change) for other views
             removed.stageId = Number(destination.droppableId);
+            destItems.splice(destination.index, 0, removed);
 
             setColumns({
                 ...columns,
-                [source.droppableId]: { ...sourceColumn, items: sourceItems },
-                [destination.droppableId]: { ...destColumn, items: destItems },
+                [source.droppableId]: { ...sourceCol, items: sourceItems },
+                [destination.droppableId]: { ...destCol, items: destItems },
             });
-
-            // Also update deals list state for other tabs
             setDeals((prev) => prev.map((d) => (d.id === removed.id ? removed : d)));
 
-            // API Call
             try {
                 await api.put(`/deals/${draggableId}`, {
                     stageId: Number(destination.droppableId),
@@ -118,7 +110,7 @@ const PipelineBoard: React.FC = () => {
                 });
             } catch {
                 toast.error("Erro ao mover card");
-                fetchPipelineData(); // Revert on error
+                fetchPipelineData();
             }
         }
     };
@@ -142,33 +134,79 @@ const PipelineBoard: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center p-8">
+            <div className="flex justify-center items-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
     }
 
     if (!pipeline) {
-        return <div className="p-4 text-center">Pipeline não encontrado</div>;
+        return (
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+                <p className="text-muted-foreground">Pipeline não encontrado</p>
+                <Button variant="outline" onClick={() => navigate("/pipelines")}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Voltar
+                </Button>
+            </div>
+        );
     }
 
     const isEnterprise = pipeline.type === "funnel" || pipeline.type === "funil";
 
     return (
         <div className="flex flex-col h-full bg-background overflow-hidden">
-            <div className="p-4 border-b flex items-center justify-between z-10 bg-card">
+            {/* ── Board header ── */}
+            <div className="px-4 py-3 border-b bg-card flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                    <h2 className="text-xl font-semibold tracking-tight">{pipeline.name}</h2>
-                    <Badge variant={pipeline.type === "kanban" ? "default" : "secondary"}>
-                        {pipeline.type === "kanban" ? "Kanban" : "Funil"}
-                    </Badge>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => navigate("/pipelines")}
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-base font-semibold">{pipeline.name}</h2>
+                        <Badge
+                            variant="outline"
+                            className="border-transparent text-[11px] font-semibold shrink-0"
+                            style={
+                                pipeline.type === "kanban"
+                                    ? {
+                                          backgroundColor: "hsl(var(--status-info-bg))",
+                                          color: "hsl(var(--status-info))",
+                                      }
+                                    : {
+                                          backgroundColor: "hsl(var(--status-warning-bg))",
+                                          color: "hsl(var(--status-warning))",
+                                      }
+                            }
+                        >
+                            {pipeline.type === "kanban" ? "Kanban" : "Funil"}
+                        </Badge>
+                    </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={exportPipeline}>
-                    <FileDown className="mr-2 h-4 w-4" />
-                    Exportar
-                </Button>
+
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/pipelines/${pipelineId}/edit`)}
+                        className="text-muted-foreground hover:text-foreground"
+                    >
+                        <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                        Editar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportPipeline}>
+                        <FileDown className="mr-1.5 h-3.5 w-3.5" />
+                        Exportar
+                    </Button>
+                </div>
             </div>
 
+            {/* ── Board content ── */}
             <div className="flex-1 overflow-hidden">
                 {isEnterprise ? (
                     <PipelineFunnelView
@@ -182,9 +220,12 @@ const PipelineBoard: React.FC = () => {
                     <PipelineKanban
                         pipeline={pipeline}
                         columns={columns}
-                        setColumns={setColumns as unknown as React.ComponentProps<typeof PipelineKanban>["setColumns"]}
+                        setColumns={
+                            setColumns as unknown as React.ComponentProps<
+                                typeof PipelineKanban
+                            >["setColumns"]
+                        }
                         onDragEnd={handleDragEnd}
-                        isEnterprise={false}
                     />
                 )}
             </div>

@@ -34,6 +34,16 @@ Frontend (React/Vite) ←REST/Socket.io→ Backend Go (Gin/GORM) ←SQL→ Postg
 | Frontend — MessagesList decomposição (799→362L, 9 módulos, GAP-Q) | ✅ Concluída (PR #99) |
 | Frontend — Testes TicketListItem + TicketsManager (18 casos, GAP-R) | ✅ Concluída (PR #99) |
 | Frontend — Suite de testes 65/65 verde (GAP-T) | ✅ Concluída (PR #100) |
+| Frontend — TS-only enforcement (loader.js→ts, ADR 0008, GAP-4) | ✅ Concluída (PR #211) |
+| Backend Go — Decomposição god-files controllers round-1 contact/tag/user < 250L | ✅ Concluída (PR #212) |
+| Engine Go — events.go decomp + MessageBroker interface + 13 testes offline | ✅ Concluída (PR #213) |
+| Engine Go — WhatsAppClient interface + testes offline send_poll/contacts | ✅ Concluída (PR #214) |
+| Backend Go — Decomposição god-files controllers round-2 whatsapp/ticket/kb/message/pipeline | ✅ Concluída (PR #215) |
+| Security — quic-go v0.59.1 (CVE-2026-40898 DoS) | ✅ Concluída (PR #216) |
+| Backend Go — event_listener_message.go split por tipo de evento | ✅ Concluída (PR #217) |
+| Backend Go — receive_message.go split dispatch vs enrich | ✅ Concluída (PR #218) |
+| Backend Go — Fix N+1 TagController.List() — batch GROUP BY | ✅ Concluída (PR #219) |
+| Engine Go — WhatsAppClient interface expansion (Download+MarkRead) + testes send/download | ✅ Concluída (PR #220) |
 
 ## Services & Ports
 
@@ -159,10 +169,28 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 - **Redis cache**: mensagens com TTL 24h em `wbot:msg:{jid}:{id}`.
 - **Plugin activation**: flipa `PluginInstallations.active` no DB após validação no Manager.
 
+## Módulo: Pipeline
+
+**Responsabilidade:** Funis de vendas com estágios sequenciais, visualizações Kanban/Funil/Gantt/KPIs, e assistente de IA para criação de stages.
+
+**Invariants:**
+- Sempre usar `auth.GetScoped(c, "Pipelines")` — nunca `c.Get("tenantId")` bruto
+- Create/Update são transacionais (GORM `Transaction()`)
+- Stage upsert por nome (ADR 0009) — nunca delete+recreate simples
+- `pipeline.type` persiste no banco e determina a view do board
+
+**O que NÃO fazer:**
+- Não retornar stages fixas em `AISuggest` — chamar o LLM via settings do tenant
+- Não deletar stages sem migrar os Deals vinculados para `stages[0]`
+- Não usar `PipelineWizard` — foi removido; fluxo único é `PipelineCreator`
+- Não exibir sidebar de chat sem checar `aiPipelineEnabled = "true"`
+
+**Referência:** [`docs/agents/pipeline.md`](docs/agents/pipeline.md)
+
 ## Domain Docs
 
 - **Glossário**: [`CONTEXT.md`](CONTEXT.md)
-- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes
+- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0009** para stage upsert, **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes
 - **Arquitetura**: [`docs/dev/architecture.md`](docs/dev/architecture.md)
 - **Frontend DS**: [`docs/frontend/design-system.md`](docs/frontend/design-system.md)
 - **Git Workflow**: [`docs/dev/git_workflow_policy.md`](docs/dev/git_workflow_policy.md)
