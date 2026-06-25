@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -157,13 +156,3 @@ func TestDealController_Update_MovesStage(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	assert.Equal(t, float64(stage2ID), resp["stageId"])
 }
-
-// helper para evitar repetição de bytes.NewReader ao recriar body
-func dealPayload(t *testing.T, v interface{}) []byte {
-	t.Helper()
-	b, err := json.Marshal(v)
-	require.NoError(t, err)
-	return b
-}
-
-var _ = bytes.NewReader // silence unused import if dealPayload isn't used
