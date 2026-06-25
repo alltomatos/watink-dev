@@ -28,8 +28,11 @@ interface TicketShape {
   queueId?: number;
   isGroup?: boolean;
   contact?: {
-    isGroup?: boolean;
+    id?: number;
+    name?: string;
     number?: string;
+    profilePicUrl?: string;
+    isGroup?: boolean;
   };
 }
 
@@ -102,9 +105,9 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
       );
     };
 
-    const handleTicket = (data: { action: string; ticket?: TicketShape; ticketId?: number }) => {
+    const handleTicket = (data: { action: string; ticket?: TicketShape; contact?: TicketShape["contact"]; ticketId?: number }) => {
       if (data.action === "update" && data.ticket && shouldUpdateTicket(data.ticket)) {
-        const ticket = data.ticket;
+        const ticket = data.contact ? { ...data.ticket, contact: data.contact } : data.ticket;
         queryClient.setQueryData(queryKey, (oldData: { pages: { tickets: TicketShape[] }[] } | undefined) => {
           if (!oldData || oldData.pages.length === 0) return oldData;
           // Remove qualquer ocorrência anterior e insere no topo da 1ª página,

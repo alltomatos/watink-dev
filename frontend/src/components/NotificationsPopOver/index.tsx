@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -9,7 +9,7 @@ import { useNotifications } from "./hooks/useNotifications";
 
 const NotificationsPopOver = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { notifications } = useNotifications();
+  const { notifications, clearNotifications } = useNotifications();
   const count = notifications.length;
 
   return (
@@ -34,6 +34,22 @@ const NotificationsPopOver = () => {
         sideOffset={8}
         className="w-[350px] max-sm:w-[270px] p-0"
       >
+        {count > 0 && (
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+            <span className="text-sm font-medium text-foreground">
+              {count} {count === 1 ? "conversa" : "conversas"}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+              onClick={clearNotifications}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Limpar
+            </Button>
+          </div>
+        )}
         <ul className="max-h-[350px] overflow-y-auto divide-y divide-[var(--border-divider)]">
           {count === 0 ? (
             <li className="px-4 py-3 text-sm text-[var(--text-muted)]">
