@@ -31,6 +31,6 @@ export const useTicketsInfinite = (params: FetchTicketsParams) => {
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.hasMore ? allPages.length + 1 : undefined;
     },
-    staleTime: 1000 * 30, // 30 seconds
+    staleTime: 0,
   });
 };
