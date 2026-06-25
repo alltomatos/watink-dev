@@ -1,18 +1,32 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Pencil, Upload } from "lucide-react";
+import { Layers, Pencil, Plus, Upload } from "lucide-react";
 import { PageLayout, PageHeader, PageContent } from "@/components/ui/page-layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import api from "../../services/api";
+
+const STAGE_COLORS = [
+    "hsl(var(--status-info))",
+    "hsl(var(--status-warning))",
+    "hsl(var(--status-success))",
+    "hsl(var(--status-error))",
+    "hsl(var(--status-default-text))",
+];
+
+interface PipelineStage {
+    id: number;
+    name: string;
+}
 
 interface Pipeline {
     id: number;
     name: string;
     description: string;
     type: "kanban" | "funnel" | "funil";
+    stages: PipelineStage[];
 }
 
 const Pipelines: React.FC = () => {
@@ -34,14 +48,7 @@ const Pipelines: React.FC = () => {
         setLoading(false);
     };
 
-    const handleOpenWizard = () => {
-        navigate("/pipelines/new");
-    };
-
-    const handleOpenPipeline = (id: number) => {
-        navigate(`/pipelines/${id}`);
-    };
-
+    const handleOpenPipeline = (id: number) => navigate(`/pipelines/${id}`);
     const handleEditPipeline = (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
         navigate(`/pipelines/${id}/edit`);
@@ -50,12 +57,11 @@ const Pipelines: React.FC = () => {
     const handleImportPipeline = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         const reader = new FileReader();
-        reader.onload = async (readerEvent) => {
+        reader.onload = async (ev) => {
             try {
-                if (!readerEvent.target?.result) throw new Error("File empty");
-                const json = JSON.parse(readerEvent.target.result as string);
+                if (!ev.target?.result) throw new Error("File empty");
+                const json = JSON.parse(ev.target.result as string);
                 await api.post("/pipelines/import", json);
                 toast.success("Pipeline importado com sucesso!");
                 fetchPipelines();
@@ -65,12 +71,15 @@ const Pipelines: React.FC = () => {
             }
         };
         reader.readAsText(file);
-        e.target.value = ""; // Reset input value so same file can be selected again
+        e.target.value = "";
     };
 
     return (
         <PageLayout>
-            <PageHeader title="Pipelines" description="Gerencie seus fluxos de atendimento e funis de vendas">
+            <PageHeader
+                title="Pipelines"
+                description="Gerencie seus fluxos de atendimento e funis de vendas"
+            >
                 <input
                     style={{ display: "none" }}
                     id="import-pipeline"
@@ -86,59 +95,126 @@ const Pipelines: React.FC = () => {
                         </span>
                     </Button>
                 </label>
-                <Button onClick={handleOpenWizard}>
+                <Button onClick={() => navigate("/pipelines/new")}>
+                    <Plus className="mr-2 h-4 w-4" />
                     Adicionar Pipeline
                 </Button>
             </PageHeader>
 
             <PageContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {!loading && pipelines.length === 0 && (
-                        <div className="col-span-full text-center p-8 text-muted-foreground">
-                            Nenhum pipeline encontrado. Crie o seu primeiro pipeline.
+                {loading && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {[1, 2, 3].map((n) => (
+                            <div key={n} className="h-36 rounded-2xl bg-muted animate-pulse" />
+                        ))}
+                    </div>
+                )}
+
+                {!loading && pipelines.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+                        <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center">
+                            <Layers className="h-7 w-7 text-muted-foreground" />
                         </div>
-                    )}
-                    {pipelines.map((pipeline) => (
-                        <Card
-                            key={pipeline.id}
-                            className="cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md relative"
-                            onClick={() => handleOpenPipeline(pipeline.id)}
-                        >
-                            <CardHeader className="pb-3">
-                                <div className="flex justify-between items-start gap-2">
-                                    <CardTitle className="text-lg line-clamp-1">
-                                        {pipeline.name}
-                                    </CardTitle>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 -mt-2 -mr-2 text-primary hover:bg-primary/10"
-                                        onClick={(e) => handleEditPipeline(e, pipeline.id)}
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                                {pipeline.description && (
-                                    <CardDescription className="line-clamp-2">
-                                        {pipeline.description}
-                                    </CardDescription>
-                                )}
-                            </CardHeader>
-                            <CardContent>
-                                <Badge
-                                    variant="outline"
-                                    className={
-                                        pipeline.type === "kanban"
-                                            ? "bg-[var(--status-info-bg)] text-[var(--status-info)] border-transparent"
-                                            : "bg-[var(--status-warning-bg)] text-[var(--status-warning)] border-transparent"
-                                    }
-                                >
-                                    {pipeline.type === "kanban" ? "Kanban" : "Funil de Vendas"}
-                                </Badge>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
+                        <div>
+                            <p className="font-semibold text-foreground">Nenhum pipeline criado</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Crie seu primeiro funil de vendas para começar
+                            </p>
+                        </div>
+                        <Button onClick={() => navigate("/pipelines/new")}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Criar Pipeline
+                        </Button>
+                    </div>
+                )}
+
+                {!loading && pipelines.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {pipelines.map((pipeline) => (
+                            <Card
+                                key={pipeline.id}
+                                className="cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.06)] border group relative"
+                                onClick={() => handleOpenPipeline(pipeline.id)}
+                            >
+                                <CardContent className="p-4 flex flex-col gap-3">
+                                    {/* Title + edit */}
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold text-base leading-tight line-clamp-1">
+                                                {pipeline.name}
+                                            </p>
+                                            {pipeline.description && (
+                                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                                    {pipeline.description}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 shrink-0 -mt-0.5 -mr-1 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary hover:bg-primary/10"
+                                            onClick={(e) => handleEditPipeline(e, pipeline.id)}
+                                        >
+                                            <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+
+                                    {/* Stage color dots */}
+                                    {pipeline.stages?.length > 0 && (
+                                        <div className="flex items-center gap-1.5">
+                                            {pipeline.stages.slice(0, 6).map((stage, i) => (
+                                                <span
+                                                    key={stage.id}
+                                                    title={stage.name}
+                                                    className="h-2.5 w-2.5 rounded-full shrink-0"
+                                                    style={{
+                                                        backgroundColor: STAGE_COLORS[i % STAGE_COLORS.length],
+                                                    }}
+                                                />
+                                            ))}
+                                            {pipeline.stages.length > 6 && (
+                                                <span className="text-[11px] text-muted-foreground">
+                                                    +{pipeline.stages.length - 6}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Footer: type badge + stage count */}
+                                    <div className="flex items-center justify-between">
+                                        <Badge
+                                            variant="outline"
+                                            className={
+                                                pipeline.type === "kanban"
+                                                    ? "border-transparent text-[11px] font-semibold"
+                                                    : "border-transparent text-[11px] font-semibold"
+                                            }
+                                            style={
+                                                pipeline.type === "kanban"
+                                                    ? {
+                                                          backgroundColor: "hsl(var(--status-info-bg))",
+                                                          color: "hsl(var(--status-info))",
+                                                      }
+                                                    : {
+                                                          backgroundColor: "hsl(var(--status-warning-bg))",
+                                                          color: "hsl(var(--status-warning))",
+                                                      }
+                                            }
+                                        >
+                                            {pipeline.type === "kanban" ? "Kanban" : "Funil de Vendas"}
+                                        </Badge>
+                                        {pipeline.stages?.length > 0 && (
+                                            <span className="text-[11px] text-muted-foreground">
+                                                {pipeline.stages.length} etapa
+                                                {pipeline.stages.length !== 1 ? "s" : ""}
+                                            </span>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                )}
             </PageContent>
         </PageLayout>
     );

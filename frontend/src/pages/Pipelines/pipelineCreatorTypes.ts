@@ -16,11 +16,11 @@ export interface ChatMessage {
 }
 
 export const STAGE_COLOR_PALETTE = [
-    { key: "blue",   label: "Azul",     bg: "var(--status-info-bg)",    color: "var(--status-info)" },
-    { key: "yellow", label: "Amarelo",  bg: "var(--status-warning-bg)", color: "var(--status-warning)" },
-    { key: "green",  label: "Verde",    bg: "var(--status-success-bg)", color: "var(--status-success)" },
-    { key: "red",    label: "Vermelho", bg: "var(--status-error-bg)",   color: "var(--status-error)" },
-    { key: "gray",   label: "Cinza",    bg: "var(--status-default-bg)", color: "var(--status-default-text)" },
+    { key: "blue",   label: "Azul",     bg: "hsl(var(--status-info-bg))",    color: "hsl(var(--status-info))" },
+    { key: "yellow", label: "Amarelo",  bg: "hsl(var(--status-warning-bg))", color: "hsl(var(--status-warning))" },
+    { key: "green",  label: "Verde",    bg: "hsl(var(--status-success-bg))", color: "hsl(var(--status-success))" },
+    { key: "red",    label: "Vermelho", bg: "hsl(var(--status-error-bg))",   color: "hsl(var(--status-error))" },
+    { key: "gray",   label: "Cinza",    bg: "hsl(var(--status-default-bg))", color: "hsl(var(--status-default-text))" },
 ] as const;
 
 export type StageColorKey = (typeof STAGE_COLOR_PALETTE)[number]["key"];
