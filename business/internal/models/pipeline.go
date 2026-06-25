@@ -30,6 +30,8 @@ type PipelineStage struct {
 	Order      int       `gorm:"default:0" json:"order"`
 	CreatedAt  time.Time `gorm:"column:createdAt" json:"createdAt"`
 	UpdatedAt  time.Time `gorm:"column:updatedAt" json:"updatedAt"`
+
+	Pipeline *Pipeline `gorm:"foreignKey:PipelineID" json:"pipeline,omitempty"`
 }
 
 func (PipelineStage) TableName() string {

@@ -207,6 +207,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 
 		// Deals
 		protected.GET("/deals", dealController.List)
+		protected.POST("/deals", dealController.Create)
 		protected.PUT("/deals/:id", dealController.Update)
 
 		// Pipelines

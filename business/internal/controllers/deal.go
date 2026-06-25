@@ -30,9 +30,29 @@ func (dc *DealController) List(c *gin.Context) {
 		return
 	}
 
+	// ticketId mode: return deals linked to a specific ticket
+	if ticketIDStr := c.Query("ticketId"); ticketIDStr != "" {
+		ticketID, err := strconv.Atoi(ticketIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ticketId"})
+			return
+		}
+		var deals []models.Deal
+		if err := db.Session(&gorm.Session{NewDB: true}).
+			Where(`"ticketId" = ? AND "tenantId" = ?`, ticketID, tenantID).
+			Preload("Contact").
+			Preload("Stage.Pipeline").
+			Find(&deals).Error; err != nil {
+			utils.RespondWithInternalError(c, err, "DealListByTicket")
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"deals": deals})
+		return
+	}
+
 	pipelineIDStr := c.Query("pipelineId")
 	if pipelineIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "pipelineId is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pipelineId or ticketId is required"})
 		return
 	}
 	pipelineID, err := strconv.Atoi(pipelineIDStr)
@@ -63,6 +83,56 @@ func (dc *DealController) List(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"deals": deals})
+}
+
+// @Summary      Criar deal
+// @Tags         deals
+// @Accept       json
+// @Produce      json
+// @Param        body  body      map[string]interface{}  true  "Dados do deal"
+// @Success      201   {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /deals [post]
+func (dc *DealController) Create(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Deals")
+	if !ok {
+		return
+	}
+
+	var input struct {
+		Name      string   `json:"name" binding:"required"`
+		StageID   int      `json:"stageId" binding:"required"`
+		ContactID int      `json:"contactId" binding:"required"`
+		TicketID  *int     `json:"ticketId"`
+		Value     *float64 `json:"value"`
+		Status    string   `json:"status"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.RespondWithBindError(c, err)
+		return
+	}
+
+	deal := models.Deal{
+		Name:      input.Name,
+		StageID:   input.StageID,
+		ContactID: input.ContactID,
+		TicketID:  input.TicketID,
+		TenantID:  tenantID,
+		Status:    "open",
+	}
+	if input.Value != nil {
+		deal.Value = *input.Value
+	}
+	if input.Status != "" {
+		deal.Status = input.Status
+	}
+
+	if err := db.Session(&gorm.Session{NewDB: true}).Create(&deal).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "DealCreate")
+		return
+	}
+
+	c.JSON(http.StatusCreated, deal)
 }
 
 // @Summary      Atualizar deal

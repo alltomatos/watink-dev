@@ -45,14 +45,27 @@ func (tc *TagController) List(c *gin.Context) {
 		return
 	}
 
+	type usageRow struct {
+		TagID int
+		Count int64
+	}
+	var usageCounts []usageRow
+	db.Model(&models.EntityTag{}).
+		Select(`"tagId" as tag_id, COUNT(*) as count`).
+		Where(`"tenantId" = ?`, tenantID).
+		Group(`"tagId"`).
+		Scan(&usageCounts)
+	usageMap := make(map[int]int64, len(usageCounts))
+	for _, u := range usageCounts {
+		usageMap[u.TagID] = u.Count
+	}
+
 	result := make([]gin.H, 0, len(tags))
 	for _, t := range tags {
-		var usage int64
-		db.Model(&models.EntityTag{}).Where("\"tenantId\" = ? AND \"tagId\" = ?", tenantID, t.ID).Count(&usage)
 		result = append(result, gin.H{
 			"id": t.ID, "name": t.Name, "color": t.Color, "icon": t.Icon,
 			"description": t.Description, "archived": t.Archived, "groupId": t.GroupID,
-			"tenantId": t.TenantID, "group": t.Group, "usageCount": usage,
+			"tenantId": t.TenantID, "group": t.Group, "usageCount": usageMap[t.ID],
 		})
 	}
 
