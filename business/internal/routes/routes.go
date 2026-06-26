@@ -16,7 +16,7 @@ type RouteRabbitMQ interface {
 
 func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *application.Container) {
 	db := container.DB
-	messageController := controllers.NewMessageController(rabbitMQ)
+	messageController := controllers.NewMessageController(rabbitMQ, container.Broadcast)
 	systemController := controllers.NewSystemController(container.SystemRepo, rabbitMQ)
 	setupController := controllers.NewSetupController(services.NewSetupService(container.DB))
 	userController := controllers.NewUserController(container.UserRepo, container.PlanLimitSvc)

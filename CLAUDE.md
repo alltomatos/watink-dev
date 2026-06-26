@@ -193,6 +193,26 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 
 **Referência:** [`docs/agents/pipeline.md`](docs/agents/pipeline.md)
 
+## Módulo: Real-Time (SSE)
+
+**Responsabilidade:** Push de eventos Business→Frontend (mensagens, tickets, sessões WhatsApp, etc.) em tempo real, via SSE, com fan-out cross-node por Redis Pub/Sub.
+
+**Invariants:**
+- Real-time é **100% server-push** — o cliente nunca envia dados reais pelo stream; mensagens vão por `POST /messages/:ticketId`. O stream só carrega inscrição em salas (via query).
+- Pontos de emissão dependem da **interface `Broadcaster`**, nunca de uma implementação concreta — `RedisBroadcast`/`SSEBroadcast` são intercambiáveis por feature-flag.
+- O backbone Redis (`Publish`/`Start` + guard `SourceID==NodeID`) é agnóstico de transporte — não acoplar lógica de transporte nele.
+- Eventos globais são **tenant-scoped** via `EmitToTenantRoom` — nunca `EmitToNamespace("/")` para dados de um tenant.
+- Endpoint SSE faz `Flush()` por evento + heartbeat `: ping` (~20s) + header `X-Accel-Buffering: no`.
+
+**O que NÃO fazer:**
+- Não voltar a Socket.IO — `go-socket.io` está arquivado e é incompatível com o cliente v4 (ver ADR 0010).
+- Não setar `Authorization` no `EventSource` (a spec não permite) — auth vai por query (TTL curto) ou cookie HttpOnly.
+- Não emitir dado de tenant com `EmitToNamespace` — usar `EmitToTenantRoom`.
+- Não confiar em real-time atrás de proxy sem desabilitar buffering/compressão na rota SSE.
+- Não assumir que `user`/`queue`/`tag`/`quickAnswer`/`protocol` têm real-time — não têm emissor (Go nem legado); seguem refetch-only (débito registrado).
+
+**Referência:** [`docs/agents/realtime.md`](docs/agents/realtime.md) · ADR 0010
+
 ## Domain Docs
 
 - **Glossário**: [`CONTEXT.md`](CONTEXT.md)
