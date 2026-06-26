@@ -69,8 +69,10 @@ func main() {
 	r.Use(middleware.ObservabilityMiddleware())
 	r.Use(middleware.CORSMiddleware())
 
+	// Build the single SSEHub first so both the SSEController (registration) and
+	// the SSEBroadcast (delivery) share the exact same instance.
 	hub := services.NewSSEHub()
-	hub.StartHeartbeat(20 * time.Second)
+	hub.StartHeartbeat(10 * time.Second)
 	sseBroadcast := services.NewSSEBroadcast(hub)
 	redisBroadcast := services.NewRedisBroadcast(redisSvc, sseBroadcast)
 	redisBroadcast.Start()
@@ -78,7 +80,8 @@ func main() {
 	log.Println("Real-time backend: SSE")
 
 	rabbitMQ := services.NewRabbitMQProvider(os.Getenv("AMQP_URL"))
-	container := application.NewContainer(database.DB, redisSvc, broadcast, rabbitMQ)
+	// Pass hub so the container uses the same SSEHub — avoids a second instance.
+	container := application.NewContainer(database.DB, redisSvc, broadcast, rabbitMQ, hub)
 
 	if err := rabbitMQ.Connect(); err == nil {
 		rabbitMQ.StartFlowWorker()

@@ -1,5 +1,5 @@
 import React, { useEffect, useContext, useMemo } from "react";
-import { subscribeToSocket } from "../../services/socket-io";
+import { subscribeToSocket } from "../../services/sse-client";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { cn } from "@/lib/utils";

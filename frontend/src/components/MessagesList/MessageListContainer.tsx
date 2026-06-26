@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { VirtuosoMessageList } from '@virtuoso.dev/message-list';
-import { subscribeToSocket } from '../../services/socket-io';
+import { subscribeToSocket } from '../../services/sse-client';
 import MessageItem from './MessageItem';
 import { Message } from '../../types/Message';
 import { SocketMessageEvent } from '../../types/api';

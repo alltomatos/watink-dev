@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { toast } from "react-toastify";
 import React from "react";
 
-import { subscribeToSocket } from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/sse-client";
 import { i18n } from "../../../translate/i18n";
 import alertSound from "../../../assets/sound.mp3";
 import { AuthContext } from "../../../context/Auth/AuthContext";

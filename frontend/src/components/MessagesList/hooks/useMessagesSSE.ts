@@ -1,5 +1,5 @@
 import { useEffect, MutableRefObject } from "react";
-import { subscribeToSocket } from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/sse-client";
 import { Message, MessagesAction } from "../types";
 
 export function useMessagesSocket(

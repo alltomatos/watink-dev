@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
-import { subscribeToSocket } from "../../services/socket-io";
+import { subscribeToSocket } from "../../services/sse-client";
 import toastError from "../../errors/toastError";
 import { WhatsAppSessionSocketEvent, WhatsAppSession } from "../../types/api";
 

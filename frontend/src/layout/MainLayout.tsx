@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import { AuthContext } from "../context/Auth/AuthContext";
 import api from "../services/api";
 import { getBackendUrl } from "../helpers/urlUtils";
-import { subscribeToSocket } from "../services/socket-io";
+import { subscribeToSocket } from "../services/sse-client";
 import type { SettingSocketEvent } from "../types/api";
 
 import MainSidebar from "../components/MainSidebar";

@@ -82,6 +82,7 @@ func (sc *SSEController) Stream(c *gin.Context) {
 		}
 	}
 
+	log.Printf("[SSE] connect connID rooms=%v", rooms)
 	connID := uuid.New().String()
 	ch, cleanup := sc.hub.Register(connID, rooms)
 	defer cleanup()
