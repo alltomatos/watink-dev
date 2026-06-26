@@ -234,7 +234,9 @@ func (qac *QuickAnswerController) Update(c *gin.Context) {
 	qa.Shortcut = shortcut
 	qa.Message = message
 	qa.MediaType = mediaType
-	qa.DataJson = input.DataJson
+	if input.DataJson != "" {
+		qa.DataJson = input.DataJson
+	}
 	if input.Type != "" {
 		qa.Type = input.Type
 	}
@@ -242,7 +244,7 @@ func (qac *QuickAnswerController) Update(c *gin.Context) {
 		qa.Content = input.Content
 	}
 
-	if err := db.Where("\"tenantId\" = ?", tenantID).Save(&qa).Error; err != nil {
+	if err := db.Session(&gorm.Session{NewDB: true}).Save(&qa).Error; err != nil {
 		if isUniqueViolation(err, "idx_quick_answers_tenant_shortcut") {
 			c.JSON(http.StatusConflict, gin.H{"error": "shortcut already exists for this tenant"})
 			return
