@@ -11,6 +11,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/google/uuid"
 	amqp "github.com/streadway/amqp"
+	"gorm.io/gorm"
 )
 
 type EventListener struct {
@@ -20,10 +21,11 @@ type EventListener struct {
 	tickets        domain.TicketRepository
 	receiveMessage *usecases.ReceiveMessageUseCase
 	broadcast      domain.Broadcaster
+	db             *gorm.DB
 }
 
-func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase, broadcast domain.Broadcaster) *EventListener {
-	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: domain.BroadcastOrNop(broadcast)}
+func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase, broadcast domain.Broadcaster, db *gorm.DB) *EventListener {
+	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: domain.BroadcastOrNop(broadcast), db: db}
 }
 
 // bcast returns a nil-safe broadcaster — tests that construct EventListener
@@ -46,6 +48,7 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 		"wbot.*.*.contact.update",
 		"wbot.*.*.contact.import",
 		"wbot.*.*.session.jid_registered",
+		"wbot.*.*.message.poll_vote",
 	}
 
 	err := rabbitMQ.ConsumeEvents("api.events.process.go", routingKeys, func(d amqp.Delivery) error {
@@ -92,6 +95,8 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 			return handleContactImport(ctx, eventListener.contacts, env.Payload, tid)
 		case "session.jid_registered":
 			return handleJIDRegistered(ctx, eventListener.sessions, env.Payload, tid)
+		case "message.poll_vote":
+			return eventListener.handlePollVote(ctx, env.Payload, tid)
 		default:
 			return nil
 		}

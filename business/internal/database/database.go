@@ -62,6 +62,7 @@ func Migrate() {
 		&models.EntityTag{},
 		&models.TicketLog{},
 		&models.ConversationEmbedding{},
+		&models.PollResult{},
 	)
 
 	if err != nil {
@@ -106,6 +107,7 @@ func addCustomIndexes() error {
 		`CREATE INDEX IF NOT EXISTS idx_tickets_tenant_queue_status ON "Tickets" ("tenantId", "queueId", "status")`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_tenant_ticket_fromme ON "Messages" ("tenantId", "ticketId", "fromMe")`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_tenant_fromme_createdat ON "Messages" ("tenantId", "fromMe", "createdAt")`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_quick_answers_tenant_shortcut ON "QuickAnswers" ("tenantId", shortcut)`,
 	}
 
 	for _, ddl := range indexes {

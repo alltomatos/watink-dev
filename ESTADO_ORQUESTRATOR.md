@@ -294,3 +294,58 @@ Ciclo 4 concluído — todos os god-files controllers decompostos.
 |----|--------|------|--------|----|
 | N1 | Fix N+1 tag.go | T1 | ✅ (incluído em #225 via commit d27739ac) | — |
 | D1 | deal_test.go — 5 casos unitários | T2 | ✅ pushed | #227 |
+
+---
+
+## DAG Onda 9 — Epic QuickAnswers: Templates de Mensagem Ricos (2026-06-26)
+
+> Branch alvo: `feat/quick-answers-rich-templates`
+> Docs preparadas: `docs/agents/quick-answers.md`, bloco em `CLAUDE.md`, termos em `CONTEXT.md`
+> T3 aprovados: UNIQUE constraint (B2), endpoint /send (B4), PollResults (B5/B6)
+
+### Grafo de Dependências
+```
+Rodada A (paralela):        QA-B1  +  QA-F1
+Rodada B (paralela):        QA-B2 + QA-B3 + QA-B5   (após QA-B1)
+                            QA-F2 + QA-F3 + QA-F4 + QA-F5  (após QA-F1)
+Rodada C:                   QA-B4  (após QA-B3)
+Rodada D:                   QA-B6  (após QA-B5)
+Rodada E (paralela):        QA-B7 + QA-F6  (após QA-B4 + QA-B6 + QA-F2 + QA-F3 + QA-F4)
+```
+
+### Tarefas
+
+**Backend Go**
+- [ ] **QA-B1** — Model: adicionar `Type string` (enum) + `Content string` (JSONB); manter `MediaType`/`DataJson` com null permitido; atualizar `updateQuickAnswerInput` | depends_on: []
+- [ ] **QA-B2** — DB: `UNIQUE(tenantId, shortcut)` via migration SQL; tratar duplicatas (manter mais recente); erro 409 no Create/Update | depends_on: [QA-B1]
+- [ ] **QA-B3** — Controller: validação de `Type` (enum), validação de `Content` (JSON válido por tipo), remover validação de `MediaType` do Create/Update | depends_on: [QA-B1]
+- [ ] **QA-B4** — Endpoint `POST /quickAnswers/:id/send`: busca QA + ticket (tenant-scoped), interpola variáveis `{{contact_name}}` etc., mapeia type→routing key RabbitMQ, despacha payload ao engine | depends_on: [QA-B3]
+- [ ] **QA-B5** — Model `PollResults`: `poll_message_id`, `contact_jid`, `option_selected`, `answered_at`; AutoMigrate | depends_on: [QA-B1]
+- [ ] **QA-B6** — Event handler: capturar resposta de enquete no `event_listener_message.go`; gravar `PollResults` se `capture_results: true` | depends_on: [QA-B5]
+- [ ] **QA-B7** — Testes unitários: Create com Type+Content, UNIQUE constraint (409), SendQuickAnswer (text/buttons/poll), interpolação de variáveis, PollResults handler | depends_on: [QA-B4, QA-B6]
+
+**Frontend TypeScript/React**
+- [ ] **QA-F1** — Types: expandir `QuickAnswer` com `type`, `content`; manter `message` para compat; adicionar tipos de content por tipo; atualizar reducer | depends_on: []
+- [ ] **QA-F2** — Modal redesign: seletor de tipo + editores condicionais (TextEditor / ButtonsEditor / ListEditor / PollEditor / MediaEditor) + validação Yup por tipo | depends_on: [QA-F1]
+- [ ] **QA-F3** — `WhatsAppBubblePreview`: componente de preview que simula bolha WhatsApp em tempo real; variáveis destacadas (fundo amarelo); renderiza botões/lista/poll/mídia visualmente | depends_on: [QA-F1]
+- [ ] **QA-F4** — MessageInput: passar objeto `QuickAnswer` completo ao callback; bifurcar por `type` — `text` insere no input (atual); outros chamam `POST /quickAnswers/:id/send` diretamente | depends_on: [QA-F1]
+- [ ] **QA-F5** — `QuickAnswersList`: exibir badge de tipo (ícone) ao lado do shortcut; atualizar label de exibição | depends_on: [QA-F1]
+- [ ] **QA-F6** — Testes: QuickAnswersModal (type selector, preview atualiza), MessageInput (text insere, buttons dispara send), QuickAnswersList (badge de tipo) | depends_on: [QA-F2, QA-F3, QA-F4]
+
+### Registro de Execução
+
+| Task | Status | PR | Notas |
+|------|--------|----|-------|
+| QA-B1 | ⏳ pendente | — | — |
+| QA-B2 | ⏳ pendente | — | — |
+| QA-B3 | ⏳ pendente | — | — |
+| QA-B4 | ⏳ pendente | — | — |
+| QA-B5 | ⏳ pendente | — | — |
+| QA-B6 | ⏳ pendente | — | — |
+| QA-B7 | ⏳ pendente | — | — |
+| QA-F1 | ⏳ pendente | — | — |
+| QA-F2 | ⏳ pendente | — | — |
+| QA-F3 | ⏳ pendente | — | — |
+| QA-F4 | ⏳ pendente | — | — |
+| QA-F5 | ⏳ pendente | — | — |
+| QA-F6 | ⏳ pendente | — | — |
