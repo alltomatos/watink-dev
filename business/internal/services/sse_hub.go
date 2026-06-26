@@ -38,7 +38,7 @@ func (h *SSEHub) Register(connID string, rooms []string) (<-chan string, func())
 		remaining := len(h.conns)
 		h.mu.Unlock()
 		close(ch)
-		log.Printf("[SSEHub] disconnect connID=%s remaining=%d rooms=%v", connID, remaining, rooms)
+		log.Printf("[SSEHub] disconnect remaining=%d rooms=%d", remaining, len(rooms))
 	}
 }
 
