@@ -33,7 +33,7 @@ func (el *EventListener) handleMessageAck(ctx context.Context, payload json.RawM
 			return err
 		}
 		msg.Ack = p.Ack
-		el.bcast().EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
+		el.bcast().EmitToRoom("/", "chat:"+strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
 
 		// ack >= 3 (read by recipient) on an outgoing message means the contact read our messages.
 		// Zero unreadMessages on the ticket and notify the frontend.

@@ -152,7 +152,7 @@ func (el *EventListener) handleHistorySync(ctx context.Context, payload json.Raw
 			continue
 		}
 		inserted++
-		el.bcast().EmitToRoom("/", strconv.Itoa(ticket.ID), "appMessage", map[string]interface{}{"action": "create", "message": msg, "history": true})
+		el.bcast().EmitToRoom("/", "chat:"+strconv.Itoa(ticket.ID), "appMessage", map[string]interface{}{"action": "create", "message": msg, "history": true})
 	}
 
 	log.Printf("[EventListener] History sync ticket %d: %d/%d messages backfilled", ticket.ID, inserted, len(p.Messages))
