@@ -3,9 +3,18 @@ package services
 import (
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 )
+
+// sanitizeLog removes newlines from user-controlled strings before logging
+// to prevent log injection attacks.
+func sanitizeLog(s string) string {
+	s = strings.ReplaceAll(s, "\n", `\n`)
+	s = strings.ReplaceAll(s, "\r", `\r`)
+	return s
+}
 
 // SSEHub manages active SSE connections and delivers events to rooms.
 type SSEHub struct {
@@ -67,7 +76,7 @@ func (h *SSEHub) Deliver(room, event string, data string) {
 			}
 			roomsSnapshot = append(roomsSnapshot, rs)
 		}
-		log.Printf("[SSEHub] Deliver room=%s event=%s conns=%d sent=0 activeRooms=%v", room, event, len(h.conns), roomsSnapshot)
+		log.Printf("[SSEHub] Deliver room=%s event=%s conns=%d sent=0 activeRooms=%v", sanitizeLog(room), sanitizeLog(event), len(h.conns), roomsSnapshot)
 	}
 }
 
