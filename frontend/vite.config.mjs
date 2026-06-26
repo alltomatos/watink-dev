@@ -127,6 +127,10 @@ export default defineConfig({
         target: process.env.BACKEND_PROXY_TARGET || "http://127.0.0.1:8082",
         changeOrigin: true,
       },
+      "/public": {
+        target: process.env.BACKEND_PROXY_TARGET || "http://127.0.0.1:8082",
+        changeOrigin: true,
+      },
     },
     // Polling necessário para HMR funcionar com Docker volumes no Windows.
     // awaitWriteFinish + stabilityThreshold evitam crash EIO quando o volume
