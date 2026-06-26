@@ -1,8 +1,8 @@
 # ESTADO_ORQUESTRATOR.md
 
 > Arquivo de estado vivo do Orchestrator.
-> **Última atualização**: 2026-06-25
-> **Branch**: `develop` (PRs #211–#227 mergeados ou abertos)
+> **Última atualização**: 2026-06-26
+> **Branch**: `develop` (PRs #211–#232 mergeados)
 
 ---
 
@@ -77,19 +77,19 @@ Rodada F [BLOQUEANTE]: T13 — aguarda aprovação após T10
 #### Registro de Execução
 | Task | Status | Notas |
 |---|---|---|
-| T1 | ⏳ pendente | — |
-| T2 | ⏳ pendente | — |
-| T3 | ⏳ pendente | — |
-| T4 | ⏳ pendente | — |
-| T5 | ⏳ pendente | — |
-| T6 | ⏳ pendente | — |
-| T7 | ⏳ pendente | — |
-| T8 | ⏳ pendente | — |
-| T9 | ⏳ pendente | — |
-| T10 | ⏳ pendente | — |
-| T11 | ⏳ pendente | — |
-| T12 | ⏳ pendente | — |
-| T13 | 🔒 bloqueante | Aguarda aprovação após T10 |
+| T1 | ✅ PR #232 | domain/broadcaster.go + BroadcastOrNop |
+| T2 | ✅ PR #232 | container.go Broadcast domain.Broadcaster |
+| T3 | ✅ PR #232 | 6 controllers + EventListener atualizados |
+| T4 | ✅ PR #232 | services/sse_hub.go |
+| T5 | ✅ PR #232 | services/sse_broadcast.go |
+| T6 | ✅ PR #232 | controllers/sse.go + rota /events |
+| T7 | ✅ PR #232 | redis_broadcast.go + socketio_sink.go + REALTIME_BACKEND flag |
+| T8 | ✅ PR #232 | socket-io.ts → SSEClient singleton |
+| T9 | ✅ PR #232 | 5 call-sites onJoin — sem mudança necessária |
+| T10 | ⏳ pendente | Validação manual com REALTIME_BACKEND=sse em staging |
+| T11 | ✅ PR #232 | /events fora do access-log |
+| T12 | ✅ PR #232 | Replay Last-Event-ID (mínimo viável) |
+| T13 | 🔒 BLOQUEANTE | Remoção Socket.IO — aguarda aprovação após T10 |
 > **Epic atual**: Onda 8 concluída — PR #226 (fix/tag-n1 já no develop via #225), PR #227 (test/deal-controller) aberto para review
 
 ---
