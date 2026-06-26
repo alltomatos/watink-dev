@@ -26,6 +26,12 @@ func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.
 	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: domain.BroadcastOrNop(broadcast)}
 }
 
+// bcast returns a nil-safe broadcaster — tests that construct EventListener
+// directly with broadcast=nil still get a no-op instead of a panic.
+func (el *EventListener) bcast() domain.Broadcaster {
+	return domain.BroadcastOrNop(el.broadcast)
+}
+
 func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener) {
 	routingKeys := []string{
 		"wbot.*.*.session.qrcode",
@@ -81,7 +87,7 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 		case "message.media":
 			return eventListener.handleMediaDownloaded(ctx, env.Payload, tid)
 		case "contact.update":
-			return handleContactUpdate(ctx, eventListener.contacts, eventListener.broadcast, env.Payload, tid)
+			return handleContactUpdate(ctx, eventListener.contacts, eventListener.bcast(), env.Payload, tid)
 		case "contact.import":
 			return handleContactImport(ctx, eventListener.contacts, env.Payload, tid)
 		case "session.jid_registered":
@@ -130,9 +136,9 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 
 	room := strconv.Itoa(result.Ticket.ID)
 	msgPayload := map[string]interface{}{"action": "create", "message": result.Message, "ticket": result.Ticket, "contact": result.Contact}
-	el.broadcast.EmitToRoom("/", room, "appMessage", msgPayload)
-	el.broadcast.EmitToTenantRoom(tenantID.String(), "appMessage", msgPayload)
-	el.broadcast.EmitToTenantRoom(tenantID.String(), "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket, "contact": result.Contact})
+	el.bcast().EmitToRoom("/", room, "appMessage", msgPayload)
+	el.bcast().EmitToTenantRoom(tenantID.String(), "appMessage", msgPayload)
+	el.bcast().EmitToTenantRoom(tenantID.String(), "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket, "contact": result.Contact})
 
 	return nil
 }
