@@ -125,7 +125,7 @@ func TestHandleMessageRevoke_MarksDeleted(t *testing.T) {
 
 func TestHandleMessageRevoke_MessageNotFound_NoOp(t *testing.T) {
 	mr := &mockMessageRepo{msg: nil}
-	el := &EventListener{messages: mr}
+	el := &EventListener{messages: mr, broadcast: domain.BroadcastOrNop(nil)}
 
 	payload, _ := json.Marshal(map[string]string{"messageId": "ghost"})
 	if err := el.handleMessageRevoke(context.Background(), payload, uuid.New()); err != nil {
@@ -140,7 +140,7 @@ func TestHandleMessageRevoke_MessageNotFound_NoOp(t *testing.T) {
 
 func TestHandleMessageReaction_EmptyMessageID_NoOp(t *testing.T) {
 	mr := &mockMessageRepo{}
-	el := &EventListener{messages: mr}
+	el := &EventListener{messages: mr, broadcast: domain.BroadcastOrNop(nil)}
 
 	payload, _ := json.Marshal(map[string]interface{}{"messageId": "", "reaction": "👍"})
 	if err := el.handleMessageReaction(context.Background(), payload, uuid.New()); err != nil {
