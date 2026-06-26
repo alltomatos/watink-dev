@@ -33,7 +33,7 @@ func TestSendMessageTextJSON(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	tenantID := uuid.New()
 	pub := &stubPublisher{}
-	mc := NewMessageController(pub)
+	mc := NewMessageController(pub, nil)
 
 	// Seed whatsapp + contact + ticket
 	wa := models.Whatsapp{Name: "WA", TenantID: tenantID, Status: "CONNECTED"}
@@ -45,10 +45,10 @@ func TestSendMessageTextJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	ticket := models.Ticket{
-		Status:      "open",
-		TenantID:    tenantID,
-		ContactID:   contact.ID,
-		WhatsappID:  wa.ID,
+		Status:     "open",
+		TenantID:   tenantID,
+		ContactID:  contact.ID,
+		WhatsappID: wa.ID,
 	}
 	if err := db.Create(&ticket).Error; err != nil {
 		t.Fatal(err)
@@ -137,8 +137,8 @@ func TestSanitizeMimeType(t *testing.T) {
 	}{
 		{"image/jpeg", true},
 		{"video/mp4", true},
-		{"", true},                     // falls back to application/octet-stream
-		{"image/jpeg\nhacked", true},   // newline stripped
+		{"", true},                   // falls back to application/octet-stream
+		{"image/jpeg\nhacked", true}, // newline stripped
 	}
 	for _, tc := range cases {
 		got := sanitizeMimeType(tc.input)
