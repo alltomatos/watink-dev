@@ -23,7 +23,7 @@ type TicketController struct {
 func NewTicketController(ut *usecases.UpdateTicketUseCase, broadcast domain.Broadcaster, messages domain.MessageRepository, publisher domain.CommandPublisher) *TicketController {
 	return &TicketController{
 		updateTicket: ut,
-		broadcast:    broadcast,
+		broadcast:    domain.BroadcastOrNop(broadcast),
 		messages:     messages,
 		publisher:    publisher,
 	}

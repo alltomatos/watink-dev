@@ -18,7 +18,7 @@ type ContactController struct {
 }
 
 func NewContactController(cr domain.ContactRepository, sessions domain.ChannelSessionRepository, publisher domain.CommandPublisher, broadcast domain.Broadcaster) *ContactController {
-	return &ContactController{contactRepo: cr, sessions: sessions, publisher: publisher, broadcast: broadcast}
+	return &ContactController{contactRepo: cr, sessions: sessions, publisher: publisher, broadcast: domain.BroadcastOrNop(broadcast)}
 }
 
 // @Summary      Listar contatos

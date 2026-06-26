@@ -17,7 +17,7 @@ type MessageController struct {
 }
 
 func NewMessageController(r domain.CommandPublisher, b domain.Broadcaster) *MessageController {
-	return &MessageController{rabbit: r, broadcast: b}
+	return &MessageController{rabbit: r, broadcast: domain.BroadcastOrNop(b)}
 }
 
 // ListMessages returns all messages for a given ticket.
