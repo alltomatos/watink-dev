@@ -105,6 +105,21 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
       );
     };
 
+    const handleAppMessage = (data: { action: string; ticket?: TicketShape; contact?: TicketShape["contact"] }) => {
+      if (data.action !== "create" || !data.ticket) return;
+      const ticket = data.contact ? { ...data.ticket, contact: data.contact } : data.ticket;
+      if (!shouldUpdateTicket(ticket)) return;
+      queryClient.setQueryData(queryKey, (oldData: { pages: { tickets: TicketShape[] }[] } | undefined) => {
+        if (!oldData || oldData.pages.length === 0) return oldData;
+        const pages = oldData.pages.map((page) => ({
+          ...page,
+          tickets: page.tickets.filter((t) => t.id !== ticket.id),
+        }));
+        pages[0] = { ...pages[0], tickets: [ticket, ...pages[0].tickets] };
+        return { ...oldData, pages };
+      });
+    };
+
     const handleTicket = (data: { action: string; ticket?: TicketShape; contact?: TicketShape["contact"]; ticketId?: number }) => {
       if (data.action === "update" && data.ticket && shouldUpdateTicket(data.ticket)) {
         const ticket = data.contact ? { ...data.ticket, contact: data.contact } : data.ticket;
@@ -133,7 +148,7 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
       }
     };
 
-    return subscribeToSocket({ ticket: handleTicket }, (socket) => {
+    return subscribeToSocket({ ticket: handleTicket, appMessage: handleAppMessage }, (socket) => {
       if (status) socket.emit("joinTickets", status);
       else socket.emit("joinNotification");
     });

@@ -12,17 +12,27 @@ const ModalImageCors = ({ imageUrl }: ModalImageCorsProps) => {
 
   useEffect(() => {
     if (!imageUrl) return;
+    let cancelled = false;
+    let objectUrl = "";
     const fetchImage = async () => {
-      const { data, headers } = await api.get(imageUrl, {
-        responseType: "blob",
-      });
-      const url = window.URL.createObjectURL(
-        new Blob([data], { type: String(headers["content-type"] ?? "") })
-      );
-      setBlobUrl(url);
-      setFetching(false);
+      try {
+        const { data, headers } = await api.get(imageUrl, { responseType: "blob" });
+        if (cancelled) return;
+        objectUrl = window.URL.createObjectURL(
+          new Blob([data], { type: String(headers["content-type"] ?? "image/jpeg") })
+        );
+        setBlobUrl(objectUrl);
+      } catch {
+        // fall through to imageUrl direct load
+      } finally {
+        if (!cancelled) setFetching(false);
+      }
     };
     fetchImage();
+    return () => {
+      cancelled = true;
+      if (objectUrl) window.URL.revokeObjectURL(objectUrl);
+    };
   }, [imageUrl]);
 
   return (
