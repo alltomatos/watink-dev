@@ -14,7 +14,7 @@ export function useTickets(ticketId: string | undefined): UseTicketsReturn {
   const [hasOpenTicket, setHasOpenTicket] = useState(!!ticketId);
   const [detailTicket, setDetailTicket] = useState<TicketInfo | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [showDetails, setShowDetails] = useState(true);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     setHasOpenTicket(!!ticketId);
