@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
@@ -49,10 +51,19 @@ func isUniqueViolation(err error, indexName string) bool {
 
 // QuickAnswerController encapsulates quick answer operations with RLS-scoped DB from auth middleware.
 // All queries are automatically tenant-scoped via auth.GetDB(c).
-type QuickAnswerController struct{}
+type QuickAnswerController struct {
+	rabbit domain.CommandPublisher
+}
 
-func NewQuickAnswerController() *QuickAnswerController {
-	return &QuickAnswerController{}
+func NewQuickAnswerController(r domain.CommandPublisher) *QuickAnswerController {
+	return &QuickAnswerController{rabbit: r}
+}
+
+func interpolateVariables(text string, vars map[string]string) string {
+	for k, v := range vars {
+		text = strings.ReplaceAll(text, "{{"+k+"}}", v)
+	}
+	return text
 }
 
 // @Summary      Listar respostas rápidas
@@ -241,6 +252,105 @@ func (qac *QuickAnswerController) Update(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, qa)
+}
+
+// @Summary      Disparar resposta rápida
+// @Tags         quick-answers
+// @Accept       json
+// @Produce      json
+// @Param        quickAnswerId  path      int                     true  "ID da resposta"
+// @Param        body           body      map[string]interface{}  true  "ticketId e variables opcionais"
+// @Success      200            {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /quickAnswers/{quickAnswerId}/send [post]
+func (qac *QuickAnswerController) Send(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "QuickAnswers")
+	if !ok {
+		return
+	}
+	qaID := c.Param("quickAnswerId")
+
+	var input struct {
+		TicketID  int               `json:"ticketId"`
+		Variables map[string]string `json:"variables"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.RespondWithBindError(c, err)
+		return
+	}
+	if input.TicketID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ticketId is required"})
+		return
+	}
+
+	var qa models.QuickAnswer
+	if err := db.Where("id = ? AND \"tenantId\" = ?", qaID, tenantID).First(&qa).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "quick answer not found"})
+		return
+	}
+
+	var ticket models.Ticket
+	if err := db.Preload("Contact").Where("id = ? AND \"tenantId\" = ?", input.TicketID, tenantID).First(&ticket).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
+		return
+	}
+
+	autoVars := map[string]string{
+		"contact_name": ticket.Contact.Name,
+		"ticket_id":    strconv.Itoa(ticket.ID),
+		"agent_name":   tenantID.String(),
+		"company_name": tenantID.String(),
+	}
+	for k, v := range input.Variables {
+		autoVars[k] = v
+	}
+
+	content := interpolateVariables(qa.Content, autoVars)
+	message := interpolateVariables(qa.Message, autoVars)
+
+	qaType := qa.Type
+	if qaType == "" {
+		qaType = "text"
+	}
+
+	commandType := "message.send.text"
+	switch qaType {
+	case "interactive_buttons":
+		commandType = "message.send.interactive"
+	case "list":
+		commandType = "message.send.list"
+	case "media":
+		commandType = "message.send.media"
+	case "poll":
+		commandType = "message.send.poll"
+	}
+
+	to := ticket.Contact.Number
+	if ticket.Contact.IsGroup {
+		to = ticket.Contact.Number + "@g.us"
+	}
+
+	payload := map[string]interface{}{
+		"sessionId": ticket.WhatsappID,
+		"messageId": fmt.Sprintf("3EB0QA%d%d", qa.ID, input.TicketID),
+		"to":        to,
+		"ticketId":  input.TicketID,
+		"body":      message,
+		"content":   content,
+		"qaType":    qaType,
+	}
+	command := map[string]interface{}{
+		"type":    commandType,
+		"payload": payload,
+	}
+
+	routingKey := fmt.Sprintf("wbot.%s.%d.%s", tenantID.String(), ticket.WhatsappID, commandType)
+	if err := qac.rabbit.PublishCommand(routingKey, command); err != nil {
+		utils.RespondWithInternalError(c, err, "SendQuickAnswer")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "sent"})
 }
 
 // @Summary      Remover resposta rápida
