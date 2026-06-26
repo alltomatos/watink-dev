@@ -19,10 +19,10 @@ type EventListener struct {
 	contacts       domain.ContactRepository
 	tickets        domain.TicketRepository
 	receiveMessage *usecases.ReceiveMessageUseCase
-	broadcast      *RedisBroadcast
+	broadcast      domain.Broadcaster
 }
 
-func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase, broadcast *RedisBroadcast) *EventListener {
+func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase, broadcast domain.Broadcaster) *EventListener {
 	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: broadcast}
 }
 

@@ -24,6 +24,9 @@ type RedisService interface {
 
 	// Ping tests the Redis connection
 	Ping(ctx context.Context) error
+
+	// Get retrieves a string value by key; returns ("", err) on miss or error
+	Get(ctx context.Context, key string) (string, error)
 }
 
 // RedisServiceConfig holds configuration for creating a RedisService
@@ -76,4 +79,9 @@ func (rs *RedisServiceImpl) Publish(ctx context.Context, channel string, message
 // Ping tests the Redis connection
 func (rs *RedisServiceImpl) Ping(ctx context.Context) error {
 	return rs.client.Ping(ctx).Err()
+}
+
+// Get retrieves a string value by key from Redis
+func (rs *RedisServiceImpl) Get(ctx context.Context, key string) (string, error) {
+	return rs.client.Get(ctx, key).Result()
 }
