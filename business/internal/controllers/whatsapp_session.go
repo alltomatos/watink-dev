@@ -13,14 +13,14 @@ import (
 
 type SessionController struct {
 	sessionRepo    domain.ChannelSessionRepository
-	broadcast      *services.RedisBroadcast
+	broadcast      domain.Broadcaster
 	sessionService *services.WhatsAppSessionService
 }
 
-func NewSessionController(sr domain.ChannelSessionRepository, broadcast *services.RedisBroadcast, sessionService *services.WhatsAppSessionService) *SessionController {
+func NewSessionController(sr domain.ChannelSessionRepository, broadcast domain.Broadcaster, sessionService *services.WhatsAppSessionService) *SessionController {
 	return &SessionController{
 		sessionRepo:    sr,
-		broadcast:      broadcast,
+		broadcast:      domain.BroadcastOrNop(broadcast),
 		sessionService: sessionService,
 	}
 }
