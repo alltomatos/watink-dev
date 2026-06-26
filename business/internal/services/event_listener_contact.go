@@ -14,7 +14,8 @@ import (
 // profile picture) when it arrives without a message. It only updates an existing
 // contact and never overwrites a name the user has personalized — the push name is
 // applied only when the stored name is empty or still equals the raw number.
-func handleContactUpdate(ctx context.Context, contacts domain.ContactRepository, broadcast *RedisBroadcast, payload json.RawMessage, tenantID uuid.UUID) error {
+func handleContactUpdate(ctx context.Context, contacts domain.ContactRepository, b domain.Broadcaster, payload json.RawMessage, tenantID uuid.UUID) error {
+	broadcast := domain.BroadcastOrNop(b)
 	var p ContactUpdatePayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return err

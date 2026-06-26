@@ -26,11 +26,13 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	_ "github.com/alltomatos/watinkdev/business/docs"
 	"github.com/alltomatos/watinkdev/business/internal/application"
 	"github.com/alltomatos/watinkdev/business/internal/controllers"
 	"github.com/alltomatos/watinkdev/business/internal/database"
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/internal/routes"
@@ -55,14 +57,38 @@ func main() {
 	database.Connect()
 	database.Migrate()
 
-	server := services.StartSocket()
 	// Instanciação explícita — Injeção via construtor (DI Pura)
 	redisSvc, err := services.NewRedisServiceFromEnv()
 	if err != nil {
 		log.Fatalf("Failed to initialize Redis: %v", err)
 	}
-	broadcast := services.NewRedisBroadcast(redisSvc, server)
-	broadcast.Start()
+
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.Use(otelgin.Middleware("watink-business"))
+	r.Use(middleware.ObservabilityMiddleware())
+	r.Use(middleware.CORSMiddleware())
+
+	var broadcast domain.Broadcaster
+	realtimeBackend := os.Getenv("REALTIME_BACKEND")
+	if realtimeBackend == "sse" {
+		hub := services.NewSSEHub()
+		hub.StartHeartbeat(20 * time.Second)
+		sseBroadcast := services.NewSSEBroadcast(hub)
+		redisBroadcast := services.NewRedisBroadcast(redisSvc, sseBroadcast)
+		redisBroadcast.Start()
+		broadcast = redisBroadcast
+		log.Println("Real-time backend: SSE")
+	} else {
+		server := services.StartSocket()
+		sink := services.NewSocketIOSink(server)
+		redisBroadcast := services.NewRedisBroadcast(redisSvc, sink)
+		redisBroadcast.Start()
+		broadcast = redisBroadcast
+		r.GET("/socket.io/*any", gin.WrapH(server))
+		r.POST("/socket.io/*any", gin.WrapH(server))
+		log.Println("Real-time backend: Socket.IO (legacy)")
+	}
 
 	rabbitMQ := services.NewRabbitMQProvider(os.Getenv("AMQP_URL"))
 	container := application.NewContainer(database.DB, redisSvc, broadcast, rabbitMQ)
@@ -75,18 +101,15 @@ func main() {
 		log.Printf("⚠️ Warning: RabbitMQ connection failed: %v", err)
 	}
 
-	r := gin.Default()
-
-	r.Use(otelgin.Middleware("watink-business"))
-	r.Use(middleware.ObservabilityMiddleware())
-	r.Use(middleware.CORSMiddleware())
-
-	r.GET("/socket.io/*any", gin.WrapH(server))
-	r.POST("/socket.io/*any", gin.WrapH(server))
-
 	r.Static("/public/media", "public/media")
 
+	// SSE stream — registrado SEM gin.Logger para evitar que o token JWT
+	// presente na query string (?token=...) apareça no access-log.
+	sseController := controllers.NewSSEController(container.SSEHub, redisSvc)
+	r.GET("/api/v1/events", sseController.Stream)
+
 	apiGroup := r.Group("/api/v1")
+	apiGroup.Use(gin.Logger())
 	{
 		apiGroup.GET("/health", func(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "OK", "service": "watink-business"})

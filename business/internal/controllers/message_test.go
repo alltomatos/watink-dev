@@ -74,7 +74,7 @@ func TestMessageController_ListMessages_ReturnsEnvelope(t *testing.T) {
 	db.Exec(`INSERT INTO "Messages" (id, body, "ticketId", "tenantId") VALUES (?,?,?,?)`, "msg2", "Tudo bem", ticketID, tenantID)
 
 	pub := &mockPublisher{}
-	ctrl := NewMessageController(pub)
+	ctrl := NewMessageController(pub, nil)
 	c, w := setupMessageContext(t, db, tenantID, "GET", fmt.Sprintf("/messages/%d", ticketID), nil)
 	c.Params = gin.Params{{Key: "ticketId", Value: fmt.Sprintf("%d", ticketID)}}
 
@@ -102,7 +102,7 @@ func TestMessageController_ListMessages_FiltersByTenantViaDB(t *testing.T) {
 	db.Exec(`INSERT INTO "Messages" (id, body, "ticketId", "tenantId") VALUES (?,?,?,?)`, "m-b", "Msg de B", ticketID, tenantB)
 
 	pub := &mockPublisher{}
-	ctrl := NewMessageController(pub)
+	ctrl := NewMessageController(pub, nil)
 	// Use tenantA scope — tenantB message should not appear
 	c, w := setupMessageContext(t, db, tenantA, "GET", fmt.Sprintf("/messages/%d", ticketID), nil)
 	c.Params = gin.Params{{Key: "ticketId", Value: fmt.Sprintf("%d", ticketID)}}
@@ -122,7 +122,7 @@ func TestMessageController_SendMessage_TicketNotFound(t *testing.T) {
 
 	payload, _ := json.Marshal(map[string]string{"body": "Oi"})
 	pub := &mockPublisher{}
-	ctrl := NewMessageController(pub)
+	ctrl := NewMessageController(pub, nil)
 	c, w := setupMessageContext(t, db, tenantID, "POST", "/messages/9999", payload)
 	c.Params = gin.Params{{Key: "ticketId", Value: "9999"}}
 
@@ -139,7 +139,7 @@ func TestMessageController_SendMessage_InvalidTicketID(t *testing.T) {
 
 	payload, _ := json.Marshal(map[string]string{"body": "Oi"})
 	pub := &mockPublisher{}
-	ctrl := NewMessageController(pub)
+	ctrl := NewMessageController(pub, nil)
 	c, w := setupMessageContext(t, db, tenantID, "POST", "/messages/abc", payload)
 	c.Params = gin.Params{{Key: "ticketId", Value: "abc"}}
 
@@ -162,7 +162,7 @@ func TestMessageController_SendMessage_PublishesCommand(t *testing.T) {
 
 	payload, _ := json.Marshal(map[string]string{"body": "Olá mundo", "mediaType": "chat"})
 	pub := &mockPublisher{}
-	ctrl := NewMessageController(pub)
+	ctrl := NewMessageController(pub, nil)
 	c, w := setupMessageContext(t, db, tenantID, "POST", fmt.Sprintf("/messages/%d", ticketID), payload)
 	c.Params = gin.Params{{Key: "ticketId", Value: fmt.Sprintf("%d", ticketID)}}
 
@@ -203,7 +203,7 @@ func TestMessageController_SendMessage_Multipart_SavesMediaAndPublishes(t *testi
 	require.NoError(t, mw.Close())
 
 	pub := &mockPublisher{}
-	ctrl := NewMessageController(pub)
+	ctrl := NewMessageController(pub, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

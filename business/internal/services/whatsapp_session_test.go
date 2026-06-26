@@ -33,7 +33,7 @@ type mockRedisService struct{}
 func (m *mockRedisService) SetLock(key string, value string, expiration time.Duration) (bool, error) {
 	return true, nil
 }
-func (m *mockRedisService) DelLock(key string) error                      { return nil }
+func (m *mockRedisService) DelLock(key string) error { return nil }
 func (m *mockRedisService) Subscribe(ctx context.Context, channel string) *redis.PubSub {
 	return nil
 }
@@ -41,6 +41,9 @@ func (m *mockRedisService) Publish(ctx context.Context, channel string, message 
 	return nil
 }
 func (m *mockRedisService) Ping(ctx context.Context) error { return nil }
+func (m *mockRedisService) Get(ctx context.Context, key string) (string, error) {
+	return "", nil
+}
 
 // Verify mocks satisfy interfaces at compile time.
 var _ domain.CommandPublisher = (*mockCommandPublisher)(nil)

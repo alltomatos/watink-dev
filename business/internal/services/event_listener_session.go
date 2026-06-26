@@ -27,7 +27,7 @@ func (el *EventListener) handleQrCode(ctx context.Context, payload json.RawMessa
 		return err
 	}
 
-	el.broadcast.EmitToTenantRoom(tenantID.String(), "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "qrcode": p.QrCode, "status": "QRCODE"}})
+	el.bcast().EmitToTenantRoom(tenantID.String(), "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "qrcode": p.QrCode, "status": "QRCODE"}})
 	return nil
 }
 
@@ -48,7 +48,7 @@ func (el *EventListener) handlePairingCode(ctx context.Context, payload json.Raw
 		return err
 	}
 
-	el.broadcast.EmitToTenantRoom(tenantID.String(), "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": status, "pairingCode": p.PairingCode}})
+	el.bcast().EmitToTenantRoom(tenantID.String(), "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": status, "pairingCode": p.PairingCode}})
 	return nil
 }
 
@@ -80,7 +80,7 @@ func (el *EventListener) handleSessionStatus(ctx context.Context, payload json.R
 		return err
 	}
 
-	el.broadcast.EmitToTenantRoom(tenantID.String(), "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": p.Status, "number": p.Number, "profilePicUrl": p.ProfilePicUrl, "firstConnection": updates["firstConnection"]}})
+	el.bcast().EmitToTenantRoom(tenantID.String(), "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": p.Status, "number": p.Number, "profilePicUrl": p.ProfilePicUrl, "firstConnection": updates["firstConnection"]}})
 	return nil
 }
 
@@ -152,7 +152,7 @@ func (el *EventListener) handleHistorySync(ctx context.Context, payload json.Raw
 			continue
 		}
 		inserted++
-		el.broadcast.EmitToRoom("/", strconv.Itoa(ticket.ID), "appMessage", map[string]interface{}{"action": "create", "message": msg, "history": true})
+		el.bcast().EmitToRoom("/", strconv.Itoa(ticket.ID), "appMessage", map[string]interface{}{"action": "create", "message": msg, "history": true})
 	}
 
 	log.Printf("[EventListener] History sync ticket %d: %d/%d messages backfilled", ticket.ID, inserted, len(p.Messages))
