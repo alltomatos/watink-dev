@@ -65,6 +65,6 @@ func (el *EventListener) handleMessageReaction(ctx context.Context, payload json
 		return err
 	}
 
-	el.broadcast.EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
+	el.bcast().EmitToRoom("/", "chat:"+strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
 	return nil
 }

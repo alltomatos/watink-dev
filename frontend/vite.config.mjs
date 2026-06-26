@@ -105,6 +105,33 @@ export default defineConfig({
     open: false,
     host: true,
     allowedHosts: ["app.docker"],
+    // Proxy /api and /uploads to the Go backend running inside Docker.
+    // With same-origin proxy, cookies (refreshToken HttpOnly) work without
+    // SameSite=None and without HTTPS — the browser sees everything on :3000.
+    proxy: {
+      "/api": {
+        target: process.env.BACKEND_PROXY_TARGET || "http://127.0.0.1:8082",
+        changeOrigin: true,
+        proxyTimeout: 0,
+        timeout: 0,
+        configure: (proxy) => {
+          // Disable socket-level timeouts for SSE (long-lived streaming connections).
+          proxy.on("proxyRes", (_proxyRes, req, res) => {
+            if (req.url?.includes("/events")) {
+              res.socket?.setTimeout(0);
+            }
+          });
+        },
+      },
+      "/uploads": {
+        target: process.env.BACKEND_PROXY_TARGET || "http://127.0.0.1:8082",
+        changeOrigin: true,
+      },
+      "/public": {
+        target: process.env.BACKEND_PROXY_TARGET || "http://127.0.0.1:8082",
+        changeOrigin: true,
+      },
+    },
     // Polling necessário para HMR funcionar com Docker volumes no Windows.
     // awaitWriteFinish + stabilityThreshold evitam crash EIO quando o volume
     // WSL2 fica momentaneamente inacessível (errno -5).

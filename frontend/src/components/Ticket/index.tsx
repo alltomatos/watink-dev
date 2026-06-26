@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
-import { subscribeToSocket } from "../../services/socket-io";
+import { subscribeToSocket } from "../../services/sse-client";
 import MessageInput from "../MessageInput/";
 import TicketHeader from "../TicketHeader";
 import TicketInfo from "../TicketInfo";
@@ -53,26 +53,36 @@ const Ticket: React.FC<TicketProps> = ({ onToggleDetails, showDetails }) => {
   const [contact, setContact] = useState<Contact>({} as Contact);
   const [ticket, setTicket] = useState<TicketData>({} as TicketData);
 
-  useEffect(() => {
+  const fetchTicket = async () => {
     setLoading(true);
-    const delayDebounceFn = setTimeout(async () => {
-      try {
-        const { data } = await api.get(`/tickets/${ticketId}`);
-        setContact(data.contact);
-        setTicket(data);
-      } catch (err) {
-        toastError(err);
-      } finally {
-        setLoading(false);
-      }
-    }, 500);
-    return () => clearTimeout(delayDebounceFn);
+    try {
+      const { data } = await api.get(`/tickets/${ticketId}`);
+      setContact(data.contact);
+      setTicket(data);
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(fetchTicket, 500);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId]);
 
   useEffect(() => {
-    const handleTicket = (data: { action: string; ticket?: TicketData }) => {
+    const handleTicket = (data: { action: string; ticket?: TicketData; ticketId?: number }) => {
+      const incomingId = data.ticket?.id ?? data.ticketId;
+      if (incomingId && Number(incomingId) !== Number(ticketId)) return;
       if (data.action === "update" && data.ticket) {
-        setTicket(data.ticket);
+        setTicket((prev) => ({
+          ...prev,
+          ...data.ticket,
+          status: data.ticket!.status ?? prev.status,
+          contact: data.ticket!.contact ?? prev.contact,
+        }));
       }
       if (data.action === "delete") {
         toast.success("Ticket deleted sucessfully.");
@@ -119,6 +129,7 @@ const Ticket: React.FC<TicketProps> = ({ onToggleDetails, showDetails }) => {
             ticket={ticket}
             onToggleDetails={onToggleDetails}
             showDetails={showDetails}
+            onAccepted={fetchTicket}
           />
         </div>
       </TicketHeader>

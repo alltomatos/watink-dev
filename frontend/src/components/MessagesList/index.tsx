@@ -1,6 +1,6 @@
 /* @jsxImportSource react */
 import React from "react";
-import { History, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import MessageOptionsMenu from "../MessageOptionsMenu";
 import whatsBackground from "../../assets/wa-background.png";
@@ -57,16 +57,6 @@ const MessagesList: React.FC<MessagesListProps> = ({ ticketId, isGroup }) => {
         onFromDateChange={setHistoryFromDate}
         onSync={handleSyncHistory}
       />
-
-      <button
-        type="button"
-        className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-sm hover:bg-[var(--bg-surface-alt)] transition-colors"
-        onClick={() => setHistoryModalOpen(true)}
-        title="Buscar histórico"
-        aria-label="Buscar histórico"
-      >
-        <History className="h-4 w-4 text-[var(--text-muted)]" />
-      </button>
 
       <div
         id="messagesList"

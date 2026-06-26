@@ -177,7 +177,14 @@ services:
       # os módulos compilados para Linux dentro do container
       - frontend_node_modules:/app/node_modules
     environment:
-      - VITE_BACKEND_URL=http://localhost:8082
+      # VITE_BACKEND_URL vazio no browser (same-origin via proxy Vite).
+      # BACKEND_PROXY_TARGET é usado APENAS pelo proxy server-side do Vite para
+      # encaminhar /api/* para o container do backend na rede Docker.
+      - BACKEND_PROXY_TARGET=http://watink-business:8082
+      # SSE vai direto para o backend (sem passar pelo proxy Vite) porque usa JWT
+      # no URL (sem cookie), então SameSite não é um problema. Isso evita que o
+      # proxy Vite mate as conexões longas de SSE por timeout interno.
+      - VITE_SSE_URL=http://127.0.0.1:8082
       # Polling para HMR funcionar com volumes Docker no Windows
       - CHOKIDAR_USEPOLLING=true
       - CHOKIDAR_POLL_INTERVAL=300

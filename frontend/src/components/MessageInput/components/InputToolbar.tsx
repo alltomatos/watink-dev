@@ -48,12 +48,12 @@ const InputToolbar: React.FC<InputToolbarProps> = ({
       <div className="hidden sm:flex items-center">
         <button
           type="button"
-          className="p-2 rounded-full hover:bg-[var(--border-subtle)] transition-colors disabled:opacity-50"
+          className="p-2.5 rounded-full hover:bg-[var(--border-subtle)] transition-colors disabled:opacity-50"
           disabled={disabled}
           onClick={onToggleEmoji}
           aria-label="Emoji"
         >
-          <Smile className="h-5 w-5 text-gray-500" />
+          <Smile className="h-6 w-6 text-gray-500" />
         </button>
 
         {showEmoji && (
@@ -82,12 +82,12 @@ const InputToolbar: React.FC<InputToolbarProps> = ({
         <label htmlFor="upload-button">
           <button
             type="button"
-            className="p-2 rounded-full hover:bg-[var(--border-subtle)] transition-colors disabled:opacity-50 pointer-events-none"
+            className="p-2.5 rounded-full hover:bg-[var(--border-subtle)] transition-colors disabled:opacity-50 pointer-events-none"
             disabled={disabled}
             aria-label="Anexar arquivo"
             tabIndex={-1}
           >
-            <Paperclip className="h-5 w-5 text-gray-500" />
+            <Paperclip className="h-6 w-6 text-gray-500" />
           </button>
         </label>
 
@@ -124,7 +124,7 @@ const InputToolbar: React.FC<InputToolbarProps> = ({
                   onMenuOpenChange(false);
                 }}
               >
-                <Smile className="h-5 w-5 text-gray-500" />
+                <Smile className="h-6 w-6 text-gray-500" />
               </button>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
@@ -140,7 +140,7 @@ const InputToolbar: React.FC<InputToolbarProps> = ({
                 }}
               />
               <label htmlFor="upload-button-mobile" className="cursor-pointer">
-                <Paperclip className="h-5 w-5 text-gray-500" />
+                <Paperclip className="h-6 w-6 text-gray-500" />
               </label>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>

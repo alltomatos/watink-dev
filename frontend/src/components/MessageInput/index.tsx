@@ -4,7 +4,6 @@ import clsx from "clsx";
 import { Send, Mic, XOctagon, CheckCircle } from "lucide-react";
 import { Loader2 } from "lucide-react";
 
-import PaperCard from "../PaperCard";
 import RecordingTimer from "./RecordingTimer";
 import { i18n } from "../../translate/i18n";
 import { useThemeContext } from "../../context/DarkMode";
@@ -60,28 +59,24 @@ const MessageInput: React.FC<MessageInputProps> = ({ ticketStatus, whatsappStatu
 
   if (ticketStatus !== "open") {
     return (
-      <PaperCard variant="flush" padding="none" className="bg-[var(--border-default)] flex flex-col items-center border-t border-[var(--border-divider)]">
-        <div className="w-full flex p-[7px] items-center bg-[var(--border-default)]">
-          <span className="text-base p-2.5 m-auto text-gray-500">
-            {i18n.t("messagesInput.placeholderClosed")}
-          </span>
-        </div>
-      </PaperCard>
+      <div className="flex h-[62px] w-full shrink-0 items-center justify-center border-t border-[var(--border-divider)] bg-[var(--bg-surface-alt)] px-4">
+        <span className="text-sm text-muted-foreground">
+          {i18n.t("messagesInput.placeholderClosed")}
+        </span>
+      </div>
     );
   }
 
   if (whatsappStatus && whatsappStatus !== "CONNECTED") {
     return (
-      <PaperCard variant="flush" padding="none" className="bg-[var(--border-default)] flex flex-col items-center border-t border-[var(--border-divider)]">
-        <div className="w-full flex p-[7px] items-center bg-[var(--border-default)]">
-          <div className="p-2.5 w-full text-center bg-[var(--status-error-bg)] text-[var(--status-error-text)] rounded flex flex-col items-center">
-            <span className="font-bold text-sm">CONEXÃO INTERROMPIDA</span>
-            <span className="text-xs mt-1">
-              Não é possível enviar mensagens. Por favor, vá em "Conexões" e reconecte o WhatsApp.
-            </span>
-          </div>
+      <div className="w-full shrink-0 border-t border-[var(--border-divider)] bg-[var(--bg-surface-alt)] px-4 py-3">
+        <div className="w-full text-center bg-[var(--status-error-bg)] text-[var(--status-error-text)] rounded-lg p-3 flex flex-col items-center">
+          <span className="font-bold text-sm">CONEXÃO INTERROMPIDA</span>
+          <span className="text-xs mt-1">
+            Não é possível enviar mensagens. Por favor, vá em "Conexões" e reconecte o WhatsApp.
+          </span>
         </div>
-      </PaperCard>
+      </div>
     );
   }
 
@@ -100,11 +95,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ ticketStatus, whatsappStatu
   }
 
   return (
-    <PaperCard
-      variant="flush"
-      padding="none"
-      className="bg-[var(--border-default)] flex flex-col items-center border-t border-[var(--border-divider)]"
-    >
+    <div className="w-full shrink-0 flex flex-col border-t border-[var(--border-divider)] bg-[var(--bg-surface-alt)]">
       {replyingMessage && (
         <ReplyPreview
           message={replyingMessage}
@@ -114,7 +105,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ ticketStatus, whatsappStatu
         />
       )}
 
-      <div className="bg-[var(--border-default)] w-full flex p-[7px] items-center">
+      <div className="bg-[var(--bg-surface-alt)] w-full flex px-3 py-2.5 items-center gap-1">
         <InputToolbar
           loading={loading}
           recording={recording}
@@ -133,13 +124,13 @@ const MessageInput: React.FC<MessageInputProps> = ({ ticketStatus, whatsappStatu
         {/* Input area */}
         <div
           className={clsx(
-            "p-1.5 mr-1.5 bg-[var(--bg-surface)] flex rounded-[20px] flex-1 relative",
-            appTheme === "saas" && "border border-[var(--border-default)] shadow-none"
+            "px-4 py-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-center rounded-full flex-1 relative min-h-[48px]",
+            appTheme === "saas" && "shadow-none"
           )}
         >
           <textarea
             ref={inputRef}
-            className="pl-2.5 flex-1 border-none bg-transparent resize-none outline-none text-sm leading-5 max-h-[120px]"
+            className="flex-1 border-none bg-transparent resize-none outline-none text-[15px] leading-[1.5] min-h-[24px] max-h-[160px]"
             placeholder={
               ticketStatus === "open"
                 ? i18n.t("messagesInput.placeholderOpen") as string
@@ -157,7 +148,6 @@ const MessageInput: React.FC<MessageInputProps> = ({ ticketStatus, whatsappStatu
                 handleSendMessage();
               }
             }}
-            style={{ fieldSizing: "content" } as React.CSSProperties}
           />
 
           {typeBar && (
@@ -179,12 +169,12 @@ const MessageInput: React.FC<MessageInputProps> = ({ ticketStatus, whatsappStatu
         {inputMessage ? (
           <button
             type="button"
-            className="p-2 rounded-full hover:bg-[var(--border-subtle)] transition-colors disabled:opacity-50"
+            className="p-2.5 rounded-full hover:bg-[var(--border-subtle)] transition-colors disabled:opacity-50"
             onClick={handleSendMessage}
             disabled={loading}
             aria-label="Enviar mensagem"
           >
-            <Send className="h-5 w-5 text-gray-500" />
+            <Send className="h-6 w-6 text-gray-500" />
           </button>
         ) : recording ? (
           <div className="flex items-center">
@@ -220,11 +210,11 @@ const MessageInput: React.FC<MessageInputProps> = ({ ticketStatus, whatsappStatu
             onClick={handleStartRecording}
             aria-label="Gravar áudio"
           >
-            <Mic className="h-5 w-5 text-gray-500" />
+            <Mic className="h-6 w-6 text-gray-500" />
           </button>
         )}
       </div>
-    </PaperCard>
+    </div>
   );
 };
 

@@ -12,11 +12,12 @@ import (
 )
 
 type MessageController struct {
-	rabbit domain.CommandPublisher
+	rabbit    domain.CommandPublisher
+	broadcast domain.Broadcaster
 }
 
-func NewMessageController(r domain.CommandPublisher) *MessageController {
-	return &MessageController{rabbit: r}
+func NewMessageController(r domain.CommandPublisher, b domain.Broadcaster) *MessageController {
+	return &MessageController{rabbit: r, broadcast: domain.BroadcastOrNop(b)}
 }
 
 // ListMessages returns all messages for a given ticket.

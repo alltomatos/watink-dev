@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { VirtuosoMessageList } from '@virtuoso.dev/message-list';
-import connectToSocket from '../../services/socket-io';
+import { subscribeToSocket } from '../../services/sse-client';
 import MessageItem from './MessageItem';
 import { Message } from '../../types/Message';
 import { SocketMessageEvent } from '../../types/api';
@@ -30,8 +30,6 @@ export const MessageListContainer: React.FC<MessageListContainerProps> = ({ tick
 
   // Listen for new messages
   useEffect(() => {
-    const socketInstance = connectToSocket();
-
     const handleNewMessage = (data: SocketMessageEvent<Message>) => {
       if (data.action === 'create') {
         const newMessage = data.message;
@@ -51,13 +49,10 @@ export const MessageListContainer: React.FC<MessageListContainerProps> = ({ tick
       }
     };
 
-    socketInstance?.on(`ticket:${ticketId}:message`, handleNewMessage);
-    socketInstance?.on(`appMessage`, handleNewMessage); // Compatibility with legacy
-
-    return () => {
-      socketInstance?.off(`ticket:${ticketId}:message`, handleNewMessage);
-      socketInstance?.off(`appMessage`, handleNewMessage);
-    };
+    return subscribeToSocket({
+      [`ticket:${ticketId}:message`]: handleNewMessage,
+      appMessage: handleNewMessage,
+    });
   }, [ticketId, queryClient]);
 
 

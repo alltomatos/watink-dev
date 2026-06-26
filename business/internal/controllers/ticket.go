@@ -8,7 +8,6 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/application/usecases"
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
-	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
@@ -16,15 +15,15 @@ import (
 
 type TicketController struct {
 	updateTicket *usecases.UpdateTicketUseCase
-	broadcast    *services.RedisBroadcast
+	broadcast    domain.Broadcaster
 	messages     domain.MessageRepository
 	publisher    domain.CommandPublisher
 }
 
-func NewTicketController(ut *usecases.UpdateTicketUseCase, broadcast *services.RedisBroadcast, messages domain.MessageRepository, publisher domain.CommandPublisher) *TicketController {
+func NewTicketController(ut *usecases.UpdateTicketUseCase, broadcast domain.Broadcaster, messages domain.MessageRepository, publisher domain.CommandPublisher) *TicketController {
 	return &TicketController{
 		updateTicket: ut,
-		broadcast:    broadcast,
+		broadcast:    domain.BroadcastOrNop(broadcast),
 		messages:     messages,
 		publisher:    publisher,
 	}

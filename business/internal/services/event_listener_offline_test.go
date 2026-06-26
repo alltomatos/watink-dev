@@ -109,7 +109,7 @@ func (m *mockMessageRepo) Update(_ context.Context, _ *domain.Message, fields ma
 func TestHandleMessageRevoke_MarksDeleted(t *testing.T) {
 	msg := &domain.Message{ID: "m10", TicketID: 5}
 	mr := &mockMessageRepo{msg: msg}
-	el := &EventListener{messages: mr, broadcast: nil}
+	el := &EventListener{messages: mr, broadcast: domain.BroadcastOrNop(nil)}
 
 	payload, _ := json.Marshal(map[string]string{"messageId": "m10"})
 	if err := el.handleMessageRevoke(context.Background(), payload, uuid.New()); err != nil {
@@ -125,7 +125,7 @@ func TestHandleMessageRevoke_MarksDeleted(t *testing.T) {
 
 func TestHandleMessageRevoke_MessageNotFound_NoOp(t *testing.T) {
 	mr := &mockMessageRepo{msg: nil}
-	el := &EventListener{messages: mr}
+	el := &EventListener{messages: mr, broadcast: domain.BroadcastOrNop(nil)}
 
 	payload, _ := json.Marshal(map[string]string{"messageId": "ghost"})
 	if err := el.handleMessageRevoke(context.Background(), payload, uuid.New()); err != nil {
@@ -140,7 +140,7 @@ func TestHandleMessageRevoke_MessageNotFound_NoOp(t *testing.T) {
 
 func TestHandleMessageReaction_EmptyMessageID_NoOp(t *testing.T) {
 	mr := &mockMessageRepo{}
-	el := &EventListener{messages: mr}
+	el := &EventListener{messages: mr, broadcast: domain.BroadcastOrNop(nil)}
 
 	payload, _ := json.Marshal(map[string]interface{}{"messageId": "", "reaction": "👍"})
 	if err := el.handleMessageReaction(context.Background(), payload, uuid.New()); err != nil {
@@ -154,7 +154,7 @@ func TestHandleMessageReaction_EmptyMessageID_NoOp(t *testing.T) {
 func TestHandleMessageReaction_AddsNewReaction(t *testing.T) {
 	msg := &domain.Message{ID: "m20", TicketID: 7, Reactions: "[]"}
 	mr := &mockMessageRepo{msg: msg}
-	el := &EventListener{messages: mr, broadcast: nil}
+	el := &EventListener{messages: mr, broadcast: domain.BroadcastOrNop(nil)}
 
 	payload, _ := json.Marshal(map[string]interface{}{
 		"messageId": "m20",
@@ -188,7 +188,7 @@ func TestHandleMessageReaction_RemovesExistingReaction(t *testing.T) {
 	})
 	msg := &domain.Message{ID: "m21", TicketID: 7, Reactions: string(existing)}
 	mr := &mockMessageRepo{msg: msg}
-	el := &EventListener{messages: mr, broadcast: nil}
+	el := &EventListener{messages: mr, broadcast: domain.BroadcastOrNop(nil)}
 
 	// Empty reaction = remove
 	payload, _ := json.Marshal(map[string]interface{}{

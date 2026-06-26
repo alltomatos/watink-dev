@@ -14,10 +14,10 @@ type WhatsAppSessionService struct {
 	db        *gorm.DB
 	publisher domain.CommandPublisher
 	redisSvc  domain.RedisService
-	broadcast *RedisBroadcast
+	broadcast domain.Broadcaster
 }
 
-func NewWhatsAppSessionService(db *gorm.DB, pub domain.CommandPublisher, redisSvc domain.RedisService, broadcast *RedisBroadcast) *WhatsAppSessionService {
+func NewWhatsAppSessionService(db *gorm.DB, pub domain.CommandPublisher, redisSvc domain.RedisService, broadcast domain.Broadcaster) *WhatsAppSessionService {
 	return &WhatsAppSessionService{db: db, publisher: pub, redisSvc: redisSvc, broadcast: broadcast}
 }
 

@@ -106,10 +106,13 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
       ? "group"
       : "individual";
 
-  const updatedAt = parseISO(ticket.updatedAt);
-  const timeLabel = isSameDay(updatedAt, new Date())
-    ? format(updatedAt, "HH:mm")
-    : format(updatedAt, "dd/MM");
+  const updatedAt = ticket.updatedAt ? parseISO(ticket.updatedAt) : new Date();
+  const isValidDate = !isNaN(updatedAt.getTime());
+  const timeLabel = isValidDate
+    ? isSameDay(updatedAt, new Date())
+      ? format(updatedAt, "HH:mm")
+      : format(updatedAt, "dd/MM")
+    : "";
 
   return (
     <div
@@ -139,13 +142,13 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
         <Avatar
           src={
             ticket.contact?.profilePicUrl
-              ? getBackendUrl(ticket.contact.profilePicUrl)
+              ? getBackendUrl(ticket.contact?.profilePicUrl)
               : null
           }
-          name={ticket.contact.name}
+          name={ticket.contact?.name ?? ""}
           size="md"
           isGroup={ticket.isGroup || ticket.contact?.isGroup}
-          aria-label={ticket.contact.name}
+          aria-label={ticket.contact?.name ?? ""}
         />
         {ticketType !== "individual" && (
           <span className={cn(
@@ -166,7 +169,7 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
         {/* Linha 1 — nome + horário */}
         <div className="flex items-baseline justify-between">
           <span className="truncate text-[0.8125rem] font-semibold leading-tight text-foreground">
-            {ticket.contact.name}
+            {ticket.contact?.name ?? ""}
           </span>
           <span className="ml-2 shrink-0 text-[0.6875rem] text-muted-foreground">
             {timeLabel}

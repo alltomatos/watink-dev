@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 
-import { useWhatsAppSocket } from "./useWhatsAppSocket";
+import { useWhatsAppSocket } from "./useWhatsAppSSE";
 import { useConnectionFetch } from "./useConnectionFetch";
 import { useConnectionActions } from "./useConnectionActions";
 

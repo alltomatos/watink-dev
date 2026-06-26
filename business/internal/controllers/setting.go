@@ -5,7 +5,6 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
-	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
@@ -16,11 +15,11 @@ import (
 // Tenant-scoped mutations use auth.GetScoped for RLS isolation.
 type SettingController struct {
 	settingRepo domain.SettingRepository
-	broadcast   *services.RedisBroadcast
+	broadcast   domain.Broadcaster
 }
 
-func NewSettingController(settingRepo domain.SettingRepository, broadcast *services.RedisBroadcast) *SettingController {
-	return &SettingController{settingRepo: settingRepo, broadcast: broadcast}
+func NewSettingController(settingRepo domain.SettingRepository, broadcast domain.Broadcaster) *SettingController {
+	return &SettingController{settingRepo: settingRepo, broadcast: domain.BroadcastOrNop(broadcast)}
 }
 
 // @Summary      Listar configurações

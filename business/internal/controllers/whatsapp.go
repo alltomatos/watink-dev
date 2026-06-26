@@ -14,15 +14,15 @@ import (
 type WhatsappController struct {
 	sessionRepo    domain.ChannelSessionRepository
 	planLimitSvc   domain.PlanLimitServiceInterface
-	broadcast      *services.RedisBroadcast
+	broadcast      domain.Broadcaster
 	sessionService *services.WhatsAppSessionService
 }
 
-func NewWhatsappController(sr domain.ChannelSessionRepository, planLimitSvc domain.PlanLimitServiceInterface, broadcast *services.RedisBroadcast, sessionService *services.WhatsAppSessionService) *WhatsappController {
+func NewWhatsappController(sr domain.ChannelSessionRepository, planLimitSvc domain.PlanLimitServiceInterface, broadcast domain.Broadcaster, sessionService *services.WhatsAppSessionService) *WhatsappController {
 	return &WhatsappController{
 		sessionRepo:    sr,
 		planLimitSvc:   planLimitSvc,
-		broadcast:      broadcast,
+		broadcast:      domain.BroadcastOrNop(broadcast),
 		sessionService: sessionService,
 	}
 }
