@@ -7,7 +7,7 @@ Guia para o Claude Code ao trabalhar neste repositório.
 Watink — plataforma de atendimento e automação no WhatsApp. Microsserviços com RabbitMQ, multitenancy via PostgreSQL RLS, sistema de plugins com licenciamento centralizado.
 
 ```
-Frontend (React/Vite) ←REST/Socket.io→ Backend Go (Gin/GORM) ←SQL→ PostgreSQL
+Frontend (React/Vite) ←REST/SSE→ Backend Go (Gin/GORM) ←SQL→ PostgreSQL
                                                ↕ AMQP
                                           RabbitMQ ←── Engine Go (whatsmeow) → WhatsApp
                                                ↕
@@ -199,7 +199,7 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 
 **Invariants:**
 - Real-time é **100% server-push** — o cliente nunca envia dados reais pelo stream; mensagens vão por `POST /messages/:ticketId`. O stream só carrega inscrição em salas (via query).
-- Pontos de emissão dependem da **interface `Broadcaster`**, nunca de uma implementação concreta — `RedisBroadcast`/`SSEBroadcast` são intercambiáveis por feature-flag.
+- Pontos de emissão dependem da **interface `Broadcaster`**, nunca de uma implementação concreta — `RedisBroadcast` delega ao `SSEBroadcast` via `SSEHub`.
 - O backbone Redis (`Publish`/`Start` + guard `SourceID==NodeID`) é agnóstico de transporte — não acoplar lógica de transporte nele.
 - Eventos globais são **tenant-scoped** via `EmitToTenantRoom` — nunca `EmitToNamespace("/")` para dados de um tenant.
 - Endpoint SSE faz `Flush()` por evento + heartbeat `: ping` (~20s) + header `X-Accel-Buffering: no`.

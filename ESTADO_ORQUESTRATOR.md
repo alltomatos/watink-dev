@@ -2,7 +2,7 @@
 
 > Arquivo de estado vivo do Orchestrator.
 > **Última atualização**: 2026-06-26
-> **Branch**: `develop` (PRs #211–#232 mergeados)
+> **Branch**: `develop` (PRs #211–#233 mergeados)
 
 ---
 
@@ -89,7 +89,7 @@ Rodada F [BLOQUEANTE]: T13 — aguarda aprovação após T10
 | T10 | ⏳ pendente | Validação manual com REALTIME_BACKEND=sse em staging |
 | T11 | ✅ PR #232 | /events fora do access-log |
 | T12 | ✅ PR #232 | Replay Last-Event-ID (mínimo viável) |
-| T13 | 🔒 BLOQUEANTE | Remoção Socket.IO — aguarda aprovação após T10 |
+| T13 | ✅ PR #233 | Socket.IO removido — go-socket.io, socket.io-client, socket.go, socketio_sink.go |
 > **Epic atual**: Onda 8 concluída — PR #226 (fix/tag-n1 já no develop via #225), PR #227 (test/deal-controller) aberto para review
 
 ---
