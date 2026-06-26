@@ -70,9 +70,16 @@ const Ticket: React.FC<TicketProps> = ({ onToggleDetails, showDetails }) => {
   }, [ticketId]);
 
   useEffect(() => {
-    const handleTicket = (data: { action: string; ticket?: TicketData }) => {
+    const handleTicket = (data: { action: string; ticket?: TicketData; ticketId?: number }) => {
+      const incomingId = data.ticket?.id ?? data.ticketId;
+      if (incomingId && Number(incomingId) !== Number(ticketId)) return;
       if (data.action === "update" && data.ticket) {
-        setTicket(data.ticket);
+        setTicket((prev) => ({
+          ...prev,
+          ...data.ticket,
+          status: data.ticket!.status ?? prev.status,
+          contact: data.ticket!.contact ?? prev.contact,
+        }));
       }
       if (data.action === "delete") {
         toast.success("Ticket deleted sucessfully.");

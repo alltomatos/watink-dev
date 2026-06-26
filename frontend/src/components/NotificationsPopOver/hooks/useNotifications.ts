@@ -28,6 +28,7 @@ export function useNotifications(): UseNotificationsReturn {
 
   const [notifications, setNotifications] = useState<Ticket[]>([]);
   const [, setDesktopNotifications] = useState<Notification[]>([]);
+  const clearedRef = useRef(!!localStorage.getItem("notificationsCleared"));
 
   const { data: ticketsData } = useTickets({ withUnreadMessages: "true" });
   const tickets = ticketsData?.tickets;
@@ -61,9 +62,12 @@ export function useNotifications(): UseNotificationsReturn {
     };
   }, []);
 
-  // Sincroniza tickets com mensagens não lidas como notificações iniciais
+  // Sincroniza tickets com mensagens não lidas como notificações iniciais.
+  // Só re-popula se o usuário não tiver clicado em "Limpar" manualmente.
   useEffect(() => {
-    setNotifications(tickets ?? []);
+    if (!clearedRef.current) {
+      setNotifications(tickets ?? []);
+    }
   }, [tickets]);
 
   // Mantém ref atualizada com o ticketId atual da URL
@@ -165,6 +169,7 @@ export function useNotifications(): UseNotificationsReturn {
       contact: Contact;
     }) => {
         if (!data.ticket || !data.message || !data.contact) return;
+        if (data.message.fromMe) return;
         const notifyGroups = localStorage.getItem("notifyGroups") !== "false";
 
         if (
@@ -172,6 +177,11 @@ export function useNotifications(): UseNotificationsReturn {
           !data.message.read &&
           (data.ticket.userId === user?.id || !data.ticket.userId)
         ) {
+          // Nova mensagem chega: reativa notificações mesmo após Limpar
+          if (clearedRef.current) {
+            clearedRef.current = false;
+            localStorage.removeItem("notificationsCleared");
+          }
           setNotifications((prevState) => {
             const ticketIndex = prevState.findIndex(
               (t) => t.id === data.ticket.id
@@ -204,8 +214,10 @@ export function useNotifications(): UseNotificationsReturn {
   }, [user]);
 
   const clearNotifications = () => {
+    clearedRef.current = true;
+    localStorage.setItem("notificationsCleared", "1");
     setDesktopNotifications((prev) => {
-      prev.forEach((n) => n.close());
+      prev.forEach((n) => { try { n.close(); } catch (_e) { /* browser pode rejeitar close */ } });
       return [];
     });
     setNotifications([]);
