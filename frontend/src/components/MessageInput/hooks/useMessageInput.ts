@@ -30,7 +30,9 @@ export const useMessageInput = () => {
   const audio = useAudioRecording(ticketId, setLoading);
   const mediaUpload = useMediaUpload(setLoading);
   const mentions = useMentions();
-  const quickAnswersHook = useQuickAnswers();
+  const quickAnswersHook = useQuickAnswers((qa) => {
+    console.warn("Direct send not yet implemented for type:", qa.type);
+  });
 
   useEffect(() => {
     if (inputRef.current) inputRef.current.focus();
@@ -159,8 +161,8 @@ export const useMessageInput = () => {
     // quick answers
     quickAnswers: quickAnswersHook.quickAnswers,
     typeBar: quickAnswersHook.typeBar,
-    handleQuickAnswersClick: (value: string) =>
-      quickAnswersHook.handleQuickAnswersClick(value, setInputMessage),
+    handleQuickAnswersClick: (qa: import("./useQuickAnswers").QuickAnswer) =>
+      quickAnswersHook.handleQuickAnswersClick(qa, setInputMessage),
     // text & emoji
     handleChangeInput,
     handleAddEmoji,

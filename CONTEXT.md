@@ -72,8 +72,12 @@ _Avoid_: Atendimento, registro, chamado helpdesk
 **KnowledgeBase**: Base de conhecimento com fontes (KnowledgeBaseSource) para resposta automática assistida por IA.
 _Avoid_: FAQ, wiki, documentação
 
-**QuickAnswer**: Resposta rápida predefinida para agilizar atendimento de Tickets.
+**QuickAnswer**: Template de mensagem pré-escrito com tipo estruturado (`text`, `interactive_buttons`, `list`, `media`, `poll`, `carousel`), acionado via atalho `/shortcut` no chat ou por fluxos automáticos via dispatch backend.
 _Avoid_: Template, canned response, resposta padrão
+
+**PollResults**: Registro de respostas de enquetes enviadas via QuickAnswer do tipo `poll`, armazenando opção selecionada por contato (`poll_message_id`, `contact_jid`, `option_selected`, `answered_at`). Criado apenas quando `capture_results: true`.
+
+**QuickAnswer dispatch**: Ação de envio de uma QuickAnswer pelo backend, que resolve variáveis de interpolação e despacha o payload ao engine via RabbitMQ. Acionado por `POST /quickAnswers/:id/send`.
 
 **Tenant**: Organização cliente na plataforma SaaS. Isolamento de dados garantido por PostgreSQL RLS (`app.current_tenant`). Cada Tenant possui Users, Queues, Whatsapps, e Settings próprios.
 _Avoid_: Account, organization, empresa, cliente

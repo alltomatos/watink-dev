@@ -110,3 +110,12 @@ type ContactImportPayload struct {
 	SessionID string            `json:"sessionId"`
 	Contacts  []ImportedContact `json:"contacts"`
 }
+
+// PollVotePayload is emitted by the engine when a contact votes on a poll message.
+// Routing key: "wbot.*.*.message.poll_vote"
+type PollVotePayload struct {
+	SessionID      string `json:"sessionId"`
+	PollMessageID  string `json:"pollMessageId"`
+	VoterJID       string `json:"voterJid"`
+	OptionSelected string `json:"optionSelected"`
+}

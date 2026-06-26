@@ -105,9 +105,11 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
       );
     };
 
-    const handleAppMessage = (data: { action: string; ticket?: TicketShape; contact?: TicketShape["contact"] }) => {
+    const handleAppMessage = (data: { action: string; ticket?: TicketShape & { status?: string }; contact?: TicketShape["contact"] }) => {
       if (data.action !== "create" || !data.ticket) return;
       const ticket = data.contact ? { ...data.ticket, contact: data.contact } : data.ticket;
+      // Só insere/sobe se o status do ticket bate com o filtro desta lista
+      if (status && ticket.status && ticket.status !== status) return;
       if (!shouldUpdateTicket(ticket)) return;
       queryClient.setQueryData(queryKey, (oldData: { pages: { tickets: TicketShape[] }[] } | undefined) => {
         if (!oldData || oldData.pages.length === 0) return oldData;
@@ -120,20 +122,35 @@ const TicketsList: React.FC<TicketsListProps> = (props) => {
       });
     };
 
-    const handleTicket = (data: { action: string; ticket?: TicketShape; contact?: TicketShape["contact"]; ticketId?: number }) => {
-      if (data.action === "update" && data.ticket && shouldUpdateTicket(data.ticket)) {
+    const handleTicket = (data: { action: string; ticket?: TicketShape & { status?: string }; contact?: TicketShape["contact"]; ticketId?: number }) => {
+      if (data.action === "update" && data.ticket) {
         const ticket = data.contact ? { ...data.ticket, contact: data.contact } : data.ticket;
-        queryClient.setQueryData(queryKey, (oldData: { pages: { tickets: TicketShape[] }[] } | undefined) => {
-          if (!oldData || oldData.pages.length === 0) return oldData;
-          // Remove qualquer ocorrência anterior e insere no topo da 1ª página,
-          // espelhando o comportamento do WhatsApp (conversa nova sobe ao topo).
-          const pages = oldData.pages.map((page) => ({
-            ...page,
-            tickets: page.tickets.filter((t) => t.id !== ticket.id),
-          }));
-          pages[0] = { ...pages[0], tickets: [ticket, ...pages[0].tickets] };
-          return { ...oldData, pages };
-        });
+        // Se esta lista filtra por status e o ticket mudou para outro status, remove-o da lista
+        if (status && ticket.status && ticket.status !== status) {
+          queryClient.setQueryData(queryKey, (oldData: { pages: { tickets: TicketShape[] }[] } | undefined) => {
+            if (!oldData) return oldData;
+            return { ...oldData, pages: oldData.pages.map((page) => ({ ...page, tickets: page.tickets.filter((t) => t.id !== ticket.id) })) };
+          });
+          return;
+        }
+        if (shouldUpdateTicket(ticket)) {
+          queryClient.setQueryData(queryKey, (oldData: { pages: { tickets: TicketShape[] }[] } | undefined) => {
+            if (!oldData || oldData.pages.length === 0) return oldData;
+            // Faz merge com dados existentes para não perder contact/foto quando o
+            // payload é parcial (ex: message_send envia só {id, lastMessage, updatedAt}).
+            let existing: TicketShape | undefined;
+            const pages = oldData.pages.map((page) => ({
+              ...page,
+              tickets: page.tickets.filter((t) => {
+                if (t.id === ticket.id) { existing = t; return false; }
+                return true;
+              }),
+            }));
+            const merged = existing ? { ...existing, ...ticket } : ticket;
+            pages[0] = { ...pages[0], tickets: [merged, ...pages[0].tickets] };
+            return { ...oldData, pages };
+          });
+        }
       } else if (data.action === "delete") {
         queryClient.setQueryData(queryKey, (oldData: { pages: { tickets: TicketShape[] }[] } | undefined) => {
           if (!oldData) return oldData;
