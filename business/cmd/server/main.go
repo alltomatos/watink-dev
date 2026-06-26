@@ -69,26 +69,13 @@ func main() {
 	r.Use(middleware.ObservabilityMiddleware())
 	r.Use(middleware.CORSMiddleware())
 
-	var broadcast domain.Broadcaster
-	realtimeBackend := os.Getenv("REALTIME_BACKEND")
-	if realtimeBackend == "sse" {
-		hub := services.NewSSEHub()
-		hub.StartHeartbeat(20 * time.Second)
-		sseBroadcast := services.NewSSEBroadcast(hub)
-		redisBroadcast := services.NewRedisBroadcast(redisSvc, sseBroadcast)
-		redisBroadcast.Start()
-		broadcast = redisBroadcast
-		log.Println("Real-time backend: SSE")
-	} else {
-		server := services.StartSocket()
-		sink := services.NewSocketIOSink(server)
-		redisBroadcast := services.NewRedisBroadcast(redisSvc, sink)
-		redisBroadcast.Start()
-		broadcast = redisBroadcast
-		r.GET("/socket.io/*any", gin.WrapH(server))
-		r.POST("/socket.io/*any", gin.WrapH(server))
-		log.Println("Real-time backend: Socket.IO (legacy)")
-	}
+	hub := services.NewSSEHub()
+	hub.StartHeartbeat(20 * time.Second)
+	sseBroadcast := services.NewSSEBroadcast(hub)
+	redisBroadcast := services.NewRedisBroadcast(redisSvc, sseBroadcast)
+	redisBroadcast.Start()
+	var broadcast domain.Broadcaster = redisBroadcast
+	log.Println("Real-time backend: SSE")
 
 	rabbitMQ := services.NewRabbitMQProvider(os.Getenv("AMQP_URL"))
 	container := application.NewContainer(database.DB, redisSvc, broadcast, rabbitMQ)
