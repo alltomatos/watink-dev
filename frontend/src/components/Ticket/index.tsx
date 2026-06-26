@@ -53,20 +53,23 @@ const Ticket: React.FC<TicketProps> = ({ onToggleDetails, showDetails }) => {
   const [contact, setContact] = useState<Contact>({} as Contact);
   const [ticket, setTicket] = useState<TicketData>({} as TicketData);
 
-  useEffect(() => {
+  const fetchTicket = async () => {
     setLoading(true);
-    const delayDebounceFn = setTimeout(async () => {
-      try {
-        const { data } = await api.get(`/tickets/${ticketId}`);
-        setContact(data.contact);
-        setTicket(data);
-      } catch (err) {
-        toastError(err);
-      } finally {
-        setLoading(false);
-      }
-    }, 500);
-    return () => clearTimeout(delayDebounceFn);
+    try {
+      const { data } = await api.get(`/tickets/${ticketId}`);
+      setContact(data.contact);
+      setTicket(data);
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(fetchTicket, 500);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId]);
 
   useEffect(() => {
@@ -126,6 +129,7 @@ const Ticket: React.FC<TicketProps> = ({ onToggleDetails, showDetails }) => {
             ticket={ticket}
             onToggleDetails={onToggleDetails}
             showDetails={showDetails}
+            onAccepted={fetchTicket}
           />
         </div>
       </TicketHeader>
