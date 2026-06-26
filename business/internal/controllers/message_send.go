@@ -199,6 +199,22 @@ func (mc *MessageController) SendMessage(c *gin.Context) {
 		Where("id = ? AND \"tenantId\" = ?", ticketID, tenantID).
 		Updates(map[string]interface{}{"lastMessage": lastMessage, "updatedAt": now})
 
+	// Emit socket events so the frontend updates in real-time without a page refresh.
+	// Pattern mirrors event_listener.go: appMessage to the ticket room + tenant room,
+	// and ticket:update to the tenant room so the sidebar lastMessage refreshes.
+	ticketRoom := "chat:" + strconv.Itoa(ticketID)
+	msgPayload := map[string]interface{}{"action": "create", "message": outgoing}
+	mc.broadcast.EmitToRoom("/", ticketRoom, "appMessage", msgPayload)
+	mc.broadcast.EmitToTenantRoom(tenantID.String(), "appMessage", msgPayload)
+	mc.broadcast.EmitToTenantRoom(tenantID.String(), "ticket", map[string]interface{}{
+		"action": "update",
+		"ticket": map[string]interface{}{
+			"id":          ticketID,
+			"lastMessage": lastMessage,
+			"updatedAt":   now,
+		},
+	})
+
 	c.JSON(http.StatusOK, gin.H{"message": "Message sent", "messageId": messageID})
 }
 

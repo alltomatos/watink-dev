@@ -134,7 +134,7 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 		return err
 	}
 
-	room := strconv.Itoa(result.Ticket.ID)
+	room := "chat:" + strconv.Itoa(result.Ticket.ID)
 	msgPayload := map[string]interface{}{"action": "create", "message": result.Message, "ticket": result.Ticket, "contact": result.Contact}
 	el.bcast().EmitToRoom("/", room, "appMessage", msgPayload)
 	el.bcast().EmitToTenantRoom(tenantID.String(), "appMessage", msgPayload)

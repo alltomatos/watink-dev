@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { subscribeToSocket } from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/sse-client";
 import type { WhatsApp } from "../connectionConfigTypes";
 
 interface UseWhatsAppSocketOptions {

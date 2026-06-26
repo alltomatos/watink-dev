@@ -6,7 +6,7 @@ import api from "../../../services/api";
 import toastError from "../../../errors/toastError";
 import { i18n } from "../../../translate/i18n";
 import { useWhatsAppsQuery } from "../../../hooks/useWhatsAppsQuery";
-import { subscribeToSocket } from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/sse-client";
 
 import type { ConnectionSession } from "../connectionsTypes";
 

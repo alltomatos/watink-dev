@@ -5,7 +5,7 @@ import TicketsList from "../index";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
-vi.mock("../../../services/socket-io", () => ({
+vi.mock("../../../services/sse-client", () => ({
   default: () => ({
     on: vi.fn(),
     emit: vi.fn(),
