@@ -67,6 +67,8 @@ type updateQuickAnswerInput struct {
 	Message   string `json:"message"`
 	MediaType string `json:"mediaType"`
 	DataJson  string `json:"dataJson"`
+	Type      string `json:"type"`
+	Content   string `json:"content"`
 }
 
 // maxQuickAnswerMessageLen is the maximum allowed length for a quick answer message body.
@@ -106,6 +108,9 @@ func (qac *QuickAnswerController) Create(c *gin.Context) {
 	}
 
 	qa.TenantID = tenantID
+	if qa.Type == "" {
+		qa.Type = "text"
+	}
 	if err := db.Create(&qa).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "CreateQuickAnswer")
 		return
@@ -162,6 +167,12 @@ func (qac *QuickAnswerController) Update(c *gin.Context) {
 	qa.Message = message
 	qa.MediaType = mediaType
 	qa.DataJson = input.DataJson
+	if input.Type != "" {
+		qa.Type = input.Type
+	}
+	if input.Content != "" {
+		qa.Content = input.Content
+	}
 
 	if err := db.Where("\"tenantId\" = ?", tenantID).Save(&qa).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "UpdateQuickAnswer-Save")

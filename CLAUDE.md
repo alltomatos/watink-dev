@@ -193,6 +193,30 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 
 **Referência:** [`docs/agents/pipeline.md`](docs/agents/pipeline.md)
 
+## Módulo: QuickAnswers (Respostas Rápidas)
+
+**Responsabilidade:** Biblioteca de templates de mensagem pré-escritos para uso no chat manual (autocomplete `/`) e em fluxos automáticos (dispatch via backend).
+
+**Tipos suportados:** `text` · `interactive_buttons` · `list` · `media` · `poll` · `carousel` (pendente validação whatsmeow)
+
+**Invariants:**
+- Sempre usar `auth.GetScoped(c, "QuickAnswers")` — nunca `c.Get("tenantId")` bruto
+- `UNIQUE(tenantId, shortcut)` — duplicatas rejeitadas no banco
+- Dispatch é sempre backend-side via `POST /quickAnswers/:id/send` — frontend só envia `quickAnswerId + ticketId`
+- Variáveis `{{contact_name}}` etc. resolvidas no backend, nunca no frontend; valor ausente → string vazia
+- `capture_results` em enquetes é opt-in por registro, não global
+
+**Preview:** A página de criação exibe simulação visual da bolha WhatsApp em tempo real. Variáveis `{{contact_name}}` etc. aparecem destacadas no preview — nunca substituídas. Botões e listas são renderizados visualmente (sem ação real).
+
+**O que NÃO fazer:**
+- Não montar payload de envio no frontend
+- Não bloquear envio por variável ausente
+- Não usar campos legados `MediaType`/`DataJson` — substituídos por `type`/`content`
+- Não implementar carrossel antes de confirmar suporte nativo no whatsmeow
+- Não substituir variáveis no preview — apenas destacar visualmente
+
+**Referência:** [`docs/agents/quick-answers.md`](docs/agents/quick-answers.md)
+
 ## Módulo: Real-Time (SSE)
 
 **Responsabilidade:** Push de eventos Business→Frontend (mensagens, tickets, sessões WhatsApp, etc.) em tempo real, via SSE, com fan-out cross-node por Redis Pub/Sub.
