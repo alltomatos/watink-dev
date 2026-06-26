@@ -19,7 +19,7 @@ type SettingController struct {
 }
 
 func NewSettingController(settingRepo domain.SettingRepository, broadcast domain.Broadcaster) *SettingController {
-	return &SettingController{settingRepo: settingRepo, broadcast: broadcast}
+	return &SettingController{settingRepo: settingRepo, broadcast: domain.BroadcastOrNop(broadcast)}
 }
 
 // @Summary      Listar configurações

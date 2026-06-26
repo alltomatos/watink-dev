@@ -23,7 +23,7 @@ type EventListener struct {
 }
 
 func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase, broadcast domain.Broadcaster) *EventListener {
-	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: broadcast}
+	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: domain.BroadcastOrNop(broadcast)}
 }
 
 func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener) {

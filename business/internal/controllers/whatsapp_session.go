@@ -20,7 +20,7 @@ type SessionController struct {
 func NewSessionController(sr domain.ChannelSessionRepository, broadcast domain.Broadcaster, sessionService *services.WhatsAppSessionService) *SessionController {
 	return &SessionController{
 		sessionRepo:    sr,
-		broadcast:      broadcast,
+		broadcast:      domain.BroadcastOrNop(broadcast),
 		sessionService: sessionService,
 	}
 }

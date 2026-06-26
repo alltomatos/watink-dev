@@ -22,7 +22,7 @@ func NewWhatsappController(sr domain.ChannelSessionRepository, planLimitSvc doma
 	return &WhatsappController{
 		sessionRepo:    sr,
 		planLimitSvc:   planLimitSvc,
-		broadcast:      broadcast,
+		broadcast:      domain.BroadcastOrNop(broadcast),
 		sessionService: sessionService,
 	}
 }
