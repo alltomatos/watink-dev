@@ -82,7 +82,7 @@ func (sc *SSEController) Stream(c *gin.Context) {
 		}
 	}
 
-	log.Printf("[SSE] connect connID rooms=%v", rooms)
+	log.Printf("[SSE] connect connID rooms=%d", len(rooms)) // logs only count, not room names — no user-controlled string in format
 	connID := uuid.New().String()
 	ch, cleanup := sc.hub.Register(connID, rooms)
 	defer cleanup()
@@ -114,7 +114,7 @@ func (sc *SSEController) Stream(c *gin.Context) {
 			_, _ = fmt.Fprintf(w, "id: %s\nevent: appMessage\ndata: %s\n\n", lastEventID, val)
 			flusher.Flush()
 		} else if err != nil {
-			log.Printf("[SSE] replay Last-Event-ID=%s: cache miss or error: %v", lastEventID, err)
+			log.Printf("[SSE] replay: cache miss or error: %v", err)
 		}
 	}
 

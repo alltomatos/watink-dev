@@ -104,7 +104,7 @@ func testDSN() string {
 	host := envOr("DB_HOST", "localhost")
 	port := envOr("DB_PORT", "5432")
 	user := envOr("DB_USER", "postgres")
-	pass := envOr("DB_PASS", "postgres")
+	pass := envOr("DB_PASS", "watink_secret_pass")
 	name := envOr("DB_NAME", "watink")
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, pass, host, port, name)
 }
