@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
@@ -9,6 +12,40 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+var validQuickAnswerTypes = map[string]bool{
+	"text": true, "interactive_buttons": true, "list": true,
+	"media": true, "poll": true, "carousel": true,
+}
+
+func validateQuickAnswerType(t string) error {
+	if t == "" || t == "text" {
+		return nil
+	}
+	if !validQuickAnswerTypes[t] {
+		return fmt.Errorf("invalid type %q: must be one of text, interactive_buttons, list, media, poll, carousel", t)
+	}
+	return nil
+}
+
+func validateQuickAnswerContent(content string) error {
+	if content == "" || content == "null" {
+		return nil
+	}
+	var js json.RawMessage
+	if err := json.Unmarshal([]byte(content), &js); err != nil {
+		return fmt.Errorf("content must be valid JSON: %w", err)
+	}
+	return nil
+}
+
+func isUniqueViolation(err error, indexName string) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, indexName) || (strings.Contains(msg, "unique") && strings.Contains(msg, "shortcut"))
+}
 
 // QuickAnswerController encapsulates quick answer operations with RLS-scoped DB from auth middleware.
 // All queries are automatically tenant-scoped via auth.GetDB(c).
@@ -106,12 +143,24 @@ func (qac *QuickAnswerController) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := validateQuickAnswerType(qa.Type); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := validateQuickAnswerContent(qa.Content); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	qa.TenantID = tenantID
 	if qa.Type == "" {
 		qa.Type = "text"
 	}
 	if err := db.Create(&qa).Error; err != nil {
+		if isUniqueViolation(err, "idx_quick_answers_tenant_shortcut") {
+			c.JSON(http.StatusConflict, gin.H{"error": "shortcut already exists for this tenant"})
+			return
+		}
 		utils.RespondWithInternalError(c, err, "CreateQuickAnswer")
 		return
 	}
@@ -162,6 +211,14 @@ func (qac *QuickAnswerController) Update(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := validateQuickAnswerType(input.Type); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := validateQuickAnswerContent(input.Content); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	qa.Shortcut = shortcut
 	qa.Message = message
@@ -175,6 +232,10 @@ func (qac *QuickAnswerController) Update(c *gin.Context) {
 	}
 
 	if err := db.Where("\"tenantId\" = ?", tenantID).Save(&qa).Error; err != nil {
+		if isUniqueViolation(err, "idx_quick_answers_tenant_shortcut") {
+			c.JSON(http.StatusConflict, gin.H{"error": "shortcut already exists for this tenant"})
+			return
+		}
 		utils.RespondWithInternalError(c, err, "UpdateQuickAnswer-Save")
 		return
 	}

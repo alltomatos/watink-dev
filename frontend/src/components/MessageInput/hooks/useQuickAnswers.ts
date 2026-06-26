@@ -1,20 +1,18 @@
 import { useState } from "react";
 import api from "../../../services/api";
+import { QuickAnswer } from "../../../pages/QuickAnswers/quickAnswersTypes";
 
-export interface QuickAnswer {
-  shortcut: string;
-  message: string;
-}
+export type { QuickAnswer };
 
 export interface UseQuickAnswersReturn {
   quickAnswers: QuickAnswer[];
   typeBar: boolean;
   loadQuickAnswers: (value: string) => Promise<boolean>;
-  handleQuickAnswersClick: (value: string, setInput: (v: string) => void) => void;
+  handleQuickAnswersClick: (qa: QuickAnswer, setInput: (v: string) => void) => void;
   closeTypeBar: () => void;
 }
 
-export function useQuickAnswers(): UseQuickAnswersReturn {
+export function useQuickAnswers(onDirectSend?: (qa: QuickAnswer) => void): UseQuickAnswersReturn {
   const [quickAnswers, setQuickAnswer] = useState<QuickAnswer[]>([]);
   const [typeBar, setTypeBar] = useState(false);
 
@@ -40,8 +38,16 @@ export function useQuickAnswers(): UseQuickAnswersReturn {
     return false;
   };
 
-  const handleQuickAnswersClick = (value: string, setInput: (v: string) => void) => {
-    setInput(value);
+  const handleQuickAnswersClick = (qa: QuickAnswer, setInput: (v: string) => void) => {
+    if (!qa.type || qa.type === "text") {
+      setInput(qa.message);
+    } else {
+      if (onDirectSend) {
+        onDirectSend(qa);
+      } else {
+        console.warn("Direct send not yet implemented for type:", qa.type);
+      }
+    }
     setTypeBar(false);
   };
 
