@@ -1,5 +1,5 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
-import { subscribeToSocket } from "../../services/socket-io";
+import { subscribeToSocket } from "../../services/sse-client";
 import toastError from "../../errors/toastError";
 import api from "../../services/api";
 

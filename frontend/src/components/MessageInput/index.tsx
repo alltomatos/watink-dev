@@ -133,13 +133,13 @@ const MessageInput: React.FC<MessageInputProps> = ({ ticketStatus, whatsappStatu
         {/* Input area */}
         <div
           className={clsx(
-            "p-1.5 mr-1.5 bg-[var(--bg-surface)] flex rounded-[20px] flex-1 relative",
+            "p-1.5 mr-1.5 bg-[var(--bg-surface)] flex items-center rounded-[20px] flex-1 relative min-h-[36px]",
             appTheme === "saas" && "border border-[var(--border-default)] shadow-none"
           )}
         >
           <textarea
             ref={inputRef}
-            className="pl-2.5 flex-1 border-none bg-transparent resize-none outline-none text-sm leading-5 max-h-[120px]"
+            className="pl-2.5 flex-1 border-none bg-transparent resize-none outline-none text-sm leading-5 min-h-[20px] max-h-[120px]"
             placeholder={
               ticketStatus === "open"
                 ? i18n.t("messagesInput.placeholderOpen") as string
@@ -157,7 +157,6 @@ const MessageInput: React.FC<MessageInputProps> = ({ ticketStatus, whatsappStatu
                 handleSendMessage();
               }
             }}
-            style={{ fieldSizing: "content" } as React.CSSProperties}
           />
 
           {typeBar && (

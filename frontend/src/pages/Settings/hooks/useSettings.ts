@@ -5,7 +5,7 @@ import api from "../../../services/api";
 import pluginApi from "../../../services/pluginApi";
 import { i18n } from "../../../translate/i18n";
 import toastError from "../../../errors/toastError";
-import { subscribeToSocket } from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/sse-client";
 
 const DB_THEME_MAP: Record<string, { appTheme: string; darkMode?: boolean }> = {
   whaticket: { appTheme: "google" },
