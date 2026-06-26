@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useContext } from "react";
 import { toast } from "react-toastify";
-import { subscribeToSocket } from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/sse-client";
 import api from "../../../services/api";
 import { i18n } from "../../../translate/i18n";
 import toastError from "../../../errors/toastError";

@@ -1,8 +1,95 @@
 # ESTADO_ORQUESTRATOR.md
 
 > Arquivo de estado vivo do Orchestrator.
-> **Última atualização**: 2026-06-25
-> **Branch**: `develop` (PRs #211–#227 mergeados ou abertos)
+> **Última atualização**: 2026-06-26
+> **Branch**: `develop` (PRs #211–#233 mergeados)
+
+---
+
+## Épico Ativo: Migração Real-Time SSE (ADR 0010)
+
+**Branch alvo:** `feat/realtime-sse`
+
+### Auditoria Técnica — GAPs
+
+#### GAP-RT-1 — Interface Broadcaster ausente no domínio (T2)
+`Container.Broadcast` é `*services.RedisBroadcast` concreto — impossível trocar por feature-flag.
+**Fix:** extrair `domain.Broadcaster`; ajustar Container + 11 controllers.
+
+#### GAP-RT-2 — SSEHub/SSEBroadcast/endpoint /events inexistem (T2)
+Nenhum arquivo SSE no backend. Criar `sse_hub.go`, `sse_broadcast.go`, `controllers/sse.go` + rota.
+
+#### GAP-RT-3 — Redis backbone acoplado a socketio.Server (T2)
+`RedisBroadcast.Start()` chama `server.BroadcastToRoom` diretamente.
+**Fix:** injetar `localSink domain.Broadcaster`; feature-flag `REALTIME_BACKEND=sse|socketio`.
+
+#### GAP-RT-4 — Auth SSE: token na query exposto em access-log (T2)
+**Fix:** rota `/events` fora do middleware de log; token TTL curto (fase 1).
+
+#### GAP-RT-5 — Frontend usa socket.io-client sem alternativa SSE (T3-BLOQUEANTE)
+**Fix:** reescrever interior de `socket-io.ts` como SSEClient singleton; preservar assinatura `subscribeToSocket`.
+
+#### GAP-RT-6 — Replay Last-Event-ID não implementado (T2)
+Cache Redis `wbot:msg:{jid}:{id}` existe mas handler não o lê. **Fix:** replay no handler `/events`.
+
+#### GAP-RT-7 — Remoção final Socket.IO pendente (T3-BLOQUEANTE)
+Só após paridade dos 8 critérios de sucesso validados.
+
+---
+
+### DAG de Tarefas — feat/realtime-sse
+
+**Paralelismo planejado:**
+```
+Rodada A (paralela): T1 + T8
+Rodada B (paralela, após T1): T2 + T3 + T4
+Rodada C (sequencial): T5 → T6 → T7
+Rodada D: T9 (após T8) → T10 (após T6+T7+T9)
+Rodada E (paralela, após T6): T11 + T12
+Rodada F [BLOQUEANTE]: T13 — aguarda aprovação após T10
+```
+
+#### Tarefas
+- [ ] **T1**: Criar `business/internal/domain/broadcaster.go` — interface `Broadcaster` | depends_on: []
+- [ ] **T2**: Atualizar `application/container.go` — campo `Broadcast domain.Broadcaster` | depends_on: [T1]
+- [ ] **T3**: Atualizar 11 controllers — aceitar `domain.Broadcaster` em vez de `*services.RedisBroadcast` | depends_on: [T1]
+- [ ] **T4**: Criar `business/internal/services/sse_hub.go` — SSEHub com sync.Map, Register/Deliver/Close, heartbeat 20s | depends_on: [T1]
+- [ ] **T5**: Criar `business/internal/services/sse_broadcast.go` — SSEBroadcast implementa domain.Broadcaster via SSEHub | depends_on: [T1, T4]
+- [ ] **T6**: Criar `business/internal/controllers/sse.go` + rota `GET /events` — JWT inline, stream text/event-stream, Flush, X-Accel-Buffering | depends_on: [T4, T5]
+- [ ] **T7**: Refatorar `redis_broadcast.go` — injetar `localSink domain.Broadcaster`; feature-flag `REALTIME_BACKEND` em main.go | depends_on: [T1, T5]
+- [ ] **T8**: Reescrever `frontend/src/services/socket-io.ts` — SSEClient singleton + roomRegistry + shim de salas | depends_on: []
+- [ ] **T9**: Adaptar 5 call-sites `onJoin` — useMessagesSocket, TicketsList, Ticket, useNotifications, useHelpdeskKanban | depends_on: [T8]
+- [ ] **T10**: Validar paridade 6 eventos com `REALTIME_BACKEND=sse` em local | depends_on: [T6, T7, T9]
+- [ ] **T11**: Auth — rota `/events` fora do access-log Gin | depends_on: [T6]
+- [ ] **T12**: Replay Last-Event-ID — buscar cache Redis após reconexão (somente appMessage) | depends_on: [T6]
+- [ ] **T13** 🔒 **[BLOQUEANTE — aguarda aprovação]**: Remover socket.go, rotas /socket.io/*, go-socket.io, socket.io-client | depends_on: [T10, T11, T12]
+
+#### Critérios de saída (antes de T13)
+1. [ ] Mensagem via REST aparece em <1s sem refresh
+2. [ ] lastMessage do ticket atualiza em tempo real
+3. [ ] 6 eventos com emissor Go com paridade confirmada
+4. [ ] Evento de tenant A não chega ao tenant B
+5. [ ] Backend reiniciado → reconecta e nenhum appMessage se perde
+6. [ ] Multi-aba HTTP/2 → POST /messages não fica pending
+7. [ ] Atrás de proxy real (staging) → evento chega imediatamente
+8. [ ] go-socket.io e socket.io-client removidos
+
+#### Registro de Execução
+| Task | Status | Notas |
+|---|---|---|
+| T1 | ✅ PR #232 | domain/broadcaster.go + BroadcastOrNop |
+| T2 | ✅ PR #232 | container.go Broadcast domain.Broadcaster |
+| T3 | ✅ PR #232 | 6 controllers + EventListener atualizados |
+| T4 | ✅ PR #232 | services/sse_hub.go |
+| T5 | ✅ PR #232 | services/sse_broadcast.go |
+| T6 | ✅ PR #232 | controllers/sse.go + rota /events |
+| T7 | ✅ PR #232 | redis_broadcast.go + socketio_sink.go + REALTIME_BACKEND flag |
+| T8 | ✅ PR #232 | socket-io.ts → SSEClient singleton |
+| T9 | ✅ PR #232 | 5 call-sites onJoin — sem mudança necessária |
+| T10 | ⏳ pendente | Validação manual com REALTIME_BACKEND=sse em staging |
+| T11 | ✅ PR #232 | /events fora do access-log |
+| T12 | ✅ PR #232 | Replay Last-Event-ID (mínimo viável) |
+| T13 | ✅ PR #233 | Socket.IO removido — go-socket.io, socket.io-client, socket.go, socketio_sink.go |
 > **Epic atual**: Onda 8 concluída — PR #226 (fix/tag-n1 já no develop via #225), PR #227 (test/deal-controller) aberto para review
 
 ---

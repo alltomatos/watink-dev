@@ -74,7 +74,7 @@ func (ac *AuthController) Login(c *gin.Context) {
 		return
 	}
 
-	secureCookie := os.Getenv("APP_ENV") != "test" && os.Getenv("GIN_MODE") != "test"
+	secureCookie := os.Getenv("APP_ENV") == "production"
 	c.SetCookie("refreshToken", refreshToken, 3600*24*7, "/", "", secureCookie, true)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -172,6 +172,6 @@ func (ac *AuthController) RefreshToken(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /auth/logout [delete]
 func (ac *AuthController) Logout(c *gin.Context) {
-	c.SetCookie("refreshToken", "", -1, "/", "", true, true)
+	c.SetCookie("refreshToken", "", -1, "/", "", os.Getenv("APP_ENV") == "production", true)
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }

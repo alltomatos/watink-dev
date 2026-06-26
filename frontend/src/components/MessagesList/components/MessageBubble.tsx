@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { isSameDay, parseISO } from "date-fns";
 import clsx from "clsx";
 import { ChevronDown } from "lucide-react";
+import api from "../../../services/api";
 
 import MarkdownWrapper from "../../MarkdownWrapper";
 import { Avatar } from "../../ui/avatar";
@@ -64,6 +65,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   colorCache,
   onOpenOptions,
 }) => {
+  const handleRetry = useCallback(async () => {
+    const ticketId = (message as Record<string, unknown>).ticketId;
+    if (!ticketId) return;
+    try {
+      await api.post(`/messages/${ticketId}`, { body: message.body, fromMe: true });
+    } catch {
+      // silent — ack will update via SSE
+    }
+  }, [message]);
+
   const currentSenderKey = getSenderKey(message, isGroup);
   const previousSenderKey =
     index > 0 ? getSenderKey(messagesList[index - 1], isGroup) : null;
@@ -122,7 +133,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           {getMessageBody(message)}
         </MarkdownWrapper>
       )}
-      <MessageMetadata message={message} isGroup={isGroup} />
+      <MessageMetadata message={message} isGroup={isGroup} onRetry={message.ack === 5 ? handleRetry : undefined} />
     </div>
   );
 

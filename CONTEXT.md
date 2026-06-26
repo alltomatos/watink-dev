@@ -123,6 +123,18 @@ _Avoid_: Bot, connector, wbot engine
 **TicketType**: Classificação visual de um Ticket derivada de suas flags booleanas — `individual | group | community | newsletter`. Derivado de `isGroup`, `isCommunity`, `isSubGroup`, `isNewsletter`. Exibido como badge de ícone no avatar do `TicketListItem` (community=violet, group=emerald, newsletter=sky).
 _Avoid_: ChatType, contactType, conversationType
 
+**Broadcaster**: Interface de emissão de eventos real-time ao frontend — `EmitToRoom`, `EmitToTenantRoom`, `EmitToNamespace`. Desacopla os pontos de emissão do transporte; implementações: `RedisBroadcast` (Socket.IO, legado) e `SSEBroadcast` (alvo). Ver ADR 0010.
+_Avoid_: Emitter, socket service, notifier
+
+**Room (Sala)**: Canal lógico de entrega de um evento real-time. Taxonomia: `tenant:{id}` (isolamento por tenant), `chat:{ticketId}` (mensagens de uma conversa), `notification`, `tickets:{status}`, `helpdesk-kanban`. No SSE, o cliente declara as salas na query do stream.
+_Avoid_: Channel, topic, namespace, grupo
+
+**Tenant Room**: Sala `tenant:{tenantId}` que isola broadcasts globais (ticket, whatsappSession, contact) por tenant. Auto-inscrita a partir do `tenantId` do JWT na conexão.
+_Avoid_: Tenant channel, broadcast room
+
+**Hub**: Registro local de conexões SSE de um nó Business. O consumidor do Redis Pub/Sub entrega eventos às conexões locais via `hub.deliver(room, payload)`, filtrando por sala/tenant.
+_Avoid_: Connection pool, registry, SSE manager
+
 
 ## Entity Relationships (Canonical)
 

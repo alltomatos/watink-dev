@@ -17,6 +17,7 @@ type mockRedisService struct {
 	subscribeFn func(ctx context.Context, channel string) *redis.PubSub
 	publishFn   func(ctx context.Context, channel string, message interface{}) error
 	pingFn      func(ctx context.Context) error
+	getFn       func(ctx context.Context, key string) (string, error)
 }
 
 func (m *mockRedisService) SetLock(key, value string, expiration time.Duration) (bool, error) {
@@ -33,6 +34,12 @@ func (m *mockRedisService) Publish(ctx context.Context, channel string, message 
 }
 func (m *mockRedisService) Ping(ctx context.Context) error {
 	return m.pingFn(ctx)
+}
+func (m *mockRedisService) Get(ctx context.Context, key string) (string, error) {
+	if m.getFn != nil {
+		return m.getFn(ctx, key)
+	}
+	return "", nil
 }
 
 // Compile-time assertion that mockRedisService satisfies RedisService.
