@@ -102,7 +102,7 @@ func (sc *SSEController) Stream(c *gin.Context) {
 	flusher.Flush()
 
 	// Send initial connection event.
-	fmt.Fprintf(w, "event: connected\ndata: {}\n\n")
+	_, _ = fmt.Fprintf(w, "event: connected\ndata: {}\n\n")
 	flusher.Flush()
 
 	// Replay: if the client reconnects with Last-Event-ID, attempt to redeliver
@@ -110,7 +110,7 @@ func (sc *SSEController) Stream(c *gin.Context) {
 	if lastEventID := c.GetHeader("Last-Event-ID"); lastEventID != "" && sc.redisSvc != nil {
 		key := "wbot:msg:" + lastEventID
 		if val, err := sc.redisSvc.Get(c.Request.Context(), key); err == nil && val != "" {
-			fmt.Fprintf(w, "id: %s\nevent: appMessage\ndata: %s\n\n", lastEventID, val)
+			_, _ = fmt.Fprintf(w, "id: %s\nevent: appMessage\ndata: %s\n\n", lastEventID, val)
 			flusher.Flush()
 		} else if err != nil {
 			log.Printf("[SSE] replay Last-Event-ID=%s: cache miss or error: %v", lastEventID, err)
@@ -126,7 +126,7 @@ func (sc *SSEController) Stream(c *gin.Context) {
 			if !open {
 				return
 			}
-			fmt.Fprint(w, msg)
+			_, _ = fmt.Fprint(w, msg)
 			flusher.Flush()
 		case <-c.Request.Context().Done():
 			return
