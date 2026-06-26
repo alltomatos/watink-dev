@@ -34,6 +34,8 @@ export function useNotifications(): UseNotificationsReturn {
   const tickets = ticketsData?.tickets;
 
   const soundAlertRef = useRef<(() => void) | null>(null);
+  // Dedup: evita toast duplicado para o mesmo messageId (pode chegar 2x via tenant+chat rooms)
+  const toastedIdsRef = useRef<Set<string>>(new Set());
 
   // Inicializa áudio e permissão de notificação desktop
   useEffect(() => {
@@ -200,6 +202,14 @@ export function useNotifications(): UseNotificationsReturn {
             (data.ticket.isGroup && !notifyGroups);
 
           if (shouldNotNotificate) return;
+
+          // Dedup: o backend emite para chat: e tenant: — filtra reentrada do mesmo msg
+          const msgId = String(data.message.id ?? "");
+          if (msgId && toastedIdsRef.current.has(msgId)) return;
+          if (msgId) {
+            toastedIdsRef.current.add(msgId);
+            setTimeout(() => toastedIdsRef.current.delete(msgId), 5_000);
+          }
 
           handleNotifications(data);
         }

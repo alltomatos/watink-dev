@@ -35,7 +35,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	groupController := controllers.NewGroupController(container.PermissionRepo)
 	roleController := controllers.NewRoleController(container.PermissionRepo)
 	flowController := controllers.NewFlowController()
-	quickAnswerController := controllers.NewQuickAnswerController()
+	quickAnswerController := controllers.NewQuickAnswerController(rabbitMQ)
 	versionController := controllers.NewVersionController(container.VersionRepo)
 	swaggerController := controllers.NewSwaggerController(container.SwaggerPermRepo)
 
@@ -146,6 +146,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.POST("/quickAnswers/", quickAnswerController.Create)
 		protected.PUT("/quickAnswers/:quickAnswerId", quickAnswerController.Update)
 		protected.DELETE("/quickAnswers/:quickAnswerId", quickAnswerController.Delete)
+		protected.POST("/quickAnswers/:quickAnswerId/send", quickAnswerController.Send)
 
 		// Knowledge Bases
 		protected.GET("/knowledge-bases", kbController.List)

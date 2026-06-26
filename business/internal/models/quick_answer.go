@@ -13,6 +13,8 @@ type QuickAnswer struct {
 	TenantID  uuid.UUID `gorm:"column:tenantId;type:uuid" json:"tenantId"`
 	MediaType string    `gorm:"column:mediaType" json:"mediaType"`
 	DataJson  string    `gorm:"column:dataJson;type:jsonb;default:'null'" json:"dataJson"`
+	Type      string    `gorm:"column:type;default:'text'" json:"type"`
+	Content   string    `gorm:"column:content;type:jsonb;default:'null'" json:"content"`
 	CreatedAt time.Time `gorm:"column:createdAt" json:"createdAt"`
 	UpdatedAt time.Time `gorm:"column:updatedAt" json:"updatedAt"`
 }
