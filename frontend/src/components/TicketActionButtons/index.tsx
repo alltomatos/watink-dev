@@ -7,7 +7,6 @@ import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
 import TicketOptionsMenu from "../TicketOptionsMenu";
 import ButtonWithSpinner from "../ButtonWithSpinner";
-import RecoverHistoryButton from "../RecoverHistoryButton";
 import toastError from "../../errors/toastError";
 import { AuthContext } from "../../context/Auth/AuthContext";
 
@@ -31,9 +30,10 @@ interface TicketActionButtonsProps {
   ticket: Ticket;
   onToggleDetails?: () => void;
   showDetails?: boolean;
+  onAccepted?: () => void;
 }
 
-const TicketActionButtons: React.FC<TicketActionButtonsProps> = ({ ticket, onToggleDetails, showDetails }) => {
+const TicketActionButtons: React.FC<TicketActionButtonsProps> = ({ ticket, onToggleDetails, showDetails, onAccepted }) => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -60,7 +60,7 @@ const TicketActionButtons: React.FC<TicketActionButtonsProps> = ({ ticket, onTog
       });
       setLoading(false);
       if (status === "open") {
-        navigate(`/tickets/${ticket.id}`);
+        onAccepted?.();
       } else {
         navigate("/tickets");
       }
@@ -87,8 +87,6 @@ const TicketActionButtons: React.FC<TicketActionButtonsProps> = ({ ticket, onTog
 
       {ticket.status === "open" && (
         <>
-          <RecoverHistoryButton ticketId={ticket.id} />
-
           <ButtonWithSpinner
             loading={loading}
             startIcon={<RotateCcw className="h-4 w-4" />}
