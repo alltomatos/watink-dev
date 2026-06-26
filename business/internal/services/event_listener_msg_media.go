@@ -42,7 +42,7 @@ func (el *EventListener) handleMediaDownloaded(ctx context.Context, payload json
 		newData, _ := json.Marshal(data)
 		_ = messages.Update(ctx, msg, map[string]interface{}{"dataJson": string(newData)})
 		msg.DataJson = string(newData)
-		el.bcast().EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
+		el.bcast().EmitToRoom("/", "chat:"+strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
 		return nil
 	}
 
@@ -74,6 +74,6 @@ func (el *EventListener) handleMediaDownloaded(ctx context.Context, payload json
 	msg.MediaUrl = mediaURL
 	msg.DataJson = string(newData)
 
-	el.bcast().EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
+	el.bcast().EmitToRoom("/", "chat:"+strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
 	return nil
 }

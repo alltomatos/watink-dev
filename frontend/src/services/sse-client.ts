@@ -18,7 +18,41 @@ interface ShimSocket {
 // ---------------------------------------------------------------------------
 
 let eventSource: EventSource | null = null;
+
+// Reference-counted room registry. Multiple subscriptions may request the same
+// room (e.g. Ticket and useMessagesSSE both emit joinChat for the same ticketId).
+// A room stays in the active set until ALL subscribers have cleaned up.
+const roomRefCounts = new Map<string, number>();
+// Derived set used only for URL building — kept in sync with roomRefCounts.
 const roomRegistry = new Set<string>();
+
+// Debounce timer for room-change reconnects. Prevents rapid open/close cycles
+// caused by React StrictMode (cleanup removes a room → immediate re-mount adds
+// it back). All room mutations within RECONNECT_DEBOUNCE_MS are batched into a
+// single reconnect, so no event is missed in the gap.
+const RECONNECT_DEBOUNCE_MS = 120;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Exponential backoff for error-triggered reconnects (prevents tight loops when
+// the server rejects the connection, e.g. token expired).
+let errorBackoffMs = 1_000;
+const MAX_ERROR_BACKOFF_MS = 30_000;
+
+function scheduleReconnect(fromError = false): void {
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  const delay = fromError ? errorBackoffMs : RECONNECT_DEBOUNCE_MS;
+  if (fromError) {
+    errorBackoffMs = Math.min(errorBackoffMs * 2, MAX_ERROR_BACKOFF_MS);
+  }
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectToSSE();
+  }, delay);
+}
+
+function resetErrorBackoff(): void {
+  errorBackoffMs = 1_000;
+}
 
 // Map from event name → set of handlers registered across all subscriptions.
 const eventListeners = new Map<string, Set<SocketHandler>>();
@@ -40,7 +74,12 @@ function getToken(): string {
 function buildSSEUrl(): string {
   const token = getToken();
   const rooms = Array.from(roomRegistry).join(",");
-  const base = `${getBackendUrl()}/api/v1/events`;
+  // SSE uses JWT auth in the URL (no cookie needed), so it can bypass the Vite
+  // proxy and connect directly to the backend. VITE_SSE_URL is set in dev only;
+  // in production this falls back to the regular backend URL.
+  const sseBase =
+    (import.meta.env.VITE_SSE_URL as string | undefined) || getBackendUrl();
+  const base = `${sseBase}/api/v1/events`;
   const params = new URLSearchParams({ token });
   if (rooms) params.set("rooms", rooms);
   return `${base}?${params.toString()}`;
@@ -66,13 +105,24 @@ function connectToSSE(): void {
   const token = getToken();
   if (!token) return;
 
+  const url = buildSSEUrl();
+
+  // No-op if already connected with the exact same URL (same token + rooms).
+  // This prevents endless reconnect loops when connectToSocket() is called on
+  // every component render.
+  if (
+    eventSource &&
+    eventSource.readyState !== EventSource.CLOSED &&
+    eventSource.url === url
+  ) {
+    return;
+  }
+
   // Close existing connection before reopening with updated rooms.
   if (eventSource) {
     eventSource.close();
     eventSource = null;
   }
-
-  const url = buildSSEUrl();
   const es = new EventSource(url);
 
   es.onmessage = (ev: MessageEvent<string>) => {
@@ -87,8 +137,21 @@ function connectToSSE(): void {
     }
   };
 
+  es.addEventListener("open", () => {
+    // Successful connection — reset error backoff so the next error starts fresh.
+    resetErrorBackoff();
+  });
+
   es.onerror = () => {
-    // EventSource reconnects automatically; nothing to do here.
+    // When the server closes the stream or a network error occurs, the browser
+    // puts the EventSource in CLOSED or CONNECTING state. In either case we take
+    // control: close the stale instance and reconnect with the current token from
+    // storage, using exponential backoff to avoid hammering a down server.
+    if (eventSource === es) {
+      eventSource.close();
+      eventSource = null;
+      scheduleReconnect(true /* fromError */);
+    }
   };
 
   // Named-event listener: the backend sends `event: <name>\ndata: <json>\n\n`
@@ -133,8 +196,9 @@ function createShimSocket(): ShimSocket {
           room = `tickets:${String(arg)}`;
           break;
         case "joinNotification":
-          room = "notification";
-          break;
+          // Backend auto-subscribes every connection to the "notification" room
+          // (like it does for the tenant room) — no need to send it explicitly.
+          return;
         case "joinHelpdeskKanban":
           room = "helpdesk-kanban";
           break;
@@ -146,9 +210,13 @@ function createShimSocket(): ShimSocket {
           return;
       }
 
-      if (room && !roomRegistry.has(room)) {
-        roomRegistry.add(room);
-        connectToSSE();
+      if (room) {
+        const prev = roomRefCounts.get(room) ?? 0;
+        roomRefCounts.set(room, prev + 1);
+        if (prev === 0) {
+          roomRegistry.add(room);
+          scheduleReconnect();
+        }
       }
     },
   };
@@ -179,8 +247,12 @@ export function subscribeToSocket(
   handlers: Record<string, SocketHandler>,
   onJoin?: (socket: ShimSocket) => void
 ): () => void {
-  // Ensure connection exists.
-  connectToSSE();
+  // Do NOT eagerly call connectToSSE() here — doing so opens a connection
+  // BEFORE onJoin has had a chance to add rooms, causing spurious rooms=(none)
+  // connections during React commit phases when cleanups run before re-effects.
+  // Connections are created/updated exclusively by the debounce timer inside
+  // scheduleReconnect(), which fires only after rooms actually change.
+  // The health-check interval handles startup when no rooms have been added yet.
 
   // Register handlers.
   const entries = Object.entries(handlers);
@@ -197,16 +269,34 @@ export function subscribeToSocket(
     eventListeners.get(eventName)!.add(handler);
   });
 
-  // Execute onJoin shim — collects rooms and triggers reconnect if needed.
+  // Execute onJoin shim — collects rooms with ref counting for cleanup.
   if (onJoin) {
-    const shimSocket = createShimSocket();
-
-    // Intercept rooms added during this onJoin call so we can clean them up.
-    const roomsBefore = new Set(roomRegistry);
-    onJoin(shimSocket);
-    for (const r of roomRegistry) {
-      if (!roomsBefore.has(r)) addedRooms.push(r);
-    }
+    const trackingShim: ShimSocket = {
+      emit(event: string, arg?: unknown): void {
+        let room: string | null = null;
+        switch (event) {
+          case "joinChat": room = `chat:${String(arg)}`; break;
+          case "joinTickets": room = `tickets:${String(arg)}`; break;
+          case "joinHelpdeskKanban": room = "helpdesk-kanban"; break;
+          case "joinNotification":
+          case "joinTenant":
+            return; // backend handles these automatically
+          default:
+            console.warn(`[SSE shim] unknown emit event: "${event}"`);
+            return;
+        }
+        if (room) {
+          const prev = roomRefCounts.get(room) ?? 0;
+          roomRefCounts.set(room, prev + 1);
+          if (prev === 0) {
+            roomRegistry.add(room);
+            scheduleReconnect();
+          }
+          addedRooms.push(room);
+        }
+      },
+    };
+    onJoin(trackingShim);
   }
 
   return () => {
@@ -220,18 +310,40 @@ export function subscribeToSocket(
       }
     });
 
-    // Remove rooms added by this subscription and reconnect if changed.
+    // Decrement ref counts for rooms this subscription claimed. Only remove
+    // from roomRegistry when the last subscriber releases it.
     let roomsChanged = false;
     for (const room of addedRooms) {
-      if (roomRegistry.has(room)) {
-        roomRegistry.delete(room);
-        roomsChanged = true;
+      const count = roomRefCounts.get(room) ?? 0;
+      if (count <= 1) {
+        roomRefCounts.delete(room);
+        if (roomRegistry.has(room)) {
+          roomRegistry.delete(room);
+          roomsChanged = true;
+        }
+      } else {
+        roomRefCounts.set(room, count - 1);
       }
     }
     if (roomsChanged) {
-      connectToSSE();
+      scheduleReconnect();
     }
   };
 }
+
+// ---------------------------------------------------------------------------
+// Health-check: reconnect if the EventSource died silently (no onerror fired).
+// Runs every 8s. Noop when idle (no rooms + no handlers).
+// ---------------------------------------------------------------------------
+const HEALTH_CHECK_MS = 8_000;
+setInterval(() => {
+  const hasWork = roomRegistry.size > 0 || eventListeners.size > 0;
+  if (!hasWork) return;
+  const dead =
+    !eventSource || eventSource.readyState === EventSource.CLOSED;
+  if (dead) {
+    connectToSSE();
+  }
+}, HEALTH_CHECK_MS);
 
 export default connectToSocket;

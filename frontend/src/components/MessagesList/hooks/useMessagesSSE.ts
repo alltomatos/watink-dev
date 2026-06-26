@@ -1,5 +1,5 @@
 import { useEffect, MutableRefObject } from "react";
-import { subscribeToSocket } from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/sse-client";
 import { Message, MessagesAction } from "../types";
 
 export function useMessagesSocket(
@@ -9,6 +9,7 @@ export function useMessagesSocket(
 ): void {
   useEffect(() => {
     const handleAppMessage = (data: { action: string; message: Message }) => {
+      if (String(data.message?.ticketId) !== String(ticketId)) return;
       if (data.action === "create") {
         dispatch({ type: "ADD_MESSAGE", payload: data.message });
         shouldScrollRef.current = "smooth";

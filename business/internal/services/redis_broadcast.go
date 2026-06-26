@@ -75,11 +75,14 @@ func (rb *RedisBroadcast) Publish(sm SocketMessage) {
 	}
 }
 
-// EmitToNamespace broadcasts events to a namespace globally via Redis.
+// EmitToNamespace broadcasts events to a namespace — local delivery first, then Redis.
 func (rb *RedisBroadcast) EmitToNamespace(nsp string, event string, payload interface{}) {
 	if rb == nil {
 		return
-	} // Safety check
+	}
+	if rb.localSink != nil {
+		rb.localSink.EmitToNamespace(nsp, event, payload)
+	}
 	rb.Publish(SocketMessage{
 		Namespace: nsp,
 		Event:     event,
@@ -93,11 +96,21 @@ func (rb *RedisBroadcast) EmitToTenantRoom(tenantID string, event string, payloa
 	rb.EmitToRoom("/", "tenant:"+tenantID, event, payload)
 }
 
-// EmitToRoom broadcasts events to a room globally via Redis.
+// EmitToRoom delivers to local SSE clients immediately, then publishes to Redis
+// so that other nodes in a multi-node deployment also receive the event.
+// Local-first is required because the Start() goroutine skips messages that
+// originated from this node (SourceID == NodeID guard prevents double-delivery
+// on the remote nodes, but it would also skip self-delivery if we relied on
+// Redis round-trip for local delivery).
 func (rb *RedisBroadcast) EmitToRoom(nsp string, room string, event string, payload interface{}) {
 	if rb == nil {
 		return
-	} // Safety check
+	}
+	// Local delivery (current node).
+	if rb.localSink != nil {
+		rb.localSink.EmitToRoom(nsp, room, event, payload)
+	}
+	// Cross-node delivery via Redis.
 	rb.Publish(SocketMessage{
 		Namespace: nsp,
 		Room:      room,

@@ -25,6 +25,6 @@ func (el *EventListener) handleMessageRevoke(ctx context.Context, payload json.R
 		return err
 	}
 	msg.IsDeleted = true
-	el.bcast().EmitToRoom("/", strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
+	el.bcast().EmitToRoom("/", "chat:"+strconv.Itoa(msg.TicketID), "appMessage", map[string]interface{}{"action": "update", "message": msg})
 	return nil
 }

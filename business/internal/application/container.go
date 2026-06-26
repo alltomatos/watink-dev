@@ -35,7 +35,7 @@ type Container struct {
 	LogTicketAction    *usecases.LogTicketActionUseCase
 }
 
-func NewContainer(db *gorm.DB, redisSvc domain.RedisService, broadcast domain.Broadcaster, publisher domain.CommandPublisher) *Container {
+func NewContainer(db *gorm.DB, redisSvc domain.RedisService, broadcast domain.Broadcaster, publisher domain.CommandPublisher, hub ...*services.SSEHub) *Container {
 	if db == nil {
 		log.Fatal("NewContainer: db is required — pass a valid *gorm.DB instance")
 	}
@@ -61,7 +61,12 @@ func NewContainer(db *gorm.DB, redisSvc domain.RedisService, broadcast domain.Br
 	updateTicket := usecases.NewUpdateTicketUseCase(ticketRepo, eventBus, distributeTicket, logTicketAction)
 	receiveMessage := usecases.NewReceiveMessageUseCase(eventBus, messageRepo, contactRepo, ticketRepo, queueRepo, tagRepo, entityTagRepo)
 	sessionService := services.NewWhatsAppSessionService(db, publisher, redisSvc, broadcast)
-	sseHub := services.NewSSEHub()
+	var sseHub *services.SSEHub
+	if len(hub) > 0 && hub[0] != nil {
+		sseHub = hub[0]
+	} else {
+		sseHub = services.NewSSEHub()
+	}
 	return &Container{
 		DB:                 db,
 		TicketRepo:         ticketRepo,

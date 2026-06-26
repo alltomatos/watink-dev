@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { Message } from "../types";
 import { parseData } from "../utils/messageHelpers";
 import { messagesReducer } from "./messagesReducer";
-import { useMessagesSocket } from "./useMessagesSocket";
+import { useMessagesSocket } from "./useMessagesSSE";
 import { useMessagesScroll } from "./useMessagesScroll";
 
 export interface UseMessagesListReturn {

@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -34,8 +35,10 @@ func (h *SSEHub) Register(connID string, rooms []string) (<-chan string, func())
 	return ch, func() {
 		h.mu.Lock()
 		delete(h.conns, connID)
+		remaining := len(h.conns)
 		h.mu.Unlock()
 		close(ch)
+		log.Printf("[SSEHub] disconnect connID=%s remaining=%d rooms=%v", connID, remaining, rooms)
 	}
 }
 
@@ -44,13 +47,27 @@ func (h *SSEHub) Deliver(room, event string, data string) {
 	msg := fmt.Sprintf("event: %s\ndata: %s\n\n", event, data)
 	h.mu.RLock()
 	defer h.mu.RUnlock()
+	sent := 0
 	for _, conn := range h.conns {
 		if conn.rooms[room] {
 			select {
 			case conn.ch <- msg:
+				sent++
 			default: // drop if slow consumer
 			}
 		}
+	}
+	if sent == 0 {
+		// Debug: log rooms of ALL active connections when delivery fails
+		roomsSnapshot := make([][]string, 0, len(h.conns))
+		for _, c := range h.conns {
+			var rs []string
+			for r := range c.rooms {
+				rs = append(rs, r)
+			}
+			roomsSnapshot = append(roomsSnapshot, rs)
+		}
+		log.Printf("[SSEHub] Deliver room=%s event=%s conns=%d sent=0 activeRooms=%v", room, event, len(h.conns), roomsSnapshot)
 	}
 }
 

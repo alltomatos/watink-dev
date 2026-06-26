@@ -2,7 +2,7 @@
 import { toast } from "react-toastify";
 
 import api from "../../../services/api";
-import { subscribeToSocket } from "../../../services/socket-io";
+import { subscribeToSocket } from "../../../services/sse-client";
 import { i18n } from "../../../translate/i18n";
 import toastError from "../../../errors/toastError";
 import { Queue, QueuesAction } from "../queuesTypes";

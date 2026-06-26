@@ -9,7 +9,8 @@ interface AckProps {
   isGroup?: boolean;
 }
 
-export const MessageAck: React.FC<AckProps> = ({ message, isGroup }) => {
+export const MessageAck: React.FC<AckProps & { onRetry?: () => void }> = ({ message, isGroup, onRetry }) => {
+  if (!message.fromMe) return null;
   if (isGroup) return null;
   if (message.ack === 0)
     return <Clock className="inline h-[18px] w-[18px] align-middle ml-1" />;
@@ -25,7 +26,13 @@ export const MessageAck: React.FC<AckProps> = ({ message, isGroup }) => {
     );
   if (message.ack === 5)
     return (
-      <AlertCircle className="inline h-[18px] w-[18px] align-middle ml-1 text-[hsl(var(--message-error-text))]" />
+      <span
+        title="Erro ao enviar — clique para tentar novamente"
+        onClick={onRetry}
+        className="inline-flex cursor-pointer hover:opacity-70"
+      >
+        <AlertCircle className="inline h-[18px] w-[18px] align-middle ml-1 text-[hsl(var(--message-error-text))]" />
+      </span>
     );
   return null;
 };
@@ -33,14 +40,15 @@ export const MessageAck: React.FC<AckProps> = ({ message, isGroup }) => {
 interface TimestampProps {
   message: Message;
   isGroup?: boolean;
+  onRetry?: () => void;
 }
 
-const MessageMetadata: React.FC<TimestampProps> = ({ message, isGroup }) => {
+const MessageMetadata: React.FC<TimestampProps> = ({ message, isGroup, onRetry }) => {
   if (!isDateValid(message.createdAt)) return null;
   return (
     <span className="text-[11px] absolute bottom-0 right-1.5 text-[hsl(var(--message-timestamp-text))]">
       {format(parseISO(message.createdAt), "HH:mm")}
-      <MessageAck message={message} isGroup={isGroup} />
+      <MessageAck message={message} isGroup={isGroup} onRetry={onRetry} />
     </span>
   );
 };
