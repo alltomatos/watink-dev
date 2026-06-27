@@ -159,6 +159,14 @@ func (s *Skeleton) RouteInboundTicket(ctx context.Context, in InboundContext) {
 // A keyword flow (non-empty triggerValue) matches case-insensitively exact; an
 // "any message" flow (empty triggerValue with type whatsapp_message) matches any
 // non-empty body. Tenant-scoped MANUALLY ("tenantId").
+//
+// GAP (M4 — FASE posterior): only whatsapp_message flows are matched here.
+// whatsapp_first_contact flows ARE projected by trigger.go but never fire,
+// because the skeleton has no "is this the contact's first message ever?" signal
+// in this seam (it would need new-contact/new-ticket detection upstream). Until
+// that lands, a firstContact flow is silently inert — so we emit a one-line
+// warning when one exists for the tenant, to make the gap observable instead of a
+// mystery "my flow never runs".
 func (s *Skeleton) matchTriggers(ctx context.Context, tenantID uuid.UUID, body string) []models.Flow {
 	normalized := strings.TrimSpace(strings.ToLower(body))
 
@@ -171,7 +179,23 @@ func (s *Skeleton) matchTriggers(ctx context.Context, tenantID uuid.UUID, body s
 		log.Printf("[FlowSkeleton] trigger match query failed for tenant %s: %v", tenantID, err)
 		return nil
 	}
+
+	s.warnFirstContactGap(ctx, tenantID)
 	return flows
+}
+
+// warnFirstContactGap logs (best-effort) when the tenant has an active
+// firstContact flow that the current seam cannot match (M4). Detection of the
+// actual first-contact event is a later phase; this just surfaces the gap.
+func (s *Skeleton) warnFirstContactGap(ctx context.Context, tenantID uuid.UUID) {
+	var n int64
+	if err := s.db.WithContext(ctx).
+		Model(&models.Flow{}).
+		Where(`"tenantId" = ? AND active = ? AND "triggerType" = ?`,
+			tenantID, true, TriggerWhatsAppFirstContact).
+		Count(&n).Error; err == nil && n > 0 {
+		log.Printf("[FlowSkeleton] WARN: tenant %s has %d active firstContact flow(s) that are NOT matched yet (M4 gap — first-contact detection is a later phase)", tenantID, n)
+	}
 }
 
 // activeRun returns the single active waiting_message run for (tenant,ticket).
@@ -313,22 +337,46 @@ func (s *Skeleton) resume(ctx context.Context, in InboundContext, run models.Flo
 	}
 }
 
-// buildVars seeds the run variable map from the ticket/contact (the standard
-// {{contact_name}}, {{ticket_id}}, etc.). Absent values are empty strings.
+// buildVars seeds the run variable map from the ticket/contact. It covers both
+// the runtime names ({{contact_name}}, {{ticket_id}}) and the names the canvas
+// editor offers (MessageForm.tsx: {{firstName}}, {{name}}, {{protocol}},
+// {{date}}) so a message authored with the editor buttons interpolates instead of
+// stripping to "". Absent values are empty strings (invariant: var ausente → "").
 func buildVars(in InboundContext) map[string]string {
 	vars := map[string]string{
-		"contact_name": "",
-		"ticket_id":    "",
-		"last_input":   in.Body,
+		"contact_name":   "",
+		"contact_number": "",
+		"ticket_id":      "",
+		"last_input":     in.Body,
+		// Editor-offered aliases (MessageForm.tsx).
+		"firstName": "",
+		"name":      "",
+		"protocol":  "",
+		"date":      time.Now().Format("02/01/2006"),
 	}
 	if in.Contact != nil {
 		vars["contact_name"] = in.Contact.Name
 		vars["contact_number"] = in.Contact.Number
+		vars["name"] = in.Contact.Name
+		vars["firstName"] = firstName(in.Contact.Name)
 	}
 	if in.Ticket != nil {
 		vars["ticket_id"] = strconv.Itoa(in.Ticket.ID)
+		// No dedicated protocol column on Ticket — the ticket id is the protocol
+		// number in this domain, so map {{protocol}} to it.
+		vars["protocol"] = strconv.Itoa(in.Ticket.ID)
 	}
 	return vars
+}
+
+// firstName returns the first whitespace-delimited token of a full name (empty
+// for an empty name).
+func firstName(full string) string {
+	fields := strings.Fields(full)
+	if len(fields) == 0 {
+		return ""
+	}
+	return fields[0]
 }
 
 // ExpireDueRuns sweeps runs whose ExpiresAt has passed and are still waiting,

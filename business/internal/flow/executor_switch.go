@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/alltomatos/watinkdev/business/internal/models"
+	"gorm.io/gorm"
 )
 
 // switchCondition mirrors the ConditionBuilder row: field/operator/value with an
@@ -96,7 +100,9 @@ func evalOne(st *ExecState, c switchCondition) bool {
 }
 
 // resolveField maps a ConditionBuilder field name to a value from the run state.
-// Unknown fields first try the run var map, then resolve to empty.
+// Every field the ConditionBuilder.tsx UI offers is handled here so a condition
+// the user could author never falls through to a silent "" mismatch. Unknown
+// fields try the run var map, then resolve to empty.
 func resolveField(st *ExecState, field string) string {
 	switch field {
 	case "lastInput":
@@ -113,6 +119,15 @@ func resolveField(st *ExecState, field string) string {
 		if st.Ticket != nil {
 			return st.Ticket.Status
 		}
+	case "dayOfWeek":
+		// Matches the frontend PREDEFINED_VALUES: 0=Sunday … 6=Saturday.
+		return strconv.Itoa(int(time.Now().Weekday()))
+	case "currentHour":
+		return strconv.Itoa(time.Now().Hour())
+	case "queueName":
+		return resolveQueueName(st)
+	case "tagName":
+		return resolveContactTags(st)
 	}
 	if st.Vars != nil {
 		if v, ok := st.Vars[field]; ok {
@@ -120,6 +135,44 @@ func resolveField(st *ExecState, field string) string {
 		}
 	}
 	return ""
+}
+
+// resolveQueueName looks up the run ticket's queue name, tenant-scoped (RLS inert
+// in the worker → manual WHERE "tenantId"). Empty when the ticket has no queue or
+// no DB is wired.
+func resolveQueueName(st *ExecState) string {
+	if st.DB == nil || st.Ticket == nil || st.Ticket.QueueID == nil {
+		return ""
+	}
+	var q models.Queue
+	err := st.DB.Session(&gorm.Session{NewDB: true}).
+		Where(`"tenantId" = ? AND id = ?`, st.TenantID, *st.Ticket.QueueID).
+		First(&q).Error
+	if err != nil {
+		return ""
+	}
+	return q.Name
+}
+
+// resolveContactTags returns the run contact's tag names as a comma-joined,
+// lowercased list (so a `contains`/`equals` condition matches a single tag),
+// tenant-scoped via EntityTags(entityType="contact"). Empty when no contact/DB
+// or no tags.
+func resolveContactTags(st *ExecState) string {
+	if st.DB == nil || st.Contact == nil {
+		return ""
+	}
+	var names []string
+	err := st.DB.Session(&gorm.Session{NewDB: true}).
+		Table(`"Tags" t`).
+		Joins(`JOIN "EntityTags" et ON et."tagId" = t.id`).
+		Where(`et."tenantId" = ? AND et."entityType" = ? AND et."entityId" = ?`,
+			st.TenantID, "contact", st.Contact.ID).
+		Pluck("t.name", &names).Error
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(strings.Join(names, ","))
 }
 
 // numericCompare parses both operands as floats; returns -1/0/1. Non-numeric

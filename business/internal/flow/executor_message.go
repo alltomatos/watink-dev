@@ -4,14 +4,26 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strconv"
 
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 )
 
-// applyVars interpolates {{vars}} into text using the run's variable map.
+// unresolvedToken matches any {{...}} placeholder left after interpolation. The
+// inner pattern is non-greedy and excludes braces so adjacent tokens are matched
+// individually.
+var unresolvedToken = regexp.MustCompile(`\{\{[^{}]*\}\}`)
+
+// applyVars interpolates {{vars}} into text using the run's variable map, then
+// strips any token that had no matching variable to "" — enforcing the module
+// invariant "variável ausente → vazio". (The shared InterpolateVariables only
+// replaces known keys; without this strip an unknown {{token}} would leak to the
+// contact verbatim. QuickAnswers preview keeps tokens on purpose and does NOT use
+// this path.)
 func applyVars(st *ExecState, text string) string {
-	return utils.InterpolateVariables(text, st.Vars)
+	out := utils.InterpolateVariables(text, st.Vars)
+	return unresolvedToken.ReplaceAllString(out, "")
 }
 
 // envID builds the per-node-per-run idempotency key for an outbound send, so a
