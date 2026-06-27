@@ -69,6 +69,18 @@ func validateFlowGraph(c *gin.Context, nodes, edges datatypes.JSON) bool {
 	return true
 }
 
+// projectFlowTrigger parses nodes+edges into the FlowGraph contract and projects
+// the entry/trigger node onto the flat (triggerType, triggerValue) columns. A
+// parse failure or an absent entry node yields a zero projection (empty columns)
+// — the graph was already validated for persistence by validateFlowGraph.
+func projectFlowTrigger(nodes, edges datatypes.JSON) flow.TriggerProjection {
+	graph, err := flow.ParseGraph(nodes, edges)
+	if err != nil {
+		return flow.TriggerProjection{}
+	}
+	return flow.ProjectTrigger(graph)
+}
+
 // @Summary      Listar flows
 // @Tags         flows
 // @Produce      json
@@ -129,13 +141,19 @@ func (fc *FlowController) Create(c *gin.Context) {
 		return
 	}
 
+	// FB1-T1: project the graph's entry/trigger node onto the flat
+	// triggerType/triggerValue columns the runtime matches against.
+	proj := projectFlowTrigger(req.Nodes, req.Edges)
+
 	flow := models.Flow{
-		Name:       flowName,
-		Nodes:      req.Nodes,
-		Edges:      req.Edges,
-		Active:     req.Active,
-		WhatsAppID: req.WhatsAppID,
-		TenantID:   tenantID,
+		Name:         flowName,
+		Nodes:        req.Nodes,
+		Edges:        req.Edges,
+		Active:       req.Active,
+		WhatsAppID:   req.WhatsAppID,
+		TriggerType:  proj.Type,
+		TriggerValue: proj.Value,
+		TenantID:     tenantID,
 	}
 
 	if err := db.Create(&flow).Error; err != nil {
@@ -254,6 +272,14 @@ func (fc *FlowController) Update(c *gin.Context) {
 	// FB0-B4: only re-validate the graph when nodes/edges are part of this PATCH.
 	if graphTouched && !validateFlowGraph(c, effNodes, effEdges) {
 		return
+	}
+
+	// FB1-T1: re-project the trigger columns whenever the graph changed, so an
+	// edit to the entry/trigger node is reflected in the runtime match.
+	if graphTouched {
+		proj := projectFlowTrigger(effNodes, effEdges)
+		updates["triggerType"] = proj.Type
+		updates["triggerValue"] = proj.Value
 	}
 
 	if len(updates) == 0 {
