@@ -466,3 +466,20 @@ Item existe (MainNavItems.tsx:110-122) gated por `flows:read`. **Fix:** garantir
 | Task | Status | Notas |
 |------|--------|-------|
 | FB1-S1..W4 + TST | ⏳ em execução | agente coeso, commits incrementais |
+
+### Conclusão — Fase 1 (2026-06-27)
+
+**Status: ✅ CONCLUÍDA** no branch `feat/flowbuilder-phase1` (13 commits: DAG + 8 impl + 4 fix).
+
+| Item | Status |
+|---|---|
+| FB1-S1..W4 + TST (impl) | ✅ schema, trigger projection, WhatsAppAdapter, interpreter, executores, resume-first/opt-out, dedup, /run |
+| Revisão adversarial (6 dim) | ✅ pegou 2 CRÍTICOS + 4 HIGH que os testes (adapter fake) escondiam |
+| Correções pós-revisão (4 grupos) | ✅ sessionId int · reprompt menu EnvID · dedup leak · lock por ticket + claim otimista · interpolação · switch fields · MenuNode handles dinâmicos |
+| Gate final | ✅ build/vet/test (suíte completa) · flow sob `-race` · frontend typecheck/lint/build |
+
+**Achado-chave:** o tracer-bullet passava com adapter fake, mas o adapter REAL mandava `sessionId` como string → engine rejeitava → nenhuma mensagem sairia em produção. Revisão adversarial expôs; corrigido com teste que decodifica o payload no struct do engine.
+
+**Débitos registrados (não bloqueantes):** detecção real de firstContact (instrumentada, fase posterior) · scheduler periódico do ExpireDueRuns (Fase 3) · ticket-handoff mínimo (Fase 2) · `protocol` mapeia ao ticket id.
+
+**Próximo:** PR `feat/flowbuilder-phase1` → `develop`. Depois, **Fase 2 (RAG no atendimento)** ou **Fase 3 (delay/cron)** conforme prioridade.
