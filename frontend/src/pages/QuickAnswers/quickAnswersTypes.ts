@@ -4,7 +4,10 @@ export type QuickAnswerType =
   | "list"
   | "media"
   | "poll"
-  | "carousel";
+  | "carousel"
+  | "pix";
+
+export type PixKeyType = "CPF" | "CNPJ" | "PHONE" | "EMAIL" | "EVP";
 
 export interface QuickAnswerContentText {
   body: string;
@@ -40,12 +43,44 @@ export interface QuickAnswerContentPoll {
   on_answer: null | { type: string; [key: string]: unknown };
 }
 
+export type QuickAnswerCarouselButtonType = "quickreply" | "url" | "call" | "copy";
+
+export interface QuickAnswerCarouselButton {
+  id: string;
+  label: string;
+  type?: QuickAnswerCarouselButtonType;
+  url?: string;
+  phoneNumber?: string;
+  copyCode?: string;
+}
+
+export interface QuickAnswerCarouselCard {
+  image: string;
+  title: string;
+  footer?: string;
+  buttons: QuickAnswerCarouselButton[];
+}
+
+export interface QuickAnswerContentCarousel {
+  body: string;
+  cards: QuickAnswerCarouselCard[];
+}
+
+export interface QuickAnswerContentPix {
+  body?: string;
+  pixKey: string;
+  pixType: PixKeyType;
+  pixName?: string;
+}
+
 export type QuickAnswerContent =
   | QuickAnswerContentText
   | QuickAnswerContentButtons
   | QuickAnswerContentList
   | QuickAnswerContentMedia
-  | QuickAnswerContentPoll;
+  | QuickAnswerContentPoll
+  | QuickAnswerContentCarousel
+  | QuickAnswerContentPix;
 
 export interface QuickAnswer {
   id: number;

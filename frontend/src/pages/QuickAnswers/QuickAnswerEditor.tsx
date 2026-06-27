@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ArrowLeft, Loader2, Plus, Trash2, Smartphone } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, Smartphone, Bold, Italic, Strikethrough, Code } from "lucide-react";
 import { PageLayout, PageHeader, PageContent } from "@/components/ui/page-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,10 @@ import type {
   QuickAnswerContentList,
   QuickAnswerContentMedia,
   QuickAnswerContentPoll,
+  QuickAnswerContentCarousel,
+  QuickAnswerCarouselButtonType,
+  QuickAnswerContentPix,
+  PixKeyType,
 } from "./quickAnswersTypes";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -34,6 +38,72 @@ import type {
 function genId(prefix: string, index: number): string {
   return `${prefix}_${Date.now()}_${index}`;
 }
+
+// Formatação WhatsApp: envolve a seleção do textarea com os marcadores.
+const WA_FORMATS = [
+  { icon: Bold, label: "Negrito", marker: "*" },
+  { icon: Italic, label: "Itálico", marker: "_" },
+  { icon: Strikethrough, label: "Tachado", marker: "~" },
+  { icon: Code, label: "Monoespaçado", marker: "```" },
+];
+
+function wrapSelection(
+  ref: React.RefObject<HTMLTextAreaElement | null>,
+  value: string,
+  onChange: (v: string) => void,
+  marker: string
+): void {
+  const ta = ref.current;
+  if (!ta) {
+    onChange(`${value}${marker}texto${marker}`);
+    return;
+  }
+  const start = ta.selectionStart ?? value.length;
+  const end = ta.selectionEnd ?? value.length;
+  const selected = value.slice(start, end) || "texto";
+  const next = `${value.slice(0, start)}${marker}${selected}${marker}${value.slice(end)}`;
+  onChange(next);
+  requestAnimationFrame(() => {
+    ta.focus();
+    const selStart = start + marker.length;
+    ta.setSelectionRange(selStart, selStart + selected.length);
+  });
+}
+
+const FormatToolbar = ({ onApply }: { onApply: (marker: string) => void }) => (
+  <div className="flex items-center gap-0.5">
+    {WA_FORMATS.map((f) => (
+      <button
+        key={f.marker}
+        type="button"
+        title={f.label}
+        aria-label={f.label}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          onApply(f.marker);
+        }}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+      >
+        <f.icon className="h-4 w-4" />
+      </button>
+    ))}
+  </div>
+);
+
+const PIX_KEY_TYPES: { value: PixKeyType; label: string }[] = [
+  { value: "EVP", label: "Aleatória (EVP)" },
+  { value: "CPF", label: "CPF" },
+  { value: "CNPJ", label: "CNPJ" },
+  { value: "PHONE", label: "Telefone" },
+  { value: "EMAIL", label: "E-mail" },
+];
+
+const defaultPix = (): QuickAnswerContentPix => ({
+  body: "",
+  pixKey: "",
+  pixType: "EVP",
+  pixName: "",
+});
 
 const defaultButtons = (): QuickAnswerContentButtons => ({
   body: "",
@@ -64,6 +134,18 @@ const defaultPoll = (): QuickAnswerContentPoll => ({
   on_answer: null,
 });
 
+const defaultCarousel = (): QuickAnswerContentCarousel => ({
+  body: "",
+  cards: [
+    {
+      image: "",
+      title: "",
+      footer: "",
+      buttons: [{ id: genId("cbtn", 0), label: "", type: "quickreply" }],
+    },
+  ],
+});
+
 // ─── type config ─────────────────────────────────────────────────────────────
 
 const TYPE_OPTIONS: { value: QuickAnswerType; label: string; description: string }[] = [
@@ -72,6 +154,15 @@ const TYPE_OPTIONS: { value: QuickAnswerType; label: string; description: string
   { value: "list", label: "Lista", description: "Menu de opções em seções" },
   { value: "media", label: "Mídia", description: "Imagem, vídeo, áudio ou documento" },
   { value: "poll", label: "Enquete", description: "Votação com múltiplas opções" },
+  { value: "carousel", label: "Carousel", description: "Cards com imagem, texto e botões" },
+  { value: "pix", label: "PIX", description: "Botão de pagamento com chave PIX" },
+];
+
+const CAROUSEL_BUTTON_TYPES: { value: QuickAnswerCarouselButtonType; label: string }[] = [
+  { value: "quickreply", label: "Resposta" },
+  { value: "url", label: "Link" },
+  { value: "call", label: "Ligar" },
+  { value: "copy", label: "Copiar" },
 ];
 
 // ─── sub-editors ─────────────────────────────────────────────────────────────
@@ -88,20 +179,27 @@ const TextEditor = ({
   body: string;
   onChange: (v: string) => void;
   error?: string;
-}) => (
-  <div className="space-y-1.5">
-    <Label>Mensagem</Label>
-    <Textarea
-      rows={6}
-      placeholder={"Use *negrito*, _itálico_, ~tachado~\nVariáveis: {{contact_name}}, {{ticket_id}}"}
-      value={body}
-      onChange={(e) => onChange(e.target.value)}
-      aria-invalid={!!error}
-      className="resize-none font-sans"
-    />
-    {error && <p className="text-xs text-destructive">{error}</p>}
-  </div>
-);
+}) => {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label>Mensagem</Label>
+        <FormatToolbar onApply={(m) => wrapSelection(ref, body, onChange, m)} />
+      </div>
+      <Textarea
+        ref={ref}
+        rows={6}
+        placeholder={"Escreva sua mensagem… selecione um trecho e use os botões de formatação.\nVariáveis: {{contact_name}}, {{ticket_id}}"}
+        value={body}
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={!!error}
+        className="resize-none font-sans"
+      />
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+};
 
 const ButtonsEditor = ({
   content,
@@ -449,6 +547,219 @@ const PollEditor = ({
   </div>
 );
 
+const CarouselEditor = ({
+  content,
+  onChange,
+  errors,
+}: {
+  content: QuickAnswerContentCarousel;
+  onChange: (c: QuickAnswerContentCarousel) => void;
+  errors: Record<string, string | undefined>;
+}) => {
+  const valuePlaceholder = (t?: QuickAnswerCarouselButtonType): string => {
+    if (t === "url") return "https://...";
+    if (t === "call") return "+5585999990000";
+    if (t === "copy") return "Texto a copiar";
+    return "ID da resposta (opcional)";
+  };
+  const setCard = (ci: number, patch: Partial<QuickAnswerContentCarousel["cards"][number]>) => {
+    onChange({ ...content, cards: content.cards.map((c, i) => (i === ci ? { ...c, ...patch } : c)) });
+  };
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label>Mensagem <span className="text-muted-foreground font-normal">(opcional, acima dos cards)</span></Label>
+        <Textarea
+          rows={2}
+          placeholder="Texto introdutório do carousel"
+          value={content.body}
+          onChange={(e) => onChange({ ...content, body: e.target.value })}
+          className="resize-none"
+        />
+      </div>
+      {errors.cards && <p className="text-xs text-destructive">{errors.cards}</p>}
+      <div className="space-y-3">
+        <Label>Cards</Label>
+        {content.cards.map((card, ci) => (
+          <div key={ci} className="rounded-lg border border-border p-3 space-y-2 bg-muted/30">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground">Card {ci + 1}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                onClick={() => onChange({ ...content, cards: content.cards.filter((_, i) => i !== ci) })}
+                disabled={content.cards.length <= 1}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+            <Input
+              placeholder="URL da imagem (https://...)"
+              value={card.image}
+              onChange={(e) => setCard(ci, { image: e.target.value })}
+            />
+            <Textarea
+              rows={2}
+              placeholder="Texto do card"
+              value={card.title}
+              onChange={(e) => setCard(ci, { title: e.target.value })}
+              className="resize-none"
+            />
+            <div className="space-y-2">
+              <span className="text-xs text-muted-foreground">Botões</span>
+              {card.buttons.map((btn, bi) => (
+                <div key={btn.id} className="space-y-1.5 rounded-md border border-border/60 p-2">
+                  <div className="flex gap-2 items-center">
+                    <Select
+                      value={btn.type ?? "quickreply"}
+                      onValueChange={(v) => {
+                        const buttons = card.buttons.map((b, j) =>
+                          j === bi ? { ...b, type: v as QuickAnswerCarouselButtonType } : b
+                        );
+                        setCard(ci, { buttons });
+                      }}
+                    >
+                      <SelectTrigger className="w-28 shrink-0"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CAROUSEL_BUTTON_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      placeholder={`Rótulo do botão ${bi + 1}`}
+                      value={btn.label}
+                      onChange={(e) => {
+                        const buttons = card.buttons.map((b, j) => (j === bi ? { ...b, label: e.target.value } : b));
+                        setCard(ci, { buttons });
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => setCard(ci, { buttons: card.buttons.filter((_, j) => j !== bi) })}
+                      disabled={card.buttons.length <= 1}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {btn.type && btn.type !== "quickreply" && (
+                    <Input
+                      placeholder={valuePlaceholder(btn.type)}
+                      value={btn.type === "url" ? btn.url ?? "" : btn.type === "call" ? btn.phoneNumber ?? "" : btn.copyCode ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        const buttons = card.buttons.map((b, j) => {
+                          if (j !== bi) return b;
+                          if (b.type === "url") return { ...b, url: v };
+                          if (b.type === "call") return { ...b, phoneNumber: v };
+                          return { ...b, copyCode: v };
+                        });
+                        setCard(ci, { buttons });
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+              {card.buttons.length < 3 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCard(ci, {
+                      buttons: [...card.buttons, { id: genId("cbtn", ci * 10 + card.buttons.length), label: "", type: "quickreply" }],
+                    })
+                  }
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Botão
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            onChange({
+              ...content,
+              cards: [
+                ...content.cards,
+                { image: "", title: "", footer: "", buttons: [{ id: genId("cbtn", content.cards.length * 10), label: "", type: "quickreply" }] },
+              ],
+            })
+          }
+        >
+          <Plus className="h-4 w-4 mr-1" /> Adicionar card
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const PixEditor = ({
+  content,
+  onChange,
+  errors,
+}: {
+  content: QuickAnswerContentPix;
+  onChange: (c: QuickAnswerContentPix) => void;
+  errors: Record<string, string | undefined>;
+}) => (
+  <div className="space-y-4">
+    <div className="space-y-1.5">
+      <Label>Mensagem <span className="text-muted-foreground font-normal">(opcional, acima do botão)</span></Label>
+      <Textarea
+        rows={2}
+        placeholder="Ex.: Finalize seu pedido pagando via PIX 👇"
+        value={content.body ?? ""}
+        onChange={(e) => onChange({ ...content, body: e.target.value })}
+        className="resize-none"
+      />
+    </div>
+    <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-1.5">
+        <Label>Tipo da chave</Label>
+        <Select
+          value={content.pixType}
+          onValueChange={(v) => onChange({ ...content, pixType: v as PixKeyType })}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {PIX_KEY_TYPES.map((t) => (
+              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Nome do recebedor <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+        <Input
+          placeholder="Loja Exemplo"
+          value={content.pixName ?? ""}
+          onChange={(e) => onChange({ ...content, pixName: e.target.value })}
+        />
+      </div>
+    </div>
+    <div className="space-y-1.5">
+      <Label>Chave PIX</Label>
+      <Input
+        placeholder="CPF/CNPJ, telefone, e-mail ou chave aleatória"
+        value={content.pixKey}
+        onChange={(e) => onChange({ ...content, pixKey: e.target.value })}
+        aria-invalid={!!errors.pixKey}
+      />
+      {errors.pixKey && <p className="text-xs text-destructive">{errors.pixKey}</p>}
+    </div>
+  </div>
+);
+
 // ─── Phone mockup wrapper ────────────────────────────────────────────────────
 
 function PhoneMockup({ children }: { children: React.ReactNode }) {
@@ -517,7 +828,9 @@ function validate(
   buttons: QuickAnswerContentButtons,
   list: QuickAnswerContentList,
   media: QuickAnswerContentMedia,
-  poll: QuickAnswerContentPoll
+  poll: QuickAnswerContentPoll,
+  carousel: QuickAnswerContentCarousel,
+  pix: QuickAnswerContentPix
 ): FormErrors {
   const errors: FormErrors = {};
   if (!shortcut || shortcut.length < 2) errors.shortcut = "Atalho deve ter ao menos 2 caracteres";
@@ -532,6 +845,14 @@ function validate(
     if (!poll.question.trim()) errors.question = "Pergunta obrigatória";
     if (poll.options.length < 2) errors.options = "Adicione ao menos 2 opções";
   }
+  if (type === "carousel") {
+    if (carousel.cards.length < 1) errors.cards = "Adicione ao menos 1 card";
+    else if (carousel.cards.some((c) => !c.image.trim()))
+      errors.cards = "Cada card precisa de uma imagem";
+    else if (carousel.cards.some((c) => !c.title.trim()))
+      errors.cards = "Cada card precisa de um texto";
+  }
+  if (type === "pix" && !pix.pixKey.trim()) errors.pixKey = "Chave PIX obrigatória";
   return errors;
 }
 
@@ -547,12 +868,15 @@ const QuickAnswerEditor: React.FC = () => {
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const [shortcut, setShortcut] = useState("");
+  const [slug, setSlug] = useState("");
   const [type, setType] = useState<QuickAnswerType>("text");
   const [textBody, setTextBody] = useState("");
   const [buttonsContent, setButtonsContent] = useState<QuickAnswerContentButtons>(defaultButtons());
   const [listContent, setListContent] = useState<QuickAnswerContentList>(defaultList());
   const [mediaContent, setMediaContent] = useState<QuickAnswerContentMedia>(defaultMedia());
   const [pollContent, setPollContent] = useState<QuickAnswerContentPoll>(defaultPoll());
+  const [carouselContent, setCarouselContent] = useState<QuickAnswerContentCarousel>(defaultCarousel());
+  const [pixContent, setPixContent] = useState<QuickAnswerContentPix>(defaultPix());
 
   useEffect(() => () => { isMounted.current = false; }, []);
 
@@ -563,6 +887,7 @@ const QuickAnswerEditor: React.FC = () => {
       .then(({ data }) => {
         if (!isMounted.current) return;
         setShortcut(data.shortcut ?? "");
+        setSlug(data.slug ?? "");
         const t: QuickAnswerType = data.type || "text";
         setType(t);
         if (data.content) {
@@ -573,6 +898,8 @@ const QuickAnswerEditor: React.FC = () => {
             if (t === "list") setListContent(parsed);
             if (t === "media") setMediaContent(parsed);
             if (t === "poll") setPollContent(parsed);
+            if (t === "carousel") setCarouselContent(parsed);
+            if (t === "pix") setPixContent(parsed);
           } catch {
             setTextBody(data.message ?? "");
           }
@@ -591,6 +918,8 @@ const QuickAnswerEditor: React.FC = () => {
       case "list": return listContent;
       case "media": return mediaContent;
       case "poll": return pollContent;
+      case "carousel": return carouselContent;
+      case "pix": return pixContent;
       default: return undefined;
     }
   };
@@ -603,13 +932,15 @@ const QuickAnswerEditor: React.FC = () => {
       case "list": content = listContent; message = listContent.body; break;
       case "media": content = mediaContent; message = mediaContent.caption ?? mediaContent.url; break;
       case "poll": content = pollContent; message = pollContent.question; break;
+      case "carousel": content = carouselContent; message = carouselContent.body; break;
+      case "pix": content = pixContent; message = pixContent.body || "Pagamento via PIX"; break;
       default: content = { body: textBody }; message = textBody;
     }
-    return { shortcut, type, message, content: JSON.stringify(content) };
+    return { shortcut, slug, type, message, content: JSON.stringify(content) };
   };
 
   const handleSave = async () => {
-    const errors = validate(shortcut, type, textBody, buttonsContent, listContent, mediaContent, pollContent);
+    const errors = validate(shortcut, type, textBody, buttonsContent, listContent, mediaContent, pollContent, carouselContent, pixContent);
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
     setSubmitting(true);
     try {
@@ -687,6 +1018,28 @@ const QuickAnswerEditor: React.FC = () => {
                       <p className="text-xs text-destructive">{formErrors.shortcut}</p>
                     )}
                   </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="qa-slug">
+                      Slug{" "}
+                      <span className="text-muted-foreground font-normal">
+                        — identificador para fluxos e integrações (opcional)
+                      </span>
+                    </Label>
+                    <Input
+                      id="qa-slug"
+                      placeholder="ex: boas-vindas, menu-principal"
+                      value={slug}
+                      onChange={(e) =>
+                        setSlug(
+                          e.target.value
+                            .toLowerCase()
+                            .replace(/[^a-z0-9-_]+/g, "-")
+                            .replace(/-+/g, "-")
+                        )
+                      }
+                      className="font-mono"
+                    />
+                  </div>
                 </CardContent>
               </Card>
 
@@ -740,6 +1093,12 @@ const QuickAnswerEditor: React.FC = () => {
                   )}
                   {type === "poll" && (
                     <PollEditor content={pollContent} onChange={setPollContent} errors={formErrors} />
+                  )}
+                  {type === "carousel" && (
+                    <CarouselEditor content={carouselContent} onChange={setCarouselContent} errors={formErrors} />
+                  )}
+                  {type === "pix" && (
+                    <PixEditor content={pixContent} onChange={setPixContent} errors={formErrors} />
                   )}
                 </CardContent>
               </Card>
