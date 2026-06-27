@@ -3,6 +3,7 @@ package flow
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
@@ -68,10 +69,18 @@ func (a *WhatsAppAdapter) Send(ctx context.Context, msg OutboundMessage) error {
 		messageID = msg.EnvID
 	}
 
+	// The engine unmarshals payload.sessionId into an `int` (no `,string` tag —
+	// see engine-go send_types.go). Sending it as a string makes that unmarshal
+	// fail → the command is NACKed and the message is NEVER sent. Convert here;
+	// the routing-key segment stays a string (AMQP keys are textual). A
+	// non-numeric SessionID yields 0, which the engine rejects loudly rather than
+	// silently mis-routing.
+	sid, _ := strconv.Atoi(msg.SessionID)
+
 	command := map[string]interface{}{
 		"type": commandType,
 		"payload": map[string]interface{}{
-			"sessionId": msg.SessionID,
+			"sessionId": sid,
 			"messageId": messageID,
 			"to":        msg.To,
 			"body":      msg.Body,

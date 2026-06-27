@@ -59,6 +59,55 @@ func newRuntime(t *testing.T) (*Skeleton, *captureAdapter, *gorm.DB) {
 	return sk, adapter, db
 }
 
+// dedupAdapter is a fake outbound that replicates the REAL WhatsAppAdapter's
+// dedup-by-EnvID: a send whose EnvID was already seen is a silent no-op success.
+// The naive captureAdapter ignores EnvID and so would NOT catch the menu-reprompt
+// dedup leak (C2) — this one does, because a reprompt that reuses the first
+// presentation's EnvID gets swallowed here exactly as it would in production.
+type dedupAdapter struct {
+	mu    sync.Mutex
+	seen  map[string]bool
+	sends []OutboundMessage // only the ones that actually "published"
+}
+
+func newDedupAdapter() *dedupAdapter {
+	return &dedupAdapter{seen: map[string]bool{}}
+}
+
+func (a *dedupAdapter) Channel() string { return "whatsapp" }
+func (a *dedupAdapter) Send(_ context.Context, msg OutboundMessage) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if msg.EnvID != "" && a.seen[msg.EnvID] {
+		return nil // dedup no-op, mirrors the held Redis lock
+	}
+	if msg.EnvID != "" {
+		a.seen[msg.EnvID] = true
+	}
+	a.sends = append(a.sends, msg)
+	return nil
+}
+func (a *dedupAdapter) bodies() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	out := make([]string, len(a.sends))
+	for i, s := range a.sends {
+		out[i] = s.Body
+	}
+	return out
+}
+
+// newDedupRuntime is newRuntime but with the dedup-aware adapter.
+func newDedupRuntime(t *testing.T) (*Skeleton, *dedupAdapter, *gorm.DB) {
+	t.Helper()
+	db := testutil.NewTestDB(t)
+	adapter := newDedupAdapter()
+	reg := NewChannelRegistry()
+	reg.Register(adapter)
+	sk := NewSkeleton(db, reg, newFakeRedis())
+	return sk, adapter, db
+}
+
 // --- graph builders ---
 
 func node(id, typ string, data map[string]any) Node {
@@ -161,6 +210,39 @@ func TestRuntime_TracerBullet_StartMenuBranchComplete(t *testing.T) {
 
 	require.NoError(t, db.Where(`"tenantId" = ? AND "ticketId" = ?`, tenant, 10).First(&run).Error)
 	assert.Equal(t, models.FlowRunStatusCompleted, run.Status)
+}
+
+// TestRuntime_MenuReprompt_PublishesAgainAfterInvalidReply pins C2: an invalid
+// reply must re-present the menu, and that reprompt must ACTUALLY publish — not
+// be swallowed by the adapter dedup lock keyed by the first presentation's
+// EnvID. Uses the dedup-aware adapter so the bug (constant per-node EnvID) is
+// observable: with the bug, bodies stays at 2; with the fix, a 3rd send appears.
+func TestRuntime_MenuReprompt_PublishesAgainAfterInvalidReply(t *testing.T) {
+	sk, adapter, db := newDedupRuntime(t)
+	tenant := uuid.New()
+	nodes, edges := menuBranchGraph()
+	seedActiveFlow(t, db, tenant, "menu", nodes, edges)
+
+	// Start: greeting + menu presentation (2 sends), suspends at menu.
+	sk.RouteInboundTicket(context.Background(), inboundFor(tenant, 12, "menu", "rp-1"))
+	require.Len(t, adapter.bodies(), 2, "greeting + first menu")
+
+	// Invalid reply "banana" → must re-present the menu (3rd send).
+	sk.RouteInboundTicket(context.Background(), inboundFor(tenant, 12, "banana", "rp-2"))
+
+	bodies := adapter.bodies()
+	require.Len(t, bodies, 3, "reprompt must publish again (not be swallowed by dedup)")
+	assert.Contains(t, bodies[2], "1. Suporte", "the 3rd send is the re-presented menu")
+
+	// Still suspended at the menu, waiting for a valid reply.
+	var run models.FlowRun
+	require.NoError(t, db.Where(`"tenantId" = ? AND "ticketId" = ?`, tenant, 12).First(&run).Error)
+	assert.Equal(t, models.FlowRunStatusWaitingMessage, run.Status)
+	assert.Equal(t, "menu", run.CurrentNodeID)
+
+	// A second invalid reply re-presents again (attempt counter keeps EnvID unique).
+	sk.RouteInboundTicket(context.Background(), inboundFor(tenant, 12, "still wrong", "rp-3"))
+	require.Len(t, adapter.bodies(), 4, "second reprompt must also publish")
 }
 
 func TestRuntime_MenuBranch_ByLabelChoosesA(t *testing.T) {

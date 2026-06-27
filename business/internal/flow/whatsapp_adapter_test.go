@@ -2,6 +2,7 @@ package flow
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -84,6 +85,42 @@ func TestWhatsAppAdapter_SendPublishesTextCommand(t *testing.T) {
 	wantKey := "wbot." + msg.TenantID.String() + ".7.message.send.text"
 	if pub.calls[0].routingKey != wantKey {
 		t.Fatalf("routingKey = %q, want %q", pub.calls[0].routingKey, wantKey)
+	}
+}
+
+// engineTextPayload mirrors engine-go internal/whatsapp.TextCommandPayload — the
+// struct the engine unmarshals the command body into. sessionId is an int with
+// NO `,string` tag, so a string sessionId in the payload makes this unmarshal
+// fail in the engine (→ NACK, message never sent). This test reproduces the
+// engine-side decode against the bytes the adapter actually publishes.
+type engineTextPayload struct {
+	SessionID int    `json:"sessionId"`
+	MessageID string `json:"messageId"`
+	To        string `json:"to"`
+	Body      string `json:"body"`
+}
+
+func TestWhatsAppAdapter_PayloadSessionIDIsInt(t *testing.T) {
+	pub := &fakePublisher{}
+	a := NewWhatsAppAdapter(pub, newFakeRedis())
+
+	msg := newMsg() // SessionID: "7"
+	if err := a.Send(context.Background(), msg); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	cmd := pub.calls[0].payload.(map[string]interface{})
+
+	// The engine decodes the *payload* object, so round-trip exactly that.
+	raw, err := json.Marshal(cmd["payload"])
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	var decoded engineTextPayload
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("engine-side unmarshal failed (sessionId not int?): %v; payload=%s", err, raw)
+	}
+	if decoded.SessionID != 7 {
+		t.Fatalf("sessionId = %d, want 7 (string sessionId would NACK in engine)", decoded.SessionID)
 	}
 }
 
