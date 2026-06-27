@@ -1,5 +1,5 @@
 import React from 'react';
-import { Position } from 'reactflow';
+import { Position } from '@xyflow/react';
 import { LifeBuoy } from 'lucide-react';
 import BaseNode from './BaseNode';
 

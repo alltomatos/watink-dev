@@ -1,19 +1,18 @@
 import { useState, useCallback, useRef } from 'react';
-import { useNodesState } from 'reactflow';
-import type { Node } from 'reactflow';
+import { useNodesState } from '@xyflow/react';
+import type { Node } from '@xyflow/react';
 
 let nodeSeq = 0;
 const getId = () => `dndnode_${Date.now()}_${nodeSeq++}`;
 
 interface UseFlowNodesOptions {
-    reactFlowWrapper: React.RefObject<HTMLDivElement>;
     reactFlowInstance: unknown;
     onEditorOpen: (node: Node) => void;
     onEditorClose: () => void;
 }
 
-export function useFlowNodes({ reactFlowWrapper, reactFlowInstance, onEditorOpen, onEditorClose }: UseFlowNodesOptions) {
-    const [nodes, setNodes, onNodesChange] = useNodesState([]);
+export function useFlowNodes({ reactFlowInstance, onEditorOpen, onEditorClose }: UseFlowNodesOptions) {
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const handleNodeDeleteRef = useRef<(nodeId: string) => void>(() => undefined);
 
@@ -52,11 +51,10 @@ export function useFlowNodes({ reactFlowWrapper, reactFlowInstance, onEditorOpen
             const label = event.dataTransfer.getData('application/reactflow/label');
             if (!type) return;
 
-            const rfInstance = reactFlowInstance as { project: (pos: { x: number; y: number }) => { x: number; y: number } };
-            const reactFlowBounds = reactFlowWrapper.current!.getBoundingClientRect();
-            const position = rfInstance.project({
-                x: event.clientX - reactFlowBounds.left,
-                y: event.clientY - reactFlowBounds.top,
+            const rfInstance = reactFlowInstance as { screenToFlowPosition: (pos: { x: number; y: number }) => { x: number; y: number } };
+            const position = rfInstance.screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
             });
 
             const nodeId = getId();
@@ -73,7 +71,7 @@ export function useFlowNodes({ reactFlowWrapper, reactFlowInstance, onEditorOpen
 
             setNodes((nds) => nds.concat(newNode));
         },
-        [reactFlowInstance, reactFlowWrapper, setNodes]
+        [reactFlowInstance, setNodes]
     );
 
     const hydrateNodes = useCallback((rawNodes: Node[]) => {
