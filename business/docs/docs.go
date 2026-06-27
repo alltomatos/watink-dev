@@ -855,6 +855,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/flows/{flowId}/run": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "flows"
+                ],
+                "summary": "Iniciar flow sob demanda",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID do flow",
+                        "name": "flowId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "{ticketId}",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/flows/{flowId}/simulate": {
             "post": {
                 "security": [

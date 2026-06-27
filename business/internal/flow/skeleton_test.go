@@ -53,7 +53,7 @@ func TestSkeleton_MatchesOwnTenantFlow(t *testing.T) {
 	tenant := uuid.New()
 	f := seedFlow(t, db, tenant, "Greeting", "ola", true)
 
-	sk := NewSkeleton(db)
+	sk := NewSkeleton(db, nil, nil)
 	out := captureLog(func() {
 		sk.RouteInbound(context.Background(), tenant, "Ola", false) // case-insensitive
 	})
@@ -70,7 +70,7 @@ func TestSkeleton_NoMatchDoesNotRoute(t *testing.T) {
 	tenant := uuid.New()
 	seedFlow(t, db, tenant, "Greeting", "bom dia", true)
 
-	sk := NewSkeleton(db)
+	sk := NewSkeleton(db, nil, nil)
 	out := captureLog(func() {
 		sk.RouteInbound(context.Background(), tenant, "ola", false)
 	})
@@ -84,7 +84,7 @@ func TestSkeleton_InactiveFlowIgnored(t *testing.T) {
 	tenant := uuid.New()
 	seedFlow(t, db, tenant, "Inactive", "ola", false)
 
-	sk := NewSkeleton(db)
+	sk := NewSkeleton(db, nil, nil)
 	out := captureLog(func() {
 		sk.RouteInbound(context.Background(), tenant, "ola", false)
 	})
@@ -98,7 +98,7 @@ func TestSkeleton_FromMeSkipped(t *testing.T) {
 	tenant := uuid.New()
 	seedFlow(t, db, tenant, "Greeting", "ola", true)
 
-	sk := NewSkeleton(db)
+	sk := NewSkeleton(db, nil, nil)
 	out := captureLog(func() {
 		sk.RouteInbound(context.Background(), tenant, "ola", true) // fromMe
 	})
@@ -113,7 +113,7 @@ func TestSkeleton_CrossTenantIsolation(t *testing.T) {
 	tenantB := uuid.New()
 	seedFlow(t, db, tenantA, "A Flow", "ola", true)
 
-	sk := NewSkeleton(db)
+	sk := NewSkeleton(db, nil, nil)
 	out := captureLog(func() {
 		sk.RouteInbound(context.Background(), tenantB, "ola", false)
 	})
@@ -133,7 +133,7 @@ func TestSkeleton_CrossTenantIsolation(t *testing.T) {
 
 // TestSkeleton_NilDBTolerated — an unwired skeleton never panics.
 func TestSkeleton_NilDBTolerated(t *testing.T) {
-	sk := NewSkeleton(nil)
+	sk := NewSkeleton(nil, nil, nil)
 	assert.NotPanics(t, func() {
 		sk.RouteInbound(context.Background(), uuid.New(), "ola", false)
 	})

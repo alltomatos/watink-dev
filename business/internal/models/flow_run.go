@@ -45,6 +45,10 @@ type FlowRun struct {
 	SubjectType string     `gorm:"column:subjectType;not null;default:none" json:"subjectType"`
 	SubjectID   *uuid.UUID `gorm:"column:subjectId;type:uuid" json:"subjectId,omitempty"`
 
+	// TicketID is the int FK to the bound ticket (Ticket.ID is int, SubjectID is
+	// uuid, so this column drives the resume-first lookup by (tenantId,ticketId)).
+	TicketID *int `gorm:"column:ticketId" json:"ticketId,omitempty"`
+
 	// Vars holds the interpolable variable state of the run (JSONB).
 	Vars datatypes.JSON `gorm:"column:vars;type:jsonb" json:"vars"`
 

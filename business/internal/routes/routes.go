@@ -4,6 +4,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/application"
 	"github.com/alltomatos/watinkdev/business/internal/controllers"
 	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/internal/flow"
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/gin-gonic/gin"
@@ -34,7 +35,13 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	kbController := controllers.NewKnowledgeBaseController()
 	groupController := controllers.NewGroupController(container.PermissionRepo)
 	roleController := controllers.NewRoleController(container.PermissionRepo)
-	flowController := controllers.NewFlowController()
+	// FlowBuilder FASE 1: build a channel registry + runtime skeleton for the
+	// on-demand run endpoint (POST /flows/:id/run). Uses the worker DB
+	// (container.DB) with manual WHERE "tenantId"; RLS is inert in StartFlow.
+	flowChannels := flow.NewChannelRegistry()
+	flowChannels.Register(flow.NewWhatsAppAdapter(rabbitMQ, container.RedisSvc))
+	flowRuntime := flow.NewSkeleton(container.DB, flowChannels, container.RedisSvc)
+	flowController := controllers.NewFlowController(flowRuntime)
 	quickAnswerController := controllers.NewQuickAnswerController(rabbitMQ, container.Broadcast, db)
 	versionController := controllers.NewVersionController(container.VersionRepo)
 	swaggerController := controllers.NewSwaggerController(container.SwaggerPermRepo)
@@ -199,6 +206,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.PUT("/flows/:flowId", flowController.Update)
 		protected.DELETE("/flows/:flowId", flowController.Delete)
 		protected.POST("/flows/:flowId/simulate", flowController.Simulate)
+		protected.POST("/flows/:flowId/run", flowController.Run)
 
 		// Tags
 		protected.GET("/tags", tagController.List)
