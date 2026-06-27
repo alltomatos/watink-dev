@@ -23,12 +23,15 @@ import (
 // injected db is used read-only here; future writes (StartFlow) must use
 // Session(NewDB:true).
 type Skeleton struct {
-	db *gorm.DB
+	db       *gorm.DB
+	registry *ChannelRegistry
 }
 
-// NewSkeleton builds the skeleton with an injected DB (DI pura — no global).
-func NewSkeleton(db *gorm.DB) *Skeleton {
-	return &Skeleton{db: db}
+// NewSkeleton builds the skeleton with an injected DB and the outbound channel
+// registry (DI pura — no global). The registry is handed to the interpreter so
+// node executors resolve adapters without touching globals.
+func NewSkeleton(db *gorm.DB, registry *ChannelRegistry) *Skeleton {
+	return &Skeleton{db: db, registry: registry}
 }
 
 // RouteInbound performs trigger matching for one inbound message and logs any

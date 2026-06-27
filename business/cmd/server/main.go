@@ -33,6 +33,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/controllers"
 	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/internal/flow"
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/internal/routes"
@@ -83,11 +84,17 @@ func main() {
 	// Pass hub so the container uses the same SSEHub — avoids a second instance.
 	container := application.NewContainer(database.DB, redisSvc, broadcast, rabbitMQ, hub)
 
+	// FlowBuilder FASE 1: build the outbound channel registry via DI and register
+	// the WhatsApp adapter (dedup + PublishCommand). The interpreter resolves
+	// adapters from this registry — never whatsmeow directly (ADR 0014).
+	channelRegistry := flow.NewChannelRegistry()
+	channelRegistry.Register(flow.NewWhatsAppAdapter(rabbitMQ, redisSvc))
+
 	if err := rabbitMQ.Connect(); err == nil {
-		// FlowBuilder FASE 0: the inbound trigger-match skeleton is plugged into
-		// the EventListener (NewEventListener wires flow.NewSkeleton), replacing
-		// the two previously-dead workers. No separate AMQP flow worker.
-		eventListener := services.NewEventListener(container.ChannelSessionRepo, container.MessageRepo, container.ContactRepo, container.TicketRepo, container.ReceiveMessage, broadcast, database.DB)
+		// FlowBuilder FASE 1: the inbound seam is plugged into the EventListener
+		// (NewEventListener wires flow.NewSkeleton with the interpreter+registry),
+		// replacing the two previously-dead workers. No separate AMQP flow worker.
+		eventListener := services.NewEventListener(container.ChannelSessionRepo, container.MessageRepo, container.ContactRepo, container.TicketRepo, container.ReceiveMessage, broadcast, database.DB, channelRegistry)
 		services.StartEventListener(rabbitMQ, eventListener)
 	} else {
 		log.Printf("⚠️ Warning: RabbitMQ connection failed: %v", err)
