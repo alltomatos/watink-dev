@@ -9,6 +9,7 @@ import {
   Image,
   Zap,
   Hash,
+  QrCode,
 } from "lucide-react";
 import { Card, CardContent } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
@@ -72,6 +73,12 @@ const TYPE_CONFIG: Record<
     icon: Hash,
     bg: "hsl(var(--status-default-bg, var(--muted)))",
     color: "hsl(var(--status-default-text, var(--muted-foreground)))",
+  },
+  pix: {
+    label: "PIX",
+    icon: QrCode,
+    bg: "hsl(var(--status-success-bg))",
+    color: "hsl(var(--status-success))",
   },
 };
 

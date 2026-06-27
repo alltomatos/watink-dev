@@ -58,7 +58,7 @@ func TestMediaCommandPayload_JSONRoundtrip(t *testing.T) {
 
 func TestPollCommandPayload_JSONRoundtrip(t *testing.T) {
 	original := PollCommandPayload{
-		SessionID:       "sess-1",
+		SessionID:       1,
 		MessageID:       "poll-001",
 		To:              "group@g.us",
 		Name:            "Best option?",
@@ -92,7 +92,7 @@ func TestMarkReadCommandPayload_JSONRoundtrip(t *testing.T) {
 }
 
 func TestSyncContactPayload_JSONRoundtrip(t *testing.T) {
-	original := SyncContactPayload{SessionID: "sess-2", Number: "5511777777777"}
+	original := SyncContactPayload{SessionID: 2, Number: "5511777777777"}
 	data, _ := json.Marshal(original)
 	var decoded SyncContactPayload
 	if err := json.Unmarshal(data, &decoded); err != nil {

@@ -19,7 +19,7 @@ import (
 
 var validQuickAnswerTypes = map[string]bool{
 	"text": true, "interactive_buttons": true, "list": true,
-	"media": true, "poll": true, "carousel": true,
+	"media": true, "poll": true, "carousel": true, "pix": true,
 }
 
 func validateQuickAnswerType(t string) error {
@@ -27,7 +27,7 @@ func validateQuickAnswerType(t string) error {
 		return nil
 	}
 	if !validQuickAnswerTypes[t] {
-		return fmt.Errorf("invalid type %q: must be one of text, interactive_buttons, list, media, poll, carousel", t)
+		return fmt.Errorf("invalid type %q: must be one of text, interactive_buttons, list, media, poll, carousel, pix", t)
 	}
 	return nil
 }
@@ -49,6 +49,169 @@ func isUniqueViolation(err error, indexName string) bool {
 	}
 	msg := err.Error()
 	return strings.Contains(msg, indexName) || (strings.Contains(msg, "unique") && strings.Contains(msg, "shortcut"))
+}
+
+// buildInteractiveDataJSON monta o DataJson da mensagem persistida com a estrutura
+// interativa (botões/lista/enquete) sob a chave "interactive", para o frontend
+// renderizar os chips visuais na bolha do chat. Retorna "{}" para tipos sem
+// estrutura interativa (text, media) ou conteúdo ausente.
+func buildInteractiveDataJSON(qaType string, contentMap map[string]interface{}) string {
+	const empty = "{}"
+	var meta map[string]interface{}
+
+	switch qaType {
+	case "interactive_buttons":
+		btns := make([]map[string]interface{}, 0)
+		if rawBtns, ok := contentMap["buttons"].([]interface{}); ok {
+			for _, rb := range rawBtns {
+				bm, ok := rb.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				b := map[string]interface{}{"label": bm["label"], "id": bm["id"]}
+				if t, ok := bm["type"].(string); ok && t != "" {
+					b["type"] = t
+				}
+				if u, ok := bm["url"].(string); ok && u != "" {
+					b["url"] = u
+				}
+				if p, ok := bm["phoneNumber"].(string); ok && p != "" {
+					b["phone"] = p
+				}
+				btns = append(btns, b)
+			}
+		}
+		if len(btns) == 0 {
+			return empty
+		}
+		meta = map[string]interface{}{"type": "buttons", "buttons": btns}
+		if f, ok := contentMap["footer"].(string); ok && f != "" {
+			meta["footer"] = f
+		}
+	case "list":
+		meta = map[string]interface{}{"type": "list", "sections": contentMap["sections"]}
+		if bt, ok := contentMap["button"].(string); ok && bt != "" {
+			meta["buttonText"] = bt
+		}
+		if f, ok := contentMap["footer"].(string); ok && f != "" {
+			meta["footer"] = f
+		}
+	case "poll":
+		opts := make([]interface{}, 0)
+		if rawOpts, ok := contentMap["options"].([]interface{}); ok {
+			opts = rawOpts
+		}
+		if len(opts) == 0 {
+			return empty
+		}
+		meta = map[string]interface{}{"type": "poll", "options": opts}
+		if ms, ok := contentMap["maxSelections"].(float64); ok {
+			meta["selectableCount"] = int(ms)
+		}
+	case "carousel":
+		cards := make([]map[string]interface{}, 0)
+		if rawCards, ok := contentMap["cards"].([]interface{}); ok {
+			for _, rc := range rawCards {
+				cm, ok := rc.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				card := map[string]interface{}{
+					"image": cm["image"], "title": cm["title"], "footer": cm["footer"],
+				}
+				dispBtns := make([]map[string]interface{}, 0)
+				if rb, ok := cm["buttons"].([]interface{}); ok {
+					for _, b := range rb {
+						bm, ok := b.(map[string]interface{})
+						if !ok {
+							continue
+						}
+						db := map[string]interface{}{"label": bm["label"], "id": bm["id"]}
+						if t, ok := bm["type"].(string); ok && t != "" {
+							db["type"] = t
+						}
+						if u, ok := bm["url"].(string); ok && u != "" {
+							db["url"] = u
+						}
+						dispBtns = append(dispBtns, db)
+					}
+				}
+				card["buttons"] = dispBtns
+				cards = append(cards, card)
+			}
+		}
+		if len(cards) == 0 {
+			return empty
+		}
+		meta = map[string]interface{}{"type": "carousel", "cards": cards}
+	case "pix":
+		meta = map[string]interface{}{
+			"type":    "pix",
+			"pixKey":  contentMap["pixKey"],
+			"pixName": contentMap["pixName"],
+			"pixType": contentMap["pixType"],
+		}
+	default:
+		return empty
+	}
+
+	raw, err := json.Marshal(map[string]interface{}{"interactive": meta})
+	if err != nil {
+		return empty
+	}
+	return string(raw)
+}
+
+// buildNativeFlowButtons converte os botões do conteúdo da QuickAnswer
+// ({id,label,type,url,phoneNumber,copyCode}) no formato NativeFlow {name, params}
+// que o engine envia. Apenas quick_reply/cta_url/cta_call/cta_copy renderizam em
+// conta pessoal. Reutilizado por interactive_buttons e pelos cards do carousel.
+func buildNativeFlowButtons(raw interface{}) []map[string]interface{} {
+	buttons := make([]map[string]interface{}, 0)
+	rawBtns, ok := raw.([]interface{})
+	if !ok {
+		return buttons
+	}
+	for i, rb := range rawBtns {
+		bm, ok := rb.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		id, _ := bm["id"].(string)
+		label, _ := bm["label"].(string)
+		if id == "" {
+			id = fmt.Sprintf("btn_%d", i)
+		}
+		btnType, _ := bm["type"].(string)
+		var name string
+		var params map[string]string
+		switch btnType {
+		case "url":
+			url, _ := bm["url"].(string)
+			name = "cta_url"
+			params = map[string]string{"display_text": label, "url": url, "merchant_url": url}
+		case "call":
+			phone, _ := bm["phoneNumber"].(string)
+			name = "cta_call"
+			params = map[string]string{"display_text": label, "phone_number": phone}
+		case "copy":
+			code, _ := bm["copyCode"].(string)
+			if code == "" {
+				code = id
+			}
+			name = "cta_copy"
+			params = map[string]string{"display_text": label, "copy_code": code}
+		default: // "quickreply" / "quick_reply" / vazio
+			name = "quick_reply"
+			params = map[string]string{"display_text": label, "id": id}
+		}
+		paramsJSON, _ := json.Marshal(params)
+		buttons = append(buttons, map[string]interface{}{
+			"name":   name,
+			"params": string(paramsJSON),
+		})
+	}
+	return buttons
 }
 
 // QuickAnswerController encapsulates quick answer operations with RLS-scoped DB from auth middleware.
@@ -82,8 +245,18 @@ func (qac *QuickAnswerController) List(c *gin.Context) {
 		return
 	}
 
+	query := db.Where("\"tenantId\" = ?", tenantID)
+	// Filtro opcional usado pelo autocomplete "/" no chat e pela busca da página.
+	if search := strings.TrimSpace(c.Query("searchParam")); search != "" {
+		like := "%" + strings.ToLower(search) + "%"
+		query = query.Where(
+			"LOWER(shortcut) LIKE ? OR LOWER(slug) LIKE ? OR LOWER(message) LIKE ?",
+			like, like, like,
+		)
+	}
+
 	var quickAnswers []models.QuickAnswer
-	if err := db.Where("\"tenantId\" = ?", tenantID).Order("shortcut ASC").Find(&quickAnswers).Error; err != nil {
+	if err := query.Order("shortcut ASC").Find(&quickAnswers).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "ListQuickAnswers")
 		return
 	}
@@ -116,6 +289,7 @@ func (qac *QuickAnswerController) Show(c *gin.Context) {
 
 type updateQuickAnswerInput struct {
 	Shortcut  string `json:"shortcut"`
+	Slug      string `json:"slug"`
 	Message   string `json:"message"`
 	MediaType string `json:"mediaType"`
 	DataJson  string `json:"dataJson"`
@@ -147,6 +321,10 @@ func (qac *QuickAnswerController) Create(c *gin.Context) {
 	}
 
 	if _, err := utils.ValidateStringField(qa.Shortcut, "shortcut", 100); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := utils.ValidateStringField(qa.Slug, "slug", 120); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -235,7 +413,14 @@ func (qac *QuickAnswerController) Update(c *gin.Context) {
 		return
 	}
 
+	slug, err := utils.ValidateStringField(input.Slug, "slug", 120)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	qa.Shortcut = shortcut
+	qa.Slug = slug
 	qa.Message = message
 	qa.MediaType = mediaType
 	if input.DataJson != "" {
@@ -324,11 +509,19 @@ func (qac *QuickAnswerController) Send(c *gin.Context) {
 	case "interactive_buttons":
 		commandType = "message.send.interactive"
 	case "list":
-		commandType = "message.send.list"
+		// Lista nativa (ListMessage legado) retorna 405 em conta pessoal. Usamos
+		// NativeFlow single_select pelo mesmo caminho dos botões (com nó <biz>).
+		commandType = "message.send.interactive"
 	case "media":
 		commandType = "message.send.media"
 	case "poll":
 		commandType = "message.send.poll"
+	case "carousel":
+		commandType = "message.send.carousel"
+	case "pix":
+		// Botão PIX é um InteractiveMessage com 1 botão NativeFlow "payment_info" —
+		// reaproveita SendInteractive (MessageVersion=3 + nó <biz>).
+		commandType = "message.send.interactive"
 	}
 
 	to := contactJID(ticket.Contact)
@@ -366,49 +559,12 @@ func (qac *QuickAnswerController) Send(c *gin.Context) {
 			"mimeType":  mimeType,
 		}
 	case "interactive_buttons":
-		// NativeFlow InteractiveMessage. Confirmed (whatsmeow #1144/#1145, mai/2026)
-		// que apenas os names quick_reply e cta_url renderizam em contas PESSOAIS
-		// (Android/iOS/Web). cta_call é mapeado por completude, mas pode degradar.
-		// O engine adiciona MessageVersion=3 — sem ele a bolha vira texto puro.
+		// NativeFlow InteractiveMessage. quick_reply/cta_url/cta_call/cta_copy
+		// renderizam em conta pessoal com MessageVersion=3 + nó <biz> (no engine).
 		bodyText, _ := contentMap["body"].(string)
 		footerText, _ := contentMap["footer"].(string)
 		if bodyText == "" {
 			bodyText = message
-		}
-		var buttons []map[string]interface{}
-		if rawBtns, ok := contentMap["buttons"].([]interface{}); ok {
-			for i, rb := range rawBtns {
-				bm, ok := rb.(map[string]interface{})
-				if !ok {
-					continue
-				}
-				id, _ := bm["id"].(string)
-				label, _ := bm["label"].(string)
-				if id == "" {
-					id = fmt.Sprintf("btn_%d", i)
-				}
-				btnType, _ := bm["type"].(string)
-				var name string
-				var params map[string]string
-				switch btnType {
-				case "url":
-					url, _ := bm["url"].(string)
-					name = "cta_url"
-					params = map[string]string{"display_text": label, "url": url, "merchant_url": url}
-				case "call":
-					phone, _ := bm["phoneNumber"].(string)
-					name = "cta_call"
-					params = map[string]string{"display_text": label, "phone_number": phone}
-				default: // "quickreply" / "quick_reply" / vazio
-					name = "quick_reply"
-					params = map[string]string{"display_text": label, "id": id}
-				}
-				paramsJSON, _ := json.Marshal(params)
-				buttons = append(buttons, map[string]interface{}{
-					"name":   name,
-					"params": string(paramsJSON),
-				})
-			}
 		}
 		payload = map[string]interface{}{
 			"sessionId":  sessionID,
@@ -416,24 +572,128 @@ func (qac *QuickAnswerController) Send(c *gin.Context) {
 			"to":         to,
 			"bodyText":   bodyText,
 			"footerText": footerText,
-			"buttons":    buttons,
+			"buttons":    buildNativeFlowButtons(contentMap["buttons"]),
 		}
-	case "list":
-		description, _ := contentMap["body"].(string)
-		buttonText, _ := contentMap["button"].(string)
-		footerText, _ := contentMap["footer"].(string)
-		if description == "" {
-			description = message
+	case "carousel":
+		// Carousel: cada card tem imagem + texto + botões NativeFlow. O engine faz
+		// upload da imagem por card e injeta o nó <biz> (ver SendCarousel).
+		bodyText, _ := contentMap["body"].(string)
+		if bodyText == "" {
+			bodyText = message
+		}
+		cards := make([]map[string]interface{}, 0)
+		if rawCards, ok := contentMap["cards"].([]interface{}); ok {
+			for _, rc := range rawCards {
+				cm, ok := rc.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				card := map[string]interface{}{"buttons": buildNativeFlowButtons(cm["buttons"])}
+				if img, ok := cm["image"].(string); ok {
+					card["imageUrl"] = img
+				}
+				if t, ok := cm["title"].(string); ok {
+					card["title"] = t
+				}
+				if f, ok := cm["footer"].(string); ok {
+					card["footer"] = f
+				}
+				cards = append(cards, card)
+			}
 		}
 		payload = map[string]interface{}{
-			"sessionId":   sessionID,
-			"messageId":   msgID,
-			"to":          to,
-			"title":       message,
-			"buttonText":  buttonText,
-			"description": description,
-			"footerText":  footerText,
-			"sections":    contentMap["sections"],
+			"sessionId": sessionID,
+			"messageId": msgID,
+			"to":        to,
+			"bodyText":  bodyText,
+			"cards":     cards,
+		}
+	case "pix":
+		// O botão PIX NATIVO (NativeFlow "payment_info") é gatilhado server-side
+		// (erro 473) em conta pessoal — exige WhatsApp Pay/conta business. Solução
+		// confiável: botão cta_copy que copia a chave, com a chave também no corpo.
+		bodyText, _ := contentMap["body"].(string)
+		if bodyText == "" {
+			bodyText = message
+		}
+		pixKey, _ := contentMap["pixKey"].(string)
+		pixName, _ := contentMap["pixName"].(string)
+		finalBody := bodyText
+		if finalBody != "" {
+			finalBody += "\n\n"
+		}
+		finalBody += "💳 *Pagamento via PIX*"
+		if pixName != "" {
+			finalBody += "\n👤 " + pixName
+		}
+		finalBody += "\n🔑 Chave: " + pixKey
+		copyParams, _ := json.Marshal(map[string]string{
+			"display_text": "Copiar chave PIX",
+			"copy_code":    pixKey,
+		})
+		payload = map[string]interface{}{
+			"sessionId": sessionID,
+			"messageId": msgID,
+			"to":        to,
+			"bodyText":  finalBody,
+			"buttons": []map[string]interface{}{
+				{"name": "cta_copy", "params": string(copyParams)},
+			},
+		}
+	case "list":
+		// NativeFlow single_select: 1 botão cujo ButtonParamsJSON carrega o título
+		// do botão e as seções/linhas. params.sections[].rows[] usa header/title/
+		// description/id (header pode ser vazio).
+		bodyText, _ := contentMap["body"].(string)
+		if bodyText == "" {
+			bodyText = message
+		}
+		footerText, _ := contentMap["footer"].(string)
+		buttonText, _ := contentMap["button"].(string)
+		if buttonText == "" {
+			buttonText = "Ver opções"
+		}
+		var sections []map[string]interface{}
+		if rawSecs, ok := contentMap["sections"].([]interface{}); ok {
+			for _, rs := range rawSecs {
+				sm, ok := rs.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				var rows []map[string]interface{}
+				if rawRows, ok := sm["rows"].([]interface{}); ok {
+					for _, rr := range rawRows {
+						rm, ok := rr.(map[string]interface{})
+						if !ok {
+							continue
+						}
+						rows = append(rows, map[string]interface{}{
+							"header":      "",
+							"title":       rm["title"],
+							"description": rm["description"],
+							"id":          rm["id"],
+						})
+					}
+				}
+				sections = append(sections, map[string]interface{}{
+					"title": sm["title"],
+					"rows":  rows,
+				})
+			}
+		}
+		selectParams, _ := json.Marshal(map[string]interface{}{
+			"title":    buttonText,
+			"sections": sections,
+		})
+		payload = map[string]interface{}{
+			"sessionId":  sessionID,
+			"messageId":  msgID,
+			"to":         to,
+			"bodyText":   bodyText,
+			"footerText": footerText,
+			"buttons": []map[string]interface{}{
+				{"name": "single_select", "params": string(selectParams)},
+			},
 		}
 	case "poll":
 		question, _ := contentMap["question"].(string)
@@ -505,6 +765,17 @@ func (qac *QuickAnswerController) Send(c *gin.Context) {
 		}
 	}
 
+	// Para tipos interativos, persistir o corpo realmente enviado (content.body)
+	// e a estrutura dos botões/lista/enquete em DataJson, sob a chave "interactive".
+	// O frontend lê isso para renderizar os chips visuais na bolha do chat — o
+	// WhatsApp Web/Desktop da Meta não renderiza, mas a UI do Watink é nossa.
+	if (qaType == "interactive_buttons" || qaType == "list" || qaType == "carousel" || qaType == "pix") && msgBody == message {
+		if b, ok := contentMap["body"].(string); ok && b != "" {
+			msgBody = b
+		}
+	}
+	dataJSON := buildInteractiveDataJSON(qaType, contentMap)
+
 	outgoing := models.Message{
 		ID:        msgID,
 		Body:      msgBody,
@@ -516,7 +787,7 @@ func (qac *QuickAnswerController) Send(c *gin.Context) {
 		ContactID: &contactID,
 		TenantID:  tenantID,
 		Reactions: "[]",
-		DataJson:  "{}",
+		DataJson:  dataJSON,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}

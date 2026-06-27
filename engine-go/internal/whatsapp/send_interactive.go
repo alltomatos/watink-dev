@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"go.mau.fi/whatsmeow"
+	waBinary "go.mau.fi/whatsmeow/binary"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/types"
 	"google.golang.org/protobuf/proto"
@@ -148,13 +149,51 @@ func (s *WhatsAppService) SendInteractive(sessionID int, tenantID string, payloa
 
 	msg := &waProto.Message{InteractiveMessage: interactive}
 
-	_, err = client.SendMessage(context.Background(), to, msg, whatsmeow.SendRequestExtra{ID: types.MessageID(payload.MessageID)})
+	// whatsmeow adiciona o nó <biz> automaticamente para ButtonsMessage/ListMessage,
+	// mas NÃO para InteractiveMessage/NativeFlow (getButtonTypeFromMessage não tem
+	// case para InteractiveMessage). Sem o <biz>, clientes WhatsApp recentes (jun/2026)
+	// descartam a mensagem silenciosamente — o celular não emite recibo de entrega.
+	// Injetamos o nó manualmente via AdditionalNodes, replicando o que a lib faz
+	// para os tipos legados. Estrutura conforme whatsmeow #1144.
+	//
+	// O atributo name do <native_flow> deve refletir o fluxo: "mixed" cobre os botões
+	// de exibição (quick_reply/cta_url/single_select), mas fluxos especiais (PIX) exigem
+	// o name específico do botão, senão o cliente descarta a mensagem.
+	bizNode := waBinary.Node{
+		Tag: "biz",
+		Content: []waBinary.Node{{
+			Tag:   "interactive",
+			Attrs: waBinary.Attrs{"type": "native_flow", "v": "1"},
+			Content: []waBinary.Node{{
+				Tag:   "native_flow",
+				Attrs: waBinary.Attrs{"v": "9", "name": nativeFlowBizName(payload.Buttons)},
+			}},
+		}},
+	}
+	additionalNodes := []waBinary.Node{bizNode}
+
+	_, err = client.SendMessage(context.Background(), to, msg, whatsmeow.SendRequestExtra{
+		ID:              types.MessageID(payload.MessageID),
+		AdditionalNodes: &additionalNodes,
+	})
 	if err != nil {
 		s.emitAck(sessionID, tenantID, payload.MessageID, 5)
 		return err
 	}
 	s.emitAck(sessionID, tenantID, payload.MessageID, 1)
 	return nil
+}
+
+// nativeFlowBizName decide o atributo name do nó <biz><native_flow>. Fluxos especiais
+// (pagamento) precisam do name específico do botão; os demais usam "mixed".
+func nativeFlowBizName(buttons []InteractiveButtonPayload) string {
+	if len(buttons) == 1 {
+		switch buttons[0].Name {
+		case "payment_info", "review_and_pay":
+			return buttons[0].Name
+		}
+	}
+	return "mixed"
 }
 
 // SendTemplate sends a HydratedFourRowTemplate — renders clickable buttons on personal

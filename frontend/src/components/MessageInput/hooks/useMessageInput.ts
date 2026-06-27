@@ -30,8 +30,14 @@ export const useMessageInput = () => {
   const audio = useAudioRecording(ticketId, setLoading);
   const mediaUpload = useMediaUpload(setLoading);
   const mentions = useMentions();
+  // Tipos interativos (botões, lista, mídia, enquete, carousel, pix) são despachados
+  // server-side: o frontend só envia quickAnswerId + ticketId. O texto da mensagem
+  // aparece via SSE. Texto puro é inserido no input (tratado em useQuickAnswers).
   const quickAnswersHook = useQuickAnswers((qa) => {
-    console.warn("Direct send not yet implemented for type:", qa.type);
+    if (!ticketId) return;
+    api
+      .post(`/quickAnswers/${qa.id}/send`, { ticketId: Number(ticketId) })
+      .catch(toastError);
   });
 
   useEffect(() => {

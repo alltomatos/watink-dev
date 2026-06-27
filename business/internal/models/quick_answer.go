@@ -9,6 +9,7 @@ import (
 type QuickAnswer struct {
 	ID        int       `gorm:"primaryKey" json:"id"`
 	Shortcut  string    `gorm:"not null" json:"shortcut"`
+	Slug      string    `gorm:"column:slug;index" json:"slug"`
 	Message   string    `gorm:"not null" json:"message"`
 	TenantID  uuid.UUID `gorm:"column:tenantId;type:uuid" json:"tenantId"`
 	MediaType string    `gorm:"column:mediaType" json:"mediaType"`
