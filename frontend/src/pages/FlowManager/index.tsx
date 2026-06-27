@@ -32,6 +32,7 @@ const FlowManager: React.FC = () => {
     handleSaveFlow,
     handleDeleteFlow,
     handleRequestDelete,
+    handleToggleActive,
   } = useFlowManager();
 
   return (
@@ -84,6 +85,7 @@ const FlowManager: React.FC = () => {
           onCreateNew={() => handleOpenModal()}
           onEdit={handleOpenModal}
           onDelete={handleRequestDelete}
+          onToggleActive={handleToggleActive}
         />
       </PageContent>
     </PageContainer>

@@ -515,6 +515,15 @@ edges órfãs (source/target inexistente), `schemaVersion` futuro. Ausência de
 - **Settings/LLM**: nó `llm` lê provider/model/apiKey do tenant (padrão `AISuggest`).
 - **Redis**: dedup (`wbot:msg:`), leader-lock do scheduler (SetNX), lock por `FlowRun.id`.
 
+## Débitos conhecidos (Fase 0 → Fase 1)
+
+Levantados na revisão da Fase 0; **intencionais** nesta fase, a resolver na Fase 1:
+
+- **Projeção de trigger inerte.** O skeleton (`flow.Skeleton.RouteInbound`) casa nas colunas `triggerType`/`triggerValue`, mas a API da Fase 0 (`Create`/`Update`) **não as popula** — então o roteamento é log-only e não dispara para dados reais. A projeção polimórfica grafo→colunas (ADR 0012) liga o matching real, na Fase 1.
+- **Binding de canal não filtrado no match.** O skeleton ignora `Flow.WhatsAppID` ao casar — dentro de um tenant, um flow ligado ao canal A casaria um inbound do canal B. Inerte hoje (sem trigger projetado). Quando o matching real entrar, incluir `AND ("whatsappId" IS NULL OR "whatsappId" = ?)` keyed no canal do inbound, com teste de mismatch dentro do tenant.
+- **`generic` aceito fora do `NODE_TITLES` do editor.** O contrato (`flow.ParseGraph`) aceita `node.type = "generic"` como válido, mas o editor não o lista na paleta. Mantido como fallback; alinhar editor↔contrato na Fase 1.
+- **`whatsappId` no FlowManager.** A Fase 0 já persiste o binding (input + associação `Whatsapp` + Preload) e expõe um toggle de ativação; a ativação só ganha efeito de runtime quando o interpretador entrar (Fase 1).
+
 ## Referências
 
 - ADR 0009 (stage upsert por nome — padrão de upsert idempotente reusado em projeção).

@@ -130,6 +130,18 @@ export function useFlowManager() {
     setConfirmModalOpen(true);
   };
 
+  const handleToggleActive = async (flow: Flow, active: boolean) => {
+    try {
+      await api.put(`/flows/${flow.id}`, { active });
+      setFlows((prev) =>
+        prev.map((f) => (f.id === flow.id ? { ...f, isActive: active } : f))
+      );
+      toast.success(active ? "Fluxo ativado" : "Fluxo desativado");
+    } catch (err) {
+      toastError(err);
+    }
+  };
+
   const filteredFlows = flows.filter((f) =>
     f.name.toLowerCase().includes(searchParam.toLowerCase())
   );
@@ -159,5 +171,6 @@ export function useFlowManager() {
     handleSaveFlow,
     handleDeleteFlow,
     handleRequestDelete,
+    handleToggleActive,
   };
 }

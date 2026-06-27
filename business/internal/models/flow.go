@@ -19,6 +19,10 @@ type Flow struct {
 	TenantID     uuid.UUID      `gorm:"column:tenantId;type:uuid" json:"tenantId"`
 	CreatedAt    time.Time      `gorm:"column:createdAt" json:"createdAt"`
 	UpdatedAt    time.Time      `gorm:"column:updatedAt" json:"updatedAt"`
+
+	// Whatsapp is the connection this flow is bound to (channel binding).
+	// Preloaded by List/Show/Create/Update so the API exposes the connection name.
+	Whatsapp *Whatsapp `gorm:"foreignKey:WhatsAppID" json:"whatsapp,omitempty"`
 }
 
 func (Flow) TableName() string {
