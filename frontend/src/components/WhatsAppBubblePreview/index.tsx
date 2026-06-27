@@ -5,6 +5,7 @@ import {
   Music,
   FileText,
   List,
+  QrCode,
 } from "lucide-react";
 import type {
   QuickAnswerType,
@@ -14,6 +15,8 @@ import type {
   QuickAnswerContentList,
   QuickAnswerContentMedia,
   QuickAnswerContentPoll,
+  QuickAnswerContentCarousel,
+  QuickAnswerContentPix,
 } from "@/pages/QuickAnswers/quickAnswersTypes";
 
 interface WhatsAppBubblePreviewProps {
@@ -189,6 +192,77 @@ function PollBubble({ content }: { content: QuickAnswerContentPoll }) {
   );
 }
 
+function CarouselBubble({ content }: { content: QuickAnswerContentCarousel }) {
+  const cards = content.cards || [];
+  return (
+    <div className="flex flex-col items-end gap-2 w-full">
+      {content.body && (
+        <BubbleWrapper>
+          <p className="whitespace-pre-wrap leading-snug">
+            {formatWhatsAppText(content.body)}
+          </p>
+          <Timestamp />
+        </BubbleWrapper>
+      )}
+      <div className="flex gap-2 overflow-x-auto pb-1 max-w-full">
+        {cards.length === 0 && (
+          <div className="text-xs text-gray-400 italic py-2">Adicione cards…</div>
+        )}
+        {cards.map((card, ci) => (
+          <div
+            key={ci}
+            className="shrink-0 w-36 rounded-lg overflow-hidden bg-white shadow-sm"
+          >
+            {card.image ? (
+              <img src={card.image} alt="" className="w-full h-20 object-cover" />
+            ) : (
+              <div className="w-full h-20 bg-gray-200 flex items-center justify-center">
+                <Image size={22} className="text-gray-400" />
+              </div>
+            )}
+            <div className="p-1.5">
+              {card.title && (
+                <p className="text-[11px] whitespace-pre-wrap leading-tight mb-1 text-gray-900">
+                  {formatWhatsAppText(card.title)}
+                </p>
+              )}
+              <div className="flex flex-col">
+                {(card.buttons || []).map((b) => (
+                  <div
+                    key={b.id}
+                    className="text-center text-blue-500 text-[11px] py-1 border-t border-gray-100 cursor-default select-none"
+                  >
+                    {b.label || "Botão"}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PixBubble({ content }: { content: QuickAnswerContentPix }) {
+  return (
+    <BubbleWrapper>
+      {content.body && (
+        <p className="whitespace-pre-wrap leading-snug mb-1">
+          {formatWhatsAppText(content.body)}
+        </p>
+      )}
+      <Timestamp />
+      <div className="border-t border-gray-300 mt-2 pt-1">
+        <div className="flex items-center justify-center gap-1.5 text-blue-500 text-sm py-1 cursor-default select-none">
+          <QrCode size={14} />
+          <span>Pagar com PIX{content.pixName ? ` · ${content.pixName}` : ""}</span>
+        </div>
+      </div>
+    </BubbleWrapper>
+  );
+}
+
 export default function WhatsAppBubblePreview({
   type,
   content,
@@ -227,12 +301,14 @@ export default function WhatsAppBubblePreview({
         const c = content as QuickAnswerContentPoll;
         return <PollBubble content={c} />;
       }
-      case "carousel":
-        return (
-          <div className="text-sm text-gray-400 italic text-center py-4">
-            Preview de carousel não disponível
-          </div>
-        );
+      case "carousel": {
+        const c = content as QuickAnswerContentCarousel;
+        return <CarouselBubble content={c} />;
+      }
+      case "pix": {
+        const c = content as QuickAnswerContentPix;
+        return <PixBubble content={c} />;
+      }
       default:
         return (
           <div className="text-sm text-gray-400 italic text-center py-4">

@@ -102,6 +102,25 @@ type SyncContactPayload struct {
 	Number    string `json:"number"`
 }
 
+// CarouselCommandPayload carries an interactive carousel: multiple cards, each with
+// an image header + body text + NativeFlow buttons. Renders on personal accounts
+// via the same <biz> native_flow node trick used by SendInteractive.
+type CarouselCommandPayload struct {
+	SessionID int            `json:"sessionId"`
+	MessageID string         `json:"messageId"`
+	To        string         `json:"to"`
+	BodyText  string         `json:"bodyText,omitempty"`
+	Cards     []CarouselCard `json:"cards"`
+}
+
+type CarouselCard struct {
+	ImageURL  string                     `json:"imageUrl,omitempty"`
+	ImageData string                     `json:"imageData,omitempty"` // base64 alternative
+	Title     string                     `json:"title,omitempty"`     // card body text
+	Footer    string                     `json:"footer,omitempty"`
+	Buttons   []InteractiveButtonPayload `json:"buttons,omitempty"`   // {name, params} (NativeFlow)
+}
+
 // TemplateCommandPayload carries a HydratedFourRowTemplate message.
 // Supports up to 3 buttons: quickreply, url, or call.
 type TemplateCommandPayload struct {

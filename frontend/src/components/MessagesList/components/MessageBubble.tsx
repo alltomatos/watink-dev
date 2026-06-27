@@ -35,6 +35,7 @@ const MEDIA_BUBBLE_TYPES = [
 const hasMediaBubble = (m: Message): boolean =>
   !!m.mediaUrl || MEDIA_BUBBLE_TYPES.includes(m.mediaType ?? "");
 import MessageReactions from "./MessageReactions";
+import MessageInteractive from "./MessageInteractive";
 import MessageMetadata from "./MessageMetadata";
 import LinkPreview from "./LinkPreview";
 import DailyTimestamp from "./DailyTimestamp";
@@ -186,6 +187,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             )}
             {hasMediaBubble(message) && <MessageMedia message={message} />}
             {bodyContent}
+            <MessageInteractive message={message} />
             <MessageReactions message={message} />
           </div>
         </div>
@@ -216,6 +218,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {actionsButton}
         {hasMediaBubble(message) && <MessageMedia message={message} />}
         {bodyContent}
+        <MessageInteractive message={message} />
         <MessageReactions message={message} />
       </div>
     </React.Fragment>

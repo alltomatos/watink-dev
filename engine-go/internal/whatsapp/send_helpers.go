@@ -75,6 +75,12 @@ func resolveMediaBytes(payload MediaCommandPayload) ([]byte, error) {
 	return nil, lastErr
 }
 
+// resolveImageBytes fetches image bytes from a URL or base64 string, reusing the
+// same resolution logic as media messages (http, local public dir, or base64).
+func resolveImageBytes(url, b64 string) ([]byte, error) {
+	return resolveMediaBytes(MediaCommandPayload{MediaURL: url, MediaData: b64})
+}
+
 func normalizeMediaType(mediaType string) whatsmeow.MediaType {
 	switch strings.ToLower(mediaType) {
 	case "image":
