@@ -145,3 +145,124 @@ func TestFlowController_Delete_NotFound(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
+
+// TestFlowController_Update_PartialPatch_PreservesGraph is the FB0-B1 regression:
+// a flow with non-null nodes/edges/trigger/whatsapp/active must keep all of those
+// when the PATCH carries only `name`. The old Save()-of-whole-struct zeroed them.
+func TestFlowController_Update_PartialPatch_PreservesGraph(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupFlowTestDB(t)
+	tenantID := uuid.New()
+
+	nodes := `[{"id":"start","type":"start","data":{}},{"id":"end","type":"end","data":{}}]`
+	edges := `[{"id":"e1","source":"start","target":"end"}]`
+	db.Exec(`INSERT INTO "Flows" (name,nodes,edges,active,"triggerType","triggerValue","whatsappId","tenantId")
+		VALUES (?,?,?,?,?,?,?,?)`,
+		"Antigo", nodes, edges, true, "whatsapp_message", "ola", 7, tenantID)
+
+	var flow struct{ ID int }
+	db.Raw(`SELECT id FROM "Flows" WHERE "tenantId" = ?`, tenantID).Scan(&flow)
+
+	// PATCH carries ONLY name.
+	payload, _ := json.Marshal(map[string]interface{}{"name": "Renomeado"})
+	ctrl := NewFlowController()
+	c, w := setupFlowContext(t, db, tenantID, "PUT", fmt.Sprintf("/flows/%d", flow.ID), payload)
+	c.Params = gin.Params{{Key: "flowId", Value: fmt.Sprintf("%d", flow.ID)}}
+	ctrl.Update(c)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// Assert directly in the DB that every other field survived.
+	var row struct {
+		Name         string
+		Nodes        string
+		Edges        string
+		Active       bool
+		TriggerType  string
+		TriggerValue string
+		WhatsappID   *int
+	}
+	db.Raw(`SELECT name, nodes, edges, active, "triggerType" AS trigger_type,
+		"triggerValue" AS trigger_value, "whatsappId" AS whatsapp_id
+		FROM "Flows" WHERE id = ?`, flow.ID).Scan(&row)
+
+	assert.Equal(t, "Renomeado", row.Name, "name should be patched")
+	assert.JSONEq(t, nodes, row.Nodes, "nodes must be preserved")
+	assert.JSONEq(t, edges, row.Edges, "edges must be preserved")
+	assert.True(t, row.Active, "active must be preserved (not zeroed)")
+	assert.Equal(t, "whatsapp_message", row.TriggerType, "triggerType must be preserved")
+	assert.Equal(t, "ola", row.TriggerValue, "triggerValue must be preserved")
+	require.NotNil(t, row.WhatsappID, "whatsappId must be preserved")
+	assert.Equal(t, 7, *row.WhatsappID, "whatsappId value must be preserved")
+}
+
+// TestFlowController_Create_RejectsUnknownNodeType — FB0-B4: 422 on bad graph.
+func TestFlowController_Create_RejectsUnknownNodeType(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupFlowTestDB(t)
+	tenantID := uuid.New()
+
+	payload, _ := json.Marshal(map[string]interface{}{
+		"name":  "Ruim",
+		"nodes": json.RawMessage(`[{"id":"a","type":"bogus","data":{}}]`),
+	})
+	ctrl := NewFlowController()
+	c, w := setupFlowContext(t, db, tenantID, "POST", "/flows", payload)
+	ctrl.Create(c)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+}
+
+// TestFlowController_Create_RejectsOrphanEdge — FB0-B4: 422 on orphan edge.
+func TestFlowController_Create_RejectsOrphanEdge(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupFlowTestDB(t)
+	tenantID := uuid.New()
+
+	payload, _ := json.Marshal(map[string]interface{}{
+		"name":  "Orfa",
+		"nodes": json.RawMessage(`[{"id":"a","type":"start","data":{}}]`),
+		"edges": json.RawMessage(`[{"id":"e","source":"a","target":"ghost"}]`),
+	})
+	ctrl := NewFlowController()
+	c, w := setupFlowContext(t, db, tenantID, "POST", "/flows", payload)
+	ctrl.Create(c)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+}
+
+// TestFlowController_Create_AcceptsNoSchemaVersion — FB0-B4: absence = v1, not an error.
+func TestFlowController_Create_AcceptsNoSchemaVersion(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupFlowTestDB(t)
+	tenantID := uuid.New()
+
+	payload, _ := json.Marshal(map[string]interface{}{
+		"name":   "Boa",
+		"active": true,
+		"nodes":  json.RawMessage(`[{"id":"a","type":"start","data":{}},{"id":"b","type":"end","data":{}}]`),
+		"edges":  json.RawMessage(`[{"id":"e","source":"a","target":"b"}]`),
+	})
+	ctrl := NewFlowController()
+	c, w := setupFlowContext(t, db, tenantID, "POST", "/flows", payload)
+	ctrl.Create(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+// TestFlowController_Stubs_Return501 — FB0-B2: AI/simulate stubs answer 501.
+func TestFlowController_Stubs_Return501(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupFlowTestDB(t)
+	tenantID := uuid.New()
+	ctrl := NewFlowController()
+
+	cAI, wAI := setupFlowContext(t, db, tenantID, "POST", "/flows/ai", []byte(`{}`))
+	ctrl.AISuggest(cAI)
+	assert.Equal(t, http.StatusNotImplemented, wAI.Code)
+
+	cSim, wSim := setupFlowContext(t, db, tenantID, "POST", "/flows/1/simulate", []byte(`{}`))
+	cSim.Params = gin.Params{{Key: "flowId", Value: "1"}}
+	ctrl.Simulate(cSim)
+	assert.Equal(t, http.StatusNotImplemented, wSim.Code)
+}

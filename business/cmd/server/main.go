@@ -84,7 +84,9 @@ func main() {
 	container := application.NewContainer(database.DB, redisSvc, broadcast, rabbitMQ, hub)
 
 	if err := rabbitMQ.Connect(); err == nil {
-		rabbitMQ.StartFlowWorker()
+		// FlowBuilder FASE 0: the inbound trigger-match skeleton is plugged into
+		// the EventListener (NewEventListener wires flow.NewSkeleton), replacing
+		// the two previously-dead workers. No separate AMQP flow worker.
 		eventListener := services.NewEventListener(container.ChannelSessionRepo, container.MessageRepo, container.ContactRepo, container.TicketRepo, container.ReceiveMessage, broadcast, database.DB)
 		services.StartEventListener(rabbitMQ, eventListener)
 	} else {
