@@ -9,6 +9,7 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/application/usecases"
 	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/internal/flow"
 	"github.com/google/uuid"
 	amqp "github.com/streadway/amqp"
 	"gorm.io/gorm"
@@ -22,10 +23,11 @@ type EventListener struct {
 	receiveMessage *usecases.ReceiveMessageUseCase
 	broadcast      domain.Broadcaster
 	db             *gorm.DB
+	flowSkeleton   *flow.Skeleton
 }
 
 func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase, broadcast domain.Broadcaster, db *gorm.DB) *EventListener {
-	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: domain.BroadcastOrNop(broadcast), db: db}
+	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: domain.BroadcastOrNop(broadcast), db: db, flowSkeleton: flow.NewSkeleton(db)}
 }
 
 // bcast returns a nil-safe broadcaster — tests that construct EventListener
@@ -137,6 +139,13 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 	})
 	if err != nil {
 		return err
+	}
+
+	// FlowBuilder FASE 0 seam: route the inbound through the trigger-match
+	// skeleton. Tenant-aware (WHERE "tenantId" manual), log-only — it does NOT
+	// start a run, execute a node, or send anything in this phase.
+	if el.flowSkeleton != nil {
+		el.flowSkeleton.RouteInbound(ctx, tenantID, p.Body, p.FromMe)
 	}
 
 	room := "chat:" + strconv.Itoa(result.Ticket.ID)
