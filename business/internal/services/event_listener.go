@@ -26,8 +26,8 @@ type EventListener struct {
 	flowSkeleton   *flow.Skeleton
 }
 
-func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase, broadcast domain.Broadcaster, db *gorm.DB) *EventListener {
-	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: domain.BroadcastOrNop(broadcast), db: db, flowSkeleton: flow.NewSkeleton(db)}
+func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase, broadcast domain.Broadcaster, db *gorm.DB, registry *flow.ChannelRegistry) *EventListener {
+	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: domain.BroadcastOrNop(broadcast), db: db, flowSkeleton: flow.NewSkeleton(db, registry)}
 }
 
 // bcast returns a nil-safe broadcaster — tests that construct EventListener
