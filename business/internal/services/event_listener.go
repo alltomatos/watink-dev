@@ -26,8 +26,8 @@ type EventListener struct {
 	flowSkeleton   *flow.Skeleton
 }
 
-func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase, broadcast domain.Broadcaster, db *gorm.DB, registry *flow.ChannelRegistry) *EventListener {
-	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: domain.BroadcastOrNop(broadcast), db: db, flowSkeleton: flow.NewSkeleton(db, registry)}
+func NewEventListener(sessions domain.ChannelSessionRepository, messages domain.MessageRepository, contacts domain.ContactRepository, tickets domain.TicketRepository, rm *usecases.ReceiveMessageUseCase, broadcast domain.Broadcaster, db *gorm.DB, registry *flow.ChannelRegistry, redis domain.RedisService) *EventListener {
+	return &EventListener{sessions: sessions, messages: messages, contacts: contacts, tickets: tickets, receiveMessage: rm, broadcast: domain.BroadcastOrNop(broadcast), db: db, flowSkeleton: flow.NewSkeleton(db, registry, redis)}
 }
 
 // bcast returns a nil-safe broadcaster — tests that construct EventListener
@@ -147,12 +147,19 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 	el.bcast().EmitToTenantRoom(tenantID.String(), "appMessage", msgPayload)
 	el.bcast().EmitToTenantRoom(tenantID.String(), "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket, "contact": result.Contact})
 
-	// FlowBuilder FASE 0 seam: route the inbound through the trigger-match
-	// skeleton AFTER the real-time broadcasts, so its DB round-trip never delays
-	// SSE delivery. Tenant-aware (WHERE "tenantId" manual), log-only — it does
-	// NOT start a run, execute a node, or send anything in this phase.
+	// FlowBuilder FASE 1 seam: route the inbound through the runtime AFTER the
+	// real-time broadcasts, so its DB round-trip never delays SSE delivery. The
+	// dispatcher does resume-first / opt-out / trigger→StartFlow, tenant-aware
+	// (WHERE "tenantId" manual). EnvID = inbound message id (redelivery dedup).
 	if el.flowSkeleton != nil {
-		el.flowSkeleton.RouteInbound(ctx, tenantID, p.Body, p.FromMe)
+		el.flowSkeleton.RouteInboundTicket(ctx, flow.InboundContext{
+			TenantID: tenantID,
+			Body:     p.Body,
+			FromMe:   p.FromMe,
+			EnvID:    p.ID,
+			Ticket:   result.Ticket,
+			Contact:  result.Contact,
+		})
 	}
 
 	return nil
