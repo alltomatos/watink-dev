@@ -141,18 +141,19 @@ func (el *EventListener) processMessage(ctx context.Context, p MessagePayload, r
 		return err
 	}
 
-	// FlowBuilder FASE 0 seam: route the inbound through the trigger-match
-	// skeleton. Tenant-aware (WHERE "tenantId" manual), log-only — it does NOT
-	// start a run, execute a node, or send anything in this phase.
-	if el.flowSkeleton != nil {
-		el.flowSkeleton.RouteInbound(ctx, tenantID, p.Body, p.FromMe)
-	}
-
 	room := "chat:" + strconv.Itoa(result.Ticket.ID)
 	msgPayload := map[string]interface{}{"action": "create", "message": result.Message, "ticket": result.Ticket, "contact": result.Contact}
 	el.bcast().EmitToRoom("/", room, "appMessage", msgPayload)
 	el.bcast().EmitToTenantRoom(tenantID.String(), "appMessage", msgPayload)
 	el.bcast().EmitToTenantRoom(tenantID.String(), "ticket", map[string]interface{}{"action": "update", "ticket": result.Ticket, "contact": result.Contact})
+
+	// FlowBuilder FASE 0 seam: route the inbound through the trigger-match
+	// skeleton AFTER the real-time broadcasts, so its DB round-trip never delays
+	// SSE delivery. Tenant-aware (WHERE "tenantId" manual), log-only — it does
+	// NOT start a run, execute a node, or send anything in this phase.
+	if el.flowSkeleton != nil {
+		el.flowSkeleton.RouteInbound(ctx, tenantID, p.Body, p.FromMe)
+	}
 
 	return nil
 }

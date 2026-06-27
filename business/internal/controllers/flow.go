@@ -26,20 +26,22 @@ const maxFlowJSONSize = 1 << 20
 
 // flowInput is the Create payload (Name required).
 type flowInput struct {
-	Name   string         `json:"name" binding:"required"`
-	Nodes  datatypes.JSON `json:"nodes"`
-	Edges  datatypes.JSON `json:"edges"`
-	Active bool           `json:"active"`
+	Name       string         `json:"name" binding:"required"`
+	Nodes      datatypes.JSON `json:"nodes"`
+	Edges      datatypes.JSON `json:"edges"`
+	Active     bool           `json:"active"`
+	WhatsAppID *int           `json:"whatsappId"`
 }
 
 // flowUpdateInput is the Update payload. All fields are pointers so an omitted
 // field is preserved (partial PATCH) instead of being zeroed — fixing the data
 // loss where Save() of the whole struct wiped Nodes/Edges/Active (FB0-B1).
 type flowUpdateInput struct {
-	Name   *string         `json:"name"`
-	Nodes  *datatypes.JSON `json:"nodes"`
-	Edges  *datatypes.JSON `json:"edges"`
-	Active *bool           `json:"active"`
+	Name       *string         `json:"name"`
+	Nodes      *datatypes.JSON `json:"nodes"`
+	Edges      *datatypes.JSON `json:"edges"`
+	Active     *bool           `json:"active"`
+	WhatsAppID *int            `json:"whatsappId"`
 }
 
 // validateFlowGraph parses nodes+edges into the versioned FlowGraph contract and
@@ -80,7 +82,7 @@ func (fc *FlowController) List(c *gin.Context) {
 	}
 
 	var flows []models.Flow
-	if err := db.Where("\"tenantId\" = ?", tenantID).Find(&flows).Error; err != nil {
+	if err := db.Preload("Whatsapp").Where("\"tenantId\" = ?", tenantID).Find(&flows).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "Failed to fetch flows")
 		return
 	}
@@ -128,15 +130,22 @@ func (fc *FlowController) Create(c *gin.Context) {
 	}
 
 	flow := models.Flow{
-		Name:     flowName,
-		Nodes:    req.Nodes,
-		Edges:    req.Edges,
-		Active:   req.Active,
-		TenantID: tenantID,
+		Name:       flowName,
+		Nodes:      req.Nodes,
+		Edges:      req.Edges,
+		Active:     req.Active,
+		WhatsAppID: req.WhatsAppID,
+		TenantID:   tenantID,
 	}
 
 	if err := db.Create(&flow).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "CreateFlow")
+		return
+	}
+
+	// Reload with the connection preloaded so the response carries whatsapp.name.
+	if err := db.Preload("Whatsapp").Where("\"tenantId\" = ? AND id = ?", tenantID, flow.ID).First(&flow).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "CreateFlowReload")
 		return
 	}
 
@@ -158,7 +167,7 @@ func (fc *FlowController) Show(c *gin.Context) {
 	id := c.Param("flowId")
 
 	var flow models.Flow
-	if err := db.Where("\"tenantId\" = ? AND id = ?", tenantID, id).First(&flow).Error; err != nil {
+	if err := db.Preload("Whatsapp").Where("\"tenantId\" = ? AND id = ?", tenantID, id).First(&flow).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Flow not found"})
 		return
 	}
@@ -238,6 +247,9 @@ func (fc *FlowController) Update(c *gin.Context) {
 	if req.Active != nil {
 		updates["active"] = *req.Active
 	}
+	if req.WhatsAppID != nil {
+		updates["whatsappId"] = *req.WhatsAppID
+	}
 
 	// FB0-B4: only re-validate the graph when nodes/edges are part of this PATCH.
 	if graphTouched && !validateFlowGraph(c, effNodes, effEdges) {
@@ -261,9 +273,10 @@ func (fc *FlowController) Update(c *gin.Context) {
 		return
 	}
 
-	// Re-read so the response reflects the merged record (preserved + patched).
+	// Re-read so the response reflects the merged record (preserved + patched),
+	// with the connection preloaded so the card can show whatsapp.name.
 	var updated models.Flow
-	if err := db.Where("\"tenantId\" = ? AND id = ?", tenantID, existing.ID).First(&updated).Error; err != nil {
+	if err := db.Preload("Whatsapp").Where("\"tenantId\" = ? AND id = ?", tenantID, existing.ID).First(&updated).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "UpdateFlowReload")
 		return
 	}

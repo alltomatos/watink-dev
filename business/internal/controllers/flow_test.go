@@ -260,9 +260,87 @@ func TestFlowController_Stubs_Return501(t *testing.T) {
 	cAI, wAI := setupFlowContext(t, db, tenantID, "POST", "/flows/ai", []byte(`{}`))
 	ctrl.AISuggest(cAI)
 	assert.Equal(t, http.StatusNotImplemented, wAI.Code)
+	assertCanonicalError(t, wAI)
 
 	cSim, wSim := setupFlowContext(t, db, tenantID, "POST", "/flows/1/simulate", []byte(`{}`))
 	cSim.Params = gin.Params{{Key: "flowId", Value: "1"}}
 	ctrl.Simulate(cSim)
 	assert.Equal(t, http.StatusNotImplemented, wSim.Code)
+	assertCanonicalError(t, wSim)
+}
+
+// assertCanonicalError asserts the body is the canonical {"error":...} envelope
+// the frontend relies on to detect the 501 (FB0-B2).
+func assertCanonicalError(t *testing.T, w *httptest.ResponseRecorder) {
+	t.Helper()
+	var body map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	msg, ok := body["error"].(string)
+	assert.True(t, ok && msg != "", "response must carry a non-empty canonical \"error\" field, got: %s", w.Body.String())
+}
+
+// TestFlowController_Update_ActiveFalse_WritesFalse — FB0-B1: an explicit
+// active:false flips a previously-active flow to false (map-Updates does not
+// skip the false), while an OMITTED active is preserved (covered elsewhere).
+func TestFlowController_Update_ActiveFalse_WritesFalse(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupFlowTestDB(t)
+	tenantID := uuid.New()
+
+	db.Exec(`INSERT INTO "Flows" (name,active,"tenantId") VALUES (?,?,?)`, "Ativo", true, tenantID)
+	var flow struct{ ID int }
+	db.Raw(`SELECT id FROM "Flows" WHERE "tenantId" = ?`, tenantID).Scan(&flow)
+
+	payload, _ := json.Marshal(map[string]interface{}{"active": false})
+	ctrl := NewFlowController()
+	c, w := setupFlowContext(t, db, tenantID, "PUT", fmt.Sprintf("/flows/%d", flow.ID), payload)
+	c.Params = gin.Params{{Key: "flowId", Value: fmt.Sprintf("%d", flow.ID)}}
+	ctrl.Update(c)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var row struct{ Active bool }
+	db.Raw(`SELECT active FROM "Flows" WHERE id = ?`, flow.ID).Scan(&row)
+	assert.False(t, row.Active, "explicit active:false must flip the flow to inactive")
+}
+
+// TestFlowController_Update_RejectsInvalidGraph — FB0-B4: a PUT carrying an
+// illegal graph (unknown node type) is rejected with 422.
+func TestFlowController_Update_RejectsInvalidGraph(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupFlowTestDB(t)
+	tenantID := uuid.New()
+
+	db.Exec(`INSERT INTO "Flows" (name,"tenantId") VALUES (?,?)`, "Base", tenantID)
+	var flow struct{ ID int }
+	db.Raw(`SELECT id FROM "Flows" WHERE "tenantId" = ?`, tenantID).Scan(&flow)
+
+	payload, _ := json.Marshal(map[string]interface{}{
+		"nodes": json.RawMessage(`[{"id":"a","type":"bogus","data":{}}]`),
+	})
+	ctrl := NewFlowController()
+	c, w := setupFlowContext(t, db, tenantID, "PUT", fmt.Sprintf("/flows/%d", flow.ID), payload)
+	c.Params = gin.Params{{Key: "flowId", Value: fmt.Sprintf("%d", flow.ID)}}
+	ctrl.Update(c)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+}
+
+// TestFlowController_Create_PersistsWhatsAppID — the chosen WhatsApp connection
+// is persisted (was silently dropped before flowInput exposed whatsappId).
+func TestFlowController_Create_PersistsWhatsAppID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupFlowTestDB(t)
+	tenantID := uuid.New()
+
+	wid := 5
+	payload, _ := json.Marshal(map[string]interface{}{"name": "Com conexao", "whatsappId": wid})
+	ctrl := NewFlowController()
+	c, w := setupFlowContext(t, db, tenantID, "POST", "/flows", payload)
+	ctrl.Create(c)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var row struct{ WhatsappID *int }
+	db.Raw(`SELECT "whatsappId" AS whatsapp_id FROM "Flows" WHERE "tenantId" = ?`, tenantID).Scan(&row)
+	require.NotNil(t, row.WhatsappID, "whatsappId must be persisted, not dropped")
+	assert.Equal(t, wid, *row.WhatsappID)
 }
