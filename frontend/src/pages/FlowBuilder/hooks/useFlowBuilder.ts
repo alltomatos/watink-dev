@@ -16,7 +16,6 @@ export function useFlowBuilder() {
     const editor = useFlowEditor();
 
     const flowNodes = useFlowNodes({
-        reactFlowWrapper,
         reactFlowInstance,
         onEditorOpen: editor.openEditor,
         onEditorClose: editor.closeEditor,

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 
 export function useFlowEditor() {
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);

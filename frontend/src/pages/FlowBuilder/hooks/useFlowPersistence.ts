@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getConnectedEdges } from 'reactflow';
-import type { Node, Edge } from 'reactflow';
+import { getConnectedEdges } from '@xyflow/react';
+import type { Node, Edge } from '@xyflow/react';
 import { toast } from 'react-toastify';
 
 import api from '../../../services/api';
 import toastError from '../../../errors/toastError';
+import { stripLegacyDimensions } from '../flowBuilderTypes';
 
 interface UseFlowPersistenceOptions {
     flowId: string | undefined;
@@ -62,7 +63,7 @@ export function useFlowPersistence({
                 setIsActive(data.active !== false);
 
                 if (Array.isArray(data.nodes)) {
-                    setNodes(hydrateNodes(data.nodes as Node[]));
+                    setNodes(hydrateNodes(stripLegacyDimensions(data.nodes as Node[])));
                 }
                 if (Array.isArray(data.edges)) setEdges(data.edges as Edge[]);
                 setLoading(false);
