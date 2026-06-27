@@ -1,8 +1,9 @@
 ﻿import React from 'react';
-import ReactFlow, {
+import {
+    ReactFlow,
     Background,
     Controls,
-} from 'reactflow';
+} from '@xyflow/react';
 import type {
     Node,
     Edge,
@@ -11,8 +12,8 @@ import type {
     OnEdgesChange,
     OnInit,
     Connection,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 
 interface FlowCanvasProps {
     canvasRef: React.RefObject<HTMLDivElement>;

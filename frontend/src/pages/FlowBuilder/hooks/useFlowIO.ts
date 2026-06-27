@@ -1,8 +1,9 @@
 import { useCallback } from 'react';
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import { toast } from 'react-toastify';
 
 import api from '../../../services/api';
+import { stripLegacyDimensions } from '../flowBuilderTypes';
 
 interface UseFlowIOOptions {
     flowId: string | undefined;
@@ -32,7 +33,7 @@ export function useFlowIO({ flowId, nodes, edges, setNodes, setEdges, fileInputR
             try {
                 const parsed = JSON.parse(e.target!.result as string) as { nodes?: Node[]; edges?: Edge[] };
                 if (parsed.nodes && parsed.edges) {
-                    setNodes(parsed.nodes);
+                    setNodes(stripLegacyDimensions(parsed.nodes));
                     setEdges(parsed.edges);
                     toast.success('Fluxo importado com sucesso!');
                 } else {
@@ -47,8 +48,18 @@ export function useFlowIO({ flowId, nodes, edges, setNodes, setEdges, fileInputR
     }, [setNodes, setEdges, fileInputRef]);
 
     const handleSimulate = useCallback(async (id: string | undefined, message: string) => {
-        const { data } = await api.post(`/flows/${id}/simulate`, { message });
-        return data;
+        try {
+            const { data } = await api.post(`/flows/${id}/simulate`, { message });
+            return data;
+        } catch (err) {
+            const status = (err as { response?: { status?: number } })?.response?.status;
+            if (status === 501) {
+                const friendly = 'Recurso indisponível no momento';
+                toast.info(friendly, { toastId: 'flow-simulate-501' });
+                throw new Error(friendly);
+            }
+            throw err;
+        }
     }, []);
 
     const handleAIResponse = useCallback((newNodes: Node[], newEdges: Edge[]) => {

@@ -52,13 +52,21 @@ const FlowChat: React.FC<FlowChatProps> = ({ onFlowGenerated }) => {
       if (data.nodes && data.edges) {
         onFlowGenerated(data.nodes, data.edges);
       }
-    } catch {
-      toast.error('Erro ao processar sua solicitação.');
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const unavailable = status === 501;
+      if (unavailable) {
+        toast.info('Recurso indisponível no momento', { toastId: 'flow-ai-501' });
+      } else {
+        toast.error('Erro ao processar sua solicitação.');
+      }
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
-          text: 'Desculpe, tive um problema ao gerar o fluxo. Tente novamente.',
+          text: unavailable
+            ? 'O assistente de IA está indisponível no momento.'
+            : 'Desculpe, tive um problema ao gerar o fluxo. Tente novamente.',
           sender: 'bot',
         },
       ]);

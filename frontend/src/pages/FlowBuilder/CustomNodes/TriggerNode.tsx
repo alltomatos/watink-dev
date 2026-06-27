@@ -1,5 +1,5 @@
 import React from 'react';
-import { Position } from 'reactflow';
+import { Position } from '@xyflow/react';
 import { Bell } from 'lucide-react';
 import BaseNode from './BaseNode';
 
