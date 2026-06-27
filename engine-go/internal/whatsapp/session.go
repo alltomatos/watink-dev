@@ -171,18 +171,10 @@ func (s *WhatsAppService) resolveDeviceStore(id int, jid string) (*store.Device,
 			}
 		}
 	}
-	devices, err := s.container.GetAllDevices(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	switch len(devices) {
-	case 0:
-		return nil, nil
-	case 1:
-		return devices[0], nil
-	default:
-		return nil, fmt.Errorf("multiple WhatsMeow devices found without JID mapping for session %d", id)
-	}
+	// Without a JID we cannot safely identify which device belongs to this session.
+	// Return nil so a fresh device store is created, avoiding cross-contamination
+	// between sessions sharing the same whatsmeow container.
+	return nil, nil
 }
 
 func (s *WhatsAppService) consumeQR(id int, tenantID string, qrChan <-chan whatsmeow.QRChannelItem) {

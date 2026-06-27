@@ -3,9 +3,11 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
@@ -52,11 +54,13 @@ func isUniqueViolation(err error, indexName string) bool {
 // QuickAnswerController encapsulates quick answer operations with RLS-scoped DB from auth middleware.
 // All queries are automatically tenant-scoped via auth.GetDB(c).
 type QuickAnswerController struct {
-	rabbit domain.CommandPublisher
+	rabbit    domain.CommandPublisher
+	broadcast domain.Broadcaster
+	db        *gorm.DB
 }
 
-func NewQuickAnswerController(r domain.CommandPublisher) *QuickAnswerController {
-	return &QuickAnswerController{rabbit: r}
+func NewQuickAnswerController(r domain.CommandPublisher, b domain.Broadcaster, db *gorm.DB) *QuickAnswerController {
+	return &QuickAnswerController{rabbit: r, broadcast: domain.BroadcastOrNop(b), db: db}
 }
 
 func interpolateVariables(text string, vars map[string]string) string {
@@ -292,7 +296,7 @@ func (qac *QuickAnswerController) Send(c *gin.Context) {
 	}
 
 	var ticket models.Ticket
-	if err := db.Preload("Contact").Where("id = ? AND \"tenantId\" = ?", input.TicketID, tenantID).First(&ticket).Error; err != nil {
+	if err := db.Session(&gorm.Session{NewDB: true}).Preload("Contact").Where("id = ? AND \"tenantId\" = ?", input.TicketID, tenantID).First(&ticket).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "ticket not found"})
 		return
 	}
@@ -327,20 +331,144 @@ func (qac *QuickAnswerController) Send(c *gin.Context) {
 		commandType = "message.send.poll"
 	}
 
-	to := ticket.Contact.Number
-	if ticket.Contact.IsGroup {
-		to = ticket.Contact.Number + "@g.us"
+	to := contactJID(ticket.Contact)
+
+	msgID := newWAMessageID()
+	sessionID := ticket.WhatsappID
+
+	var contentMap map[string]interface{}
+	if content != "" {
+		_ = json.Unmarshal([]byte(content), &contentMap)
 	}
 
-	payload := map[string]interface{}{
-		"sessionId": ticket.WhatsappID,
-		"messageId": fmt.Sprintf("3EB0QA%d%d", qa.ID, input.TicketID),
-		"to":        to,
-		"ticketId":  input.TicketID,
-		"body":      message,
-		"content":   content,
-		"qaType":    qaType,
+	var payload map[string]interface{}
+	switch qaType {
+	case "media":
+		mediaURL, _ := contentMap["url"].(string)
+		caption, _ := contentMap["caption"].(string)
+		mediaType, _ := contentMap["mediaType"].(string)
+		if caption == "" {
+			caption = message
+		}
+		mimeType := "image/jpeg"
+		if mediaType == "video" {
+			mimeType = "video/mp4"
+		} else if mediaType == "audio" {
+			mimeType = "audio/ogg"
+		}
+		payload = map[string]interface{}{
+			"sessionId": sessionID,
+			"messageId": msgID,
+			"to":        to,
+			"body":      caption,
+			"mediaUrl":  mediaURL,
+			"mediaType": mediaType,
+			"mimeType":  mimeType,
+		}
+	case "interactive_buttons":
+		// NativeFlow InteractiveMessage. Confirmed (whatsmeow #1144/#1145, mai/2026)
+		// que apenas os names quick_reply e cta_url renderizam em contas PESSOAIS
+		// (Android/iOS/Web). cta_call é mapeado por completude, mas pode degradar.
+		// O engine adiciona MessageVersion=3 — sem ele a bolha vira texto puro.
+		bodyText, _ := contentMap["body"].(string)
+		footerText, _ := contentMap["footer"].(string)
+		if bodyText == "" {
+			bodyText = message
+		}
+		var buttons []map[string]interface{}
+		if rawBtns, ok := contentMap["buttons"].([]interface{}); ok {
+			for i, rb := range rawBtns {
+				bm, ok := rb.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				id, _ := bm["id"].(string)
+				label, _ := bm["label"].(string)
+				if id == "" {
+					id = fmt.Sprintf("btn_%d", i)
+				}
+				btnType, _ := bm["type"].(string)
+				var name string
+				var params map[string]string
+				switch btnType {
+				case "url":
+					url, _ := bm["url"].(string)
+					name = "cta_url"
+					params = map[string]string{"display_text": label, "url": url, "merchant_url": url}
+				case "call":
+					phone, _ := bm["phoneNumber"].(string)
+					name = "cta_call"
+					params = map[string]string{"display_text": label, "phone_number": phone}
+				default: // "quickreply" / "quick_reply" / vazio
+					name = "quick_reply"
+					params = map[string]string{"display_text": label, "id": id}
+				}
+				paramsJSON, _ := json.Marshal(params)
+				buttons = append(buttons, map[string]interface{}{
+					"name":   name,
+					"params": string(paramsJSON),
+				})
+			}
+		}
+		payload = map[string]interface{}{
+			"sessionId":  sessionID,
+			"messageId":  msgID,
+			"to":         to,
+			"bodyText":   bodyText,
+			"footerText": footerText,
+			"buttons":    buttons,
+		}
+	case "list":
+		description, _ := contentMap["body"].(string)
+		buttonText, _ := contentMap["button"].(string)
+		footerText, _ := contentMap["footer"].(string)
+		if description == "" {
+			description = message
+		}
+		payload = map[string]interface{}{
+			"sessionId":   sessionID,
+			"messageId":   msgID,
+			"to":          to,
+			"title":       message,
+			"buttonText":  buttonText,
+			"description": description,
+			"footerText":  footerText,
+			"sections":    contentMap["sections"],
+		}
+	case "poll":
+		question, _ := contentMap["question"].(string)
+		if question == "" {
+			question = message
+		}
+		var options []string
+		if rawOpts, ok := contentMap["options"].([]interface{}); ok {
+			for _, o := range rawOpts {
+				if s, ok := o.(string); ok {
+					options = append(options, s)
+				}
+			}
+		}
+		selectableCount := 1
+		if ms, ok := contentMap["maxSelections"].(float64); ok {
+			selectableCount = int(ms)
+		}
+		payload = map[string]interface{}{
+			"sessionId":       sessionID,
+			"messageId":       msgID,
+			"to":              to,
+			"name":            question,
+			"options":         options,
+			"selectableCount": selectableCount,
+		}
+	default:
+		payload = map[string]interface{}{
+			"sessionId": sessionID,
+			"messageId": msgID,
+			"to":        to,
+			"body":      message,
+		}
 	}
+
 	command := map[string]interface{}{
 		"type":    commandType,
 		"payload": payload,
@@ -351,6 +479,68 @@ func (qac *QuickAnswerController) Send(c *gin.Context) {
 		utils.RespondWithInternalError(c, err, "SendQuickAnswer")
 		return
 	}
+
+	// Persist outgoing message so it appears in the UI and ack events can find it.
+	writeDB := qac.db.Session(&gorm.Session{NewDB: true})
+	contactID := ticket.ContactID
+	now := time.Now()
+
+	msgBody := message
+	msgMediaURL := ""
+	msgMediaType := ""
+	if qaType == "media" {
+		if mu, ok := contentMap["url"].(string); ok {
+			msgMediaURL = mu
+		}
+		if mt, ok := contentMap["mediaType"].(string); ok {
+			msgMediaType = mt
+		}
+		if msgBody == "" {
+			if cap, ok := contentMap["caption"].(string); ok {
+				msgBody = cap
+			}
+		}
+		if msgBody == "" {
+			msgBody = "📎 Mídia"
+		}
+	}
+
+	outgoing := models.Message{
+		ID:        msgID,
+		Body:      msgBody,
+		Ack:       0,
+		MediaType: msgMediaType,
+		MediaUrl:  msgMediaURL,
+		TicketID:  input.TicketID,
+		FromMe:    true,
+		ContactID: &contactID,
+		TenantID:  tenantID,
+		Reactions: "[]",
+		DataJson:  "{}",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := writeDB.Create(&outgoing).Error; err != nil {
+		log.Printf("[SendQuickAnswer] persist outgoing message failed (ticket %d): %v", input.TicketID, err)
+	}
+
+	lastMessage := msgBody
+	writeDB.Model(&models.Ticket{}).
+		Where("id = ? AND \"tenantId\" = ?", input.TicketID, tenantID).
+		Updates(map[string]interface{}{"lastMessage": lastMessage, "updatedAt": now})
+
+	ticketRoom := "chat:" + strconv.Itoa(input.TicketID)
+	msgPayload := map[string]interface{}{"action": "create", "message": outgoing}
+	qac.broadcast.EmitToRoom("/", ticketRoom, "appMessage", msgPayload)
+	qac.broadcast.EmitToTenantRoom(tenantID.String(), "appMessage", msgPayload)
+	qac.broadcast.EmitToTenantRoom(tenantID.String(), "ticket", map[string]interface{}{
+		"action": "update",
+		"ticket": map[string]interface{}{
+			"id":          input.TicketID,
+			"lastMessage": lastMessage,
+			"updatedAt":   now,
+		},
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "sent"})
 }
