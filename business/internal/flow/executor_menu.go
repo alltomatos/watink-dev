@@ -46,8 +46,13 @@ func (menuExecutor) Execute(_ context.Context, st *ExecState, node Node) (Outcom
 		reply := strings.TrimSpace(st.Inbound)
 		idx, opt, ok := matchMenuOption(d.Options, reply)
 		if !ok {
-			// Unrecognized reply: re-send the menu and wait again.
-			if err := sendMenu(st, node, d); err != nil {
+			// Unrecognized reply: re-send the menu and wait again. The reprompt
+			// MUST use a fresh EnvID per attempt — reusing the first
+			// presentation's per-node EnvID would hit the adapter's 24h dedup
+			// lock and silently no-op, trapping the run in waiting_message until
+			// TTL. Bump a per-node attempt counter and fold it into the EnvID.
+			attempt := bumpMenuAttempt(st, node.ID)
+			if err := sendMenuAttempt(st, node, d, strconv.Itoa(attempt)); err != nil {
 				return Outcome{}, err
 			}
 			return Outcome{Kind: OutcomeSuspend, Detail: "reprompt: unmatched reply"}, nil
@@ -68,8 +73,17 @@ func (menuExecutor) Execute(_ context.Context, st *ExecState, node Node) (Outcom
 	return Outcome{Kind: OutcomeSuspend, WaitStatus: "", Detail: "menu presented"}, nil
 }
 
-// sendMenu renders the numbered menu text and sends it via the whatsapp adapter.
+// sendMenu renders the numbered menu text and sends it via the whatsapp adapter,
+// keyed by the node id (first presentation — redelivery-safe).
 func sendMenu(st *ExecState, node Node, d menuData) error {
+	return sendMenuAttempt(st, node, d, "")
+}
+
+// sendMenuAttempt is sendMenu with an EnvID suffix so a reprompt (suffix =
+// attempt number) is a distinct idempotency key and is not swallowed by the
+// adapter dedup lock held from the first presentation. An empty suffix == the
+// per-node key (first presentation).
+func sendMenuAttempt(st *ExecState, node Node, d menuData, suffix string) error {
 	var b strings.Builder
 	if title := applyVars(st, d.MenuTitle); title != "" {
 		b.WriteString(title)
@@ -78,7 +92,23 @@ func sendMenu(st *ExecState, node Node, d menuData) error {
 	for i, opt := range d.Options {
 		fmt.Fprintf(&b, "%d. %s\n", i+1, applyVars(st, opt.Label))
 	}
-	return sendWhatsApp(context.Background(), st, node.ID, strings.TrimRight(b.String(), "\n"), nil)
+	env := envIDWithSuffix(st, node.ID, suffix)
+	return sendWhatsAppEnv(context.Background(), st, env, strings.TrimRight(b.String(), "\n"), nil)
+}
+
+// bumpMenuAttempt increments and returns the per-node reprompt counter stored in
+// the run vars. It persists across resumes because st.Vars is written back into
+// Run.Vars, so each invalid reply yields a strictly increasing attempt number
+// (and thus a unique reprompt EnvID), even across separate inbound deliveries.
+func bumpMenuAttempt(st *ExecState, nodeID string) int {
+	if st.Vars == nil {
+		st.Vars = map[string]string{}
+	}
+	key := "menu_attempts:" + nodeID
+	n, _ := strconv.Atoi(st.Vars[key])
+	n++
+	st.Vars[key] = strconv.Itoa(n)
+	return n
 }
 
 // matchMenuOption resolves a reply to an option: by 1-based number first, then
