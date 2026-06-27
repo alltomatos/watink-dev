@@ -233,13 +233,14 @@ func (s *Skeleton) resume(ctx context.Context, in InboundContext, run models.Flo
 	}
 
 	st := &ExecState{
-		TenantID: in.TenantID,
-		Run:      &run,
-		Graph:    graph,
-		Vars:     vars,
-		Inbound:  in.Body,
-		Ticket:   in.Ticket,
-		Contact:  in.Contact,
+		TenantID:     in.TenantID,
+		Run:          &run,
+		Graph:        graph,
+		Vars:         vars,
+		Inbound:      in.Body,
+		ResumeNodeID: run.CurrentNodeID, // the node we suspended at owns the reply
+		Ticket:       in.Ticket,
+		Contact:      in.Contact,
 	}
 	if err := s.interpreter.Run(ctx, st); err != nil {
 		log.Printf("[FlowSkeleton] resume failed run=%s: %v", run.ID, err)

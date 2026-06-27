@@ -39,8 +39,11 @@ func (menuExecutor) Execute(_ context.Context, st *ExecState, node Node) (Outcom
 		_ = json.Unmarshal(node.Data, &d)
 	}
 
-	// Resume path: an inbound reply is present → match it to an option.
-	if reply := strings.TrimSpace(st.Inbound); reply != "" {
+	// Resume path: this menu is exactly where the run was suspended, so the
+	// inbound is its reply → match it to an option. A menu reached fresh in the
+	// same pass (node.ID != ResumeNodeID) always presents instead.
+	if node.ID == st.ResumeNodeID {
+		reply := strings.TrimSpace(st.Inbound)
 		idx, opt, ok := matchMenuOption(d.Options, reply)
 		if !ok {
 			// Unrecognized reply: re-send the menu and wait again.

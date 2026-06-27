@@ -52,8 +52,16 @@ type ExecState struct {
 	Vars map[string]string
 
 	// Inbound is the body of the message that triggered/resumed this pass. Empty
-	// on a fresh trigger-start with no carried body. Menu/switch read it.
+	// on a fresh trigger-start with no carried body. Stays available for the
+	// whole pass so a switch can evaluate lastInput; the menu uses ResumeNodeID
+	// (not Inbound presence) to tell a reply from a first presentation.
 	Inbound string
+
+	// ResumeNodeID is the node a resumed run was suspended at — the ONLY node
+	// that should interpret Inbound as its reply (e.g. a menu selection). Empty
+	// on a fresh trigger-start. Prevents a downstream menu reached in the same
+	// pass from wrongly consuming the inbound as its own answer.
+	ResumeNodeID string
 
 	// Ticket / Contact bind the run to the conversation (read-only here).
 	Ticket  *domain.Ticket
