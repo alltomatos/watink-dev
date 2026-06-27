@@ -3,6 +3,7 @@ package flow
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -307,6 +308,89 @@ func TestRuntime_MenuBranch_ByLabelChoosesA(t *testing.T) {
 	bodies := adapter.bodies()
 	require.Len(t, bodies, 3)
 	assert.Equal(t, "Setor Suporte", bodies[2])
+}
+
+// TestRuntime_Interpolation_StripsUnknownToken pins M1: a {{token}} with no
+// matching var must render as "" (invariant: var ausente → vazio), not leak the
+// literal placeholder to the contact. Also checks an editor-offered alias
+// ({{firstName}}) IS seeded, not stripped.
+func TestRuntime_Interpolation_StripsUnknownToken(t *testing.T) {
+	sk, adapter, db := newRuntime(t)
+	tenant := uuid.New()
+
+	nodes := []Node{
+		node("start", "start", map[string]any{"triggerType": "any"}),
+		node("msg", "message", map[string]any{
+			"contentType": "text",
+			"content":     "Oi {{firstName}}![{{desconhecida}}]",
+		}),
+		node("end", "end", map[string]any{}),
+	}
+	edges := []Edge{
+		{ID: "e1", Source: "start", Target: "msg"},
+		{ID: "e2", Source: "msg", Target: "end"},
+	}
+	seedActiveFlow(t, db, tenant, "", nodes, edges)
+
+	sk.RouteInboundTicket(context.Background(), inboundFor(tenant, 21, "ola", "m1-1"))
+
+	bodies := adapter.bodies()
+	require.Len(t, bodies, 1)
+	// firstName seeded from contact "Alice"; unknown token stripped to "".
+	assert.Equal(t, "Oi Alice![]", bodies[0])
+}
+
+// TestRuntime_Switch_DayOfWeekAndHour pins M2: the dayOfWeek/currentHour fields
+// resolve to the real clock value (no longer a silent "" mismatch). The flow
+// branches "a" when dayOfWeek equals today's weekday — which is always true.
+func TestRuntime_Switch_DayOfWeekAndHour(t *testing.T) {
+	sk, adapter, db := newRuntime(t)
+	tenant := uuid.New()
+
+	today := strconv.Itoa(int(time.Now().Weekday()))
+	nodes := []Node{
+		node("start", "start", map[string]any{"triggerType": "any"}),
+		node("sw", "switch", map[string]any{
+			"conditionsA": []map[string]any{
+				{"field": "dayOfWeek", "operator": "equals", "value": today},
+			},
+		}),
+		node("a", "message", map[string]any{"contentType": "text", "content": "weekday matched"}),
+		node("b", "message", map[string]any{"contentType": "text", "content": "weekday miss"}),
+		node("end", "end", map[string]any{}),
+	}
+	edges := []Edge{
+		{ID: "e1", Source: "start", Target: "sw"},
+		{ID: "e2", Source: "sw", Target: "a", Handle: "a"},
+		{ID: "e3", Source: "sw", Target: "b", Handle: "b"},
+		{ID: "e4", Source: "a", Target: "end"},
+		{ID: "e5", Source: "b", Target: "end"},
+	}
+	seedActiveFlow(t, db, tenant, "", nodes, edges)
+
+	sk.RouteInboundTicket(context.Background(), inboundFor(tenant, 22, "hi", "m2-1"))
+	bodies := adapter.bodies()
+	require.Len(t, bodies, 1)
+	assert.Equal(t, "weekday matched", bodies[0], "dayOfWeek must resolve to the real weekday")
+
+	// currentHour must resolve to a parseable hour (greaterThan -1 is always true).
+	sk2, adapter2, db2 := newRuntime(t)
+	nodes2 := []Node{
+		node("start", "start", map[string]any{"triggerType": "any"}),
+		node("sw", "switch", map[string]any{
+			"conditionsA": []map[string]any{
+				{"field": "currentHour", "operator": "greaterThan", "value": "-1"},
+			},
+		}),
+		node("a", "message", map[string]any{"contentType": "text", "content": "hour resolved"}),
+		node("b", "message", map[string]any{"contentType": "text", "content": "hour empty"}),
+		node("end", "end", map[string]any{}),
+	}
+	seedActiveFlow(t, db2, tenant, "", nodes2, edges)
+	sk2.RouteInboundTicket(context.Background(), inboundFor(tenant, 23, "hi", "m2-2"))
+	b2 := adapter2.bodies()
+	require.Len(t, b2, 1)
+	assert.Equal(t, "hour resolved", b2[0], "currentHour must resolve numerically, not empty")
 }
 
 func TestRuntime_Switch_BranchesByCondition(t *testing.T) {
