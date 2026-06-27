@@ -226,13 +226,6 @@ func NewQuickAnswerController(r domain.CommandPublisher, b domain.Broadcaster, d
 	return &QuickAnswerController{rabbit: r, broadcast: domain.BroadcastOrNop(b), db: db}
 }
 
-func interpolateVariables(text string, vars map[string]string) string {
-	for k, v := range vars {
-		text = strings.ReplaceAll(text, "{{"+k+"}}", v)
-	}
-	return text
-}
-
 // @Summary      Listar respostas rápidas
 // @Tags         quick-answers
 // @Produce      json
@@ -496,8 +489,8 @@ func (qac *QuickAnswerController) Send(c *gin.Context) {
 		autoVars[k] = v
 	}
 
-	content := interpolateVariables(qa.Content, autoVars)
-	message := interpolateVariables(qa.Message, autoVars)
+	content := utils.InterpolateVariables(qa.Content, autoVars)
+	message := utils.InterpolateVariables(qa.Message, autoVars)
 
 	qaType := qa.Type
 	if qaType == "" {
