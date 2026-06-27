@@ -15,10 +15,15 @@ import (
 
 // FlowController encapsulates flow operations with RLS-scoped DB from auth middleware.
 // All queries are automatically tenant-scoped via auth.GetScoped(c, "Flows").
-type FlowController struct{}
+//
+// runtime drives on-demand run starts (POST /flows/:id/run); it may be nil in
+// tests that don't exercise that endpoint.
+type FlowController struct {
+	runtime *flow.Skeleton
+}
 
-func NewFlowController() *FlowController {
-	return &FlowController{}
+func NewFlowController(runtime *flow.Skeleton) *FlowController {
+	return &FlowController{runtime: runtime}
 }
 
 // maxFlowJSONSize caps the size of nodes/edges JSON blobs to 1 MiB.

@@ -94,7 +94,7 @@ func main() {
 		// FlowBuilder FASE 1: the inbound seam is plugged into the EventListener
 		// (NewEventListener wires flow.NewSkeleton with the interpreter+registry),
 		// replacing the two previously-dead workers. No separate AMQP flow worker.
-		eventListener := services.NewEventListener(container.ChannelSessionRepo, container.MessageRepo, container.ContactRepo, container.TicketRepo, container.ReceiveMessage, broadcast, database.DB, channelRegistry)
+		eventListener := services.NewEventListener(container.ChannelSessionRepo, container.MessageRepo, container.ContactRepo, container.TicketRepo, container.ReceiveMessage, broadcast, database.DB, channelRegistry, redisSvc)
 		services.StartEventListener(rabbitMQ, eventListener)
 	} else {
 		log.Printf("⚠️ Warning: RabbitMQ connection failed: %v", err)
