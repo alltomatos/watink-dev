@@ -434,3 +434,35 @@ Item existe (MainNavItems.tsx:110-122) gated por `flows:read`. **Fix:** garantir
 **Aprendizado operacional:** `Agent{isolation:"worktree"}` ramifica do **main**, não do branch atual — agentes de fase subsequente precisam ter o trabalho anterior re-aplicado sobre o branch correto (feito manualmente sobre `feat/flowbuilder-phase0`).
 
 **Próximo:** abrir PR `feat/flowbuilder-phase0` → `develop`. Depois, **Fase 1** (interativo core: interpretador + FlowRun ativo + suspend/resume).
+
+---
+
+## Épico Ativo: FlowBuilder Fase 1 — Interativo Core
+
+> **Iniciado:** 2026-06-27 · **Base:** `develop` (Fase 0 mergeada, PR #242) · **Branch:** `feat/flowbuilder-phase1`
+> **Restrição:** sem worktree (eles ramificam do `main`, que não tem a Fase 0). Trabalho coeso direto no branch.
+
+### Decisões de design (grounding)
+- `FlowRun.SubjectID` é uuid mas `Ticket.ID` é int → adicionar coluna `ticketId *int` + índice `(tenantId,ticketId,status)` p/ resume-first.
+- Interpreter roda **in-process (goroutine após broadcasts SSE)**; enqueue async fica p/ Fase 3.
+- Reuso: `RabbitMQService.PublishCommand(wbot.<tenant>.<whatsappId>.<cmd>, {sessionId,messageId,to,ticketId,body,mediaType,mediaUrl})` · `interpolateVariables` (extrair p/ shared) · `RedisService.SetLock(wbot:msg:envId,24h)` dedup · `Ticket.WhatsappID`→sessionId.
+
+### DAG de Tarefas — Fase 1
+- [ ] **FB1-S1** — `FlowRun.ticketId *int` + índice `(tenantId,ticketId,status)` (resume lookup) | depends_on: [] | **T3-SCHEMA**
+- [ ] **FB1-S2** — Tabela `FlowRunLog` (observabilidade mínima) + AutoMigrate + RLS | depends_on: [] | **T3-SCHEMA**
+- [ ] **FB1-T1** — Projeção de trigger grafo→colunas no Create/Update (message-inbound: keyword/firstContact/any) | depends_on: [] | T2
+- [ ] **FB1-A1** — `WhatsAppAdapter` (dedup SetLock + PublishCommand + mídia) + registro DI main.go | depends_on: [] | T2
+- [ ] **FB1-I1** — `NodeExecutor` interface + registry (dispatch por node.type) | depends_on: [] | T2
+- [ ] **FB1-I4** — Extrair `interpolateVariables` p/ pacote compartilhado | depends_on: [] | T1
+- [ ] **FB1-I2** — Interpreter: walk GraphSnapshot, branch por sourceHandle, avança até waiting_message/end + guard de loop | depends_on: [FB1-I1] | T2
+- [ ] **FB1-I3** — Executores start/end/message/menu/switch/ticket-handoff | depends_on: [FB1-I1, FB1-A1, FB1-I4] | T2
+- [ ] **FB1-W1** — StartFlow + resume-first ((tenant,ticket) retoma; senão trigger) + sessão-manda/opt-out | depends_on: [FB1-S1, FB1-I2, FB1-I3] | T2
+- [ ] **FB1-W2** — Dedup inbound por env.ID antes de avançar | depends_on: [FB1-W1] | T2
+- [ ] **FB1-W3** — `POST /flows/:id/run` (FlowRun on-demand) | depends_on: [FB1-I2] | T2
+- [ ] **FB1-W4** — Varredura expiresAt vencido → expired | depends_on: [FB1-S1] | T2
+- [ ] **FB1-TST** — Testes: branching, suspend/resume, dedup, opt-out, cross-tenant, loop guard | depends_on: [FB1-W1, FB1-I3] | T2
+
+### Registro de Execução — Fase 1
+| Task | Status | Notas |
+|------|--------|-------|
+| FB1-S1..W4 + TST | ⏳ em execução | agente coeso, commits incrementais |
