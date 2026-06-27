@@ -29,10 +29,14 @@ func newWAMessageID() string {
 }
 
 // contactJID builds the destination JID for a contact. Groups use the "@g.us"
-// server; regular users are sent bare (the engine appends "@s.whatsapp.net").
+// server. LID contacts use the full "@lid" JID stored in the Lid field.
+// Regular users are sent bare (the engine appends "@s.whatsapp.net").
 func contactJID(contact models.Contact) string {
 	if contact.IsGroup {
 		return contact.Number + "@g.us"
+	}
+	if contact.Lid != nil && *contact.Lid != "" {
+		return *contact.Lid
 	}
 	return contact.Number
 }

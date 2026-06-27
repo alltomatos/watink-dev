@@ -35,7 +35,7 @@ type MarkReadCommandPayload struct {
 
 // ButtonsCommandPayload carries a legacy ButtonsMessage (up to 3 buttons).
 type ButtonsCommandPayload struct {
-	SessionID   string          `json:"sessionId"`
+	SessionID   int             `json:"sessionId"`
 	MessageID   string          `json:"messageId"`
 	To          string          `json:"to"`
 	ContentText string          `json:"contentText"`
@@ -50,7 +50,7 @@ type ButtonPayload struct {
 
 // ListCommandPayload carries a ListMessage with sections and rows.
 type ListCommandPayload struct {
-	SessionID   string               `json:"sessionId"`
+	SessionID   int                  `json:"sessionId"`
 	MessageID   string               `json:"messageId"`
 	To          string               `json:"to"`
 	Title       string               `json:"title"`
@@ -73,7 +73,7 @@ type ListRowPayload struct {
 
 // PollCommandPayload carries a poll creation message.
 type PollCommandPayload struct {
-	SessionID       string   `json:"sessionId"`
+	SessionID       int      `json:"sessionId"`
 	MessageID       string   `json:"messageId"`
 	To              string   `json:"to"`
 	Name            string   `json:"name"`
@@ -83,7 +83,7 @@ type PollCommandPayload struct {
 
 // InteractiveCommandPayload carries a NativeFlow (modern interactive) message.
 type InteractiveCommandPayload struct {
-	SessionID  string                     `json:"sessionId"`
+	SessionID  int                        `json:"sessionId"`
 	MessageID  string                     `json:"messageId"`
 	To         string                     `json:"to"`
 	BodyText   string                     `json:"bodyText"`
@@ -98,6 +98,27 @@ type InteractiveButtonPayload struct {
 
 // SyncContactPayload carries a contact sync request.
 type SyncContactPayload struct {
-	SessionID string `json:"sessionId"`
+	SessionID int    `json:"sessionId"`
 	Number    string `json:"number"`
+}
+
+// TemplateCommandPayload carries a HydratedFourRowTemplate message.
+// Supports up to 3 buttons: quickreply, url, or call.
+type TemplateCommandPayload struct {
+	SessionID   int              `json:"sessionId"`
+	MessageID   string           `json:"messageId"`
+	To          string           `json:"to"`
+	ContentText string           `json:"contentText"`
+	FooterText  string           `json:"footerText,omitempty"`
+	Buttons     []TemplateButton `json:"buttons"`
+}
+
+type TemplateButton struct {
+	// Type: "quickreply" | "url" | "call"
+	Type        string `json:"type"`
+	DisplayText string `json:"displayText"`
+	ID          string `json:"id,omitempty"`          // quickreply
+	URL         string `json:"url,omitempty"`         // url
+	PhoneNumber string `json:"phoneNumber,omitempty"` // call
+	Index       uint32 `json:"index"`
 }
