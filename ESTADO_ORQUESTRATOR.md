@@ -349,3 +349,88 @@ Rodada E (paralela):        QA-B7 + QA-F6  (após QA-B4 + QA-B6 + QA-F2 + QA-F3 
 | QA-F4 | ⏳ pendente | — | — |
 | QA-F5 | ⏳ pendente | — | — |
 | QA-F6 | ⏳ pendente | — | — |
+
+---
+
+## Épico Ativo: FlowBuilder — Runtime de Automação (Fase 0: Contenção + Contrato + Fundação)
+
+> **Iniciado:** 2026-06-27 · **Origem:** sessão grill-feature-with-docs → /orchestrator
+> **Docs:** CLAUDE.md (bloco Módulo) · docs/agents/flowbuilder.md · ADRs 0011–0017 · CONTEXT.md (termos)
+> **Meta da fase:** infra de pé, contrato validado, ZERO flow executando.
+
+### Auditoria Técnica — GAPs (já levantados; ver workflows da sessão)
+
+#### GAP-FB-1 — Perda de dados no Update (P1/T2)
+`FlowController.Update` (flow.go:135-179) faz `Save()` do struct inteiro → zera Nodes/Edges/Active em PATCH parcial.
+**Fix:** whitelist/PATCH parcial preservando campos ausentes + teste de regressão com grafo populado.
+
+#### GAP-FB-2 — Endpoints fantasma (P2/T1)
+`POST /flows/ai` e `/flows/:id/simulate` não existem (routes.go:194-199) → frontend 404.
+**Fix:** registrar rotas com 501 honesto; frontend trata 501 com toast.
+
+#### GAP-FB-3 — Contrato de grafo opaco e não-validado (P2/T2)
+`Nodes/Edges` é `datatypes.JSON` nunca desserializado. **Fix:** structs Go `FlowGraph{schemaVersion,nodes,edges}` + validação no Create/Update.
+
+#### GAP-FB-4 — Sem FlowRun (estado de execução) (P2/T3-SCHEMA)
+**Fix:** tabela `FlowRun` (migration + RLS manual + índices de varredura). Bloqueante (schema DB).
+
+#### GAP-FB-5 — Dois workers mortos + sem porta de saída (P2/T2)
+`internal/flow/worker.go` (nunca importado) e `services/flow_worker.go` (só loga). **Fix:** runtime-skeleton único plugado em event_listener.go:110 (trigger-match + log, sem executar) + interfaces `OutboundChannelAdapter`.
+
+#### GAP-FB-6 — reactflow v11 congelada (P4/T2-worktree)
+**Fix:** migrar `reactflow`@11 → `@xyflow/react`@12 (~17 arquivos; `project()`→`screenToFlowPosition()`).
+
+#### GAP-FB-7 — "Saiu do menu" = RBAC (P3/T2)
+Item existe (MainNavItems.tsx:110-122) gated por `flows:read`. **Fix:** garantir `flows:read` no role.
+
+### DAG de Tarefas — FlowBuilder Fase 0
+
+**Backend Go (`business/`)**
+- [ ] **FB0-B1** — Fix Update perda-de-dados: PATCH parcial via whitelist (ponteiros/`Select`) preservando Nodes/Edges/trigger/whatsapp/timestamps + teste de regressão com grafo populado | depends_on: [] | T2
+- [ ] **FB0-B2** — Registrar `POST /flows/ai` e `POST /flows/:id/simulate` → handlers 501 honestos (routes.go + controller) | depends_on: [] | T1
+- [ ] **FB0-B3** — Structs Go contrato versionado `FlowGraph{schemaVersion,nodes,edges}` espelhando NodeData/Edge (16 node.types) | depends_on: [] | T2
+- [ ] **FB0-B4** — Validação no Create/Update: rejeita tipo desconhecido, IDs duplicados, edges órfãs; ausência schemaVersion=v1; mantém guard 1MiB | depends_on: [FB0-B1, FB0-B3] | T2
+- [ ] **FB0-B5** — Model `FlowRun` + AutoMigrate + applyRLS + índices `(tenantId,status,resumeAt)` e `(tenantId,status,expiresAt)` | depends_on: [] | **T3-SCHEMA**
+- [ ] **FB0-B6** — Interfaces `OutboundChannelAdapter` + registry (só assinaturas; WhatsAppAdapter reusa AMQP wbot.*) | depends_on: [] | T1
+- [ ] **FB0-B7** — Runtime-skeleton único plugado em event_listener.go:110: trigger-match tenant-aware (`WHERE tenantId`) + LOG "flow X roteado"; remove/consolida os 2 workers mortos; StartFlow segue stub | depends_on: [FB0-B3, FB0-B5] | T2
+- [ ] **FB0-B8** — RBAC: garantir permissão `flows:read` no role do tenant (seed/migração) — resolve "saiu do menu" | depends_on: [] | T2
+- [ ] **FB0-B9** — Testes: validador de contrato (B4) + trigger-match do skeleton (B7) | depends_on: [FB0-B4, FB0-B7] | T2
+
+**Frontend (`frontend/`) — worktree isolado**
+- [ ] **FB0-F1** — Migrar `reactflow`@11 → `@xyflow/react`@12: package.json + imports + CSS + `project()`→`screenToFlowPosition()` (useFlowNodes.ts) + limpar width/height legados no load | depends_on: [] | **T2-worktree (grande fatia)**
+- [ ] **FB0-F2** — Tratar 501 de `/flows/ai` e `/flows/:id/simulate` com toast "recurso indisponível" (FlowChat.tsx, useFlowIO.ts) | depends_on: [] | T1
+- [ ] **FB0-F3** — Alinhar `isActive`↔`active` (useFlowPersistence + badge FlowManager) | depends_on: [] | T1
+
+### Registro de Execução — Fase 0
+
+| Task | Tier | Status | PR | Notas |
+|------|------|--------|----|-------|
+| FB0-B1 | T2 | ⏳ pendente | — | — |
+| FB0-B2 | T1 | ⏳ pendente | — | — |
+| FB0-B3 | T2 | ⏳ pendente | — | — |
+| FB0-B4 | T2 | ⏳ pendente | — | depends B1,B3 |
+| FB0-B5 | T3 | ⏳ pendente | — | schema — aprovação |
+| FB0-B6 | T1 | ⏳ pendente | — | — |
+| FB0-B7 | T2 | ⏳ pendente | — | depends B3,B5 |
+| FB0-B8 | T2 | ⏳ pendente | — | RBAC |
+| FB0-B9 | T2 | ⏳ pendente | — | depends B4,B7 |
+| FB0-F1 | T2 | ⏳ pendente | — | worktree |
+| FB0-F2 | T1 | ⏳ pendente | — | — |
+| FB0-F3 | T1 | ⏳ pendente | — | — |
+
+### Conclusão — Fase 0 (2026-06-27)
+
+**Status: ✅ CONCLUÍDA** no branch `feat/flowbuilder-phase0` (5 commits).
+
+| Tarefa | Status | Notas |
+|---|---|---|
+| FB0-B1..B9 (backend) | ✅ | contrato FlowGraph, FlowRun+RLS, validação 422, 501, skeleton no seam, RBAC |
+| FB0-F1..F3 (frontend) | ✅ | xyflow v12, toast 501, isActive↔active |
+| Revisão adversarial (6 dim) | ✅ | zero critical/high; B1 provado por revert empírico; tenant-isolation provado |
+| Hardening pós-revisão | ✅ | whatsappId persistido (input+assoc+Preload), toggle ativação, RouteInbound após SSE, +4 testes |
+
+**Gate final:** `go build/vet/test` ✅ · frontend `typecheck/lint/build` ✅ · merge sem conflitos.
+
+**Aprendizado operacional:** `Agent{isolation:"worktree"}` ramifica do **main**, não do branch atual — agentes de fase subsequente precisam ter o trabalho anterior re-aplicado sobre o branch correto (feito manualmente sobre `feat/flowbuilder-phase0`).
+
+**Próximo:** abrir PR `feat/flowbuilder-phase0` → `develop`. Depois, **Fase 1** (interativo core: interpretador + FlowRun ativo + suspend/resume).

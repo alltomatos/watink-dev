@@ -1,7 +1,7 @@
 ﻿/* @jsxImportSource react */
 import React from 'react';
-import { ReactFlowProvider } from 'reactflow';
-import type { NodeTypes } from 'reactflow';
+import { ReactFlowProvider } from '@xyflow/react';
+import type { NodeTypes } from '@xyflow/react';
 import { Loader2, ChevronRight, ChevronLeft, MessageSquare } from 'lucide-react';
 
 import type { FlowNode } from './nodeEditorTypes';

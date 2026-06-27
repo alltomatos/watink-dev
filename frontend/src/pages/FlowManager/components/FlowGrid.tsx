@@ -10,6 +10,7 @@ interface FlowGridProps {
   onCreateNew: () => void;
   onEdit: (flow: Flow) => void;
   onDelete: (flow: Flow) => void;
+  onToggleActive: (flow: Flow, active: boolean) => void;
 }
 
 const FlowGrid: React.FC<FlowGridProps> = ({
@@ -18,6 +19,7 @@ const FlowGrid: React.FC<FlowGridProps> = ({
   onCreateNew,
   onEdit,
   onDelete,
+  onToggleActive,
 }) => {
   if (loading) {
     return (
@@ -47,6 +49,7 @@ const FlowGrid: React.FC<FlowGridProps> = ({
           flow={flow}
           onEdit={onEdit}
           onDelete={onDelete}
+          onToggleActive={onToggleActive}
         />
       ))}
     </div>
