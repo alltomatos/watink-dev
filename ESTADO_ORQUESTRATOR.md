@@ -417,3 +417,20 @@ Item existe (MainNavItems.tsx:110-122) gated por `flows:read`. **Fix:** garantir
 | FB0-F1 | T2 | ⏳ pendente | — | worktree |
 | FB0-F2 | T1 | ⏳ pendente | — | — |
 | FB0-F3 | T1 | ⏳ pendente | — | — |
+
+### Conclusão — Fase 0 (2026-06-27)
+
+**Status: ✅ CONCLUÍDA** no branch `feat/flowbuilder-phase0` (5 commits).
+
+| Tarefa | Status | Notas |
+|---|---|---|
+| FB0-B1..B9 (backend) | ✅ | contrato FlowGraph, FlowRun+RLS, validação 422, 501, skeleton no seam, RBAC |
+| FB0-F1..F3 (frontend) | ✅ | xyflow v12, toast 501, isActive↔active |
+| Revisão adversarial (6 dim) | ✅ | zero critical/high; B1 provado por revert empírico; tenant-isolation provado |
+| Hardening pós-revisão | ✅ | whatsappId persistido (input+assoc+Preload), toggle ativação, RouteInbound após SSE, +4 testes |
+
+**Gate final:** `go build/vet/test` ✅ · frontend `typecheck/lint/build` ✅ · merge sem conflitos.
+
+**Aprendizado operacional:** `Agent{isolation:"worktree"}` ramifica do **main**, não do branch atual — agentes de fase subsequente precisam ter o trabalho anterior re-aplicado sobre o branch correto (feito manualmente sobre `feat/flowbuilder-phase0`).
+
+**Próximo:** abrir PR `feat/flowbuilder-phase0` → `develop`. Depois, **Fase 1** (interativo core: interpretador + FlowRun ativo + suspend/resume).
