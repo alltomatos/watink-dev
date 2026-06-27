@@ -97,9 +97,13 @@ func (ip *Interpreter) Run(ctx context.Context, st *ExecState) error {
 			}
 			ip.logStep(ctx, st, node.ID, node.Type, "advance", outcome.Detail)
 			nodeID = next
-			// Inbound is consumed by the first node that reads it (resume); a
-			// subsequent menu/switch in the same pass should not re-match it.
-			st.Inbound = ""
+			// Inbound stays available for the rest of the pass (switch reads
+			// lastInput). The menu uses ResumeNodeID to avoid re-consuming it;
+			// once we advance past the resume node, clear it so a later menu
+			// presents fresh instead of treating the old reply as its answer.
+			if node.ID == st.ResumeNodeID {
+				st.ResumeNodeID = ""
+			}
 
 		default:
 			return ip.fail(ctx, st, node.ID, node.Type, fmt.Errorf("unknown outcome kind %d", outcome.Kind))
