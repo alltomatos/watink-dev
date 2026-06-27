@@ -3,6 +3,7 @@ package flow
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -17,6 +18,12 @@ import (
 // runTTL is how long a started run may stay alive before the expire sweep
 // reaps it (orphan cleanup; a stalled waiting_message run is not eternal).
 const runTTL = 24 * time.Hour
+
+// flowTicketLockTTL bounds the per-ticket single-flight lock around the
+// resume/start critical section (H2). Short so a crashed worker that never
+// releases it does not wedge the ticket for long; long enough to cover a normal
+// synchronous interpreter pass.
+const flowTicketLockTTL = 30 * time.Second
 
 // optOutWords abort an active run unconditionally, with precedence over
 // everything else (case-insensitive, exact match after trim).
@@ -94,12 +101,40 @@ func (s *Skeleton) RouteInboundTicket(ctx context.Context, in InboundContext) {
 		return
 	}
 
+	// H2: serialize the resume/start critical section per ticket. Two concurrent
+	// deliveries for the same ticket would otherwise (a) resume the same run twice
+	// via a read-modify-write race, or (b) both find "no active run" and start two
+	// FlowRuns. A short-TTL per-ticket lock makes the section single-flight; if we
+	// fail to acquire it, another delivery is processing right now → return and let
+	// AMQP redeliver (the redelivery re-acquires once the other finishes).
+	if s.redis != nil {
+		ticketLock := fmt.Sprintf("wbot:flowlock:%s:%d", in.TenantID, in.Ticket.ID)
+		acquired, err := s.redis.SetLock(ticketLock, "1", flowTicketLockTTL)
+		if err != nil {
+			// Fail-closed on a lock backend error: without serialization we risk
+			// double-start/double-advance, so drop this delivery and let AMQP retry.
+			log.Printf("[FlowSkeleton] ticket lock backend error (tenant %s ticket %d): %v — dropping for redelivery", in.TenantID, in.Ticket.ID, err)
+			return
+		}
+		if !acquired {
+			return
+		}
+		defer func() {
+			if delErr := s.redis.DelLock(ticketLock); delErr != nil {
+				log.Printf("[FlowSkeleton] ticket lock release failed (tenant %s ticket %d): %v", in.TenantID, in.Ticket.ID, delErr)
+			}
+		}()
+	}
+
 	// FB1-W2: dedup the inbound by message id BEFORE advancing a run, so an AMQP
 	// redelivery of the same message never advances the run twice. SetLock is
-	// SetNX → false means we already processed this inbound.
+	// SetNX → false means we already processed this inbound. On a Redis error we
+	// log and proceed (the per-ticket lock above already bounds the blast radius).
 	if s.redis != nil && in.EnvID != "" {
 		acquired, err := s.redis.SetLock("wbot:flowin:"+in.EnvID, "1", runTTL)
-		if err == nil && !acquired {
+		if err != nil {
+			log.Printf("[FlowSkeleton] inbound dedup lock error (tenant %s env %s): %v — proceeding", in.TenantID, in.EnvID, err)
+		} else if !acquired {
 			return
 		}
 	}
@@ -215,9 +250,40 @@ func (s *Skeleton) StartFlow(ctx context.Context, in InboundContext, f models.Fl
 	return s.interpreter.Run(ctx, st)
 }
 
+// claimRun atomically flips a waiting run to running, conditional on it still
+// being in the status we read. RowsAffected==0 means another delivery already
+// advanced (or aborted/expired) it between our read and now → the caller must
+// discard this delivery instead of resuming a stale snapshot. Defense-in-depth
+// behind the per-ticket lock (H2): even if the lock were bypassed, two resumes of
+// the same run can never both win.
+func (s *Skeleton) claimRun(ctx context.Context, run models.FlowRun, fromStatus string) (bool, error) {
+	res := s.db.Session(&gorm.Session{NewDB: true}).
+		WithContext(ctx).
+		Model(&models.FlowRun{}).
+		Where(`"tenantId" = ? AND id = ? AND status = ?`, run.TenantID, run.ID, fromStatus).
+		Updates(map[string]interface{}{"status": models.FlowRunStatusRunning, "updatedAt": time.Now()})
+	if res.Error != nil {
+		return false, res.Error
+	}
+	return res.RowsAffected == 1, nil
+}
+
 // resume rehydrates a suspended run from its GraphSnapshot and drives the
 // interpreter with the new inbound body.
 func (s *Skeleton) resume(ctx context.Context, in InboundContext, run models.FlowRun) {
+	// Optimistically claim the run (waiting_message → running). If another
+	// delivery already advanced it, RowsAffected==0 → discard this one.
+	claimed, err := s.claimRun(ctx, run, models.FlowRunStatusWaitingMessage)
+	if err != nil {
+		log.Printf("[FlowSkeleton] resume: claim failed run=%s: %v", run.ID, err)
+		return
+	}
+	if !claimed {
+		log.Printf("[FlowSkeleton] resume: run=%s already advanced by a concurrent delivery — discarding", run.ID)
+		return
+	}
+	run.Status = models.FlowRunStatusRunning
+
 	var graph FlowGraph
 	if err := json.Unmarshal(run.GraphSnapshot, &graph); err != nil {
 		log.Printf("[FlowSkeleton] resume: bad snapshot run=%s: %v", run.ID, err)
