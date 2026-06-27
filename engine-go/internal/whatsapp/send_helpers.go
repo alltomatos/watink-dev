@@ -3,9 +3,12 @@ package whatsapp
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"go.mau.fi/whatsmeow"
 	waProto "go.mau.fi/whatsmeow/binary/proto"
@@ -43,6 +46,18 @@ func resolveMediaBytes(payload MediaCommandPayload) ([]byte, error) {
 	}
 	if payload.MediaURL == "" {
 		return nil, fmt.Errorf("mediaUrl or mediaData is required")
+	}
+	if strings.HasPrefix(payload.MediaURL, "http://") || strings.HasPrefix(payload.MediaURL, "https://") {
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Get(payload.MediaURL)
+		if err != nil {
+			return nil, fmt.Errorf("download media: %w", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode >= 300 {
+			return nil, fmt.Errorf("download media: HTTP %d", resp.StatusCode)
+		}
+		return io.ReadAll(resp.Body)
 	}
 	paths := []string{payload.MediaURL}
 	if !filepath.IsAbs(payload.MediaURL) {

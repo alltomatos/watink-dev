@@ -59,6 +59,7 @@ func (wss *WhatsAppSessionService) StartWhatsAppSession(whatsapp models.Whatsapp
 			"syncPeriod":     whatsapp.SyncPeriod,
 			"keepAlive":      whatsapp.KeepAlive,
 			"force":          force,
+			"wid":            whatsapp.Wid,
 		},
 	}
 

@@ -59,6 +59,7 @@ func main() {
 		"wbot.*.*.message.send.list",
 		"wbot.*.*.message.send.poll",
 		"wbot.*.*.message.send.interactive",
+		"wbot.*.*.message.send.template",
 		"wbot.*.*.message.markAsRead",
 		"wbot.*.*.media.download",
 		"wbot.*.*.contact.sync",
@@ -116,6 +117,7 @@ func handleCommand(d amqp.Delivery, svc *whatsapp.WhatsAppService) error {
 			UsePairingCode bool   `json:"usePairingCode"`
 			PhoneNumber    string `json:"phoneNumber"`
 			Name           string `json:"name"`
+			Wid            string `json:"wid"`
 		}
 		if err := json.Unmarshal(env.Payload, &p); err != nil {
 			return err
@@ -124,7 +126,7 @@ func handleCommand(d amqp.Delivery, svc *whatsapp.WhatsAppService) error {
 		if ts == 0 {
 			ts = time.Now().UnixMilli()
 		}
-		return svc.StartClient(sessionID, tenantID, p.Name, ts, p.ProxyURL, p.UsePairingCode, p.PhoneNumber, "")
+		return svc.StartClient(sessionID, tenantID, p.Name, ts, p.ProxyURL, p.UsePairingCode, p.PhoneNumber, p.Wid)
 
 	case "session.stop":
 		return svc.StopClient(sessionID)
@@ -176,6 +178,13 @@ func handleCommand(d amqp.Delivery, svc *whatsapp.WhatsAppService) error {
 			return err
 		}
 		return svc.SendInteractive(sessionID, tenantID, p)
+
+	case "message.send.template":
+		var p whatsapp.TemplateCommandPayload
+		if err := json.Unmarshal(env.Payload, &p); err != nil {
+			return err
+		}
+		return svc.SendTemplate(sessionID, tenantID, p)
 
 	case "message.markAsRead":
 		var p whatsapp.MarkReadCommandPayload

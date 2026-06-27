@@ -26,6 +26,7 @@ const MyActivities = lazy(() => import("../pages/MyActivities"));
 const GroupEdit = lazy(() => import("../pages/GroupEdit"));
 const Contacts = lazy(() => import("../pages/Contacts"));
 const QuickAnswers = lazy(() => import("../pages/QuickAnswers"));
+const QuickAnswerEditor = lazy(() => import("../pages/QuickAnswers/QuickAnswerEditor"));
 const Access = lazy(() => import("../pages/Access"));
 const Groups = lazy(() => import("../pages/Groups"));
 const TagManager = lazy(() => import("../pages/TagManager"));
@@ -85,6 +86,9 @@ const PrivateRoutes = () => {
      <Route path="/access" element={<PrivateRoute isPrivate><Access /></PrivateRoute>} />
      <Route path="/groups/:groupId" element={<PrivateRoute isPrivate><GroupEdit /></PrivateRoute>} />
      <Route path="/quickAnswers" element={<PrivateRoute isPrivate><QuickAnswers /></PrivateRoute>} />
+     <Route path="/quick-answers" element={<PrivateRoute isPrivate><QuickAnswers /></PrivateRoute>} />
+     <Route path="/quick-answers/new" element={<PrivateRoute isPrivate><QuickAnswerEditor /></PrivateRoute>} />
+     <Route path="/quick-answers/:id/edit" element={<PrivateRoute isPrivate><QuickAnswerEditor /></PrivateRoute>} />
      <Route path="/Settings" element={<PrivateRoute isPrivate><Settings /></PrivateRoute>} />
      <Route path="/groups" element={<PrivateRoute isPrivate><Groups /></PrivateRoute>} />
      <Route path="/tags" element={<PrivateRoute isPrivate><TagManager /></PrivateRoute>} />

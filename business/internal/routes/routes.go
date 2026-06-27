@@ -35,7 +35,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	groupController := controllers.NewGroupController(container.PermissionRepo)
 	roleController := controllers.NewRoleController(container.PermissionRepo)
 	flowController := controllers.NewFlowController()
-	quickAnswerController := controllers.NewQuickAnswerController(rabbitMQ)
+	quickAnswerController := controllers.NewQuickAnswerController(rabbitMQ, container.Broadcast, db)
 	versionController := controllers.NewVersionController(container.VersionRepo)
 	swaggerController := controllers.NewSwaggerController(container.SwaggerPermRepo)
 
