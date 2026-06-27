@@ -53,6 +53,7 @@ func Migrate() {
 		&models.RolePermission{},
 		&models.Flow{},
 		&models.FlowRun{},
+		&models.FlowRunLog{},
 		&models.QuickAnswer{},
 		&models.KnowledgeBase{},
 		&models.KnowledgeBaseSource{},
@@ -136,6 +137,9 @@ func addCustomIndexes() error {
 		// are tenant-scoped, status-filtered range scans on resumeAt/expiresAt.
 		`CREATE INDEX IF NOT EXISTS idx_flow_runs_tenant_status_resumeat ON "FlowRuns" ("tenantId", "status", "resumeAt")`,
 		`CREATE INDEX IF NOT EXISTS idx_flow_runs_tenant_status_expiresat ON "FlowRuns" ("tenantId", "status", "expiresAt")`,
+		// Resume-first lookup: an inbound message resolves the active run for a
+		// ticket via (tenantId, ticketId, status=waiting_*).
+		`CREATE INDEX IF NOT EXISTS idx_flow_runs_tenant_ticket_status ON "FlowRuns" ("tenantId", "ticketId", "status")`,
 	}
 
 	for _, ddl := range indexes {
@@ -147,7 +151,7 @@ func addCustomIndexes() error {
 }
 
 func applyRLS() error {
-	tables := []string{"Users", "Tickets", "Messages", "Contacts", "Settings", "ConversationEmbeddings", "FlowRuns"}
+	tables := []string{"Users", "Tickets", "Messages", "Contacts", "Settings", "ConversationEmbeddings", "FlowRuns", "FlowRunLogs"}
 
 	for _, t := range tables {
 		if err := DB.Exec(fmt.Sprintf("ALTER TABLE \"%s\" ENABLE ROW LEVEL SECURITY", t)).Error; err != nil {

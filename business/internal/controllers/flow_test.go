@@ -48,7 +48,7 @@ func TestFlowController_List_ReturnsOnlyOwnTenant(t *testing.T) {
 	db.Exec(`INSERT INTO "Flows" (name,"tenantId") VALUES (?,?)`, "Flow A", tenantA)
 	db.Exec(`INSERT INTO "Flows" (name,"tenantId") VALUES (?,?)`, "Flow B", tenantB)
 
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantA, "GET", "/flows", nil)
 	ctrl.List(c)
 
@@ -65,7 +65,7 @@ func TestFlowController_Create_Success(t *testing.T) {
 	tenantID := uuid.New()
 
 	payload, _ := json.Marshal(map[string]interface{}{"name": "Novo Flow", "active": true})
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantID, "POST", "/flows", payload)
 	ctrl.Create(c)
 
@@ -84,7 +84,7 @@ func TestFlowController_Show_CrossTenantBlocked(t *testing.T) {
 	var flow struct{ ID int }
 	db.Raw(`SELECT id FROM "Flows" WHERE "tenantId" = ?`, tenantA).Scan(&flow)
 
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantB, "GET", fmt.Sprintf("/flows/%d", flow.ID), nil)
 	c.Params = gin.Params{{Key: "flowId", Value: fmt.Sprintf("%d", flow.ID)}}
 	ctrl.Show(c)
@@ -102,7 +102,7 @@ func TestFlowController_Update_Success(t *testing.T) {
 	db.Raw(`SELECT id FROM "Flows" WHERE "tenantId" = ?`, tenantID).Scan(&flow)
 
 	payload, _ := json.Marshal(map[string]interface{}{"name": "Atualizado", "active": false})
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantID, "PUT", fmt.Sprintf("/flows/%d", flow.ID), payload)
 	c.Params = gin.Params{{Key: "flowId", Value: fmt.Sprintf("%d", flow.ID)}}
 	ctrl.Update(c)
@@ -122,7 +122,7 @@ func TestFlowController_Delete_Success(t *testing.T) {
 	var flow struct{ ID int }
 	db.Raw(`SELECT id FROM "Flows" WHERE "tenantId" = ?`, tenantID).Scan(&flow)
 
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantID, "DELETE", fmt.Sprintf("/flows/%d", flow.ID), nil)
 	c.Params = gin.Params{{Key: "flowId", Value: fmt.Sprintf("%d", flow.ID)}}
 	ctrl.Delete(c)
@@ -138,7 +138,7 @@ func TestFlowController_Delete_NotFound(t *testing.T) {
 	db := setupFlowTestDB(t)
 	tenantID := uuid.New()
 
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantID, "DELETE", "/flows/9999", nil)
 	c.Params = gin.Params{{Key: "flowId", Value: "9999"}}
 	ctrl.Delete(c)
@@ -165,7 +165,7 @@ func TestFlowController_Update_PartialPatch_PreservesGraph(t *testing.T) {
 
 	// PATCH carries ONLY name.
 	payload, _ := json.Marshal(map[string]interface{}{"name": "Renomeado"})
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantID, "PUT", fmt.Sprintf("/flows/%d", flow.ID), payload)
 	c.Params = gin.Params{{Key: "flowId", Value: fmt.Sprintf("%d", flow.ID)}}
 	ctrl.Update(c)
@@ -206,7 +206,7 @@ func TestFlowController_Create_RejectsUnknownNodeType(t *testing.T) {
 		"name":  "Ruim",
 		"nodes": json.RawMessage(`[{"id":"a","type":"bogus","data":{}}]`),
 	})
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantID, "POST", "/flows", payload)
 	ctrl.Create(c)
 
@@ -224,7 +224,7 @@ func TestFlowController_Create_RejectsOrphanEdge(t *testing.T) {
 		"nodes": json.RawMessage(`[{"id":"a","type":"start","data":{}}]`),
 		"edges": json.RawMessage(`[{"id":"e","source":"a","target":"ghost"}]`),
 	})
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantID, "POST", "/flows", payload)
 	ctrl.Create(c)
 
@@ -243,7 +243,7 @@ func TestFlowController_Create_AcceptsNoSchemaVersion(t *testing.T) {
 		"nodes":  json.RawMessage(`[{"id":"a","type":"start","data":{}},{"id":"b","type":"end","data":{}}]`),
 		"edges":  json.RawMessage(`[{"id":"e","source":"a","target":"b"}]`),
 	})
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantID, "POST", "/flows", payload)
 	ctrl.Create(c)
 
@@ -255,7 +255,7 @@ func TestFlowController_Stubs_Return501(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupFlowTestDB(t)
 	tenantID := uuid.New()
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 
 	cAI, wAI := setupFlowContext(t, db, tenantID, "POST", "/flows/ai", []byte(`{}`))
 	ctrl.AISuggest(cAI)
@@ -292,7 +292,7 @@ func TestFlowController_Update_ActiveFalse_WritesFalse(t *testing.T) {
 	db.Raw(`SELECT id FROM "Flows" WHERE "tenantId" = ?`, tenantID).Scan(&flow)
 
 	payload, _ := json.Marshal(map[string]interface{}{"active": false})
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantID, "PUT", fmt.Sprintf("/flows/%d", flow.ID), payload)
 	c.Params = gin.Params{{Key: "flowId", Value: fmt.Sprintf("%d", flow.ID)}}
 	ctrl.Update(c)
@@ -317,7 +317,7 @@ func TestFlowController_Update_RejectsInvalidGraph(t *testing.T) {
 	payload, _ := json.Marshal(map[string]interface{}{
 		"nodes": json.RawMessage(`[{"id":"a","type":"bogus","data":{}}]`),
 	})
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantID, "PUT", fmt.Sprintf("/flows/%d", flow.ID), payload)
 	c.Params = gin.Params{{Key: "flowId", Value: fmt.Sprintf("%d", flow.ID)}}
 	ctrl.Update(c)
@@ -334,7 +334,7 @@ func TestFlowController_Create_PersistsWhatsAppID(t *testing.T) {
 
 	wid := 5
 	payload, _ := json.Marshal(map[string]interface{}{"name": "Com conexao", "whatsappId": wid})
-	ctrl := NewFlowController()
+	ctrl := NewFlowController(nil)
 	c, w := setupFlowContext(t, db, tenantID, "POST", "/flows", payload)
 	ctrl.Create(c)
 	require.Equal(t, http.StatusOK, w.Code)
