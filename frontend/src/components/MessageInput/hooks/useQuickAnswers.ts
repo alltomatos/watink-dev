@@ -26,9 +26,13 @@ export function useQuickAnswers(onDirectSend?: (qa: QuickAnswer) => void): UseQu
         const { data } = await api.get("/quickAnswers/", {
           params: { searchParam: value.substring(1) },
         });
-        setQuickAnswer(data.quickAnswers);
-        setTypeBar(data.quickAnswers.length > 0);
-        return data.quickAnswers.length > 0;
+        // O endpoint retorna um array; tolera também { quickAnswers: [...] }.
+        const list: QuickAnswer[] = Array.isArray(data)
+          ? data
+          : data?.quickAnswers ?? [];
+        setQuickAnswer(list);
+        setTypeBar(list.length > 0);
+        return list.length > 0;
       } catch {
         setTypeBar(false);
       }
@@ -42,6 +46,8 @@ export function useQuickAnswers(onDirectSend?: (qa: QuickAnswer) => void): UseQu
     if (!qa.type || qa.type === "text") {
       setInput(qa.message);
     } else {
+      // Tipos interativos são despachados server-side; limpa o "/atalho" do input.
+      setInput("");
       if (onDirectSend) {
         onDirectSend(qa);
       } else {

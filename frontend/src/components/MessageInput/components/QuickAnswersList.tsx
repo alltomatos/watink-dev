@@ -1,7 +1,7 @@
 import React from "react";
-import { MessageSquare, LayoutList, List, Paperclip, BarChart2, Layers } from "lucide-react";
+import { MessageSquare, LayoutList, List, Paperclip, BarChart2, Layers, QrCode } from "lucide-react";
 import { QuickAnswer } from "../hooks/useMessageInput";
-import { QuickAnswerType, QuickAnswerContent } from "../../../pages/QuickAnswers/quickAnswersTypes";
+import { QuickAnswerType } from "../../../pages/QuickAnswers/quickAnswersTypes";
 
 interface QuickAnswersListProps {
   answers: QuickAnswer[];
@@ -20,18 +20,28 @@ const TYPE_CONFIG: Record<QuickAnswerType, TypeConfig> = {
   media: { icon: Paperclip, colorClass: "text-orange-500" },
   poll: { icon: BarChart2, colorClass: "text-purple-500" },
   carousel: { icon: Layers, colorClass: "text-pink-500" },
+  pix: { icon: QrCode, colorClass: "text-emerald-500" },
 };
 
 function getPreview(qa: QuickAnswer): string {
+  if (qa.message) return qa.message;
   const type = qa.type;
-  if (!type || type === "text") {
-    return qa.message;
+  if (!type || type === "text") return qa.message ?? "";
+  // qa.content vem como string JSON da API; pode também já ser objeto.
+  let content: Record<string, unknown> | undefined;
+  if (typeof qa.content === "string") {
+    try {
+      content = JSON.parse(qa.content) as Record<string, unknown>;
+    } catch {
+      content = undefined;
+    }
+  } else if (qa.content && typeof qa.content === "object") {
+    content = qa.content as unknown as Record<string, unknown>;
   }
-  const content = qa.content as (QuickAnswerContent & { body?: string; question?: string; caption?: string }) | undefined;
   if (content) {
-    if ("body" in content && typeof content.body === "string") return content.body;
-    if ("question" in content && typeof content.question === "string") return content.question;
-    if ("caption" in content && typeof content.caption === "string") return content.caption;
+    if (typeof content.body === "string") return content.body;
+    if (typeof content.question === "string") return content.question;
+    if (typeof content.caption === "string") return content.caption;
   }
   return `[${type}]`;
 }
