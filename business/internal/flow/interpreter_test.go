@@ -11,10 +11,47 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
+
+// syncRedis is a thread-safe SetNX/Del fake for the concurrency tests (H2). When
+// serialize is true SetLock behaves like a real per-key lock (SetNX); when false
+// it always grants the lock, isolating the optimistic-UPDATE guard from the lock.
+type syncRedis struct {
+	mu        sync.Mutex
+	held      map[string]bool
+	serialize bool
+}
+
+func newSyncRedis(serialize bool) *syncRedis {
+	return &syncRedis{held: map[string]bool{}, serialize: serialize}
+}
+
+func (r *syncRedis) SetLock(key, _ string, _ time.Duration) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !r.serialize {
+		return true, nil
+	}
+	if r.held[key] {
+		return false, nil
+	}
+	r.held[key] = true
+	return true, nil
+}
+func (r *syncRedis) DelLock(key string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.held, key)
+	return nil
+}
+func (r *syncRedis) Subscribe(context.Context, string) *redis.PubSub    { return nil }
+func (r *syncRedis) Publish(context.Context, string, interface{}) error { return nil }
+func (r *syncRedis) Ping(context.Context) error                         { return nil }
+func (r *syncRedis) Get(context.Context, string) (string, error)        { return "", nil }
 
 func mustParseTime(t *testing.T, s string) time.Time {
 	t.Helper()
@@ -105,6 +142,18 @@ func newDedupRuntime(t *testing.T) (*Skeleton, *dedupAdapter, *gorm.DB) {
 	reg := NewChannelRegistry()
 	reg.Register(adapter)
 	sk := NewSkeleton(db, reg, newFakeRedis())
+	return sk, adapter, db
+}
+
+// newRuntimeWithRedis builds a runtime with a caller-supplied redis fake (used by
+// the H2 concurrency tests to toggle per-ticket-lock serialization).
+func newRuntimeWithRedis(t *testing.T, red domain.RedisService) (*Skeleton, *dedupAdapter, *gorm.DB) {
+	t.Helper()
+	db := testutil.NewTestDB(t)
+	adapter := newDedupAdapter()
+	reg := NewChannelRegistry()
+	reg.Register(adapter)
+	sk := NewSkeleton(db, reg, red)
 	return sk, adapter, db
 }
 
@@ -304,6 +353,105 @@ func TestRuntime_DedupInboundDoesNotAdvanceTwice(t *testing.T) {
 	var count int64
 	db.Model(&models.FlowRun{}).Where(`"tenantId" = ? AND "ticketId" = ?`, tenant, 30).Count(&count)
 	assert.Equal(t, int64(1), count, "redelivery must not start a second run")
+}
+
+// TestRuntime_ConcurrentResume_OnlyOneAdvances pins the H2 optimistic-UPDATE
+// guard. With the per-ticket lock disabled (serialize=false), two concurrent
+// deliveries of DISTINCT messages (different EnvIDs, so inbound-dedup doesn't
+// mask one) both reach resume on the SAME waiting run. The conditional
+// waiting_message→running claim must let exactly one win; the loser sees
+// RowsAffected==0 and discards. Net effect: the branch message is sent once.
+func TestRuntime_ConcurrentResume_OnlyOneAdvances(t *testing.T) {
+	red := newSyncRedis(false) // lock disabled → isolate the optimistic UPDATE
+	sk, adapter, db := newRuntimeWithRedis(t, red)
+	tenant := uuid.New()
+	nodes, edges := menuBranchGraph()
+	seedActiveFlow(t, db, tenant, "menu", nodes, edges)
+
+	// Start, suspending at the menu (greeting + menu published).
+	sk.RouteInboundTicket(context.Background(), inboundFor(tenant, 13, "menu", "cr-start"))
+	require.Len(t, adapter.bodies(), 2)
+
+	// Two concurrent valid replies "2" (distinct EnvIDs) race the same run.
+	var wg sync.WaitGroup
+	for _, env := range []string{"cr-a", "cr-b"} {
+		wg.Add(1)
+		go func(e string) {
+			defer wg.Done()
+			sk.RouteInboundTicket(context.Background(), inboundFor(tenant, 13, "2", e))
+		}(env)
+	}
+	wg.Wait()
+
+	// Exactly one resume advanced → exactly one "Setor Vendas" send (3 total).
+	// (The adapter dedups by EnvID, so the send count alone is not enough — also
+	// assert via the log trail that the run completed exactly once. A double
+	// advance, which the optimistic claim prevents, would append two "complete"
+	// rows even though the duplicate send is deduped.)
+	bodies := adapter.bodies()
+	assert.Len(t, bodies, 3, "concurrent resume must advance the run only once")
+
+	var runs []models.FlowRun
+	require.NoError(t, db.Where(`"tenantId" = ? AND "ticketId" = ?`, tenant, 13).Find(&runs).Error)
+	require.Len(t, runs, 1)
+	assert.Equal(t, models.FlowRunStatusCompleted, runs[0].Status)
+
+	var completeLogs int64
+	require.NoError(t, db.Model(&models.FlowRunLog{}).
+		Where(`"tenantId" = ? AND "flowRunId" = ? AND action = ?`, tenant, runs[0].ID, "complete").
+		Count(&completeLogs).Error)
+	assert.Equal(t, int64(1), completeLogs, "run must complete exactly once (no double-advance)")
+}
+
+// TestSkeleton_ClaimRun_SecondClaimLoses pins the optimistic-UPDATE guard
+// directly: two claims of the same waiting run — the first flips it to running
+// (RowsAffected==1, wins), the second finds it no longer in waiting_message
+// (RowsAffected==0, loses). This is the race breaker behind concurrent resumes.
+func TestSkeleton_ClaimRun_SecondClaimLoses(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	sk := NewSkeleton(db, NewChannelRegistry(), newFakeRedis())
+	tenant := uuid.New()
+	tid := 99
+
+	run := models.FlowRun{
+		ID: uuid.New(), TenantID: tenant, FlowID: 1, TicketID: &tid,
+		Status: models.FlowRunStatusWaitingMessage, SubjectType: models.FlowRunSubjectTicket,
+	}
+	require.NoError(t, db.Session(&gorm.Session{NewDB: true}).Create(&run).Error)
+
+	won1, err := sk.claimRun(context.Background(), run, models.FlowRunStatusWaitingMessage)
+	require.NoError(t, err)
+	assert.True(t, won1, "first claim must win")
+
+	won2, err := sk.claimRun(context.Background(), run, models.FlowRunStatusWaitingMessage)
+	require.NoError(t, err)
+	assert.False(t, won2, "second claim must lose (run no longer waiting)")
+}
+
+// TestRuntime_ConcurrentStart_OneRun pins the H2 per-ticket lock: two concurrent
+// trigger inbounds (distinct EnvIDs) for the same ticket with no active run must
+// produce exactly ONE FlowRun, not two. The single-flight lock serializes the
+// "no active run → StartFlow" section.
+func TestRuntime_ConcurrentStart_OneRun(t *testing.T) {
+	red := newSyncRedis(true) // per-ticket lock enabled
+	sk, _, db := newRuntimeWithRedis(t, red)
+	tenant := uuid.New()
+	nodes, edges := menuBranchGraph()
+	seedActiveFlow(t, db, tenant, "menu", nodes, edges)
+
+	var wg sync.WaitGroup
+	for _, env := range []string{"cs-a", "cs-b"} {
+		wg.Add(1)
+		go func(e string) {
+			defer wg.Done()
+			sk.RouteInboundTicket(context.Background(), inboundFor(tenant, 14, "menu", e))
+		}(env)
+	}
+	wg.Wait()
+
+	var count int64
+	db.Model(&models.FlowRun{}).Where(`"tenantId" = ? AND "ticketId" = ?`, tenant, 14).Count(&count)
+	assert.Equal(t, int64(1), count, "concurrent starts must create exactly one FlowRun")
 }
 
 func TestRuntime_OptOutAbortsActiveRun(t *testing.T) {

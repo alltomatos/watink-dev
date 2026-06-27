@@ -3,6 +3,7 @@ package flow
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -94,6 +95,16 @@ func (a *WhatsAppAdapter) Send(ctx context.Context, msg OutboundMessage) error {
 	// the key, not just the body. SessionID is the chip (Ticket.WhatsappID).
 	routingKey := fmt.Sprintf("wbot.%s.%s.%s", msg.TenantID.String(), msg.SessionID, commandType)
 	if err := a.rabbit.PublishCommand(routingKey, command); err != nil {
+		// Publish failed AFTER we took the dedup lock. If we leave the lock held,
+		// the AMQP redelivery (retry of this same outbound) hits the retained lock
+		// and no-ops silently → the message is lost for the full 24h TTL. Release
+		// the lock best-effort so the retry can actually re-send. Only release the
+		// lock we just acquired here (msg.EnvID != "" means we took it above).
+		if a.redis != nil && msg.EnvID != "" {
+			if delErr := a.redis.DelLock("wbot:msg:" + msg.EnvID); delErr != nil {
+				log.Printf("[WhatsAppAdapter] dedup lock release after publish failure failed (env=%s): %v", msg.EnvID, delErr)
+			}
+		}
 		return fmt.Errorf("whatsapp adapter: publish command: %w", err)
 	}
 	return nil

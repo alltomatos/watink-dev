@@ -33,9 +33,13 @@ func (p *fakePublisher) PublishCommand(routingKey string, payload interface{}) e
 }
 
 // fakeRedis records SetLock and returns a configurable acquired/err per key.
+// DelLock actually clears the key so a retry can re-acquire (needed to assert the
+// publish-failure lock-release path, H1).
 type fakeRedis struct {
-	locked map[string]bool // keys already held => SetLock returns false
-	setErr error
+	locked   map[string]bool // keys already held => SetLock returns false
+	setErr   error
+	delErr   error
+	delCalls []string // keys passed to DelLock, in order
 }
 
 func newFakeRedis() *fakeRedis { return &fakeRedis{locked: map[string]bool{}} }
@@ -50,7 +54,14 @@ func (r *fakeRedis) SetLock(key, value string, expiration time.Duration) (bool, 
 	r.locked[key] = true
 	return true, nil
 }
-func (r *fakeRedis) DelLock(string) error                               { return nil }
+func (r *fakeRedis) DelLock(key string) error {
+	r.delCalls = append(r.delCalls, key)
+	if r.delErr != nil {
+		return r.delErr
+	}
+	delete(r.locked, key)
+	return nil
+}
 func (r *fakeRedis) Subscribe(context.Context, string) *redis.PubSub    { return nil }
 func (r *fakeRedis) Publish(context.Context, string, interface{}) error { return nil }
 func (r *fakeRedis) Ping(context.Context) error                         { return nil }
@@ -151,6 +162,58 @@ func TestWhatsAppAdapter_MediaCommand(t *testing.T) {
 	cmd := pub.calls[0].payload.(map[string]interface{})
 	if cmd["type"] != "message.send.media" {
 		t.Fatalf("type = %v, want message.send.media", cmd["type"])
+	}
+}
+
+// togglePublisher fails the first N PublishCommand calls, then succeeds — to
+// simulate a transient AMQP outage followed by an AMQP redelivery/retry.
+type togglePublisher struct {
+	failFirst int
+	calls     int
+	published []struct {
+		routingKey string
+		payload    interface{}
+	}
+}
+
+func (p *togglePublisher) PublishCommand(routingKey string, payload interface{}) error {
+	p.calls++
+	if p.calls <= p.failFirst {
+		return errors.New("amqp down")
+	}
+	p.published = append(p.published, struct {
+		routingKey string
+		payload    interface{}
+	}{routingKey, payload})
+	return nil
+}
+
+// TestWhatsAppAdapter_PublishFailureReleasesLock pins H1: when PublishCommand
+// fails, the dedup lock taken before it must be released, otherwise the AMQP
+// redelivery (retry) hits the still-held lock and no-ops → message lost 24h.
+func TestWhatsAppAdapter_PublishFailureReleasesLock(t *testing.T) {
+	pub := &togglePublisher{failFirst: 1}
+	red := newFakeRedis()
+	a := NewWhatsAppAdapter(pub, red)
+	msg := newMsg()
+
+	// First attempt: publish fails → must return error AND release the lock.
+	if err := a.Send(context.Background(), msg); err == nil {
+		t.Fatal("expected publish error on first send")
+	}
+	if len(red.delCalls) != 1 || red.delCalls[0] != "wbot:msg:"+msg.EnvID {
+		t.Fatalf("lock not released on publish failure; delCalls=%v", red.delCalls)
+	}
+	if red.locked["wbot:msg:"+msg.EnvID] {
+		t.Fatal("dedup lock still held after publish failure — retry would no-op")
+	}
+
+	// Retry (AMQP redelivery): lock is free, publish now succeeds → message sent.
+	if err := a.Send(context.Background(), msg); err != nil {
+		t.Fatalf("retry after lock release should send, got %v", err)
+	}
+	if len(pub.published) != 1 {
+		t.Fatalf("retry did not publish; published=%d", len(pub.published))
 	}
 }
 
