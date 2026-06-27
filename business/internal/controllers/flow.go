@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/alltomatos/watinkdev/business/internal/flow"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
@@ -12,11 +14,57 @@ import (
 )
 
 // FlowController encapsulates flow operations with RLS-scoped DB from auth middleware.
-// All queries are automatically tenant-scoped via auth.GetDB(c).
+// All queries are automatically tenant-scoped via auth.GetScoped(c, "Flows").
 type FlowController struct{}
 
 func NewFlowController() *FlowController {
 	return &FlowController{}
+}
+
+// maxFlowJSONSize caps the size of nodes/edges JSON blobs to 1 MiB.
+const maxFlowJSONSize = 1 << 20
+
+// flowInput is the Create payload (Name required).
+type flowInput struct {
+	Name   string         `json:"name" binding:"required"`
+	Nodes  datatypes.JSON `json:"nodes"`
+	Edges  datatypes.JSON `json:"edges"`
+	Active bool           `json:"active"`
+}
+
+// flowUpdateInput is the Update payload. All fields are pointers so an omitted
+// field is preserved (partial PATCH) instead of being zeroed — fixing the data
+// loss where Save() of the whole struct wiped Nodes/Edges/Active (FB0-B1).
+type flowUpdateInput struct {
+	Name   *string         `json:"name"`
+	Nodes  *datatypes.JSON `json:"nodes"`
+	Edges  *datatypes.JSON `json:"edges"`
+	Active *bool           `json:"active"`
+}
+
+// validateFlowGraph parses nodes+edges into the versioned FlowGraph contract and
+// validates it (ADR 0013). On a contract breach it writes HTTP 422 and returns
+// false; on an unknown future schemaVersion it also writes 422. Absence of
+// schemaVersion defaults to v1 (handled in flow.ParseGraph) — not an error.
+func validateFlowGraph(c *gin.Context, nodes, edges datatypes.JSON) bool {
+	graph, err := flow.ParseGraph(nodes, edges)
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+		return false
+	}
+	if err := graph.Validate(); err != nil {
+		var verr *flow.ValidationError
+		switch {
+		case errors.Is(err, flow.ErrUnknownSchemaVersion):
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "unknown flow graph schemaVersion"})
+		case errors.As(err, &verr):
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": verr.Error()})
+		default:
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "invalid flow graph"})
+		}
+		return false
+	}
+	return true
 }
 
 // @Summary      Listar flows
@@ -38,16 +86,6 @@ func (fc *FlowController) List(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, flows)
-}
-
-// maxFlowJSONSize caps the size of nodes/edges JSON blobs to 1 MiB.
-const maxFlowJSONSize = 1 << 20
-
-type flowInput struct {
-	Name   string         `json:"name" binding:"required"`
-	Nodes  datatypes.JSON `json:"nodes"`
-	Edges  datatypes.JSON `json:"edges"`
-	Active bool           `json:"active"`
 }
 
 // @Summary      Criar flow
@@ -81,6 +119,11 @@ func (fc *FlowController) Create(c *gin.Context) {
 	}
 	if len(req.Edges) > maxFlowJSONSize {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "field 'edges' exceeds maximum allowed size of 1 MiB"})
+		return
+	}
+
+	// FB0-B4: reject malformed/illegal graphs with 422 before persisting.
+	if !validateFlowGraph(c, req.Nodes, req.Edges) {
 		return
 	}
 
@@ -132,6 +175,11 @@ func (fc *FlowController) Show(c *gin.Context) {
 // @Success      200     {object}  map[string]interface{}
 // @Security     BearerAuth
 // @Router       /flows/{flowId} [put]
+//
+// Update applies a PARTIAL PATCH: only the fields present in the body are
+// changed. Omitted fields (nodes/edges/active/name and the
+// triggerType/triggerValue/whatsappId/timestamps not exposed here) are
+// preserved — never zeroed (FB0-B1).
 func (fc *FlowController) Update(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Flows")
 	if !ok {
@@ -139,43 +187,88 @@ func (fc *FlowController) Update(c *gin.Context) {
 	}
 	id := c.Param("flowId")
 
-	var flow models.Flow
-	if err := db.Where("\"tenantId\" = ? AND id = ?", tenantID, id).First(&flow).Error; err != nil {
+	var existing models.Flow
+	if err := db.Where("\"tenantId\" = ? AND id = ?", tenantID, id).First(&existing).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Flow not found"})
 		return
 	}
 
-	var req flowInput
+	var req flowUpdateInput
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.RespondWithBindError(c, err)
 		return
 	}
 
-	flowName, err := utils.ValidateStringField(req.Name, "name", 255)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	// Build the partial update set; only present fields are touched.
+	updates := map[string]interface{}{}
+
+	if req.Name != nil {
+		flowName, err := utils.ValidateStringField(*req.Name, "name", 255)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		updates["name"] = flowName
 	}
-	if len(req.Nodes) > maxFlowJSONSize {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "field 'nodes' exceeds maximum allowed size of 1 MiB"})
-		return
+
+	// Effective graph = incoming field if present, else the persisted value.
+	// Re-validate the resulting graph so a partial edit can't yield an illegal one.
+	effNodes := existing.Nodes
+	effEdges := existing.Edges
+	graphTouched := false
+
+	if req.Nodes != nil {
+		if len(*req.Nodes) > maxFlowJSONSize {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "field 'nodes' exceeds maximum allowed size of 1 MiB"})
+			return
+		}
+		effNodes = *req.Nodes
+		updates["nodes"] = *req.Nodes
+		graphTouched = true
 	}
-	if len(req.Edges) > maxFlowJSONSize {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "field 'edges' exceeds maximum allowed size of 1 MiB"})
+	if req.Edges != nil {
+		if len(*req.Edges) > maxFlowJSONSize {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "field 'edges' exceeds maximum allowed size of 1 MiB"})
+			return
+		}
+		effEdges = *req.Edges
+		updates["edges"] = *req.Edges
+		graphTouched = true
+	}
+	if req.Active != nil {
+		updates["active"] = *req.Active
+	}
+
+	// FB0-B4: only re-validate the graph when nodes/edges are part of this PATCH.
+	if graphTouched && !validateFlowGraph(c, effNodes, effEdges) {
 		return
 	}
 
-	flow.Name = flowName
-	flow.Nodes = req.Nodes
-	flow.Edges = req.Edges
-	flow.Active = req.Active
+	if len(updates) == 0 {
+		// Nothing to change — return the current record untouched.
+		c.JSON(http.StatusOK, existing)
+		return
+	}
 
-	if err := db.Session(&gorm.Session{NewDB: true}).Save(&flow).Error; err != nil {
+	// Session(NewDB:true) — never reuse the scoped db for writes. Model+Updates
+	// of a map writes ONLY the listed columns, preserving every other field
+	// (triggerType/triggerValue/whatsappId/createdAt and any omitted graph blob).
+	if err := db.Session(&gorm.Session{NewDB: true}).
+		Model(&models.Flow{}).
+		Where("\"tenantId\" = ? AND id = ?", tenantID, existing.ID).
+		Updates(updates).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "UpdateFlow")
 		return
 	}
 
-	c.JSON(http.StatusOK, flow)
+	// Re-read so the response reflects the merged record (preserved + patched).
+	var updated models.Flow
+	if err := db.Where("\"tenantId\" = ? AND id = ?", tenantID, existing.ID).First(&updated).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "UpdateFlowReload")
+		return
+	}
+
+	c.JSON(http.StatusOK, updated)
 }
 
 // @Summary      Remover flow
