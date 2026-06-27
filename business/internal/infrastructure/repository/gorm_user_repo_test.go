@@ -192,3 +192,40 @@ func TestGORMUserRepo_FindByEmailForAuth_CrossTenant(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, notFound, "FindByEmailForAuth deveria retornar nil para email inexistente")
 }
+
+// TestGORMUserRepo_FindByEmailForAuth_ReturnsGroupPermissions verifica que o login
+// devolve as permissões EFETIVAS do usuário (vindas do grupo) — sem isso o frontend
+// Can (perform="flows:read") só passa pelo bypass admin/superadmin, e o item do
+// FlowBuilder nunca aparece para perfis não-admin.
+func TestGORMUserRepo_FindByEmailForAuth_ReturnsGroupPermissions(t *testing.T) {
+	db := setupUserTestDB(t)
+	repo := NewGORMUserRepo(db)
+	ctx := context.Background()
+
+	tenantID := uuid.New()
+	require.NoError(t, db.Create(&TenantTest{ID: tenantID, Name: "T"}).Error)
+
+	perm := models.Permission{Resource: "flows", Action: "read"}
+	require.NoError(t, db.Create(&perm).Error)
+
+	group := models.Group{Name: "Admin", TenantID: tenantID}
+	require.NoError(t, db.Create(&group).Error)
+	require.NoError(t, db.Model(&group).Association("Permissions").Append(&perm))
+
+	// Perfil NÃO-admin de propósito: força o caminho de permissão (não o bypass).
+	user := &models.User{
+		Name:         "Carol",
+		Email:        "carol@tenant.com",
+		PasswordHash: "$2a$10$hash_carol",
+		Profile:      "agent",
+		TenantID:     tenantID,
+		GroupID:      &group.ID,
+	}
+	require.NoError(t, db.Create(user).Error)
+
+	got, err := repo.FindByEmailForAuth(ctx, "carol@tenant.com")
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Contains(t, got.Permissions, "flows:read",
+		"login deve retornar as permissões efetivas do grupo (flows:read) para o Can liberar o item")
+}
