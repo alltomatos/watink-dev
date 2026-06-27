@@ -137,6 +137,7 @@ func allModels() []interface{} {
 		&models.RolePermission{},
 		&models.Flow{},
 		&models.FlowRun{},
+		&models.FlowRunLog{},
 		&models.QuickAnswer{},
 		&models.KnowledgeBase{},
 		&models.KnowledgeBaseSource{},
