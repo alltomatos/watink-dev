@@ -237,10 +237,53 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 
 **Referência:** [`docs/agents/realtime.md`](docs/agents/realtime.md) · ADR 0010
 
+## Módulo: FlowBuilder (Automação)
+
+**Responsabilidade:** Runtime de automação genérico no WhatsApp — chatbot, sequências, agendamentos e campanhas são perfis do mesmo motor. O `FlowRun` é a instância de execução: fluxos interativos e não-interativos são o **mesmo registro** suspendendo em pontos diferentes do grafo.
+
+**FlowRun (instância de execução):**
+- Estados: `running` · `waiting_message` · `waiting_until` · `waiting_event` · `completed` · `aborted` · `expired`
+- Campos: `tenantId` (RLS), `flowId`, `currentNodeId`, `subjectType` (`ticket`|`contact`|`none`), `subjectId` (nullable), `vars` (JSONB), `resumeAt` (nullable), `expiresAt`, e **SNAPSHOT do grafo no start** — a run executa a versão do fluxo que a iniciou.
+- Substitui o antigo conceito `FlowSession` (que estava apenas comentado em `worker.go`).
+- Cada destinatário de campanha = um `CampaignRecipient` materializado como `FlowRun` não-interativo.
+
+**Trigger polimórfico:** classes `message-inbound` (keyword/firstContact/any) · `schedule` (cron) · `event` (ticket/deal) · `manual/api` · `webhook-inbound`. Autorado no **nó do grafo** e **projetado para colunas top-level no save** — o grafo é a verdade, as colunas são índice de leitura barato. O read-path faz fan-out por classe.
+
+**Channel adapters:** ações são portas de saída plugáveis (`OutboundChannelAdapter`). `whatsapp`→engine-go · `email`→SMTP · `api`→HTTP · `pipeline`/`ticket`→serviço interno. O **engine-go permanece adapter burro** — `send-by-sessionId` via contrato AMQP `wbot.<tenant>.<session>.<cmd>`; pacing, rotação e e-mail ficam 100% no business.
+
+**Invariants:**
+- Sempre usar `auth.GetScoped(c, "Flows")` em controllers — nunca `c.Get("tenantId")` bruto.
+- **No worker, RLS Postgres é INERTE** (o app nunca faz `SET app.current_tenant`) — toda query do worker carrega `WHERE tenantId` **manual**.
+- Escritas sempre em `Session(NewDB: true)` — nunca reusar o `db` escopado do GORM para escrita.
+- Contrato versionado `FlowGraph{schemaVersion, nodes, edges}` com structs Go espelhando `NodeData`/`Edge`; validado no Create/Update (rejeita tipo desconhecido, IDs duplicados, edges órfãs; ausência de `schemaVersion` = v1 default).
+- **Dedup por `env.ID`** (Redis TTL 24h, padrão `wbot:msg:`) antes de qualquer envio real.
+- **Fonte da verdade do tempo = `resumeAt`** varrido pelo scheduler (leader-lock Redis SetNX + lock por `FlowRun.id` + UPDATE condicional de status no resume) — **nunca `time.Sleep`** para delays longos.
+- Reusar `interpolateVariables` do QuickAnswers — variável ausente → string vazia.
+- LLM via settings do tenant, padrão `PipelineController.AISuggest`.
+- Precedência: **"sessão manda"** (FlowRun ativo ignora novos triggers) — MAS **opt-out (PARAR/STOP/SAIR) vence sempre**.
+
+**RAG (Fase 2):** retrieval pgvector (HNSW cosine, dimensão fixa 1536, `text-embedding-3-small`) tenant-scoped; guardrails "responder só do contexto" + citação obrigatória + handoff humano em baixa confiança; gate `aiKnowledgeEnabled` espelhando `aiPipelineEnabled`.
+
+**Campanhas (Fase 4):** risco **ESTRUTURAL** de ban (fingerprint whatsmeow detectável pela Meta em 2–8 semanas; anti-ban mitiga o sinal comportamental, não o estrutural). Decisão de produto: construir **com aviso explícito de risco na UI + opt-in/suppression obrigatórios** + roadmap declarado para WhatsApp Business API oficial (BSP). Rotação Reputation-weighted LRU + token-bucket/jitter/batch-pause por conexão + circuit-breaker que retira chip degradado. Status real via cache de `session.status` (nunca DB stale).
+
+**O que NÃO fazer:**
+- Não usar `c.Get("tenantId")` bruto nem confiar em RLS no worker — sempre `WHERE tenantId` manual.
+- Não reusar o `db` escopado em escritas — usar `Session(NewDB: true)`.
+- Não colocar pacing/rotação/e-mail no engine-go — ele é adapter burro (só `send-by-sessionId`).
+- Não usar `time.Sleep` para delays longos — agendar via `resumeAt` + scheduler.
+- Não enviar sem dedup por `env.ID` no Redis.
+- Não deixar novo trigger interromper FlowRun ativo — exceto opt-out (PARAR/STOP/SAIR).
+- Não substituir variáveis no preview/contexto sem `interpolateVariables`; não bloquear por variável ausente.
+- Não responder fora do contexto no RAG nem omitir citação; baixa confiança → handoff humano.
+- Não disparar campanha sem aviso de risco na UI, opt-in e supressão.
+- Não reintroduzir `FlowSession` — o conceito único é `FlowRun`.
+
+**Referência:** [`docs/agents/flowbuilder.md`](docs/agents/flowbuilder.md)
+
 ## Domain Docs
 
 - **Glossário**: [`CONTEXT.md`](CONTEXT.md)
-- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0009** para stage upsert, **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes
+- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0009** para stage upsert, **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes. **FlowBuilder/Automação**: **0011** FlowRun unificado · **0012** trigger polimórfico · **0013** contrato versionado FlowGraph · **0014** channel adapters · **0015** pgvector RAG · **0016** campanhas anti-ban (risco estrutural + opt-in + roadmap BSP) · **0017** scheduler multi-node
 - **Arquitetura**: [`docs/dev/architecture.md`](docs/dev/architecture.md)
 - **Frontend DS**: [`docs/frontend/design-system.md`](docs/frontend/design-system.md)
 - **Git Workflow**: [`docs/dev/git_workflow_policy.md`](docs/dev/git_workflow_policy.md)

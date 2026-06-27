@@ -139,6 +139,45 @@ _Avoid_: Tenant channel, broadcast room
 **Hub**: Registro local de conexões SSE de um nó Business. O consumidor do Redis Pub/Sub entrega eventos às conexões locais via `hub.deliver(room, payload)`, filtrando por sala/tenant.
 _Avoid_: Connection pool, registry, SSE manager
 
+**FlowRun**: Instância de execução de um Flow — registro de runtime que representa um único percurso de automação sobre o grafo. Modelo genérico: execuções INTERATIVAS (chatbot aguardando resposta) e NÃO-INTERATIVAS (campanha disparando) são o MESMO tipo de registro, diferindo apenas no ponto onde suspendem. Estados: `running | waiting_message | waiting_until | waiting_event | completed | aborted | expired`. Campos: `tenantId` (RLS), `flowId`, `currentNodeId`, `subjectType` (`ticket | contact | none`), `subjectId` (nullable), `vars` (JSONB), `resumeAt` (nullable), `expiresAt`, e um SNAPSHOT do grafo no start (a run executa a versão que iniciou, não a versão atual do Flow).
+_Avoid_: FlowSession, flow instance, execution context, run de fluxo
+
+**FlowSession**: Conceito legado e DESCONTINUADO — existia apenas comentado em `worker.go`. Substituído integralmente por **FlowRun**. Não usar em código novo, docs ou conversas.
+_Avoid_: (termo a evitar — use FlowRun)
+
+**FlowTrigger**: Gatilho polimórfico que inicia um FlowRun. Autorado no NÓ inicial do grafo (grafo = fonte da verdade) e PROJETADO para colunas top-level no save (colunas = índice de leitura barato). Classes: `message-inbound` (keyword / firstContact / any), `schedule` (cron), `event` (ticket / deal), `manual/api`, `webhook-inbound`. O read-path faz fan-out por classe. Precedência (Decisão A — "sessão manda"): um FlowRun ativo ignora novos triggers, MAS o opt-out (PARAR / STOP / SAIR) vence sempre.
+_Avoid_: trigger (genérico), gatilho, webhook handler, start condition
+
+**Trigger polimórfico**: O modelo de FlowTrigger acima — uma única abstração de gatilho cobrindo múltiplas classes (mensagem, cron, evento, manual, webhook), resolvidas por fan-out no read-path. Grafo é a verdade; colunas top-level são índice derivado no save.
+_Avoid_: multi-trigger, trigger genérico
+
+**Channel Adapter (OutboundChannelAdapter)**: Porta de saída plugável pela qual as ações de um Flow emitem efeitos no mundo externo. O `engine-go` permanece adapter BURRO (send-by-sessionId via contrato AMQP `wbot.<tenant>.<session>.<cmd>`); pacing, rotação e e-mail ficam 100% no business. Implementações por canal: `whatsapp → engine-go`, `email → SMTP`, `api → http`, `pipeline/ticket → serviço interno`.
+_Avoid_: connector, sender, output handler, port (isolado)
+
+**Campaign**: Disparo em massa de um Flow não-interativo para um conjunto de destinatários. RISCO ESTRUTURAL de ban declarado (fingerprint whatsmeow detectável pela Meta independente de comportamento); o produto exibe AVISO explícito de risco na UI, exige opt-in/suppression, e declara roadmap para WhatsApp Business API oficial (BSP) como caminho zero-risco. Rotação Reputation-weighted LRU + token-bucket/jitter/batch-pause por conexão + circuit-breaker que retira chip degradado.
+_Avoid_: blast, broadcast (de marketing), disparo em massa, mailing
+
+**CampaignRecipient**: Cada destinatário de uma Campaign, materializado como um FlowRun não-interativo independente. Carrega o estado de envio individual (running/completed/aborted) e participa do dedup e do pacing por conexão.
+_Avoid_: target, lead de campanha, contato de envio
+
+**CampaignSuppression**: Lista de exclusão (opt-out) obrigatória para Campaigns — contatos que NÃO devem receber disparos. Consultada antes de materializar CampaignRecipients. O opt-out (PARAR/STOP/SAIR) também aborta FlowRuns ativos.
+_Avoid_: blacklist, denylist, unsubscribe list, lista negra
+
+**KBChunk**: Fragmento indexado de uma KnowledgeBase para retrieval RAG. Armazena embedding pgvector (HNSW cosine, dimensão fixa 1536 do `text-embedding-3-small`), tenant-scoped. Base do retrieval da Fase 2.
+_Avoid_: chunk (isolado), embedding row, vector, pedaço de KB
+
+**Retrieval RAG**: Recuperação de KBChunks relevantes por similaridade vetorial (pgvector HNSW cosine) para fundamentar respostas de IA, tenant-scoped. Guardrails: "responder só do contexto", citação obrigatória da fonte, e handoff humano em baixa confiança. Gated por `aiKnowledgeEnabled` (espelha `aiPipelineEnabled`).
+_Avoid_: busca semântica, RAG (isolado), context injection
+
+**warmupTier**: Nível de aquecimento/reputação de uma conexão WhatsApp, usado como peso na rotação Reputation-weighted LRU de Campaigns. Conexões mais aquecidas recebem maior volume; status real vem do cache de `session.status` (nunca do DB stale).
+_Avoid_: warmup level, reputation score, tier (isolado), aquecimento
+
+**Circuit-breaker (Campanhas)**: Mecanismo que retira automaticamente da rotação uma conexão WhatsApp degradada (queda de status/reputação), interrompendo disparos por aquele chip para conter o sinal de ban. Avalia status via cache de `session.status`, não DB stale.
+_Avoid_: kill switch, breaker (isolado), failover, disjuntor
+
+**FlowRunLog**: Registro de auditoria/observabilidade dos passos de execução de um FlowRun — transições de nó, resumes, ações de Channel Adapter e erros. Tenant-scoped, distinto do snapshot do grafo (que é imutável por run).
+_Avoid_: run log, trace, execution history, audit trail (genérico)
+
 
 ## Entity Relationships (Canonical)
 
