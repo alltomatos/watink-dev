@@ -537,6 +537,36 @@ paths:
       summary: Atualizar flow
       tags:
       - flows
+  /flows/{flowId}/run:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do flow
+        in: path
+        name: flowId
+        required: true
+        type: integer
+      - description: '{ticketId}'
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Iniciar flow sob demanda
+      tags:
+      - flows
   /flows/{flowId}/simulate:
     post:
       parameters:
