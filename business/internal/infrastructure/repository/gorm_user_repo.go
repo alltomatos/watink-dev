@@ -24,7 +24,8 @@ func NewGORMUserRepo(db *gorm.DB) *GORMUserRepository {
 }
 
 // FindByID returns the user with the given id under tenantID, or nil if not found.
-// Mantém listagem enxuta (sem relations carregadas).
+// Effective permissions (user + group) are populated so the refresh path keeps
+// the frontend Can gate working across token refreshes.
 func (r *GORMUserRepository) FindByID(ctx context.Context, id int, tenantID uuid.UUID) (*domain.User, error) {
 	var m models.User
 	err := r.db.WithContext(ctx).
@@ -36,7 +37,9 @@ func (r *GORMUserRepository) FindByID(ctx context.Context, id int, tenantID uuid
 		}
 		return nil, err
 	}
-	return userModelToDomain(&m), nil
+	du := userModelToDomain(&m)
+	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.GroupID)
+	return du, nil
 }
 
 // FindByIDDetail returns the user with relations (Queues, Permissions, Roles) loaded.
@@ -72,7 +75,8 @@ func (r *GORMUserRepository) FindByEmail(ctx context.Context, email string, tena
 	return userModelToDomain(&m), nil
 }
 
-// FindByEmailForAuth returns the user by email across all tenants (login use only).
+// FindByEmailForAuth returns the user by email across all tenants (login use only),
+// with effective permissions (user + group) populated for the frontend Can gate.
 func (r *GORMUserRepository) FindByEmailForAuth(ctx context.Context, email string) (*domain.User, error) {
 	var m models.User
 	err := r.db.WithContext(ctx).
@@ -85,7 +89,45 @@ func (r *GORMUserRepository) FindByEmailForAuth(ctx context.Context, email strin
 		}
 		return nil, err
 	}
-	return userModelToDomain(&m), nil
+	du := userModelToDomain(&m)
+	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.GroupID)
+	return du, nil
+}
+
+// effectivePermissionNames aggregates a user's EFFECTIVE permission names
+// ("resource:action") from two sources: the user's direct grants
+// (user_permissions) and their group's grants (group_permissions — the path the
+// tenant seed uses). Uses GORM associations so the join-table column naming
+// (joinForeignKey:groupId/permissionId) is resolved from the model tags, never
+// hardcoded. Best-effort: a load error yields fewer names, never an auth failure.
+func (r *GORMUserRepository) effectivePermissionNames(ctx context.Context, userID int, groupID *int) []string {
+	set := make(map[string]struct{})
+
+	var userPerms []models.Permission
+	if err := r.db.WithContext(ctx).
+		Model(&models.User{ID: userID}).
+		Association("Permissions").Find(&userPerms); err == nil {
+		for i := range userPerms {
+			set[userPerms[i].GetName()] = struct{}{}
+		}
+	}
+
+	if groupID != nil {
+		var g models.Group
+		if err := r.db.WithContext(ctx).
+			Preload("Permissions").
+			First(&g, *groupID).Error; err == nil {
+			for i := range g.Permissions {
+				set[g.Permissions[i].GetName()] = struct{}{}
+			}
+		}
+	}
+
+	names := make([]string, 0, len(set))
+	for n := range set {
+		names = append(names, n)
+	}
+	return names
 }
 
 // FindAll returns all users under tenantID.
