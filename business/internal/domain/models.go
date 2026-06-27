@@ -97,6 +97,12 @@ type User struct {
 	Configs      string    `json:"configs"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
+
+	// Permissions are the user's EFFECTIVE permission names ("resource:action"),
+	// aggregated from the user's direct grants + their group's grants. Returned
+	// by the auth endpoints so the frontend Can gate (perform="flows:read" etc.)
+	// works for non-admin profiles. Empty for callers that don't populate it.
+	Permissions []string `json:"permissions"`
 }
 
 func (u *User) CheckPassword(password string) bool {
