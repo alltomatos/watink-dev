@@ -1,0 +1,155 @@
+// Package flow holds the FlowBuilder runtime contracts: the versioned FlowGraph
+// schema (this file), outbound channel adapters (adapter.go) and the inbound
+// trigger-match skeleton (skeleton.go).
+//
+// The FlowGraph is the versioned, validated contract between the frontend canvas
+// (React Flow) and the backend runtime. The backend is the AUTHORITY of the shape;
+// the canvas conforms to it. See ADR 0013.
+package flow
+
+import (
+	"encoding/json"
+	"fmt"
+)
+
+// CurrentSchemaVersion is the monotonic schema version understood by this build.
+// Absence of schemaVersion in a payload is treated as v1 (default), never an error.
+const CurrentSchemaVersion = 1
+
+// FlowGraph is the versioned root contract persisted as the canonical graph.
+// SchemaVersion absence on unmarshal = 1 (handled by ParseGraph).
+type FlowGraph struct {
+	SchemaVersion int    `json:"schemaVersion"`
+	Nodes         []Node `json:"nodes"`
+	Edges         []Edge `json:"edges"`
+}
+
+// Node mirrors the frontend FlowNode shape. Data is kept as raw JSON so the
+// per-type NodeData envelope is preserved verbatim for the snapshot; type-specific
+// validation lives in each NodeExecutor.Validate (FASE 1+), not here.
+type Node struct {
+	ID   string          `json:"id"`
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
+// Edge mirrors the frontend React Flow edge shape. The canvas emits the named
+// output handle as "sourceHandle"; we also accept "handle" as an alias.
+type Edge struct {
+	ID     string `json:"id"`
+	Source string `json:"source"`
+	Target string `json:"target"`
+	Handle string `json:"sourceHandle,omitempty"`
+}
+
+// NodeType is the closed set of valid node.type values for the current schema
+// version. Adding a type is a schema change (see ADR 0013). The set mirrors what
+// the frontend canvas (nodeEditorTypes.ts NODE_TITLES) can author.
+type NodeType string
+
+const (
+	NodeStart     NodeType = "start"
+	NodeEnd       NodeType = "end"
+	NodeMessage   NodeType = "message"
+	NodeMenu      NodeType = "menu"
+	NodeSwitch    NodeType = "switch"
+	NodeTrigger   NodeType = "trigger"
+	NodePipeline  NodeType = "pipeline"
+	NodeKnowledge NodeType = "knowledge"
+	NodeTicket    NodeType = "ticket"
+	NodeDatabase  NodeType = "database"
+	NodeFilter    NodeType = "filter"
+	NodeWebhook   NodeType = "webhook"
+	NodeAPI       NodeType = "api"
+	NodeHelpdesk  NodeType = "helpdesk"
+	NodeGeneric   NodeType = "generic"
+
+	// Canvas aliases: React Flow seeds the entry/exit nodes as input/output.
+	NodeInput  NodeType = "input"  // alias of start
+	NodeOutput NodeType = "output" // alias of end
+)
+
+// validNodeTypes is the closed registry of accepted node.type strings for v1.
+var validNodeTypes = map[NodeType]struct{}{
+	NodeStart:     {},
+	NodeEnd:       {},
+	NodeMessage:   {},
+	NodeMenu:      {},
+	NodeSwitch:    {},
+	NodeTrigger:   {},
+	NodePipeline:  {},
+	NodeKnowledge: {},
+	NodeTicket:    {},
+	NodeDatabase:  {},
+	NodeFilter:    {},
+	NodeWebhook:   {},
+	NodeAPI:       {},
+	NodeHelpdesk:  {},
+	NodeGeneric:   {},
+	NodeInput:     {},
+	NodeOutput:    {},
+}
+
+// IsValidNodeType reports whether t is a registered node type for the current schema.
+func IsValidNodeType(t string) bool {
+	_, ok := validNodeTypes[NodeType(t)]
+	return ok
+}
+
+// ParseGraph unmarshals nodes+edges JSON blobs (the two columns persisted by the
+// Flow model) into a FlowGraph, defaulting an absent/zero schemaVersion to v1.
+//
+// nodesJSON may be either:
+//   - a bare JSON array of nodes (`[{...}]`), as the canvas currently emits, or
+//   - a wrapped object `{"schemaVersion":N,"nodes":[...]}`.
+//
+// edgesJSON is always a bare JSON array of edges. Empty/null blobs decode to
+// empty slices, not an error.
+func ParseGraph(nodesJSON, edgesJSON []byte) (FlowGraph, error) {
+	g := FlowGraph{SchemaVersion: CurrentSchemaVersion}
+
+	if len(trimJSON(nodesJSON)) > 0 {
+		// Try the wrapped object form first (carries schemaVersion).
+		var wrapped FlowGraph
+		if err := json.Unmarshal(nodesJSON, &wrapped); err == nil && wrapped.Nodes != nil {
+			g.Nodes = wrapped.Nodes
+			if wrapped.SchemaVersion != 0 {
+				g.SchemaVersion = wrapped.SchemaVersion
+			}
+		} else {
+			// Fall back to a bare array of nodes.
+			var nodes []Node
+			if err := json.Unmarshal(nodesJSON, &nodes); err != nil {
+				return g, fmt.Errorf("invalid nodes payload: %w", err)
+			}
+			g.Nodes = nodes
+		}
+	}
+
+	if len(trimJSON(edgesJSON)) > 0 {
+		var edges []Edge
+		if err := json.Unmarshal(edgesJSON, &edges); err != nil {
+			return g, fmt.Errorf("invalid edges payload: %w", err)
+		}
+		g.Edges = edges
+	}
+
+	return g, nil
+}
+
+// trimJSON returns the input with surrounding whitespace removed, treating the
+// JSON literal `null` as empty.
+func trimJSON(b []byte) []byte {
+	i, j := 0, len(b)
+	for i < j && (b[i] == ' ' || b[i] == '\t' || b[i] == '\n' || b[i] == '\r') {
+		i++
+	}
+	for j > i && (b[j-1] == ' ' || b[j-1] == '\t' || b[j-1] == '\n' || b[j-1] == '\r') {
+		j--
+	}
+	trimmed := b[i:j]
+	if string(trimmed) == "null" {
+		return nil
+	}
+	return trimmed
+}

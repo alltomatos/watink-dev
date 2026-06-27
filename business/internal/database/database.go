@@ -52,6 +52,7 @@ func Migrate() {
 		&models.Role{},
 		&models.RolePermission{},
 		&models.Flow{},
+		&models.FlowRun{},
 		&models.QuickAnswer{},
 		&models.KnowledgeBase{},
 		&models.KnowledgeBaseSource{},
@@ -92,6 +93,8 @@ func Seed() {
 		{Resource: "groups", Action: "view", Description: "Gerenciar Grupos de Usuários"},
 		{Resource: "users", Action: "view", Description: "Gerenciar Usuários"},
 		{Resource: "view", Action: "swagger", Description: "Visualizar documentação Swagger"},
+		// FB0-B8: gate the FlowBuilder menu item (frontend Can perform="flows:read").
+		{Resource: "flows", Action: "read", Description: "Visualizar/gerenciar Flows (Automação)"},
 	}
 
 	for _, p := range permissions {
@@ -108,6 +111,10 @@ func addCustomIndexes() error {
 		`CREATE INDEX IF NOT EXISTS idx_messages_tenant_ticket_fromme ON "Messages" ("tenantId", "ticketId", "fromMe")`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_tenant_fromme_createdat ON "Messages" ("tenantId", "fromMe", "createdAt")`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_quick_answers_tenant_shortcut ON "QuickAnswers" ("tenantId", shortcut)`,
+		// FlowRun scheduler/cleanup read-paths: resume-due and expire-due sweeps
+		// are tenant-scoped, status-filtered range scans on resumeAt/expiresAt.
+		`CREATE INDEX IF NOT EXISTS idx_flow_runs_tenant_status_resumeat ON "FlowRuns" ("tenantId", "status", "resumeAt")`,
+		`CREATE INDEX IF NOT EXISTS idx_flow_runs_tenant_status_expiresat ON "FlowRuns" ("tenantId", "status", "expiresAt")`,
 	}
 
 	for _, ddl := range indexes {
@@ -119,7 +126,7 @@ func addCustomIndexes() error {
 }
 
 func applyRLS() error {
-	tables := []string{"Users", "Tickets", "Messages", "Contacts", "Settings", "ConversationEmbeddings"}
+	tables := []string{"Users", "Tickets", "Messages", "Contacts", "Settings", "ConversationEmbeddings", "FlowRuns"}
 
 	for _, t := range tables {
 		if err := DB.Exec(fmt.Sprintf("ALTER TABLE \"%s\" ENABLE ROW LEVEL SECURITY", t)).Error; err != nil {
