@@ -86,8 +86,9 @@ export const useQuickAnswers = (): UseQuickAnswersReturn => {
         const { data } = await api.get("/quickAnswers/", {
           params: { searchParam, pageNumber },
         });
-        dispatch({ type: "LOAD_QUICK_ANSWERS", payload: data.quickAnswers ?? [] });
-        setHasMore(data.hasMore);
+        const list = Array.isArray(data) ? data : (data.quickAnswers ?? []);
+        dispatch({ type: "LOAD_QUICK_ANSWERS", payload: list });
+        setHasMore(data.hasMore ?? false);
       } catch (err) {
         toastError(err);
       } finally {

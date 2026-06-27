@@ -1,5 +1,6 @@
-/* @jsxImportSource react */
-import React from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { MessageSquare, Plus } from "lucide-react";
 import { i18n } from "../../translate/i18n";
 
 import {
@@ -7,39 +8,36 @@ import {
   PageHeader,
   PageContent,
 } from "../../components/ui/page-layout";
-import QuickAnswersModal from "../../components/QuickAnswersModal";
+import { Button } from "../../components/ui/button";
 import ConfirmationModal from "../../components/ConfirmationModal";
 
 import { useQuickAnswers } from "./hooks/useQuickAnswers";
-import { QuickAnswersToolbar } from "./components/QuickAnswersToolbar";
+import { QuickAnswersToolbar, type ViewMode } from "./components/QuickAnswersToolbar";
 import { QuickAnswersTable } from "./components/QuickAnswersTable";
 
 const QuickAnswers = () => {
+  const navigate = useNavigate();
+  const [view, setView] = useState<ViewMode>("grid");
+
   const {
     quickAnswers,
     loading,
     searchParam,
     selectedQuickAnswer,
-    quickAnswerModalOpen,
     confirmModalOpen,
     handleSearch,
-    handleOpenQuickAnswerModal,
-    handleCloseQuickAnswerModal,
-    handleEditQuickAnswer,
     handleDeleteQuickAnswer,
     handleRequestDelete,
     handleCloseConfirmModal,
     handleScroll,
   } = useQuickAnswers();
 
+  const handleEdit = (qa: { id: number }) => {
+    navigate(`/quick-answers/${qa.id}/edit`);
+  };
+
   return (
     <PageLayout>
-      <QuickAnswersModal
-        open={quickAnswerModalOpen}
-        onClose={handleCloseQuickAnswerModal}
-        aria-labelledby="form-dialog-title"
-        quickAnswerId={selectedQuickAnswer?.id}
-      />
       <ConfirmationModal
         title={
           selectedQuickAnswer
@@ -62,18 +60,41 @@ const QuickAnswers = () => {
         <QuickAnswersToolbar
           searchParam={searchParam}
           onSearch={handleSearch}
-          onAdd={handleOpenQuickAnswerModal}
+          onAdd={() => navigate("/quick-answers/new")}
+          view={view}
+          onViewChange={setView}
         />
       </PageHeader>
 
       <PageContent>
-        <QuickAnswersTable
-          quickAnswers={quickAnswers}
-          loading={loading}
-          onEdit={handleEditQuickAnswer}
-          onDelete={handleRequestDelete}
-          onScroll={handleScroll}
-        />
+        {!loading && quickAnswers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center">
+              <MessageSquare className="h-7 w-7 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">
+                Nenhuma resposta rápida criada
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Crie templates de mensagem para agilizar o atendimento
+              </p>
+            </div>
+            <Button onClick={() => navigate("/quick-answers/new")}>
+              <Plus className="mr-2 h-4 w-4" />
+              Criar Resposta Rápida
+            </Button>
+          </div>
+        ) : (
+          <QuickAnswersTable
+            quickAnswers={quickAnswers}
+            loading={loading}
+            onEdit={handleEdit}
+            onDelete={handleRequestDelete}
+            onScroll={handleScroll}
+            view={view}
+          />
+        )}
       </PageContent>
     </PageLayout>
   );

@@ -11,7 +11,7 @@ import (
 )
 
 // SendButtons sends a legacy ButtonsMessage (up to 3 reply buttons).
-// Note: WhatsApp may not render this on newer clients; prefer SendInteractive.
+// Note: WhatsApp returns 405 for personal accounts — use SendTemplate instead.
 func (s *WhatsAppService) SendButtons(sessionID int, tenantID string, payload ButtonsCommandPayload) error {
 	client, err := s.getConnectedClient(sessionID)
 	if err != nil {
@@ -129,13 +129,102 @@ func (s *WhatsAppService) SendInteractive(sessionID int, tenantID string, payloa
 		})
 	}
 
+	// MessageVersion=3 é OBRIGATÓRIO para o recipiente renderizar os botões.
+	// Sem ele a bolha degrada para texto puro (confirmado em whatsmeow #1144/#1145,
+	// mai/2026: quick_reply e cta_url renderizam em contas pessoais Android/iOS/Web).
+	msgVersion := int32(3)
+	interactive := &waProto.InteractiveMessage{
+		Body: &waProto.InteractiveMessage_Body{Text: proto.String(payload.BodyText)},
+		InteractiveMessage: &waProto.InteractiveMessage_NativeFlowMessage_{
+			NativeFlowMessage: &waProto.InteractiveMessage_NativeFlowMessage{
+				Buttons:        nativeButtons,
+				MessageVersion: &msgVersion,
+			},
+		},
+	}
+	if payload.FooterText != "" {
+		interactive.Footer = &waProto.InteractiveMessage_Footer{Text: proto.String(payload.FooterText)}
+	}
+
+	msg := &waProto.Message{InteractiveMessage: interactive}
+
+	_, err = client.SendMessage(context.Background(), to, msg, whatsmeow.SendRequestExtra{ID: types.MessageID(payload.MessageID)})
+	if err != nil {
+		s.emitAck(sessionID, tenantID, payload.MessageID, 5)
+		return err
+	}
+	s.emitAck(sessionID, tenantID, payload.MessageID, 1)
+	return nil
+}
+
+// SendTemplate sends a HydratedFourRowTemplate — renders clickable buttons on personal
+// WhatsApp accounts. Supports up to 3 buttons: quickreply, url, or call.
+func (s *WhatsAppService) SendTemplate(sessionID int, tenantID string, payload TemplateCommandPayload) error {
+	client, err := s.getConnectedClient(sessionID)
+	if err != nil {
+		s.emitAck(sessionID, tenantID, payload.MessageID, 5)
+		return err
+	}
+
+	to, err := ensureJID(payload.To)
+	if err != nil {
+		s.emitAck(sessionID, tenantID, payload.MessageID, 5)
+		return fmt.Errorf("invalid JID %q: %w", payload.To, err)
+	}
+
+	hydratedButtons := make([]*waProto.HydratedTemplateButton, 0, len(payload.Buttons))
+	for i, b := range payload.Buttons {
+		idx := uint32(i)
+		var hb *waProto.HydratedTemplateButton
+		switch b.Type {
+		case "url":
+			hb = &waProto.HydratedTemplateButton{
+				Index: proto.Uint32(idx),
+				HydratedButton: &waProto.HydratedTemplateButton_UrlButton{
+					UrlButton: &waProto.HydratedTemplateButton_HydratedURLButton{
+						DisplayText: proto.String(b.DisplayText),
+						URL:         proto.String(b.URL),
+					},
+				},
+			}
+		case "call":
+			hb = &waProto.HydratedTemplateButton{
+				Index: proto.Uint32(idx),
+				HydratedButton: &waProto.HydratedTemplateButton_CallButton{
+					CallButton: &waProto.HydratedTemplateButton_HydratedCallButton{
+						DisplayText: proto.String(b.DisplayText),
+						PhoneNumber: proto.String(b.PhoneNumber),
+					},
+				},
+			}
+		default: // "quickreply"
+			id := b.ID
+			if id == "" {
+				id = fmt.Sprintf("btn_%d", i)
+			}
+			hb = &waProto.HydratedTemplateButton{
+				Index: proto.Uint32(idx),
+				HydratedButton: &waProto.HydratedTemplateButton_QuickReplyButton{
+					QuickReplyButton: &waProto.HydratedTemplateButton_HydratedQuickReplyButton{
+						DisplayText: proto.String(b.DisplayText),
+						ID:          proto.String(id),
+					},
+				},
+			}
+		}
+		hydratedButtons = append(hydratedButtons, hb)
+	}
+
 	msg := &waProto.Message{
-		InteractiveMessage: &waProto.InteractiveMessage{
-			Body:   &waProto.InteractiveMessage_Body{Text: proto.String(payload.BodyText)},
-			Footer: &waProto.InteractiveMessage_Footer{Text: proto.String(payload.FooterText)},
-			InteractiveMessage: &waProto.InteractiveMessage_NativeFlowMessage_{
-				NativeFlowMessage: &waProto.InteractiveMessage_NativeFlowMessage{
-					Buttons: nativeButtons,
+		TemplateMessage: &waProto.TemplateMessage{
+			Format: &waProto.TemplateMessage_HydratedFourRowTemplate_{
+				HydratedFourRowTemplate: &waProto.TemplateMessage_HydratedFourRowTemplate{
+					HydratedContentText: proto.String(payload.ContentText),
+					HydratedFooterText:  proto.String(payload.FooterText),
+					HydratedButtons:     hydratedButtons,
+					Title: &waProto.TemplateMessage_HydratedFourRowTemplate_HydratedTitleText{
+						HydratedTitleText: "",
+					},
 				},
 			},
 		},
