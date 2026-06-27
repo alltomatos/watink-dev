@@ -1,0 +1,147 @@
+name: CD Homolog
+
+on:
+  push:
+    branches: [develop]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-business
+          tags: |
+            type=sha,prefix=homolog-
+
+      - name: Docker metadata frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
+          tags: |
+            type=sha,prefix=homolog-
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.business
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend/
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+
+  deploy-homolog:
+    name: deploy-homolog
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: KUBE_CONFIG_HOMOLOG
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Ensure namespace and registry secret
+        env:
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          kubectl create namespace watink-homolog --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=${{ env.REGISTRY }} \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ env.REGISTRY_PASSWORD }} \
+            --namespace watink-homolog \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply homolog manifests
+        run: |
+          if [ -d "infra/k8s/homolog" ]; then
+            kubectl apply -f infra/k8s/homolog/ --namespace watink-homolog
+          else
+            echo "No manifests directory found at infra/k8s/homolog — skipping apply"
+          fi
+
+      - name: Update images (sha pinned)
+        env:
+          SHA_TAG: homolog-${{ github.sha }}
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          kubectl set image deployment/watink-business \
+            business=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-business:homolog-sha-${SHORT_SHA} \
+            --namespace watink-homolog --ignore-not-found
+          kubectl set image deployment/watink-frontend \
+            frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:homolog-sha-${SHORT_SHA} \
+            --namespace watink-homolog --ignore-not-found
+
+      - name: Wait rollout
+        run: |
+          kubectl rollout status deployment/watink-business --namespace watink-homolog --timeout=120s || true
+          kubectl rollout status deployment/watink-frontend --namespace watink-homolog --timeout=120s || true
+
+  smoke-tests:
+    name: smoke-tests
+    runs-on: ubuntu-latest
+    needs: deploy-homolog
+    environment: KUBE_CONFIG_HOMOLOG
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: API Health
+        env:
+          HOMOLOG_URL: ${{ secrets.HOMOLOG_URL }}
+        run: |
+          URL="${HOMOLOG_URL:-http://localhost:8082}"
+          echo "Checking API health at $URL/api/v1/health"
+          curl --fail --retry 5 --retry-delay 10 --retry-connrefused \
+            "$URL/api/v1/health" || exit 1
+
+      - name: Frontend Health
+        env:
+          HOMOLOG_FRONTEND_URL: ${{ secrets.HOMOLOG_FRONTEND_URL }}
+        run: |
+          URL="${HOMOLOG_FRONTEND_URL:-http://localhost:3000}"
+          echo "Checking frontend at $URL"
+          curl --fail --retry 5 --retry-delay 10 --retry-connrefused \
+            "$URL" || exit 1
