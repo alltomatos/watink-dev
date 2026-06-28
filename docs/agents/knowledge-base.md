@@ -115,12 +115,17 @@ POST /retrieve   headers: X-Internal-Token
 → { chunks: [ { text, sourceId, score, citation } ] }
 ```
 
-### Agent (business → knowledge, HTTP síncrono) — Fase 2
+### Agent (business → knowledge, HTTP síncrono)
 ```
-POST /agent/respond
-{ tenantId, knowledgeBaseId, history[], guardrails }
-→ { reply?, toolCalls?, confidence, handoff: bool }
+POST /agent/respond   headers: X-Internal-Token
+{ tenantId, knowledgeBaseId, persona, history:[{role,content}], query, topK, minScore }
+→ { reply, action: "continue"|"resolved"|"handoff", confidence, citations:[sourceId] }
 ```
+O LLM emite a `action` via tag de controle `[[ACTION:...]]` (parseada e removida da
+reply). Stateless: o estado (history, turn-taking, suspend/resume) vive no `business`
+(FlowRun). O nó `agent` envia a reply, persiste o history em `vars` (`agent_history:<node>`,
+EnvID único por turno) e: `continue`→suspende (`waiting_message`), `resolved`→avança,
+`handoff`→avança pela branch "handoff". Sem contexto → handoff (nunca alucina).
 
 ---
 
@@ -162,7 +167,7 @@ POST /agent/respond
 | | Comportamento | Status |
 |---|---|---|
 | **Knowledge node** | RAG de 1 turno (recupera → responde/sugere/busca → avança) | nó existe; falta executor |
-| **Agent node** | Agente multi-turno autônomo (Agent Runtime) | Fase 2 |
+| **Agent node** | Agente multi-turno autônomo (Agent Runtime) | ✅ implementado |
 | **Agente standalone** | Mesmo Agent Runtime, sem flow ao redor | futuro |
 
 ---

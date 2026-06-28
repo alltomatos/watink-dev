@@ -56,6 +56,7 @@ const (
 	NodeTrigger   NodeType = "trigger"
 	NodePipeline  NodeType = "pipeline"
 	NodeKnowledge NodeType = "knowledge"
+	NodeAgent     NodeType = "agent"
 	NodeTicket    NodeType = "ticket"
 	NodeDatabase  NodeType = "database"
 	NodeFilter    NodeType = "filter"
@@ -79,6 +80,7 @@ var validNodeTypes = map[NodeType]struct{}{
 	NodeTrigger:   {},
 	NodePipeline:  {},
 	NodeKnowledge: {},
+	NodeAgent:     {},
 	NodeTicket:    {},
 	NodeDatabase:  {},
 	NodeFilter:    {},

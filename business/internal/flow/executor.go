@@ -76,6 +76,11 @@ type ExecState struct {
 	// Retriever resolves knowledge-base context for the knowledge node. Nil when
 	// no knowledge service is wired (the knowledge executor then advances).
 	Retriever Retriever
+
+	// Responder drives the agent node: a multi-turn RAG agent that answers from a
+	// knowledge base and decides continue/resolved/handoff. Nil when no agent
+	// service is wired (the agent executor then advances).
+	Responder AgentResponder
 }
 
 // NodeExecutor runs a single node type. Implementations are stateless and
@@ -140,6 +145,7 @@ func DefaultExecutorRegistry() *ExecutorRegistry {
 	r.Register(switchExecutor{})
 	r.Register(ticketExecutor{})
 	r.Register(knowledgeExecutor{})
+	r.Register(agentExecutor{})
 	return r
 }
 
