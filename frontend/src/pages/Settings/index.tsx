@@ -1,7 +1,7 @@
 /* @jsxImportSource react */
 import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { Puzzle, Headphones, Loader2 } from "lucide-react";
+import { Puzzle, Loader2 } from "lucide-react";
 
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
@@ -58,10 +58,6 @@ const Settings: React.FC = () => {
               </Button>
             )}
           />
-          <Button variant="ghost" onClick={() => navigate("/helpdesk")}>
-            <Headphones className="mr-2 h-4 w-4" />
-            Ajuda
-          </Button>
         </div>
       </PageHeader>
 
