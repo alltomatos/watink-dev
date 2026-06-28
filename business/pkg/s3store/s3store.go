@@ -54,8 +54,22 @@ func ConfigFromEnv() (Config, bool) {
 
 // Store is a bucket-scoped S3-compatible client.
 type Store struct {
-	client *minio.Client
-	bucket string
+	client   *minio.Client
+	bucket   string
+	endpoint string
+	region   string
+	useSSL   bool
+}
+
+// Describe returns the non-sensitive store configuration (never the credentials),
+// for a superadmin storage-status panel.
+func (s *Store) Describe() map[string]any {
+	return map[string]any{
+		"endpoint": s.endpoint,
+		"bucket":   s.bucket,
+		"region":   s.region,
+		"useSSL":   s.useSSL,
+	}
 }
 
 // New builds a Store and ensures the bucket exists (idempotent).
@@ -82,7 +96,13 @@ func New(cfg Config) (*Store, error) {
 		}
 	}
 
-	return &Store{client: client, bucket: cfg.Bucket}, nil
+	return &Store{
+		client:   client,
+		bucket:   cfg.Bucket,
+		endpoint: cfg.Endpoint,
+		region:   cfg.Region,
+		useSSL:   cfg.UseSSL,
+	}, nil
 }
 
 // Upload stores an object under key. Pass size = -1 when unknown (streamed).
