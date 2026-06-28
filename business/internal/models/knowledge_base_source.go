@@ -13,6 +13,7 @@ type KnowledgeBaseSource struct {
 	Type            string     `gorm:"not null" json:"type"`
 	URL             string     `json:"url"`
 	FileName        string     `gorm:"column:fileName" json:"fileName"`
+	ObjectKey       string     `gorm:"column:objectKey" json:"objectKey"`
 	Status          string     `gorm:"default:'ready'" json:"status"`
 	LastError       string     `gorm:"column:lastError" json:"lastError"`
 	ChunkCount      int        `gorm:"column:chunkCount;default:0" json:"chunkCount"`

@@ -39,6 +39,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/routes"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/internal/web"
+	"github.com/alltomatos/watinkdev/business/pkg/s3store"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	otelgin "go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
@@ -128,7 +129,19 @@ func main() {
 		pluginManager.Register(&plugins.ClientesPlugin{})
 		pluginManager.Register(&plugins.SaaSPlugin{})
 
-		routes.SetupRoutes(apiGroup, rabbitMQ, container)
+		// Knowledge Base file sources: build the S3-compatible object store from
+		// env. When S3 is unconfigured or init fails, s3Store stays nil and the
+		// file-source path responds with a clear error (never panics).
+		var s3Store domain.ObjectStore
+		if s3cfg, ok := s3store.ConfigFromEnv(); ok {
+			if st, err := s3store.New(s3cfg); err != nil {
+				log.Printf("⚠️ S3 store init failed: %v", err)
+			} else {
+				s3Store = st
+			}
+		}
+
+		routes.SetupRoutes(apiGroup, rabbitMQ, container, s3Store)
 	}
 
 	r.GET("/api/health", func(c *gin.Context) {

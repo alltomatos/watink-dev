@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -171,7 +172,9 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 	sourceName := c.PostForm("name")
 	content := c.PostForm("content")
 
+	var fileHeader *multipart.FileHeader
 	if file, err := c.FormFile("file"); err == nil && file != nil {
+		fileHeader = file
 		sourceName = filepath.Base(file.Filename)
 		if sourceType == "" || sourceType == "file" {
 			ext := filepath.Ext(file.Filename)
@@ -212,7 +215,7 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 	}
 
 	status := "ready"
-	if sourceType == "text" {
+	if sourceType == "text" || fileHeader != nil {
 		status = "pending"
 	}
 
@@ -236,6 +239,52 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 		return
 	}
 
+	// File sources: persist the uploaded bytes to the object store and dispatch a
+	// `file` ingestion job. The worker downloads the object by key, extracts text
+	// (pdf/docx/xlsx/csv/txt/md), then follows the same chunk/embed/store path as
+	// text. The object key is tenant-prefixed for multitenancy.
+	if fileHeader != nil {
+		if kbc.store == nil {
+			markSourceError(db, &source, "object store não configurado")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "object store não configurado"})
+			return
+		}
+
+		objectKey := fmt.Sprintf("%s/%d/%d/%s", tenantID.String(), kb.ID, source.ID, source.FileName)
+
+		f, err := fileHeader.Open()
+		if err != nil {
+			markSourceError(db, &source, "falha ao abrir arquivo enviado")
+			utils.RespondWithInternalError(c, err, "CreateKnowledgeBaseSource: open upload")
+			return
+		}
+		defer f.Close()
+
+		if err := kbc.store.Upload(c.Request.Context(), objectKey, f, fileHeader.Size, fileHeader.Header.Get("Content-Type")); err != nil {
+			markSourceError(db, &source, "falha ao enviar arquivo ao object store")
+			utils.RespondWithInternalError(c, err, "CreateKnowledgeBaseSource: upload")
+			return
+		}
+
+		if err := db.Session(&gorm.Session{NewDB: true}).Model(&source).Update("objectKey", objectKey).Error; err != nil {
+			utils.RespondWithInternalError(c, err, "CreateKnowledgeBaseSource: persist objectKey")
+			return
+		}
+		source.ObjectKey = objectKey
+
+		if kbc.publisher != nil {
+			_ = kbc.publisher.PublishKnowledgeJob(
+				fmt.Sprintf("knowledge.%s.ingest", tenantID.String()),
+				map[string]interface{}{
+					"tenantId": tenantID.String(), "knowledgeBaseId": kb.ID, "sourceId": source.ID,
+					"type": "file", "payload": map[string]interface{}{"objectKey": objectKey, "fileName": source.FileName},
+				})
+		}
+
+		c.JSON(http.StatusOK, source)
+		return
+	}
+
 	// For text sources, dispatch an ingestion job to watink-knowledge. The
 	// microservice chunks/embeds the text and reports status back via
 	// knowledge.events (handled by KnowledgeStatusListener).
@@ -249,6 +298,15 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, source)
+}
+
+// markSourceError flips a source to the error state with lastError set, using a
+// fresh GORM session (the scoped db reuse caveat applies to writes here too).
+func markSourceError(db *gorm.DB, source *models.KnowledgeBaseSource, msg string) {
+	source.Status = "error"
+	source.LastError = msg
+	_ = db.Session(&gorm.Session{NewDB: true}).Model(source).
+		Updates(map[string]interface{}{"status": "error", "lastError": msg}).Error
 }
 
 // @Summary      Remover fonte da base

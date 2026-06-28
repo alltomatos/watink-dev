@@ -16,7 +16,7 @@ type RouteRabbitMQ interface {
 	domain.KnowledgeJobPublisher
 }
 
-func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *application.Container) {
+func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *application.Container, s3Store domain.ObjectStore) {
 	db := container.DB
 	messageController := controllers.NewMessageController(rabbitMQ, container.Broadcast)
 	systemController := controllers.NewSystemController(container.SystemRepo, rabbitMQ)
@@ -33,7 +33,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	tagController := controllers.NewTagController()
 	pipelineController := controllers.NewPipelineController()
 	dealController := controllers.NewDealController()
-	kbController := controllers.NewKnowledgeBaseController(rabbitMQ)
+	kbController := controllers.NewKnowledgeBaseController(rabbitMQ, s3Store)
 	groupController := controllers.NewGroupController(container.PermissionRepo)
 	roleController := controllers.NewRoleController(container.PermissionRepo)
 	// FlowBuilder FASE 1: build a channel registry + runtime skeleton for the
