@@ -23,10 +23,10 @@ type AgentTurn struct {
 // the control action (continue/resolved/handoff), the model's confidence and the
 // source citations that grounded the reply.
 type AgentReply struct {
-	Reply      string
-	Action     string
-	Confidence float64
-	Citations  []int
+	Reply      string  `json:"reply"`
+	Action     string  `json:"action"`
+	Confidence float64 `json:"confidence"`
+	Citations  []int   `json:"citations"`
 }
 
 // AgentResponder is the port the agent node depends on. The HTTP implementation
@@ -73,14 +73,6 @@ type agentRequest struct {
 	MinScore        float64     `json:"minScore"`
 }
 
-// agentResponse is the JSON response from /agent/respond.
-type agentResponse struct {
-	Reply      string  `json:"reply"`
-	Action     string  `json:"action"`
-	Confidence float64 `json:"confidence"`
-	Citations  []int   `json:"citations"`
-}
-
 // Respond posts the conversation to the agent brain and maps the response into an
 // AgentReply. A non-200 status (or transport error) is returned as an error so the
 // caller can degrade to a human handoff.
@@ -116,15 +108,9 @@ func (a *HTTPAgentClient) Respond(ctx context.Context, tenantID uuid.UUID, kbID 
 		return AgentReply{}, fmt.Errorf("agent respond: status %d: %s", resp.StatusCode, string(b))
 	}
 
-	var parsed agentResponse
-	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+	var reply AgentReply
+	if err := json.NewDecoder(resp.Body).Decode(&reply); err != nil {
 		return AgentReply{}, err
 	}
-
-	return AgentReply{
-		Reply:      parsed.Reply,
-		Action:     parsed.Action,
-		Confidence: parsed.Confidence,
-		Citations:  parsed.Citations,
-	}, nil
+	return reply, nil
 }
