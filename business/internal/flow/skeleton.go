@@ -76,7 +76,7 @@ func (s *Skeleton) RouteInbound(ctx context.Context, tenantID uuid.UUID, body st
 	if fromMe || s == nil || s.db == nil {
 		return
 	}
-	for _, f := range s.matchTriggers(ctx, tenantID, body) {
+	for _, f := range s.matchTriggers(ctx, tenantID, body, 0) {
 		log.Printf("[FlowSkeleton] flow %d roteado para tenant %s (trigger=%q)", f.ID, tenantID, f.TriggerValue)
 	}
 }
@@ -148,7 +148,7 @@ func (s *Skeleton) RouteInboundTicket(ctx context.Context, in InboundContext) {
 	}
 
 	// 3. No active run → match triggers and start the first one.
-	matches := s.matchTriggers(ctx, in.TenantID, in.Body)
+	matches := s.matchTriggers(ctx, in.TenantID, in.Body, in.Ticket.WhatsappID)
 	if len(matches) == 0 {
 		return
 	}
@@ -169,14 +169,22 @@ func (s *Skeleton) RouteInboundTicket(ctx context.Context, in InboundContext) {
 // that lands, a firstContact flow is silently inert — so we emit a one-line
 // warning when one exists for the tenant, to make the gap observable instead of a
 // mystery "my flow never runs".
-func (s *Skeleton) matchTriggers(ctx context.Context, tenantID uuid.UUID, body string) []models.Flow {
+func (s *Skeleton) matchTriggers(ctx context.Context, tenantID uuid.UUID, body string, connectionID int) []models.Flow {
 	normalized := strings.TrimSpace(strings.ToLower(body))
 
 	var flows []models.Flow
-	err := s.db.WithContext(ctx).
+	q := s.db.WithContext(ctx).
 		Where(`"tenantId" = ? AND active = ? AND "triggerType" = ? AND (lower("triggerValue") = ? OR "triggerValue" = '')`,
-			tenantID, true, TriggerWhatsAppMessage, normalized).
-		Find(&flows).Error
+			tenantID, true, TriggerWhatsAppMessage, normalized)
+	// Connection-scoped triggers: a flow bound to a connection ("whatsappId" set)
+	// only fires for inbound on THAT connection; an unbound flow (NULL "whatsappId")
+	// fires for any connection. This is what makes an "agent bound to a connection"
+	// possible (an "any message" flow with whatsappId=X → all inbound on X is the
+	// agent's). connectionID<=0 (legacy no-ticket path) skips the filter.
+	if connectionID > 0 {
+		q = q.Where(`("whatsappId" IS NULL OR "whatsappId" = ?)`, connectionID)
+	}
+	err := q.Find(&flows).Error
 	if err != nil {
 		log.Printf("[FlowSkeleton] trigger match query failed for tenant %s: %v", tenantID, err)
 		return nil
