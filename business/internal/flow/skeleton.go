@@ -42,6 +42,7 @@ type Skeleton struct {
 	registry    *ChannelRegistry
 	redis       domain.RedisService
 	interpreter *Interpreter
+	retriever   Retriever
 }
 
 // NewSkeleton builds the skeleton with an injected DB, the outbound channel
@@ -53,7 +54,7 @@ func NewSkeleton(db *gorm.DB, registry *ChannelRegistry, redis domain.RedisServi
 	if db != nil {
 		ip = NewInterpreter(DefaultExecutorRegistry(), registry, db)
 	}
-	return &Skeleton{db: db, registry: registry, redis: redis, interpreter: ip}
+	return &Skeleton{db: db, registry: registry, redis: redis, interpreter: ip, retriever: NewHTTPRetrieverFromEnv()}
 }
 
 // InboundContext carries everything the runtime needs to resume/start a run for
@@ -263,13 +264,14 @@ func (s *Skeleton) StartFlow(ctx context.Context, in InboundContext, f models.Fl
 	}
 
 	st := &ExecState{
-		TenantID: in.TenantID,
-		Run:      &run,
-		Graph:    graph,
-		Vars:     buildVars(in),
-		Inbound:  in.Body, // carry the triggering body for the first menu/switch
-		Ticket:   in.Ticket,
-		Contact:  in.Contact,
+		TenantID:  in.TenantID,
+		Run:       &run,
+		Graph:     graph,
+		Vars:      buildVars(in),
+		Inbound:   in.Body, // carry the triggering body for the first menu/switch
+		Ticket:    in.Ticket,
+		Contact:   in.Contact,
+		Retriever: s.retriever,
 	}
 	return s.interpreter.Run(ctx, st)
 }
@@ -331,6 +333,7 @@ func (s *Skeleton) resume(ctx context.Context, in InboundContext, run models.Flo
 		ResumeNodeID: run.CurrentNodeID, // the node we suspended at owns the reply
 		Ticket:       in.Ticket,
 		Contact:      in.Contact,
+		Retriever:    s.retriever,
 	}
 	if err := s.interpreter.Run(ctx, st); err != nil {
 		log.Printf("[FlowSkeleton] resume failed run=%s: %v", run.ID, err)

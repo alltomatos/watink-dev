@@ -3,6 +3,17 @@
 **Status:** Accepted  
 **Data:** 2026-06-27
 
+## Atualização — 2026-06-28 (supersede parcial)
+
+A mentoria de design da Base de Conhecimento revisou três pontos desta ADR. O núcleo (pgvector como vector store, guardrails, threshold/handoff, isolamento por `WHERE tenantId` manual, gate `aiKnowledgeEnabled`, `ERR_EMBEDDING_DIM_MISMATCH`) **permanece**. Mudam:
+
+- **Onde o RAG roda:** não mais no worker Go do FlowBuilder, e sim no microsserviço **`watink-knowledge`** (Python/FastAPI) — ver **ADR 0018**. pgvector segue como store no mesmo Postgres.
+- **Embedding via omniroute (gateway), não OpenAI direto:** o modelo é a setting `aiEmbeddingModel` roteada pelo gateway do tenant (Configurações → Agente de IA). MVP: `openrouter/nvidia/llama-nemotron-embed-vl-1b-v2:free`.
+- **`halfvec(2048)` em vez de `vector(1536)`:** o modelo do MVP produz **2048 dims**, acima do limite de 2000 do tipo `vector` para HNSW. A coluna passa a `halfvec(2048)` + índice `hnsw (embedding halfvec_cosine_ops)` (pgvector ≥ 0.7; instalado 0.8.2). `halfvec` (float16) ocupa metade do storage com perda de recall desprezível.
+- **Dimensão global única, não per-tenant:** o "per-tenant `aiEmbeddingModel` com dimensões livres" é **retirado** — `pgvector` não indexa dimensões mistas no mesmo índice. Há **um modelo/dimensão global**; `model`+`dim` são gravados em cada KBChunk para tornar uma futura troca um re-embed por base, não um redesenho.
+
+> As menções abaixo a `vector(1536)`/`text-embedding-3-small`/`vector_cosine_ops`/per-tenant embedding ficam como **registro histórico** — valem as decisões desta seção de Atualização.
+
 ## Contexto
 A Fase 2 do FlowBuilder introduz o nó `knowledge`: dado um turno do contato, o runtime recupera trechos relevantes de uma base de conhecimento do tenant e responde via LLM ancorado nesses trechos (RAG — retrieval-augmented generation). Isso exige um *vector store* tenant-scoped onde os documentos do tenant são fatiados em chunks, embeddados e indexados para busca por similaridade semântica.
 

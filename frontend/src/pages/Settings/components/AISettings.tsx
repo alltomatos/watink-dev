@@ -179,6 +179,19 @@ const AISettings: React.FC<AISettingsProps> = ({ getSettingValue, handleUpdateSe
             </div>
 
             <div className="grid gap-2">
+              <Label htmlFor="ai-embedding-model">Modelo de Embedding (Base de Conhecimento / RAG)</Label>
+              <Input
+                id="ai-embedding-model"
+                placeholder="Ex: openrouter/nvidia/llama-nemotron-embed-vl-1b-v2:free"
+                defaultValue={getSettingValue("aiEmbeddingModel")}
+                onBlur={(e) => handleUpdateSetting("aiEmbeddingModel", e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Modelo de vetorização das fontes da Base de Conhecimento, roteado pelo mesmo gateway. A dimensão do índice é fixa por modelo.
+              </p>
+            </div>
+
+            <div className="grid gap-2">
               <Label htmlFor="ai-prompt">Prompt de Orientação (Guide Prompt)</Label>
               <Textarea
                 id="ai-prompt"
