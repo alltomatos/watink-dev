@@ -92,6 +92,12 @@ services:
       - AI_BASEURL_HOST_REWRITE=host.docker.internal
       - KNOWLEDGE_SERVICE_URL=http://watink-knowledge:8085
       - INTERNAL_TOKEN=${INTERNAL_TOKEN:-dev_internal_token_change_in_prod}
+      - S3_ENDPOINT=minio:9000
+      - S3_BUCKET=watink-knowledge
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - S3_USE_SSL=false
+      - S3_REGION=us-east-1
     depends_on:
       postgres:
         condition: service_healthy
@@ -230,6 +236,22 @@ services:
       - watink_net
     restart: unless-stopped
 
+  minio:
+    image: minio/minio:latest
+    container_name: watink-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    networks:
+      - watink_net
+    restart: unless-stopped
+
 networks:
   watink_net:
     driver: bridge
@@ -244,6 +266,7 @@ volumes:
   engine_go_cache:
   business_go_mod:
   business_go_cache:
+  minio_data:
   frontend_node_modules:
     # node_modules do frontend ficam isolados no container (binários Linux)
     # O bind mount ./frontend:/app cobre o código-fonte; este volume "sombra"
