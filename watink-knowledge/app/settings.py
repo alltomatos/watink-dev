@@ -5,6 +5,7 @@ Tenant-scoped por `WHERE "tenantId"` manual (RLS é inerte para este serviço).
 
 from .config import config
 from .db import get_pool
+from .urls import rewrite_host
 
 _AI_KEYS = ["aiCustomBaseURL", "aiApiKey", "aiEmbeddingModel", "aiProvider"]
 
@@ -20,11 +21,9 @@ async def get_ai_settings(tenant_id: str) -> dict:
             rows = await cur.fetchall()
     s = {k: v for k, v in rows}
 
-    base_url = s.get("aiCustomBaseURL", "") or ""
     # Em dev o omniroute roda no host (localhost:20128); de dentro do container
     # isso precisa virar host.docker.internal.
-    for host in ("localhost", "127.0.0.1"):
-        base_url = base_url.replace(host, config.OMNIROUTE_HOST_REWRITE)
+    base_url = rewrite_host(s.get("aiCustomBaseURL", "") or "", config.OMNIROUTE_HOST_REWRITE)
 
     return {
         "base_url": base_url,
