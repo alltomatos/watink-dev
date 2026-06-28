@@ -214,8 +214,15 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 		}
 	}
 
+	// URL sources must carry a URL — without it the worker has nothing to scrape.
+	// (Empty type defaults to "url" above, so this also rejects an empty payload.)
+	if sourceType == "url" && strings.TrimSpace(urlValue) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "url é obrigatória para fonte do tipo url"})
+		return
+	}
+
 	status := "ready"
-	if sourceType == "text" || fileHeader != nil {
+	if sourceType == "text" || sourceType == "url" || fileHeader != nil {
 		status = "pending"
 	}
 
@@ -285,15 +292,21 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 		return
 	}
 
-	// For text sources, dispatch an ingestion job to watink-knowledge. The
-	// microservice chunks/embeds the text and reports status back via
-	// knowledge.events (handled by KnowledgeStatusListener).
-	if sourceType == "text" && kbc.publisher != nil {
+	// For text/url sources, dispatch an ingestion job to watink-knowledge. The
+	// microservice chunks/embeds the text (or scrapes the URL via Firecrawl first)
+	// and reports status back via knowledge.events (handled by KnowledgeStatusListener).
+	if kbc.publisher != nil && (sourceType == "text" || sourceType == "url") {
+		payload := map[string]interface{}{}
+		if sourceType == "text" {
+			payload["text"] = content
+		} else {
+			payload["url"] = urlValue
+		}
 		_ = kbc.publisher.PublishKnowledgeJob(
 			fmt.Sprintf("knowledge.%s.ingest", tenantID.String()),
 			map[string]interface{}{
 				"tenantId": tenantID.String(), "knowledgeBaseId": kb.ID, "sourceId": source.ID,
-				"type": "text", "payload": map[string]interface{}{"text": content},
+				"type": sourceType, "payload": payload,
 			})
 	}
 
