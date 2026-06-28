@@ -13,6 +13,10 @@ import {
   RefreshCw,
   Tags,
   Workflow,
+  Library,
+  Briefcase,
+  Headphones,
+  Shield,
   UsersRound,
   Building2,
   Radio,
@@ -141,6 +145,52 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed, isLightSidebar, acti
         )}
       />
 
+      <Can
+        user={user}
+        perform="knowledge_bases:read"
+        yes={() => (
+          <SidebarItem
+            to="/knowledge-bases"
+            label={i18n.t("mainDrawer.listItems.knowledgeBase")}
+            icon={<Library size={20} />}
+            collapsed={collapsed}
+            activeColor="var(--nav-icon-blue)"
+          />
+        )}
+      />
+
+      {activePlugins.includes("clientes") && (
+        <Can
+          user={user}
+          perform="clients:read"
+          yes={() => (
+            <SidebarItem
+              to="/clients"
+              label={i18n.t("mainDrawer.listItems.clients")}
+              icon={<Briefcase size={20} />}
+              collapsed={collapsed}
+              activeColor="var(--nav-icon-orange)"
+            />
+          )}
+        />
+      )}
+
+      {activePlugins.includes("helpdesk") && (
+        <Can
+          user={user}
+          perform="helpdesk:read"
+          yes={() => (
+            <SidebarItem
+              to="/helpdesk"
+              label={i18n.t("mainDrawer.listItems.helpdesk")}
+              icon={<Headphones size={20} />}
+              collapsed={collapsed}
+              activeColor="var(--nav-icon-green)"
+            />
+          )}
+        />
+      )}
+
       <div className={getDividerClass(isLightSidebar)} />
 
       {!collapsed && (
@@ -179,6 +229,20 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed, isLightSidebar, acti
             icon={<Users size={20} />}
             collapsed={collapsed}
             activeColor="var(--nav-icon-blue)"
+          />
+        )}
+      />
+
+      <Can
+        user={user}
+        perform="roles:read"
+        yes={() => (
+          <SidebarItem
+            to="/access"
+            label="Acesso e Permissões"
+            icon={<Shield size={20} />}
+            collapsed={collapsed}
+            activeColor="var(--nav-icon-red)"
           />
         )}
       />
