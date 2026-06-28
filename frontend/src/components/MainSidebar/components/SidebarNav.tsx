@@ -13,7 +13,6 @@ import {
   RefreshCw,
   Tags,
   Workflow,
-  Library,
   Briefcase,
   Headphones,
   Shield,
@@ -141,20 +140,6 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed, isLightSidebar, acti
             icon={<Workflow size={20} />}
             collapsed={collapsed}
             activeColor="var(--nav-icon-teal)"
-          />
-        )}
-      />
-
-      <Can
-        user={user}
-        perform="knowledge_bases:read"
-        yes={() => (
-          <SidebarItem
-            to="/knowledge-bases"
-            label={i18n.t("mainDrawer.listItems.knowledgeBase")}
-            icon={<Library size={20} />}
-            collapsed={collapsed}
-            activeColor="var(--nav-icon-blue)"
           />
         )}
       />

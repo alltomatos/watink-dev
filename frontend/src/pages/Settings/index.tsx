@@ -1,7 +1,7 @@
 /* @jsxImportSource react */
 import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { Puzzle, Headphones, Loader2 } from "lucide-react";
+import { Puzzle, Headphones, Library, Loader2 } from "lucide-react";
 
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
@@ -48,6 +48,16 @@ const Settings: React.FC = () => {
     <PageLayout>
       <PageHeader title="Configurações do Sistema">
         <div className="flex gap-2">
+          <Can
+            user={user}
+            perform="knowledge_bases:read"
+            yes={() => (
+              <Button variant="ghost" onClick={() => navigate("/knowledge-bases")}>
+                <Library className="mr-2 h-4 w-4" />
+                Base de Conhecimento
+              </Button>
+            )}
+          />
           <Can
             user={user}
             perform="marketplace:read"
