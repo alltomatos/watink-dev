@@ -223,6 +223,12 @@ services:
       - AMQP_URL=amqp://guest:guest@rabbitmq:5672
       - INTERNAL_TOKEN=${INTERNAL_TOKEN:-dev_internal_token_change_in_prod}
       - OMNIROUTE_HOST_REWRITE=host.docker.internal
+      # Firecrawl (web scraping de fontes `url`). Em dev aponta para o shim local
+      # (firecrawl-dev); em prod (swarm), sobrescreva FIRECRAWL_URL para o Firecrawl
+      # real (ex.: http://firecrawl:3002). O self-hosted não exige key — FIRECRAWL_API_KEY
+      # é opcional. Mesmo padrão do MinIO↔S3: infra leve em dev, serviço real em prod.
+      - FIRECRAWL_URL=${FIRECRAWL_URL:-http://firecrawl-dev:3002}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
       - S3_ENDPOINT=minio:9000
       - S3_BUCKET=watink-knowledge
       - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
@@ -238,6 +244,21 @@ services:
         condition: service_healthy
     volumes:
       - ./watink-knowledge:/app
+    networks:
+      - watink_net
+    restart: unless-stopped
+
+  # DEV ONLY — shim compatível com o Firecrawl (POST /v1/scrape). Busca a URL e
+  # devolve o texto da página. NÃO é o Firecrawl real; em produção (Swarm) a env
+  # FIRECRAWL_URL do watink-knowledge aponta para um Firecrawl real e este serviço
+  # não sobe. Mesmo padrão do MinIO↔S3: infra leve em dev, serviço real em prod.
+  firecrawl-dev:
+    build:
+      context: ./infra/firecrawl-dev
+      dockerfile: Dockerfile
+    container_name: watink-firecrawl-dev
+    ports:
+      - "3002:3002"
     networks:
       - watink_net
     restart: unless-stopped

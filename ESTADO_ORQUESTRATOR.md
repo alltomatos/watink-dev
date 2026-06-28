@@ -568,3 +568,34 @@ Item existe (MainNavItems.tsx:110-122) gated por `flows:read`. **Fix:** garantir
 
 **Fase 1 (MVP RAG texto) COMPLETA e validada.** Branch `feat/knowledge-base-rag-mvp`.
 Próximo: push + PR → `develop`. Depois **Fase 2** (fonte arquivo: S3/MinIO + parsing; nó `agent`).
+
+---
+
+# Épico: Base de Conhecimento — Fontes Web/URL (Firecrawl) — Track A (2026-06-28)
+
+> **Origem:** `/orchestrator vamos aos próximos passos` → escolha "Track A".
+> **Branch:** `feat/knowledge-url-sources` (base `develop` @ 8ad4c32f2, plataforma RAG+Agent completa).
+> **Tier global: T2** (aditivo; sem schema novo — model `KnowledgeBaseSource` já tem `url`+lifecycle).
+
+## Auditoria (GAP)
+- 🚨 **GAP-KB-WEB (P1):** `CreateSource` aceitava `type=url` (e era o **default** com type vazio), gravava `Status:"ready"` e **nunca publicava job** → fonte de site mentia "pronto" com 0 chunks. Worker Python sem handler de url. (Confirmado em `knowledge_base_mutation.go:189-300` + grep firecrawl/url=0 no serviço.)
+
+## Decisões de MVP (mentor)
+- **Scrape de página única** via Firecrawl `/v1/scrape` → markdown (cai no chunker existente). Crawl de site (`website`) e browserless ficam Fase 2.
+- Firecrawl self-hosted do devops (`mendable/firecrawl`, porta 3002, **sem API key**); cliente env-driven (`FIRECRAWL_URL`/`FIRECRAWL_API_KEY`/`FIRECRAWL_TIMEOUT`). Prod: `http://firecrawl:3002`; dev: domínio público.
+
+## DAG + Execução
+| Task | Camada | Status | Nota |
+|------|--------|--------|------|
+| A-P2 config FIRECRAWL_* | Py | ✅ | env-driven, key opcional |
+| A-P1 `firecrawl.py` scrape_markdown | Py | ✅ | httpx injetável; FirecrawlError; fallback `content` (v0) |
+| A-P3 `ingest.py` branch `url` | Py | ✅ | scrape→chunk/embed/store; handler de erro dedicado |
+| A-P4 testes firecrawl (MockTransport) | Py | ✅ | 9 casos (ok/auth/erros/empty) — ruff clean, 26/26 suíte |
+| A-G1 `CreateSource` url→pending+publish | Go | ✅ | corrige GAP-KB-WEB; valida url obrigatória |
+| A-G2 testes CreateSource url | Go | ✅ | 400 sem url + publish job (mock publisher) — verde |
+| A-I1 compose env FIRECRAWL_* | infra | ✅ | watink-knowledge |
+| A-F1 UI aba "URL" no dialog | FE | ✅ | typecheck+eslint clean |
+| A-T1 **E2E ao vivo** | test | ⏳ | aguarda `FIRECRAWL_URL` (domínio do devops) + recreate do container |
+
+**Gate de build:** Go build/vet/fmt ✅ · Python ruff + 26 testes ✅ · FE typecheck + eslint ✅.
+**Pendente:** validação E2E ao vivo (precisa do domínio Firecrawl do usuário) → depois push + PR → `develop`.

@@ -37,11 +37,23 @@ turn-taking e valida auth/tenant.
 |------------|----------------------------------|-----|
 | `text`     | texto direto no payload          | ✅  |
 | `file`     | download do S3 → parse (pdf/docx/md/txt/csv/xlsx) | ✅ |
-| `url`      | Firecrawl (1 página → markdown)  | Fase 2 |
+| `url`      | Firecrawl (1 página → markdown)  | ✅  |
 | `website`  | Firecrawl crawl recursivo / browserless (JS) | Fase 2 |
 | `git`      | clone → parse de arquivos        | Fase 3 |
 
 > WebSearch (omniroute `/v1/search`) **descobre** URLs; não extrai conteúdo.
+
+### Fonte `url` (Firecrawl)
+
+- O `business` valida `url` não-vazia, grava a Source em `pending` e publica
+  `knowledge.<tenant>.ingest` com `type:"url"`, `payload:{url}` (mesmo caminho de `text`/`file`).
+- O worker (`app/firecrawl.py`) faz `POST <FIRECRAWL_URL>/v1/scrape`
+  (`{url, formats:["markdown"], onlyMainContent:true}`) → markdown → chunk/embed/store.
+- **Acesso ao Firecrawl:** prod (swarm) `http://firecrawl:3002`; dev via domínio público (Traefik).
+  Self-hosted (`mendable/firecrawl`) **não exige API key** — `FIRECRAWL_API_KEY` é opcional
+  (header `Authorization` só é enviado quando setado). Configurável por env
+  `FIRECRAWL_URL`/`FIRECRAWL_API_KEY`/`FIRECRAWL_TIMEOUT`.
+- **Apenas página única** (scrape). Crawl recursivo de site inteiro (`website`) é Fase 2.
 
 ---
 
