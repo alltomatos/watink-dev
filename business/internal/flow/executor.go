@@ -72,6 +72,10 @@ type ExecState struct {
 	// DB is used for the ticket-handoff executor (manual WHERE "tenantId",
 	// writes in Session(NewDB)). Read-only for everything else.
 	DB *gorm.DB
+
+	// Retriever resolves knowledge-base context for the knowledge node. Nil when
+	// no knowledge service is wired (the knowledge executor then advances).
+	Retriever Retriever
 }
 
 // NodeExecutor runs a single node type. Implementations are stateless and
@@ -135,6 +139,7 @@ func DefaultExecutorRegistry() *ExecutorRegistry {
 	r.Register(menuExecutor{})
 	r.Register(switchExecutor{})
 	r.Register(ticketExecutor{})
+	r.Register(knowledgeExecutor{})
 	return r
 }
 

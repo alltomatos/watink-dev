@@ -49,7 +49,7 @@ func TestKnowledgeBaseController_List_Empty(t *testing.T) {
 	db := setupKBTestDB(t)
 	tenantID := uuid.New()
 
-	ctrl := NewKnowledgeBaseController()
+	ctrl := NewKnowledgeBaseController(nil)
 	c, w := setupKBContext(t, db, tenantID, "GET", "/knowledge-bases", nil)
 
 	ctrl.List(c)
@@ -69,7 +69,7 @@ func TestKnowledgeBaseController_List_CrossTenantIsolation(t *testing.T) {
 	db.Exec(`INSERT INTO "KnowledgeBases" (name, "tenantId") VALUES (?,?)`, "KB-A", tenantA)
 	db.Exec(`INSERT INTO "KnowledgeBases" (name, "tenantId") VALUES (?,?)`, "KB-B", tenantB)
 
-	ctrl := NewKnowledgeBaseController()
+	ctrl := NewKnowledgeBaseController(nil)
 	c, w := setupKBContext(t, db, tenantA, "GET", "/knowledge-bases", nil)
 
 	ctrl.List(c)
@@ -86,7 +86,7 @@ func TestKnowledgeBaseController_Show_NotFound(t *testing.T) {
 	db := setupKBTestDB(t)
 	tenantID := uuid.New()
 
-	ctrl := NewKnowledgeBaseController()
+	ctrl := NewKnowledgeBaseController(nil)
 	c, w := setupKBContext(t, db, tenantID, "GET", "/knowledge-bases/9999", nil)
 	c.Params = gin.Params{{Key: "knowledgeBaseId", Value: "9999"}}
 
@@ -105,7 +105,7 @@ func TestKnowledgeBaseController_Show_CrossTenant404(t *testing.T) {
 	var id int
 	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
-	ctrl := NewKnowledgeBaseController()
+	ctrl := NewKnowledgeBaseController(nil)
 	c, w := setupKBContext(t, db, tenantB, "GET", "/knowledge-bases/1", nil)
 	c.Params = gin.Params{{Key: "knowledgeBaseId", Value: "1"}}
 
@@ -124,7 +124,7 @@ func TestKnowledgeBaseController_Create_Success(t *testing.T) {
 		"description": "Frequently asked questions",
 	})
 
-	ctrl := NewKnowledgeBaseController()
+	ctrl := NewKnowledgeBaseController(nil)
 	c, w := setupKBContext(t, db, tenantID, "POST", "/knowledge-bases", payload)
 
 	ctrl.Create(c)
@@ -144,7 +144,7 @@ func TestKnowledgeBaseController_Delete_Success(t *testing.T) {
 	var id int
 	db.Raw(`SELECT LASTVAL()`).Scan(&id)
 
-	ctrl := NewKnowledgeBaseController()
+	ctrl := NewKnowledgeBaseController(nil)
 	c, w := setupKBContext(t, db, tenantID, "DELETE", "/knowledge-bases/1", nil)
 	c.Params = gin.Params{{Key: "knowledgeBaseId", Value: "1"}}
 
@@ -161,7 +161,7 @@ func TestKnowledgeBaseController_Delete_CrossTenantBlocked(t *testing.T) {
 
 	db.Exec(`INSERT INTO "KnowledgeBases" (name, "tenantId") VALUES (?,?)`, "KB-A", tenantA)
 
-	ctrl := NewKnowledgeBaseController()
+	ctrl := NewKnowledgeBaseController(nil)
 	c, w := setupKBContext(t, db, tenantB, "DELETE", "/knowledge-bases/1", nil)
 	c.Params = gin.Params{{Key: "knowledgeBaseId", Value: "1"}}
 
