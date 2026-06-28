@@ -280,10 +280,46 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 
 **Referência:** [`docs/agents/flowbuilder.md`](docs/agents/flowbuilder.md)
 
+## Módulo: Base de Conhecimento (RAG)
+
+**Responsabilidade:** Ingestão e recuperação de conhecimento (RAG) no microsserviço `watink-knowledge` (Python/FastAPI). Fontes (texto, arquivo, URL/site, git) são vetorizadas em KBChunks (pgvector) e consumidas pelos nós `knowledge`/`agent` do FlowBuilder e (futuro) por Agentes standalone. O `business` (Go) é o único gateway: detém metadados, orquestra o turn-taking e valida auth/tenant.
+
+**Arquitetura:**
+- `business` (Go): CRUD de bases/fontes + UI, upload p/ S3, publica jobs de ingestão (AMQP), chama retrieval/agent (HTTP interno), orquestra FlowRun. Único exposto ao frontend.
+- `watink-knowledge` (Python/FastAPI): ingestão assíncrona + Retrieval RAG + Agent Runtime. Stateless por chamada. Só rede interna do Swarm.
+- Scraping delegado: Firecrawl (web) · browserless (JS). Embedding/rerank/web-search via omniroute.
+- Mesmo PostgreSQL: KBChunk em `halfvec(2048)` HNSW cosine.
+
+**Invariants:**
+- O `business` é o **único gateway** — o frontend nunca fala com o `watink-knowledge` (só rede interna do Swarm + segredo interno).
+- **RLS é INERTE** no serviço Python — toda query carrega `WHERE "tenantId" = ?` manual.
+- Retrieval/ingestão sempre escopados por **`tenantId + knowledgeBaseId`**.
+- Embedding via **omniroute**, modelo configurado em **Configurações → Agente de IA** (`aiEmbeddingModel`); **dimensão global fixa** pelo modelo (hoje 2048 → `halfvec`); `model`+`dim` gravados em cada KBChunk.
+- **Configurações ganha**: campo `aiEmbeddingModel` (Agente de IA) + seção **Armazenamento S3** (global, superadmin).
+- Ingestão **assíncrona** (worker AMQP), **idempotente por fonte** (re-ingest apaga chunks antigos e reinsere, transacional), lifecycle `pending→fetching→processing→ready|error`.
+- **Dedup por hash de conteúdo**; **lock por `sourceId`** evita refresh concorrente.
+- Status volta por **evento AMQP** → `business` atualiza a Source e emite **SSE** (Broadcaster) p/ a UI.
+- Arquivos no **S3 Storage Driver** (global, subpasta `{tenantId}/{kbId}/{sourceId}/`).
+- Guardrails no retrieval: responder só do contexto, citação obrigatória, `< minScore` → "não sei"/handoff. **Nunca alucinar.**
+- **Um Agent Runtime**, dois pontos de entrada (Agent node agora, Agente standalone depois).
+
+**O que NÃO fazer:**
+- Não expor o `watink-knowledge` à internet nem deixar o frontend chamá-lo direto — sempre via `business`.
+- Não confiar em RLS no serviço Python — sempre `WHERE tenantId` manual.
+- Não colocar scraping/parsing no `business` nem no engine-go — scraping é Firecrawl/browserless; parsing/embedding é o `watink-knowledge`.
+- Não usar chave OpenAI hardcoded p/ embedding — usar o omniroute via a setting `aiEmbeddingModel` (**Configurações → Agente de IA**).
+- Não misturar dimensões no mesmo índice — trocar de modelo exige re-embed da base inteira.
+- Não usar `vector(N)` p/ N>2000 — usar `halfvec` (HNSW até 4000).
+- Não descartar o conteúdo do arquivo no upload (bug atual do `CreateSource`) — persistir no S3.
+- Não responder fora do contexto nem omitir citação; baixa confiança → handoff.
+- Não construir o Agente standalone como motor separado — reusar o Agent Runtime.
+
+**Referência:** [`docs/agents/knowledge-base.md`](docs/agents/knowledge-base.md) · ADRs 0015 (atualizado), 0018 (microsserviço RAG), 0019 (S3 driver), 0020 (Agent Runtime)
+
 ## Domain Docs
 
 - **Glossário**: [`CONTEXT.md`](CONTEXT.md)
-- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0009** para stage upsert, **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes. **FlowBuilder/Automação**: **0011** FlowRun unificado · **0012** trigger polimórfico · **0013** contrato versionado FlowGraph · **0014** channel adapters · **0015** pgvector RAG · **0016** campanhas anti-ban (risco estrutural + opt-in + roadmap BSP) · **0017** scheduler multi-node
+- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0009** para stage upsert, **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes. **FlowBuilder/Automação**: **0011** FlowRun unificado · **0012** trigger polimórfico · **0013** contrato versionado FlowGraph · **0014** channel adapters · **0015** pgvector RAG · **0016** campanhas anti-ban (risco estrutural + opt-in + roadmap BSP) · **0017** scheduler multi-node. **Base de Conhecimento/RAG**: **0015** (atualizado) pgvector RAG · **0018** microsserviço watink-knowledge + trust boundary · **0019** S3 Storage Driver · **0020** Agent Runtime
 - **Arquitetura**: [`docs/dev/architecture.md`](docs/dev/architecture.md)
 - **Frontend DS**: [`docs/frontend/design-system.md`](docs/frontend/design-system.md)
 - **Git Workflow**: [`docs/dev/git_workflow_policy.md`](docs/dev/git_workflow_policy.md)

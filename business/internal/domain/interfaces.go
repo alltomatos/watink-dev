@@ -107,6 +107,11 @@ type CommandPublisher interface {
 	PublishCommand(routingKey string, payload interface{}) error
 }
 
+// KnowledgeJobPublisher publica jobs de ingestão para o watink-knowledge.
+type KnowledgeJobPublisher interface {
+	PublishKnowledgeJob(routingKey string, payload interface{}) error
+}
+
 // EventConsumer defines the contract for listening to events.
 type EventConsumer interface {
 	ConsumeEvents(queueName string, routingKeys []string, handler func(body []byte) error) error
