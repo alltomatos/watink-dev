@@ -137,3 +137,27 @@ func DefaultExecutorRegistry() *ExecutorRegistry {
 	r.Register(ticketExecutor{})
 	return r
 }
+
+// UnsupportedNodeTypes returns the DISTINCT node.types present in the graph that
+// have no registered executor in the default registry — i.e. nodes the engine
+// cannot execute, which would abort the run at runtime (interpreter MustGet).
+//
+// Used by the activation guard: a flow must not be ACTIVATED while it contains a
+// node the engine can't run, or it would break silently in production. Order
+// follows first appearance for a stable, user-facing message.
+func UnsupportedNodeTypes(graph FlowGraph) []string {
+	r := DefaultExecutorRegistry()
+	seen := make(map[string]struct{})
+	var out []string
+	for _, n := range graph.Nodes {
+		if _, ok := r.Get(n.Type); ok {
+			continue
+		}
+		if _, dup := seen[n.Type]; dup {
+			continue
+		}
+		seen[n.Type] = struct{}{}
+		out = append(out, n.Type)
+	}
+	return out
+}
