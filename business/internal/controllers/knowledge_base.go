@@ -14,10 +14,11 @@ import (
 // All queries are automatically tenant-scoped via auth.GetDB(c).
 type KnowledgeBaseController struct {
 	publisher domain.KnowledgeJobPublisher
+	store     domain.ObjectStore
 }
 
-func NewKnowledgeBaseController(publisher domain.KnowledgeJobPublisher) *KnowledgeBaseController {
-	return &KnowledgeBaseController{publisher: publisher}
+func NewKnowledgeBaseController(publisher domain.KnowledgeJobPublisher, store domain.ObjectStore) *KnowledgeBaseController {
+	return &KnowledgeBaseController{publisher: publisher, store: store}
 }
 
 // @Summary      Listar bases de conhecimento

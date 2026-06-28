@@ -18,13 +18,13 @@ func TestKnowledgeBaseCreate(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := testutil.NewTestDB(t)
 	tenantID := uuid.New().String()
-	kbc := NewKnowledgeBaseController(nil)
+	kbc := NewKnowledgeBaseController(nil, nil)
 
 	r := gin.New()
 	r.Use(testScopedMiddleware(db, tenantID))
 	r.POST("/knowledge-bases", kbc.Create)
 
-	t.Run("happy path — creates KB", func(t *testing.T) {
+	t.Run("happy path â€” creates KB", func(t *testing.T) {
 		body, _ := json.Marshal(map[string]string{"name": "Test KB", "description": "desc"})
 		req := httptest.NewRequest(http.MethodPost, "/knowledge-bases", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
@@ -32,7 +32,7 @@ func TestKnowledgeBaseCreate(t *testing.T) {
 		r.ServeHTTP(res, req)
 
 		if res.Code != http.StatusOK {
-			t.Fatalf("expected 200, got %d — %s", res.Code, res.Body.String())
+			t.Fatalf("expected 200, got %d â€” %s", res.Code, res.Body.String())
 		}
 		var resp map[string]interface{}
 		if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
@@ -61,7 +61,7 @@ func TestKnowledgeBaseCreate(t *testing.T) {
 
 	t.Run("missing tenantId returns 400", func(t *testing.T) {
 		rNoTenant := gin.New()
-		// No middleware — no tenantId in context
+		// No middleware â€” no tenantId in context
 		rNoTenant.POST("/knowledge-bases", kbc.Create)
 
 		body, _ := json.Marshal(map[string]string{"name": "x"})
@@ -80,7 +80,7 @@ func TestKnowledgeBaseUpdate(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := testutil.NewTestDB(t)
 	tenantID := uuid.New()
-	kbc := NewKnowledgeBaseController(nil)
+	kbc := NewKnowledgeBaseController(nil, nil)
 
 	r := gin.New()
 	r.Use(testScopedMiddleware(db, tenantID.String()))
@@ -129,13 +129,13 @@ func TestKnowledgeBaseDelete(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := testutil.NewTestDB(t)
 	tenantID := uuid.New()
-	kbc := NewKnowledgeBaseController(nil)
+	kbc := NewKnowledgeBaseController(nil, nil)
 
 	r := gin.New()
 	r.Use(testScopedMiddleware(db, tenantID.String()))
 	r.DELETE("/knowledge-bases/:knowledgeBaseId", kbc.Delete)
 
-	t.Run("happy path — deletes KB", func(t *testing.T) {
+	t.Run("happy path â€” deletes KB", func(t *testing.T) {
 		kb := models.KnowledgeBase{Name: "ToDelete", TenantID: tenantID}
 		if err := db.Create(&kb).Error; err != nil {
 			t.Fatal(err)
@@ -145,7 +145,7 @@ func TestKnowledgeBaseDelete(t *testing.T) {
 		r.ServeHTTP(res, req)
 
 		if res.Code != http.StatusOK {
-			t.Fatalf("expected 200, got %d — %s", res.Code, res.Body.String())
+			t.Fatalf("expected 200, got %d â€” %s", res.Code, res.Body.String())
 		}
 		var count int64
 		db.Model(&models.KnowledgeBase{}).Where("id = ?", kb.ID).Count(&count)
@@ -193,7 +193,7 @@ func TestKnowledgeBaseCreateSource(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := testutil.NewTestDB(t)
 	tenantID := uuid.New()
-	kbc := NewKnowledgeBaseController(nil)
+	kbc := NewKnowledgeBaseController(nil, nil)
 
 	r := gin.New()
 	r.Use(testScopedMiddleware(db, tenantID.String()))
@@ -234,7 +234,7 @@ func TestKnowledgeBaseDeleteSource(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := testutil.NewTestDB(t)
 	tenantID := uuid.New()
-	kbc := NewKnowledgeBaseController(nil)
+	kbc := NewKnowledgeBaseController(nil, nil)
 
 	r := gin.New()
 	r.Use(testScopedMiddleware(db, tenantID.String()))
@@ -257,14 +257,14 @@ func TestKnowledgeBaseDeleteSource(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("happy path — deletes source", func(t *testing.T) {
+	t.Run("happy path â€” deletes source", func(t *testing.T) {
 		path := "/knowledge-bases/" + strconv.Itoa(kb.ID) + "/sources/" + strconv.Itoa(src.ID)
 		req := httptest.NewRequest(http.MethodDelete, path, nil)
 		res := httptest.NewRecorder()
 		r.ServeHTTP(res, req)
 
 		if res.Code != http.StatusOK {
-			t.Fatalf("expected 200, got %d — %s", res.Code, res.Body.String())
+			t.Fatalf("expected 200, got %d â€” %s", res.Code, res.Body.String())
 		}
 		var count int64
 		db.Model(&models.KnowledgeBaseSource{}).Where("id = ?", src.ID).Count(&count)
