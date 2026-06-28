@@ -550,10 +550,18 @@ Item existe (MainNavItems.tsx:110-122) gated por `flows:read`. **Fix:** garantir
 
 **Validação E2E (parcial):** job AMQP de texto → 1 KBChunk gerado (~6s) → `/retrieve` casou (score ~0.4) · isolamento por kb (`{"chunks":[]}`) · auth 401 sem token. DB intacto (chunk de teste limpo).
 
-### Pendente (metade Go + FE da Fase 1)
-- [ ] **KB-1.1** — Source: novos campos + AutoMigrate (Go)
-- [ ] **KB-1.2** — Publisher AMQP `knowledge.<tenant>.ingest` no Create (Go)
-- [ ] **KB-1.6** — Consumer `knowledge.<tenant>.status` → SSE (Go)
-- [ ] **KB-1.8** — Retrieval client + executor do nó `knowledge` (Go)
+### Metade Go da Fase 1 — ✅ CONCLUÍDA e validada (commit c8a7d6c04)
+- [x] **KB-1.1** — Source: campos lifecycle + AutoMigrate (Go) ✅
+- [x] **KB-1.2** — Publisher AMQP `knowledge.<tenant>.ingest` no CreateSource (Go) ✅
+- [x] **KB-1.6** — `KnowledgeStatusListener` consome `knowledge.<tenant>.status` → atualiza Source + SSE ✅
+- [x] **KB-1.8** — Retrieval client (HTTP) + executor do nó `knowledge` (LLM guardrailed + fallback) + **guard destravado** ✅
+
+**🐛 Causa-raiz corrigida (bug pré-existente):** `CreateSource` fazia `db.Where(...).First(&kb)` e reusava o `db` escopado no `db.Create(&source)` → GORM criava a source com o **schema do KnowledgeBase** (auto-time CreatedAt caindo sobre coluna string → panic `time.Time→string`, HTTP 500). Nunca tinha sido testado de verdade. Fix: `Session(NewDB:true)` no Create (padrão já documentado em message_send.go).
+
+**Validação E2E (WhatsApp real):** `POST /knowledge-bases/1/sources` (texto) → `pending`→`processing`→`ready` (chunkCount=1) via Go-publish→Python-ingest→Go-status-listener. Flow id=7 com nó `knowledge` **ativado sem ERR_NODES_NOT_EXECUTABLE** (guard ok); inbound "horario" → FlowRunLog: `kb knowledge advance "knowledge: respondido"` → bot respondeu ancorado.
+
+### Pendente (FE + teste da Fase 1)
 - [ ] **KB-1.9** — campo `aiEmbeddingModel` no AISettings (FE) — *hoje setado via DB p/ teste*
-- [ ] **KB-1.10** — E2E texto completo (base→fonte→ready→nó responde ancorado)
+- [ ] **KB-1.10** — teste automatizado do loop (live E2E já passou)
+- ⚠️ Flows de teste ativos: **id=6** ("oi") e **id=7** ("horario") respondem nas conexões reais — desativar quando não precisar.
+- ⚠️ Dev: LLM do nó knowledge cai no **fallback (chunk)** porque o `business` não alcança omniroute em `localhost` de dentro do container (limitação pré-existente; retrieval funciona).
