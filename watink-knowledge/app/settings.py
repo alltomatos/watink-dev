@@ -7,7 +7,7 @@ from .config import config
 from .db import get_pool
 from .urls import rewrite_host
 
-_AI_KEYS = ["aiCustomBaseURL", "aiApiKey", "aiEmbeddingModel", "aiProvider"]
+_AI_KEYS = ["aiCustomBaseURL", "aiApiKey", "aiEmbeddingModel", "aiModel", "aiProvider"]
 
 
 async def get_ai_settings(tenant_id: str) -> dict:
@@ -29,4 +29,6 @@ async def get_ai_settings(tenant_id: str) -> dict:
         "base_url": base_url,
         "api_key": s.get("aiApiKey", "") or "",
         "model": s.get("aiEmbeddingModel", "") or "",
+        "chat_model": s.get("aiModel", "") or "",
+        "provider": s.get("aiProvider", "") or "",
     }

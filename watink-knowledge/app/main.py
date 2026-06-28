@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from . import ingest
 from .db import close_pool, get_pool, open_pool
 from .migrations import run_migrations
+from .agent import router as agent_router
 from .retrieve import router as retrieve_router
 
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +30,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="watink-knowledge", lifespan=lifespan)
 app.include_router(retrieve_router)
+app.include_router(agent_router)
 
 
 @app.get("/health")

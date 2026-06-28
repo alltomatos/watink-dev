@@ -15,6 +15,7 @@ const COLOR_MAP: Record<string, string> = {
   colorWebhook: 'bg-gradient-to-b from-[var(--status-error)] to-[var(--red-700)]',
   colorApi: 'bg-gradient-to-b from-[var(--status-info)] to-[var(--google-blue)]',
   colorKnowledge: 'bg-gradient-to-b from-[var(--google-pink)] to-[var(--red-700)]',
+  colorAgent: 'bg-gradient-to-b from-[var(--violet-500)] to-[var(--violet-800)]',
   colorEnd: 'bg-gradient-to-b from-[var(--status-error)] to-[var(--red-700)]',
   colorDefault: 'bg-gradient-to-b from-[var(--slate-500)] to-[var(--slate-700)]',
   colorTicket: 'bg-gradient-to-b from-[var(--google-pink)] to-[var(--red-700)]',
