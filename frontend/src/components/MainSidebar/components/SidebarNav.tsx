@@ -12,6 +12,7 @@ import {
   ClipboardList,
   RefreshCw,
   Tags,
+  Workflow,
   UsersRound,
   Building2,
   Radio,
@@ -122,6 +123,20 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed, isLightSidebar, acti
             icon={<Tags size={20} />}
             collapsed={collapsed}
             activeColor="var(--nav-icon-purple)"
+          />
+        )}
+      />
+
+      <Can
+        user={user}
+        perform="flows:read"
+        yes={() => (
+          <SidebarItem
+            to="/flowbuilder"
+            label={i18n.t("mainDrawer.listItems.flowBuilder")}
+            icon={<Workflow size={20} />}
+            collapsed={collapsed}
+            activeColor="var(--nav-icon-teal)"
           />
         )}
       />
