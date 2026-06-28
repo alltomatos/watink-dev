@@ -344,3 +344,57 @@ func TestFlowController_Create_PersistsWhatsAppID(t *testing.T) {
 	require.NotNil(t, row.WhatsappID, "whatsappId must be persisted, not dropped")
 	assert.Equal(t, wid, *row.WhatsappID)
 }
+
+// TestFlowController_Update_BlocksActivatingUnexecutableNode — guard de ativação:
+// um flow com nó sem executor (database) NÃO pode ser ativado (quebraria em runtime).
+func TestFlowController_Update_BlocksActivatingUnexecutableNode(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupFlowTestDB(t)
+	tenantID := uuid.New()
+
+	nodes := `[{"id":"a","type":"start","data":{}},{"id":"b","type":"database","data":{}}]`
+	db.Exec(`INSERT INTO "Flows" (name,nodes,edges,active,"tenantId") VALUES (?,?,?,?,?)`,
+		"Com DB", nodes, "[]", false, tenantID)
+	var flow struct{ ID int }
+	db.Raw(`SELECT id FROM "Flows" WHERE "tenantId" = ?`, tenantID).Scan(&flow)
+
+	payload, _ := json.Marshal(map[string]interface{}{"active": true})
+	ctrl := NewFlowController(nil)
+	c, w := setupFlowContext(t, db, tenantID, "PUT", fmt.Sprintf("/flows/%d", flow.ID), payload)
+	c.Params = gin.Params{{Key: "flowId", Value: fmt.Sprintf("%d", flow.ID)}}
+	ctrl.Update(c)
+
+	require.Equal(t, http.StatusUnprocessableEntity, w.Code)
+	var body map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "ERR_NODES_NOT_EXECUTABLE", body["code"])
+
+	var row struct{ Active bool }
+	db.Raw(`SELECT active FROM "Flows" WHERE id = ?`, flow.ID).Scan(&row)
+	assert.False(t, row.Active, "flow não pode ativar com nó não-executável")
+}
+
+// TestFlowController_Update_AllowsActivatingExecutableFlow — guard permite ativar
+// um flow cujos nós são todos executáveis (start/message/end).
+func TestFlowController_Update_AllowsActivatingExecutableFlow(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupFlowTestDB(t)
+	tenantID := uuid.New()
+
+	nodes := `[{"id":"a","type":"start","data":{}},{"id":"b","type":"message","data":{}},{"id":"c","type":"end","data":{}}]`
+	db.Exec(`INSERT INTO "Flows" (name,nodes,edges,active,"tenantId") VALUES (?,?,?,?,?)`,
+		"Executavel", nodes, "[]", false, tenantID)
+	var flow struct{ ID int }
+	db.Raw(`SELECT id FROM "Flows" WHERE "tenantId" = ?`, tenantID).Scan(&flow)
+
+	payload, _ := json.Marshal(map[string]interface{}{"active": true})
+	ctrl := NewFlowController(nil)
+	c, w := setupFlowContext(t, db, tenantID, "PUT", fmt.Sprintf("/flows/%d", flow.ID), payload)
+	c.Params = gin.Params{{Key: "flowId", Value: fmt.Sprintf("%d", flow.ID)}}
+	ctrl.Update(c)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var row struct{ Active bool }
+	db.Raw(`SELECT active FROM "Flows" WHERE id = ?`, flow.ID).Scan(&row)
+	assert.True(t, row.Active, "flow executável deve ativar")
+}
