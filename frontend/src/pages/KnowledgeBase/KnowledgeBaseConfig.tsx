@@ -1,45 +1,433 @@
 /* @jsxImportSource react */
-import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import React, { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Globe,
+  Loader2,
+  Plus,
+  Trash2,
+  Upload,
+} from "lucide-react";
 
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
-import { PageContainer, PageHeader, PageContent } from "@/components/ui/page-layout";
+import { subscribeToSocket } from "../../services/sse-client";
+import ConfirmationModal from "../../components/ConfirmationModal";
+
+import {
+  PageContainer,
+  PageHeader,
+  PageContent,
+} from "@/components/ui/page-layout";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+type SourceStatus = "pending" | "processing" | "ready" | "error";
 
 interface KBSource {
-  id: string;
+  id: number;
   type: string;
-  url?: string;
   fileName?: string;
-  name?: string;
-  status?: string;
+  url?: string;
+  status: SourceStatus;
+  chunkCount?: number;
+  lastError?: string;
+  objectKey?: string;
 }
 
 interface KnowledgeBase {
-  id: string;
+  id: number;
   name: string;
   description?: string;
   sources?: KBSource[];
 }
 
+interface KnowledgeSourceEvent {
+  action?: string;
+  sourceId: number;
+  status: SourceStatus;
+  chunkCount?: number;
+}
+
+function sourceLabel(source: KBSource): string {
+  if (source.fileName) return source.fileName;
+  if (source.url) return source.url;
+  return "Texto";
+}
+
+function SourceIcon({ source }: { source: KBSource }): React.ReactElement {
+  if (source.url || source.type === "url") {
+    return <Globe className="h-5 w-5 text-muted-foreground" />;
+  }
+  if (source.type === "text") {
+    return <FileText className="h-5 w-5 text-muted-foreground" />;
+  }
+  return <FileText className="h-5 w-5 text-muted-foreground" />;
+}
+
+function StatusBadge({ source }: { source: KBSource }): React.ReactElement {
+  switch (source.status) {
+    case "ready":
+      return (
+        <Badge className="gap-1 border-transparent bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success-text))]">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Pronto
+          {typeof source.chunkCount === "number" && (
+            <span className="font-normal">· {source.chunkCount} chunks</span>
+          )}
+        </Badge>
+      );
+    case "processing":
+      return (
+        <Badge className="gap-1 border-transparent bg-[hsl(var(--status-info-bg))] text-[hsl(var(--status-info-text))]">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Processando
+        </Badge>
+      );
+    case "error":
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge className="gap-1 border-transparent bg-[hsl(var(--status-error-bg))] text-[hsl(var(--status-error-text))] cursor-help">
+                <AlertCircle className="h-3.5 w-3.5" />
+                Erro
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              {source.lastError || "Falha ao processar a fonte"}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    case "pending":
+    default:
+      return (
+        <Badge className="gap-1 border-transparent bg-[hsl(var(--status-warning-bg))] text-[hsl(var(--status-warning-text))]">
+          <Clock className="h-3.5 w-3.5" />
+          Aguardando
+        </Badge>
+      );
+  }
+}
+
 const KnowledgeBaseConfig: React.FC = () => {
   const { knowledgeBaseId } = useParams<{ knowledgeBaseId: string }>();
+  const navigate = useNavigate();
+
   const [kb, setKb] = useState<KnowledgeBase | null>(null);
+  const [sources, setSources] = useState<KBSource[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [tab, setTab] = useState<"text" | "file">("text");
+  const [textName, setTextName] = useState("");
+  const [textContent, setTextContent] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<KBSource | null>(null);
+
+  const fetchBase = useCallback(async () => {
+    if (!knowledgeBaseId) return;
+    setLoading(true);
+    try {
+      const { data } = await api.get<KnowledgeBase>(
+        `/knowledge-bases/${knowledgeBaseId}`
+      );
+      setKb(data);
+      setSources(Array.isArray(data.sources) ? data.sources : []);
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [knowledgeBaseId]);
 
   useEffect(() => {
+    fetchBase();
+  }, [fetchBase]);
+
+  useEffect(() => {
+    const cleanup = subscribeToSocket({
+      knowledgeSource: (payload: KnowledgeSourceEvent) => {
+        if (!payload || typeof payload.sourceId !== "number") return;
+        setSources((prev) =>
+          prev.map((s) =>
+            s.id === payload.sourceId
+              ? {
+                  ...s,
+                  status: payload.status ?? s.status,
+                  chunkCount:
+                    typeof payload.chunkCount === "number"
+                      ? payload.chunkCount
+                      : s.chunkCount,
+                }
+              : s
+          )
+        );
+      },
+    });
+    return cleanup;
+  }, []);
+
+  const resetDialog = (): void => {
+    setTextName("");
+    setTextContent("");
+    setFile(null);
+    setTab("text");
+  };
+
+  const handleAddSource = async () => {
     if (!knowledgeBaseId) return;
-    api.get<KnowledgeBase>(`/knowledge-bases/${knowledgeBaseId}`).then(({ data }) => {
-        setKb(data);
-    }).catch(toastError);
-  }, [knowledgeBaseId]);
+
+    const formData = new FormData();
+    if (tab === "text") {
+      if (!textContent.trim()) return;
+      formData.append("type", "text");
+      formData.append("name", textName.trim() || "Texto");
+      formData.append("content", textContent);
+    } else {
+      if (!file) return;
+      formData.append("type", "file");
+      formData.append("name", file.name);
+      formData.append("file", file);
+    }
+
+    setSubmitting(true);
+    try {
+      const { data } = await api.post<KBSource>(
+        `/knowledge-bases/${knowledgeBaseId}/sources`,
+        formData
+      );
+      if (data && typeof data.id === "number") {
+        setSources((prev) => [...prev, data]);
+      } else {
+        await fetchBase();
+      }
+      toast.success("Fonte adicionada");
+      setDialogOpen(false);
+      resetDialog();
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRequestDelete = (source: KBSource): void => {
+    setDeleteTarget(source);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!knowledgeBaseId || !deleteTarget) return;
+    try {
+      await api.delete(
+        `/knowledge-bases/${knowledgeBaseId}/sources/${deleteTarget.id}`
+      );
+      setSources((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+      toast.success("Fonte removida");
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
+  const canSubmit =
+    tab === "text" ? Boolean(textContent.trim()) : Boolean(file);
 
   return (
     <PageContainer>
-        <PageHeader title={kb?.name || "Carregando..."} />
-        <PageContent>
-            {/* Implementação simplificada para conformidade imediata */}
-            <p className="text-muted-foreground italic">Configuração de fontes em migração...</p>
-        </PageContent>
+      <ConfirmationModal
+        title="Remover fonte?"
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={handleConfirmDelete}
+      >
+        A fonte e seus embeddings serão removidos desta base. Não pode ser
+        desfeito.
+      </ConfirmationModal>
+
+      <PageHeader
+        title={kb?.name || (loading ? "Carregando..." : "Base de Conhecimento")}
+        description={kb?.description || undefined}
+      >
+        <Button variant="outline" onClick={() => navigate("/knowledge-bases")}>
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </Button>
+        <Button onClick={() => setDialogOpen(true)}>
+          <Plus className="h-4 w-4" />
+          Adicionar fonte
+        </Button>
+      </PageHeader>
+
+      <PageContent>
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : sources.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center">
+              <Upload className="h-7 w-7 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">
+                Nenhuma fonte adicionada
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Adicione textos ou arquivos para a IA aprender com eles
+              </p>
+            </div>
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Adicionar fonte
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {sources.map((source) => (
+              <Card
+                key={source.id}
+                className="flex items-center gap-4 px-4 py-3"
+              >
+                <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                  <SourceIcon source={source} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground truncate">
+                    {sourceLabel(source)}
+                  </p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                    {source.type}
+                  </p>
+                </div>
+                <StatusBadge source={source} />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Remover fonte"
+                  onClick={() => handleRequestDelete(source)}
+                  className="shrink-0 text-muted-foreground hover:text-[hsl(var(--destructive))]"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </Card>
+            ))}
+          </div>
+        )}
+      </PageContent>
+
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) resetDialog();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar fonte</DialogTitle>
+          </DialogHeader>
+
+          <Tabs
+            value={tab}
+            onValueChange={(v) => setTab(v as "text" | "file")}
+            className="mt-2"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="text">Texto</TabsTrigger>
+              <TabsTrigger value="file">Arquivo</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="text" className="flex flex-col gap-4 pt-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="source-name">Nome</Label>
+                <Input
+                  id="source-name"
+                  value={textName}
+                  onChange={(e) => setTextName(e.target.value)}
+                  placeholder="Ex: Política de trocas"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="source-content">Conteúdo</Label>
+                <Textarea
+                  id="source-content"
+                  value={textContent}
+                  onChange={(e) => setTextContent(e.target.value)}
+                  placeholder="Cole aqui o texto que a IA deve aprender"
+                  rows={8}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="file" className="flex flex-col gap-4 pt-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="source-file">Arquivo</Label>
+                <Input
+                  id="source-file"
+                  type="file"
+                  accept=".txt,.pdf,.docx,.csv,.xlsx,.md"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Formatos: txt, pdf, docx, csv, xlsx, md
+                </p>
+                {file && (
+                  <p className="text-sm text-foreground truncate">
+                    {file.name}
+                  </p>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="mt-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDialogOpen(false);
+                resetDialog();
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleAddSource} disabled={!canSubmit || submitting}>
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 };
