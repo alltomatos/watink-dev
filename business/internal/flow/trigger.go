@@ -2,6 +2,7 @@ package flow
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 )
 
@@ -25,17 +26,22 @@ const (
 // with the keyword carried inside the conditions[] builder.
 type triggerNodeData struct {
 	TriggerType string `json:"triggerType"`
-	Conditions  []struct {
+	// WhatsAppID is the connection id the trigger is bound to. The frontend Select
+	// stores it as a string; parseConnID turns it into the *int the Flow column uses.
+	WhatsAppID *string `json:"whatsappId"`
+	Conditions []struct {
 		Field    string `json:"field"`
 		Operator string `json:"operator"`
 		Value    string `json:"value"`
 	} `json:"conditions"`
 }
 
-// TriggerProjection is the flat (type,value) pair written to the Flow columns.
+// TriggerProjection is the flat (type,value,connection) tuple written to the Flow
+// columns. WhatsAppID binds the flow to a connection (nil = any connection).
 type TriggerProjection struct {
-	Type  string
-	Value string
+	Type       string
+	Value      string
+	WhatsAppID *int
 }
 
 // ProjectTrigger walks the graph, finds the entry/trigger node and projects its
@@ -59,19 +65,20 @@ func ProjectTrigger(g FlowGraph) TriggerProjection {
 	if len(node.Data) > 0 {
 		_ = json.Unmarshal(node.Data, &d)
 	}
+	connID := parseConnID(d.WhatsAppID)
 
 	switch strings.TrimSpace(d.TriggerType) {
 	case "firstContact":
-		return TriggerProjection{Type: TriggerWhatsAppFirstContact, Value: ""}
+		return TriggerProjection{Type: TriggerWhatsAppFirstContact, Value: "", WhatsAppID: connID}
 	case "any", "message":
 		// Any inbound message starts the flow.
-		return TriggerProjection{Type: TriggerWhatsAppMessage, Value: ""}
+		return TriggerProjection{Type: TriggerWhatsAppMessage, Value: "", WhatsAppID: connID}
 	case "keyword", "":
 		// Keyword lives in the conditions builder. Extract the first textual
 		// keyword (a contains/equals condition on the last input); fall back to
 		// match-any when no keyword is configured.
 		kw := extractKeyword(d)
-		return TriggerProjection{Type: TriggerWhatsAppMessage, Value: kw}
+		return TriggerProjection{Type: TriggerWhatsAppMessage, Value: kw, WhatsAppID: connID}
 	default:
 		// Unknown trigger type (time/webhook/action) — not a message trigger,
 		// so it is not projected onto the message-match columns.
@@ -111,4 +118,22 @@ func extractKeyword(d triggerNodeData) string {
 		}
 	}
 	return ""
+}
+
+// parseConnID turns the trigger node's connection id (a string from the frontend
+// Select, possibly empty) into the *int the Flow "whatsappId" column uses. An empty
+// or non-numeric value yields nil (= unbound / any connection).
+func parseConnID(s *string) *int {
+	if s == nil {
+		return nil
+	}
+	v := strings.TrimSpace(*s)
+	if v == "" {
+		return nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return nil
+	}
+	return &n
 }
