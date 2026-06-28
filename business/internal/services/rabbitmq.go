@@ -12,7 +12,6 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-
 type RabbitMQService struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
@@ -71,6 +70,8 @@ func (s *RabbitMQService) setupExchanges() error {
 		{"wbot.events", "topic"},
 		{dlqExchange, "topic"},
 		{"api.events", "topic"},
+		{"knowledge.jobs", "topic"},
+		{"knowledge.events", "topic"},
 	}
 	for _, ex := range exchanges {
 		if err := s.channel.ExchangeDeclare(
@@ -88,6 +89,12 @@ func (s *RabbitMQService) PublishCommand(routingKey string, payload interface{})
 
 func (s *RabbitMQService) PublishEvent(routingKey string, payload interface{}) error {
 	return s.publishWithTrace("wbot.events", routingKey, payload)
+}
+
+// PublishKnowledgeJob publishes an ingestion job to the knowledge.jobs exchange
+// for the watink-knowledge microservice to consume.
+func (s *RabbitMQService) PublishKnowledgeJob(routingKey string, payload interface{}) error {
+	return s.publishWithTrace("knowledge.jobs", routingKey, payload)
 }
 
 func (s *RabbitMQService) publishWithTrace(exchange, routingKey string, payload interface{}) error {
@@ -138,6 +145,34 @@ func (s *RabbitMQService) ConsumeEvents(queueName string, routingKeys []string, 
 	return nil
 }
 
+// ConsumeKnowledgeEvents binds a queue to the knowledge.events exchange (with
+// DLQ) and dispatches each delivery to handler. Mirrors ConsumeEvents but for
+// the knowledge status stream.
+func (s *RabbitMQService) ConsumeKnowledgeEvents(queueName string, routingKeys []string, handler func(amqp.Delivery) error) error {
+	if err := s.declareQueueWithDLQ(queueName, "knowledge.events", routingKeys); err != nil {
+		return err
+	}
+
+	msgs, err := s.channel.Consume(queueName, "", false, false, false, false, nil)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for d := range msgs {
+			if err := handler(d); err != nil {
+				s.handleFailedMessage(d, err)
+			} else {
+				if err := d.Ack(false); err != nil {
+					log.Printf("[RabbitMQ] Ack failed: %v", err)
+				}
+			}
+		}
+	}()
+
+	return nil
+}
+
 func (s *RabbitMQService) Close() error {
 	if s.channel != nil {
 		s.channel.Close()
@@ -147,4 +182,3 @@ func (s *RabbitMQService) Close() error {
 	}
 	return nil
 }
-

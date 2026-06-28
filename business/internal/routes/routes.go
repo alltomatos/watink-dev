@@ -13,6 +13,7 @@ import (
 type RouteRabbitMQ interface {
 	domain.CommandPublisher
 	domain.QueueMonitor
+	domain.KnowledgeJobPublisher
 }
 
 func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *application.Container) {
@@ -32,7 +33,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	tagController := controllers.NewTagController()
 	pipelineController := controllers.NewPipelineController()
 	dealController := controllers.NewDealController()
-	kbController := controllers.NewKnowledgeBaseController()
+	kbController := controllers.NewKnowledgeBaseController(rabbitMQ)
 	groupController := controllers.NewGroupController(container.PermissionRepo)
 	roleController := controllers.NewRoleController(container.PermissionRepo)
 	// FlowBuilder FASE 1: build a channel registry + runtime skeleton for the

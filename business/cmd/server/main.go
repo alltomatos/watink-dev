@@ -96,6 +96,14 @@ func main() {
 		// replacing the two previously-dead workers. No separate AMQP flow worker.
 		eventListener := services.NewEventListener(container.ChannelSessionRepo, container.MessageRepo, container.ContactRepo, container.TicketRepo, container.ReceiveMessage, broadcast, database.DB, channelRegistry, redisSvc)
 		services.StartEventListener(rabbitMQ, eventListener)
+
+		// Knowledge Base RAG: consume ingestion status events from
+		// watink-knowledge (knowledge.events) and reflect them onto the source
+		// rows + broadcast to the tenant.
+		knowledgeStatus := services.NewKnowledgeStatusListener(container.DB, container.Broadcast)
+		if err := knowledgeStatus.Start(rabbitMQ); err != nil {
+			log.Printf("[knowledge] status listener: %v", err)
+		}
 	} else {
 		log.Printf("⚠️ Warning: RabbitMQ connection failed: %v", err)
 	}

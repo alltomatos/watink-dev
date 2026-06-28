@@ -22,7 +22,7 @@ import (
 type stubEventBus struct{}
 
 func (s *stubEventBus) Publish(_ context.Context, _ domain.DomainEvent) error { return nil }
-func (s *stubEventBus) Subscribe(_ string, _ domain.EventHandler) error        { return nil }
+func (s *stubEventBus) Subscribe(_ string, _ domain.EventHandler) error       { return nil }
 
 // stubMessageRepo is a no-op MessageRepository for tests.
 type stubMessageRepo struct{}
@@ -43,7 +43,6 @@ func (s *stubMessageRepo) ExistsByID(_ context.Context, _ string, _ uuid.UUID) (
 func (s *stubMessageRepo) Update(_ context.Context, _ *domain.Message, _ map[string]interface{}) error {
 	return nil
 }
-
 
 func TestUpdateTicket(t *testing.T) {
 	gin.SetMode(gin.TestMode)

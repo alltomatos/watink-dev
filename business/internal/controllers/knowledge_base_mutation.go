@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type createKnowledgeBaseInput struct {
@@ -167,6 +169,7 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 	sourceType := c.PostForm("type")
 	urlValue := c.PostForm("url")
 	sourceName := c.PostForm("name")
+	content := c.PostForm("content")
 
 	if file, err := c.FormFile("file"); err == nil && file != nil {
 		sourceName = filepath.Base(file.Filename)
@@ -182,13 +185,13 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 
 	validSourceTypes := map[string]bool{
 		"url": true, "file": true, "pdf": true, "txt": true,
-		"docx": true, "csv": true, "xlsx": true, "md": true,
+		"docx": true, "csv": true, "xlsx": true, "md": true, "text": true,
 	}
 	if sourceType == "" {
 		sourceType = "url"
 	}
 	if !validSourceTypes[sourceType] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid sourceType: must be one of url, file, pdf, txt, docx, csv, xlsx, md"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid sourceType: must be one of url, file, pdf, txt, docx, csv, xlsx, md, text"})
 		return
 	}
 
@@ -201,18 +204,48 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 		return
 	}
 
+	if sourceType == "text" {
+		if _, err := utils.ValidateStringField(content, "content", 100000); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	status := "ready"
+	if sourceType == "text" {
+		status = "pending"
+	}
+
 	source := models.KnowledgeBaseSource{
 		KnowledgeBaseID: kb.ID,
 		TenantID:        kb.TenantID,
 		Type:            sourceType,
 		URL:             urlValue,
 		FileName:        sourceName,
-		Status:          "ready",
+		Status:          status,
 	}
 
-	if err := db.Create(&source).Error; err != nil {
+	// Use a fresh session for the write: the earlier db.Where(...).First(&kb) on
+	// the scoped db leaves KnowledgeBase as the Statement.Schema, and reusing it
+	// for Create(&source) would make GORM build the insert against the wrong
+	// schema (auto-time CreatedAt landing on a string column → panic). NewDB
+	// re-derives the KnowledgeBaseSource schema. See message_send.go for the
+	// same scoped-db reuse caveat.
+	if err := db.Session(&gorm.Session{NewDB: true}).Create(&source).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "CreateKnowledgeBaseSource")
 		return
+	}
+
+	// For text sources, dispatch an ingestion job to watink-knowledge. The
+	// microservice chunks/embeds the text and reports status back via
+	// knowledge.events (handled by KnowledgeStatusListener).
+	if sourceType == "text" && kbc.publisher != nil {
+		_ = kbc.publisher.PublishKnowledgeJob(
+			fmt.Sprintf("knowledge.%s.ingest", tenantID.String()),
+			map[string]interface{}{
+				"tenantId": tenantID.String(), "knowledgeBaseId": kb.ID, "sourceId": source.ID,
+				"type": "text", "payload": map[string]interface{}{"text": content},
+			})
 	}
 
 	c.JSON(http.StatusOK, source)

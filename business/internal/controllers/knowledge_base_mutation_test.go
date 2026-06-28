@@ -14,12 +14,11 @@ import (
 	"github.com/google/uuid"
 )
 
-
 func TestKnowledgeBaseCreate(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := testutil.NewTestDB(t)
 	tenantID := uuid.New().String()
-	kbc := NewKnowledgeBaseController()
+	kbc := NewKnowledgeBaseController(nil)
 
 	r := gin.New()
 	r.Use(testScopedMiddleware(db, tenantID))
@@ -81,7 +80,7 @@ func TestKnowledgeBaseUpdate(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := testutil.NewTestDB(t)
 	tenantID := uuid.New()
-	kbc := NewKnowledgeBaseController()
+	kbc := NewKnowledgeBaseController(nil)
 
 	r := gin.New()
 	r.Use(testScopedMiddleware(db, tenantID.String()))
@@ -130,7 +129,7 @@ func TestKnowledgeBaseDelete(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := testutil.NewTestDB(t)
 	tenantID := uuid.New()
-	kbc := NewKnowledgeBaseController()
+	kbc := NewKnowledgeBaseController(nil)
 
 	r := gin.New()
 	r.Use(testScopedMiddleware(db, tenantID.String()))
@@ -194,7 +193,7 @@ func TestKnowledgeBaseCreateSource(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := testutil.NewTestDB(t)
 	tenantID := uuid.New()
-	kbc := NewKnowledgeBaseController()
+	kbc := NewKnowledgeBaseController(nil)
 
 	r := gin.New()
 	r.Use(testScopedMiddleware(db, tenantID.String()))
@@ -235,7 +234,7 @@ func TestKnowledgeBaseDeleteSource(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := testutil.NewTestDB(t)
 	tenantID := uuid.New()
-	kbc := NewKnowledgeBaseController()
+	kbc := NewKnowledgeBaseController(nil)
 
 	r := gin.New()
 	r.Use(testScopedMiddleware(db, tenantID.String()))
