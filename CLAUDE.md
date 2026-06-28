@@ -50,6 +50,11 @@ Frontend (React/Vite) ←REST/SSE→ Backend Go (Gin/GORM) ←SQL→ PostgreSQL
 | Frontend — Módulo Tickets: separação grupos, avatar, auto-tag, notificações, pipeline integration | ✅ Concluída (PR #225) |
 | Backend Go + Frontend — DealController GET/PUT + Pipeline UI redesign (creator/kanban/listing) | ✅ Concluída (PR #225) |
 | Backend Go — DealController testes unitários (5 casos List + Update) | ⏳ Em review (PR #227) |
+| FlowBuilder — Runtime Fase 0+1 (FlowGraph, FlowRun, interpreter, executores, suspend/resume, guard de ativação) | ✅ Concluída (PR #242/#243) |
+| Base de Conhecimento (RAG) — microsserviço `watink-knowledge` (Python/FastAPI) + nó `knowledge` + guardrails+citação | ✅ Concluída (PR #256) |
+| Base de Conhecimento — CI Python (ruff+pytest) + higiene `__pycache__` | ✅ Concluída (PR #257/#258) |
+| Base de Conhecimento — fonte arquivo (S3/MinIO + parsers PDF/docx/xlsx) | ✅ Concluída (PR #259) |
+| Base de Conhecimento — UI (lista, fontes, upload, status SSE tempo-real) | ✅ Concluída (PR #260) |
 
 ## Services & Ports
 
