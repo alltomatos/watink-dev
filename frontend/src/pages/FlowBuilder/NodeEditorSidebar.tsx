@@ -36,6 +36,7 @@ const NodeEditorSidebar: React.FC<NodeEditorSidebarProps> = ({
   const [queues, setQueues] = React.useState<Queue[]>([]);
   const [users, setUsers] = React.useState<User[]>([]);
   const [knowledgeBases, setKnowledgeBases] = React.useState<KnowledgeBase[]>([]);
+  const [connections, setConnections] = React.useState<{ id: number; name: string }[]>([]);
 
   React.useEffect(() => {
     if (node?.data) setFormData({ ...node.data });
@@ -53,6 +54,9 @@ const NodeEditorSidebar: React.FC<NodeEditorSidebarProps> = ({
     if (node.type === 'knowledge' || node.type === 'agent') {
       api.get('/knowledge-bases').then((res) => setKnowledgeBases(res.data)).catch(() => {});
     }
+    if (node.type === 'trigger') {
+      api.get('/whatsapp').then((res) => setConnections(res.data)).catch(() => {});
+    }
   }, [node]);
 
   if (!node) return null;
@@ -67,7 +71,7 @@ const NodeEditorSidebar: React.FC<NodeEditorSidebarProps> = ({
       case 'input':
         return <StartForm {...props} />;
       case 'trigger':
-        return <TriggerForm {...props} />;
+        return <TriggerForm {...props} connections={connections} />;
       case 'message':
         return <MessageForm {...props} />;
       case 'menu':
