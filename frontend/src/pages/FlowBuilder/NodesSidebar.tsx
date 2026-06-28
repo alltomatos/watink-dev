@@ -13,6 +13,7 @@ import {
   Webhook,
   Globe,
   Lightbulb,
+  Bot,
   LifeBuoy,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -32,6 +33,7 @@ const COLOR_MAP: Record<string, string> = {
   colorWebhook: 'bg-gradient-to-b from-[var(--status-error)] to-[var(--red-700)]',
   colorApi: 'bg-gradient-to-b from-[var(--status-info)] to-[var(--google-blue)]',
   colorKnowledge: 'bg-gradient-to-b from-[var(--google-pink)] to-[var(--red-700)]',
+  colorAgent: 'bg-gradient-to-b from-[var(--violet-500)] to-[var(--violet-800)]',
   colorEnd: 'bg-gradient-to-b from-[var(--status-error)] to-[var(--red-700)]',
   colorTicket: 'bg-gradient-to-b from-[var(--google-pink)] to-[var(--red-700)]',
   colorHelpdesk: 'bg-gradient-to-b from-[var(--emerald-600)] to-[var(--emerald-800)]',
@@ -117,6 +119,7 @@ const NodesSidebar: React.FC = () => {
       <div className="grid grid-cols-3 gap-4">
         <DraggableNode type="pipeline" label="Pipeline" icon={GitCommit} colorClass="colorPipeline" />
         <DraggableNode type="knowledge" label="Conhecimento" icon={Lightbulb} colorClass="colorKnowledge" />
+        <DraggableNode type="agent" label="Agente IA" icon={Bot} colorClass="colorAgent" />
         <DraggableNode type="database" label="Database" icon={Database} colorClass="colorDatabase" />
         <DraggableNode type="filter" label="Filtro" icon={Filter} colorClass="colorFilter" />
         <DraggableNode type="ticket" label="Ticket" icon={Ticket} colorClass="colorTicket" />
