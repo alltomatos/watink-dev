@@ -258,7 +258,7 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 			utils.RespondWithInternalError(c, err, "CreateKnowledgeBaseSource: open upload")
 			return
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 
 		if err := kbc.store.Upload(c.Request.Context(), objectKey, f, fileHeader.Size, fileHeader.Header.Get("Content-Type")); err != nil {
 			markSourceError(db, &source, "falha ao enviar arquivo ao object store")
