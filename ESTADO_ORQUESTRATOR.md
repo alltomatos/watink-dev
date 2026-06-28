@@ -560,8 +560,11 @@ Item existe (MainNavItems.tsx:110-122) gated por `flows:read`. **Fix:** garantir
 
 **Validação E2E (WhatsApp real):** `POST /knowledge-bases/1/sources` (texto) → `pending`→`processing`→`ready` (chunkCount=1) via Go-publish→Python-ingest→Go-status-listener. Flow id=7 com nó `knowledge` **ativado sem ERR_NODES_NOT_EXECUTABLE** (guard ok); inbound "horario" → FlowRunLog: `kb knowledge advance "knowledge: respondido"` → bot respondeu ancorado.
 
-### Pendente (FE + teste da Fase 1)
-- [ ] **KB-1.9** — campo `aiEmbeddingModel` no AISettings (FE) — *hoje setado via DB p/ teste*
-- [ ] **KB-1.10** — teste automatizado do loop (live E2E já passou)
-- ⚠️ Flows de teste ativos: **id=6** ("oi") e **id=7** ("horario") respondem nas conexões reais — desativar quando não precisar.
-- ⚠️ Dev: LLM do nó knowledge cai no **fallback (chunk)** porque o `business` não alcança omniroute em `localhost` de dentro do container (limitação pré-existente; retrieval funciona).
+### Fechamento da Fase 1 — ✅ CONCLUÍDO
+- [x] **KB-1.9** — campo `aiEmbeddingModel` no AISettings (FE) ✅
+- [x] **KB-1.10** — unit tests do executor knowledge (4 casos, guardrails) ✅
+- [x] **Fix dev business→omniroute** — `aiclient.rewriteDevHost` (localhost→host.docker.internal) + `stream:false` → **LLM sintetiza com CITAÇÃO** (`[Fonte: source:N]`), guardrails validados ao vivo; corrige pipeline AISuggest também ✅
+- [x] Flows de teste 6/7 **desativados** (não firam mais nas conexões reais) ✅
+
+**Fase 1 (MVP RAG texto) COMPLETA e validada.** Branch `feat/knowledge-base-rag-mvp`.
+Próximo: push + PR → `develop`. Depois **Fase 2** (fonte arquivo: S3/MinIO + parsing; nó `agent`).
