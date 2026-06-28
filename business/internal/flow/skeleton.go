@@ -43,6 +43,7 @@ type Skeleton struct {
 	redis       domain.RedisService
 	interpreter *Interpreter
 	retriever   Retriever
+	responder   AgentResponder
 }
 
 // NewSkeleton builds the skeleton with an injected DB, the outbound channel
@@ -54,7 +55,7 @@ func NewSkeleton(db *gorm.DB, registry *ChannelRegistry, redis domain.RedisServi
 	if db != nil {
 		ip = NewInterpreter(DefaultExecutorRegistry(), registry, db)
 	}
-	return &Skeleton{db: db, registry: registry, redis: redis, interpreter: ip, retriever: NewHTTPRetrieverFromEnv()}
+	return &Skeleton{db: db, registry: registry, redis: redis, interpreter: ip, retriever: NewHTTPRetrieverFromEnv(), responder: NewHTTPAgentClientFromEnv()}
 }
 
 // InboundContext carries everything the runtime needs to resume/start a run for
@@ -272,6 +273,7 @@ func (s *Skeleton) StartFlow(ctx context.Context, in InboundContext, f models.Fl
 		Ticket:    in.Ticket,
 		Contact:   in.Contact,
 		Retriever: s.retriever,
+		Responder: s.responder,
 	}
 	return s.interpreter.Run(ctx, st)
 }
@@ -334,6 +336,7 @@ func (s *Skeleton) resume(ctx context.Context, in InboundContext, run models.Flo
 		Ticket:       in.Ticket,
 		Contact:      in.Contact,
 		Retriever:    s.retriever,
+		Responder:    s.responder,
 	}
 	if err := s.interpreter.Run(ctx, st); err != nil {
 		log.Printf("[FlowSkeleton] resume failed run=%s: %v", run.ID, err)

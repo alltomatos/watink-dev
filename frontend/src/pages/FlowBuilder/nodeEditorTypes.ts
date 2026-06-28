@@ -37,6 +37,8 @@ export interface NodeData {
   resultVariable?: string;
   responseMode?: string;
   knowledgeBaseId?: string;
+  persona?: string;
+  maxTurns?: number;
   helpdeskAction?: string;
   subject?: string;
   description?: string;
@@ -113,6 +115,7 @@ export const NODE_TITLES: Record<string, string> = {
   ticket: 'Configurar Ticket',
   webhook: 'Configurar Webhook',
   knowledge: 'Configurar Conhecimento',
+  agent: 'Configurar Agente IA',
   database: 'Configurar Database',
   filter: 'Configurar Filtro de Dados',
   api: 'Configurar Requisição API',

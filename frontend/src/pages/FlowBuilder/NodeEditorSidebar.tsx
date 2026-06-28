@@ -22,6 +22,7 @@ import WebhookForm from './components/node-forms/WebhookForm';
 import ApiForm from './components/node-forms/ApiForm';
 import PipelineForm from './components/node-forms/PipelineForm';
 import KnowledgeForm from './components/node-forms/KnowledgeForm';
+import AgentForm from './components/node-forms/AgentForm';
 import HelpdeskForm from './components/node-forms/HelpdeskForm';
 import EndForm from './components/node-forms/EndForm';
 import DatabaseForm from './components/node-forms/DatabaseForm';
@@ -49,7 +50,7 @@ const NodeEditorSidebar: React.FC<NodeEditorSidebarProps> = ({
       api.get('/queue').then((res) => setQueues(res.data)).catch(() => {});
       api.get('/users').then((res) => setUsers(res.data.users)).catch(() => {});
     }
-    if (node.type === 'knowledge') {
+    if (node.type === 'knowledge' || node.type === 'agent') {
       api.get('/knowledge-bases').then((res) => setKnowledgeBases(res.data)).catch(() => {});
     }
   }, [node]);
@@ -81,6 +82,8 @@ const NodeEditorSidebar: React.FC<NodeEditorSidebarProps> = ({
         return <WebhookForm {...props} />;
       case 'knowledge':
         return <KnowledgeForm {...props} knowledgeBases={knowledgeBases} />;
+      case 'agent':
+        return <AgentForm {...props} knowledgeBases={knowledgeBases} />;
       case 'database':
         return <DatabaseForm {...props} />;
       case 'filter':

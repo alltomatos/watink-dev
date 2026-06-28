@@ -21,6 +21,7 @@ import SwitchNode from './CustomNodes/SwitchNode';
 import TriggerNode from './CustomNodes/TriggerNode';
 import PipelineNode from './CustomNodes/PipelineNode';
 import KnowledgeNode from './CustomNodes/KnowledgeNode';
+import AgentNode from './CustomNodes/AgentNode';
 import MessageNode from './CustomNodes/MessageNode';
 import MenuNode from './CustomNodes/MenuNode';
 import DatabaseNode from './CustomNodes/DatabaseNode';
@@ -42,6 +43,7 @@ const nodeTypes = {
     trigger: TriggerNode,
     pipeline: PipelineNode,
     knowledge: KnowledgeNode,
+    agent: AgentNode,
     message: MessageNode,
     menu: MenuNode,
     database: DatabaseNode,
