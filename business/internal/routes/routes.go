@@ -46,6 +46,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	quickAnswerController := controllers.NewQuickAnswerController(rabbitMQ, container.Broadcast, db)
 	versionController := controllers.NewVersionController(container.VersionRepo)
 	swaggerController := controllers.NewSwaggerController(container.SwaggerPermRepo)
+	storageController := controllers.NewStorageController(s3Store)
 
 	// Public Routes
 	group.POST("/auth/login", authController.Login)
@@ -70,6 +71,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		system.Use(middleware.SuperAdminOnly())
 		{
 			system.GET("/stats", systemController.GetSystemStats)
+			system.GET("/storage", storageController.Status)
 			system.GET("/rabbitmq/queues", systemController.GetRabbitMQQueues)
 			system.GET("/latest-release", controllers.GetLatestRelease)
 			system.GET("/version", versionController.GetVersion)

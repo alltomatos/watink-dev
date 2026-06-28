@@ -116,6 +116,8 @@ type KnowledgeJobPublisher interface {
 // ObjectStore persiste/recupera arquivos de fontes (S3-compatível).
 type ObjectStore interface {
 	Upload(ctx context.Context, key string, r io.Reader, size int64, contentType string) error
+	// Describe returns the non-sensitive store configuration (no credentials).
+	Describe() map[string]any
 }
 
 // EventConsumer defines the contract for listening to events.
