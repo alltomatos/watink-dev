@@ -181,12 +181,19 @@ func (fc *FlowController) Create(c *gin.Context) {
 	// triggerType/triggerValue columns the runtime matches against.
 	proj := projectFlowTrigger(req.Nodes, req.Edges)
 
+	// The trigger node's connection binding (whatsappId) is the source of truth;
+	// fall back to a flow-level whatsappId when the node carries none.
+	whatsappID := req.WhatsAppID
+	if proj.WhatsAppID != nil {
+		whatsappID = proj.WhatsAppID
+	}
+
 	flow := models.Flow{
 		Name:         flowName,
 		Nodes:        req.Nodes,
 		Edges:        req.Edges,
 		Active:       req.Active,
-		WhatsAppID:   req.WhatsAppID,
+		WhatsAppID:   whatsappID,
 		TriggerType:  proj.Type,
 		TriggerValue: proj.Value,
 		TenantID:     tenantID,
@@ -316,6 +323,10 @@ func (fc *FlowController) Update(c *gin.Context) {
 		proj := projectFlowTrigger(effNodes, effEdges)
 		updates["triggerType"] = proj.Type
 		updates["triggerValue"] = proj.Value
+		// The trigger node's connection binding is the source of truth.
+		if proj.WhatsAppID != nil {
+			updates["whatsappId"] = *proj.WhatsAppID
+		}
 	}
 
 	// Activation guard: block turning a flow ACTIVE while its effective graph
