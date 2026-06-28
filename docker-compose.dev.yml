@@ -87,6 +87,11 @@ services:
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-dev_jwt_refresh_secret_change_in_prod}
       - DOCS_PUBLIC=${DOCS_PUBLIC:-false}
       - PLUGIN_HUB_URL=http://plugin-manager:8081/api/v1/hub
+      # Dev: o gateway de IA (omniroute) roda no host em localhost:20128; de dentro
+      # do container isso vira host.docker.internal (aiclient.rewriteDevHost).
+      - AI_BASEURL_HOST_REWRITE=host.docker.internal
+      - KNOWLEDGE_SERVICE_URL=http://watink-knowledge:8085
+      - INTERNAL_TOKEN=${INTERNAL_TOKEN:-dev_internal_token_change_in_prod}
     depends_on:
       postgres:
         condition: service_healthy
