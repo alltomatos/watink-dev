@@ -534,5 +534,26 @@ Item existe (MainNavItems.tsx:110-122) gated por `flows:read`. **Fix:** garantir
 - **Ownership do schema:** `KBChunk` + extensão = serviço Python (Alembic). Campos novos da Source = GORM AutoMigrate no `business`.
 - **Pré-requisito manual:** plugar/confirmar `aiEmbeddingModel` na UI; creds S3 (MinIO).
 
-### Status
-⏸️ **Aguardando aprovação T3 do usuário** antes de despachar execução.
+### Registro de Execução (aprovado: Parcialmente — Fase 0+1 texto, 2026-06-28)
+
+**Fase 0 + metade Python da Fase 1 — ✅ CONCLUÍDA e validada contra a stack viva** (branch `feat/knowledge-base-rag-mvp`):
+
+| Task | Status | Nota |
+|---|---|---|
+| KB-0.1 extensão `vector` | ✅ | criada no banco `watink`; halfvec(2048)+HNSW smoke-tested |
+| KB-0.2 scaffold `watink-knowledge` | ✅ | FastAPI :8085, /health, config, pool, X-Internal-Token, serviço no compose |
+| KB-0.4 schema `KBChunk` | ✅ | migration do serviço (halfvec(2048) + HNSW + dedup index) |
+| KB-1.3 embedding (omniroute) | ✅ | settings do tenant + rewrite localhost→host.docker.internal + backoff 429 |
+| KB-1.4 chunker | ✅ | tiktoken ~512 tok / 15% overlap |
+| KB-1.5 worker de ingestão | ✅ | AMQP knowledge.jobs → chunk→embed→halfvec; idempotente+dedup; status event |
+| KB-1.7 `/retrieve` | ✅ | cosine tenant+kb scoped + citação + auth; erro limpo em embedding indisponível |
+
+**Validação E2E (parcial):** job AMQP de texto → 1 KBChunk gerado (~6s) → `/retrieve` casou (score ~0.4) · isolamento por kb (`{"chunks":[]}`) · auth 401 sem token. DB intacto (chunk de teste limpo).
+
+### Pendente (metade Go + FE da Fase 1)
+- [ ] **KB-1.1** — Source: novos campos + AutoMigrate (Go)
+- [ ] **KB-1.2** — Publisher AMQP `knowledge.<tenant>.ingest` no Create (Go)
+- [ ] **KB-1.6** — Consumer `knowledge.<tenant>.status` → SSE (Go)
+- [ ] **KB-1.8** — Retrieval client + executor do nó `knowledge` (Go)
+- [ ] **KB-1.9** — campo `aiEmbeddingModel` no AISettings (FE) — *hoje setado via DB p/ teste*
+- [ ] **KB-1.10** — E2E texto completo (base→fonte→ready→nó responde ancorado)
