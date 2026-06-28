@@ -88,7 +88,7 @@ const FlowBuilderContent = () => {
             <main className="flex flex-1 overflow-hidden relative">
                 <div
                     className={`transition-all duration-300 border-r bg-card z-20 overflow-y-auto shrink-0 ${
-                        fb.isNodesSidebarOpen ? 'w-64' : 'w-0 border-none'
+                        fb.isNodesSidebarOpen ? 'w-72' : 'w-0 border-none'
                     }`}
                 >
                     {fb.isNodesSidebarOpen && <NodesSidebar />}
@@ -97,7 +97,7 @@ const FlowBuilderContent = () => {
                 <button
                     onClick={() => fb.setIsNodesSidebarOpen(!fb.isNodesSidebarOpen)}
                     className="absolute left-[248px] top-4 z-30 h-8 w-8 rounded-full border bg-background shadow-md flex items-center justify-center transition-all hover:bg-muted"
-                    style={{ left: fb.isNodesSidebarOpen ? '240px' : '-4px' }}
+                    style={{ left: fb.isNodesSidebarOpen ? '272px' : '-4px' }}
                 >
                     {fb.isNodesSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
                 </button>
