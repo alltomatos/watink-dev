@@ -3,6 +3,7 @@ package controllers
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/alltomatos/watinkdev/business/internal/flow"
 	"github.com/alltomatos/watinkdev/business/internal/models"
@@ -86,6 +87,31 @@ func projectFlowTrigger(nodes, edges datatypes.JSON) flow.TriggerProjection {
 	return flow.ProjectTrigger(graph)
 }
 
+// guardActivation blocks ACTIVATING a flow whose effective graph contains a node
+// type the engine cannot execute (no registered executor) — such a flow would
+// abort its run silently at runtime (interpreter MustGet). When activating is
+// true and unsupported nodes exist, it writes HTTP 422 and returns false. It is
+// a no-op (returns true) when the flow is not being activated.
+func guardActivation(c *gin.Context, activating bool, nodes, edges datatypes.JSON) bool {
+	if !activating {
+		return true
+	}
+	graph, err := flow.ParseGraph(nodes, edges)
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+		return false
+	}
+	if unsupported := flow.UnsupportedNodeTypes(graph); len(unsupported) > 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error":            "Não é possível ativar o fluxo: estes nós ainda não são executáveis pelo motor — " + strings.Join(unsupported, ", "),
+			"code":             "ERR_NODES_NOT_EXECUTABLE",
+			"unsupportedNodes": unsupported,
+		})
+		return false
+	}
+	return true
+}
+
 // @Summary      Listar flows
 // @Tags         flows
 // @Produce      json
@@ -143,6 +169,11 @@ func (fc *FlowController) Create(c *gin.Context) {
 
 	// FB0-B4: reject malformed/illegal graphs with 422 before persisting.
 	if !validateFlowGraph(c, req.Nodes, req.Edges) {
+		return
+	}
+
+	// Activation guard: a flow created ACTIVE must be fully executable.
+	if !guardActivation(c, req.Active, req.Nodes, req.Edges) {
 		return
 	}
 
@@ -285,6 +316,12 @@ func (fc *FlowController) Update(c *gin.Context) {
 		proj := projectFlowTrigger(effNodes, effEdges)
 		updates["triggerType"] = proj.Type
 		updates["triggerValue"] = proj.Value
+	}
+
+	// Activation guard: block turning a flow ACTIVE while its effective graph
+	// has a node the engine can't execute (would abort the run at runtime).
+	if !guardActivation(c, req.Active != nil && *req.Active, effNodes, effEdges) {
+		return
 	}
 
 	if len(updates) == 0 {

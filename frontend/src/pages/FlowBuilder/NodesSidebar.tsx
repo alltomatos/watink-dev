@@ -93,7 +93,7 @@ const NodesSidebar: React.FC = () => {
   }, []);
 
   return (
-    <aside className="w-[280px] px-5 py-5 border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col gap-3 overflow-y-auto">
+    <aside className="w-full px-6 py-5 bg-[var(--bg-surface)] flex flex-col gap-3 overflow-y-auto">
       <p className="text-base font-bold text-[var(--text-primary)] pl-1">Blocos Disponíveis</p>
 
       {/* WhatsApp */}
