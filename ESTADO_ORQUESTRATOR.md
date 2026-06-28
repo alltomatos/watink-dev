@@ -483,3 +483,56 @@ Item existe (MainNavItems.tsx:110-122) gated por `flows:read`. **Fix:** garantir
 **Débitos registrados (não bloqueantes):** detecção real de firstContact (instrumentada, fase posterior) · scheduler periódico do ExpireDueRuns (Fase 3) · ticket-handoff mínimo (Fase 2) · `protocol` mapeia ao ticket id.
 
 **Próximo:** PR `feat/flowbuilder-phase1` → `develop`. Depois, **Fase 2 (RAG no atendimento)** ou **Fase 3 (delay/cron)** conforme prioridade.
+
+---
+
+# Épico: Base de Conhecimento (RAG) — MVP (2026-06-28)
+
+**Objetivo:** loop RAG end-to-end (texto + arquivo) no novo microsserviço `watink-knowledge` (Python/FastAPI). Docs: `docs/agents/knowledge-base.md`, ADR 0015 (atualizado), 0018/0019/0020.
+
+**Tier global: T3** (mudança de schema DB + novo microsserviço + novo exchange AMQP) → requer aprovação do usuário antes de executar.
+
+## Auditoria técnica (GAPs)
+
+- 🚨 **GAP-KB1 (P1/T3):** pgvector instalado (0.8.2) mas extensão **não criada** no banco `watink`; sem tabela `KBChunk`, sem `halfvec`. → migration `CREATE EXTENSION vector` + schema.
+- 🚨 **GAP-KB2 (P2/T3):** nó `knowledge` **sem executor** (cai no `UnsupportedNodeTypes` → guard bloqueia o flow). → registrar executor que chama `/retrieve`.
+- 🚨 **GAP-KB3 (P1/T2):** `CreateSource` **descarta** o conteúdo do arquivo (só nome/tipo); `Status` hardcoded `"ready"`. → upload S3 + lifecycle real.
+- 🚨 **GAP-KB4 (P2/T3):** **não existe** pipeline de ingestão/embedding/retrieval (greenfield) nem o serviço. → microsserviço `watink-knowledge`.
+- 🚨 **GAP-KB5 (P3/T2):** páginas `KnowledgeBase` são stubs "em migração"; falta `aiEmbeddingModel` e seção S3 em Configurações. → UI real.
+
+## DAG
+
+### Fase 0 — Fundação / Infra (T3)
+- [ ] **KB-0.1** — Migration `CREATE EXTENSION vector` no banco `watink` | depends_on: [] | T3
+- [ ] **KB-0.2** — Scaffold `watink-knowledge` (FastAPI: Dockerfile.dev, serviço no compose.dev, /health, config, pool Postgres, middleware `X-Internal-Token`) | depends_on: [] | T3
+- [ ] **KB-0.3** — MinIO no compose.dev + bootstrap de bucket | depends_on: [] | T2
+- [ ] **KB-0.4** — Schema `KBChunk` (`halfvec(2048)` + HNSW `halfvec_cosine_ops`) — migration do serviço (Alembic/SQL) | depends_on: [KB-0.1, KB-0.2] | T3
+
+### Fase 1 — Loop RAG com TEXTO (prova o núcleo)
+- [ ] **KB-1.1** — (Go) `KnowledgeBaseSource`: campos `status/lastError/chunkCount/lastIngestedAt/updatable/refreshSchedule/nextRefreshAt` + AutoMigrate | depends_on: [] | T3
+- [ ] **KB-1.2** — (Go) Publisher de ingestão AMQP `knowledge.<tenant>.ingest` no Create (type=text) | depends_on: [KB-1.1] | T2
+- [ ] **KB-1.3** — (Py) Embedding client (omniroute `/v1/embeddings`, `aiEmbeddingModel`) + backoff | depends_on: [KB-0.2] | T2
+- [ ] **KB-1.4** — (Py) Chunker (~512 tok / 15% overlap, recursive) | depends_on: [KB-0.2] | T1
+- [ ] **KB-1.5** — (Py) Worker de ingestão (consume → chunk → embed → store `KBChunk` → publish status); idempotente + dedup por hash + lock por sourceId | depends_on: [KB-0.4, KB-1.3, KB-1.4] | T2
+- [ ] **KB-1.6** — (Go) Consumer de status `knowledge.<tenant>.status` → atualiza Source + `EmitToTenantRoom` (SSE) | depends_on: [KB-1.1] | T2
+- [ ] **KB-1.7** — (Py) Endpoint `POST /retrieve` (embed query → `halfvec` cosine `WHERE tenant+kb` → topK + citação) | depends_on: [KB-0.4, KB-1.3] | T2
+- [ ] **KB-1.8** — (Go) Retrieval HTTP client + **executor do nó `knowledge`** (registry; chama /retrieve; monta contexto; LLM via `aiclient` + guardrails; responde) | depends_on: [KB-1.7] | T2
+- [ ] **KB-1.9** — (FE) `AISettings`: campo `aiEmbeddingModel` | depends_on: [] | T1
+- [ ] **KB-1.10** — (test) E2E texto: base → fonte texto → `ready` → nó `knowledge` responde ancorado + isolamento A≠B | depends_on: [KB-1.5, KB-1.8] | T2
+
+### Fase 2 — Fonte ARQUIVO (S3 + parsing)
+- [ ] **KB-2.1** — (Go) S3 Storage Driver (cliente S3-compatível + config) | depends_on: [] | T2
+- [ ] **KB-2.2** — (Go) Settings backend: seção Armazenamento S3 (superadmin) | depends_on: [KB-2.1] | T2
+- [ ] **KB-2.3** — (FE) Settings: UI seção Armazenamento S3 | depends_on: [KB-2.2] | T1
+- [ ] **KB-2.4** — (Go) Fix `CreateSource`: upload S3 (`objectKey`) + publish ingest (type=file) | depends_on: [KB-2.1, KB-1.2] | T2
+- [ ] **KB-2.5** — (Py) Download S3 + parsers (pdf/docx/md/txt/csv/xlsx) no worker | depends_on: [KB-1.5, KB-2.1] | T2
+- [ ] **KB-2.6** — (FE) Página `KnowledgeBase` real (lista/CRUD/upload/status via SSE) | depends_on: [KB-1.6] | T2
+- [ ] **KB-2.7** — (test) E2E arquivo: upload PDF → `ready` (chunkCount>0) → nó cita o PDF; fora-da-base → "não encontrei" | depends_on: [KB-2.5, KB-2.6, KB-1.8] | T2
+
+### Riscos / notas
+- **omniroute em dev:** `localhost:20128` não é alcançável de dentro de container → usar `host.docker.internal:20128` no `watink-knowledge` (dev). Embedding nemotron já testado e funcional.
+- **Ownership do schema:** `KBChunk` + extensão = serviço Python (Alembic). Campos novos da Source = GORM AutoMigrate no `business`.
+- **Pré-requisito manual:** plugar/confirmar `aiEmbeddingModel` na UI; creds S3 (MinIO).
+
+### Status
+⏸️ **Aguardando aprovação T3 do usuário** antes de despachar execução.
