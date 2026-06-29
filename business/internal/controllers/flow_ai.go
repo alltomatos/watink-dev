@@ -22,10 +22,10 @@ NÓS DISPONÍVEIS (use o campo "type" exatamente assim):
 - trigger: gatilho de entrada. data: {"label":"...","triggerType":"keyword"|"firstContact"|"any"}
 - message: envia uma mensagem ao contato. data: {"label":"...","content":"texto da mensagem"}
 - menu: oferece opções numeradas; cada opção é uma saída. data: {"label":"...","menuTitle":"...","options":[{"id":"1","label":"Opção 1"},{"id":"2","label":"Opção 2"}]}
-- switch: decisão condicional. data: {"label":"..."}
+- switch: decisão por condição (ramifica). data: {"label":"..."}
 - knowledge: responde usando uma Base de Conhecimento (RAG). data: {"label":"...","knowledgeBaseId":""}
 - agent: agente de IA autônomo multi-turno. data: {"label":"...","knowledgeBaseId":"","persona":"...","maxTurns":5}
-- ticket: cria/transfere/encerra atendimento humano. data: {"label":"...","ticketAction":"transfer"}
+- ticket: cria/encaminha/encerra atendimento humano. data: {"label":"...","ticketAction":"transfer"}
 - end: fim do fluxo. data: {"label":"Fim"}
 
 EDGES conectam nós: {"id":"e1","source":"<id origem>","target":"<id destino>","sourceHandle":""}.
@@ -64,7 +64,7 @@ type respFlowNode struct {
 	Data     json.RawMessage `json:"data"`
 }
 
-// AISuggest handles POST /flows/ai — assistente conversacional de construção de
+// AISuggest handles POST /flows/ai — assistente de conversa de construção de
 // fluxos. Entende o objetivo do usuário, dá dicas e (quando o pedido está claro)
 // propõe um rascunho de grafo (nós + edges) que o frontend aplica no canvas.
 // Gerado via LLM (settings do tenant, padrão PipelineController.AISuggest); o grafo
@@ -156,7 +156,7 @@ func (fc *FlowController) AISuggest(c *gin.Context) {
 
 	nodes, edges, graphOK := validateAndLayout(parsed)
 	if !graphOK {
-		// Grafo inválido/ausente → só as dicas (assistente conversacional).
+		// Grafo inválido/ausente → só as dicas (assistente de conversa).
 		c.JSON(http.StatusOK, gin.H{"message": parsed.Message, "nodes": []any{}, "edges": []any{}})
 		return
 	}
