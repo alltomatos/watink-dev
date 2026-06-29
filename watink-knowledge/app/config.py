@@ -17,7 +17,10 @@ class Config:
     AMQP_URL = os.getenv("AMQP_URL", "amqp://guest:guest@rabbitmq:5672")
 
     # Segredo compartilhado business <-> knowledge (header X-Internal-Token).
-    INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "dev_internal_token_change_in_prod")
+    # SEM default hardcoded: se não for setado, o serviço falha fechado (auth.py
+    # recusa todas as chamadas) em vez de aceitar um segredo público conhecido.
+    # Em dev, o docker-compose injeta o valor.
+    INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
 
     # Em dev, o aiCustomBaseURL do tenant aponta p/ localhost:20128 (gateway no host).
     # De dentro do container isso precisa virar host.docker.internal.

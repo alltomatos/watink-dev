@@ -156,3 +156,58 @@ func TestDealController_Update_MovesStage(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	assert.Equal(t, float64(stage2ID), resp["stageId"])
 }
+
+// TestDealController_Create_RejectsCrossTenantRefs verifica que Create recusa um
+// stageId/contactId de OUTRO tenant (vazamento cross-tenant — achado P2-1).
+func TestDealController_Create_RejectsCrossTenantRefs(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupPipelineTestDB(t)
+	tenantA := uuid.New()
+	tenantB := uuid.New()
+
+	// tenant B owns a pipeline+stage and a contact
+	require.NoError(t, db.Exec(`INSERT INTO "Pipelines" (name, "tenantId") VALUES (?,?)`, "B-Funil", tenantB).Error)
+	var bPipelineID int
+	require.NoError(t, db.Raw(`SELECT id FROM "Pipelines" WHERE "tenantId" = ?`, tenantB).Scan(&bPipelineID).Error)
+	require.NoError(t, db.Exec(`INSERT INTO "PipelineStages" (name, "pipelineId") VALUES (?,?)`, "B-Stage", bPipelineID).Error)
+	var bStageID int
+	require.NoError(t, db.Raw(`SELECT id FROM "PipelineStages" WHERE "pipelineId" = ?`, bPipelineID).Scan(&bStageID).Error)
+	require.NoError(t, db.Exec(`INSERT INTO "Contacts" (name, "tenantId") VALUES (?,?)`, "B-Contact", tenantB).Error)
+	var bContactID int
+	require.NoError(t, db.Raw(`SELECT id FROM "Contacts" WHERE "tenantId" = ?`, tenantB).Scan(&bContactID).Error)
+
+	// tenant A tries to create a deal pointing at B's stage/contact → 400
+	payload, _ := json.Marshal(map[string]interface{}{
+		"name": "Roubado", "stageId": bStageID, "contactId": bContactID,
+	})
+	ctrl := NewDealController()
+	c, w := setupPipelineContext(t, db, tenantA, "POST", "/deals", payload)
+	ctrl.Create(c)
+	assert.Equal(t, http.StatusBadRequest, w.Code, "cross-tenant stageId must be rejected; body: %s", w.Body.String())
+}
+
+// TestDealController_Create_OwnRefs_Succeeds garante que o happy-path (stage e
+// contact do próprio tenant) continua criando o deal (201).
+func TestDealController_Create_OwnRefs_Succeeds(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupPipelineTestDB(t)
+	tenantID := uuid.New()
+
+	require.NoError(t, db.Exec(`INSERT INTO "Pipelines" (name, "tenantId") VALUES (?,?)`, "Funil", tenantID).Error)
+	var pipelineID int
+	require.NoError(t, db.Raw(`SELECT id FROM "Pipelines" WHERE "tenantId" = ?`, tenantID).Scan(&pipelineID).Error)
+	require.NoError(t, db.Exec(`INSERT INTO "PipelineStages" (name, "pipelineId") VALUES (?,?)`, "Aberto", pipelineID).Error)
+	var stageID int
+	require.NoError(t, db.Raw(`SELECT id FROM "PipelineStages" WHERE "pipelineId" = ?`, pipelineID).Scan(&stageID).Error)
+	require.NoError(t, db.Exec(`INSERT INTO "Contacts" (name, "tenantId") VALUES (?,?)`, "Cliente", tenantID).Error)
+	var contactID int
+	require.NoError(t, db.Raw(`SELECT id FROM "Contacts" WHERE "tenantId" = ?`, tenantID).Scan(&contactID).Error)
+
+	payload, _ := json.Marshal(map[string]interface{}{
+		"name": "Negócio", "stageId": stageID, "contactId": contactID,
+	})
+	ctrl := NewDealController()
+	c, w := setupPipelineContext(t, db, tenantID, "POST", "/deals", payload)
+	ctrl.Create(c)
+	assert.Equal(t, http.StatusCreated, w.Code, "own-tenant refs must succeed; body: %s", w.Body.String())
+}

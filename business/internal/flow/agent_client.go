@@ -51,10 +51,9 @@ func NewHTTPAgentClientFromEnv() *HTTPAgentClient {
 	if baseURL == "" {
 		baseURL = "http://watink-knowledge:8085"
 	}
+	// Sem fallback hardcoded: token vem do ambiente; vazio → watink-knowledge
+	// recusa (fail-closed) em vez de circular um segredo público conhecido.
 	token := os.Getenv("INTERNAL_TOKEN")
-	if token == "" {
-		token = "dev_internal_token_change_in_prod"
-	}
 	return &HTTPAgentClient{
 		baseURL: baseURL,
 		token:   token,
