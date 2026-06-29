@@ -49,11 +49,18 @@ turn-taking e valida auth/tenant.
   `knowledge.<tenant>.ingest` com `type:"url"`, `payload:{url}` (mesmo caminho de `text`/`file`).
 - O worker (`app/firecrawl.py`) faz `POST <FIRECRAWL_URL>/v1/scrape`
   (`{url, formats:["markdown"], onlyMainContent:true}`) → markdown → chunk/embed/store.
-- **Acesso ao Firecrawl:** prod (swarm) `http://firecrawl:3002`; dev via domínio público (Traefik).
-  Self-hosted (`mendable/firecrawl`) **não exige API key** — `FIRECRAWL_API_KEY` é opcional
-  (header `Authorization` só é enviado quando setado). Configurável por env
-  `FIRECRAWL_URL`/`FIRECRAWL_API_KEY`/`FIRECRAWL_TIMEOUT`.
-- **Apenas página única** (scrape). Crawl recursivo de site inteiro (`website`) é Fase 2.
+- **Acesso ao Firecrawl:** `http://firecrawl:3002` (rede `watink_net`). Self-hosted **não
+  exige API key** (`USE_DB_AUTHENTICATION=false`) — `FIRECRAWL_API_KEY` é opcional (header
+  `Authorization` só vai quando setado). Env: `FIRECRAWL_URL`/`FIRECRAWL_API_KEY`/`FIRECRAWL_TIMEOUT`.
+- **Stack do Firecrawl (dev = prod):** o `docker-compose.dev.yml` sobe o Firecrawl real
+  (mesmo de produção, só que via compose em vez de Swarm) — 5 serviços, 100% imagens
+  publicadas no GHCR (org `firecrawl`, **não** `mendableai`), sem build-from-source:
+  `firecrawl` (api+worker, `ghcr.io/firecrawl/firecrawl`) · `firecrawl-playwright` (JS) ·
+  `firecrawl-nuq-postgres` (fila NUQ) · `firecrawl-rabbitmq` · `firecrawl-redis`. Infra
+  **dedicada** (prefixo `firecrawl-*`) para não colidir com Redis/RabbitMQ/Postgres do Watink.
+  Custo: ~5GB de imagens, ~8GB RAM recomendado. Subir só o stack:
+  `docker compose -f docker-compose.dev.yml up -d firecrawl`.
+- **Apenas página única** (scrape, `/v1/scrape`). Crawl recursivo de site inteiro (`website`) é Fase 2.
 
 ---
 
