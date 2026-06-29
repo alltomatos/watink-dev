@@ -1,15 +1,25 @@
 ﻿import React from 'react';
-import { ArrowLeft, Save, Play, Download, Upload, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Play, Download, Upload, CheckCircle2, Loader2, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 
 interface FlowToolbarProps {
     flowName: string;
     flowId: string | undefined;
     isActive: boolean;
     saving: boolean;
+    whatsappId: number | null;
+    connections: { id: number; name: string }[];
+    onWhatsappChange: (whatsappId: number | null) => void;
     fileInputRef: React.RefObject<HTMLInputElement>;
     onNavigateBack: () => void;
     onToggle: () => void;
@@ -26,6 +36,9 @@ export function FlowToolbar({
     flowId,
     isActive,
     saving,
+    whatsappId,
+    connections,
+    onWhatsappChange,
     fileInputRef,
     onNavigateBack,
     onToggle,
@@ -63,6 +76,26 @@ export function FlowToolbar({
                     ref={fileInputRef}
                     onChange={onFileChange}
                 />
+
+                <div className="flex items-center gap-2 mr-1 border-r pr-3">
+                    <Smartphone size={14} className="text-muted-foreground shrink-0" />
+                    <Select
+                        value={whatsappId == null ? 'none' : String(whatsappId)}
+                        onValueChange={(v) => onWhatsappChange(v === 'none' ? null : Number(v))}
+                    >
+                        <SelectTrigger className="h-8 w-[180px] text-xs" title="Conexão atrelada a este fluxo">
+                            <SelectValue placeholder="Sem conexão" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="none">Sem conexão</SelectItem>
+                            {connections.map((conn) => (
+                                <SelectItem key={conn.id} value={String(conn.id)}>
+                                    {conn.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
 
                 <div className="flex items-center gap-2 mr-2 border-r pr-3">
                     <Label htmlFor="active-toggle" className="text-xs font-medium cursor-pointer">
