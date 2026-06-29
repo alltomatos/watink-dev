@@ -11,7 +11,7 @@ import logging
 import aio_pika
 from pgvector.psycopg import HalfVector, register_vector_async
 
-from . import parsers, s3client
+from . import firecrawl, parsers, s3client
 from .config import config
 from .chunker import chunk_text
 from .db import get_pool
@@ -88,6 +88,11 @@ async def _handle(message: aio_pika.IncomingMessage, events_ex):
                     raise RuntimeError("job de arquivo sem objectKey")
                 data = s3client.download_bytes(object_key)
                 raw = parsers.extract_text(file_name, data)
+            elif stype == "url":
+                target = payload.get("url", "")
+                if not target:
+                    raise RuntimeError("job de url sem url")
+                raw = await firecrawl.scrape_markdown(target)
             else:
                 raise RuntimeError(f"tipo de fonte '{stype}' ainda não suportado")
 
@@ -103,6 +108,9 @@ async def _handle(message: aio_pika.IncomingMessage, events_ex):
             await _publish_status(events_ex, tenant_id, source_id, "ready", chunk_count=len(chunks))
             log.info("fonte %s ingerida: %d chunks (%s)", source_id, len(chunks), model)
 
+        except firecrawl.FirecrawlError as e:
+            log.warning("firecrawl falhou na fonte %s: %s", source_id, e)
+            await _publish_status(events_ex, tenant_id, source_id, "error", error=str(e)[:300])
         except EmbeddingError as e:
             log.warning("embedding falhou na fonte %s: %s", source_id, e)
             await _publish_status(events_ex, tenant_id, source_id, "error", error=str(e)[:300])

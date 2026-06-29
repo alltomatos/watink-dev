@@ -37,11 +37,30 @@ turn-taking e valida auth/tenant.
 |------------|----------------------------------|-----|
 | `text`     | texto direto no payload          | ✅  |
 | `file`     | download do S3 → parse (pdf/docx/md/txt/csv/xlsx) | ✅ |
-| `url`      | Firecrawl (1 página → markdown)  | Fase 2 |
+| `url`      | Firecrawl (1 página → markdown)  | ✅  |
 | `website`  | Firecrawl crawl recursivo / browserless (JS) | Fase 2 |
 | `git`      | clone → parse de arquivos        | Fase 3 |
 
 > WebSearch (omniroute `/v1/search`) **descobre** URLs; não extrai conteúdo.
+
+### Fonte `url` (Firecrawl)
+
+- O `business` valida `url` não-vazia, grava a Source em `pending` e publica
+  `knowledge.<tenant>.ingest` com `type:"url"`, `payload:{url}` (mesmo caminho de `text`/`file`).
+- O worker (`app/firecrawl.py`) faz `POST <FIRECRAWL_URL>/v1/scrape`
+  (`{url, formats:["markdown"], onlyMainContent:true}`) → markdown → chunk/embed/store.
+- **Acesso ao Firecrawl:** `http://firecrawl:3002` (rede `watink_net`). Self-hosted **não
+  exige API key** (`USE_DB_AUTHENTICATION=false`) — `FIRECRAWL_API_KEY` é opcional (header
+  `Authorization` só vai quando setado). Env: `FIRECRAWL_URL`/`FIRECRAWL_API_KEY`/`FIRECRAWL_TIMEOUT`.
+- **Stack do Firecrawl (dev = prod):** o `docker-compose.dev.yml` sobe o Firecrawl real
+  (mesmo de produção, só que via compose em vez de Swarm) — 5 serviços, 100% imagens
+  publicadas no GHCR (org `firecrawl`, **não** `mendableai`), sem build-from-source:
+  `firecrawl` (api+worker, `ghcr.io/firecrawl/firecrawl`) · `firecrawl-playwright` (JS) ·
+  `firecrawl-nuq-postgres` (fila NUQ) · `firecrawl-rabbitmq` · `firecrawl-redis`. Infra
+  **dedicada** (prefixo `firecrawl-*`) para não colidir com Redis/RabbitMQ/Postgres do Watink.
+  Custo: ~5GB de imagens, ~8GB RAM recomendado. Subir só o stack:
+  `docker compose -f docker-compose.dev.yml up -d firecrawl`.
+- **Apenas página única** (scrape, `/v1/scrape`). Crawl recursivo de site inteiro (`website`) é Fase 2.
 
 ---
 

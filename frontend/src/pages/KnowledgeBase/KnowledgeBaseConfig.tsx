@@ -144,9 +144,11 @@ const KnowledgeBaseConfig: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [tab, setTab] = useState<"text" | "file">("text");
+  const [tab, setTab] = useState<"text" | "file" | "url">("text");
   const [textName, setTextName] = useState("");
   const [textContent, setTextContent] = useState("");
+  const [urlName, setUrlName] = useState("");
+  const [urlValue, setUrlValue] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -199,6 +201,8 @@ const KnowledgeBaseConfig: React.FC = () => {
   const resetDialog = (): void => {
     setTextName("");
     setTextContent("");
+    setUrlName("");
+    setUrlValue("");
     setFile(null);
     setTab("text");
   };
@@ -212,6 +216,11 @@ const KnowledgeBaseConfig: React.FC = () => {
       formData.append("type", "text");
       formData.append("name", textName.trim() || "Texto");
       formData.append("content", textContent);
+    } else if (tab === "url") {
+      if (!urlValue.trim()) return;
+      formData.append("type", "url");
+      formData.append("name", urlName.trim() || urlValue.trim());
+      formData.append("url", urlValue.trim());
     } else {
       if (!file) return;
       formData.append("type", "file");
@@ -261,7 +270,11 @@ const KnowledgeBaseConfig: React.FC = () => {
   };
 
   const canSubmit =
-    tab === "text" ? Boolean(textContent.trim()) : Boolean(file);
+    tab === "text"
+      ? Boolean(textContent.trim())
+      : tab === "url"
+        ? Boolean(urlValue.trim())
+        : Boolean(file);
 
   return (
     <PageContainer>
@@ -360,11 +373,12 @@ const KnowledgeBaseConfig: React.FC = () => {
 
           <Tabs
             value={tab}
-            onValueChange={(v) => setTab(v as "text" | "file")}
+            onValueChange={(v) => setTab(v as "text" | "file" | "url")}
             className="mt-2"
           >
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="text">Texto</TabsTrigger>
+              <TabsTrigger value="url">URL</TabsTrigger>
               <TabsTrigger value="file">Arquivo</TabsTrigger>
             </TabsList>
 
@@ -386,6 +400,31 @@ const KnowledgeBaseConfig: React.FC = () => {
                   onChange={(e) => setTextContent(e.target.value)}
                   placeholder="Cole aqui o texto que a IA deve aprender"
                   rows={8}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="url" className="flex flex-col gap-4 pt-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="source-url">Endereço (URL)</Label>
+                <Input
+                  id="source-url"
+                  type="url"
+                  value={urlValue}
+                  onChange={(e) => setUrlValue(e.target.value)}
+                  placeholder="https://exemplo.com/pagina"
+                />
+                <p className="text-xs text-muted-foreground">
+                  A página será raspada e convertida em texto para a IA aprender.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="source-url-name">Nome (opcional)</Label>
+                <Input
+                  id="source-url-name"
+                  value={urlName}
+                  onChange={(e) => setUrlName(e.target.value)}
+                  placeholder="Ex: Notícias do dia"
                 />
               </div>
             </TabsContent>

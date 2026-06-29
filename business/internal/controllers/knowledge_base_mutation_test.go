@@ -228,6 +228,78 @@ func TestKnowledgeBaseCreateSource(t *testing.T) {
 			t.Fatalf("expected 404, got %d", res.Code)
 		}
 	})
+
+	t.Run("url source without url returns 400", func(t *testing.T) {
+		body := bytes.NewBufferString("type=url&name=x")
+		req := httptest.NewRequest(http.MethodPost, "/knowledge-bases/"+strconv.Itoa(kb.ID)+"/sources", body)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		res := httptest.NewRecorder()
+		r.ServeHTTP(res, req)
+
+		if res.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 for url source without url, got %d", res.Code)
+		}
+	})
+
+	t.Run("url source sets pending and publishes ingest job", func(t *testing.T) {
+		pub := &mockKnowledgeJobPublisher{}
+		kbcPub := NewKnowledgeBaseController(pub, nil)
+		rPub := gin.New()
+		rPub.Use(testScopedMiddleware(db, tenantID.String()))
+		rPub.POST("/knowledge-bases/:knowledgeBaseId/sources", kbcPub.CreateSource)
+
+		body := bytes.NewBufferString("type=url&url=https://example.com/news&name=News")
+		req := httptest.NewRequest(http.MethodPost, "/knowledge-bases/"+strconv.Itoa(kb.ID)+"/sources", body)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		res := httptest.NewRecorder()
+		rPub.ServeHTTP(res, req)
+
+		if res.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d â€” %s", res.Code, res.Body.String())
+		}
+		var src models.KnowledgeBaseSource
+		if err := json.Unmarshal(res.Body.Bytes(), &src); err != nil {
+			t.Fatal(err)
+		}
+		if src.Status != "pending" {
+			t.Fatalf("expected status pending, got %q", src.Status)
+		}
+		if src.Type != "url" {
+			t.Fatalf("expected type url, got %q", src.Type)
+		}
+		if pub.calls != 1 {
+			t.Fatalf("expected exactly 1 publish call, got %d", pub.calls)
+		}
+		job, ok := pub.lastPayload.(map[string]interface{})
+		if !ok {
+			t.Fatalf("payload is not a map: %T", pub.lastPayload)
+		}
+		if job["type"] != "url" {
+			t.Fatalf("job type = %v, want url", job["type"])
+		}
+		payload, ok := job["payload"].(map[string]interface{})
+		if !ok || payload["url"] != "https://example.com/news" {
+			t.Fatalf("job payload url missing/wrong: %v", job["payload"])
+		}
+		if want := "knowledge." + tenantID.String() + ".ingest"; pub.lastRoutingKey != want {
+			t.Fatalf("routing key = %q, want %q", pub.lastRoutingKey, want)
+		}
+	})
+}
+
+// mockKnowledgeJobPublisher captures published ingestion jobs for assertions
+// (DI pura: injetado via construtor, sem variável global de mock).
+type mockKnowledgeJobPublisher struct {
+	calls          int
+	lastRoutingKey string
+	lastPayload    interface{}
+}
+
+func (m *mockKnowledgeJobPublisher) PublishKnowledgeJob(routingKey string, payload interface{}) error {
+	m.calls++
+	m.lastRoutingKey = routingKey
+	m.lastPayload = payload
+	return nil
 }
 
 func TestKnowledgeBaseDeleteSource(t *testing.T) {
