@@ -34,6 +34,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	pipelineController := controllers.NewPipelineController()
 	dealController := controllers.NewDealController()
 	kbController := controllers.NewKnowledgeBaseController(rabbitMQ, s3Store)
+	kbInspectController := controllers.NewKnowledgeInspectController(flow.NewHTTPRetrieverFromEnv())
 	groupController := controllers.NewGroupController(container.PermissionRepo)
 	roleController := controllers.NewRoleController(container.PermissionRepo)
 	// FlowBuilder FASE 1: build a channel registry + runtime skeleton for the
@@ -167,6 +168,9 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.DELETE("/knowledge-bases/:knowledgeBaseId", kbController.Delete)
 		protected.POST("/knowledge-bases/:knowledgeBaseId/sources", kbController.CreateSource)
 		protected.DELETE("/knowledge-bases/:knowledgeBaseId/sources/:sourceId", kbController.DeleteSource)
+		// Inspeção read-only do conhecimento vetorizado (chunks + playground de recuperação).
+		protected.GET("/knowledge-bases/:knowledgeBaseId/sources/:sourceId/chunks", kbInspectController.Chunks)
+		protected.POST("/knowledge-bases/:knowledgeBaseId/query", kbInspectController.Query)
 
 		// Users
 		protected.GET("/users", userController.ListUsers)

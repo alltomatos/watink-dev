@@ -6,8 +6,10 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   Clock,
   FileText,
+  FlaskConical,
   Globe,
   Loader2,
   Plus,
@@ -19,6 +21,7 @@ import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import { subscribeToSocket } from "../../services/sse-client";
 import ConfirmationModal from "../../components/ConfirmationModal";
+import RetrievalPlayground from "./RetrievalPlayground";
 
 import {
   PageContainer,
@@ -64,6 +67,15 @@ interface KnowledgeBase {
   name: string;
   description?: string;
   sources?: KBSource[];
+}
+
+interface ChunkView {
+  ordinal: number;
+  content: string;
+  charCount: number;
+  model: string;
+  dim: number;
+  contentHash: string;
 }
 
 interface KnowledgeSourceEvent {
@@ -154,6 +166,35 @@ const KnowledgeBaseConfig: React.FC = () => {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<KBSource | null>(null);
+
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [chunksBySource, setChunksBySource] = useState<Record<number, ChunkView[]>>({});
+  const [loadingChunks, setLoadingChunks] = useState<number | null>(null);
+  const [playgroundOpen, setPlaygroundOpen] = useState(false);
+
+  const toggleChunks = async (source: KBSource): Promise<void> => {
+    if (expandedId === source.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(source.id);
+    if (chunksBySource[source.id]) return;
+    setLoadingChunks(source.id);
+    try {
+      const { data } = await api.get<{ chunks: ChunkView[] }>(
+        `/knowledge-bases/${knowledgeBaseId}/sources/${source.id}/chunks`
+      );
+      setChunksBySource((prev) => ({
+        ...prev,
+        [source.id]: Array.isArray(data.chunks) ? data.chunks : [],
+      }));
+    } catch (err) {
+      toastError(err);
+      setExpandedId(null);
+    } finally {
+      setLoadingChunks(null);
+    }
+  };
 
   const fetchBase = useCallback(async () => {
     if (!knowledgeBaseId) return;
@@ -296,6 +337,14 @@ const KnowledgeBaseConfig: React.FC = () => {
           <ArrowLeft className="h-4 w-4" />
           Voltar
         </Button>
+        <Button
+          variant="outline"
+          onClick={() => setPlaygroundOpen(true)}
+          disabled={sources.length === 0}
+        >
+          <FlaskConical className="h-4 w-4" />
+          Testar recuperação
+        </Button>
         <Button onClick={() => setDialogOpen(true)}>
           <Plus className="h-4 w-4" />
           Adicionar fonte
@@ -327,34 +376,88 @@ const KnowledgeBaseConfig: React.FC = () => {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {sources.map((source) => (
-              <Card
-                key={source.id}
-                className="flex items-center gap-4 px-4 py-3"
-              >
-                <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                  <SourceIcon source={source} />
+            {sources.map((source) => {
+              const isExpandable = source.status === "ready";
+              const isOpen = expandedId === source.id;
+              const chunks = chunksBySource[source.id];
+              return (
+                <div key={source.id} className="flex flex-col">
+                  <Card className="flex items-center gap-4 px-4 py-3">
+                    <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                      <SourceIcon source={source} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground truncate">
+                        {sourceLabel(source)}
+                      </p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                        {source.type}
+                      </p>
+                    </div>
+                    <StatusBadge source={source} />
+                    {isExpandable && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={isOpen ? "Recolher chunks" : "Ver chunks"}
+                        onClick={() => toggleChunks(source)}
+                        className="shrink-0 text-muted-foreground"
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform ${
+                            isOpen ? "rotate-180" : ""
+                          }`}
+                        />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Remover fonte"
+                      onClick={() => handleRequestDelete(source)}
+                      className="shrink-0 text-muted-foreground hover:text-[hsl(var(--destructive))]"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </Card>
+
+                  {isOpen && (
+                    <div className="mx-2 mt-1 rounded-xl border bg-muted/30 p-3">
+                      {loadingChunks === source.id ? (
+                        <div className="flex items-center justify-center py-4 text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : !chunks || chunks.length === 0 ? (
+                        <p className="py-3 text-center text-sm text-muted-foreground">
+                          Nenhum chunk para esta fonte.
+                        </p>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <p className="text-xs text-muted-foreground">
+                            {chunks.length} chunk(s) · modelo {chunks[0].model} ·{" "}
+                            {chunks[0].dim} dimensões
+                          </p>
+                          {chunks.map((ch) => (
+                            <div
+                              key={ch.ordinal}
+                              className="rounded-lg border bg-background p-2.5"
+                            >
+                              <div className="mb-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                <span className="font-medium">#{ch.ordinal}</span>
+                                <span>· {ch.charCount} caracteres</span>
+                              </div>
+                              <p className="whitespace-pre-wrap text-sm text-foreground">
+                                {ch.content}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-foreground truncate">
-                    {sourceLabel(source)}
-                  </p>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                    {source.type}
-                  </p>
-                </div>
-                <StatusBadge source={source} />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Remover fonte"
-                  onClick={() => handleRequestDelete(source)}
-                  className="shrink-0 text-muted-foreground hover:text-[hsl(var(--destructive))]"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </PageContent>
@@ -467,6 +570,12 @@ const KnowledgeBaseConfig: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <RetrievalPlayground
+        knowledgeBaseId={knowledgeBaseId ?? ""}
+        open={playgroundOpen}
+        onOpenChange={setPlaygroundOpen}
+      />
     </PageContainer>
   );
 };
