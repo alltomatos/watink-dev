@@ -53,16 +53,33 @@ async def _store_chunks(tenant_id, kb_id, source_id, chunks, vectors, model):
                 'DELETE FROM "KBChunk" WHERE "tenantId" = %s AND "sourceId" = %s',
                 (tenant_id, source_id),
             )
-            for i, (content, vec) in enumerate(zip(chunks, vectors)):
-                chash = hashlib.sha256(content.encode("utf-8")).hexdigest()
-                await cur.execute(
+            # Insert em LOTE (executemany) em vez de N execute() serializados —
+            # um documento grande gera dezenas/centenas de chunks; um execute por
+            # chunk multiplicava os round-trips ao banco e prendia a conexão do
+            # pool por mais tempo (re-ingest repetia o custo inteiro).
+            rows = [
+                (
+                    tenant_id,
+                    kb_id,
+                    source_id,
+                    content,
+                    hashlib.sha256(content.encode("utf-8")).hexdigest(),
+                    HalfVector(vec),
+                    model,
+                    len(vec),
+                    i,
+                )
+                for i, (content, vec) in enumerate(zip(chunks, vectors))
+            ]
+            if rows:
+                await cur.executemany(
                     '''
                     INSERT INTO "KBChunk"
                         ("tenantId","knowledgeBaseId","sourceId",content,"contentHash",embedding,model,dim,ordinal)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT ("tenantId","knowledgeBaseId","sourceId","contentHash") DO NOTHING
                     ''',
-                    (tenant_id, kb_id, source_id, content, chash, HalfVector(vec), model, len(vec), i),
+                    rows,
                 )
         await conn.commit()
 
