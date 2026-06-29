@@ -76,6 +76,9 @@ const FlowBuilderContent = () => {
                 flowId={fb.flowId}
                 isActive={fb.isActive}
                 saving={fb.saving}
+                whatsappId={fb.whatsappId}
+                connections={fb.connections}
+                onWhatsappChange={fb.setWhatsappId}
                 fileInputRef={fb.fileInputRef}
                 onNavigateBack={() => fb.navigate('/flowbuilder')}
                 onToggle={fb.handleToggle}

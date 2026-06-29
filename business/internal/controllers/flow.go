@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -181,12 +183,9 @@ func (fc *FlowController) Create(c *gin.Context) {
 	// triggerType/triggerValue columns the runtime matches against.
 	proj := projectFlowTrigger(req.Nodes, req.Edges)
 
-	// The trigger node's connection binding (whatsappId) is the source of truth;
-	// fall back to a flow-level whatsappId when the node carries none.
+	// The flow-level whatsappId (set in the editor toolbar) is the source of truth
+	// for the connection binding — a flow may be created with none and bound later.
 	whatsappID := req.WhatsAppID
-	if proj.WhatsAppID != nil {
-		whatsappID = proj.WhatsAppID
-	}
 
 	flow := models.Flow{
 		Name:         flowName,
@@ -264,10 +263,16 @@ func (fc *FlowController) Update(c *gin.Context) {
 	}
 
 	var req flowUpdateInput
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		utils.RespondWithBindError(c, err)
 		return
 	}
+	// Detecta se o request incluiu explicitamente "whatsappId" (mesmo null), para o
+	// editor poder ATRELAR, TROCAR ou DESATRELAR (detach) a conexão — vs um PATCH que
+	// omite o campo (preserva). Um *int sozinho não distingue null de ausente.
+	var present map[string]json.RawMessage
+	_ = c.ShouldBindBodyWith(&present, binding.JSON)
+	_, whatsappProvided := present["whatsappId"]
 
 	// Build the partial update set; only present fields are touched.
 	updates := map[string]interface{}{}
@@ -308,8 +313,10 @@ func (fc *FlowController) Update(c *gin.Context) {
 	if req.Active != nil {
 		updates["active"] = *req.Active
 	}
-	if req.WhatsAppID != nil {
-		updates["whatsappId"] = *req.WhatsAppID
+	// Conexão: o editor é a fonte da verdade. Presente (valor ou null) → grava;
+	// ausente → preserva. req.WhatsAppID é *int → GORM grava o valor ou NULL (detach).
+	if whatsappProvided {
+		updates["whatsappId"] = req.WhatsAppID
 	}
 
 	// FB0-B4: only re-validate the graph when nodes/edges are part of this PATCH.
@@ -323,10 +330,8 @@ func (fc *FlowController) Update(c *gin.Context) {
 		proj := projectFlowTrigger(effNodes, effEdges)
 		updates["triggerType"] = proj.Type
 		updates["triggerValue"] = proj.Value
-		// The trigger node's connection binding is the source of truth.
-		if proj.WhatsAppID != nil {
-			updates["whatsappId"] = *proj.WhatsAppID
-		}
+		// A conexão NÃO vem mais do nó de gatilho — é o editor (toolbar) quem define
+		// o whatsappId do fluxo (ver bloco de presença acima).
 	}
 
 	// Activation guard: block turning a flow ACTIVE while its effective graph
