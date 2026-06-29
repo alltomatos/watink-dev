@@ -26,6 +26,14 @@ class Config:
     # Dimensão fixa global do embedding (halfvec). Espelha o modelo plugado no omniroute.
     EMBED_DIM = int(os.getenv("EMBED_DIM", "2048"))
 
+    # Firecrawl (web scraping → markdown) para fontes do tipo `url`. Em prod (swarm),
+    # o serviço é alcançável em http://firecrawl:3002 na rede overlay; em dev, via o
+    # domínio público (Traefik). O deploy self-hosted do devops não exige autenticação,
+    # então FIRECRAWL_API_KEY é opcional (o header só é enviado se estiver setado).
+    FIRECRAWL_URL = os.getenv("FIRECRAWL_URL", "")
+    FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY", "")
+    FIRECRAWL_TIMEOUT = int(os.getenv("FIRECRAWL_TIMEOUT", "60"))
+
     # Chunking (~512 tokens, overlap ~15%).
     CHUNK_TOKENS = int(os.getenv("CHUNK_TOKENS", "512"))
     CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "77"))

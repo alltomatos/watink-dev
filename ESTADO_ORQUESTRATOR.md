@@ -568,3 +568,50 @@ Item existe (MainNavItems.tsx:110-122) gated por `flows:read`. **Fix:** garantir
 
 **Fase 1 (MVP RAG texto) COMPLETA e validada.** Branch `feat/knowledge-base-rag-mvp`.
 Próximo: push + PR → `develop`. Depois **Fase 2** (fonte arquivo: S3/MinIO + parsing; nó `agent`).
+
+---
+
+# Épico: Base de Conhecimento — Fontes Web/URL (Firecrawl) — Track A (2026-06-28)
+
+> **Origem:** `/orchestrator vamos aos próximos passos` → escolha "Track A".
+> **Branch:** `feat/knowledge-url-sources` (base `develop` @ 8ad4c32f2, plataforma RAG+Agent completa).
+> **Tier global: T2** (aditivo; sem schema novo — model `KnowledgeBaseSource` já tem `url`+lifecycle).
+
+## Auditoria (GAP)
+- 🚨 **GAP-KB-WEB (P1):** `CreateSource` aceitava `type=url` (e era o **default** com type vazio), gravava `Status:"ready"` e **nunca publicava job** → fonte de site mentia "pronto" com 0 chunks. Worker Python sem handler de url. (Confirmado em `knowledge_base_mutation.go:189-300` + grep firecrawl/url=0 no serviço.)
+
+## Decisões de MVP (mentor)
+- **Scrape de página única** via Firecrawl `/v1/scrape` → markdown (cai no chunker existente). Crawl de site (`website`) e browserless ficam Fase 2.
+- Firecrawl self-hosted do devops (`mendable/firecrawl`, porta 3002, **sem API key**); cliente env-driven (`FIRECRAWL_URL`/`FIRECRAWL_API_KEY`/`FIRECRAWL_TIMEOUT`). Prod: `http://firecrawl:3002`; dev: domínio público.
+
+## DAG + Execução
+| Task | Camada | Status | Nota |
+|------|--------|--------|------|
+| A-P2 config FIRECRAWL_* | Py | ✅ | env-driven, key opcional |
+| A-P1 `firecrawl.py` scrape_markdown | Py | ✅ | httpx injetável; FirecrawlError; fallback `content` (v0) |
+| A-P3 `ingest.py` branch `url` | Py | ✅ | scrape→chunk/embed/store; handler de erro dedicado |
+| A-P4 testes firecrawl (MockTransport) | Py | ✅ | 9 casos (ok/auth/erros/empty) — ruff clean, 26/26 suíte |
+| A-G1 `CreateSource` url→pending+publish | Go | ✅ | corrige GAP-KB-WEB; valida url obrigatória |
+| A-G2 testes CreateSource url | Go | ✅ | 400 sem url + publish job (mock publisher) — verde |
+| A-I1 compose env FIRECRAWL_* | infra | ✅ | watink-knowledge |
+| A-F1 UI aba "URL" no dialog | FE | ✅ | typecheck+eslint clean |
+| A-T1 **E2E ao vivo** | test | ⏳ | aguarda `FIRECRAWL_URL` (domínio do devops) + recreate do container |
+
+**Gate de build:** Go build/vet/fmt ✅ · Python ruff + 26 testes ✅ · FE typecheck + eslint ✅.
+
+### Pivô — paridade dev/prod (2026-06-28): Firecrawl REAL no compose (shim removido)
+
+Decisão do usuário: "dev = prod, mas em Docker standalone (Swarm só em produção)". Logo, o `docker-compose.dev.yml` sobe o **Firecrawl real**, não o shim.
+
+**Pesquisa (workflow `firecrawl-selfhost-research`, 6 agentes, verificação adversarial):**
+- Firecrawl atual NÃO é imagem única (a `mendable/firecrawl:latest` sumiu). Stack = 5 serviços. Imagens publicadas no GHCR **org `firecrawl`** (não `mendableai`) são pulláveis → **sem build-from-source**.
+- Veredito da verificação: `matches_canonical=true`, zero critical/high. 2 mediums incorporados (healthcheck `pg_isready` no nuq-postgres + gate `service_healthy`; `FIRECRAWL_URL` default já apontando p/ o real).
+
+**Aplicado:**
+- `docker-compose.dev.yml`: +5 serviços (`firecrawl` `ghcr.io/firecrawl/firecrawl:2.10.14` · `firecrawl-playwright` · `firecrawl-nuq-postgres` · `firecrawl-rabbitmq` · `firecrawl-redis`), infra **dedicada** (prefixo `firecrawl-*`, sem colidir com Redis/RabbitMQ/Postgres do Watink), `USE_DB_AUTHENTICATION=false`, `shm_size:2gb` no playwright, porta 5432 não exposta, volume `firecrawl_nuq_pgdata`.
+- `FIRECRAWL_URL` default → `http://firecrawl:3002`.
+- **Shim `infra/firecrawl-dev` REMOVIDO** (era stopgap, nunca mergeado).
+- docs/agents/knowledge-base.md atualizado (stack real).
+
+**Custo:** ~5GB imagens · ~8GB RAM recomendado (Windows/Docker Desktop). Gotchas mitigados (init nuq-postgres #2264/#2317, race rabbitmq #2583, cred hardcoded #2384, shm Chromium).
+**Pendente:** bring-up (`up -d firecrawl`) + E2E real → atualizar PR #264 (vira PR de paridade dev/prod) → merge com "ok" do usuário.
