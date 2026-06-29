@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 
+	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
@@ -11,10 +12,13 @@ import (
 
 // KnowledgeBaseController encapsulates knowledge base operations with RLS-scoped DB from auth middleware.
 // All queries are automatically tenant-scoped via auth.GetDB(c).
-type KnowledgeBaseController struct{}
+type KnowledgeBaseController struct {
+	publisher domain.KnowledgeJobPublisher
+	store     domain.ObjectStore
+}
 
-func NewKnowledgeBaseController() *KnowledgeBaseController {
-	return &KnowledgeBaseController{}
+func NewKnowledgeBaseController(publisher domain.KnowledgeJobPublisher, store domain.ObjectStore) *KnowledgeBaseController {
+	return &KnowledgeBaseController{publisher: publisher, store: store}
 }
 
 // @Summary      Listar bases de conhecimento

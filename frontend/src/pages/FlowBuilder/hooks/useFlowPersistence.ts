@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getConnectedEdges } from 'reactflow';
-import type { Node, Edge } from 'reactflow';
+import { getConnectedEdges } from '@xyflow/react';
+import type { Node, Edge } from '@xyflow/react';
 import { toast } from 'react-toastify';
 
 import api from '../../../services/api';
 import toastError from '../../../errors/toastError';
+import { stripLegacyDimensions } from '../flowBuilderTypes';
 
 interface UseFlowPersistenceOptions {
     flowId: string | undefined;
@@ -33,6 +34,10 @@ export function useFlowPersistence({
     const [isActive, setIsActive] = useState(false);
     const [aiEnabled, setAiEnabled] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
+    // Conexão atrelada ao fluxo (Flow.WhatsAppID). null = sem conexão. Controlada
+    // pelo editor (toolbar) — fonte da verdade; pode ser definida depois ou trocada.
+    const [whatsappId, setWhatsappId] = useState<number | null>(null);
+    const [connections, setConnections] = useState<{ id: number; name: string }[]>([]);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -52,6 +57,7 @@ export function useFlowPersistence({
             }
         };
         fetchSettings();
+        api.get('/whatsapp').then((r) => setConnections(r.data)).catch(() => {});
     }, []);
 
     useEffect(() => {
@@ -60,9 +66,10 @@ export function useFlowPersistence({
                 const { data } = await api.get(`/flows/${flowId}`);
                 setFlowName(data.name);
                 setIsActive(data.active !== false);
+                setWhatsappId(typeof data.whatsappId === 'number' ? data.whatsappId : null);
 
                 if (Array.isArray(data.nodes)) {
-                    setNodes(hydrateNodes(data.nodes as Node[]));
+                    setNodes(hydrateNodes(stripLegacyDimensions(data.nodes as Node[])));
                 }
                 if (Array.isArray(data.edges)) setEdges(data.edges as Edge[]);
                 setLoading(false);
@@ -84,6 +91,7 @@ export function useFlowPersistence({
                 nodes,
                 edges,
                 active: isActive,
+                whatsappId,
             });
             if (!silent) toast.success('Fluxo salvo com sucesso');
         } catch (err) {
@@ -91,7 +99,7 @@ export function useFlowPersistence({
         } finally {
             if (!silent) setSaving(false);
         }
-    }, [flowId, flowName, nodes, edges, isActive]);
+    }, [flowId, flowName, nodes, edges, isActive, whatsappId]);
 
     useEffect(() => {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -114,13 +122,14 @@ export function useFlowPersistence({
                 nodes,
                 edges,
                 active: next,
+                whatsappId,
             });
             toast.success(next ? 'Fluxo ativado' : 'Fluxo pausado');
         } catch (err) {
             setIsActive(!next);
             toastError(err);
         }
-    }, [isActive, flowId, flowName, nodes, edges]);
+    }, [isActive, flowId, flowName, nodes, edges, whatsappId]);
 
     const validateFlow = useCallback(() => {
         const connectedEdges = getConnectedEdges(nodes, edges);
@@ -145,6 +154,9 @@ export function useFlowPersistence({
         aiEnabled,
         isChatOpen,
         setIsChatOpen,
+        whatsappId,
+        setWhatsappId,
+        connections,
         handleSave,
         handleToggle,
         validateFlow,

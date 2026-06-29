@@ -218,6 +218,42 @@ paths:
       summary: Atualizar contato
       tags:
       - contacts
+  /contacts/{contactId}/sync:
+    post:
+      description: Solicita ao engine que busque a foto de perfil atualizada do contato
+        no WhatsApp
+      parameters:
+      - description: ID do contato
+        in: path
+        name: contactId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Sincronizar foto do contato via WhatsApp
+      tags:
+      - contacts
   /contacts/import:
     post:
       description: Dispara a importação da agenda de contatos da sessão WhatsApp conectada
@@ -257,6 +293,81 @@ paths:
       summary: Dados do dashboard
       tags:
       - dashboard
+  /deals:
+    get:
+      parameters:
+      - description: ID do pipeline
+        in: query
+        name: pipelineId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Listar deals do pipeline
+      tags:
+      - deals
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados do deal
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar deal
+      tags:
+      - deals
+  /deals/{id}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do deal
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Campos a atualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar deal
+      tags:
+      - deals
   /entities/{entityType}/{id}/tags/sync:
     put:
       consumes:
@@ -293,6 +404,27 @@ paths:
       summary: Sincronizar tags de entidade
       tags:
       - tags
+  /events:
+    get:
+      description: Opens a Server-Sent Events stream for real-time updates. Auth via
+        token query param.
+      parameters:
+      - description: JWT token
+        in: query
+        name: token
+        required: true
+        type: string
+      - description: 'Extra rooms (csv): chat:{id}, tickets:{status}, notification,
+          helpdesk-kanban'
+        in: query
+        name: rooms
+        type: string
+      produces:
+      - text/event-stream
+      responses: {}
+      summary: SSE event stream
+      tags:
+      - realtime
   /flows:
     get:
       produces:
@@ -403,6 +535,82 @@ paths:
       security:
       - BearerAuth: []
       summary: Atualizar flow
+      tags:
+      - flows
+  /flows/{flowId}/run:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do flow
+        in: path
+        name: flowId
+        required: true
+        type: integer
+      - description: '{ticketId}'
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Iniciar flow sob demanda
+      tags:
+      - flows
+  /flows/{flowId}/simulate:
+    post:
+      parameters:
+      - description: ID do flow
+        in: path
+        name: flowId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Simular flow (não implementado)
+      tags:
+      - flows
+  /flows/ai:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: '{messages:[{role,content}]} ou {prompt}'
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assistente de IA do FlowBuilder (dicas + rascunho de fluxo)
       tags:
       - flows
   /groups:
@@ -667,6 +875,29 @@ paths:
       summary: Atualizar base de conhecimento
       tags:
       - knowledge-base
+  /knowledge-bases/{knowledgeBaseId}/query:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID da base
+        in: path
+        name: knowledgeBaseId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Playground de recuperação (query → top-k + score)
+      tags:
+      - knowledge-base
   /knowledge-bases/{knowledgeBaseId}/sources:
     post:
       consumes:
@@ -724,6 +955,79 @@ paths:
       summary: Remover fonte da base
       tags:
       - knowledge-base
+  /knowledge-bases/{knowledgeBaseId}/sources/{sourceId}/chunks:
+    get:
+      parameters:
+      - description: ID da base
+        in: path
+        name: knowledgeBaseId
+        required: true
+        type: integer
+      - description: ID da fonte
+        in: path
+        name: sourceId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Listar chunks de uma fonte
+      tags:
+      - knowledge-base
+  /knowledge-bases/{knowledgeBaseId}/sources/{sourceId}/reingest:
+    post:
+      parameters:
+      - description: ID da base
+        in: path
+        name: knowledgeBaseId
+        required: true
+        type: integer
+      - description: ID da fonte
+        in: path
+        name: sourceId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reprocessar uma fonte (re-disparar ingestão)
+      tags:
+      - knowledge-base
+  /media/{messageId}/download:
+    post:
+      parameters:
+      - description: ID da mensagem
+        in: path
+        name: messageId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Baixar mídia sob demanda
+      tags:
+      - messages
   /messages/{ticketId}:
     get:
       parameters:
@@ -1262,6 +1566,37 @@ paths:
       summary: Atualizar resposta rápida
       tags:
       - quick-answers
+  /quickAnswers/{quickAnswerId}/send:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID da resposta
+        in: path
+        name: quickAnswerId
+        required: true
+        type: integer
+      - description: ticketId e variables opcionais
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Disparar resposta rápida
+      tags:
+      - quick-answers
   /roles:
     get:
       produces:
@@ -1530,6 +1865,21 @@ paths:
       security:
       - BearerAuth: []
       summary: Estatísticas do sistema
+      tags:
+      - system
+  /system/storage:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Status do armazenamento de objetos (S3)
       tags:
       - system
   /system/version:
@@ -2130,6 +2480,27 @@ paths:
       tags:
       - whatsapp-sessions
     post:
+      parameters:
+      - description: ID da conexão
+        in: path
+        name: whatsappId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Iniciar sessão WhatsApp
+      tags:
+      - whatsapp-sessions
+    put:
       parameters:
       - description: ID da conexão
         in: path

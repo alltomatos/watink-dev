@@ -16,7 +16,6 @@ export function useFlowBuilder() {
     const editor = useFlowEditor();
 
     const flowNodes = useFlowNodes({
-        reactFlowWrapper,
         reactFlowInstance,
         onEditorOpen: editor.openEditor,
         onEditorClose: editor.closeEditor,
@@ -70,6 +69,9 @@ export function useFlowBuilder() {
         aiEnabled: persistence.aiEnabled,
         isChatOpen: persistence.isChatOpen,
         setIsChatOpen: persistence.setIsChatOpen,
+        whatsappId: persistence.whatsappId,
+        setWhatsappId: persistence.setWhatsappId,
+        connections: persistence.connections,
         handleSave: persistence.handleSave,
         handleToggle: persistence.handleToggle,
         validateFlow: persistence.validateFlow,

@@ -10,15 +10,22 @@ import {
 } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
+import { Switch } from "../../../components/ui/switch";
 import { Flow } from "../flowManagerTypes";
 
 interface FlowCardProps {
   flow: Flow;
   onEdit: (flow: Flow) => void;
   onDelete: (flow: Flow) => void;
+  onToggleActive: (flow: Flow, active: boolean) => void;
 }
 
-const FlowCard: React.FC<FlowCardProps> = ({ flow, onEdit, onDelete }) => {
+const FlowCard: React.FC<FlowCardProps> = ({
+  flow,
+  onEdit,
+  onDelete,
+  onToggleActive,
+}) => {
   const navigate = useNavigate();
 
   return (
@@ -28,12 +35,19 @@ const FlowCard: React.FC<FlowCardProps> = ({ flow, onEdit, onDelete }) => {
           <div className="p-2 bg-primary/10 rounded-lg text-primary">
             <GitFork size={20} />
           </div>
-          <Badge
-            variant={flow.isActive ? "default" : "outline"}
-            className="text-[10px] uppercase"
-          >
-            {flow.isActive ? "Ativo" : "Inativo"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant={flow.isActive ? "default" : "outline"}
+              className="text-[10px] uppercase"
+            >
+              {flow.isActive ? "Ativo" : "Inativo"}
+            </Badge>
+            <Switch
+              checked={flow.isActive}
+              onCheckedChange={(checked) => onToggleActive(flow, checked)}
+              aria-label={flow.isActive ? "Desativar fluxo" : "Ativar fluxo"}
+            />
+          </div>
         </div>
         <CardTitle className="text-lg leading-tight group-hover:text-primary transition-colors truncate">
           {flow.name}

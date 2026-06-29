@@ -85,6 +85,11 @@ func (pc *PipelineController) Export(c *gin.Context) {
 // @Success      200   {object}  map[string]interface{}
 // @Security     BearerAuth
 // @Router       /pipelines/ai-suggest [post]
+// pipelineAIFormatRule instrui o LLM a responder em JSON com etapas CURTAS (nomes
+// de coluna de kanban) e as dicas no campo message — evita os nomes de etapa
+// verbosos (o LLM tende a despejar a descrição inteira no nome da etapa).
+const pipelineAIFormatRule = `As etapas (stages) são NOMES CURTOS de coluna de kanban (1 a 4 palavras, ex.: "Atração", "Qualificação", "Proposta", "Fechamento", "Pós-venda") — NUNCA coloque descrições ou frases no nome da etapa; toda a explicação e as dicas vão no campo "message". Sugira entre 3 e 7 etapas. Responda SEMPRE em JSON válido, sem nenhum texto fora do JSON, no formato: {"message": "explicação e dicas em português", "stages": ["Atração", "Qualificação", "Proposta", "Fechamento"]}.`
+
 func (pc *PipelineController) AISuggest(c *gin.Context) {
 	db, tenantID, ok := auth.GetScoped(c, "Settings")
 	if !ok {
@@ -137,11 +142,10 @@ func (pc *PipelineController) AISuggest(c *gin.Context) {
 	systemPrompt := settingMap["aiGuidePrompt"]
 	if systemPrompt == "" {
 		systemPrompt = "Voce e um assistente especializado em fluxos de negocio. " +
-			"Quando o usuario descrever um fluxo ou contexto, sugira etapas de pipeline adequadas. " +
-			"Responda SEMPRE em JSON válido no formato: {\"message\": \"texto explicativo\", \"stages\": [\"Etapa 1\", \"Etapa 2\", ...]}. " +
-			"Sugira entre 3 e 7 etapas relevantes ao contexto descrito. Não inclua nenhum texto fora do JSON."
+			"Quando o usuario descrever um fluxo ou contexto, sugira etapas de pipeline adequadas e de dicas no campo message. " +
+			pipelineAIFormatRule
 	} else {
-		systemPrompt += "\n\nResponda SEMPRE em JSON válido no formato: {\"message\": \"texto explicativo\", \"stages\": [\"Etapa 1\", \"Etapa 2\", ...]}."
+		systemPrompt += "\n\n" + pipelineAIFormatRule
 	}
 
 	// Convert messages

@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"fmt"
+	"mime/multipart"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -9,6 +11,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type createKnowledgeBaseInput struct {
@@ -167,8 +170,11 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 	sourceType := c.PostForm("type")
 	urlValue := c.PostForm("url")
 	sourceName := c.PostForm("name")
+	content := c.PostForm("content")
 
+	var fileHeader *multipart.FileHeader
 	if file, err := c.FormFile("file"); err == nil && file != nil {
+		fileHeader = file
 		sourceName = filepath.Base(file.Filename)
 		if sourceType == "" || sourceType == "file" {
 			ext := filepath.Ext(file.Filename)
@@ -182,13 +188,13 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 
 	validSourceTypes := map[string]bool{
 		"url": true, "file": true, "pdf": true, "txt": true,
-		"docx": true, "csv": true, "xlsx": true, "md": true,
+		"docx": true, "csv": true, "xlsx": true, "md": true, "text": true,
 	}
 	if sourceType == "" {
 		sourceType = "url"
 	}
 	if !validSourceTypes[sourceType] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid sourceType: must be one of url, file, pdf, txt, docx, csv, xlsx, md"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid sourceType: must be one of url, file, pdf, txt, docx, csv, xlsx, md, text"})
 		return
 	}
 
@@ -201,21 +207,193 @@ func (kbc *KnowledgeBaseController) CreateSource(c *gin.Context) {
 		return
 	}
 
+	if sourceType == "text" {
+		if _, err := utils.ValidateStringField(content, "content", 100000); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	// URL sources must carry a URL — without it the worker has nothing to scrape.
+	// (Empty type defaults to "url" above, so this also rejects an empty payload.)
+	if sourceType == "url" && strings.TrimSpace(urlValue) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "url é obrigatória para fonte do tipo url"})
+		return
+	}
+
+	status := "ready"
+	if sourceType == "text" || sourceType == "url" || fileHeader != nil {
+		status = "pending"
+	}
+
 	source := models.KnowledgeBaseSource{
 		KnowledgeBaseID: kb.ID,
 		TenantID:        kb.TenantID,
 		Type:            sourceType,
 		URL:             urlValue,
 		FileName:        sourceName,
-		Status:          "ready",
+		Status:          status,
 	}
 
-	if err := db.Create(&source).Error; err != nil {
+	// Use a fresh session for the write: the earlier db.Where(...).First(&kb) on
+	// the scoped db leaves KnowledgeBase as the Statement.Schema, and reusing it
+	// for Create(&source) would make GORM build the insert against the wrong
+	// schema (auto-time CreatedAt landing on a string column → panic). NewDB
+	// re-derives the KnowledgeBaseSource schema. See message_send.go for the
+	// same scoped-db reuse caveat.
+	if err := db.Session(&gorm.Session{NewDB: true}).Create(&source).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "CreateKnowledgeBaseSource")
 		return
 	}
 
+	// File sources: persist the uploaded bytes to the object store and dispatch a
+	// `file` ingestion job. The worker downloads the object by key, extracts text
+	// (pdf/docx/xlsx/csv/txt/md), then follows the same chunk/embed/store path as
+	// text. The object key is tenant-prefixed for multitenancy.
+	if fileHeader != nil {
+		if kbc.store == nil {
+			markSourceError(db, &source, "object store não configurado")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "object store não configurado"})
+			return
+		}
+
+		objectKey := fmt.Sprintf("%s/%d/%d/%s", tenantID.String(), kb.ID, source.ID, source.FileName)
+
+		f, err := fileHeader.Open()
+		if err != nil {
+			markSourceError(db, &source, "falha ao abrir arquivo enviado")
+			utils.RespondWithInternalError(c, err, "CreateKnowledgeBaseSource: open upload")
+			return
+		}
+		defer func() { _ = f.Close() }()
+
+		if err := kbc.store.Upload(c.Request.Context(), objectKey, f, fileHeader.Size, fileHeader.Header.Get("Content-Type")); err != nil {
+			markSourceError(db, &source, "falha ao enviar arquivo ao object store")
+			utils.RespondWithInternalError(c, err, "CreateKnowledgeBaseSource: upload")
+			return
+		}
+
+		if err := db.Session(&gorm.Session{NewDB: true}).Model(&source).Update("objectKey", objectKey).Error; err != nil {
+			utils.RespondWithInternalError(c, err, "CreateKnowledgeBaseSource: persist objectKey")
+			return
+		}
+		source.ObjectKey = objectKey
+
+		if kbc.publisher != nil {
+			_ = kbc.publisher.PublishKnowledgeJob(
+				fmt.Sprintf("knowledge.%s.ingest", tenantID.String()),
+				map[string]interface{}{
+					"tenantId": tenantID.String(), "knowledgeBaseId": kb.ID, "sourceId": source.ID,
+					"type": "file", "payload": map[string]interface{}{"objectKey": objectKey, "fileName": source.FileName},
+				})
+		}
+
+		c.JSON(http.StatusOK, source)
+		return
+	}
+
+	// For text/url sources, dispatch an ingestion job to watink-knowledge. The
+	// microservice chunks/embeds the text (or scrapes the URL via Firecrawl first)
+	// and reports status back via knowledge.events (handled by KnowledgeStatusListener).
+	if kbc.publisher != nil && (sourceType == "text" || sourceType == "url") {
+		payload := map[string]interface{}{}
+		if sourceType == "text" {
+			payload["text"] = content
+		} else {
+			payload["url"] = urlValue
+		}
+		_ = kbc.publisher.PublishKnowledgeJob(
+			fmt.Sprintf("knowledge.%s.ingest", tenantID.String()),
+			map[string]interface{}{
+				"tenantId": tenantID.String(), "knowledgeBaseId": kb.ID, "sourceId": source.ID,
+				"type": sourceType, "payload": payload,
+			})
+	}
+
 	c.JSON(http.StatusOK, source)
+}
+
+// markSourceError flips a source to the error state with lastError set, using a
+// fresh GORM session (the scoped db reuse caveat applies to writes here too).
+func markSourceError(db *gorm.DB, source *models.KnowledgeBaseSource, msg string) {
+	source.Status = "error"
+	source.LastError = msg
+	_ = db.Session(&gorm.Session{NewDB: true}).Model(source).
+		Updates(map[string]interface{}{"status": "error", "lastError": msg}).Error
+}
+
+// @Summary      Reprocessar uma fonte (re-disparar ingestão)
+// @Tags         knowledge-base
+// @Produce      json
+// @Param        knowledgeBaseId  path      int  true  "ID da base"
+// @Param        sourceId         path      int  true  "ID da fonte"
+// @Success      200              {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /knowledge-bases/{knowledgeBaseId}/sources/{sourceId}/reingest [post]
+func (kbc *KnowledgeBaseController) ReingestSource(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "KnowledgeBases")
+	if !ok {
+		return
+	}
+	kbID := c.Param("knowledgeBaseId")
+	sourceID := c.Param("sourceId")
+
+	var src models.KnowledgeBaseSource
+	if err := db.Where(`id = ? AND "knowledgeBaseId" = ? AND "tenantId" = ?`, sourceID, kbID, tenantID).
+		First(&src).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Source not found"})
+		return
+	}
+
+	// Reconstrói o payload de ingestão a partir do que está PERSISTIDO na fonte.
+	// Fontes de texto não guardam o conteúdo (só foi publicado na criação) → não dá
+	// para reprocessar aqui. URL reusa a url; arquivos reusam o objectKey no S3.
+	var jobType string
+	var payload map[string]interface{}
+	switch src.Type {
+	case "url":
+		if strings.TrimSpace(src.URL) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "fonte url sem url para reprocessar"})
+			return
+		}
+		jobType = "url"
+		payload = map[string]interface{}{"url": src.URL}
+	case "text":
+		c.JSON(http.StatusBadRequest, gin.H{"error": "fontes de texto não podem ser reprocessadas (conteúdo não é armazenado)"})
+		return
+	default:
+		// pdf/docx/csv/xlsx/md/file → o worker trata todos como "file" via objectKey.
+		if strings.TrimSpace(src.ObjectKey) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "fonte sem arquivo armazenado para reprocessar"})
+			return
+		}
+		jobType = "file"
+		payload = map[string]interface{}{"objectKey": src.ObjectKey, "fileName": src.FileName}
+	}
+
+	if kbc.publisher == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "serviço de ingestão indisponível"})
+		return
+	}
+
+	// Volta para pending + limpa o erro (sessão nova p/ a escrita — caveat do db escopado).
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.KnowledgeBaseSource{}).
+		Where(`id = ? AND "tenantId" = ?`, src.ID, tenantID).
+		Updates(map[string]interface{}{"status": "pending", "lastError": ""}).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "ReingestSource")
+		return
+	}
+
+	_ = kbc.publisher.PublishKnowledgeJob(
+		fmt.Sprintf("knowledge.%s.ingest", tenantID.String()),
+		map[string]interface{}{
+			"tenantId": tenantID.String(), "knowledgeBaseId": src.KnowledgeBaseID, "sourceId": src.ID,
+			"type": jobType, "payload": payload,
+		})
+
+	src.Status = "pending"
+	src.LastError = ""
+	c.JSON(http.StatusOK, src)
 }
 
 // @Summary      Remover fonte da base

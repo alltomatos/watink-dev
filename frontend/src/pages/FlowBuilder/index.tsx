@@ -1,7 +1,7 @@
 ﻿/* @jsxImportSource react */
 import React from 'react';
-import { ReactFlowProvider } from 'reactflow';
-import type { NodeTypes } from 'reactflow';
+import { ReactFlowProvider } from '@xyflow/react';
+import type { NodeTypes } from '@xyflow/react';
 import { Loader2, ChevronRight, ChevronLeft, MessageSquare } from 'lucide-react';
 
 import type { FlowNode } from './nodeEditorTypes';
@@ -21,6 +21,7 @@ import SwitchNode from './CustomNodes/SwitchNode';
 import TriggerNode from './CustomNodes/TriggerNode';
 import PipelineNode from './CustomNodes/PipelineNode';
 import KnowledgeNode from './CustomNodes/KnowledgeNode';
+import AgentNode from './CustomNodes/AgentNode';
 import MessageNode from './CustomNodes/MessageNode';
 import MenuNode from './CustomNodes/MenuNode';
 import DatabaseNode from './CustomNodes/DatabaseNode';
@@ -42,6 +43,7 @@ const nodeTypes = {
     trigger: TriggerNode,
     pipeline: PipelineNode,
     knowledge: KnowledgeNode,
+    agent: AgentNode,
     message: MessageNode,
     menu: MenuNode,
     database: DatabaseNode,
@@ -74,6 +76,9 @@ const FlowBuilderContent = () => {
                 flowId={fb.flowId}
                 isActive={fb.isActive}
                 saving={fb.saving}
+                whatsappId={fb.whatsappId}
+                connections={fb.connections}
+                onWhatsappChange={fb.setWhatsappId}
                 fileInputRef={fb.fileInputRef}
                 onNavigateBack={() => fb.navigate('/flowbuilder')}
                 onToggle={fb.handleToggle}
@@ -88,7 +93,7 @@ const FlowBuilderContent = () => {
             <main className="flex flex-1 overflow-hidden relative">
                 <div
                     className={`transition-all duration-300 border-r bg-card z-20 overflow-y-auto shrink-0 ${
-                        fb.isNodesSidebarOpen ? 'w-64' : 'w-0 border-none'
+                        fb.isNodesSidebarOpen ? 'w-72' : 'w-0 border-none'
                     }`}
                 >
                     {fb.isNodesSidebarOpen && <NodesSidebar />}
@@ -97,7 +102,7 @@ const FlowBuilderContent = () => {
                 <button
                     onClick={() => fb.setIsNodesSidebarOpen(!fb.isNodesSidebarOpen)}
                     className="absolute left-[248px] top-4 z-30 h-8 w-8 rounded-full border bg-background shadow-md flex items-center justify-center transition-all hover:bg-muted"
-                    style={{ left: fb.isNodesSidebarOpen ? '240px' : '-4px' }}
+                    style={{ left: fb.isNodesSidebarOpen ? '272px' : '-4px' }}
                 >
                     {fb.isNodesSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
                 </button>

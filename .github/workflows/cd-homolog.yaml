@@ -65,6 +65,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-push
     environment: KUBE_CONFIG_HOMOLOG
+    outputs:
+      deployed: ${{ steps.kube.outputs.configured }}
 
     steps:
       - name: Checkout
@@ -74,14 +76,22 @@ jobs:
         uses: azure/setup-kubectl@v3
 
       - name: Configure kubeconfig
+        id: kube
         env:
           KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         run: |
+          if [ -z "$KUBE_CONFIG" ]; then
+            echo "::warning::KUBE_CONFIG ausente — cluster homolog não provisionado; pulando deploy (no-op verde)."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           mkdir -p ~/.kube
           echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
+          echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: Ensure namespace and registry secret
+        if: steps.kube.outputs.configured == 'true'
         env:
           REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -94,6 +104,7 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Apply homolog manifests
+        if: steps.kube.outputs.configured == 'true'
         run: |
           if [ -d "infra/k8s/homolog" ]; then
             kubectl apply -f infra/k8s/homolog/ --namespace watink-homolog
@@ -102,6 +113,7 @@ jobs:
           fi
 
       - name: Update images (sha pinned)
+        if: steps.kube.outputs.configured == 'true'
         env:
           SHA_TAG: homolog-${{ github.sha }}
         run: |
@@ -114,6 +126,7 @@ jobs:
             --namespace watink-homolog --ignore-not-found
 
       - name: Wait rollout
+        if: steps.kube.outputs.configured == 'true'
         run: |
           kubectl rollout status deployment/watink-business --namespace watink-homolog --timeout=120s || true
           kubectl rollout status deployment/watink-frontend --namespace watink-homolog --timeout=120s || true
@@ -122,6 +135,7 @@ jobs:
     name: smoke-tests
     runs-on: ubuntu-latest
     needs: deploy-homolog
+    if: needs.deploy-homolog.outputs.deployed == 'true'
     environment: KUBE_CONFIG_HOMOLOG
 
     steps:
