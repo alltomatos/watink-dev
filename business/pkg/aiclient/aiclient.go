@@ -94,7 +94,7 @@ func callOpenAICompatible(cfg Config, messages []Message) (*Response, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 90 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("ERR_AI_SERVICE_FAILED: %w", err)
@@ -159,7 +159,7 @@ func callAnthropic(cfg Config, messages []Message) (*Response, error) {
 	req.Header.Set("x-api-key", cfg.APIKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 90 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("ERR_AI_SERVICE_FAILED: %w", err)

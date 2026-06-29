@@ -724,16 +724,31 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "flows"
                 ],
-                "summary": "Sugerir flow via IA (não implementado)",
+                "summary": "Assistente de IA do FlowBuilder (dicas + rascunho de fluxo)",
+                "parameters": [
+                    {
+                        "description": "{messages:[{role,content}]} ou {prompt}",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
                 "responses": {
-                    "501": {
-                        "description": "Not Implemented",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -1351,6 +1366,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/knowledge-bases/{knowledgeBaseId}/query": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "knowledge-base"
+                ],
+                "summary": "Playground de recuperação (query → top-k + score)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID da base",
+                        "name": "knowledgeBaseId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/knowledge-bases/{knowledgeBaseId}/sources": {
             "post": {
                 "security": [
@@ -1436,6 +1488,88 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/knowledge-bases/{knowledgeBaseId}/sources/{sourceId}/chunks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "knowledge-base"
+                ],
+                "summary": "Listar chunks de uma fonte",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID da base",
+                        "name": "knowledgeBaseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID da fonte",
+                        "name": "sourceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/knowledge-bases/{knowledgeBaseId}/sources/{sourceId}/reingest": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "knowledge-base"
+                ],
+                "summary": "Reprocessar uma fonte (re-disparar ingestão)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID da base",
+                        "name": "knowledgeBaseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID da fonte",
+                        "name": "sourceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -2818,6 +2952,31 @@ const docTemplate = `{
                 }
             }
         },
+        "/system/storage": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Status do armazenamento de objetos (S3)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/system/version": {
             "get": {
                 "security": [
@@ -3768,6 +3927,40 @@ const docTemplate = `{
             }
         },
         "/whatsappsession/{whatsappId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "whatsapp-sessions"
+                ],
+                "summary": "Iniciar sessão WhatsApp",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID da conexão",
+                        "name": "whatsappId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
