@@ -590,17 +590,27 @@ paths:
       - flows
   /flows/ai:
     post:
+      consumes:
+      - application/json
+      parameters:
+      - description: '{messages:[{role,content}]} ou {prompt}'
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
       produces:
       - application/json
       responses:
-        "501":
-          description: Not Implemented
+        "200":
+          description: OK
           schema:
             additionalProperties: true
             type: object
       security:
       - BearerAuth: []
-      summary: Sugerir flow via IA (não implementado)
+      summary: Assistente de IA do FlowBuilder (dicas + rascunho de fluxo)
       tags:
       - flows
   /groups:
@@ -865,6 +875,29 @@ paths:
       summary: Atualizar base de conhecimento
       tags:
       - knowledge-base
+  /knowledge-bases/{knowledgeBaseId}/query:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID da base
+        in: path
+        name: knowledgeBaseId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Playground de recuperação (query → top-k + score)
+      tags:
+      - knowledge-base
   /knowledge-bases/{knowledgeBaseId}/sources:
     post:
       consumes:
@@ -920,6 +953,58 @@ paths:
       security:
       - BearerAuth: []
       summary: Remover fonte da base
+      tags:
+      - knowledge-base
+  /knowledge-bases/{knowledgeBaseId}/sources/{sourceId}/chunks:
+    get:
+      parameters:
+      - description: ID da base
+        in: path
+        name: knowledgeBaseId
+        required: true
+        type: integer
+      - description: ID da fonte
+        in: path
+        name: sourceId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Listar chunks de uma fonte
+      tags:
+      - knowledge-base
+  /knowledge-bases/{knowledgeBaseId}/sources/{sourceId}/reingest:
+    post:
+      parameters:
+      - description: ID da base
+        in: path
+        name: knowledgeBaseId
+        required: true
+        type: integer
+      - description: ID da fonte
+        in: path
+        name: sourceId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reprocessar uma fonte (re-disparar ingestão)
       tags:
       - knowledge-base
   /media/{messageId}/download:
@@ -1782,6 +1867,21 @@ paths:
       summary: Estatísticas do sistema
       tags:
       - system
+  /system/storage:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Status do armazenamento de objetos (S3)
+      tags:
+      - system
   /system/version:
     get:
       produces:
@@ -2380,6 +2480,27 @@ paths:
       tags:
       - whatsapp-sessions
     post:
+      parameters:
+      - description: ID da conexão
+        in: path
+        name: whatsappId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Iniciar sessão WhatsApp
+      tags:
+      - whatsapp-sessions
+    put:
       parameters:
       - description: ID da conexão
         in: path
