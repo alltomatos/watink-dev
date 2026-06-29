@@ -85,6 +85,22 @@ async def _handle(message: aio_pika.IncomingMessage, events_ex):
             log.error("job sem tenantId/knowledgeBaseId/sourceId: %s", job)
             return
 
+        # Defesa em profundidade na ESCRITA: a routing key (knowledge.<tenant>.ingest,
+        # bind knowledge.*.ingest) é a autoridade do tenant. Rejeita se o tenantId do
+        # corpo divergir — evita que um publicador (credencial AMQP vazada, segundo
+        # publicador ou bug) grave/apague chunks no namespace de outro tenant
+        # escolhendo o tenantId no corpo. RLS é INERTE aqui, então o corpo seria a
+        # única autoridade sem esta checagem.
+        rk_parts = message.routing_key.split(".") if message.routing_key else []
+        rk_tenant = rk_parts[1] if len(rk_parts) >= 3 else None
+        if rk_tenant and rk_tenant != tenant_id:
+            log.error(
+                "tenantId do corpo (%s) diverge da routing key (%s) — job rejeitado",
+                tenant_id,
+                rk_tenant,
+            )
+            return
+
         try:
             await _publish_status(events_ex, tenant_id, source_id, "processing")
 
