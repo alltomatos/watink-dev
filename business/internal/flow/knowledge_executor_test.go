@@ -15,14 +15,16 @@ import (
 
 // fakeRetriever returns canned chunks and records what it was asked for.
 type fakeRetriever struct {
-	chunks    []RetrievedChunk
-	lastQuery string
-	lastKB    int
+	chunks       []RetrievedChunk
+	lastQuery    string
+	lastKB       int
+	lastMinScore float64
 }
 
-func (f *fakeRetriever) Retrieve(_ context.Context, _ uuid.UUID, kbID, _ int, _ float64, query string) ([]RetrievedChunk, error) {
+func (f *fakeRetriever) Retrieve(_ context.Context, _ uuid.UUID, kbID, _ int, minScore float64, query string) ([]RetrievedChunk, error) {
 	f.lastQuery = query
 	f.lastKB = kbID
+	f.lastMinScore = minScore
 	return f.chunks, nil
 }
 
@@ -63,6 +65,27 @@ func TestKnowledgeExecutor_EmptyRetrieval_SendsNotFound(t *testing.T) {
 	assert.Contains(t, bodies[0], "Não encontrei")
 	assert.Equal(t, "qual o horario?", retr.lastQuery)
 	assert.Equal(t, 1, retr.lastKB)
+}
+
+// The retrieval guardrail must use a relevance floor > 0 (was hardcoded 0.0,
+// which disabled it). Default is 0.2; the aiKnowledgeMinScore setting overrides.
+func TestKnowledgeExecutor_MinScore_DefaultAndSettingOverride(t *testing.T) {
+	retr := &fakeRetriever{chunks: nil}
+	st, _ := newKnowledgeState(t, retr, "horario")
+
+	_, err := knowledgeExecutor{}.Execute(context.Background(), st, knowledgeNode(1))
+	require.NoError(t, err)
+	assert.InDelta(t, defaultKnowledgeMinScore, retr.lastMinScore, 1e-9, "default minScore must be the relevance floor, not 0.0")
+	assert.Greater(t, retr.lastMinScore, 0.0, "guardrail floor must be > 0")
+
+	// With a tenant setting, the configured value wins.
+	require.NoError(t, st.DB.Exec(
+		`INSERT INTO "Settings" (key, value, "tenantId") VALUES (?,?,?)`,
+		"aiKnowledgeMinScore", "0.45", st.TenantID,
+	).Error)
+	_, err = knowledgeExecutor{}.Execute(context.Background(), st, knowledgeNode(1))
+	require.NoError(t, err)
+	assert.InDelta(t, 0.45, retr.lastMinScore, 1e-9, "aiKnowledgeMinScore setting must override the default")
 }
 
 // Chunks found but no tenant AI config → fall back to the first chunk text, so the

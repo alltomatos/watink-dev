@@ -84,7 +84,7 @@ func (a *HTTPAgentClient) Respond(ctx context.Context, tenantID uuid.UUID, kbID 
 		History:         history,
 		Query:           query,
 		TopK:            6,
-		MinScore:        0,
+		MinScore:        defaultKnowledgeMinScore,
 	})
 	if err != nil {
 		return AgentReply{}, err

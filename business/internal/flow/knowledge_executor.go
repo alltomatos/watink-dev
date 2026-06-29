@@ -3,11 +3,35 @@ package flow
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"strings"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/pkg/aiclient"
 )
+
+// defaultKnowledgeMinScore is the relevance floor for RAG retrieval. Chunks
+// scoring below it (cosine similarity, [0,1]) are dropped, so an off-topic
+// question retrieves nothing and the guardrail ("não sei"/handoff) fires
+// instead of grounding the answer on irrelevant chunks. Was hardcoded 0.0
+// (guardrail inert). Override per-tenant via the aiKnowledgeMinScore setting.
+const defaultKnowledgeMinScore = 0.2
+
+// knowledgeMinScore returns the tenant's configured minScore (aiKnowledgeMinScore,
+// clamped to [0,1]) or defaultKnowledgeMinScore when unset/invalid.
+func knowledgeMinScore(st *ExecState) float64 {
+	if st.DB == nil {
+		return defaultKnowledgeMinScore
+	}
+	var setting models.Setting
+	if err := st.DB.Where(`"tenantId" = ? AND key = ?`, st.TenantID, "aiKnowledgeMinScore").
+		First(&setting).Error; err == nil {
+		if v, perr := strconv.ParseFloat(strings.TrimSpace(setting.Value), 64); perr == nil && v >= 0 && v <= 1 {
+			return v
+		}
+	}
+	return defaultKnowledgeMinScore
+}
 
 // knowledgeData is the "knowledge" node envelope (KnowledgeForm.tsx):
 // knowledgeBaseId selects the base to query; responseMode is reserved for
@@ -44,7 +68,7 @@ func (knowledgeExecutor) Execute(ctx context.Context, st *ExecState, node Node) 
 		return Outcome{Kind: OutcomeAdvance, Detail: "knowledge: sem pergunta"}, nil
 	}
 
-	chunks, err := st.Retriever.Retrieve(ctx, st.TenantID, d.KnowledgeBaseID, 6, 0.0, query)
+	chunks, err := st.Retriever.Retrieve(ctx, st.TenantID, d.KnowledgeBaseID, 6, knowledgeMinScore(st), query)
 	if err != nil {
 		return Outcome{Kind: OutcomeAdvance, Detail: "knowledge: erro retrieve"}, nil
 	}
