@@ -598,4 +598,20 @@ Próximo: push + PR → `develop`. Depois **Fase 2** (fonte arquivo: S3/MinIO + 
 | A-T1 **E2E ao vivo** | test | ⏳ | aguarda `FIRECRAWL_URL` (domínio do devops) + recreate do container |
 
 **Gate de build:** Go build/vet/fmt ✅ · Python ruff + 26 testes ✅ · FE typecheck + eslint ✅.
-**Pendente:** validação E2E ao vivo (precisa do domínio Firecrawl do usuário) → depois push + PR → `develop`.
+
+### Pivô — paridade dev/prod (2026-06-28): Firecrawl REAL no compose (shim removido)
+
+Decisão do usuário: "dev = prod, mas em Docker standalone (Swarm só em produção)". Logo, o `docker-compose.dev.yml` sobe o **Firecrawl real**, não o shim.
+
+**Pesquisa (workflow `firecrawl-selfhost-research`, 6 agentes, verificação adversarial):**
+- Firecrawl atual NÃO é imagem única (a `mendable/firecrawl:latest` sumiu). Stack = 5 serviços. Imagens publicadas no GHCR **org `firecrawl`** (não `mendableai`) são pulláveis → **sem build-from-source**.
+- Veredito da verificação: `matches_canonical=true`, zero critical/high. 2 mediums incorporados (healthcheck `pg_isready` no nuq-postgres + gate `service_healthy`; `FIRECRAWL_URL` default já apontando p/ o real).
+
+**Aplicado:**
+- `docker-compose.dev.yml`: +5 serviços (`firecrawl` `ghcr.io/firecrawl/firecrawl:2.10.14` · `firecrawl-playwright` · `firecrawl-nuq-postgres` · `firecrawl-rabbitmq` · `firecrawl-redis`), infra **dedicada** (prefixo `firecrawl-*`, sem colidir com Redis/RabbitMQ/Postgres do Watink), `USE_DB_AUTHENTICATION=false`, `shm_size:2gb` no playwright, porta 5432 não exposta, volume `firecrawl_nuq_pgdata`.
+- `FIRECRAWL_URL` default → `http://firecrawl:3002`.
+- **Shim `infra/firecrawl-dev` REMOVIDO** (era stopgap, nunca mergeado).
+- docs/agents/knowledge-base.md atualizado (stack real).
+
+**Custo:** ~5GB imagens · ~8GB RAM recomendado (Windows/Docker Desktop). Gotchas mitigados (init nuq-postgres #2264/#2317, race rabbitmq #2583, cred hardcoded #2384, shm Chromium).
+**Pendente:** bring-up (`up -d firecrawl`) + E2E real → atualizar PR #264 (vira PR de paridade dev/prod) → merge com "ok" do usuário.
