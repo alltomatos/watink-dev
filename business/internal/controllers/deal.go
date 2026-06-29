@@ -8,6 +8,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -15,6 +16,29 @@ type DealController struct{}
 
 func NewDealController() *DealController {
 	return &DealController{}
+}
+
+// dealStageBelongsToTenant returns true when stageID belongs to a pipeline owned
+// by tenantID. Guards Create/Update against referencing another tenant's stage
+// (which would also leak its pipeline name via Preload("Stage.Pipeline")).
+func dealStageBelongsToTenant(db *gorm.DB, tenantID uuid.UUID, stageID int) bool {
+	var n int64
+	db.Session(&gorm.Session{NewDB: true}).
+		Model(&models.PipelineStage{}).
+		Joins(`JOIN "Pipelines" ON "Pipelines".id = "PipelineStages"."pipelineId"`).
+		Where(`"PipelineStages".id = ? AND "Pipelines"."tenantId" = ?`, stageID, tenantID).
+		Count(&n)
+	return n > 0
+}
+
+// dealContactBelongsToTenant returns true when contactID is owned by tenantID.
+func dealContactBelongsToTenant(db *gorm.DB, tenantID uuid.UUID, contactID int) bool {
+	var n int64
+	db.Session(&gorm.Session{NewDB: true}).
+		Model(&models.Contact{}).
+		Where(`id = ? AND "tenantId" = ?`, contactID, tenantID).
+		Count(&n)
+	return n > 0
 }
 
 // @Summary      Listar deals do pipeline
@@ -112,6 +136,15 @@ func (dc *DealController) Create(c *gin.Context) {
 		return
 	}
 
+	if !dealStageBelongsToTenant(db, tenantID, input.StageID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "stageId inválido para este tenant"})
+		return
+	}
+	if !dealContactBelongsToTenant(db, tenantID, input.ContactID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "contactId inválido para este tenant"})
+		return
+	}
+
 	deal := models.Deal{
 		Name:      input.Name,
 		StageID:   input.StageID,
@@ -169,6 +202,15 @@ func (dc *DealController) Update(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		utils.RespondWithBindError(c, err)
+		return
+	}
+
+	if input.StageID != nil && !dealStageBelongsToTenant(db, tenantID, *input.StageID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "stageId inválido para este tenant"})
+		return
+	}
+	if input.ContactID != nil && !dealContactBelongsToTenant(db, tenantID, *input.ContactID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "contactId inválido para este tenant"})
 		return
 	}
 
