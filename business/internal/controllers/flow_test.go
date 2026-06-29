@@ -250,16 +250,19 @@ func TestFlowController_Create_AcceptsNoSchemaVersion(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
-// TestFlowController_Stubs_Return501 — FB0-B2: AI/simulate stubs answer 501.
-func TestFlowController_Stubs_Return501(t *testing.T) {
+// TestFlowController_AISuggestDisabled_And_SimulateStub — AISuggest está implementado
+// (advisor + rascunho de grafo): sem settings de IA no tenant responde 400 ERR_AI_DISABLED
+// (erro canônico). Simulate segue stub 501.
+func TestFlowController_AISuggestDisabled_And_SimulateStub(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupFlowTestDB(t)
 	tenantID := uuid.New()
 	ctrl := NewFlowController(nil)
 
-	cAI, wAI := setupFlowContext(t, db, tenantID, "POST", "/flows/ai", []byte(`{}`))
+	// Sem aiEnabled/aiFlowBuilderEnabled configurados → 400 ERR_AI_DISABLED.
+	cAI, wAI := setupFlowContext(t, db, tenantID, "POST", "/flows/ai", []byte(`{"prompt":"oi"}`))
 	ctrl.AISuggest(cAI)
-	assert.Equal(t, http.StatusNotImplemented, wAI.Code)
+	assert.Equal(t, http.StatusBadRequest, wAI.Code)
 	assertCanonicalError(t, wAI)
 
 	cSim, wSim := setupFlowContext(t, db, tenantID, "POST", "/flows/1/simulate", []byte(`{}`))
