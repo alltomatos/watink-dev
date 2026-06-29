@@ -32,6 +32,7 @@ func NewSessionController(sr domain.ChannelSessionRepository, broadcast domain.B
 // @Success      200         {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /whatsappsession/{whatsappId} [post]
+// @Router       /whatsappsession/{whatsappId} [put]
 func (sc *SessionController) StartSession(c *gin.Context) {
 	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {

@@ -40,36 +40,34 @@ const FlowChat: React.FC<FlowChatProps> = ({ onFlowGenerated }) => {
     setLoading(true);
 
     try {
-      const { data } = await api.post('/flows/ai', { prompt: userMsg.text });
+      // Conversa: envia o histórico para o assistente entender o contexto e dar dicas.
+      const history = [...messages, userMsg].map((m) => ({
+        role: m.sender === 'bot' ? 'assistant' : 'user',
+        content: m.text,
+      }));
+      const { data } = await api.post('/flows/ai', { messages: history });
 
       const botMsg: ChatMessage = {
         id: Date.now() + 1,
-        text: data.message || 'Fluxo gerado com sucesso!',
+        text: data.message || 'Aqui está uma sugestão para o seu fluxo.',
         sender: 'bot',
       };
       setMessages((prev) => [...prev, botMsg]);
 
-      if (data.nodes && data.edges) {
-        onFlowGenerated(data.nodes, data.edges);
+      // Aplica o rascunho de grafo no canvas quando o assistente propõe um.
+      if (Array.isArray(data.nodes) && data.nodes.length > 0) {
+        onFlowGenerated(data.nodes, data.edges || []);
       }
     } catch (err) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      const unavailable = status === 501;
-      if (unavailable) {
-        toast.info('Recurso indisponível no momento', { toastId: 'flow-ai-501' });
-      } else {
-        toast.error('Erro ao processar sua solicitação.');
-      }
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          text: unavailable
-            ? 'O assistente de IA está indisponível no momento.'
-            : 'Desculpe, tive um problema ao gerar o fluxo. Tente novamente.',
-          sender: 'bot',
-        },
-      ]);
+      const errObj = err as { response?: { status?: number; data?: { error?: string } } };
+      const backendError = errObj?.response?.data?.error || '';
+      const disabled =
+        backendError.includes('ERR_AI_DISABLED') || backendError.includes('ERR_NO_AI');
+      const text = disabled
+        ? 'A IA do FlowBuilder não está configurada. Ative "IA no FlowBuilder" e configure o gateway em Configurações → Agente de IA.'
+        : 'Desculpe, tive um problema ao processar. Verifique se o gateway de IA está disponível e tente novamente.';
+      toast.error(disabled ? 'IA do FlowBuilder não configurada' : 'Erro ao processar sua solicitação.');
+      setMessages((prev) => [...prev, { id: Date.now() + 1, text, sender: 'bot' }]);
     } finally {
       setLoading(false);
     }
