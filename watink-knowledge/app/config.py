@@ -26,6 +26,17 @@ class Config:
     # Dimensão fixa global do embedding (halfvec). Espelha o modelo plugado no omniroute.
     EMBED_DIM = int(os.getenv("EMBED_DIM", "2048"))
 
+    # Quando > 0, envia `dimensions` no payload de embedding (truncagem Matryoshka/MRL).
+    # Usado para encaixar modelos de dimensão nativa diferente no índice halfvec atual
+    # — ex.: qwen3-embedding:4b (nativo 2560) → 2048 para casar com halfvec(2048).
+    # 0 = não envia o parâmetro (modelos de dimensão nativa, ex. nemotron 2048).
+    EMBED_DIMENSIONS = int(os.getenv("EMBED_DIMENSIONS", "0"))
+
+    # Embedding em SUB-LOTES: evita um request gigante que estoura timeout em gateways
+    # lentos (ex.: Ollama em CPU embedando dezenas de chunks). Timeout é POR lote.
+    EMBED_BATCH_SIZE = int(os.getenv("EMBED_BATCH_SIZE", "16"))
+    EMBED_TIMEOUT = int(os.getenv("EMBED_TIMEOUT", "120"))
+
     # Firecrawl (web scraping → markdown) para fontes do tipo `url`. Em prod (swarm),
     # o serviço é alcançável em http://firecrawl:3002 na rede overlay; em dev, via o
     # domínio público (Traefik). O deploy self-hosted do devops não exige autenticação,
