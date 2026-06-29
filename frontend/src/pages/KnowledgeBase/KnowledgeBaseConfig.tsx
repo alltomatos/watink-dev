@@ -14,6 +14,7 @@ import {
   Globe,
   Loader2,
   Plus,
+  RotateCw,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -302,6 +303,24 @@ const KnowledgeBaseConfig: React.FC = () => {
     }
   };
 
+  const handleReingest = async (source: KBSource): Promise<void> => {
+    try {
+      await api.post(
+        `/knowledge-bases/${knowledgeBaseId}/sources/${source.id}/reingest`
+      );
+      setSources((prev) =>
+        prev.map((s) =>
+          s.id === source.id
+            ? { ...s, status: "pending", lastError: undefined }
+            : s
+        )
+      );
+      toast.success("Reprocessando a fonte...");
+    } catch (err) {
+      toastError(err);
+    }
+  };
+
   const handleRequestDelete = (source: KBSource): void => {
     setDeleteTarget(source);
     setConfirmOpen(true);
@@ -435,6 +454,18 @@ const KnowledgeBaseConfig: React.FC = () => {
                         />
                       </Button>
                     )}
+                    {source.type !== "text" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Reprocessar fonte"
+                        title="Reprocessar (re-disparar raspagem/ingestão)"
+                        onClick={() => handleReingest(source)}
+                        className="shrink-0 text-muted-foreground"
+                      >
+                        <RotateCw className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -457,6 +488,17 @@ const KnowledgeBaseConfig: React.FC = () => {
                           {source.lastError ||
                             "Erro desconhecido durante a ingestão."}
                         </p>
+                        {source.type !== "text" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReingest(source)}
+                            className="mt-2 gap-1.5"
+                          >
+                            <RotateCw className="h-3.5 w-3.5" />
+                            Tentar novamente
+                          </Button>
+                        )}
                       </div>
                     </div>
                   )}

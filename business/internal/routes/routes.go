@@ -167,6 +167,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.PUT("/knowledge-bases/:knowledgeBaseId", kbController.Update)
 		protected.DELETE("/knowledge-bases/:knowledgeBaseId", kbController.Delete)
 		protected.POST("/knowledge-bases/:knowledgeBaseId/sources", kbController.CreateSource)
+		protected.POST("/knowledge-bases/:knowledgeBaseId/sources/:sourceId/reingest", kbController.ReingestSource)
 		protected.DELETE("/knowledge-bases/:knowledgeBaseId/sources/:sourceId", kbController.DeleteSource)
 		// Inspeção read-only do conhecimento vetorizado (chunks + playground de recuperação).
 		protected.GET("/knowledge-bases/:knowledgeBaseId/sources/:sourceId/chunks", kbInspectController.Chunks)
