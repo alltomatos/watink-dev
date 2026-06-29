@@ -156,50 +156,16 @@ func (pc *PipelineController) Update(c *gin.Context) {
 				}
 			}
 
-			// Migrate deals from removed stages to first incoming stage name
-			firstIncoming := ""
-			for _, st := range input.Stages {
-				if strings.TrimSpace(st.Name) != "" {
-					firstIncoming = st.Name
-					break
-				}
-			}
-			for name, stage := range existing {
-				if !incoming[name] {
-					// Find or determine target stage ID after upsert — use first existing stage that survives
-					var targetStage models.PipelineStage
-					found := false
-					for inName, inStage := range existing {
-						if incoming[inName] {
-							targetStage = inStage
-							found = true
-							break
-						}
-					}
-					if !found {
-						// All are new; will be created — move deals using firstIncoming name after tx
-						// For now delete stage; deals will be handled below after creation
-						_ = firstIncoming
-					}
-					freshTx := tx.Session(&gorm.Session{NewDB: true})
-					if found {
-						if err := freshTx.Model(&models.Deal{}).
-							Where("\"stageId\" = ?", stage.ID).
-							Update("stageId", targetStage.ID).Error; err != nil {
-							return err
-						}
-					}
-					if err := freshTx.Delete(&models.PipelineStage{}, stage.ID).Error; err != nil {
-						return err
-					}
-				}
-			}
-
-			// Upsert surviving and new stages
+			// Upsert surviving + create new stages FIRST, so every incoming
+			// stage already has a persisted ID before we migrate deals or
+			// delete anything. firstIncomingID is stages[0] — the migration
+			// target for deals on removed stages (ADR 0009).
+			var firstIncomingID int
 			for i, st := range input.Stages {
 				if strings.TrimSpace(st.Name) == "" {
 					continue
 				}
+				var stageID int
 				freshTxStage := tx.Session(&gorm.Session{NewDB: true})
 				if prev, ok := existing[st.Name]; ok {
 					// Same name — update order only
@@ -207,11 +173,38 @@ func (pc *PipelineController) Update(c *gin.Context) {
 					if err := freshTxStage.Save(&prev).Error; err != nil {
 						return err
 					}
+					stageID = prev.ID
 				} else {
 					// New stage
-					if err := freshTxStage.Create(&models.PipelineStage{Name: st.Name, PipelineID: pipeline.ID, Order: i}).Error; err != nil {
+					newStage := models.PipelineStage{Name: st.Name, PipelineID: pipeline.ID, Order: i}
+					if err := freshTxStage.Create(&newStage).Error; err != nil {
 						return err
 					}
+					stageID = newStage.ID
+				}
+				if firstIncomingID == 0 {
+					firstIncomingID = stageID
+				}
+			}
+
+			// Migrate deals off every removed stage to stages[0] BEFORE deleting
+			// it — never orphan a Deal (ADR 0009). This now also covers the case
+			// where ALL stages are renamed/replaced (no surviving same-name
+			// stage), which previously deleted stages and orphaned their Deals.
+			for name, stage := range existing {
+				if incoming[name] {
+					continue
+				}
+				freshTx := tx.Session(&gorm.Session{NewDB: true})
+				if firstIncomingID != 0 {
+					if err := freshTx.Model(&models.Deal{}).
+						Where("\"stageId\" = ?", stage.ID).
+						Update("stageId", firstIncomingID).Error; err != nil {
+						return err
+					}
+				}
+				if err := freshTx.Delete(&models.PipelineStage{}, stage.ID).Error; err != nil {
+					return err
 				}
 			}
 		}
