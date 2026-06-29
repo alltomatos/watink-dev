@@ -1,14 +1,18 @@
 import React from "react";
-import { SettingsIcon, Palette, Mail, Globe, Headphones, Brain } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { SettingsIcon, Palette, Mail, Globe, Headphones, Brain, Library, HardDrive } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 
 interface SettingsSideNavProps {
   activeSection: string;
   activePlugins: string[];
   onSelect: (section: string) => void;
+  isSuperAdmin?: boolean;
 }
 
-const SettingsSideNav: React.FC<SettingsSideNavProps> = ({ activeSection, activePlugins, onSelect }) => {
+const SettingsSideNav: React.FC<SettingsSideNavProps> = ({ activeSection, activePlugins, onSelect, isSuperAdmin }) => {
+  const navigate = useNavigate();
+
   const item = (section: string, Icon: React.ElementType, label: string, condition = true) =>
     condition ? (
       <Button
@@ -30,6 +34,16 @@ const SettingsSideNav: React.FC<SettingsSideNavProps> = ({ activeSection, active
       {item("papi", Globe, "Gateway PAPI", activePlugins.includes("engine-papi"))}
       {item("helpdesk", Headphones, "Helpdesk Atendimento", activePlugins.includes("helpdesk"))}
       {item("ai", Brain, "Agente de IA")}
+      {item("storage", HardDrive, "Armazenamento", !!isSuperAdmin)}
+
+      <Button
+        variant="ghost"
+        className="w-full justify-start text-left"
+        onClick={() => navigate("/knowledge-bases")}
+      >
+        <Library className="mr-2 h-4 w-4" />
+        Base de Conhecimento
+      </Button>
     </aside>
   );
 };

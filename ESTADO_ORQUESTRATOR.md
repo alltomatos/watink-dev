@@ -349,3 +349,269 @@ Rodada E (paralela):        QA-B7 + QA-F6  (após QA-B4 + QA-B6 + QA-F2 + QA-F3 
 | QA-F4 | ⏳ pendente | — | — |
 | QA-F5 | ⏳ pendente | — | — |
 | QA-F6 | ⏳ pendente | — | — |
+
+---
+
+## Épico Ativo: FlowBuilder — Runtime de Automação (Fase 0: Contenção + Contrato + Fundação)
+
+> **Iniciado:** 2026-06-27 · **Origem:** sessão grill-feature-with-docs → /orchestrator
+> **Docs:** CLAUDE.md (bloco Módulo) · docs/agents/flowbuilder.md · ADRs 0011–0017 · CONTEXT.md (termos)
+> **Meta da fase:** infra de pé, contrato validado, ZERO flow executando.
+
+### Auditoria Técnica — GAPs (já levantados; ver workflows da sessão)
+
+#### GAP-FB-1 — Perda de dados no Update (P1/T2)
+`FlowController.Update` (flow.go:135-179) faz `Save()` do struct inteiro → zera Nodes/Edges/Active em PATCH parcial.
+**Fix:** whitelist/PATCH parcial preservando campos ausentes + teste de regressão com grafo populado.
+
+#### GAP-FB-2 — Endpoints fantasma (P2/T1)
+`POST /flows/ai` e `/flows/:id/simulate` não existem (routes.go:194-199) → frontend 404.
+**Fix:** registrar rotas com 501 honesto; frontend trata 501 com toast.
+
+#### GAP-FB-3 — Contrato de grafo opaco e não-validado (P2/T2)
+`Nodes/Edges` é `datatypes.JSON` nunca desserializado. **Fix:** structs Go `FlowGraph{schemaVersion,nodes,edges}` + validação no Create/Update.
+
+#### GAP-FB-4 — Sem FlowRun (estado de execução) (P2/T3-SCHEMA)
+**Fix:** tabela `FlowRun` (migration + RLS manual + índices de varredura). Bloqueante (schema DB).
+
+#### GAP-FB-5 — Dois workers mortos + sem porta de saída (P2/T2)
+`internal/flow/worker.go` (nunca importado) e `services/flow_worker.go` (só loga). **Fix:** runtime-skeleton único plugado em event_listener.go:110 (trigger-match + log, sem executar) + interfaces `OutboundChannelAdapter`.
+
+#### GAP-FB-6 — reactflow v11 congelada (P4/T2-worktree)
+**Fix:** migrar `reactflow`@11 → `@xyflow/react`@12 (~17 arquivos; `project()`→`screenToFlowPosition()`).
+
+#### GAP-FB-7 — "Saiu do menu" = RBAC (P3/T2)
+Item existe (MainNavItems.tsx:110-122) gated por `flows:read`. **Fix:** garantir `flows:read` no role.
+
+### DAG de Tarefas — FlowBuilder Fase 0
+
+**Backend Go (`business/`)**
+- [ ] **FB0-B1** — Fix Update perda-de-dados: PATCH parcial via whitelist (ponteiros/`Select`) preservando Nodes/Edges/trigger/whatsapp/timestamps + teste de regressão com grafo populado | depends_on: [] | T2
+- [ ] **FB0-B2** — Registrar `POST /flows/ai` e `POST /flows/:id/simulate` → handlers 501 honestos (routes.go + controller) | depends_on: [] | T1
+- [ ] **FB0-B3** — Structs Go contrato versionado `FlowGraph{schemaVersion,nodes,edges}` espelhando NodeData/Edge (16 node.types) | depends_on: [] | T2
+- [ ] **FB0-B4** — Validação no Create/Update: rejeita tipo desconhecido, IDs duplicados, edges órfãs; ausência schemaVersion=v1; mantém guard 1MiB | depends_on: [FB0-B1, FB0-B3] | T2
+- [ ] **FB0-B5** — Model `FlowRun` + AutoMigrate + applyRLS + índices `(tenantId,status,resumeAt)` e `(tenantId,status,expiresAt)` | depends_on: [] | **T3-SCHEMA**
+- [ ] **FB0-B6** — Interfaces `OutboundChannelAdapter` + registry (só assinaturas; WhatsAppAdapter reusa AMQP wbot.*) | depends_on: [] | T1
+- [ ] **FB0-B7** — Runtime-skeleton único plugado em event_listener.go:110: trigger-match tenant-aware (`WHERE tenantId`) + LOG "flow X roteado"; remove/consolida os 2 workers mortos; StartFlow segue stub | depends_on: [FB0-B3, FB0-B5] | T2
+- [ ] **FB0-B8** — RBAC: garantir permissão `flows:read` no role do tenant (seed/migração) — resolve "saiu do menu" | depends_on: [] | T2
+- [ ] **FB0-B9** — Testes: validador de contrato (B4) + trigger-match do skeleton (B7) | depends_on: [FB0-B4, FB0-B7] | T2
+
+**Frontend (`frontend/`) — worktree isolado**
+- [ ] **FB0-F1** — Migrar `reactflow`@11 → `@xyflow/react`@12: package.json + imports + CSS + `project()`→`screenToFlowPosition()` (useFlowNodes.ts) + limpar width/height legados no load | depends_on: [] | **T2-worktree (grande fatia)**
+- [ ] **FB0-F2** — Tratar 501 de `/flows/ai` e `/flows/:id/simulate` com toast "recurso indisponível" (FlowChat.tsx, useFlowIO.ts) | depends_on: [] | T1
+- [ ] **FB0-F3** — Alinhar `isActive`↔`active` (useFlowPersistence + badge FlowManager) | depends_on: [] | T1
+
+### Registro de Execução — Fase 0
+
+| Task | Tier | Status | PR | Notas |
+|------|------|--------|----|-------|
+| FB0-B1 | T2 | ⏳ pendente | — | — |
+| FB0-B2 | T1 | ⏳ pendente | — | — |
+| FB0-B3 | T2 | ⏳ pendente | — | — |
+| FB0-B4 | T2 | ⏳ pendente | — | depends B1,B3 |
+| FB0-B5 | T3 | ⏳ pendente | — | schema — aprovação |
+| FB0-B6 | T1 | ⏳ pendente | — | — |
+| FB0-B7 | T2 | ⏳ pendente | — | depends B3,B5 |
+| FB0-B8 | T2 | ⏳ pendente | — | RBAC |
+| FB0-B9 | T2 | ⏳ pendente | — | depends B4,B7 |
+| FB0-F1 | T2 | ⏳ pendente | — | worktree |
+| FB0-F2 | T1 | ⏳ pendente | — | — |
+| FB0-F3 | T1 | ⏳ pendente | — | — |
+
+### Conclusão — Fase 0 (2026-06-27)
+
+**Status: ✅ CONCLUÍDA** no branch `feat/flowbuilder-phase0` (5 commits).
+
+| Tarefa | Status | Notas |
+|---|---|---|
+| FB0-B1..B9 (backend) | ✅ | contrato FlowGraph, FlowRun+RLS, validação 422, 501, skeleton no seam, RBAC |
+| FB0-F1..F3 (frontend) | ✅ | xyflow v12, toast 501, isActive↔active |
+| Revisão adversarial (6 dim) | ✅ | zero critical/high; B1 provado por revert empírico; tenant-isolation provado |
+| Hardening pós-revisão | ✅ | whatsappId persistido (input+assoc+Preload), toggle ativação, RouteInbound após SSE, +4 testes |
+
+**Gate final:** `go build/vet/test` ✅ · frontend `typecheck/lint/build` ✅ · merge sem conflitos.
+
+**Aprendizado operacional:** `Agent{isolation:"worktree"}` ramifica do **main**, não do branch atual — agentes de fase subsequente precisam ter o trabalho anterior re-aplicado sobre o branch correto (feito manualmente sobre `feat/flowbuilder-phase0`).
+
+**Próximo:** abrir PR `feat/flowbuilder-phase0` → `develop`. Depois, **Fase 1** (interativo core: interpretador + FlowRun ativo + suspend/resume).
+
+---
+
+## Épico Ativo: FlowBuilder Fase 1 — Interativo Core
+
+> **Iniciado:** 2026-06-27 · **Base:** `develop` (Fase 0 mergeada, PR #242) · **Branch:** `feat/flowbuilder-phase1`
+> **Restrição:** sem worktree (eles ramificam do `main`, que não tem a Fase 0). Trabalho coeso direto no branch.
+
+### Decisões de design (grounding)
+- `FlowRun.SubjectID` é uuid mas `Ticket.ID` é int → adicionar coluna `ticketId *int` + índice `(tenantId,ticketId,status)` p/ resume-first.
+- Interpreter roda **in-process (goroutine após broadcasts SSE)**; enqueue async fica p/ Fase 3.
+- Reuso: `RabbitMQService.PublishCommand(wbot.<tenant>.<whatsappId>.<cmd>, {sessionId,messageId,to,ticketId,body,mediaType,mediaUrl})` · `interpolateVariables` (extrair p/ shared) · `RedisService.SetLock(wbot:msg:envId,24h)` dedup · `Ticket.WhatsappID`→sessionId.
+
+### DAG de Tarefas — Fase 1
+- [ ] **FB1-S1** — `FlowRun.ticketId *int` + índice `(tenantId,ticketId,status)` (resume lookup) | depends_on: [] | **T3-SCHEMA**
+- [ ] **FB1-S2** — Tabela `FlowRunLog` (observabilidade mínima) + AutoMigrate + RLS | depends_on: [] | **T3-SCHEMA**
+- [ ] **FB1-T1** — Projeção de trigger grafo→colunas no Create/Update (message-inbound: keyword/firstContact/any) | depends_on: [] | T2
+- [ ] **FB1-A1** — `WhatsAppAdapter` (dedup SetLock + PublishCommand + mídia) + registro DI main.go | depends_on: [] | T2
+- [ ] **FB1-I1** — `NodeExecutor` interface + registry (dispatch por node.type) | depends_on: [] | T2
+- [ ] **FB1-I4** — Extrair `interpolateVariables` p/ pacote compartilhado | depends_on: [] | T1
+- [ ] **FB1-I2** — Interpreter: walk GraphSnapshot, branch por sourceHandle, avança até waiting_message/end + guard de loop | depends_on: [FB1-I1] | T2
+- [ ] **FB1-I3** — Executores start/end/message/menu/switch/ticket-handoff | depends_on: [FB1-I1, FB1-A1, FB1-I4] | T2
+- [ ] **FB1-W1** — StartFlow + resume-first ((tenant,ticket) retoma; senão trigger) + sessão-manda/opt-out | depends_on: [FB1-S1, FB1-I2, FB1-I3] | T2
+- [ ] **FB1-W2** — Dedup inbound por env.ID antes de avançar | depends_on: [FB1-W1] | T2
+- [ ] **FB1-W3** — `POST /flows/:id/run` (FlowRun on-demand) | depends_on: [FB1-I2] | T2
+- [ ] **FB1-W4** — Varredura expiresAt vencido → expired | depends_on: [FB1-S1] | T2
+- [ ] **FB1-TST** — Testes: branching, suspend/resume, dedup, opt-out, cross-tenant, loop guard | depends_on: [FB1-W1, FB1-I3] | T2
+
+### Registro de Execução — Fase 1
+| Task | Status | Notas |
+|------|--------|-------|
+| FB1-S1..W4 + TST | ⏳ em execução | agente coeso, commits incrementais |
+
+### Conclusão — Fase 1 (2026-06-27)
+
+**Status: ✅ CONCLUÍDA** no branch `feat/flowbuilder-phase1` (13 commits: DAG + 8 impl + 4 fix).
+
+| Item | Status |
+|---|---|
+| FB1-S1..W4 + TST (impl) | ✅ schema, trigger projection, WhatsAppAdapter, interpreter, executores, resume-first/opt-out, dedup, /run |
+| Revisão adversarial (6 dim) | ✅ pegou 2 CRÍTICOS + 4 HIGH que os testes (adapter fake) escondiam |
+| Correções pós-revisão (4 grupos) | ✅ sessionId int · reprompt menu EnvID · dedup leak · lock por ticket + claim otimista · interpolação · switch fields · MenuNode handles dinâmicos |
+| Gate final | ✅ build/vet/test (suíte completa) · flow sob `-race` · frontend typecheck/lint/build |
+
+**Achado-chave:** o tracer-bullet passava com adapter fake, mas o adapter REAL mandava `sessionId` como string → engine rejeitava → nenhuma mensagem sairia em produção. Revisão adversarial expôs; corrigido com teste que decodifica o payload no struct do engine.
+
+**Débitos registrados (não bloqueantes):** detecção real de firstContact (instrumentada, fase posterior) · scheduler periódico do ExpireDueRuns (Fase 3) · ticket-handoff mínimo (Fase 2) · `protocol` mapeia ao ticket id.
+
+**Próximo:** PR `feat/flowbuilder-phase1` → `develop`. Depois, **Fase 2 (RAG no atendimento)** ou **Fase 3 (delay/cron)** conforme prioridade.
+
+---
+
+# Épico: Base de Conhecimento (RAG) — MVP (2026-06-28)
+
+**Objetivo:** loop RAG end-to-end (texto + arquivo) no novo microsserviço `watink-knowledge` (Python/FastAPI). Docs: `docs/agents/knowledge-base.md`, ADR 0015 (atualizado), 0018/0019/0020.
+
+**Tier global: T3** (mudança de schema DB + novo microsserviço + novo exchange AMQP) → requer aprovação do usuário antes de executar.
+
+## Auditoria técnica (GAPs)
+
+- 🚨 **GAP-KB1 (P1/T3):** pgvector instalado (0.8.2) mas extensão **não criada** no banco `watink`; sem tabela `KBChunk`, sem `halfvec`. → migration `CREATE EXTENSION vector` + schema.
+- 🚨 **GAP-KB2 (P2/T3):** nó `knowledge` **sem executor** (cai no `UnsupportedNodeTypes` → guard bloqueia o flow). → registrar executor que chama `/retrieve`.
+- 🚨 **GAP-KB3 (P1/T2):** `CreateSource` **descarta** o conteúdo do arquivo (só nome/tipo); `Status` hardcoded `"ready"`. → upload S3 + lifecycle real.
+- 🚨 **GAP-KB4 (P2/T3):** **não existe** pipeline de ingestão/embedding/retrieval (greenfield) nem o serviço. → microsserviço `watink-knowledge`.
+- 🚨 **GAP-KB5 (P3/T2):** páginas `KnowledgeBase` são stubs "em migração"; falta `aiEmbeddingModel` e seção S3 em Configurações. → UI real.
+
+## DAG
+
+### Fase 0 — Fundação / Infra (T3)
+- [ ] **KB-0.1** — Migration `CREATE EXTENSION vector` no banco `watink` | depends_on: [] | T3
+- [ ] **KB-0.2** — Scaffold `watink-knowledge` (FastAPI: Dockerfile.dev, serviço no compose.dev, /health, config, pool Postgres, middleware `X-Internal-Token`) | depends_on: [] | T3
+- [ ] **KB-0.3** — MinIO no compose.dev + bootstrap de bucket | depends_on: [] | T2
+- [ ] **KB-0.4** — Schema `KBChunk` (`halfvec(2048)` + HNSW `halfvec_cosine_ops`) — migration do serviço (Alembic/SQL) | depends_on: [KB-0.1, KB-0.2] | T3
+
+### Fase 1 — Loop RAG com TEXTO (prova o núcleo)
+- [ ] **KB-1.1** — (Go) `KnowledgeBaseSource`: campos `status/lastError/chunkCount/lastIngestedAt/updatable/refreshSchedule/nextRefreshAt` + AutoMigrate | depends_on: [] | T3
+- [ ] **KB-1.2** — (Go) Publisher de ingestão AMQP `knowledge.<tenant>.ingest` no Create (type=text) | depends_on: [KB-1.1] | T2
+- [ ] **KB-1.3** — (Py) Embedding client (omniroute `/v1/embeddings`, `aiEmbeddingModel`) + backoff | depends_on: [KB-0.2] | T2
+- [ ] **KB-1.4** — (Py) Chunker (~512 tok / 15% overlap, recursive) | depends_on: [KB-0.2] | T1
+- [ ] **KB-1.5** — (Py) Worker de ingestão (consume → chunk → embed → store `KBChunk` → publish status); idempotente + dedup por hash + lock por sourceId | depends_on: [KB-0.4, KB-1.3, KB-1.4] | T2
+- [ ] **KB-1.6** — (Go) Consumer de status `knowledge.<tenant>.status` → atualiza Source + `EmitToTenantRoom` (SSE) | depends_on: [KB-1.1] | T2
+- [ ] **KB-1.7** — (Py) Endpoint `POST /retrieve` (embed query → `halfvec` cosine `WHERE tenant+kb` → topK + citação) | depends_on: [KB-0.4, KB-1.3] | T2
+- [ ] **KB-1.8** — (Go) Retrieval HTTP client + **executor do nó `knowledge`** (registry; chama /retrieve; monta contexto; LLM via `aiclient` + guardrails; responde) | depends_on: [KB-1.7] | T2
+- [ ] **KB-1.9** — (FE) `AISettings`: campo `aiEmbeddingModel` | depends_on: [] | T1
+- [ ] **KB-1.10** — (test) E2E texto: base → fonte texto → `ready` → nó `knowledge` responde ancorado + isolamento A≠B | depends_on: [KB-1.5, KB-1.8] | T2
+
+### Fase 2 — Fonte ARQUIVO (S3 + parsing)
+- [ ] **KB-2.1** — (Go) S3 Storage Driver (cliente S3-compatível + config) | depends_on: [] | T2
+- [ ] **KB-2.2** — (Go) Settings backend: seção Armazenamento S3 (superadmin) | depends_on: [KB-2.1] | T2
+- [ ] **KB-2.3** — (FE) Settings: UI seção Armazenamento S3 | depends_on: [KB-2.2] | T1
+- [ ] **KB-2.4** — (Go) Fix `CreateSource`: upload S3 (`objectKey`) + publish ingest (type=file) | depends_on: [KB-2.1, KB-1.2] | T2
+- [ ] **KB-2.5** — (Py) Download S3 + parsers (pdf/docx/md/txt/csv/xlsx) no worker | depends_on: [KB-1.5, KB-2.1] | T2
+- [ ] **KB-2.6** — (FE) Página `KnowledgeBase` real (lista/CRUD/upload/status via SSE) | depends_on: [KB-1.6] | T2
+- [ ] **KB-2.7** — (test) E2E arquivo: upload PDF → `ready` (chunkCount>0) → nó cita o PDF; fora-da-base → "não encontrei" | depends_on: [KB-2.5, KB-2.6, KB-1.8] | T2
+
+### Riscos / notas
+- **omniroute em dev:** `localhost:20128` não é alcançável de dentro de container → usar `host.docker.internal:20128` no `watink-knowledge` (dev). Embedding nemotron já testado e funcional.
+- **Ownership do schema:** `KBChunk` + extensão = serviço Python (Alembic). Campos novos da Source = GORM AutoMigrate no `business`.
+- **Pré-requisito manual:** plugar/confirmar `aiEmbeddingModel` na UI; creds S3 (MinIO).
+
+### Registro de Execução (aprovado: Parcialmente — Fase 0+1 texto, 2026-06-28)
+
+**Fase 0 + metade Python da Fase 1 — ✅ CONCLUÍDA e validada contra a stack viva** (branch `feat/knowledge-base-rag-mvp`):
+
+| Task | Status | Nota |
+|---|---|---|
+| KB-0.1 extensão `vector` | ✅ | criada no banco `watink`; halfvec(2048)+HNSW smoke-tested |
+| KB-0.2 scaffold `watink-knowledge` | ✅ | FastAPI :8085, /health, config, pool, X-Internal-Token, serviço no compose |
+| KB-0.4 schema `KBChunk` | ✅ | migration do serviço (halfvec(2048) + HNSW + dedup index) |
+| KB-1.3 embedding (omniroute) | ✅ | settings do tenant + rewrite localhost→host.docker.internal + backoff 429 |
+| KB-1.4 chunker | ✅ | tiktoken ~512 tok / 15% overlap |
+| KB-1.5 worker de ingestão | ✅ | AMQP knowledge.jobs → chunk→embed→halfvec; idempotente+dedup; status event |
+| KB-1.7 `/retrieve` | ✅ | cosine tenant+kb scoped + citação + auth; erro limpo em embedding indisponível |
+
+**Validação E2E (parcial):** job AMQP de texto → 1 KBChunk gerado (~6s) → `/retrieve` casou (score ~0.4) · isolamento por kb (`{"chunks":[]}`) · auth 401 sem token. DB intacto (chunk de teste limpo).
+
+### Metade Go da Fase 1 — ✅ CONCLUÍDA e validada (commit c8a7d6c04)
+- [x] **KB-1.1** — Source: campos lifecycle + AutoMigrate (Go) ✅
+- [x] **KB-1.2** — Publisher AMQP `knowledge.<tenant>.ingest` no CreateSource (Go) ✅
+- [x] **KB-1.6** — `KnowledgeStatusListener` consome `knowledge.<tenant>.status` → atualiza Source + SSE ✅
+- [x] **KB-1.8** — Retrieval client (HTTP) + executor do nó `knowledge` (LLM guardrailed + fallback) + **guard destravado** ✅
+
+**🐛 Causa-raiz corrigida (bug pré-existente):** `CreateSource` fazia `db.Where(...).First(&kb)` e reusava o `db` escopado no `db.Create(&source)` → GORM criava a source com o **schema do KnowledgeBase** (auto-time CreatedAt caindo sobre coluna string → panic `time.Time→string`, HTTP 500). Nunca tinha sido testado de verdade. Fix: `Session(NewDB:true)` no Create (padrão já documentado em message_send.go).
+
+**Validação E2E (WhatsApp real):** `POST /knowledge-bases/1/sources` (texto) → `pending`→`processing`→`ready` (chunkCount=1) via Go-publish→Python-ingest→Go-status-listener. Flow id=7 com nó `knowledge` **ativado sem ERR_NODES_NOT_EXECUTABLE** (guard ok); inbound "horario" → FlowRunLog: `kb knowledge advance "knowledge: respondido"` → bot respondeu ancorado.
+
+### Fechamento da Fase 1 — ✅ CONCLUÍDO
+- [x] **KB-1.9** — campo `aiEmbeddingModel` no AISettings (FE) ✅
+- [x] **KB-1.10** — unit tests do executor knowledge (4 casos, guardrails) ✅
+- [x] **Fix dev business→omniroute** — `aiclient.rewriteDevHost` (localhost→host.docker.internal) + `stream:false` → **LLM sintetiza com CITAÇÃO** (`[Fonte: source:N]`), guardrails validados ao vivo; corrige pipeline AISuggest também ✅
+- [x] Flows de teste 6/7 **desativados** (não firam mais nas conexões reais) ✅
+
+**Fase 1 (MVP RAG texto) COMPLETA e validada.** Branch `feat/knowledge-base-rag-mvp`.
+Próximo: push + PR → `develop`. Depois **Fase 2** (fonte arquivo: S3/MinIO + parsing; nó `agent`).
+
+---
+
+# Épico: Base de Conhecimento — Fontes Web/URL (Firecrawl) — Track A (2026-06-28)
+
+> **Origem:** `/orchestrator vamos aos próximos passos` → escolha "Track A".
+> **Branch:** `feat/knowledge-url-sources` (base `develop` @ 8ad4c32f2, plataforma RAG+Agent completa).
+> **Tier global: T2** (aditivo; sem schema novo — model `KnowledgeBaseSource` já tem `url`+lifecycle).
+
+## Auditoria (GAP)
+- 🚨 **GAP-KB-WEB (P1):** `CreateSource` aceitava `type=url` (e era o **default** com type vazio), gravava `Status:"ready"` e **nunca publicava job** → fonte de site mentia "pronto" com 0 chunks. Worker Python sem handler de url. (Confirmado em `knowledge_base_mutation.go:189-300` + grep firecrawl/url=0 no serviço.)
+
+## Decisões de MVP (mentor)
+- **Scrape de página única** via Firecrawl `/v1/scrape` → markdown (cai no chunker existente). Crawl de site (`website`) e browserless ficam Fase 2.
+- Firecrawl self-hosted do devops (`mendable/firecrawl`, porta 3002, **sem API key**); cliente env-driven (`FIRECRAWL_URL`/`FIRECRAWL_API_KEY`/`FIRECRAWL_TIMEOUT`). Prod: `http://firecrawl:3002`; dev: domínio público.
+
+## DAG + Execução
+| Task | Camada | Status | Nota |
+|------|--------|--------|------|
+| A-P2 config FIRECRAWL_* | Py | ✅ | env-driven, key opcional |
+| A-P1 `firecrawl.py` scrape_markdown | Py | ✅ | httpx injetável; FirecrawlError; fallback `content` (v0) |
+| A-P3 `ingest.py` branch `url` | Py | ✅ | scrape→chunk/embed/store; handler de erro dedicado |
+| A-P4 testes firecrawl (MockTransport) | Py | ✅ | 9 casos (ok/auth/erros/empty) — ruff clean, 26/26 suíte |
+| A-G1 `CreateSource` url→pending+publish | Go | ✅ | corrige GAP-KB-WEB; valida url obrigatória |
+| A-G2 testes CreateSource url | Go | ✅ | 400 sem url + publish job (mock publisher) — verde |
+| A-I1 compose env FIRECRAWL_* | infra | ✅ | watink-knowledge |
+| A-F1 UI aba "URL" no dialog | FE | ✅ | typecheck+eslint clean |
+| A-T1 **E2E ao vivo** | test | ⏳ | aguarda `FIRECRAWL_URL` (domínio do devops) + recreate do container |
+
+**Gate de build:** Go build/vet/fmt ✅ · Python ruff + 26 testes ✅ · FE typecheck + eslint ✅.
+
+### Pivô — paridade dev/prod (2026-06-28): Firecrawl REAL no compose (shim removido)
+
+Decisão do usuário: "dev = prod, mas em Docker standalone (Swarm só em produção)". Logo, o `docker-compose.dev.yml` sobe o **Firecrawl real**, não o shim.
+
+**Pesquisa (workflow `firecrawl-selfhost-research`, 6 agentes, verificação adversarial):**
+- Firecrawl atual NÃO é imagem única (a `mendable/firecrawl:latest` sumiu). Stack = 5 serviços. Imagens publicadas no GHCR **org `firecrawl`** (não `mendableai`) são pulláveis → **sem build-from-source**.
+- Veredito da verificação: `matches_canonical=true`, zero critical/high. 2 mediums incorporados (healthcheck `pg_isready` no nuq-postgres + gate `service_healthy`; `FIRECRAWL_URL` default já apontando p/ o real).
+
+**Aplicado:**
+- `docker-compose.dev.yml`: +5 serviços (`firecrawl` `ghcr.io/firecrawl/firecrawl:2.10.14` · `firecrawl-playwright` · `firecrawl-nuq-postgres` · `firecrawl-rabbitmq` · `firecrawl-redis`), infra **dedicada** (prefixo `firecrawl-*`, sem colidir com Redis/RabbitMQ/Postgres do Watink), `USE_DB_AUTHENTICATION=false`, `shm_size:2gb` no playwright, porta 5432 não exposta, volume `firecrawl_nuq_pgdata`.
+- `FIRECRAWL_URL` default → `http://firecrawl:3002`.
+- **Shim `infra/firecrawl-dev` REMOVIDO** (era stopgap, nunca mergeado).
+- docs/agents/knowledge-base.md atualizado (stack real).
+
+**Custo:** ~5GB imagens · ~8GB RAM recomendado (Windows/Docker Desktop). Gotchas mitigados (init nuq-postgres #2264/#2317, race rabbitmq #2583, cred hardcoded #2384, shm Chromium).
+**Pendente:** bring-up (`up -d firecrawl`) + E2E real → atualizar PR #264 (vira PR de paridade dev/prod) → merge com "ok" do usuário.

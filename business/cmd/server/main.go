@@ -33,11 +33,13 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/controllers"
 	"github.com/alltomatos/watinkdev/business/internal/database"
 	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/internal/flow"
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/internal/routes"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/internal/web"
+	"github.com/alltomatos/watinkdev/business/pkg/s3store"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	otelgin "go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
@@ -83,10 +85,26 @@ func main() {
 	// Pass hub so the container uses the same SSEHub — avoids a second instance.
 	container := application.NewContainer(database.DB, redisSvc, broadcast, rabbitMQ, hub)
 
+	// FlowBuilder FASE 1: build the outbound channel registry via DI and register
+	// the WhatsApp adapter (dedup + PublishCommand). The interpreter resolves
+	// adapters from this registry — never whatsmeow directly (ADR 0014).
+	channelRegistry := flow.NewChannelRegistry()
+	channelRegistry.Register(flow.NewWhatsAppAdapter(rabbitMQ, redisSvc))
+
 	if err := rabbitMQ.Connect(); err == nil {
-		rabbitMQ.StartFlowWorker()
-		eventListener := services.NewEventListener(container.ChannelSessionRepo, container.MessageRepo, container.ContactRepo, container.TicketRepo, container.ReceiveMessage, broadcast, database.DB)
+		// FlowBuilder FASE 1: the inbound seam is plugged into the EventListener
+		// (NewEventListener wires flow.NewSkeleton with the interpreter+registry),
+		// replacing the two previously-dead workers. No separate AMQP flow worker.
+		eventListener := services.NewEventListener(container.ChannelSessionRepo, container.MessageRepo, container.ContactRepo, container.TicketRepo, container.ReceiveMessage, broadcast, database.DB, channelRegistry, redisSvc)
 		services.StartEventListener(rabbitMQ, eventListener)
+
+		// Knowledge Base RAG: consume ingestion status events from
+		// watink-knowledge (knowledge.events) and reflect them onto the source
+		// rows + broadcast to the tenant.
+		knowledgeStatus := services.NewKnowledgeStatusListener(container.DB, container.Broadcast)
+		if err := knowledgeStatus.Start(rabbitMQ); err != nil {
+			log.Printf("[knowledge] status listener: %v", err)
+		}
 	} else {
 		log.Printf("⚠️ Warning: RabbitMQ connection failed: %v", err)
 	}
@@ -111,7 +129,19 @@ func main() {
 		pluginManager.Register(&plugins.ClientesPlugin{})
 		pluginManager.Register(&plugins.SaaSPlugin{})
 
-		routes.SetupRoutes(apiGroup, rabbitMQ, container)
+		// Knowledge Base file sources: build the S3-compatible object store from
+		// env. When S3 is unconfigured or init fails, s3Store stays nil and the
+		// file-source path responds with a clear error (never panics).
+		var s3Store domain.ObjectStore
+		if s3cfg, ok := s3store.ConfigFromEnv(); ok {
+			if st, err := s3store.New(s3cfg); err != nil {
+				log.Printf("⚠️ S3 store init failed: %v", err)
+			} else {
+				s3Store = st
+			}
+		}
+
+		routes.SetupRoutes(apiGroup, rabbitMQ, container, s3Store)
 	}
 
 	r.GET("/api/health", func(c *gin.Context) {

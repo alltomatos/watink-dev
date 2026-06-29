@@ -1,5 +1,5 @@
 import React from "react";
-import { Handle, Position, NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { X } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import PaperCard from "../../../components/PaperCard";
@@ -9,7 +9,7 @@ interface GenericNodeData {
   [key: string]: unknown;
 }
 
-interface GenericNodeProps extends Partial<NodeProps<GenericNodeData>> {
+interface GenericNodeProps {
   data: GenericNodeData;
   isConnectable?: boolean;
   title?: React.ReactNode;

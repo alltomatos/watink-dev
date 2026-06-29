@@ -6,8 +6,25 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
+
+// rewriteDevHost rewrites a localhost/127.0.0.1 BaseURL host to the value of
+// AI_BASEURL_HOST_REWRITE (e.g. host.docker.internal) so a containerized service
+// can reach an AI gateway running on the Docker host in dev. No-op when the env
+// var is unset or the BaseURL is a real domain — production is unaffected.
+func rewriteDevHost(baseURL string) string {
+	rw := os.Getenv("AI_BASEURL_HOST_REWRITE")
+	if rw == "" || baseURL == "" {
+		return baseURL
+	}
+	for _, h := range []string{"localhost", "127.0.0.1"} {
+		baseURL = strings.ReplaceAll(baseURL, h, rw)
+	}
+	return baseURL
+}
 
 type Message struct {
 	Role    string `json:"role"`
@@ -31,6 +48,8 @@ func Complete(cfg Config, messages []Message) (*Response, error) {
 	if cfg.APIKey == "" {
 		return nil, fmt.Errorf("ERR_NO_AI_API_KEY")
 	}
+
+	cfg.BaseURL = rewriteDevHost(cfg.BaseURL)
 
 	switch cfg.Provider {
 	case "anthropic":
@@ -61,6 +80,10 @@ func callOpenAICompatible(cfg Config, messages []Message) (*Response, error) {
 	payload := map[string]any{
 		"model":    model,
 		"messages": messages,
+		// Some OpenAI-compatible gateways (omniroute) default to a streamed
+		// (text/event-stream) response, which this single-shot JSON decoder cannot
+		// parse. Force a non-streaming response.
+		"stream": false,
 	}
 
 	body, _ := json.Marshal(payload)
@@ -71,7 +94,7 @@ func callOpenAICompatible(cfg Config, messages []Message) (*Response, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 90 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("ERR_AI_SERVICE_FAILED: %w", err)
@@ -136,7 +159,7 @@ func callAnthropic(cfg Config, messages []Message) (*Response, error) {
 	req.Header.Set("x-api-key", cfg.APIKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 90 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("ERR_AI_SERVICE_FAILED: %w", err)

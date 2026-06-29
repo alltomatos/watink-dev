@@ -1,7 +1,7 @@
 /* @jsxImportSource react */
 import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { Puzzle, Headphones, Loader2 } from "lucide-react";
+import { Puzzle, Loader2 } from "lucide-react";
 
 import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
@@ -12,6 +12,7 @@ import {
   PageContent,
 } from "../../components/ui/page-layout";
 import AISettings from "./components/AISettings";
+import StorageSection from "./components/StorageSection";
 
 import { useSettings } from "./hooks/useSettings";
 import GeneralSection from "./components/GeneralSection";
@@ -43,6 +44,7 @@ const Settings: React.FC = () => {
   } = useSettings();
 
   const sharedProps = { getSettingValue, handleUpdateSetting };
+  const isSuperAdmin = (user?.profile || "").toLowerCase() === "superadmin";
 
   return (
     <PageLayout>
@@ -58,10 +60,6 @@ const Settings: React.FC = () => {
               </Button>
             )}
           />
-          <Button variant="ghost" onClick={() => navigate("/helpdesk")}>
-            <Headphones className="mr-2 h-4 w-4" />
-            Ajuda
-          </Button>
         </div>
       </PageHeader>
 
@@ -70,6 +68,7 @@ const Settings: React.FC = () => {
           activeSection={activeSection}
           activePlugins={activePlugins}
           onSelect={setActiveSection}
+          isSuperAdmin={isSuperAdmin}
         />
 
         <div className="flex-1 min-w-0 w-full">
@@ -105,6 +104,9 @@ const Settings: React.FC = () => {
               )}
               {activeSection === "ai" && (
                 <AISettings {...sharedProps} />
+              )}
+              {activeSection === "storage" && isSuperAdmin && (
+                <StorageSection />
               )}
             </>
           )}

@@ -23,6 +23,9 @@ const TriggerForm: React.FC<TriggerFormProps> = ({ formData, onChange }) => (
           <SelectItem value="firstContact">Primeiro Contato</SelectItem>
         </SelectContent>
       </Select>
+      <p className="text-[11px] text-muted-foreground">
+        A conexão atrelada a este fluxo é definida na barra do editor (no topo) — assim você pode criar sem conexão e atrelar/trocar depois.
+      </p>
     </div>
 
     {formData.triggerType === 'keyword' && (

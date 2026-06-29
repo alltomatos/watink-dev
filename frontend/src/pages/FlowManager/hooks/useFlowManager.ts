@@ -3,7 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../../../services/api";
 import toastError from "../../../errors/toastError";
-import { Flow, Whatsapp } from "../flowManagerTypes";
+import { Flow, FlowApi, Whatsapp } from "../flowManagerTypes";
+
+/** Maps the backend `active` field to the UI-facing `isActive`. */
+const toFlow = (raw: FlowApi): Flow => ({
+  id: raw.id,
+  name: raw.name,
+  isActive: raw.active === true,
+  updatedAt: raw.updatedAt,
+  whatsappId: raw.whatsappId,
+  whatsapp: raw.whatsapp,
+});
 
 export function useFlowManager() {
   const navigate = useNavigate();
@@ -32,7 +42,7 @@ export function useFlowManager() {
     setLoading(true);
     try {
       const { data } = await api.get("/flows");
-      setFlows(Array.isArray(data) ? data : []);
+      setFlows(Array.isArray(data) ? (data as FlowApi[]).map(toFlow) : []);
     } finally {
       setLoading(false);
     }
@@ -120,6 +130,18 @@ export function useFlowManager() {
     setConfirmModalOpen(true);
   };
 
+  const handleToggleActive = async (flow: Flow, active: boolean) => {
+    try {
+      await api.put(`/flows/${flow.id}`, { active });
+      setFlows((prev) =>
+        prev.map((f) => (f.id === flow.id ? { ...f, isActive: active } : f))
+      );
+      toast.success(active ? "Fluxo ativado" : "Fluxo desativado");
+    } catch (err) {
+      toastError(err);
+    }
+  };
+
   const filteredFlows = flows.filter((f) =>
     f.name.toLowerCase().includes(searchParam.toLowerCase())
   );
@@ -149,5 +171,6 @@ export function useFlowManager() {
     handleSaveFlow,
     handleDeleteFlow,
     handleRequestDelete,
+    handleToggleActive,
   };
 }

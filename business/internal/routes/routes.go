@@ -4,6 +4,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/application"
 	"github.com/alltomatos/watinkdev/business/internal/controllers"
 	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/internal/flow"
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/gin-gonic/gin"
@@ -12,9 +13,10 @@ import (
 type RouteRabbitMQ interface {
 	domain.CommandPublisher
 	domain.QueueMonitor
+	domain.KnowledgeJobPublisher
 }
 
-func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *application.Container) {
+func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *application.Container, s3Store domain.ObjectStore) {
 	db := container.DB
 	messageController := controllers.NewMessageController(rabbitMQ, container.Broadcast)
 	systemController := controllers.NewSystemController(container.SystemRepo, rabbitMQ)
@@ -31,13 +33,21 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	tagController := controllers.NewTagController()
 	pipelineController := controllers.NewPipelineController()
 	dealController := controllers.NewDealController()
-	kbController := controllers.NewKnowledgeBaseController()
+	kbController := controllers.NewKnowledgeBaseController(rabbitMQ, s3Store)
+	kbInspectController := controllers.NewKnowledgeInspectController(flow.NewHTTPRetrieverFromEnv())
 	groupController := controllers.NewGroupController(container.PermissionRepo)
 	roleController := controllers.NewRoleController(container.PermissionRepo)
-	flowController := controllers.NewFlowController()
+	// FlowBuilder FASE 1: build a channel registry + runtime skeleton for the
+	// on-demand run endpoint (POST /flows/:id/run). Uses the worker DB
+	// (container.DB) with manual WHERE "tenantId"; RLS is inert in StartFlow.
+	flowChannels := flow.NewChannelRegistry()
+	flowChannels.Register(flow.NewWhatsAppAdapter(rabbitMQ, container.RedisSvc))
+	flowRuntime := flow.NewSkeleton(container.DB, flowChannels, container.RedisSvc)
+	flowController := controllers.NewFlowController(flowRuntime)
 	quickAnswerController := controllers.NewQuickAnswerController(rabbitMQ, container.Broadcast, db)
 	versionController := controllers.NewVersionController(container.VersionRepo)
 	swaggerController := controllers.NewSwaggerController(container.SwaggerPermRepo)
+	storageController := controllers.NewStorageController(s3Store)
 
 	// Public Routes
 	group.POST("/auth/login", authController.Login)
@@ -62,6 +72,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		system.Use(middleware.SuperAdminOnly())
 		{
 			system.GET("/stats", systemController.GetSystemStats)
+			system.GET("/storage", storageController.Status)
 			system.GET("/rabbitmq/queues", systemController.GetRabbitMQQueues)
 			system.GET("/latest-release", controllers.GetLatestRelease)
 			system.GET("/version", versionController.GetVersion)
@@ -156,7 +167,11 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.PUT("/knowledge-bases/:knowledgeBaseId", kbController.Update)
 		protected.DELETE("/knowledge-bases/:knowledgeBaseId", kbController.Delete)
 		protected.POST("/knowledge-bases/:knowledgeBaseId/sources", kbController.CreateSource)
+		protected.POST("/knowledge-bases/:knowledgeBaseId/sources/:sourceId/reingest", kbController.ReingestSource)
 		protected.DELETE("/knowledge-bases/:knowledgeBaseId/sources/:sourceId", kbController.DeleteSource)
+		// Inspeção read-only do conhecimento vetorizado (chunks + playground de recuperação).
+		protected.GET("/knowledge-bases/:knowledgeBaseId/sources/:sourceId/chunks", kbInspectController.Chunks)
+		protected.POST("/knowledge-bases/:knowledgeBaseId/query", kbInspectController.Query)
 
 		// Users
 		protected.GET("/users", userController.ListUsers)
@@ -194,9 +209,12 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		// Flows
 		protected.GET("/flows", flowController.List)
 		protected.POST("/flows", flowController.Create)
+		protected.POST("/flows/ai", flowController.AISuggest)
 		protected.GET("/flows/:flowId", flowController.Show)
 		protected.PUT("/flows/:flowId", flowController.Update)
 		protected.DELETE("/flows/:flowId", flowController.Delete)
+		protected.POST("/flows/:flowId/simulate", flowController.Simulate)
+		protected.POST("/flows/:flowId/run", flowController.Run)
 
 		// Tags
 		protected.GET("/tags", tagController.List)

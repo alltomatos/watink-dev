@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"io"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/google/uuid"
@@ -105,6 +106,18 @@ type EventHandler func(ctx context.Context, event DomainEvent) error
 // CommandPublisher defines the contract for sending messages to Engine Go.
 type CommandPublisher interface {
 	PublishCommand(routingKey string, payload interface{}) error
+}
+
+// KnowledgeJobPublisher publica jobs de ingestão para o watink-knowledge.
+type KnowledgeJobPublisher interface {
+	PublishKnowledgeJob(routingKey string, payload interface{}) error
+}
+
+// ObjectStore persiste/recupera arquivos de fontes (S3-compatível).
+type ObjectStore interface {
+	Upload(ctx context.Context, key string, r io.Reader, size int64, contentType string) error
+	// Describe returns the non-sensitive store configuration (no credentials).
+	Describe() map[string]any
 }
 
 // EventConsumer defines the contract for listening to events.
