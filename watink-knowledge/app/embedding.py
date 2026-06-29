@@ -30,7 +30,16 @@ async def embed_texts(tenant_id: str, texts: list[str]) -> tuple[list[list[float
     last_err = None
     async with httpx.AsyncClient(timeout=90) as client:
         for attempt in range(len(_RETRY_DELAYS) + 1):
-            resp = await client.post(url, json=payload, headers=headers)
+            try:
+                resp = await client.post(url, json=payload, headers=headers)
+            except httpx.HTTPError as e:
+                # Falha de conexão/timeout com o omniroute (gateway de IA, no host).
+                # Mensagem acionável em vez do httpx.ConnectError cru
+                # ("All connection attempts failed") vazar para o status da fonte.
+                raise EmbeddingError(
+                    f"omniroute inacessível em {url} ({type(e).__name__}) — "
+                    f"o gateway de IA (host:20128) está rodando?"
+                ) from e
             if resp.status_code == 200:
                 data = resp.json()
                 vectors = [item["embedding"] for item in data["data"]]

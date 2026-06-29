@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   ChevronDown,
@@ -13,6 +14,7 @@ import {
   Globe,
   Loader2,
   Plus,
+  RotateCw,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -105,13 +107,19 @@ function SourceIcon({ source }: { source: KBSource }): React.ReactElement {
 function StatusBadge({ source }: { source: KBSource }): React.ReactElement {
   switch (source.status) {
     case "ready":
+      if (!source.chunkCount) {
+        return (
+          <Badge className="gap-1 border-transparent bg-[hsl(var(--status-warning-bg))] text-[hsl(var(--status-warning-text))]">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Sem conteúdo
+          </Badge>
+        );
+      }
       return (
         <Badge className="gap-1 border-transparent bg-[hsl(var(--status-success-bg))] text-[hsl(var(--status-success-text))]">
           <CheckCircle2 className="h-3.5 w-3.5" />
           Pronto
-          {typeof source.chunkCount === "number" && (
-            <span className="font-normal">· {source.chunkCount} chunks</span>
-          )}
+          <span className="font-normal">· {source.chunkCount} chunks</span>
         </Badge>
       );
     case "processing":
@@ -295,6 +303,24 @@ const KnowledgeBaseConfig: React.FC = () => {
     }
   };
 
+  const handleReingest = async (source: KBSource): Promise<void> => {
+    try {
+      await api.post(
+        `/knowledge-bases/${knowledgeBaseId}/sources/${source.id}/reingest`
+      );
+      setSources((prev) =>
+        prev.map((s) =>
+          s.id === source.id
+            ? { ...s, status: "pending", lastError: undefined }
+            : s
+        )
+      );
+      toast.success("Reprocessando a fonte...");
+    } catch (err) {
+      toastError(err);
+    }
+  };
+
   const handleRequestDelete = (source: KBSource): void => {
     setDeleteTarget(source);
     setConfirmOpen(true);
@@ -382,7 +408,8 @@ const KnowledgeBaseConfig: React.FC = () => {
         ) : (
           <div className="flex flex-col gap-3">
             {sources.map((source) => {
-              const isExpandable = source.status === "ready";
+              const isExpandable =
+                source.status === "ready" && !!source.chunkCount;
               const isOpen = expandedId === source.id;
               const chunks = chunksBySource[source.id];
               return (
@@ -395,9 +422,21 @@ const KnowledgeBaseConfig: React.FC = () => {
                       <p className="font-medium text-foreground truncate">
                         {sourceLabel(source)}
                       </p>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                        {source.type}
-                      </p>
+                      {source.url ? (
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={source.url}
+                          className="block truncate text-xs text-muted-foreground hover:text-foreground hover:underline"
+                        >
+                          {source.url}
+                        </a>
+                      ) : (
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          {source.type}
+                        </p>
+                      )}
                     </div>
                     <StatusBadge source={source} />
                     {isExpandable && (
@@ -413,6 +452,18 @@ const KnowledgeBaseConfig: React.FC = () => {
                             isOpen ? "rotate-180" : ""
                           }`}
                         />
+                      </Button>
+                    )}
+                    {source.type !== "text" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Reprocessar fonte"
+                        title="Reprocessar (re-disparar raspagem/ingestão)"
+                        onClick={() => handleReingest(source)}
+                        className="shrink-0 text-muted-foreground"
+                      >
+                        <RotateCw className="h-4 w-4" />
                       </Button>
                     )}
                     <Button
@@ -436,6 +487,34 @@ const KnowledgeBaseConfig: React.FC = () => {
                         <p className="break-words text-xs text-muted-foreground">
                           {source.lastError ||
                             "Erro desconhecido durante a ingestão."}
+                        </p>
+                        {source.type !== "text" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReingest(source)}
+                            className="mt-2 gap-1.5"
+                          >
+                            <RotateCw className="h-3.5 w-3.5" />
+                            Tentar novamente
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {source.status === "ready" && !source.chunkCount && (
+                    <div className="mx-2 mt-1 flex items-start gap-2 rounded-xl border border-[hsl(var(--status-warning-text))]/30 bg-[hsl(var(--status-warning-bg))]/40 p-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--status-warning-text))]" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[hsl(var(--status-warning-text))]">
+                          Nenhum conteúdo extraído
+                        </p>
+                        <p className="break-words text-xs text-muted-foreground">
+                          A fonte foi processada, mas não gerou nenhum trecho. O site
+                          pode ter bloqueado a raspagem, exigir login, depender de
+                          JavaScript pesado ou ter excedido o tempo limite. Tente outra
+                          URL ou uma página mais simples.
                         </p>
                       </div>
                     </div>
