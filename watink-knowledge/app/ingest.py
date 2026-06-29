@@ -39,6 +39,15 @@ async def _store_chunks(tenant_id, kb_id, source_id, chunks, vectors, model):
     async with pool.connection() as conn:
         await register_vector_async(conn)
         async with conn.cursor() as cur:
+            # Lock por sourceId (xact-scoped, liberado no commit): serializa o
+            # DELETE+INSERT de refreshes concorrentes da MESMA fonte (re-ingest /
+            # retry com prefetch_count=4). Sem ele, sob READ COMMITTED dois jobs
+            # intercalam DELETE/INSERT e corrompem a base (chunks órfãos / perda /
+            # contagem errada). Implementa o invariante "lock por sourceId".
+            await cur.execute(
+                "SELECT pg_advisory_xact_lock(hashtext(%s))",
+                (f"{tenant_id}:{source_id}",),
+            )
             # Idempotente: re-ingest apaga os chunks antigos da fonte.
             await cur.execute(
                 'DELETE FROM "KBChunk" WHERE "tenantId" = %s AND "sourceId" = %s',

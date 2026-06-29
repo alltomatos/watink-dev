@@ -315,3 +315,72 @@ func TestPipelineController_Update_ZeroStagesBlocked(t *testing.T) {
 	NewPipelineController().Update(c2)
 	assert.Equal(t, http.StatusUnprocessableEntity, w2.Code)
 }
+
+// TestPipelineController_Update_AllStagesReplaced_MigratesDeals locks in the
+// ADR 0009 invariant: when EVERY stage is renamed/replaced (the common
+// PipelineCreator redesign case, where no incoming name matches an existing
+// one), deals on the removed stages must be migrated to stages[0] — never
+// orphaned by deleting their stage. Previously the all-new branch was a no-op
+// (`_ = firstIncoming`) and silently dropped the deals off the board.
+func TestPipelineController_Update_AllStagesReplaced_MigratesDeals(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupPipelineTestDB(t)
+	tenantID := uuid.New()
+
+	createPayload, _ := json.Marshal(map[string]interface{}{
+		"name":   "Funil Original",
+		"stages": []map[string]string{{"name": "A"}, {"name": "B"}},
+	})
+	c, w := setupPipelineContext(t, db, tenantID, "POST", "/pipelines", createPayload)
+	NewPipelineController().Create(c)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var created map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+	pipelineID := int(created["id"].(float64))
+
+	var stageAID int
+	for _, s := range created["stages"].([]interface{}) {
+		sm := s.(map[string]interface{})
+		if sm["name"].(string) == "A" {
+			stageAID = int(sm["id"].(float64))
+		}
+	}
+	require.NotZero(t, stageAID, "stage 'A' must have an ID")
+
+	// Seed a deal sitting on stage A
+	require.NoError(t, db.Exec(
+		`INSERT INTO "Deals" (name, "stageId", "contactId", "tenantId", status) VALUES (?,?,?,?,?)`,
+		"Negócio 1", stageAID, 1, tenantID, "open",
+	).Error)
+
+	// Replace ALL stages with brand-new names (no surviving name)
+	updatePayload, _ := json.Marshal(map[string]interface{}{
+		"name":   "Funil Original",
+		"stages": []map[string]string{{"name": "X"}, {"name": "Y"}, {"name": "Z"}},
+	})
+	c2, w2 := setupPipelineContextWithParam(t, db, tenantID, "PUT", fmt.Sprintf("/pipelines/%d", pipelineID), updatePayload, "pipelineId", strconv.Itoa(pipelineID))
+	NewPipelineController().Update(c2)
+	require.Equal(t, http.StatusOK, w2.Code, "update body: %s", w2.Body.String())
+
+	var updated map[string]interface{}
+	require.NoError(t, json.Unmarshal(w2.Body.Bytes(), &updated))
+
+	var stageXID int
+	for _, s := range updated["stages"].([]interface{}) {
+		sm := s.(map[string]interface{})
+		if sm["name"].(string) == "X" {
+			stageXID = int(sm["id"].(float64))
+		}
+	}
+	require.NotZero(t, stageXID, "new stage 'X' (stages[0]) must exist")
+
+	// The deal must survive and now point to stages[0] (X), not a deleted stage.
+	var count int64
+	require.NoError(t, db.Raw(`SELECT COUNT(*) FROM "Deals" WHERE "tenantId" = ?`, tenantID).Scan(&count).Error)
+	assert.Equal(t, int64(1), count, "deal must NOT be deleted when its stage is replaced")
+
+	var dealStageID int
+	require.NoError(t, db.Raw(`SELECT "stageId" FROM "Deals" WHERE "tenantId" = ?`, tenantID).Scan(&dealStageID).Error)
+	assert.Equal(t, stageXID, dealStageID, "deal must be migrated to stages[0] (X), not orphaned on a deleted stage")
+}
