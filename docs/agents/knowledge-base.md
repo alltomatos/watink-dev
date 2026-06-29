@@ -62,6 +62,21 @@ turn-taking e valida auth/tenant.
   `docker compose -f docker-compose.dev.yml up -d firecrawl`.
 - **Apenas página única** (scrape, `/v1/scrape`). Crawl recursivo de site inteiro (`website`) é Fase 2.
 
+### Inspeção do conhecimento (read-only, human-in-the-loop)
+
+Para um humano **ver e avaliar** como o conhecimento foi vetorizado (sem expor o vetor cru, que não é legível):
+
+- `GET /knowledge-bases/:id/sources/:sourceId/chunks` — lista os chunks de uma fonte
+  (texto, ordinal, nº de chars, modelo de embedding, dimensão, hash). Lê `KBChunk`
+  direto do Postgres (read-only, **tenant-scoped manual**; coluna `embedding` omitida).
+  `KBChunk` é do serviço Python — **não** é modelo GORM (raw SQL, fora do AutoMigrate).
+- `POST /knowledge-bases/:id/query` `{query, topK, minScore}` — **playground de recuperação**:
+  faz proxy pro `/retrieve` do Python e devolve os top-k chunks + **score** + fonte. É o
+  jeito real de avaliar a vetorização (a pergunta certa traz o chunk certo com score alto?).
+- Ambos no `KnowledgeInspectController` (gateway business; o frontend nunca fala com o
+  watink-knowledge). UI: expandir a fonte mostra os chunks; botão "Testar recuperação"
+  abre o playground. **Curadoria (editar/re-embed) é passo futuro.**
+
 ---
 
 ## Modelo de dados

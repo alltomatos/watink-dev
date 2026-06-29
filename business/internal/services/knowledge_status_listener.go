@@ -95,6 +95,7 @@ func (l *KnowledgeStatusListener) handle(d amqp.Delivery) error {
 		"sourceId":   p.SourceID,
 		"status":     p.Status,
 		"chunkCount": p.ChunkCount,
+		"lastError":  p.Error,
 	})
 
 	return nil
