@@ -125,7 +125,13 @@ func knowledgeAnswer(st *ExecState, query string, chunks []RetrievedChunk) strin
 	if err != nil || resp == nil || strings.TrimSpace(resp.Content) == "" {
 		return fallback
 	}
-	return strings.TrimSpace(resp.Content)
+	answer := strings.TrimSpace(resp.Content)
+	// Citação obrigatória: se o modelo respondeu sem citar a fonte, anexa a do
+	// trecho mais relevante para manter a resposta rastreável (invariante RAG).
+	if !strings.Contains(strings.ToLower(answer), "[fonte:") && chunks[0].Citation != "" {
+		answer += "\n[Fonte: " + chunks[0].Citation + "]"
+	}
+	return answer
 }
 
 // knowledgeAIConfig loads the tenant's AI settings (provider/model/key/baseURL)
