@@ -244,7 +244,11 @@ func (uc *ReceiveMessageUseCase) Execute(ctx context.Context, input ReceiveMessa
 	}
 	updates := map[string]interface{}{"lastMessage": lastMsg, "updatedAt": time.Now()}
 	if !input.FromMe {
-		updates["unreadMessages"] = ticket.UnreadMessages + 1
+		// Atomic DB increment (column = column + 1) — evita lost update quando
+		// duas mensagens do mesmo ticket são processadas em paralelo em instâncias
+		// diferentes (topologia multi-nó suportada). O ++ em memória é só uma
+		// aproximação para o broadcast; o banco é a fonte da verdade.
+		updates["unreadMessages"] = domain.Increment{By: 1}
 		ticket.UnreadMessages++
 	}
 	if err := uc.ticketRepo.Update(ctx, ticket, updates); err != nil {

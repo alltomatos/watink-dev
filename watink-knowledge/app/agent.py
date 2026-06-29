@@ -33,7 +33,7 @@ class AgentRequest(BaseModel):
     history: list[Turn] = []
     query: str
     topK: int = 6
-    minScore: float = 0.0
+    minScore: float = 0.2
 
 
 def _build_system(persona: str, context: str) -> str:
@@ -95,6 +95,13 @@ async def agent_respond(req: AgentRequest) -> dict:
     if not reply:
         reply = "Desculpe, não consegui responder. Vou transferir para um atendente."
         action = "handoff"
+
+    # Citação obrigatória: toda resposta ancorada deve ser rastreável. Se há
+    # contexto e o modelo respondeu sem citar a fonte (modelos "persona" ignoram
+    # o formato), anexa a citação do trecho mais relevante em vez de entregar uma
+    # afirmação sem âncora.
+    if chunks and action != "handoff" and "[fonte:" not in reply.lower():
+        reply = f"{reply}\n[Fonte: {chunks[0]['citation']}]"
 
     return {
         "reply": reply,
