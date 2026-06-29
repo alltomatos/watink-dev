@@ -6,9 +6,14 @@ COPY .env* ./
 COPY src/ ./src/
 COPY public/ ./public/
 COPY index.html ./
-COPY vite.config.js ./
+COPY vite.config.mjs ./
+COPY tsconfig*.json ./
+COPY tailwind.config.js postcss.config.js ./
 COPY copy-assets.js ./
-RUN npm run build
+# Executa os passos do `build` diretamente (sem o hook `postbuild`, que roda o
+# sync-embed-go.js — dev-only: sincroniza o build no embed do Go, irrelevante na
+# imagem de produção nginx).
+RUN node copy-assets.js && npx vite build
 RUN node -e "const fs=require('fs');const pkg=require('./package.json');const ts=new Date().toISOString();const data={service:'frontend',version:pkg.version,lastUpdated:ts};fs.writeFileSync('build/version.json',JSON.stringify(data));"
 
 FROM nginx:alpine
