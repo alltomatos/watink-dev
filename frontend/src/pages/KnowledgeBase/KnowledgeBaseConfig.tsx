@@ -83,6 +83,7 @@ interface KnowledgeSourceEvent {
   sourceId: number;
   status: SourceStatus;
   chunkCount?: number;
+  lastError?: string;
 }
 
 function sourceLabel(source: KBSource): string {
@@ -230,6 +231,10 @@ const KnowledgeBaseConfig: React.FC = () => {
                     typeof payload.chunkCount === "number"
                       ? payload.chunkCount
                       : s.chunkCount,
+                  lastError:
+                    typeof payload.lastError === "string"
+                      ? payload.lastError
+                      : s.lastError,
                 }
               : s
           )
@@ -420,6 +425,31 @@ const KnowledgeBaseConfig: React.FC = () => {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </Card>
+
+                  {source.status === "error" && (
+                    <div className="mx-2 mt-1 flex items-start gap-2 rounded-xl border border-[hsl(var(--status-error-text))]/30 bg-[hsl(var(--status-error-bg))]/40 p-3">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--status-error-text))]" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[hsl(var(--status-error-text))]">
+                          Falha ao processar esta fonte
+                        </p>
+                        <p className="break-words text-xs text-muted-foreground">
+                          {source.lastError ||
+                            "Erro desconhecido durante a ingestão."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {(source.status === "processing" ||
+                    source.status === "pending") && (
+                    <div className="mx-2 mt-1 flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      {source.status === "processing"
+                        ? "Processando: raspando e indexando o conteúdo…"
+                        : "Na fila, aguardando processamento…"}
+                    </div>
+                  )}
 
                   {isOpen && (
                     <div className="mx-2 mt-1 rounded-xl border bg-muted/30 p-3">
