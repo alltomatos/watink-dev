@@ -93,6 +93,21 @@ _Avoid_: nó RAG, nó de conhecimento (genérico)
 **S3 Storage Driver**: Abstração S3-compatível (MinIO no dev; R2/AWS S3 em produção) para guardar arquivos de fontes. Config global de sistema (superadmin); isolamento por subpasta `{tenantId}/{kbId}/{sourceId}/`. O `business` faz upload; o `watink-knowledge` baixa para parsing.
 _Avoid_: object store (genérico), bucket, file storage
 
+**Proxy (conexão / anti-ban)**: Proxy de saída (`http`/`socks5`) atrelado a uma conexão WhatsApp, dando a ela um IP próprio para mitigar o sinal de REDE/IP do anti-ban. Senha cifrada at-rest. Distinto do **omniroute** (gateway de IA) e do proxy reverso de infra/SSE.
+_Avoid_: proxy de LLM, proxy reverso, gateway
+
+**ProxyGroup**: Pool de proxies de onde uma conexão tira o IP, com estratégia de rotação `sticky` (mesmo IP) ou `rotate` (troca o IP a cada reconexão, via pick LRU atômico).
+_Avoid_: grupo de proxy (genérico), pool
+
+**ConnectionGroup**: Agrupamento nomeado de conexões WhatsApp (`Whatsapps`) para organização/operação em lote. Distinto de grupo de chat do WhatsApp.
+_Avoid_: grupo de WhatsApp, grupo de conexão (genérico)
+
+**isolar (proxy)**: Tirar um proxy da rotação marcando-o como `isolated` (IP queimado), manual ou automaticamente quando a conexão leva ban — evita contaminar outras conexões. Distinto de `disabled` (parado/falhou teste) e `banned`.
+_Avoid_: banir proxy, desativar proxy
+
+**ProxyMode**: Como uma conexão usa proxy: `none` (IP do servidor), `single` (um proxy fixo) ou `group` (tira do ProxyGroup com rotação).
+_Avoid_: tipo de proxy, modo de conexão
+
 **omniroute**: Gateway OpenAI-compatível do tenant (`aiCustomBaseURL`) que roteia chat, embeddings, rerank e web-search para múltiplos provedores. Endpoint único de IA para o `business` e o `watink-knowledge`.
 _Avoid_: gateway (genérico), proxy de LLM, OpenRouter
 
