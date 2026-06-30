@@ -12,6 +12,8 @@ updates:
 
   - package-ecosystem: "npm"
     directory: "/marketplace-hub"
+    schedule:
+      interval: "monthly"
     ignore:
       - dependency-name: "*"
     open-pull-requests-limit: 0
