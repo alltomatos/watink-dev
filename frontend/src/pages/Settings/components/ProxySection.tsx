@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { Plus, Upload, Pencil, Trash2, ShieldAlert, ShieldCheck, Loader2, Network } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, ShieldAlert, ShieldCheck, Loader2, Network, Wifi } from "lucide-react";
 
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
@@ -36,6 +36,7 @@ const ProxySection: React.FC = () => {
   const [importOpen, setImportOpen] = useState(false);
   const [connGroupsOpen, setConnGroupsOpen] = useState(false);
   const [editing, setEditing] = useState<Proxy | null>(null);
+  const [testingId, setTestingId] = useState<number | null>(null);
 
   const fetchProxies = useCallback(async () => {
     setLoading(true);
@@ -85,6 +86,23 @@ const ProxySection: React.FC = () => {
       fetchProxies();
     } catch (err) {
       toastError(err);
+    }
+  };
+
+  const handleTest = async (p: Proxy) => {
+    setTestingId(p.id);
+    try {
+      const { data } = await api.post<{ ok: boolean; ip?: string; latencyMs?: number; error?: string }>(`/proxies/${p.id}/test`);
+      if (data.ok) {
+        toast.success(`Proxy OK — IP ${data.ip} (${data.latencyMs}ms)`);
+      } else {
+        toast.error(`Proxy falhou: ${data.error || "sem resposta"}`);
+      }
+      fetchProxies();
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setTestingId(null);
     }
   };
 
@@ -143,9 +161,20 @@ const ProxySection: React.FC = () => {
                     <TableCell className="font-mono text-xs">{p.scheme}://{p.host}:{p.port}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{groupName(p.proxyGroupId)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{p.username || "—"}</TableCell>
-                    <TableCell><Badge variant={badge.variant}>{badge.label}</Badge></TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant={badge.variant}>{badge.label}</Badge>
+                        <span
+                          className={`inline-block h-2 w-2 rounded-full ${p.healthy ? "bg-emerald-500" : "bg-muted-foreground/30"}`}
+                          title={p.healthy ? "Último teste: OK" : "Não testado / sem resposta"}
+                        />
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Testar conexão" disabled={testingId === p.id} onClick={() => handleTest(p)}>
+                          {testingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wifi className="h-3.5 w-3.5" />}
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar" onClick={() => openEdit(p)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>

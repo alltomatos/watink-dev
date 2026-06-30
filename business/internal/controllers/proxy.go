@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
@@ -429,6 +430,45 @@ func (pc *ProxyController) setStatus(c *gin.Context, status string) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Status atualizado", "status": status})
+}
+
+// Test probes the proxy connectivity (server-side, through the proxy) and
+// reports the egress IP + latency. Updates healthy/lastCheckedAt. Suporta
+// http:// e socks5://.
+// @Summary      Testar proxy
+// @Tags         proxies
+// @Produce      json
+// @Param        id  path  int  true  "ID do proxy"
+// @Success      200  {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /proxies/{id}/test [post]
+func (pc *ProxyController) Test(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Whatsapps")
+	if !ok {
+		return
+	}
+	id, _ := strconv.Atoi(c.Param("id"))
+	var p models.Proxy
+	if err := db.Where(`id = ? AND "tenantId" = ?`, id, tenantID).First(&p).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "proxy não encontrado"})
+		return
+	}
+	pass, err := cryptobox.Decrypt(p.PasswordEnc)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "falha ao descriptografar senha do proxy"})
+		return
+	}
+	scheme := p.Scheme
+	if scheme == "" {
+		scheme = "http"
+	}
+	result := probeProxy(scheme, p.Host, p.Port, p.Username, pass)
+
+	now := time.Now()
+	_ = db.Model(&models.Proxy{}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).
+		Updates(map[string]interface{}{"healthy": result.OK, "lastCheckedAt": &now}).Error
+
+	c.JSON(http.StatusOK, result)
 }
 
 // Isolate quarantines a proxy (IP burned by a ban) so it is not reused.

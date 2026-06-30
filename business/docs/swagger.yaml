@@ -1536,6 +1536,27 @@ paths:
       summary: Isolar proxy (anti-contaminação)
       tags:
       - proxies
+  /proxies/{id}/test:
+    post:
+      parameters:
+      - description: ID do proxy
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Testar proxy
+      tags:
+      - proxies
   /proxies/import:
     post:
       consumes:

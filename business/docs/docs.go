@@ -2459,6 +2459,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/proxies/{id}/test": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxies"
+                ],
+                "summary": "Testar proxy",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID do proxy",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/proxy-groups": {
             "get": {
                 "security": [
