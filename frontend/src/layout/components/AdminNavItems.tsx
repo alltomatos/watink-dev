@@ -7,7 +7,6 @@ import {
   Shield,
   Tag,
   BookOpen,
-  Server,
 } from "lucide-react";
 
 import { i18n } from "../../translate/i18n";
@@ -52,19 +51,6 @@ const AdminNavItems: React.FC<AdminNavItemsProps> = ({
             to="/connections"
             primary={ts("mainDrawer.listItems.connections")}
             icon={<ConnectionIcon warn={connectionWarning} />}
-            iconTheme="connections"
-            collapsed={collapsed}
-          />
-        )}
-      />
-      <Can
-        user={user}
-        perform="connections:read"
-        yes={() => (
-          <NavButton
-            to="/proxies"
-            primary="Proxies"
-            icon={<Server />}
             iconTheme="connections"
             collapsed={collapsed}
           />

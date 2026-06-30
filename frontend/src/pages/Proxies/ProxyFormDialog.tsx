@@ -23,11 +23,12 @@ import {
 
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
-import type { Proxy } from "../../types/domain";
+import type { Proxy, ProxyGroup } from "../../types/domain";
 
 interface ProxyFormDialogProps {
   open: boolean;
   proxy: Proxy | null;
+  groups: ProxyGroup[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -40,6 +41,7 @@ interface FormState {
   username: string;
   password: string;
   notes: string;
+  group: string;
 }
 
 const EMPTY: FormState = {
@@ -50,9 +52,10 @@ const EMPTY: FormState = {
   username: "",
   password: "",
   notes: "",
+  group: "none",
 };
 
-const ProxyFormDialog: React.FC<ProxyFormDialogProps> = ({ open, proxy, onClose, onSaved }) => {
+const ProxyFormDialog: React.FC<ProxyFormDialogProps> = ({ open, proxy, groups, onClose, onSaved }) => {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
   const isEdit = !!proxy;
@@ -67,6 +70,7 @@ const ProxyFormDialog: React.FC<ProxyFormDialogProps> = ({ open, proxy, onClose,
         username: proxy.username ?? "",
         password: "", // never pre-fill — backend masks the secret
         notes: proxy.notes ?? "",
+        group: proxy.proxyGroupId != null ? String(proxy.proxyGroupId) : "none",
       });
     } else {
       setForm(EMPTY);
@@ -88,6 +92,7 @@ const ProxyFormDialog: React.FC<ProxyFormDialogProps> = ({ open, proxy, onClose,
       username: form.username,
       password: form.password, // empty on edit = keep current
       notes: form.notes,
+      proxyGroupId: form.group === "none" ? null : Number(form.group),
     };
     setSaving(true);
     try {
@@ -149,6 +154,19 @@ const ProxyFormDialog: React.FC<ProxyFormDialogProps> = ({ open, proxy, onClose,
           <div className="space-y-1">
             <Label>Senha {isEdit && proxy?.hasPassword && <span className="text-xs text-muted-foreground">(deixe vazio para manter)</span>}</Label>
             <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder={isEdit && proxy?.hasPassword ? "••••••••" : ""} />
+          </div>
+
+          <div className="space-y-1">
+            <Label>Grupo</Label>
+            <Select value={form.group} onValueChange={(v) => set("group", v)}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem grupo</SelectItem>
+                {groups.map((g) => (
+                  <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1">

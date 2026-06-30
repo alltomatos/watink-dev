@@ -89,6 +89,83 @@ paths:
       summary: Refresh token
       tags:
       - auth
+  /connection-groups:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar grupos de conexões
+      tags:
+      - connection-groups
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar grupo de conexões
+      tags:
+      - connection-groups
+  /connection-groups/{id}:
+    delete:
+      parameters:
+      - description: ID do grupo
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover grupo de conexões
+      tags:
+      - connection-groups
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do grupo
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar grupo de conexões
+      tags:
+      - connection-groups
   /contacts:
     get:
       parameters:
@@ -1476,6 +1553,83 @@ paths:
       summary: Importar proxies em massa
       tags:
       - proxies
+  /proxy-groups:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar grupos de proxy
+      tags:
+      - proxy-groups
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar grupo de proxy
+      tags:
+      - proxy-groups
+  /proxy-groups/{id}:
+    delete:
+      parameters:
+      - description: ID do grupo
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover grupo de proxy
+      tags:
+      - proxy-groups
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do grupo
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar grupo de proxy
+      tags:
+      - proxy-groups
   /public-settings:
     get:
       description: Retorna configurações visíveis sem autenticação (nome do tenant,
