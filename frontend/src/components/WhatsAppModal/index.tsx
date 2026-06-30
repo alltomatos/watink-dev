@@ -15,12 +15,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import QueueSelect from "../QueueSelect";
-import type { WhatsAppConnection, WhatsAppFormValues } from "../../types/domain";
+import type { WhatsAppConnection, WhatsAppFormValues, Proxy } from "../../types/domain";
 
 const SessionSchema = Yup.object().shape({
   name: Yup.string().min(2, "Too Short!").max(50, "Too Long!").required("Required"),
@@ -39,8 +46,18 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProp
     isDefault: false,
     keepAlive: false,
     syncHistory: false,
+    proxyMode: "none",
+    proxyId: null,
   });
   const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>([]);
+  const [proxies, setProxies] = useState<Proxy[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    api.get<Proxy[]>("/proxies", { params: { status: "active" } })
+      .then(({ data }) => setProxies(Array.isArray(data) ? data : []))
+      .catch(() => setProxies([]));
+  }, [open]);
 
   useEffect(() => {
     if (!whatsAppId) return;
@@ -51,6 +68,8 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProp
           isDefault: data.isDefault,
           keepAlive: data.keepAlive,
           syncHistory: data.syncHistory,
+          proxyMode: data.proxyMode ?? "none",
+          proxyId: data.proxyId ?? null,
         });
         if (data.queues) {
           setSelectedQueueIds(data.queues.map((q) => q.id));
@@ -61,7 +80,7 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProp
 
   const handleClose = () => {
     onClose();
-    setWhatsApp({ name: "", isDefault: false, keepAlive: false, syncHistory: false });
+    setWhatsApp({ name: "", isDefault: false, keepAlive: false, syncHistory: false, proxyMode: "none", proxyId: null });
     setSelectedQueueIds([]);
   };
 
@@ -132,6 +151,37 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProp
                   onCheckedChange={(checked) => setFieldValue("syncHistory", checked)}
                 />
                 <Label htmlFor="wa-sync">Sincronizar Histórico</Label>
+              </div>
+
+              <div className="space-y-1 pt-2">
+                <Label>Proxy (anti-ban)</Label>
+                <Select
+                  value={values.proxyMode === "single" && values.proxyId ? String(values.proxyId) : "none"}
+                  onValueChange={(v) => {
+                    if (v === "none") {
+                      setFieldValue("proxyMode", "none");
+                      setFieldValue("proxyId", null);
+                    } else {
+                      setFieldValue("proxyMode", "single");
+                      setFieldValue("proxyId", Number(v));
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sem proxy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem proxy (IP do servidor)</SelectItem>
+                    {proxies.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.label ? `${p.label} — ` : ""}{p.scheme}://{p.host}:{p.port}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Alterar o proxy só vale na próxima conexão — reconecte para aplicar.
+                </p>
               </div>
 
               <div className="pt-2">

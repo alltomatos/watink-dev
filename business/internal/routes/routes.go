@@ -27,6 +27,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	sessionController := controllers.NewSessionController(container.ChannelSessionRepo, container.Broadcast, container.SessionService)
 	ticketController := controllers.NewTicketController(container.UpdateTicket, container.Broadcast, container.MessageRepo, rabbitMQ)
 	whatsappController := controllers.NewWhatsappController(container.ChannelSessionRepo, container.PlanLimitSvc, container.Broadcast, container.SessionService)
+	proxyController := controllers.NewProxyController()
 	pluginController := controllers.NewPluginController(container.PlanLimitSvc)
 	authController := controllers.NewAuthController(container.UserRepo)
 	settingController := controllers.NewSettingController(container.SettingRepo, container.Broadcast)
@@ -122,6 +123,15 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.GET("/whatsapp/:id/stats", whatsappController.StatsWhatsapp)
 		protected.PUT("/whatsapp/:id/keepalive", whatsappController.ToggleKeepAlive)
 		protected.DELETE("/whatsapp/:id", whatsappController.DeleteWhatsapp)
+
+		// Proxies (anti-ban) — gated pela mesma permissão de conexões (Whatsapps)
+		protected.GET("/proxies", proxyController.List)
+		protected.POST("/proxies", proxyController.Create)
+		protected.POST("/proxies/import", proxyController.Import)
+		protected.PUT("/proxies/:id", proxyController.Update)
+		protected.DELETE("/proxies/:id", proxyController.Delete)
+		protected.POST("/proxies/:id/isolate", proxyController.Isolate)
+		protected.POST("/proxies/:id/activate", proxyController.Activate)
 
 		// WhatsApp Sessions
 		protected.POST("/whatsappsession/all", sessionController.RestartAllSessions)
