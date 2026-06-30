@@ -133,11 +133,11 @@ func (cgc *ConnectionGroupController) Update(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := db.Model(&models.ConnectionGroup{}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).Update("name", in.Name).Error; err != nil {
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.ConnectionGroup{}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).Update("name", in.Name).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "UpdateConnectionGroup")
 		return
 	}
-	_ = db.Where(`id = ? AND "tenantId" = ?`, id, tenantID).First(&g).Error
+	_ = db.Session(&gorm.Session{NewDB: true}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).First(&g).Error
 	c.JSON(http.StatusOK, g)
 }
 
@@ -155,13 +155,14 @@ func (cgc *ConnectionGroupController) Delete(c *gin.Context) {
 		return
 	}
 	id, _ := strconv.Atoi(c.Param("id"))
-	if err := db.Model(&models.Whatsapp{}).
+	// Session(NewDB:true) em cada escrita (mesmo motivo do proxy_group).
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.Whatsapp{}).
 		Where(`"connectionGroupId" = ? AND "tenantId" = ?`, id, tenantID).
 		Update("connectionGroupId", nil).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "DetachConnectionsFromGroup")
 		return
 	}
-	res := db.Where(`id = ? AND "tenantId" = ?`, id, tenantID).Delete(&models.ConnectionGroup{})
+	res := db.Session(&gorm.Session{NewDB: true}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).Delete(&models.ConnectionGroup{})
 	if res.Error != nil {
 		utils.RespondWithInternalError(c, res.Error, "DeleteConnectionGroup")
 		return

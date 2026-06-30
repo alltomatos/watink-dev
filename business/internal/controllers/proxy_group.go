@@ -163,11 +163,11 @@ func (pgc *ProxyGroupController) Update(c *gin.Context) {
 		}
 		fields["rotationStrategy"] = rotation
 	}
-	if err := db.Model(&models.ProxyGroup{}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).Updates(fields).Error; err != nil {
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.ProxyGroup{}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).Updates(fields).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "UpdateProxyGroup")
 		return
 	}
-	_ = db.Where(`id = ? AND "tenantId" = ?`, id, tenantID).First(&g).Error
+	_ = db.Session(&gorm.Session{NewDB: true}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).First(&g).Error
 	c.JSON(http.StatusOK, g)
 }
 
@@ -186,21 +186,24 @@ func (pgc *ProxyGroupController) Delete(c *gin.Context) {
 	}
 	id, _ := strconv.Atoi(c.Param("id"))
 
+	// Session(NewDB:true) em CADA escrita: o db de GetScoped acumula condições
+	// entre operações encadeadas → casa 0 linhas / corrompe o statement.
 	// Detach proxies from the group.
-	if err := db.Model(&models.Proxy{}).
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.Proxy{}).
 		Where(`"proxyGroupId" = ? AND "tenantId" = ?`, id, tenantID).
 		Update("proxyGroupId", nil).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "DetachProxiesFromGroup")
 		return
 	}
-	// Detach connections pointing at the group (fall back to no proxy).
-	if err := db.Model(&models.Whatsapp{}).
+	// Detach connections pointing at the group — o grupo deixa de existir, então
+	// 'none' é o único fallback possível (não há pool para herdar).
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.Whatsapp{}).
 		Where(`"proxyGroupId" = ? AND "tenantId" = ?`, id, tenantID).
 		Updates(map[string]interface{}{"proxyGroupId": nil, "proxyMode": "none", "proxyId": nil}).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "DetachConnectionsFromGroup")
 		return
 	}
-	res := db.Where(`id = ? AND "tenantId" = ?`, id, tenantID).Delete(&models.ProxyGroup{})
+	res := db.Session(&gorm.Session{NewDB: true}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).Delete(&models.ProxyGroup{})
 	if res.Error != nil {
 		utils.RespondWithInternalError(c, res.Error, "DeleteProxyGroup")
 		return
