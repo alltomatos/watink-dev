@@ -26,8 +26,12 @@ const proxyProbeTimeout = 12 * time.Second
 // probeProxy dials a fixed IP-echo endpoint THROUGH the given proxy to verify it
 // works and report the egress IP. Supports scheme "http" and "socks5" — the two
 // schemes the engine (whatsmeow) accepts. The probe runs server-side, so it
-// validates exactly the path a WhatsApp session would use.
-func probeProxy(scheme, host string, port int, username, password string) proxyProbeResult {
+// validates exactly the path a WhatsApp session would use. timeout bounds the
+// whole attempt (use a shorter one for bulk test-all).
+func probeProxy(scheme, host string, port int, username, password string, timeout time.Duration) proxyProbeResult {
+	if timeout <= 0 {
+		timeout = proxyProbeTimeout
+	}
 	start := time.Now()
 	elapsed := func() int64 { return time.Since(start).Milliseconds() }
 	hostport := net.JoinHostPort(host, strconv.Itoa(port))
@@ -58,8 +62,8 @@ func probeProxy(scheme, host string, port int, username, password string) proxyP
 		transport.Proxy = http.ProxyURL(u)
 	}
 
-	client := &http.Client{Transport: transport, Timeout: proxyProbeTimeout}
-	ctx, cancel := context.WithTimeout(context.Background(), proxyProbeTimeout)
+	client := &http.Client{Transport: transport, Timeout: timeout}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.ipify.org?format=json", nil)

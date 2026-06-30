@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
@@ -14,6 +15,21 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// proxyKey identifies a proxy for dedup: same endpoint + scheme = "o mesmo proxy".
+func proxyKey(scheme, host string, port int) string {
+	return fmt.Sprintf("%s|%s|%d", scheme, host, port)
+}
+
+// proxyExistsForTenant reports whether a proxy with the same (scheme, host, port)
+// already exists for the tenant.
+func proxyExistsForTenant(db *gorm.DB, tenantID interface{}, scheme, host string, port int) bool {
+	var n int64
+	db.Session(&gorm.Session{NewDB: true}).Model(&models.Proxy{}).
+		Where(`"tenantId" = ? AND scheme = ? AND host = ? AND port = ?`, tenantID, scheme, host, port).
+		Count(&n)
+	return n > 0
+}
 
 // proxyGroupOwnedByTenant reports whether the proxy group id (if any) exists for
 // the tenant. nil id (ungrouped) is always valid.
@@ -184,6 +200,10 @@ func (pc *ProxyController) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "grupo de proxy não encontrado para este tenant"})
 		return
 	}
+	if proxyExistsForTenant(db, tenantID, scheme, in.Host, in.Port) {
+		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("proxy %s://%s:%d já está cadastrado", scheme, in.Host, in.Port)})
+		return
+	}
 
 	p := models.Proxy{
 		TenantID: tenantID, Label: in.Label, Scheme: scheme,
@@ -262,9 +282,28 @@ func (pc *ProxyController) Import(c *gin.Context) {
 		return
 	}
 
+	// Dedup: pré-carrega as chaves (scheme,host,port) já existentes no tenant e
+	// ignora repetidos dentro do próprio lote — importação em massa insere só os
+	// que não são repetidos.
+	seen := map[string]bool{}
+	{
+		type hp struct {
+			Scheme string
+			Host   string
+			Port   int
+		}
+		var existing []hp
+		db.Session(&gorm.Session{NewDB: true}).Model(&models.Proxy{}).
+			Where(`"tenantId" = ?`, tenantID).Select("scheme, host, port").Scan(&existing)
+		for _, e := range existing {
+			seen[proxyKey(e.Scheme, e.Host, e.Port)] = true
+		}
+	}
+
 	lines := strings.Split(strings.ReplaceAll(in.Raw, "\r\n", "\n"), "\n")
 	var toCreate []models.Proxy
 	skipped := 0
+	duplicates := 0
 	// SEGURANÇA: lineErrors NUNCA deve conter o conteúdo bruto da linha — a senha
 	// vive ali. Reportar apenas o número da linha + mensagem estática.
 	lineErrors := make([]string, 0, 10)
@@ -281,6 +320,12 @@ func (pc *ProxyController) Import(c *gin.Context) {
 			}
 			continue
 		}
+		key := proxyKey(scheme, host, port)
+		if seen[key] {
+			duplicates++
+			continue
+		}
+		seen[key] = true
 		enc, err := cryptobox.Encrypt(pass)
 		if err != nil {
 			utils.RespondWithInternalError(c, err, "EncryptProxyPassword")
@@ -301,7 +346,7 @@ func (pc *ProxyController) Import(c *gin.Context) {
 		}
 		created = len(toCreate)
 	}
-	c.JSON(http.StatusOK, gin.H{"imported": created, "skipped": skipped, "errors": lineErrors})
+	c.JSON(http.StatusOK, gin.H{"imported": created, "skipped": skipped, "duplicates": duplicates, "errors": lineErrors})
 }
 
 // Update edits a proxy. Password is only re-encrypted when a new one is sent.
@@ -375,11 +420,11 @@ func (pc *ProxyController) Update(c *gin.Context) {
 		fields["passwordEnc"] = enc
 	}
 
-	if err := db.Model(&models.Proxy{}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).Updates(fields).Error; err != nil {
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.Proxy{}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).Updates(fields).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "UpdateProxy")
 		return
 	}
-	_ = db.Where(`id = ? AND "tenantId" = ?`, id, tenantID).First(&existing).Error
+	_ = db.Session(&gorm.Session{NewDB: true}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).First(&existing).Error
 	c.JSON(http.StatusOK, toProxyResponse(existing))
 }
 
@@ -399,13 +444,13 @@ func (pc *ProxyController) Delete(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 
 	// Detach from any connection so we never leave a dangling proxyId.
-	if err := db.Model(&models.Whatsapp{}).
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.Whatsapp{}).
 		Where(`"proxyId" = ? AND "tenantId" = ?`, id, tenantID).
 		Updates(map[string]interface{}{"proxyId": nil, "proxyMode": "none"}).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "DetachProxy")
 		return
 	}
-	if err := db.Where(`id = ? AND "tenantId" = ?`, id, tenantID).Delete(&models.Proxy{}).Error; err != nil {
+	if err := db.Session(&gorm.Session{NewDB: true}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).Delete(&models.Proxy{}).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "DeleteProxy")
 		return
 	}
@@ -418,7 +463,7 @@ func (pc *ProxyController) setStatus(c *gin.Context, status string) {
 		return
 	}
 	id, _ := strconv.Atoi(c.Param("id"))
-	res := db.Model(&models.Proxy{}).
+	res := db.Session(&gorm.Session{NewDB: true}).Model(&models.Proxy{}).
 		Where(`id = ? AND "tenantId" = ?`, id, tenantID).
 		Update("status", status)
 	if res.Error != nil {
@@ -462,13 +507,115 @@ func (pc *ProxyController) Test(c *gin.Context) {
 	if scheme == "" {
 		scheme = "http"
 	}
-	result := probeProxy(scheme, p.Host, p.Port, p.Username, pass)
+	result := probeProxy(scheme, p.Host, p.Port, p.Username, pass, proxyProbeTimeout)
 
 	now := time.Now()
-	_ = db.Model(&models.Proxy{}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).
+	// Session(NewDB:true): o db de GetScoped já carrega WHERE tenantId; sem reset
+	// o Updates casa 0 linhas (accumulated-conditions) e healthy não persiste.
+	_ = db.Session(&gorm.Session{NewDB: true}).Model(&models.Proxy{}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).
 		Updates(map[string]interface{}{"healthy": result.OK, "lastCheckedAt": &now}).Error
 
 	c.JSON(http.StatusOK, result)
+}
+
+// TestAll probes every proxy of the tenant concurrently and invalidates the
+// ones that fail (status=disabled → out of rotation). Empty pool → no error.
+// @Summary      Testar todos os proxies
+// @Tags         proxies
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /proxies/test-all [post]
+func (pc *ProxyController) TestAll(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Whatsapps")
+	if !ok {
+		return
+	}
+	var proxies []models.Proxy
+	if err := db.Where(`"tenantId" = ?`, tenantID).Find(&proxies).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "TestAllProxies")
+		return
+	}
+	// Empty pool is NOT an error — just report zero.
+	if len(proxies) == 0 {
+		c.JSON(http.StatusOK, gin.H{"tested": 0, "ok": 0, "failed": 0})
+		return
+	}
+
+	oks := make([]bool, len(proxies))
+	sem := make(chan struct{}, 16) // bounded concurrency
+	var wg sync.WaitGroup
+	for i := range proxies {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			p := proxies[i]
+			pass, derr := cryptobox.Decrypt(p.PasswordEnc)
+			if derr != nil {
+				oks[i] = false
+				return
+			}
+			scheme := p.Scheme
+			if scheme == "" {
+				scheme = "http"
+			}
+			oks[i] = probeProxy(scheme, p.Host, p.Port, p.Username, pass, 8*time.Second).OK
+		}(i)
+	}
+	wg.Wait()
+
+	now := time.Now()
+	okCount, failCount := 0, 0
+	// fresh: o db de GetScoped já tem WHERE tenantId; Session(NewDB:true) evita o
+	// accumulated-conditions que faria o Updates casar 0 linhas.
+	fresh := func() *gorm.DB { return db.Session(&gorm.Session{NewDB: true}) }
+	for i, p := range proxies {
+		if oks[i] {
+			okCount++
+			_ = fresh().Model(&models.Proxy{}).Where(`id = ? AND "tenantId" = ?`, p.ID, tenantID).
+				Updates(map[string]interface{}{"healthy": true, "lastCheckedAt": &now}).Error
+		} else {
+			failCount++
+			_ = fresh().Model(&models.Proxy{}).Where(`id = ? AND "tenantId" = ?`, p.ID, tenantID).
+				Updates(map[string]interface{}{"healthy": false, "lastCheckedAt": &now}).Error
+			// Invalida: só rebaixa proxies ativos para 'disabled' (preserva
+			// isolated/banned, que já estão fora da rotação).
+			_ = fresh().Model(&models.Proxy{}).
+				Where(`id = ? AND "tenantId" = ? AND status = ?`, p.ID, tenantID, "active").
+				Update("status", "disabled").Error
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"tested": len(proxies), "ok": okCount, "failed": failCount})
+}
+
+// DeleteAll removes every proxy of the tenant, detaching connections first.
+// Empty pool → no error (deleted: 0).
+// @Summary      Remover todos os proxies
+// @Tags         proxies
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /proxies [delete]
+func (pc *ProxyController) DeleteAll(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Whatsapps")
+	if !ok {
+		return
+	}
+	// Detach any connection that referenced a proxy (single or group).
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.Whatsapp{}).
+		Where(`"tenantId" = ? AND "proxyMode" <> ?`, tenantID, "none").
+		Updates(map[string]interface{}{"proxyId": nil, "proxyGroupId": nil, "proxyMode": "none"}).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "DetachAllProxies")
+		return
+	}
+	res := db.Session(&gorm.Session{NewDB: true}).Where(`"tenantId" = ?`, tenantID).Delete(&models.Proxy{})
+	if res.Error != nil {
+		utils.RespondWithInternalError(c, res.Error, "DeleteAllProxies")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"deleted": res.RowsAffected})
 }
 
 // Isolate quarantines a proxy (IP burned by a ban) so it is not reused.
