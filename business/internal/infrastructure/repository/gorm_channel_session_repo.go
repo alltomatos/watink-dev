@@ -161,6 +161,8 @@ func whatsappModelToDomain(m *models.Whatsapp) *domain.ChannelSession {
 		FirstConnection: m.FirstConnection,
 		LastConnectedAt: m.LastConnectedAt,
 		EngineType:      m.EngineType,
+		ProxyMode:       m.ProxyMode,
+		ProxyID:         m.ProxyID,
 	}
 }
 
@@ -188,5 +190,7 @@ func channelSessionDomainToModel(d *domain.ChannelSession) *models.Whatsapp {
 		FirstConnection: d.FirstConnection,
 		LastConnectedAt: d.LastConnectedAt,
 		EngineType:      d.EngineType,
+		ProxyMode:       d.ProxyMode,
+		ProxyID:         d.ProxyID,
 	}
 }

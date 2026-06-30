@@ -85,6 +85,10 @@ services:
       - ENGINE_HEALTH_URL=http://watink-engine:8083/health
       - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_prod}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-dev_jwt_refresh_secret_change_in_prod}
+      # Chave de criptografia-at-rest das senhas de proxy (AES-GCM via SHA-256).
+      # PROD: defina PROXY_ENC_KEY (ex: openssl rand -base64 32). Trocar a chave
+      # invalida segredos já gravados — re-importe os proxies.
+      - PROXY_ENC_KEY=${PROXY_ENC_KEY:-dev_proxy_enc_key_change_in_prod}
       - DOCS_PUBLIC=${DOCS_PUBLIC:-false}
       - PLUGIN_HUB_URL=http://plugin-manager:8081/api/v1/hub
       # Dev: o gateway de IA (omniroute) roda no host em localhost:20128; de dentro

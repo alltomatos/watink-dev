@@ -1,15 +1,38 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
+
+// normalizeProxyAssignment enforces the proxyMode/proxyId invariant and verifies
+// the referenced proxy belongs to the tenant. Returns the normalized (mode, id):
+//   - mode != "single"  → ("none", nil) — any stray proxyId is dropped
+//   - mode == "single"  → requires a proxyId that resolves under tenantID
+func (wc *WhatsappController) normalizeProxyAssignment(db *gorm.DB, tenantID interface{}, mode string, id *int) (string, *int, error) {
+	if mode != "single" {
+		return "none", nil, nil
+	}
+	if id == nil {
+		return "", nil, fmt.Errorf("proxyId é obrigatório quando proxyMode é 'single'")
+	}
+	var p models.Proxy
+	if err := db.Session(&gorm.Session{NewDB: true}).
+		Where(`id = ? AND "tenantId" = ?`, *id, tenantID).
+		First(&p).Error; err != nil {
+		return "", nil, fmt.Errorf("proxy não encontrado para este tenant")
+	}
+	return "single", id, nil
+}
 
 type WhatsappController struct {
 	sessionRepo    domain.ChannelSessionRepository
@@ -57,7 +80,7 @@ func (wc *WhatsappController) ListWhatsapps(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /whatsapp [post]
 func (wc *WhatsappController) CreateWhatsapp(c *gin.Context) {
-	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
+	db, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {
 		return
 	}
@@ -99,6 +122,14 @@ func (wc *WhatsappController) CreateWhatsapp(c *gin.Context) {
 		input.Status = "DISCONNECTED"
 	}
 
+	mode, pid, perr := wc.normalizeProxyAssignment(db, tenantID, input.ProxyMode, input.ProxyID)
+	if perr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": perr.Error()})
+		return
+	}
+	input.ProxyMode = mode
+	input.ProxyID = pid
+
 	if input.IsDefault {
 		if err := wc.sessionRepo.ResetDefaultFlag(c.Request.Context(), tenantID); err != nil {
 			utils.RespondWithInternalError(c, err, "ResetDefaultFlag")
@@ -124,7 +155,7 @@ func (wc *WhatsappController) CreateWhatsapp(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /whatsapp/{id} [put]
 func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
-	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
+	db, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {
 		return
 	}
@@ -170,6 +201,12 @@ func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
 		}
 	}
 
+	proxyModeN, proxyIDN, perr := wc.normalizeProxyAssignment(db, tenantID, input.ProxyMode, input.ProxyID)
+	if perr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": perr.Error()})
+		return
+	}
+
 	fields := map[string]interface{}{
 		"session":         input.Session,
 		"qrcode":          input.Qrcode,
@@ -187,6 +224,8 @@ func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
 		"profilePicUrl":   input.ProfilePicUrl,
 		"keepAlive":       input.KeepAlive,
 		"engineType":      input.EngineType,
+		"proxyMode":       proxyModeN,
+		"proxyId":         proxyIDN,
 	}
 
 	if err := wc.sessionRepo.Update(c.Request.Context(), whatsapp, fields); err != nil {
