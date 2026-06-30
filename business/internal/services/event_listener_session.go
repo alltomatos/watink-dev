@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/google/uuid"
 )
 
@@ -80,8 +81,40 @@ func (el *EventListener) handleSessionStatus(ctx context.Context, payload json.R
 		return err
 	}
 
+	// Auto-isolação anti-ban: ao detectar BANNED, tira o proxy desta conexão da
+	// rotação (status=isolated) para não contaminar outras conexões do mesmo
+	// grupo. Proxies não-ativos já são excluídos do pick (ver pickGroupProxy).
+	if p.Status == "BANNED" {
+		el.isolateConnectionProxy(ctx, sessionID, tenantID)
+	}
+
 	el.bcast().EmitToTenantRoom(tenantID.String(), "whatsappSession", map[string]interface{}{"action": "update", "session": map[string]interface{}{"id": sessionID, "status": p.Status, "number": p.Number, "profilePicUrl": p.ProfilePicUrl, "firstConnection": updates["firstConnection"]}})
 	return nil
+}
+
+// isolateConnectionProxy marks the connection's current proxy as isolated after
+// a ban, removing its IP from any rotation pool. Best-effort: failures are
+// logged, never block the status update.
+func (el *EventListener) isolateConnectionProxy(ctx context.Context, sessionID int, tenantID uuid.UUID) {
+	if el.db == nil {
+		return
+	}
+	var w models.Whatsapp
+	if err := el.db.WithContext(ctx).
+		Where(`id = ? AND "tenantId" = ?`, sessionID, tenantID).First(&w).Error; err != nil {
+		log.Printf("[EventListener] BANNED: conexão %d não encontrada para isolar proxy: %v", sessionID, err)
+		return
+	}
+	if w.ProxyID == nil {
+		return
+	}
+	if err := el.db.WithContext(ctx).Model(&models.Proxy{}).
+		Where(`id = ? AND "tenantId" = ?`, *w.ProxyID, tenantID).
+		Update("status", "isolated").Error; err != nil {
+		log.Printf("[EventListener] falha ao isolar proxy %d da conexão %d: %v", *w.ProxyID, sessionID, err)
+		return
+	}
+	log.Printf("[EventListener] proxy %d isolado automaticamente após ban da conexão %d", *w.ProxyID, sessionID)
 }
 
 // handleHistorySync inserts recovered conversation history into a ticket.

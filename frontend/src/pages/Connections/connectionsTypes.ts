@@ -25,4 +25,5 @@ export const STATUS_LABELS: Record<string, string> = {
   PAIRING: "Pareando",
   OPENING: "Iniciando...",
   TIMEOUT: "Tempo Esgotado",
+  BANNED: "Banido",
 };

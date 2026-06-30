@@ -126,7 +126,10 @@ func (wss *WhatsAppSessionService) resolveProxy(whatsapp models.Whatsapp) (*mode
 			return nil, fmt.Errorf("proxy %d não encontrado para a conexão %d: %w", *whatsapp.ProxyID, whatsapp.ID, err)
 		}
 		if p.Status != "active" {
-			return nil, fmt.Errorf("proxy %d não está ativo (status=%s)", p.ID, p.Status)
+			// Comum após auto-isolação por ban: o proxy single foi isolado e a
+			// conexão não reconecta nele de propósito (IP queimado). Mensagem
+			// acionável p/ o operador (sai no toast de erro do reconectar).
+			return nil, fmt.Errorf("proxy %d está %s (provável ban anterior) — reatribua um proxy ativo à conexão ou reative-o em Configurações > Proxy antes de reconectar", p.ID, p.Status)
 		}
 		return &p, nil
 	case "group":
