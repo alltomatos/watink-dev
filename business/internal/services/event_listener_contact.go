@@ -68,6 +68,51 @@ func jidToNumber(jid string) string {
 	return strings.Split(base, ":")[0]
 }
 
+// syncConnectionProfilePic reuses the SAME contact-enrichment event (engine's
+// handlePictureEvent fires "contact.update" on ANY profile picture change,
+// own account included) to also refresh a CONNECTION's avatar, not just a
+// contact's. Without this, a connection's photo is only captured once — at
+// the very first login (engine emitConnected) — and never updates again, even
+// when the WhatsApp account changes its photo or the first capture failed
+// (e.g. "item-not-found" right after a reconnect, before the server's cache
+// is warm).
+func syncConnectionProfilePic(ctx context.Context, sessions domain.ChannelSessionRepository, b domain.Broadcaster, payload json.RawMessage, tenantID uuid.UUID) error {
+	var p ContactUpdatePayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return err
+	}
+	if p.Contact.ProfilePicUrl == "" {
+		return nil
+	}
+	number := jidToNumber(p.Contact.JID)
+	if number == "" {
+		number = p.Contact.Number
+	}
+	if number == "" {
+		return nil
+	}
+
+	all, err := sessions.FindAll(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	for i := range all {
+		if all[i].Number != number {
+			continue
+		}
+		session := all[i]
+		if err := sessions.Update(ctx, &session, map[string]interface{}{"profilePicUrl": p.Contact.ProfilePicUrl}); err != nil {
+			return err
+		}
+		domain.BroadcastOrNop(b).EmitToTenantRoom(tenantID.String(), "whatsappSession", map[string]interface{}{
+			"action":  "update",
+			"session": map[string]interface{}{"id": session.ID, "profilePicUrl": p.Contact.ProfilePicUrl},
+		})
+		return nil
+	}
+	return nil
+}
+
 // handleContactImport persists a batch of contacts pulled from the WhatsApp
 // address book. Each contact is upserted via FindOrCreate, so re-running the
 // import is idempotent and never duplicates existing contacts.
