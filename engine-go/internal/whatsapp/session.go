@@ -132,7 +132,11 @@ func (s *WhatsAppService) StartClient(id int, tenantID, name string, timestamp i
 	} else {
 		log.Printf("Reconnected session %d", id)
 		if client.IsLoggedIn() {
-			s.emitStatus(id, tenantID, "CONNECTED")
+			// emitConnected (não emitStatus) — reusa o mesmo enriquecimento do
+			// primeiro login (número + foto de perfil via GetProfilePictureInfo).
+			// Sem isso, toda RECONEXÃO (Parar+Iniciar) deixava number/profilePicUrl
+			// intocados no banco, mesmo a sessão estando saudável.
+			s.emitConnected(client, id, tenantID)
 		} else {
 			log.Printf("Session %d has device ID but is not logged in — requesting QR", id)
 			qrChan, err = client.GetQRChannel(context.Background())

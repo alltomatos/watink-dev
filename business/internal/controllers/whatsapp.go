@@ -11,6 +11,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	"gorm.io/gorm"
 )
 
@@ -197,31 +198,49 @@ func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
 		return
 	}
 
+	// PUT é PARCIAL por design (ex.: atribuir só o proxy, sem mandar o resto).
+	// Bind duplo: struct (validação/valores) + map cru (quais chaves vieram de
+	// fato no JSON). Sem o raw map, todo campo ausente vira zero-value no
+	// struct e SOBRESCREVE o valor existente no banco com vazio — bug
+	// reproduzido em produção (number/greetingMessage/farewellMessage/
+	// profilePicUrl/syncPeriod zerados ao atribuir um proxy pela UI).
 	var input domain.ChannelSession
-	if err := c.ShouldBindJSON(&input); err != nil {
+	if err := c.ShouldBindBodyWith(&input, binding.JSON); err != nil {
 		utils.RespondWithBindError(c, err)
 		return
 	}
+	var raw map[string]interface{}
+	_ = c.ShouldBindBodyWith(&raw, binding.JSON) // mesmo body, cacheado pelo Gin
 
-	if _, err := utils.ValidateStringField(input.Name, "name", 255); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if _, sent := raw["name"]; sent {
+		if _, err := utils.ValidateStringField(input.Name, "name", 255); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
-	if _, err := utils.ValidateStringField(input.Number, "number", 50); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if _, sent := raw["number"]; sent {
+		if _, err := utils.ValidateStringField(input.Number, "number", 50); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
-	if _, err := utils.ValidateStringField(input.ProfilePicUrl, "profilePicUrl", 2048); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if _, sent := raw["profilePicUrl"]; sent {
+		if _, err := utils.ValidateStringField(input.ProfilePicUrl, "profilePicUrl", 2048); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
-	if _, err := utils.ValidateStringField(input.GreetingMessage, "greetingMessage", 2000); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if _, sent := raw["greetingMessage"]; sent {
+		if _, err := utils.ValidateStringField(input.GreetingMessage, "greetingMessage", 2000); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
-	if _, err := utils.ValidateStringField(input.FarewellMessage, "farewellMessage", 2000); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	if _, sent := raw["farewellMessage"]; sent {
+		if _, err := utils.ValidateStringField(input.FarewellMessage, "farewellMessage", 2000); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
 	if input.IsDefault {
@@ -231,37 +250,48 @@ func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
 		}
 	}
 
-	proxyModeN, proxyIDN, proxyGroupIDN, perr := wc.normalizeProxyAssignment(db, tenantID, input.ProxyMode, input.ProxyID, input.ProxyGroupID)
-	if perr != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": perr.Error()})
-		return
-	}
-	if !wc.connectionGroupOwnedByTenant(db, tenantID, input.ConnectionGroupID) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "grupo de conexões não encontrado para este tenant"})
-		return
+	fields := map[string]interface{}{}
+	for _, f := range []struct {
+		key string
+		val interface{}
+	}{
+		{"session", input.Session}, {"qrcode", input.Qrcode}, {"status", input.Status},
+		{"battery", input.Battery}, {"plugged", input.Plugged}, {"name", input.Name},
+		{"isDefault", input.IsDefault}, {"retries", input.Retries},
+		{"greetingMessage", input.GreetingMessage}, {"farewellMessage", input.FarewellMessage},
+		{"syncHistory", input.SyncHistory}, {"syncPeriod", input.SyncPeriod},
+		{"number", input.Number}, {"profilePicUrl", input.ProfilePicUrl},
+		{"keepAlive", input.KeepAlive}, {"engineType", input.EngineType},
+	} {
+		if _, sent := raw[f.key]; sent {
+			fields[f.key] = f.val
+		}
 	}
 
-	fields := map[string]interface{}{
-		"session":           input.Session,
-		"qrcode":            input.Qrcode,
-		"status":            input.Status,
-		"battery":           input.Battery,
-		"plugged":           input.Plugged,
-		"name":              input.Name,
-		"isDefault":         input.IsDefault,
-		"retries":           input.Retries,
-		"greetingMessage":   input.GreetingMessage,
-		"farewellMessage":   input.FarewellMessage,
-		"syncHistory":       input.SyncHistory,
-		"syncPeriod":        input.SyncPeriod,
-		"number":            input.Number,
-		"profilePicUrl":     input.ProfilePicUrl,
-		"keepAlive":         input.KeepAlive,
-		"engineType":        input.EngineType,
-		"proxyMode":         proxyModeN,
-		"proxyId":           proxyIDN,
-		"proxyGroupId":      proxyGroupIDN,
-		"connectionGroupId": input.ConnectionGroupID,
+	// Proxy: só toca os 3 campos juntos quando proxyMode veio no payload —
+	// senão um PUT que não fala de proxy acabaria zerando o proxy atual.
+	if _, sent := raw["proxyMode"]; sent {
+		proxyModeN, proxyIDN, proxyGroupIDN, perr := wc.normalizeProxyAssignment(db, tenantID, input.ProxyMode, input.ProxyID, input.ProxyGroupID)
+		if perr != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": perr.Error()})
+			return
+		}
+		fields["proxyMode"] = proxyModeN
+		fields["proxyId"] = proxyIDN
+		fields["proxyGroupId"] = proxyGroupIDN
+	}
+	if _, sent := raw["connectionGroupId"]; sent {
+		if !wc.connectionGroupOwnedByTenant(db, tenantID, input.ConnectionGroupID) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "grupo de conexões não encontrado para este tenant"})
+			return
+		}
+		fields["connectionGroupId"] = input.ConnectionGroupID
+	}
+
+	if len(fields) == 0 {
+		updated, _ := wc.sessionRepo.FindByID(c.Request.Context(), id, tenantID)
+		c.JSON(http.StatusOK, updated)
+		return
 	}
 
 	if err := wc.sessionRepo.Update(c.Request.Context(), whatsapp, fields); err != nil {

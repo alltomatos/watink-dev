@@ -7,17 +7,33 @@ import DetailItem from "./DetailItem";
 import { formatPhone } from "../connectionConfigUtils";
 import type { WhatsApp } from "../connectionConfigTypes";
 
-const proxyDisplay = (whatsapp: WhatsApp): { text: string; healthy?: boolean } => {
+interface ProxyDisplay {
+  line1: string;
+  line2?: string;
+  healthy?: boolean;
+}
+
+const proxyDisplay = (whatsapp: WhatsApp): ProxyDisplay => {
   const p = whatsapp.proxy;
-  if (!p) return { text: "Direto (sem proxy)" };
-  const loc = [p.city, p.countryCode].filter(Boolean).join(", ");
+  if (!p) return { line1: "Direto (sem proxy)" };
+
   if (p.mode === "single") {
-    return { text: `${p.label ? `${p.label} — ` : ""}${p.endpoint}${loc ? ` (${loc})` : ""}`, healthy: p.healthy };
+    const loc = [p.city, p.countryCode].filter(Boolean).join(", ");
+    return {
+      line1: p.label || "Proxy dedicado",
+      line2: `${p.endpoint}${loc ? ` (${loc})` : ""}`,
+      healthy: p.healthy,
+    };
   }
   // group
   const current = p.current;
-  const tail = current ? `${current.endpoint}${current.city ? ` (${current.city}, ${current.countryCode ?? ""})` : ""}` : "aguardando próxima conexão";
-  return { text: `Grupo "${p.name}" (${p.rotationStrategy === "rotate" ? "rotação" : "fixo"}) — ${tail}` };
+  const line2 = current
+    ? `${current.endpoint}${current.city ? ` (${current.city}, ${current.countryCode ?? ""})` : ""}`
+    : "aguardando próxima conexão";
+  return {
+    line1: `Grupo "${p.name}" (${p.rotationStrategy === "rotate" ? "rotação" : "fixo"})`,
+    line2,
+  };
 };
 
 interface SessionDetailsCardProps {
@@ -69,10 +85,15 @@ const SessionDetailsCard: React.FC<SessionDetailsCardProps> = ({
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-muted-foreground">Proxy</p>
             <div className="mt-1 flex items-center gap-1.5">
-              <span className="text-sm font-mono truncate" title={proxy.text}>{proxy.text}</span>
+              <span className="text-sm truncate" title={proxy.line1}>{proxy.line1}</span>
               {proxy.healthy === true && <Badge variant="default" className="shrink-0">OK</Badge>}
               {proxy.healthy === false && <Badge variant="destructive" className="shrink-0">instável</Badge>}
             </div>
+            {proxy.line2 && (
+              <p className="mt-0.5 text-xs font-mono text-muted-foreground truncate" title={proxy.line2}>
+                {proxy.line2}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-start gap-2">
