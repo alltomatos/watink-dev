@@ -121,6 +121,59 @@ func TestHandleSessionStatus_NoRowsAffected(t *testing.T) {
 	}
 }
 
+// BANNED → the connection's proxy is auto-isolated (removed from rotation pool).
+func TestHandleSessionStatus_BannedIsolatesProxy(t *testing.T) {
+	db, sessions, _ := setupEventListenerRepos(t)
+	tenantID := uuid.New()
+	proxy := models.Proxy{TenantID: tenantID, Scheme: "http", Host: "h", Port: 8080, Status: "active"}
+	if err := db.Create(&proxy).Error; err != nil {
+		t.Fatalf("seed proxy: %v", err)
+	}
+	wa := models.Whatsapp{ID: 3, Name: "s3", Status: "CONNECTED", TenantID: tenantID, ProxyMode: "single", ProxyID: &proxy.ID}
+	if err := db.Create(&wa).Error; err != nil {
+		t.Fatalf("seed wa: %v", err)
+	}
+
+	el := &EventListener{sessions: sessions, db: db}
+	payload, _ := json.Marshal(map[string]string{"sessionId": "3", "status": "BANNED"})
+	if err := el.handleSessionStatus(context.Background(), payload, tenantID); err != nil {
+		t.Fatalf("handleSessionStatus: %v", err)
+	}
+
+	var reloaded models.Proxy
+	db.First(&reloaded, proxy.ID)
+	if reloaded.Status != "isolated" {
+		t.Fatalf("expected proxy isolated after ban, got %q", reloaded.Status)
+	}
+	var wre models.Whatsapp
+	db.First(&wre, 3)
+	if wre.Status != "BANNED" {
+		t.Fatalf("expected connection BANNED, got %q", wre.Status)
+	}
+}
+
+// A non-ban status must NOT isolate the proxy.
+func TestHandleSessionStatus_DisconnectKeepsProxyActive(t *testing.T) {
+	db, sessions, _ := setupEventListenerRepos(t)
+	tenantID := uuid.New()
+	proxy := models.Proxy{TenantID: tenantID, Scheme: "http", Host: "h", Port: 8080, Status: "active"}
+	db.Create(&proxy)
+	wa := models.Whatsapp{ID: 4, Name: "s4", Status: "CONNECTED", TenantID: tenantID, ProxyMode: "single", ProxyID: &proxy.ID}
+	db.Create(&wa)
+
+	el := &EventListener{sessions: sessions, db: db}
+	payload, _ := json.Marshal(map[string]string{"sessionId": "4", "status": "DISCONNECTED"})
+	if err := el.handleSessionStatus(context.Background(), payload, tenantID); err != nil {
+		t.Fatalf("handleSessionStatus: %v", err)
+	}
+
+	var reloaded models.Proxy
+	db.First(&reloaded, proxy.ID)
+	if reloaded.Status != "active" {
+		t.Fatalf("proxy should stay active on plain disconnect, got %q", reloaded.Status)
+	}
+}
+
 // --- handlePairingCode ---
 
 func TestHandlePairingCode_UpdatesStatus(t *testing.T) {

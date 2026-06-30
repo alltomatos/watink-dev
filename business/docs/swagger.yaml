@@ -89,6 +89,83 @@ paths:
       summary: Refresh token
       tags:
       - auth
+  /connection-groups:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar grupos de conexões
+      tags:
+      - connection-groups
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar grupo de conexões
+      tags:
+      - connection-groups
+  /connection-groups/{id}:
+    delete:
+      parameters:
+      - description: ID do grupo
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover grupo de conexões
+      tags:
+      - connection-groups
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do grupo
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar grupo de conexões
+      tags:
+      - connection-groups
   /contacts:
     get:
       parameters:
@@ -425,6 +502,55 @@ paths:
       summary: SSE event stream
       tags:
       - realtime
+  /flowruns:
+    get:
+      parameters:
+      - description: ID do contato
+        in: query
+        name: contactId
+        required: true
+        type: integer
+      - description: active | running | waiting_message | ...
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar FlowRuns de um contato
+      tags:
+      - flows
+  /flowruns/{id}:
+    delete:
+      parameters:
+      - description: UUID do FlowRun
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Abortar FlowRun
+      tags:
+      - flows
   /flows:
     get:
       produces:
@@ -547,7 +673,7 @@ paths:
         name: flowId
         required: true
         type: integer
-      - description: '{ticketId}'
+      - description: '{ticketId} or {contactId}'
         in: body
         name: body
         required: true
@@ -1180,32 +1306,6 @@ paths:
       summary: Atualizar pipeline
       tags:
       - pipelines
-  /pipelines/ai-suggest:
-    post:
-      consumes:
-      - application/json
-      description: Gera sugestão de pipeline com IA baseada em contexto de atendimento
-      parameters:
-      - description: Mensagens de contexto
-        in: body
-        name: body
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Sugestão IA de pipeline
-      tags:
-      - pipelines
   /pipelines/export/{pipelineId}:
     get:
       parameters:
@@ -1315,6 +1415,288 @@ paths:
       summary: ID da instância
       tags:
       - plugins
+  /proxies:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover todos os proxies
+      tags:
+      - proxies
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar proxies
+      tags:
+      - proxies
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar proxy
+      tags:
+      - proxies
+  /proxies/{id}:
+    delete:
+      parameters:
+      - description: ID do proxy
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover proxy
+      tags:
+      - proxies
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do proxy
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar proxy
+      tags:
+      - proxies
+  /proxies/{id}/activate:
+    post:
+      parameters:
+      - description: ID do proxy
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reativar proxy
+      tags:
+      - proxies
+  /proxies/{id}/isolate:
+    post:
+      parameters:
+      - description: ID do proxy
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Isolar proxy (anti-contaminação)
+      tags:
+      - proxies
+  /proxies/{id}/test:
+    post:
+      parameters:
+      - description: ID do proxy
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Testar proxy
+      tags:
+      - proxies
+  /proxies/assign-group:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atribuir proxies a um grupo em massa
+      tags:
+      - proxies
+  /proxies/import:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Importar proxies em massa
+      tags:
+      - proxies
+  /proxies/test-all:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Testar todos os proxies
+      tags:
+      - proxies
+  /proxy-groups:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar grupos de proxy
+      tags:
+      - proxy-groups
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar grupo de proxy
+      tags:
+      - proxy-groups
+  /proxy-groups/{id}:
+    delete:
+      parameters:
+      - description: ID do grupo
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover grupo de proxy
+      tags:
+      - proxy-groups
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do grupo
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar grupo de proxy
+      tags:
+      - proxy-groups
   /public-settings:
     get:
       description: Retorna configurações visíveis sem autenticação (nome do tenant,

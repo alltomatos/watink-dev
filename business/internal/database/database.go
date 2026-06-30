@@ -65,6 +65,9 @@ func Migrate() {
 		&models.TicketLog{},
 		&models.ConversationEmbedding{},
 		&models.PollResult{},
+		&models.Proxy{},
+		&models.ProxyGroup{},
+		&models.ConnectionGroup{},
 	)
 
 	if err != nil {
@@ -147,6 +150,9 @@ func addCustomIndexes() error {
 		// KnowledgeBaseSources: the Show preload lists sources by knowledgeBaseId
 		// and mutations/status updates scope by (tenantId, knowledgeBaseId).
 		`CREATE INDEX IF NOT EXISTS idx_kb_sources_tenant_kb ON "KnowledgeBaseSources" ("tenantId", "knowledgeBaseId")`,
+		// Proxy pool reads are tenant-scoped and filter by status (active pool,
+		// isolated list) for assignment and the anti-ban isolation guard.
+		`CREATE INDEX IF NOT EXISTS idx_proxies_tenant_status ON "Proxies" ("tenantId", "status")`,
 	}
 
 	for _, ddl := range indexes {

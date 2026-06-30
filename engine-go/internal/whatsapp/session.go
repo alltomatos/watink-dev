@@ -58,7 +58,15 @@ func (s *WhatsAppService) StartClient(id int, tenantID, name string, timestamp i
 	if proxyURL != "" {
 		if u, parseErr := url.Parse(proxyURL); parseErr == nil {
 			client.SetProxy(func(_ *http.Request) (*url.URL, error) { return u, nil })
-			log.Printf("Proxy configured for session %d: %s", id, proxyURL)
+			// NUNCA logar a URL completa — o userinfo (user:senha) é secreto.
+			// Loga só scheme://host:port, sem credenciais.
+			log.Printf("Proxy configured for session %d: %s://%s", id, u.Scheme, u.Host)
+		} else {
+			// Fail-loud: proxy informado mas inválido. Não conectar silenciosamente
+			// sem proxy (vazaria o IP real). O business valida antes; o client novo
+			// ainda não foi registrado em s.clients, então basta retornar.
+			log.Printf("Proxy URL inválida para session %d — abortando start para evitar vazamento de IP", id)
+			return fmt.Errorf("invalid proxy URL for session %d", id)
 		}
 	}
 

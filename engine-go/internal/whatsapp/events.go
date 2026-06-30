@@ -26,8 +26,21 @@ func (s *WhatsAppService) handleEvent(id int, tenantID string, evt interface{}) 
 	case *events.Disconnected:
 		s.emitStatus(id, tenantID, "DISCONNECTED")
 	case *events.LoggedOut:
-		log.Printf("Session %d logged out (reason: %v)", id, v.Reason)
-		s.emitStatus(id, tenantID, "DISCONNECTED")
+		log.Printf("Session %d logged out (onConnect: %v, reason: %v)", id, v.OnConnect, v.Reason)
+		// ConnectFailureUnknownLogout (406) é o que o WhatsApp Web chama de BANNED.
+		// 401 (LoggedOut) = logout normal. 403 (MainDeviceGone/LOCKED) é AMBÍGUO no
+		// whatsmeow ("happens for both bans and switching phones") — tratamos como
+		// DISCONNECTED para não queimar o IP numa simples troca de aparelho; isso
+		// sub-detecta conscientemente alguns bans 403.
+		if v.Reason == events.ConnectFailureUnknownLogout {
+			s.emitStatus(id, tenantID, "BANNED")
+		} else {
+			s.emitStatus(id, tenantID, "DISCONNECTED")
+		}
+	case *events.TemporaryBan:
+		// ConnectFailureTempBanned (402) — ban temporário; IP/numero sinalizado.
+		log.Printf("Session %d temporariamente banida (code: %v, expira em: %v)", id, v.Code, v.Expire)
+		s.emitStatus(id, tenantID, "BANNED")
 	case *events.Contact:
 		s.handleContactEvent(id, tenantID, v)
 	case *events.PushName:
