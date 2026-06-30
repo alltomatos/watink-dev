@@ -15,8 +15,10 @@ import { ContactDrawerProps } from "./contactDrawerTypes";
 import { useContactDrawer } from "./hooks/useContactDrawer";
 import ContactHeader from "./components/ContactHeader";
 import PipelinesSection from "./components/PipelinesSection";
+import FlowsSection from "./components/FlowsSection";
 import HelpdeskSection from "./components/HelpdeskSection";
 import NewDealDialog from "./components/NewDealDialog";
+import NewFlowRunDialog from "./components/NewFlowRunDialog";
 
 const ContactDrawer = ({
   open,
@@ -48,6 +50,14 @@ const ContactDrawer = ({
     handleSaveDeal,
     handleDeleteDeal,
     handleSyncContact,
+    flowRuns,
+    flows,
+    flowModalOpen,
+    setFlowModalOpen,
+    selectedFlow,
+    setSelectedFlow,
+    handleStartFlowRun,
+    handleAbortFlowRun,
   } = useContactDrawer({ open, ticketId, contact });
 
   return (
@@ -103,6 +113,12 @@ const ContactDrawer = ({
                     onDeleteDeal={handleDeleteDeal}
                   />
 
+                  <FlowsSection
+                    flowRuns={flowRuns}
+                    onAddFlowRun={() => setFlowModalOpen(true)}
+                    onAbortFlowRun={handleAbortFlowRun}
+                  />
+
                   {activePlugins.includes("helpdesk") && (
                     <HelpdeskSection onOpenProtocol={() => setProtocolDrawerOpen(true)} />
                   )}
@@ -150,6 +166,16 @@ const ContactDrawer = ({
         onStageChange={setSelectedStage}
         onSave={handleSaveDeal}
         onCancel={() => setPipelineModalOpen(false)}
+      />
+
+      <NewFlowRunDialog
+        open={flowModalOpen}
+        onOpenChange={setFlowModalOpen}
+        flows={flows}
+        selectedFlow={selectedFlow}
+        onFlowChange={setSelectedFlow}
+        onStart={handleStartFlowRun}
+        onCancel={() => setFlowModalOpen(false)}
       />
 
       <ProtocolDrawer
