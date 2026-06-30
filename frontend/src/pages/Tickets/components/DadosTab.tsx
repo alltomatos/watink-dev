@@ -7,6 +7,7 @@ import { getBackendUrl } from "../../../helpers/urlUtils";
 import api from "../../../services/api";
 import { TicketInfo } from "../ticketsTypes";
 import PipelinesSection from "./PipelinesSection";
+import FlowsSection from "./FlowsSection";
 
 interface DadosTabProps {
   ticket: TicketInfo | null;
@@ -151,6 +152,11 @@ const DadosTab: React.FC<DadosTabProps> = ({ ticket, loading }) => {
             contactId={contact.id}
             contactName={contact.name}
           />
+        )}
+
+        {/* Fluxos — somente para tickets individuais */}
+        {!isGroup && contact?.id && (
+          <FlowsSection contactId={contact.id} />
         )}
       </div>
     </div>
