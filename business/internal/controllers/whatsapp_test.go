@@ -272,6 +272,75 @@ func TestWhatsappController_UpdateWhatsapp_Success(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+// TestWhatsappController_UpdateWhatsapp_PartialUpdate_DoesNotClearOtherFields
+// prova o invariante: um PUT parcial (ex.: só atribuir o proxy) NÃO pode
+// zerar campos que o caller não mandou no JSON. Reproduzido em produção: o
+// fluxo "atribuir proxy a uma conexão" manda só {proxyMode,proxyId} e isso
+// zerava number/greetingMessage/farewellMessage/profilePicUrl/syncPeriod no
+// banco, porque o fields map antes incluía TODO campo do domain.ChannelSession
+// incondicionalmente (zero-value quando ausente do JSON).
+func TestWhatsappController_UpdateWhatsapp_PartialUpdate_DoesNotClearOtherFields(t *testing.T) {
+	db := newWhatsappTestDB(t)
+	repo := new(MockChannelSessionRepo)
+	planSvc := new(MockPlanLimitSvc)
+	ctrl := NewWhatsappController(repo, planSvc, nil, nil)
+
+	existing := &domain.ChannelSession{
+		ID: 1, TenantID: testTenantID,
+		Name: "zap-0991", Number: "558598490991",
+		GreetingMessage: "Olá!", FarewellMessage: "Tchau!",
+	}
+	repo.On("FindByID", mock.Anything, 1, testTenantID).Return(existing, nil).Once()
+	repo.On("Update", mock.Anything, existing, mock.MatchedBy(func(fields map[string]interface{}) bool {
+		// Só o que veio no JSON pode aparecer. "number"/"name"/"greetingMessage"/
+		// "farewellMessage" NÃO foram enviados — não podem estar no map.
+		for _, forbidden := range []string{"number", "name", "greetingMessage", "farewellMessage", "profilePicUrl", "syncPeriod"} {
+			if _, present := fields[forbidden]; present {
+				return false
+			}
+		}
+		_, hasMode := fields["proxyMode"]
+		_, hasID := fields["proxyId"]
+		return hasMode && hasID && len(fields) == 3 // proxyMode + proxyId + proxyGroupId
+	})).Return(nil)
+	repo.On("FindByID", mock.Anything, 1, testTenantID).Return(existing, nil).Once()
+
+	router := setupWhatsappRouter(ctrl, http.MethodPut, "/whatsapp/:id", ctrl.UpdateWhatsapp, db)
+	// Payload do fluxo real "atribuir proxy" — só proxyMode/proxyId, nada mais.
+	payload := map[string]interface{}{"proxyMode": "none"}
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest(http.MethodPut, "/whatsapp/1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	res := httptest.NewRecorder()
+	router.ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusOK, res.Code, res.Body.String())
+	repo.AssertExpectations(t)
+}
+
+// TestWhatsappController_UpdateWhatsapp_EmptyPayload_NoOpUpdate prova que um
+// PUT sem nenhum campo reconhecido não chama Update (evita um UPDATE vazio).
+func TestWhatsappController_UpdateWhatsapp_EmptyPayload_NoOpUpdate(t *testing.T) {
+	db := newWhatsappTestDB(t)
+	repo := new(MockChannelSessionRepo)
+	planSvc := new(MockPlanLimitSvc)
+	ctrl := NewWhatsappController(repo, planSvc, nil, nil)
+
+	existing := &domain.ChannelSession{ID: 1, TenantID: testTenantID, Name: "zap-0991"}
+	repo.On("FindByID", mock.Anything, 1, testTenantID).Return(existing, nil)
+
+	router := setupWhatsappRouter(ctrl, http.MethodPut, "/whatsapp/:id", ctrl.UpdateWhatsapp, db)
+	body, _ := json.Marshal(map[string]interface{}{})
+	req := httptest.NewRequest(http.MethodPut, "/whatsapp/1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	res := httptest.NewRecorder()
+	router.ServeHTTP(res, req)
+
+	assert.Equal(t, http.StatusOK, res.Code)
+	repo.AssertNotCalled(t, "Update", mock.Anything, mock.Anything, mock.Anything)
+	repo.AssertExpectations(t)
+}
+
 func TestWhatsappController_DeleteWhatsapp_NotFound(t *testing.T) {
 	db := newWhatsappTestDB(t)
 	repo := new(MockChannelSessionRepo)

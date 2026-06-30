@@ -231,3 +231,31 @@ func TestGORMChannelSessionRepo_DeleteWithRelations(t *testing.T) {
 	require.NoError(t, db.First(&updatedTicket, ticket.ID).Error)
 	assert.Zero(t, updatedTicket.WhatsappID, "whatsappId do ticket deve ser nulo após DeleteWithRelations")
 }
+
+// TestGORMChannelSessionRepo_Wid_SurvivesRoundTrip prova o invariante que
+// faltava: o Wid (JID whatsmeow) persiste através de Create→FindByID, ou seja,
+// dos dois mappers (channelSessionDomainToModel + whatsappModelToDomain). Sem
+// o campo Wid em domain.ChannelSession, um Stop+Start de sessão real perdia o
+// JID no caminho e o engine criava um device store NOVO, deslogando a conta.
+func TestGORMChannelSessionRepo_Wid_SurvivesRoundTrip(t *testing.T) {
+	db := setupChannelSessionTestDB(t)
+	tenantA := uuid.New()
+	require.NoError(t, db.Create(&TenantTest{ID: tenantA, Name: "A"}).Error)
+
+	repo := NewGORMChannelSessionRepo(db)
+	ctx := context.Background()
+
+	const wid = "558597964683:2@s.whatsapp.net"
+	session := &domain.ChannelSession{
+		Name:     "Session With Wid",
+		Status:   "CONNECTED",
+		TenantID: tenantA,
+		Wid:      wid,
+	}
+	require.NoError(t, repo.Create(ctx, session))
+
+	got, err := repo.FindByID(ctx, session.ID, tenantA)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, wid, got.Wid, "Wid deve sobreviver ao round-trip Create->FindByID (model<->domain mappers)")
+}

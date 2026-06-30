@@ -141,3 +141,15 @@ func TestSessionController_RestartAllSessions_FetchError(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
+
+// TestChannelSessionToModel_PreservesWid prova o invariante: channelSessionToModel
+// (usado por Start/Stop/RestartAllSessions antes de chamar o sessionService) NÃO
+// pode perder o Wid. Sem ele, resolveDeviceStore no engine não acha o device
+// existente, cria um device NOVO e desloga a conta WhatsApp real no próximo
+// Stop+Start — reproduzido em runtime ao testar o fix B1 (SetProxyAddress).
+func TestChannelSessionToModel_PreservesWid(t *testing.T) {
+	const wid = "558597964683:2@s.whatsapp.net"
+	s := &domain.ChannelSession{ID: 3, Name: "zap-4683", Wid: wid}
+	m := channelSessionToModel(s)
+	assert.Equal(t, wid, m.Wid, "channelSessionToModel deve preservar o Wid")
+}
