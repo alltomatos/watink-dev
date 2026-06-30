@@ -6,6 +6,23 @@ export interface Stats {
   latencyMs: number;
 }
 
+/** Resumo do proxy em uso por uma conexão — nunca inclui credencial. */
+export interface ConnectionProxySummary {
+  mode: "single" | "group";
+  id: number;
+  label?: string;
+  name?: string;
+  endpoint?: string;
+  status?: string;
+  healthy?: boolean;
+  rotationStrategy?: string;
+  city?: string;
+  country?: string;
+  countryCode?: string;
+  /** Quando mode="group": o pick sticky atualmente em uso pela conexão. */
+  current?: { id: number; endpoint: string; city?: string; country?: string; countryCode?: string };
+}
+
 export interface WhatsApp {
   id: number;
   name: string;
@@ -19,6 +36,10 @@ export interface WhatsApp {
   lastConnectedAt?: string | null;
   firstConnection?: string | null;
   createdAt?: string;
+  proxyMode?: string;
+  proxyId?: number | null;
+  proxyGroupId?: number | null;
+  proxy?: ConnectionProxySummary;
 }
 
 export type ConfirmationAction = "disconnect" | "delete" | null;

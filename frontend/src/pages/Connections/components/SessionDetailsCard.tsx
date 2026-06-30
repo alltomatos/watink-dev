@@ -1,10 +1,24 @@
 import React from "react";
-import { Hash, MessageSquare, Calendar, ShieldCheck, Star, Clock } from "lucide-react";
+import { Hash, MessageSquare, Calendar, ShieldCheck, Star, Clock, Network } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Switch } from "../../../components/ui/switch";
+import { Badge } from "../../../components/ui/badge";
 import DetailItem from "./DetailItem";
 import { formatPhone } from "../connectionConfigUtils";
 import type { WhatsApp } from "../connectionConfigTypes";
+
+const proxyDisplay = (whatsapp: WhatsApp): { text: string; healthy?: boolean } => {
+  const p = whatsapp.proxy;
+  if (!p) return { text: "Direto (sem proxy)" };
+  const loc = [p.city, p.countryCode].filter(Boolean).join(", ");
+  if (p.mode === "single") {
+    return { text: `${p.label ? `${p.label} — ` : ""}${p.endpoint}${loc ? ` (${loc})` : ""}`, healthy: p.healthy };
+  }
+  // group
+  const current = p.current;
+  const tail = current ? `${current.endpoint}${current.city ? ` (${current.city}, ${current.countryCode ?? ""})` : ""}` : "aguardando próxima conexão";
+  return { text: `Grupo "${p.name}" (${p.rotationStrategy === "rotate" ? "rotação" : "fixo"}) — ${tail}` };
+};
 
 interface SessionDetailsCardProps {
   whatsapp: WhatsApp;
@@ -18,7 +32,9 @@ const SessionDetailsCard: React.FC<SessionDetailsCardProps> = ({
   status,
   keepAliveSaving,
   onToggleKeepAlive,
-}) => (
+}) => {
+  const proxy = proxyDisplay(whatsapp);
+  return (
   <Card>
     <CardHeader>
       <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -48,6 +64,19 @@ const SessionDetailsCard: React.FC<SessionDetailsCardProps> = ({
         <DetailItem icon={<Star className="h-4 w-4" />} label="Padrão" value={whatsapp.isDefault ? "Sim" : "Não"} />
         <div className="flex items-start gap-2">
           <span className="mt-0.5 text-muted-foreground">
+            <Network className="h-4 w-4" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-muted-foreground">Proxy</p>
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className="text-sm font-mono truncate" title={proxy.text}>{proxy.text}</span>
+              {proxy.healthy === true && <Badge variant="default" className="shrink-0">OK</Badge>}
+              {proxy.healthy === false && <Badge variant="destructive" className="shrink-0">instável</Badge>}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-start gap-2">
+          <span className="mt-0.5 text-muted-foreground">
             <Clock className="h-4 w-4" />
           </span>
           <div className="flex-1">
@@ -65,6 +94,7 @@ const SessionDetailsCard: React.FC<SessionDetailsCardProps> = ({
       </div>
     </CardContent>
   </Card>
-);
+  );
+};
 
 export default SessionDetailsCard;

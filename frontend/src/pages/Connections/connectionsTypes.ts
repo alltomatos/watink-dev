@@ -16,6 +16,8 @@ export interface ConnectionSession {
   type?: string;
   updatedAt?: string;
   queue?: ConnectionQueue;
+  /** "none" | "single" | "group" — indicador leve; detalhe completo só na tela de configuração. */
+  proxyMode?: string;
 }
 
 export const STATUS_LABELS: Record<string, string> = {
