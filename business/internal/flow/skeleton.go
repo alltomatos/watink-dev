@@ -286,6 +286,67 @@ func (s *Skeleton) StartFlow(ctx context.Context, in InboundContext, f models.Fl
 	return s.interpreter.Run(ctx, st)
 }
 
+// StartFlowForContact creates a FlowRun bound to a contact (subjectType=contact)
+// and drives the interpreter. Used when starting a flow from the contact sidebar
+// without an active ticket. SubjectID is a run-local UUID (opaque); the contact
+// int ID is stored in vars["contact_id"] for reentrance queries.
+// Writes in Session(NewDB:true) + WHERE tenantId manual (RLS is INERT here).
+func (s *Skeleton) StartFlowForContact(ctx context.Context, tenantID uuid.UUID, contact *domain.Contact, f models.Flow) error {
+	graph, err := ParseGraph(f.Nodes, f.Edges)
+	if err != nil {
+		return err
+	}
+	snapshot, err := json.Marshal(graph)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	expires := now.Add(runTTL)
+	subjectID := uuid.New() // opaque run identity; contact int ID lives in vars
+
+	vars := map[string]string{
+		"contact_id":     strconv.Itoa(contact.ID),
+		"contact_name":   contact.Name,
+		"contact_number": contact.Number,
+		"ticket_id":      "",
+		"last_input":     "",
+		"firstName":      firstName(contact.Name),
+		"name":           contact.Name,
+		"protocol":       "",
+		"date":           now.Format("02/01/2006"),
+	}
+
+	run := models.FlowRun{
+		ID:            uuid.New(),
+		TenantID:      tenantID,
+		FlowID:        f.ID,
+		Status:        models.FlowRunStatusRunning,
+		SubjectType:   models.FlowRunSubjectContact,
+		SubjectID:     &subjectID,
+		Vars:          mustJSON(vars),
+		ExpiresAt:     &expires,
+		GraphSnapshot: snapshot,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	if err := s.db.Session(&gorm.Session{NewDB: true}).WithContext(ctx).Create(&run).Error; err != nil {
+		return err
+	}
+
+	st := &ExecState{
+		TenantID:  tenantID,
+		Run:       &run,
+		Graph:     graph,
+		Vars:      vars,
+		Inbound:   "",
+		Contact:   contact,
+		Retriever: s.retriever,
+		Responder: s.responder,
+	}
+	return s.interpreter.Run(ctx, st)
+}
+
 // claimRun atomically flips a waiting run to running, conditional on it still
 // being in the status we read. RowsAffected==0 means another delivery already
 // advanced (or aborted/expired) it between our read and now → the caller must

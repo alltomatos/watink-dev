@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 
 import api from "../../../services/api";
 import { SettingPayload, PluginsPayload } from "../../../types/api";
-import { Deal, Pipeline, Stage, Contact } from "../contactDrawerTypes";
+import { Deal, Pipeline, Stage, Contact, FlowRun, Flow } from "../contactDrawerTypes";
 
 interface UseContactDrawerParams {
   open: boolean;
@@ -25,6 +25,10 @@ export function useContactDrawer({ open, ticketId, contact }: UseContactDrawerPa
   const [aiEnabled, setAiEnabled] = useState(false);
   const [aiAssistantEnabled, setAiAssistantEnabled] = useState(false);
   const [activePlugins, setActivePlugins] = useState<string[]>([]);
+  const [flowRuns, setFlowRuns] = useState<FlowRun[]>([]);
+  const [flows, setFlows] = useState<Flow[]>([]);
+  const [flowModalOpen, setFlowModalOpen] = useState(false);
+  const [selectedFlow, setSelectedFlow] = useState("");
 
   useEffect(() => {
     const fetchAISettings = async () => {
@@ -71,6 +75,56 @@ export function useContactDrawer({ open, ticketId, contact }: UseContactDrawerPa
     }
   };
 
+  const fetchFlowRuns = async () => {
+    if (!contact.id) return;
+    try {
+      const { data } = await api.get<FlowRun[]>("/flowruns", {
+        params: { contactId: contact.id, status: "active" },
+      });
+      setFlowRuns(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchFlows = async () => {
+    try {
+      const { data } = await api.get<Flow[]>("/flows");
+      setFlows(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleStartFlowRun = async () => {
+    if (!selectedFlow) return;
+    try {
+      await api.post(`/flows/${selectedFlow}/run`, { contactId: String(contact.id) });
+      toast.success("Fluxo iniciado!");
+      setFlowModalOpen(false);
+      setSelectedFlow("");
+      fetchFlowRuns();
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      if (msg?.includes("já está neste fluxo")) {
+        toast.warning("Contato já está neste fluxo.");
+      } else {
+        toast.error("Erro ao iniciar fluxo");
+      }
+    }
+  };
+
+  const handleAbortFlowRun = async (flowRunId: string) => {
+    try {
+      await api.delete(`/flowruns/${flowRunId}`);
+      toast.success("Fluxo interrompido");
+      fetchFlowRuns();
+    } catch {
+      toast.error("Erro ao interromper fluxo");
+    }
+  };
+
   useEffect(() => {
     if (open && ticketId) {
       fetchDeals();
@@ -78,6 +132,14 @@ export function useContactDrawer({ open, ticketId, contact }: UseContactDrawerPa
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, ticketId]);
+
+  useEffect(() => {
+    if (open && contact.id) {
+      fetchFlowRuns();
+      fetchFlows();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, contact.id]);
 
   const handlePipelineChange = (pipelineId: string) => {
     setSelectedPipeline(pipelineId);
@@ -153,5 +215,13 @@ export function useContactDrawer({ open, ticketId, contact }: UseContactDrawerPa
     handleSaveDeal,
     handleDeleteDeal,
     handleSyncContact,
+    flowRuns,
+    flows,
+    flowModalOpen,
+    setFlowModalOpen,
+    selectedFlow,
+    setSelectedFlow,
+    handleStartFlowRun,
+    handleAbortFlowRun,
   };
 }
