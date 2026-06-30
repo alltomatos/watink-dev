@@ -64,6 +64,24 @@ func TestToProxyResponse_NeverLeaksPassword(t *testing.T) {
 	}
 }
 
+func TestProbeProxy_UnreachableFailsFast(t *testing.T) {
+	// HTTP proxy at a refused port → OK=false with an error, no panic, no hang.
+	res := probeProxy("http", "127.0.0.1", 1, "", "")
+	if res.OK {
+		t.Fatal("expected probe to fail against an unreachable proxy")
+	}
+	if res.Error == "" {
+		t.Fatal("expected a non-empty error message")
+	}
+}
+
+func TestProbeProxy_Socks5UnreachableFailsFast(t *testing.T) {
+	res := probeProxy("socks5", "127.0.0.1", 1, "user", "pass")
+	if res.OK {
+		t.Fatal("expected socks5 probe to fail against an unreachable proxy")
+	}
+}
+
 func TestNormalizeScheme(t *testing.T) {
 	cases := map[string]string{
 		"":          "http",
