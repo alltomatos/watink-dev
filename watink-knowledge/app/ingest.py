@@ -39,21 +39,47 @@ async def _store_chunks(tenant_id, kb_id, source_id, chunks, vectors, model):
     async with pool.connection() as conn:
         await register_vector_async(conn)
         async with conn.cursor() as cur:
+            # Lock por sourceId (xact-scoped, liberado no commit): serializa o
+            # DELETE+INSERT de refreshes concorrentes da MESMA fonte (re-ingest /
+            # retry com prefetch_count=4). Sem ele, sob READ COMMITTED dois jobs
+            # intercalam DELETE/INSERT e corrompem a base (chunks órfãos / perda /
+            # contagem errada). Implementa o invariante "lock por sourceId".
+            await cur.execute(
+                "SELECT pg_advisory_xact_lock(hashtext(%s))",
+                (f"{tenant_id}:{source_id}",),
+            )
             # Idempotente: re-ingest apaga os chunks antigos da fonte.
             await cur.execute(
                 'DELETE FROM "KBChunk" WHERE "tenantId" = %s AND "sourceId" = %s',
                 (tenant_id, source_id),
             )
-            for i, (content, vec) in enumerate(zip(chunks, vectors)):
-                chash = hashlib.sha256(content.encode("utf-8")).hexdigest()
-                await cur.execute(
+            # Insert em LOTE (executemany) em vez de N execute() serializados —
+            # um documento grande gera dezenas/centenas de chunks; um execute por
+            # chunk multiplicava os round-trips ao banco e prendia a conexão do
+            # pool por mais tempo (re-ingest repetia o custo inteiro).
+            rows = [
+                (
+                    tenant_id,
+                    kb_id,
+                    source_id,
+                    content,
+                    hashlib.sha256(content.encode("utf-8")).hexdigest(),
+                    HalfVector(vec),
+                    model,
+                    len(vec),
+                    i,
+                )
+                for i, (content, vec) in enumerate(zip(chunks, vectors))
+            ]
+            if rows:
+                await cur.executemany(
                     '''
                     INSERT INTO "KBChunk"
                         ("tenantId","knowledgeBaseId","sourceId",content,"contentHash",embedding,model,dim,ordinal)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT ("tenantId","knowledgeBaseId","sourceId","contentHash") DO NOTHING
                     ''',
-                    (tenant_id, kb_id, source_id, content, chash, HalfVector(vec), model, len(vec), i),
+                    rows,
                 )
         await conn.commit()
 
@@ -74,6 +100,22 @@ async def _handle(message: aio_pika.IncomingMessage, events_ex):
 
         if not (tenant_id and kb_id and source_id):
             log.error("job sem tenantId/knowledgeBaseId/sourceId: %s", job)
+            return
+
+        # Defesa em profundidade na ESCRITA: a routing key (knowledge.<tenant>.ingest,
+        # bind knowledge.*.ingest) é a autoridade do tenant. Rejeita se o tenantId do
+        # corpo divergir — evita que um publicador (credencial AMQP vazada, segundo
+        # publicador ou bug) grave/apague chunks no namespace de outro tenant
+        # escolhendo o tenantId no corpo. RLS é INERTE aqui, então o corpo seria a
+        # única autoridade sem esta checagem.
+        rk_parts = message.routing_key.split(".") if message.routing_key else []
+        rk_tenant = rk_parts[1] if len(rk_parts) >= 3 else None
+        if rk_tenant and rk_tenant != tenant_id:
+            log.error(
+                "tenantId do corpo (%s) diverge da routing key (%s) — job rejeitado",
+                tenant_id,
+                rk_tenant,
+            )
             return
 
         try:

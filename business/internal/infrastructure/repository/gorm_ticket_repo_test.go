@@ -69,6 +69,29 @@ func TestGORMTicketRepo_FindByID_TenantIsolation(t *testing.T) {
 	assert.Nil(t, leaked, "VAZAMENTO DE DADOS: encontrou ticket de outro tenant via FindByID")
 }
 
+// TestGORMTicketRepo_Update_IncrementUnreadIsAtomic garante que domain.Increment
+// vira um UPDATE atômico (col = col + By) e não um overwrite absoluto — evita o
+// lost update do contador de não-lidas em deploy multi-instância (achado P3).
+func TestGORMTicketRepo_Update_IncrementUnreadIsAtomic(t *testing.T) {
+	db := setupTicketTestDB(t)
+	tenantA, _, ticketA, _ := seedTwoTenantsTickets(t, db)
+	repo := NewGORMTicketRepo(db)
+	ctx := context.Background()
+
+	// baseline: 5 não-lidas
+	require.NoError(t, db.Model(&models.Ticket{}).
+		Where("id = ?", ticketA.ID).Update("unreadMessages", 5).Error)
+
+	// incremento via sentinel deve somar ao valor do banco (5 + 1), não sobrescrever
+	require.NoError(t, repo.Update(ctx, &domain.Ticket{ID: ticketA.ID, TenantID: tenantA},
+		map[string]interface{}{"unreadMessages": domain.Increment{By: 1}}))
+
+	var got int
+	require.NoError(t, db.Raw(`SELECT "unreadMessages" FROM "Tickets" WHERE id = ?`, ticketA.ID).
+		Scan(&got).Error)
+	assert.Equal(t, 6, got, "incremento deve ser atômico (5 + 1), não overwrite absoluto")
+}
+
 func TestGORMTicketRepo_FindOpenByContact_TenantIsolation(t *testing.T) {
 	db := setupTicketTestDB(t)
 	tenantA, tenantB, ticketA, _ := seedTwoTenantsTickets(t, db)

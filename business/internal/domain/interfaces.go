@@ -24,6 +24,13 @@ type QueueMetrics struct {
 	Error          string `json:"error,omitempty"`
 }
 
+// Increment is a sentinel value for a repository Update fields map: it requests
+// an ATOMIC SQL increment (column = column + By) instead of an absolute
+// assignment, avoiding lost updates when concurrent writers touch the same row
+// (e.g. unreadMessages across multiple business instances). Keeps the
+// application layer free of persistence (GORM) details.
+type Increment struct{ By int }
+
 // Repository Interfaces
 
 type TicketRepository interface {

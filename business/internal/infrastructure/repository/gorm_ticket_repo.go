@@ -86,7 +86,23 @@ func (r *GORMTicketRepository) Update(ctx context.Context, ticket *domain.Ticket
 	return r.db.WithContext(ctx).
 		Model(&models.Ticket{}).
 		Where("id = ? AND \"tenantId\" = ?", ticket.ID, ticket.TenantID).
-		Updates(fields).Error
+		Updates(translateIncrements(fields)).Error
+}
+
+// translateIncrements replaces domain.Increment sentinels in an update map with
+// atomic GORM expressions ("col" = "col" + By), so callers can request a
+// concurrency-safe increment without depending on GORM. Column names come from
+// caller code (constants), never user input.
+func translateIncrements(fields map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(fields))
+	for k, v := range fields {
+		if inc, ok := v.(domain.Increment); ok {
+			out[k] = gorm.Expr(`"`+k+`" + ?`, inc.By)
+		} else {
+			out[k] = v
+		}
+	}
+	return out
 }
 
 // FindLastAssignedInQueue returns the userID of the last agent assigned in a queue,

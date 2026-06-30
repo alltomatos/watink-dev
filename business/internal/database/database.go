@@ -140,6 +140,13 @@ func addCustomIndexes() error {
 		// Resume-first lookup: an inbound message resolves the active run for a
 		// ticket via (tenantId, ticketId, status=waiting_*).
 		`CREATE INDEX IF NOT EXISTS idx_flow_runs_tenant_ticket_status ON "FlowRuns" ("tenantId", "ticketId", "status")`,
+		// Deal board render is tenant-scoped: kanban/funil lists by stage and the
+		// ticket sidebar lists by ticket — both filter (tenantId, stageId|ticketId).
+		`CREATE INDEX IF NOT EXISTS idx_deals_tenant_stage ON "Deals" ("tenantId", "stageId")`,
+		`CREATE INDEX IF NOT EXISTS idx_deals_tenant_ticket ON "Deals" ("tenantId", "ticketId")`,
+		// KnowledgeBaseSources: the Show preload lists sources by knowledgeBaseId
+		// and mutations/status updates scope by (tenantId, knowledgeBaseId).
+		`CREATE INDEX IF NOT EXISTS idx_kb_sources_tenant_kb ON "KnowledgeBaseSources" ("tenantId", "knowledgeBaseId")`,
 	}
 
 	for _, ddl := range indexes {

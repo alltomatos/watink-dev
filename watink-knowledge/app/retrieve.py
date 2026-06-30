@@ -11,7 +11,7 @@ from .embedding import EmbeddingError, embed_texts
 
 
 async def retrieve_chunks(
-    tenant_id: str, kb_id: int, query: str, top_k: int = 6, min_score: float = 0.0
+    tenant_id: str, kb_id: int, query: str, top_k: int = 6, min_score: float = 0.2
 ) -> list[dict]:
     """Recupera os top-K chunks da base por similaridade vetorial, tenant+kb scoped.
 
@@ -60,7 +60,10 @@ class RetrieveRequest(BaseModel):
     knowledgeBaseId: int
     query: str
     topK: int = 6
-    minScore: float = 0.0
+    # Piso de relevância (reforço server-side do guardrail). O business envia o
+    # valor real (default 0.2 ou setting aiKnowledgeMinScore); este default cobre
+    # chamadores que omitam o campo, evitando o antigo 0.0 que desativava o filtro.
+    minScore: float = 0.2
 
 
 @router.post("/retrieve", dependencies=[Depends(require_internal_token)])

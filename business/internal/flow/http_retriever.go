@@ -28,10 +28,10 @@ func NewHTTPRetrieverFromEnv() *HTTPRetriever {
 	if baseURL == "" {
 		baseURL = "http://watink-knowledge:8085"
 	}
+	// Sem fallback hardcoded: o token vem do ambiente (docker-compose injeta em
+	// dev). Vazio → o watink-knowledge recusa (fail-closed), em vez de circular
+	// um segredo público conhecido.
 	token := os.Getenv("INTERNAL_TOKEN")
-	if token == "" {
-		token = "dev_internal_token_change_in_prod"
-	}
 	return &HTTPRetriever{
 		baseURL: baseURL,
 		token:   token,

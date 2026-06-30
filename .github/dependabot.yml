@@ -2,6 +2,7 @@ version: 2
 updates:
   - package-ecosystem: "npm"
     directory: "/frontend"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
     ignore:
@@ -11,24 +12,29 @@ updates:
 
   - package-ecosystem: "npm"
     directory: "/marketplace-hub"
+    schedule:
+      interval: "monthly"
     ignore:
       - dependency-name: "*"
     open-pull-requests-limit: 0
 
   - package-ecosystem: "gomod"
     directory: "/business"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
 
   - package-ecosystem: "gomod"
     directory: "/plugin-manager"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
 
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
