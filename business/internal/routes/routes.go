@@ -130,10 +130,14 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.GET("/proxies", proxyController.List)
 		protected.POST("/proxies", proxyController.Create)
 		protected.POST("/proxies/import", proxyController.Import)
+		protected.POST("/proxies/test-all", proxyController.TestAll)
+		protected.POST("/proxies/assign-group", proxyController.AssignGroup)
+		protected.DELETE("/proxies", proxyController.DeleteAll)
 		protected.PUT("/proxies/:id", proxyController.Update)
 		protected.DELETE("/proxies/:id", proxyController.Delete)
 		protected.POST("/proxies/:id/isolate", proxyController.Isolate)
 		protected.POST("/proxies/:id/activate", proxyController.Activate)
+		protected.POST("/proxies/:id/test", proxyController.Test)
 
 		// Grupos de proxy (pool com rotação) e grupos de conexões
 		protected.GET("/proxy-groups", proxyGroupController.List)

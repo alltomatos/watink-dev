@@ -9,6 +9,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // ProxyGroupController manages proxy pools (groups) and their rotation strategy.
@@ -57,7 +58,9 @@ func (pgc *ProxyGroupController) List(c *gin.Context) {
 		Active       int64
 	}
 	var counts []countRow
-	db.Model(&models.Proxy{}).
+	// Session(NewDB:true): o Find(&groups) acima poluiu o db escopado; sem reset
+	// esta agregação herda as condições e retorna 0.
+	db.Session(&gorm.Session{NewDB: true}).Model(&models.Proxy{}).
 		Select(`"proxyGroupId" as proxy_group_id, COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'active') as active`).
 		Where(`"tenantId" = ? AND "proxyGroupId" IS NOT NULL`, tenantID).
 		Group(`"proxyGroupId"`).

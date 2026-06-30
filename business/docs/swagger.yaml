@@ -1416,6 +1416,20 @@ paths:
       tags:
       - plugins
   /proxies:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover todos os proxies
+      tags:
+      - proxies
     get:
       produces:
       - application/json
@@ -1536,6 +1550,44 @@ paths:
       summary: Isolar proxy (anti-contaminação)
       tags:
       - proxies
+  /proxies/{id}/test:
+    post:
+      parameters:
+      - description: ID do proxy
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Testar proxy
+      tags:
+      - proxies
+  /proxies/assign-group:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atribuir proxies a um grupo em massa
+      tags:
+      - proxies
   /proxies/import:
     post:
       consumes:
@@ -1551,6 +1603,21 @@ paths:
       security:
       - BearerAuth: []
       summary: Importar proxies em massa
+      tags:
+      - proxies
+  /proxies/test-all:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Testar todos os proxies
       tags:
       - proxies
   /proxy-groups:
