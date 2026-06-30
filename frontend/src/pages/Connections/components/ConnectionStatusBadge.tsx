@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2, WifiOff, QrCode } from "lucide-react";
+import { CheckCircle2, WifiOff, QrCode, Ban } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 import { STATUS_LABELS } from "../connectionsTypes";
@@ -10,6 +10,15 @@ interface ConnectionStatusBadgeProps {
 
 export const ConnectionStatusBadge: React.FC<ConnectionStatusBadgeProps> = ({ status }) => {
   const label = STATUS_LABELS[status] ?? "Desconhecido";
+
+  if (status === "BANNED") {
+    return (
+      <Badge variant="destructive" className="bg-red-600 hover:bg-red-600">
+        <Ban size={12} className="mr-1" />
+        {label}
+      </Badge>
+    );
+  }
 
   if (status === "CONNECTED") {
     return (
