@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { SettingsIcon, Palette, Mail, Globe, Headphones, Brain, Library, HardDrive } from "lucide-react";
+import { SettingsIcon, Palette, Mail, Globe, Headphones, Brain, Library, HardDrive, Network } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 
 interface SettingsSideNavProps {
@@ -34,6 +34,7 @@ const SettingsSideNav: React.FC<SettingsSideNavProps> = ({ activeSection, active
       {item("papi", Globe, "Gateway PAPI", activePlugins.includes("engine-papi"))}
       {item("helpdesk", Headphones, "Helpdesk Atendimento", activePlugins.includes("helpdesk"))}
       {item("ai", Brain, "Agente de IA")}
+      {item("proxy", Network, "Proxy")}
       {item("storage", HardDrive, "Armazenamento", !!isSuperAdmin)}
 
       <Button

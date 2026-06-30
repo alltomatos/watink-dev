@@ -13,6 +13,7 @@ import {
 } from "../../components/ui/page-layout";
 import AISettings from "./components/AISettings";
 import StorageSection from "./components/StorageSection";
+import ProxySection from "./components/ProxySection";
 
 import { useSettings } from "./hooks/useSettings";
 import GeneralSection from "./components/GeneralSection";
@@ -104,6 +105,9 @@ const Settings: React.FC = () => {
               )}
               {activeSection === "ai" && (
                 <AISettings {...sharedProps} />
+              )}
+              {activeSection === "proxy" && (
+                <ProxySection />
               )}
               {activeSection === "storage" && isSuperAdmin && (
                 <StorageSection />

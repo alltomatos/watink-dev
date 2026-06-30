@@ -1,15 +1,63 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
+	"github.com/alltomatos/watinkdev/business/internal/models"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
+
+// normalizeProxyAssignment enforces the proxyMode invariant and verifies the
+// referenced proxy/group belongs to the tenant. Returns normalized
+// (mode, proxyId, proxyGroupId):
+//   - "none"   → (none, nil, nil) — stray ids dropped
+//   - "single" → requires a proxyId resolving under tenantID
+//   - "group"  → requires a proxyGroupId resolving under tenantID; proxyId is
+//     left nil (the actual pick happens at session start in composeProxyURL)
+func (wc *WhatsappController) normalizeProxyAssignment(db *gorm.DB, tenantID interface{}, mode string, proxyID, proxyGroupID *int) (string, *int, *int, error) {
+	switch mode {
+	case "single":
+		if proxyID == nil {
+			return "", nil, nil, fmt.Errorf("proxyId é obrigatório quando proxyMode é 'single'")
+		}
+		var p models.Proxy
+		if err := db.Session(&gorm.Session{NewDB: true}).
+			Where(`id = ? AND "tenantId" = ?`, *proxyID, tenantID).First(&p).Error; err != nil {
+			return "", nil, nil, fmt.Errorf("proxy não encontrado para este tenant")
+		}
+		return "single", proxyID, nil, nil
+	case "group":
+		if proxyGroupID == nil {
+			return "", nil, nil, fmt.Errorf("proxyGroupId é obrigatório quando proxyMode é 'group'")
+		}
+		var g models.ProxyGroup
+		if err := db.Session(&gorm.Session{NewDB: true}).
+			Where(`id = ? AND "tenantId" = ?`, *proxyGroupID, tenantID).First(&g).Error; err != nil {
+			return "", nil, nil, fmt.Errorf("grupo de proxy não encontrado para este tenant")
+		}
+		return "group", nil, proxyGroupID, nil
+	default:
+		return "none", nil, nil, nil
+	}
+}
+
+// connectionGroupOwnedByTenant validates an optional connectionGroupId belongs
+// to the tenant. nil (no group) is always valid.
+func (wc *WhatsappController) connectionGroupOwnedByTenant(db *gorm.DB, tenantID interface{}, id *int) bool {
+	if id == nil {
+		return true
+	}
+	var g models.ConnectionGroup
+	return db.Session(&gorm.Session{NewDB: true}).
+		Where(`id = ? AND "tenantId" = ?`, *id, tenantID).First(&g).Error == nil
+}
 
 type WhatsappController struct {
 	sessionRepo    domain.ChannelSessionRepository
@@ -57,7 +105,7 @@ func (wc *WhatsappController) ListWhatsapps(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /whatsapp [post]
 func (wc *WhatsappController) CreateWhatsapp(c *gin.Context) {
-	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
+	db, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {
 		return
 	}
@@ -99,6 +147,19 @@ func (wc *WhatsappController) CreateWhatsapp(c *gin.Context) {
 		input.Status = "DISCONNECTED"
 	}
 
+	mode, pid, pgid, perr := wc.normalizeProxyAssignment(db, tenantID, input.ProxyMode, input.ProxyID, input.ProxyGroupID)
+	if perr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": perr.Error()})
+		return
+	}
+	input.ProxyMode = mode
+	input.ProxyID = pid
+	input.ProxyGroupID = pgid
+	if !wc.connectionGroupOwnedByTenant(db, tenantID, input.ConnectionGroupID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "grupo de conexões não encontrado para este tenant"})
+		return
+	}
+
 	if input.IsDefault {
 		if err := wc.sessionRepo.ResetDefaultFlag(c.Request.Context(), tenantID); err != nil {
 			utils.RespondWithInternalError(c, err, "ResetDefaultFlag")
@@ -124,7 +185,7 @@ func (wc *WhatsappController) CreateWhatsapp(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /whatsapp/{id} [put]
 func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
-	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
+	db, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {
 		return
 	}
@@ -170,23 +231,37 @@ func (wc *WhatsappController) UpdateWhatsapp(c *gin.Context) {
 		}
 	}
 
+	proxyModeN, proxyIDN, proxyGroupIDN, perr := wc.normalizeProxyAssignment(db, tenantID, input.ProxyMode, input.ProxyID, input.ProxyGroupID)
+	if perr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": perr.Error()})
+		return
+	}
+	if !wc.connectionGroupOwnedByTenant(db, tenantID, input.ConnectionGroupID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "grupo de conexões não encontrado para este tenant"})
+		return
+	}
+
 	fields := map[string]interface{}{
-		"session":         input.Session,
-		"qrcode":          input.Qrcode,
-		"status":          input.Status,
-		"battery":         input.Battery,
-		"plugged":         input.Plugged,
-		"name":            input.Name,
-		"isDefault":       input.IsDefault,
-		"retries":         input.Retries,
-		"greetingMessage": input.GreetingMessage,
-		"farewellMessage": input.FarewellMessage,
-		"syncHistory":     input.SyncHistory,
-		"syncPeriod":      input.SyncPeriod,
-		"number":          input.Number,
-		"profilePicUrl":   input.ProfilePicUrl,
-		"keepAlive":       input.KeepAlive,
-		"engineType":      input.EngineType,
+		"session":           input.Session,
+		"qrcode":            input.Qrcode,
+		"status":            input.Status,
+		"battery":           input.Battery,
+		"plugged":           input.Plugged,
+		"name":              input.Name,
+		"isDefault":         input.IsDefault,
+		"retries":           input.Retries,
+		"greetingMessage":   input.GreetingMessage,
+		"farewellMessage":   input.FarewellMessage,
+		"syncHistory":       input.SyncHistory,
+		"syncPeriod":        input.SyncPeriod,
+		"number":            input.Number,
+		"profilePicUrl":     input.ProfilePicUrl,
+		"keepAlive":         input.KeepAlive,
+		"engineType":        input.EngineType,
+		"proxyMode":         proxyModeN,
+		"proxyId":           proxyIDN,
+		"proxyGroupId":      proxyGroupIDN,
+		"connectionGroupId": input.ConnectionGroupID,
 	}
 
 	if err := wc.sessionRepo.Update(c.Request.Context(), whatsapp, fields); err != nil {
