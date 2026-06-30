@@ -2286,6 +2286,29 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxies"
+                ],
+                "summary": "Remover todos os proxies",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
             }
         },
         "/proxies/import": {
@@ -2305,6 +2328,31 @@ const docTemplate = `{
                     "proxies"
                 ],
                 "summary": "Importar proxies em massa",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/proxies/test-all": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxies"
+                ],
+                "summary": "Testar todos os proxies",
                 "responses": {
                     "200": {
                         "description": "OK",

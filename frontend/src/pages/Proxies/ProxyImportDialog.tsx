@@ -35,6 +35,7 @@ interface ProxyImportDialogProps {
 interface ImportResult {
   imported: number;
   skipped: number;
+  duplicates?: number;
   errors: string[];
 }
 
@@ -65,10 +66,11 @@ const ProxyImportDialog: React.FC<ProxyImportDialogProps> = ({ open, groups, onC
       });
       setResult(data);
       if (data.imported > 0) {
-        toast.success(`${data.imported} proxies importados.`);
+        toast.success(`${data.imported} proxies importados${data.duplicates ? ` (${data.duplicates} duplicados ignorados)` : ""}.`);
         onImported();
-      }
-      if (data.imported === 0) {
+      } else if (data.duplicates && data.duplicates > 0) {
+        toast.warning(`Todos já estavam cadastrados — ${data.duplicates} duplicados ignorados.`);
+      } else {
         toast.warning("Nenhum proxy importado — verifique o formato.");
       }
     } catch (err) {
@@ -134,7 +136,9 @@ const ProxyImportDialog: React.FC<ProxyImportDialogProps> = ({ open, groups, onC
 
           {result && (
             <div className="rounded-md border border-border bg-muted/40 p-2 text-xs space-y-1">
-              <p><strong>{result.imported}</strong> importados · <strong>{result.skipped}</strong> ignorados</p>
+              <p>
+                <strong>{result.imported}</strong> importados · <strong>{result.duplicates ?? 0}</strong> duplicados (ignorados) · <strong>{result.skipped}</strong> inválidos
+              </p>
               {result.errors?.length > 0 && (
                 <ul className="text-destructive list-disc pl-4">
                   {result.errors.map((e, i) => <li key={i}>{e}</li>)}

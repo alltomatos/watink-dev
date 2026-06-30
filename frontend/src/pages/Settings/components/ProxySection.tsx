@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { Plus, Upload, Pencil, Trash2, ShieldAlert, ShieldCheck, Loader2, Network, Wifi } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, ShieldAlert, ShieldCheck, Loader2, Network, Wifi, Gauge } from "lucide-react";
 
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
@@ -37,6 +37,8 @@ const ProxySection: React.FC = () => {
   const [connGroupsOpen, setConnGroupsOpen] = useState(false);
   const [editing, setEditing] = useState<Proxy | null>(null);
   const [testingId, setTestingId] = useState<number | null>(null);
+  const [testingAll, setTestingAll] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   const fetchProxies = useCallback(async () => {
     setLoading(true);
@@ -89,6 +91,38 @@ const ProxySection: React.FC = () => {
     }
   };
 
+  const handleTestAll = async () => {
+    setTestingAll(true);
+    try {
+      const { data } = await api.post<{ tested: number; ok: number; failed: number }>("/proxies/test-all");
+      if (data.tested === 0) {
+        toast.info("Nenhum proxy para testar.");
+      } else {
+        toast.success(`Teste concluído: ${data.ok}/${data.tested} OK · ${data.failed} invalidados`);
+      }
+      fetchProxies();
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setTestingAll(false);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (proxies.length === 0) { toast.info("Nenhum proxy para remover."); return; }
+    if (!window.confirm(`Remover TODOS os ${proxies.length} proxies? As conexões vinculadas serão desvinculadas.`)) return;
+    setDeletingAll(true);
+    try {
+      const { data } = await api.delete<{ deleted: number }>("/proxies");
+      toast.success(`${data.deleted} proxies removidos.`);
+      fetchProxies();
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   const handleTest = async (p: Proxy) => {
     setTestingId(p.id);
     try {
@@ -118,6 +152,14 @@ const ProxySection: React.FC = () => {
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setConnGroupsOpen(true)}>
             <Network className="mr-2 h-4 w-4" /> Grupos de Conexões
+          </Button>
+          <Button variant="outline" onClick={handleTestAll} disabled={testingAll}>
+            {testingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Gauge className="mr-2 h-4 w-4" />}
+            Testar todos
+          </Button>
+          <Button variant="outline" className="text-destructive hover:text-destructive" onClick={handleDeleteAll} disabled={deletingAll}>
+            {deletingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+            Deletar todos
           </Button>
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="mr-2 h-4 w-4" /> Importar em massa

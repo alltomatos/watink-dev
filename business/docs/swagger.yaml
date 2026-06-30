@@ -1416,6 +1416,20 @@ paths:
       tags:
       - plugins
   /proxies:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover todos os proxies
+      tags:
+      - proxies
     get:
       produces:
       - application/json
@@ -1572,6 +1586,21 @@ paths:
       security:
       - BearerAuth: []
       summary: Importar proxies em massa
+      tags:
+      - proxies
+  /proxies/test-all:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Testar todos os proxies
       tags:
       - proxies
   /proxy-groups:

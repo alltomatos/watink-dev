@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"testing"
+	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
 )
@@ -66,7 +67,7 @@ func TestToProxyResponse_NeverLeaksPassword(t *testing.T) {
 
 func TestProbeProxy_UnreachableFailsFast(t *testing.T) {
 	// HTTP proxy at a refused port → OK=false with an error, no panic, no hang.
-	res := probeProxy("http", "127.0.0.1", 1, "", "")
+	res := probeProxy("http", "127.0.0.1", 1, "", "", 3*time.Second)
 	if res.OK {
 		t.Fatal("expected probe to fail against an unreachable proxy")
 	}
@@ -76,7 +77,7 @@ func TestProbeProxy_UnreachableFailsFast(t *testing.T) {
 }
 
 func TestProbeProxy_Socks5UnreachableFailsFast(t *testing.T) {
-	res := probeProxy("socks5", "127.0.0.1", 1, "user", "pass")
+	res := probeProxy("socks5", "127.0.0.1", 1, "user", "pass", 3*time.Second)
 	if res.OK {
 		t.Fatal("expected socks5 probe to fail against an unreachable proxy")
 	}
