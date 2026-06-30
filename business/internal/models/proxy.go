@@ -26,10 +26,14 @@ type Proxy struct {
 	Username string    `gorm:"column:username" json:"username"`
 	// PasswordEnc holds the AES-GCM ciphertext of the proxy password. json:"-"
 	// guarantees the secret never leaves the backend in any response.
-	PasswordEnc   string     `gorm:"column:passwordEnc;type:text" json:"-"`
-	Status        string     `gorm:"column:status;default:'active'" json:"status"`
-	ProxyGroupID  *int       `gorm:"column:proxyGroupId;index" json:"proxyGroupId"`
-	Healthy       bool       `gorm:"column:healthy;default:false" json:"healthy"`
+	PasswordEnc  string `gorm:"column:passwordEnc;type:text" json:"-"`
+	Status       string `gorm:"column:status;default:'active'" json:"status"`
+	ProxyGroupID *int   `gorm:"column:proxyGroupId;index" json:"proxyGroupId"`
+	Healthy      bool   `gorm:"column:healthy;default:false" json:"healthy"`
+	// Geolocalização do IP de saída (preenchida no teste de conectividade).
+	Country       string     `gorm:"column:country" json:"country"`
+	CountryCode   string     `gorm:"column:countryCode" json:"countryCode"`
+	City          string     `gorm:"column:city" json:"city"`
 	LastCheckedAt *time.Time `gorm:"column:lastCheckedAt" json:"lastCheckedAt"`
 	LastUsedAt    *time.Time `gorm:"column:lastUsedAt" json:"lastUsedAt"`
 	Notes         string     `gorm:"column:notes" json:"notes"`

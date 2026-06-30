@@ -77,6 +77,9 @@ func toProxyResponse(p models.Proxy) gin.H {
 		"status":        p.Status,
 		"proxyGroupId":  p.ProxyGroupID,
 		"healthy":       p.Healthy,
+		"country":       p.Country,
+		"countryCode":   p.CountryCode,
+		"city":          p.City,
 		"hasPassword":   p.HasPassword(),
 		"lastCheckedAt": p.LastCheckedAt,
 		"lastUsedAt":    p.LastUsedAt,
@@ -512,8 +515,14 @@ func (pc *ProxyController) Test(c *gin.Context) {
 	now := time.Now()
 	// Session(NewDB:true): o db de GetScoped já carrega WHERE tenantId; sem reset
 	// o Updates casa 0 linhas (accumulated-conditions) e healthy não persiste.
+	fields := map[string]interface{}{"healthy": result.OK, "lastCheckedAt": &now}
+	if result.OK {
+		fields["country"] = result.Country
+		fields["countryCode"] = result.CountryCode
+		fields["city"] = result.City
+	}
 	_ = db.Session(&gorm.Session{NewDB: true}).Model(&models.Proxy{}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).
-		Updates(map[string]interface{}{"healthy": result.OK, "lastCheckedAt": &now}).Error
+		Updates(fields).Error
 
 	c.JSON(http.StatusOK, result)
 }
@@ -542,7 +551,7 @@ func (pc *ProxyController) TestAll(c *gin.Context) {
 		return
 	}
 
-	oks := make([]bool, len(proxies))
+	results := make([]proxyProbeResult, len(proxies))
 	sem := make(chan struct{}, 16) // bounded concurrency
 	var wg sync.WaitGroup
 	for i := range proxies {
@@ -554,14 +563,13 @@ func (pc *ProxyController) TestAll(c *gin.Context) {
 			p := proxies[i]
 			pass, derr := cryptobox.Decrypt(p.PasswordEnc)
 			if derr != nil {
-				oks[i] = false
-				return
+				return // results[i] fica zero-value (OK=false)
 			}
 			scheme := p.Scheme
 			if scheme == "" {
 				scheme = "http"
 			}
-			oks[i] = probeProxy(scheme, p.Host, p.Port, p.Username, pass, 8*time.Second).OK
+			results[i] = probeProxy(scheme, p.Host, p.Port, p.Username, pass, 8*time.Second)
 		}(i)
 	}
 	wg.Wait()
@@ -572,10 +580,14 @@ func (pc *ProxyController) TestAll(c *gin.Context) {
 	// accumulated-conditions que faria o Updates casar 0 linhas.
 	fresh := func() *gorm.DB { return db.Session(&gorm.Session{NewDB: true}) }
 	for i, p := range proxies {
-		if oks[i] {
+		r := results[i]
+		if r.OK {
 			okCount++
 			_ = fresh().Model(&models.Proxy{}).Where(`id = ? AND "tenantId" = ?`, p.ID, tenantID).
-				Updates(map[string]interface{}{"healthy": true, "lastCheckedAt": &now}).Error
+				Updates(map[string]interface{}{
+					"healthy": true, "lastCheckedAt": &now,
+					"country": r.Country, "countryCode": r.CountryCode, "city": r.City,
+				}).Error
 		} else {
 			failCount++
 			_ = fresh().Model(&models.Proxy{}).Where(`id = ? AND "tenantId" = ?`, p.ID, tenantID).

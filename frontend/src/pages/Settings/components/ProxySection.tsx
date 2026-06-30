@@ -126,9 +126,10 @@ const ProxySection: React.FC = () => {
   const handleTest = async (p: Proxy) => {
     setTestingId(p.id);
     try {
-      const { data } = await api.post<{ ok: boolean; ip?: string; latencyMs?: number; error?: string }>(`/proxies/${p.id}/test`);
+      const { data } = await api.post<{ ok: boolean; ip?: string; city?: string; country?: string; latencyMs?: number; error?: string }>(`/proxies/${p.id}/test`);
       if (data.ok) {
-        toast.success(`Proxy OK — IP ${data.ip} (${data.latencyMs}ms)`);
+        const loc = [data.city, data.country].filter(Boolean).join(", ");
+        toast.success(`Proxy OK — IP ${data.ip}${loc ? ` · ${loc}` : ""} (${data.latencyMs}ms)`);
       } else {
         toast.error(`Proxy falhou: ${data.error || "sem resposta"}`);
       }
@@ -187,6 +188,7 @@ const ProxySection: React.FC = () => {
               <TableRow>
                 <TableHead>Rótulo</TableHead>
                 <TableHead>Endpoint</TableHead>
+                <TableHead>Localização</TableHead>
                 <TableHead>Grupo</TableHead>
                 <TableHead>Usuário</TableHead>
                 <TableHead>Status</TableHead>
@@ -201,6 +203,13 @@ const ProxySection: React.FC = () => {
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.label || "—"}</TableCell>
                     <TableCell className="font-mono text-xs">{p.scheme}://{p.host}:{p.port}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {p.city || p.country ? (
+                        <span>{[p.city, p.countryCode || p.country].filter(Boolean).join(", ")}</span>
+                      ) : (
+                        <span className="text-muted-foreground/50">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{groupName(p.proxyGroupId)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{p.username || "—"}</TableCell>
                     <TableCell>
