@@ -138,4 +138,8 @@ type ChannelSession struct {
 	ProxyID           *int       `json:"proxyId"`
 	ProxyGroupID      *int       `json:"proxyGroupId"`
 	ConnectionGroupID *int       `json:"connectionGroupId"`
+	// Wid é o JID whatsmeow (ex: "5511999999999:2@s.whatsapp.net") que identifica
+	// QUAL device store reusar no engine ao reconectar. Sem ele, resolveDeviceStore
+	// não acha o device existente e cria um NOVO — deslogando a conta real.
+	Wid string `json:"wid"`
 }

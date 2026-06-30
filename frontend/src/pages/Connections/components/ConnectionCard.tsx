@@ -1,6 +1,6 @@
 import React from "react";
 import { format, parseISO } from "date-fns";
-import { SignalHigh, WifiOff } from "lucide-react";
+import { SignalHigh, WifiOff, Network } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -79,6 +79,15 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
             <span className="text-muted-foreground">Fila padrão:</span>
             <span>{whatsApp.queue?.name ?? "Nenhuma"}</span>
           </div>
+          {whatsApp.proxyMode && whatsApp.proxyMode !== "none" && (
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Proxy:</span>
+              <span className="flex items-center gap-1 text-xs">
+                <Network className="h-3 w-3" />
+                {whatsApp.proxyMode === "group" ? "Grupo (rotação)" : "Dedicado"}
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
 
