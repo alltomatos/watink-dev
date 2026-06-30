@@ -35,6 +35,24 @@ export interface ContactDrawerProps {
   loading: boolean;
 }
 
+export interface Flow {
+  id: number;
+  name: string;
+  active: boolean;
+  triggerType?: string;
+}
+
+export interface FlowRun {
+  id: string;
+  flowId: number;
+  status: string;
+  currentNodeId?: string;
+  subjectType: string;
+  subjectId?: string;
+  createdAt: string;
+  flow?: { id: number; name: string };
+}
+
 /* ─── Stage color tokens (same palette as PipelineBoard) ───────────── */
 export const stageColors = [
   { bg: "var(--status-info-bg)", header: "var(--status-info)" },
