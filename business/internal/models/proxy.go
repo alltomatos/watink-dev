@@ -28,6 +28,7 @@ type Proxy struct {
 	// guarantees the secret never leaves the backend in any response.
 	PasswordEnc   string     `gorm:"column:passwordEnc;type:text" json:"-"`
 	Status        string     `gorm:"column:status;default:'active'" json:"status"`
+	ProxyGroupID  *int       `gorm:"column:proxyGroupId;index" json:"proxyGroupId"`
 	Healthy       bool       `gorm:"column:healthy;default:false" json:"healthy"`
 	LastCheckedAt *time.Time `gorm:"column:lastCheckedAt" json:"lastCheckedAt"`
 	LastUsedAt    *time.Time `gorm:"column:lastUsedAt" json:"lastUsedAt"`

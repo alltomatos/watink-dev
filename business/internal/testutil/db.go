@@ -149,5 +149,7 @@ func allModels() []interface{} {
 		&models.TicketLog{},
 		&models.ConversationEmbedding{},
 		&models.Proxy{},
+		&models.ProxyGroup{},
+		&models.ConnectionGroup{},
 	}
 }

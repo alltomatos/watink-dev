@@ -28,6 +28,8 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	ticketController := controllers.NewTicketController(container.UpdateTicket, container.Broadcast, container.MessageRepo, rabbitMQ)
 	whatsappController := controllers.NewWhatsappController(container.ChannelSessionRepo, container.PlanLimitSvc, container.Broadcast, container.SessionService)
 	proxyController := controllers.NewProxyController()
+	proxyGroupController := controllers.NewProxyGroupController()
+	connectionGroupController := controllers.NewConnectionGroupController()
 	pluginController := controllers.NewPluginController(container.PlanLimitSvc)
 	authController := controllers.NewAuthController(container.UserRepo)
 	settingController := controllers.NewSettingController(container.SettingRepo, container.Broadcast)
@@ -132,6 +134,16 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.DELETE("/proxies/:id", proxyController.Delete)
 		protected.POST("/proxies/:id/isolate", proxyController.Isolate)
 		protected.POST("/proxies/:id/activate", proxyController.Activate)
+
+		// Grupos de proxy (pool com rotação) e grupos de conexões
+		protected.GET("/proxy-groups", proxyGroupController.List)
+		protected.POST("/proxy-groups", proxyGroupController.Create)
+		protected.PUT("/proxy-groups/:id", proxyGroupController.Update)
+		protected.DELETE("/proxy-groups/:id", proxyGroupController.Delete)
+		protected.GET("/connection-groups", connectionGroupController.List)
+		protected.POST("/connection-groups", connectionGroupController.Create)
+		protected.PUT("/connection-groups/:id", connectionGroupController.Update)
+		protected.DELETE("/connection-groups/:id", connectionGroupController.Delete)
 
 		// WhatsApp Sessions
 		protected.POST("/whatsappsession/all", sessionController.RestartAllSessions)

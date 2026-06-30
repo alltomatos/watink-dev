@@ -30,10 +30,13 @@ type Whatsapp struct {
 	LastConnectedAt *time.Time `gorm:"column:lastConnectedAt" json:"lastConnectedAt"`
 	EngineType      string     `gorm:"column:engineType;default:'whatsmeow'" json:"engineType"`
 	Wid             string     `gorm:"column:wid;size:100" json:"wid"`
-	// Proxy assignment (anti-ban). ProxyMode: "none" | "single" (group em PR2).
-	// ProxyID aponta para o Proxy sticky desta conexão quando ProxyMode="single".
-	ProxyMode string `gorm:"column:proxyMode;default:'none'" json:"proxyMode"`
-	ProxyID   *int   `gorm:"column:proxyId" json:"proxyId"`
+	// Proxy assignment (anti-ban). ProxyMode: "none" | "single" | "group".
+	//   single → ProxyID fixo. group → ProxyGroupID + ProxyID guarda o pick atual
+	//   (sticky) ou o último usado (rotate).
+	ProxyMode         string `gorm:"column:proxyMode;default:'none'" json:"proxyMode"`
+	ProxyID           *int   `gorm:"column:proxyId" json:"proxyId"`
+	ProxyGroupID      *int   `gorm:"column:proxyGroupId" json:"proxyGroupId"`
+	ConnectionGroupID *int   `gorm:"column:connectionGroupId;index" json:"connectionGroupId"`
 
 	// Relations
 	Tickets []Ticket `gorm:"foreignKey:WhatsappID" json:"tickets,omitempty"`
