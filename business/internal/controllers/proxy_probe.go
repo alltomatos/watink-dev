@@ -72,14 +72,30 @@ func probeProxy(scheme, host string, port int, username, password string, timeou
 	// ip-api.com devolve IP de saída + geolocalização (cidade/país) numa só
 	// chamada. Como cada proxy sai por um IP diferente, o rate-limit por IP do
 	// ip-api não é atingido mesmo testando vários. (Free tier = HTTP.)
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://ip-api.com/json?fields=status,country,countryCode,city,query", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, probeEchoURL, nil)
 	resp, err := client.Do(req)
 	if err != nil {
+		// Erro de TRANSPORTE/dial → o proxy não roteia. Único caso que rebaixa
+		// (A1/ADR 0021: geo é best-effort, falha do ip-api NÃO invalida o proxy).
 		return proxyProbeResult{OK: false, Error: err.Error(), LatencyMs: elapsed()}
 	}
 	defer func() { _ = resp.Body.Close() }()
+	// QUALQUER resposta HTTP (mesmo 429/500 do ip-api) prova que o proxy roteia → OK.
+	return interpretProbeResponse(resp, elapsed())
+}
+
+// probeEchoURL é o endpoint de echo+geo (ip-api). Variável para permitir
+// override em teste; geo é best-effort.
+var probeEchoURL = "http://ip-api.com/json?fields=status,country,countryCode,city,query"
+
+// interpretProbeResponse trata uma resposta recebida ATRAVÉS do proxy. Neste
+// ponto o proxy JÁ está provado funcional (houve roundtrip HTTP), logo OK=true
+// sempre. Geo é preenchida só em 200+`status:success`; um status ruim do serviço
+// de geo (429/5xx) NÃO rebaixa o proxy.
+func interpretProbeResponse(resp *http.Response, elapsedMs int64) proxyProbeResult {
+	result := proxyProbeResult{OK: true, LatencyMs: elapsedMs}
 	if resp.StatusCode != http.StatusOK {
-		return proxyProbeResult{OK: false, Error: fmt.Sprintf("HTTP %d", resp.StatusCode), LatencyMs: elapsed()}
+		return result // proxy OK, geo indisponível
 	}
 	var body struct {
 		Status      string `json:"status"`
@@ -88,9 +104,11 @@ func probeProxy(scheme, host string, port int, username, password string, timeou
 		City        string `json:"city"`
 		Query       string `json:"query"`
 	}
-	_ = json.NewDecoder(resp.Body).Decode(&body)
-	return proxyProbeResult{
-		OK: true, IP: body.Query, City: body.City,
-		Country: body.Country, CountryCode: body.CountryCode, LatencyMs: elapsed(),
+	if json.NewDecoder(resp.Body).Decode(&body) == nil && body.Status == "success" {
+		result.IP = body.Query
+		result.City = body.City
+		result.Country = body.Country
+		result.CountryCode = body.CountryCode
 	}
+	return result
 }

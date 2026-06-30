@@ -55,6 +55,7 @@ Frontend (React/Vite) ←REST/SSE→ Backend Go (Gin/GORM) ←SQL→ PostgreSQL
 | Base de Conhecimento — CI Python (ruff+pytest) + higiene `__pycache__` | ✅ Concluída (PR #257/#258) |
 | Base de Conhecimento — fonte arquivo (S3/MinIO + parsers PDF/docx/xlsx) | ✅ Concluída (PR #259) |
 | Base de Conhecimento — UI (lista, fontes, upload, status SSE tempo-real) | ✅ Concluída (PR #260) |
+| Conexões — Subsistema de proxy anti-ban (cripto-at-rest, import Webshare, grupos+rotação, geo cidade/país, teste/test-all, auto-isolação no ban, filtros) | ✅ Concluída (PRs #292-#296) |
 
 ## Services & Ports
 
@@ -320,6 +321,32 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 - Não construir o Agente standalone como motor separado — reusar o Agent Runtime.
 
 **Referência:** [`docs/agents/knowledge-base.md`](docs/agents/knowledge-base.md) · ADRs 0015 (atualizado), 0018 (microsserviço RAG), 0019 (S3 driver), 0020 (Agent Runtime)
+
+## Módulo: Proxy (Anti-Ban / Conexões)
+
+**Responsabilidade:** Dar a cada conexão WhatsApp um IP de saída próprio (proxy) para mitigar o sinal de **REDE/IP** do anti-ban. Complementa — não substitui — o risco estrutural do ADR 0016. Inclui pool/grupos com rotação (sticky/rotate), teste de conectividade+geo, e auto-isolação no ban.
+
+**Invariants:**
+- Senha do proxy SEMPRE cifrada at-rest (`cryptobox`/`PROXY_ENC_KEY`), campo `json:"-"`; nunca em resposta nem log (inclusive o payload AMQP com `proxyUrl`). Fail-closed se a chave faltar.
+- **`Session(NewDB:true)` OBRIGATÓRIO** em qualquer escrita/agregação que reusa o `db` de `auth.GetScoped` (2+ ops acumulam condições → casa 0 linhas).
+- **Fail-closed SEMPRE:** conexão com proxy configurado mas inutilizável NÃO conecta — nunca cai no IP do servidor.
+- Proxy não-`active` (isolated/disabled/banned) **sai da rotação**; `pickGroupProxy` só pega `active`. Isolar = tirar o IP queimado do pool.
+- Pick de grupo é ATÔMICO (`UPDATE ... FOR UPDATE SKIP LOCKED RETURNING`) — dois starts não pegam o mesmo IP.
+- Schemes: só `socks5://` e `http://` (https rejeitado — whatsmeow #700). O engine roteia por **`SetProxyAddress`** (despacha socks5 ao dialer); SOCKS5 não verificado em smoke-test não vai pra prod.
+- 1 proxy por conexão cobre ws+mídia (não setar `NoMedia` — IP sticky único). Sem hot-swap: troca só vale na próxima conexão.
+- Geo (cidade/país) é **best-effort** via `ip-api.com`: **só falha de DIAL real rebaixa um proxy**; falha do serviço de geo NUNCA invalida.
+- `engine-go` é **adapter burro**: recebe `proxyUrl` pronto no `session.start`; cripto/pacing/geo/rotação ficam no business.
+- Auth admin-scoped via `auth.GetScoped(c, "Whatsapps")` — nunca `c.Get("tenantId")` bruto.
+
+**O que NÃO fazer:**
+- Não reusar o `db` de `GetScoped` em escritas sem `Session(NewDB:true)`.
+- **Não fazer fail-OPEN:** ao deletar/desvincular proxy em modo `group`, zerar SÓ `proxyId` (preservar `proxyMode`/`proxyGroupId`) — flipar para `none` vaza o IP do servidor.
+- Não acoplar saúde do proxy ao serviço de geo (ip-api fora ≠ proxy ruim).
+- Não usar `SetProxy` cru para socks5 no engine (websocket pode vazar) — usar `SetProxyAddress`.
+- Não logar `proxyUrl`/payload de `session.start` (credencial em claro).
+- Não tratar proxy como mitigação do fingerprint estrutural (ADR 0016) nem do passkey.
+
+**Referência:** [`docs/agents/proxy.md`](docs/agents/proxy.md) · ADR 0021 (proxy anti-ban) · ADR 0016 (risco estrutural)
 
 ## Domain Docs
 

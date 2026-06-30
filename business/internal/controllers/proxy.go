@@ -446,11 +446,21 @@ func (pc *ProxyController) Delete(c *gin.Context) {
 	}
 	id, _ := strconv.Atoi(c.Param("id"))
 
-	// Detach from any connection so we never leave a dangling proxyId.
+	// Detach por modo — FAIL-CLOSED (invariante #4):
+	// - single: o proxy era dedicado → vira 'none' (operador reatribui).
+	// - group:  proxyId guarda só o pick sticky atual → zerar SÓ proxyId;
+	//   preservar proxyMode='group'+proxyGroupId para o pickGroupProxy re-escolher
+	//   no próximo start. Flipar pra 'none' aqui vazaria o IP do servidor.
 	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.Whatsapp{}).
-		Where(`"proxyId" = ? AND "tenantId" = ?`, id, tenantID).
+		Where(`"proxyId" = ? AND "tenantId" = ? AND "proxyMode" = ?`, id, tenantID, "single").
 		Updates(map[string]interface{}{"proxyId": nil, "proxyMode": "none"}).Error; err != nil {
-		utils.RespondWithInternalError(c, err, "DetachProxy")
+		utils.RespondWithInternalError(c, err, "DetachProxySingle")
+		return
+	}
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.Whatsapp{}).
+		Where(`"proxyId" = ? AND "tenantId" = ? AND "proxyMode" = ?`, id, tenantID, "group").
+		Update("proxyId", nil).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "DetachProxyGroup")
 		return
 	}
 	if err := db.Session(&gorm.Session{NewDB: true}).Where(`id = ? AND "tenantId" = ?`, id, tenantID).Delete(&models.Proxy{}).Error; err != nil {
@@ -516,7 +526,9 @@ func (pc *ProxyController) Test(c *gin.Context) {
 	// Session(NewDB:true): o db de GetScoped já carrega WHERE tenantId; sem reset
 	// o Updates casa 0 linhas (accumulated-conditions) e healthy não persiste.
 	fields := map[string]interface{}{"healthy": result.OK, "lastCheckedAt": &now}
-	if result.OK {
+	// Só sobrescreve geo quando ela veio de fato (A1: ip-api fora → OK mas geo
+	// vazia; não apagar o geo bom já gravado).
+	if result.OK && result.Country != "" {
 		fields["country"] = result.Country
 		fields["countryCode"] = result.CountryCode
 		fields["city"] = result.City
@@ -583,11 +595,14 @@ func (pc *ProxyController) TestAll(c *gin.Context) {
 		r := results[i]
 		if r.OK {
 			okCount++
+			upd := map[string]interface{}{"healthy": true, "lastCheckedAt": &now}
+			if r.Country != "" { // não apagar geo bom se o ip-api falhou (A1)
+				upd["country"] = r.Country
+				upd["countryCode"] = r.CountryCode
+				upd["city"] = r.City
+			}
 			_ = fresh().Model(&models.Proxy{}).Where(`id = ? AND "tenantId" = ?`, p.ID, tenantID).
-				Updates(map[string]interface{}{
-					"healthy": true, "lastCheckedAt": &now,
-					"country": r.Country, "countryCode": r.CountryCode, "city": r.City,
-				}).Error
+				Updates(upd).Error
 		} else {
 			failCount++
 			_ = fresh().Model(&models.Proxy{}).Where(`id = ? AND "tenantId" = ?`, p.ID, tenantID).
