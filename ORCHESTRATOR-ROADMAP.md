@@ -27,6 +27,7 @@
 | M16 | GAP-ANY: 56 no-explicit-any eliminados em 21 arquivos frontend | ✅ PR #166 jun/2026 |
 | M17 | GAP-EIO: Vite watcher resiliente a crash WSL2/EIO | ✅ PR #165 jun/2026 |
 | M9 | Storybook + A11y + Visual Regression CI | ⏳ Pendente |
+| M18 | GAP-VAL-3: ValidateStringField em ticket_mutation.go (2 endpoints com ShouldBindJSON sem validação de string) | ⏳ Pendente |
 | M10 | Remoção final MUI v4 (npm uninstall + zero imports) | ✅ jun/2026 |
 | M11 | ESLint governance — 298 → 70 erros (-77%) | ✅ jun/2026 |
 | M12 | Docs cleanup — CLAUDE.md, docs/dev/, docs/ legado | ✅ jun/2026 |
