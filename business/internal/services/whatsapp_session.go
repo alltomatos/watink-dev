@@ -2,10 +2,14 @@ package services
 
 import (
 	"fmt"
+	"net"
+	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/pkg/cryptobox"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -22,6 +26,14 @@ func NewWhatsAppSessionService(db *gorm.DB, pub domain.CommandPublisher, redisSv
 }
 
 func (wss *WhatsAppSessionService) StartWhatsAppSession(whatsapp models.Whatsapp, usePairingCode bool, phoneNumber string, force bool) error {
+	// Resolve the proxy URL first. Fail-closed: if a proxy IS configured but can't
+	// be composed (missing key, inactive, decrypt error), refuse to start rather
+	// than connect on the bare server IP — that would leak the real egress IP.
+	proxyURL, err := wss.composeProxyURL(whatsapp)
+	if err != nil {
+		return fmt.Errorf("proxy configuration error: %w", err)
+	}
+
 	lockKey := fmt.Sprintf("session:start:%d", whatsapp.ID)
 	lockValue := uuid.New().String()
 
@@ -60,11 +72,44 @@ func (wss *WhatsAppSessionService) StartWhatsAppSession(whatsapp models.Whatsapp
 			"keepAlive":      whatsapp.KeepAlive,
 			"force":          force,
 			"wid":            whatsapp.Wid,
+			// proxyUrl carrega scheme://user:pass@host:port (credencial em claro).
+			// NUNCA logar este payload — o engine o consome via env.Payload.proxyUrl.
+			"proxyUrl": proxyURL,
 		},
 	}
 
 	routingKey := fmt.Sprintf("wbot.%s.%d.session.start", whatsapp.TenantID, whatsapp.ID)
 	return wss.publisher.PublishCommand(routingKey, command)
+}
+
+// composeProxyURL builds the proxy URL for the connection from its assigned
+// Proxy record, decrypting the password. Returns "" when no proxy is assigned.
+// Returns an error (fail-closed) when a proxy IS assigned but unusable.
+func (wss *WhatsAppSessionService) composeProxyURL(whatsapp models.Whatsapp) (string, error) {
+	if whatsapp.ProxyMode != "single" || whatsapp.ProxyID == nil {
+		return "", nil
+	}
+	var p models.Proxy
+	if err := wss.db.Where(`id = ? AND "tenantId" = ?`, *whatsapp.ProxyID, whatsapp.TenantID).First(&p).Error; err != nil {
+		return "", fmt.Errorf("proxy %d não encontrado para a conexão %d: %w", *whatsapp.ProxyID, whatsapp.ID, err)
+	}
+	if p.Status != "active" {
+		return "", fmt.Errorf("proxy %d não está ativo (status=%s)", p.ID, p.Status)
+	}
+	pass, err := cryptobox.Decrypt(p.PasswordEnc)
+	if err != nil {
+		return "", fmt.Errorf("falha ao descriptografar senha do proxy %d: %w", p.ID, err)
+	}
+	scheme := p.Scheme
+	if scheme == "" {
+		scheme = "http"
+	}
+	// net.JoinHostPort coloca colchetes em hosts IPv6 (ex: [::1]:1080).
+	u := url.URL{Scheme: scheme, Host: net.JoinHostPort(p.Host, strconv.Itoa(p.Port))}
+	if p.Username != "" || pass != "" {
+		u.User = url.UserPassword(p.Username, pass)
+	}
+	return u.String(), nil
 }
 
 func (wss *WhatsAppSessionService) StopWhatsAppSession(whatsapp models.Whatsapp) error {
