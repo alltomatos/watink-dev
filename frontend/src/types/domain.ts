@@ -59,6 +59,9 @@ export interface Proxy {
   status: string;
   proxyGroupId?: number | null;
   healthy: boolean;
+  country?: string;
+  countryCode?: string;
+  city?: string;
   hasPassword: boolean;
   notes?: string;
   lastUsedAt?: string | null;

@@ -15,10 +15,13 @@ import (
 
 // proxyProbeResult is the outcome of a connectivity test through a proxy.
 type proxyProbeResult struct {
-	OK        bool   `json:"ok"`
-	IP        string `json:"ip,omitempty"`
-	LatencyMs int64  `json:"latencyMs"`
-	Error     string `json:"error,omitempty"`
+	OK          bool   `json:"ok"`
+	IP          string `json:"ip,omitempty"`
+	City        string `json:"city,omitempty"`
+	Country     string `json:"country,omitempty"`
+	CountryCode string `json:"countryCode,omitempty"`
+	LatencyMs   int64  `json:"latencyMs"`
+	Error       string `json:"error,omitempty"`
 }
 
 const proxyProbeTimeout = 12 * time.Second
@@ -66,18 +69,28 @@ func probeProxy(scheme, host string, port int, username, password string, timeou
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.ipify.org?format=json", nil)
+	// ip-api.com devolve IP de saída + geolocalização (cidade/país) numa só
+	// chamada. Como cada proxy sai por um IP diferente, o rate-limit por IP do
+	// ip-api não é atingido mesmo testando vários. (Free tier = HTTP.)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://ip-api.com/json?fields=status,country,countryCode,city,query", nil)
 	resp, err := client.Do(req)
 	if err != nil {
 		return proxyProbeResult{OK: false, Error: err.Error(), LatencyMs: elapsed()}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return proxyProbeResult{OK: false, Error: fmt.Sprintf("HTTP %d", resp.StatusCode), LatencyMs: elapsed()}
 	}
 	var body struct {
-		IP string `json:"ip"`
+		Status      string `json:"status"`
+		Country     string `json:"country"`
+		CountryCode string `json:"countryCode"`
+		City        string `json:"city"`
+		Query       string `json:"query"`
 	}
 	_ = json.NewDecoder(resp.Body).Decode(&body)
-	return proxyProbeResult{OK: true, IP: body.IP, LatencyMs: elapsed()}
+	return proxyProbeResult{
+		OK: true, IP: body.Query, City: body.City,
+		Country: body.Country, CountryCode: body.CountryCode, LatencyMs: elapsed(),
+	}
 }
