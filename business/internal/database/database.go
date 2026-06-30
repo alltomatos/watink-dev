@@ -66,6 +66,8 @@ func Migrate() {
 		&models.ConversationEmbedding{},
 		&models.PollResult{},
 		&models.Proxy{},
+		&models.ProxyGroup{},
+		&models.ConnectionGroup{},
 	)
 
 	if err != nil {

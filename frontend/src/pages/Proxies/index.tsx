@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { Plus, Upload, Pencil, Trash2, ShieldAlert, ShieldCheck, Loader2 } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, ShieldAlert, ShieldCheck, Loader2, Network } from "lucide-react";
 
 import { PageLayout, PageHeader, PageContent } from "@/components/ui/page-layout";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,11 @@ import {
 
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
-import type { Proxy } from "../../types/domain";
+import type { Proxy, ProxyGroup } from "../../types/domain";
 import ProxyFormDialog from "./ProxyFormDialog";
 import ProxyImportDialog from "./ProxyImportDialog";
+import ProxyGroupsPanel from "./ProxyGroupsPanel";
+import ConnectionGroupsDialog from "./ConnectionGroupsDialog";
 
 const STATUS_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   active: { label: "Ativo", variant: "default" },
@@ -29,9 +31,11 @@ const STATUS_BADGE: Record<string, { label: string; variant: "default" | "second
 
 const Proxies: React.FC = () => {
   const [proxies, setProxies] = useState<Proxy[]>([]);
+  const [groups, setGroups] = useState<ProxyGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [connGroupsOpen, setConnGroupsOpen] = useState(false);
   const [editing, setEditing] = useState<Proxy | null>(null);
 
   const fetchProxies = useCallback(async () => {
@@ -46,7 +50,19 @@ const Proxies: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { fetchProxies(); }, [fetchProxies]);
+  const fetchGroups = useCallback(async () => {
+    try {
+      const { data } = await api.get<ProxyGroup[]>("/proxy-groups");
+      setGroups(Array.isArray(data) ? data : []);
+    } catch {
+      setGroups([]);
+    }
+  }, []);
+
+  useEffect(() => { fetchProxies(); fetchGroups(); }, [fetchProxies, fetchGroups]);
+
+  const groupName = (id?: number | null) =>
+    id == null ? "—" : groups.find((g) => g.id === id)?.name ?? `#${id}`;
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (p: Proxy) => { setEditing(p); setFormOpen(true); };
@@ -76,6 +92,9 @@ const Proxies: React.FC = () => {
   return (
     <PageLayout>
       <PageHeader title="Proxies" description="Pool de proxies para isolamento de IP por conexão (anti-ban)">
+        <Button variant="outline" onClick={() => setConnGroupsOpen(true)}>
+          <Network className="mr-2 h-4 w-4" /> Grupos de Conexões
+        </Button>
         <Button variant="outline" onClick={() => setImportOpen(true)}>
           <Upload className="mr-2 h-4 w-4" /> Importar em massa
         </Button>
@@ -85,6 +104,8 @@ const Proxies: React.FC = () => {
       </PageHeader>
 
       <PageContent>
+        <ProxyGroupsPanel onChanged={() => { fetchProxies(); fetchGroups(); }} />
+
         {loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -100,6 +121,7 @@ const Proxies: React.FC = () => {
                 <TableRow>
                   <TableHead>Rótulo</TableHead>
                   <TableHead>Endpoint</TableHead>
+                  <TableHead>Grupo</TableHead>
                   <TableHead>Usuário</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -113,6 +135,7 @@ const Proxies: React.FC = () => {
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.label || "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{p.scheme}://{p.host}:{p.port}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{groupName(p.proxyGroupId)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{p.username || "—"}</TableCell>
                       <TableCell><Badge variant={badge.variant}>{badge.label}</Badge></TableCell>
                       <TableCell className="text-right">
@@ -143,8 +166,9 @@ const Proxies: React.FC = () => {
         )}
       </PageContent>
 
-      <ProxyFormDialog open={formOpen} proxy={editing} onClose={() => setFormOpen(false)} onSaved={fetchProxies} />
-      <ProxyImportDialog open={importOpen} onClose={() => setImportOpen(false)} onImported={fetchProxies} />
+      <ProxyFormDialog open={formOpen} proxy={editing} groups={groups} onClose={() => setFormOpen(false)} onSaved={fetchProxies} />
+      <ProxyImportDialog open={importOpen} groups={groups} onClose={() => setImportOpen(false)} onImported={fetchProxies} />
+      <ConnectionGroupsDialog open={connGroupsOpen} onClose={() => setConnGroupsOpen(false)} />
     </PageLayout>
   );
 };
