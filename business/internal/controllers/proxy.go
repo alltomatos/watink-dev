@@ -630,6 +630,48 @@ func (pc *ProxyController) DeleteAll(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"deleted": res.RowsAffected})
 }
 
+type assignGroupInput struct {
+	ProxyIDs     []int `json:"proxyIds"`
+	ProxyGroupID *int  `json:"proxyGroupId"`
+}
+
+// AssignGroup moves a batch of proxies into a group (ou remove do grupo se
+// proxyGroupId nulo). Usado para montar grupos por filtro (ex.: só Fortaleza).
+// @Summary      Atribuir proxies a um grupo em massa
+// @Tags         proxies
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  map[string]interface{}
+// @Security     BearerAuth
+// @Router       /proxies/assign-group [post]
+func (pc *ProxyController) AssignGroup(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Whatsapps")
+	if !ok {
+		return
+	}
+	var in assignGroupInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		utils.RespondWithBindError(c, err)
+		return
+	}
+	if len(in.ProxyIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{"assigned": 0})
+		return
+	}
+	if !proxyGroupOwnedByTenant(db, tenantID, in.ProxyGroupID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "grupo de proxy não encontrado para este tenant"})
+		return
+	}
+	res := db.Session(&gorm.Session{NewDB: true}).Model(&models.Proxy{}).
+		Where(`"tenantId" = ? AND id IN ?`, tenantID, in.ProxyIDs).
+		Update("proxyGroupId", in.ProxyGroupID)
+	if res.Error != nil {
+		utils.RespondWithInternalError(c, res.Error, "AssignProxyGroup")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"assigned": res.RowsAffected})
+}
+
 // Isolate quarantines a proxy (IP burned by a ban) so it is not reused.
 // @Summary      Isolar proxy (anti-contaminação)
 // @Tags         proxies
