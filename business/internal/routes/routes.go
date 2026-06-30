@@ -215,6 +215,8 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.DELETE("/flows/:flowId", flowController.Delete)
 		protected.POST("/flows/:flowId/simulate", flowController.Simulate)
 		protected.POST("/flows/:flowId/run", flowController.Run)
+		protected.GET("/flowruns", flowController.ListFlowRuns)
+		protected.DELETE("/flowruns/:id", flowController.AbortFlowRun)
 
 		// Tags
 		protected.GET("/tags", tagController.List)
