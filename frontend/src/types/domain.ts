@@ -30,6 +30,8 @@ export interface WhatsAppConnection {
   retries?: number;
   updatedAt?: string;
   queues?: Queue[];
+  proxyMode?: string;
+  proxyId?: number | null;
 }
 
 /** Form values managed by Formik inside WhatsAppModal */
@@ -38,6 +40,26 @@ export interface WhatsAppFormValues {
   isDefault: boolean;
   keepAlive: boolean;
   syncHistory: boolean;
+  proxyMode?: string;
+  proxyId?: number | null;
+}
+
+/** Proxy record returned by GET /proxies (password never serialized) */
+export interface Proxy {
+  id: number;
+  label: string;
+  scheme: string;
+  host: string;
+  port: number;
+  username: string;
+  status: string;
+  healthy: boolean;
+  hasPassword: boolean;
+  notes?: string;
+  lastUsedAt?: string | null;
+  lastCheckedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /** Minimal group record returned by GET /groups */

@@ -134,4 +134,6 @@ type ChannelSession struct {
 	FirstConnection *time.Time `json:"firstConnection"`
 	LastConnectedAt *time.Time `json:"lastConnectedAt"`
 	EngineType      string     `json:"engineType"`
+	ProxyMode       string     `json:"proxyMode"`
+	ProxyID         *int       `json:"proxyId"`
 }
