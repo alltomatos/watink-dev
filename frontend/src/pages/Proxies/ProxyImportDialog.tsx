@@ -23,9 +23,11 @@ import {
 
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
+import type { ProxyGroup } from "../../types/domain";
 
 interface ProxyImportDialogProps {
   open: boolean;
+  groups: ProxyGroup[];
   onClose: () => void;
   onImported: () => void;
 }
@@ -36,14 +38,15 @@ interface ImportResult {
   errors: string[];
 }
 
-const ProxyImportDialog: React.FC<ProxyImportDialogProps> = ({ open, onClose, onImported }) => {
+const ProxyImportDialog: React.FC<ProxyImportDialogProps> = ({ open, groups, onClose, onImported }) => {
   const [raw, setRaw] = useState("");
   const [scheme, setScheme] = useState("http");
   const [label, setLabel] = useState("");
+  const [group, setGroup] = useState("none");
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
 
-  const reset = () => { setRaw(""); setScheme("http"); setLabel(""); setResult(null); };
+  const reset = () => { setRaw(""); setScheme("http"); setLabel(""); setGroup("none"); setResult(null); };
 
   const handleClose = () => { reset(); onClose(); };
 
@@ -54,7 +57,12 @@ const ProxyImportDialog: React.FC<ProxyImportDialogProps> = ({ open, onClose, on
     }
     setImporting(true);
     try {
-      const { data } = await api.post<ImportResult>("/proxies/import", { raw, scheme, label });
+      const { data } = await api.post<ImportResult>("/proxies/import", {
+        raw,
+        scheme,
+        label,
+        proxyGroupId: group === "none" ? null : Number(group),
+      });
       setResult(data);
       if (data.imported > 0) {
         toast.success(`${data.imported} proxies importados.`);
@@ -98,6 +106,19 @@ const ProxyImportDialog: React.FC<ProxyImportDialogProps> = ({ open, onClose, on
               <Label>Rótulo (opcional)</Label>
               <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="webshare-lote-1" />
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Grupo (opcional)</Label>
+            <Select value={group} onValueChange={setGroup}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem grupo</SelectItem>
+                {groups.map((g) => (
+                  <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1">

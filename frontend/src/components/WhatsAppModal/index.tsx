@@ -27,7 +27,7 @@ import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import QueueSelect from "../QueueSelect";
-import type { WhatsAppConnection, WhatsAppFormValues, Proxy } from "../../types/domain";
+import type { WhatsAppConnection, WhatsAppFormValues, Proxy, ProxyGroup, ConnectionGroup } from "../../types/domain";
 
 const SessionSchema = Yup.object().shape({
   name: Yup.string().min(2, "Too Short!").max(50, "Too Long!").required("Required"),
@@ -48,15 +48,25 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProp
     syncHistory: false,
     proxyMode: "none",
     proxyId: null,
+    proxyGroupId: null,
+    connectionGroupId: null,
   });
   const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>([]);
   const [proxies, setProxies] = useState<Proxy[]>([]);
+  const [proxyGroups, setProxyGroups] = useState<ProxyGroup[]>([]);
+  const [connectionGroups, setConnectionGroups] = useState<ConnectionGroup[]>([]);
 
   useEffect(() => {
     if (!open) return;
     api.get<Proxy[]>("/proxies", { params: { status: "active" } })
       .then(({ data }) => setProxies(Array.isArray(data) ? data : []))
       .catch(() => setProxies([]));
+    api.get<ProxyGroup[]>("/proxy-groups")
+      .then(({ data }) => setProxyGroups(Array.isArray(data) ? data : []))
+      .catch(() => setProxyGroups([]));
+    api.get<ConnectionGroup[]>("/connection-groups")
+      .then(({ data }) => setConnectionGroups(Array.isArray(data) ? data : []))
+      .catch(() => setConnectionGroups([]));
   }, [open]);
 
   useEffect(() => {
@@ -70,6 +80,8 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProp
           syncHistory: data.syncHistory,
           proxyMode: data.proxyMode ?? "none",
           proxyId: data.proxyId ?? null,
+          proxyGroupId: data.proxyGroupId ?? null,
+          connectionGroupId: data.connectionGroupId ?? null,
         });
         if (data.queues) {
           setSelectedQueueIds(data.queues.map((q) => q.id));
@@ -80,7 +92,7 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProp
 
   const handleClose = () => {
     onClose();
-    setWhatsApp({ name: "", isDefault: false, keepAlive: false, syncHistory: false, proxyMode: "none", proxyId: null });
+    setWhatsApp({ name: "", isDefault: false, keepAlive: false, syncHistory: false, proxyMode: "none", proxyId: null, proxyGroupId: null, connectionGroupId: null });
     setSelectedQueueIds([]);
   };
 
@@ -156,14 +168,26 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProp
               <div className="space-y-1 pt-2">
                 <Label>Proxy (anti-ban)</Label>
                 <Select
-                  value={values.proxyMode === "single" && values.proxyId ? String(values.proxyId) : "none"}
+                  value={
+                    values.proxyMode === "group" && values.proxyGroupId
+                      ? `group:${values.proxyGroupId}`
+                      : values.proxyMode === "single" && values.proxyId
+                      ? `single:${values.proxyId}`
+                      : "none"
+                  }
                   onValueChange={(v) => {
                     if (v === "none") {
                       setFieldValue("proxyMode", "none");
                       setFieldValue("proxyId", null);
+                      setFieldValue("proxyGroupId", null);
+                    } else if (v.startsWith("group:")) {
+                      setFieldValue("proxyMode", "group");
+                      setFieldValue("proxyGroupId", Number(v.slice(6)));
+                      setFieldValue("proxyId", null);
                     } else {
                       setFieldValue("proxyMode", "single");
-                      setFieldValue("proxyId", Number(v));
+                      setFieldValue("proxyId", Number(v.slice(7)));
+                      setFieldValue("proxyGroupId", null);
                     }
                   }}
                 >
@@ -172,8 +196,13 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProp
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sem proxy (IP do servidor)</SelectItem>
+                    {proxyGroups.map((g) => (
+                      <SelectItem key={`g${g.id}`} value={`group:${g.id}`}>
+                        Grupo: {g.name} ({g.rotationStrategy === "rotate" ? "rotação" : "fixo"})
+                      </SelectItem>
+                    ))}
                     {proxies.map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>
+                      <SelectItem key={`p${p.id}`} value={`single:${p.id}`}>
                         {p.label ? `${p.label} — ` : ""}{p.scheme}://{p.host}:{p.port}
                       </SelectItem>
                     ))}
@@ -182,6 +211,24 @@ const WhatsAppModal = ({ open, onClose, whatsAppId, onSaved }: WhatsAppModalProp
                 <p className="text-xs text-muted-foreground">
                   Alterar o proxy só vale na próxima conexão — reconecte para aplicar.
                 </p>
+              </div>
+
+              <div className="space-y-1 pt-2">
+                <Label>Grupo de conexões</Label>
+                <Select
+                  value={values.connectionGroupId ? String(values.connectionGroupId) : "none"}
+                  onValueChange={(v) => setFieldValue("connectionGroupId", v === "none" ? null : Number(v))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sem grupo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem grupo</SelectItem>
+                    {connectionGroups.map((g) => (
+                      <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="pt-2">

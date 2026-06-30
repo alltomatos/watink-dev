@@ -17,7 +17,6 @@ const Signup = lazy(() => import("../pages/Signup"));
 const Login = lazy(() => import("../pages/Login"));
 const Connections = lazy(() => import("../pages/Connections"));
 const ConnectionConfig = lazy(() => import("../pages/Connections/ConnectionConfig"));
-const Proxies = lazy(() => import("../pages/Proxies"));
 const Settings = lazy(() => import("../pages/Settings"));
 const Users = lazy(() => import("../pages/Users"));
 const UserEdit = lazy(() => import("../pages/UserEdit"));
@@ -78,7 +77,6 @@ const PrivateRoutes = () => {
      <Route path="/flowbuilder/:flowId" element={<PrivateRoute isPrivate><FlowBuilder /></PrivateRoute>} />
      <Route path="/connections" element={<PrivateRoute isPrivate><Connections /></PrivateRoute>} />
      <Route path="/connections/:whatsappId" element={<PrivateRoute isPrivate><ConnectionConfig /></PrivateRoute>} />
-     <Route path="/proxies" element={<PrivateRoute isPrivate><Proxies /></PrivateRoute>} />
      <Route path="/contacts" element={<PrivateRoute isPrivate><Contacts /></PrivateRoute>} />
      <Route path="/users" element={<PrivateRoute isPrivate><Users /></PrivateRoute>} />
      <Route path="/users/:userId" element={<PrivateRoute isPrivate><UserEdit /></PrivateRoute>} />

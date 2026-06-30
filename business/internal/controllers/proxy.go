@@ -11,7 +11,19 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/cryptobox"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
+
+// proxyGroupOwnedByTenant reports whether the proxy group id (if any) exists for
+// the tenant. nil id (ungrouped) is always valid.
+func proxyGroupOwnedByTenant(db *gorm.DB, tenantID interface{}, id *int) bool {
+	if id == nil {
+		return true
+	}
+	var g models.ProxyGroup
+	return db.Session(&gorm.Session{NewDB: true}).
+		Where(`id = ? AND "tenantId" = ?`, *id, tenantID).First(&g).Error == nil
+}
 
 // ProxyController manages the tenant's proxy pool. All queries are tenant-scoped
 // via auth.GetScoped (reusing the "Whatsapps" permission — proxies are
@@ -46,6 +58,7 @@ func toProxyResponse(p models.Proxy) gin.H {
 		"port":          p.Port,
 		"username":      p.Username,
 		"status":        p.Status,
+		"proxyGroupId":  p.ProxyGroupID,
 		"healthy":       p.Healthy,
 		"hasPassword":   p.HasPassword(),
 		"lastCheckedAt": p.LastCheckedAt,
@@ -73,6 +86,12 @@ func (pc *ProxyController) List(c *gin.Context) {
 	if status := c.Query("status"); status != "" {
 		q = q.Where("status = ?", status)
 	}
+	switch gid := c.Query("groupId"); {
+	case gid == "ungrouped":
+		q = q.Where(`"proxyGroupId" IS NULL`)
+	case gid != "":
+		q = q.Where(`"proxyGroupId" = ?`, gid)
+	}
 	if err := q.Order("id DESC").Find(&proxies).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "ListProxies")
 		return
@@ -85,13 +104,14 @@ func (pc *ProxyController) List(c *gin.Context) {
 }
 
 type proxyInput struct {
-	Label    string `json:"label"`
-	Scheme   string `json:"scheme"`
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Notes    string `json:"notes"`
+	Label        string `json:"label"`
+	Scheme       string `json:"scheme"`
+	Host         string `json:"host"`
+	Port         int    `json:"port"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	Notes        string `json:"notes"`
+	ProxyGroupID *int   `json:"proxyGroupId"`
 }
 
 func validateProxyStrings(c *gin.Context, in proxyInput) bool {
@@ -159,10 +179,16 @@ func (pc *ProxyController) Create(c *gin.Context) {
 		enc = e
 	}
 
+	if !proxyGroupOwnedByTenant(db, tenantID, in.ProxyGroupID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "grupo de proxy não encontrado para este tenant"})
+		return
+	}
+
 	p := models.Proxy{
 		TenantID: tenantID, Label: in.Label, Scheme: scheme,
 		Host: in.Host, Port: in.Port, Username: in.Username,
 		PasswordEnc: enc, Status: "active", Notes: in.Notes,
+		ProxyGroupID: in.ProxyGroupID,
 	}
 	if err := db.Create(&p).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "CreateProxy")
@@ -172,9 +198,10 @@ func (pc *ProxyController) Create(c *gin.Context) {
 }
 
 type proxyImportInput struct {
-	Raw    string `json:"raw"`
-	Scheme string `json:"scheme"`
-	Label  string `json:"label"`
+	Raw          string `json:"raw"`
+	Scheme       string `json:"scheme"`
+	Label        string `json:"label"`
+	ProxyGroupID *int   `json:"proxyGroupId"`
 }
 
 // parseProxyLine parses a Webshare-style "host:port:user:pass" line (or the
@@ -229,6 +256,10 @@ func (pc *ProxyController) Import(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": cryptobox.ErrNotConfigured.Error()})
 		return
 	}
+	if !proxyGroupOwnedByTenant(db, tenantID, in.ProxyGroupID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "grupo de proxy não encontrado para este tenant"})
+		return
+	}
 
 	lines := strings.Split(strings.ReplaceAll(in.Raw, "\r\n", "\n"), "\n")
 	var toCreate []models.Proxy
@@ -257,6 +288,7 @@ func (pc *ProxyController) Import(c *gin.Context) {
 		toCreate = append(toCreate, models.Proxy{
 			TenantID: tenantID, Label: in.Label, Scheme: scheme,
 			Host: host, Port: port, Username: user, PasswordEnc: enc, Status: "active",
+			ProxyGroupID: in.ProxyGroupID,
 		})
 	}
 
@@ -300,10 +332,16 @@ func (pc *ProxyController) Update(c *gin.Context) {
 		return
 	}
 
+	if !proxyGroupOwnedByTenant(db, tenantID, in.ProxyGroupID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "grupo de proxy não encontrado para este tenant"})
+		return
+	}
+
 	fields := map[string]interface{}{
-		"label":    in.Label,
-		"username": in.Username,
-		"notes":    in.Notes,
+		"label":        in.Label,
+		"username":     in.Username,
+		"notes":        in.Notes,
+		"proxyGroupId": in.ProxyGroupID,
 	}
 	if in.Scheme != "" {
 		scheme := normalizeScheme(in.Scheme)
