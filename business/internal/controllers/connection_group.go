@@ -9,6 +9,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // ConnectionGroupController manages groupings of WhatsApp connections.
@@ -44,7 +45,7 @@ func (cgc *ConnectionGroupController) List(c *gin.Context) {
 		Total             int64
 	}
 	var counts []countRow
-	db.Model(&models.Whatsapp{}).
+	db.Session(&gorm.Session{NewDB: true}).Model(&models.Whatsapp{}).
 		Select(`"connectionGroupId" as connection_group_id, COUNT(*) as total`).
 		Where(`"tenantId" = ? AND "connectionGroupId" IS NOT NULL`, tenantID).
 		Group(`"connectionGroupId"`).
