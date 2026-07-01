@@ -536,3 +536,29 @@ verificação do log antes de prosseguir.
   ADR 0022 (herança de setor, escopo de gestor, enforcement 403,
   anti-lockout 409) — muitos já cobertos incrementalmente por GAP; avaliar
   o que falta de cobertura combinada.
+
+## Status GAP-2b (2026-07-01) — ✅ CONCLUÍDO — Backend do ADR 0022 completo
+
+`RequirePermission` aplicado no primeiro lote de rotas sensíveis: `/users*`,
+`/setores*`, `/cargos*`, `/whatsapp*`+`/whatsappsession*` (conexões),
+`PUT /tickets/:ticketId` (reassign/close via UpdateTicket genérico).
+
+Validado end-to-end: Administrador (alcance=tenant) bypassa tudo; usuário
+com Cargo "Gestor" (alcance=proprio) passa em `GET /users` (tem
+`users:read`) mas é barrado 403 em `POST /users`/`GET /cargos`/
+`DELETE /setores/:id` (não tem essas permissions) — mensagem de erro clara.
+Push: `3c20c8b56`.
+
+**Com isso, o BACKEND do ADR 0022 está completo (GAP-1 a GAP-2b).** Rotas
+fora do primeiro lote (pipelines/flows/tags/deals/knowledge-bases/quick-
+answers/proxies/queues/contacts) ficam para uma próxima fase do rollout —
+fora do escopo desta refatoração inicial.
+
+### Restante
+- **GAP-6**: frontend — Central de Acessos (abas Usuários/Setores/Cargos),
+  substituindo `Users`/`UserEdit`/`Groups`/`GroupEdit`/`Roles`/`RoleEdit`/
+  `Access`/`UserModal`.
+- **GAP-7**: consolidação de testes — muito já coberto incrementalmente
+  (GAP-2a: 10 testes; GAP-3: 18; GAP-4: 15; GAP-5: 9; suíte completa 100%
+  verde a cada passo). Avaliar lacunas de cobertura combinada (ex: fluxo
+  ponta-a-ponta gestor-escopado-a-um-setor-só) antes de fechar.
