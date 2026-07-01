@@ -472,3 +472,41 @@ aguardando completar GAP-3/4/5 antes de abrir PR único ou incremental).
 
 Depois: GAP-5 (User atualizado, depende de 3+4) → rotas (routes.go,
 sequencial) → GAP-2b (aplicar enforcement) + GAP-6 (frontend) → GAP-7 (testes).
+
+## Status GAP-2a/3/4 (2026-07-01) — ✅ CONCLUÍDOS (paralelo)
+
+3 agentes em paralelo, cada um em worktree isolada (2 precisaram de correção
+de checkout — worktree criado a partir de commit-base desatualizado; ver nota
+abaixo). Merges sequenciais na branch `refactor/acessos-gap1-schema`, 1
+colisão de nome resolvida (`uniqueInts` duplicado entre setor.go/cargo.go,
+GAP-3 e GAP-4 não se viram — mantida a versão de cargo.go).
+
+- **GAP-2a**: `effectivePermissionNames` soma o pacote de Gestor (Cargo
+  "Gestor" do tenant) quando `user_setores.ehGestor=true`, sem exigir que o
+  Cargo base do usuário se chame "Gestor". `RequirePermission(resource,
+  action)` criado em `business/pkg/auth/permission.go` — middleware de
+  enforcement, AINDA NÃO aplicado em nenhuma rota (isso é GAP-2b).
+- **GAP-3**: `SetorController` completo (9 handlers). Corrigiu 2 bugs reais
+  do padrão "GetScoped não é nova sessão" descobertos pelos testes contra
+  Postgres real.
+- **GAP-4**: `CargoController` completo (6 handlers, incl. matriz de
+  permissões). Anti-lockout: bloqueia deletar o único Cargo "Administrador"
+  do tenant ou um Cargo em uso.
+- Nenhum dos 3 editou `routes.go`/`container.go` (por instrução) — rotas
+  ainda não registradas, feito a seguir sequencialmente para evitar conflito
+  de merge no hub file.
+- Suíte completa 100% verde com os 4 GAPs integrados. Push feito
+  (`2f7c6e151`).
+
+**Nota operacional**: `isolation:"worktree"` do Agent tool às vezes cria o
+worktree a partir de um commit-base desatualizado (visto 2x nesta sessão).
+Mitigação: incluir no prompt do agente uma instrução explícita de `git fetch`
++ `git checkout -B <branch> origin/<branch>` como primeiro passo, com
+verificação do log antes de prosseguir.
+
+### Próximo passo (sequencial, feito por mim — não delegado)
+- Registrar rotas de `/setores*` e `/cargos*` em `routes.go` (arquivo
+  compartilhado, hub — sequencial evita conflito).
+- GAP-5: User atualizado (payload `cargoId`/`setorIds[]`+`ehGestor`/`alcance`)
+  + anti-lockout no `UserController` (bloquear remover/rebaixar o último
+  Administrador do tenant ou o dono via `Tenant.OwnerID`).
