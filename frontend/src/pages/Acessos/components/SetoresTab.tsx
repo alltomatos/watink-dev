@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, Plus, Edit, Trash2, Loader2, Building2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ const SetoresTab: React.FC = () => {
     panelOpen,
     editingSetor,
     panelLoading,
+    initialName,
     openCreate,
     openEdit,
     closePanel,
@@ -40,6 +42,22 @@ const SetoresTab: React.FC = () => {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deletingSetor, setDeletingSetor] = useState<SetorListItem | null>(null);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Auto-abertura do fluxo de criação guiada (ex: Onboarding Checklist do
+  // Dashboard) via query param — ver docs/agents/onboarding.md. Não é um
+  // endpoint novo: só reaproveita o openCreate() já existente.
+  useEffect(() => {
+    if (searchParams.get("autoOpen") === "create") {
+      openCreate(searchParams.get("suggestedName") ?? "");
+      const next = new URLSearchParams(searchParams);
+      next.delete("autoOpen");
+      next.delete("suggestedName");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex flex-col gap-4">
@@ -61,6 +79,7 @@ const SetoresTab: React.FC = () => {
         open={panelOpen}
         loading={panelLoading}
         editingSetor={editingSetor}
+        initialName={initialName}
         onClose={closePanel}
         onSaveName={saveSetorName}
         onAddMember={addMember}
@@ -79,7 +98,7 @@ const SetoresTab: React.FC = () => {
             className="pl-9 h-10"
           />
         </div>
-        <Button onClick={openCreate} className="ml-auto gap-2">
+        <Button onClick={() => openCreate()} className="ml-auto gap-2">
           <Plus className="h-4 w-4" />
           Novo Setor
         </Button>

@@ -13,7 +13,8 @@ interface UseSetoresTabReturn {
   panelOpen: boolean;
   editingSetor: SetorDetail | null;
   panelLoading: boolean;
-  openCreate: () => void;
+  initialName: string;
+  openCreate: (initialName?: string) => void;
   openEdit: (setor: SetorListItem) => Promise<void>;
   closePanel: () => void;
   reloadEditingSetor: () => Promise<void>;
@@ -32,6 +33,7 @@ export function useSetoresTab(): UseSetoresTabReturn {
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingSetor, setEditingSetor] = useState<SetorDetail | null>(null);
   const [panelLoading, setPanelLoading] = useState(false);
+  const [initialName, setInitialName] = useState("");
 
   const fetchSetores = useCallback(async () => {
     setLoading(true);
@@ -53,8 +55,9 @@ export function useSetoresTab(): UseSetoresTabReturn {
     setSearchParam(e.target.value.toLowerCase());
   };
 
-  const openCreate = () => {
+  const openCreate = (suggestedName = "") => {
     setEditingSetor(null);
+    setInitialName(suggestedName);
     setPanelOpen(true);
   };
 
@@ -79,6 +82,7 @@ export function useSetoresTab(): UseSetoresTabReturn {
   const closePanel = () => {
     setPanelOpen(false);
     setEditingSetor(null);
+    setInitialName("");
   };
 
   const reloadEditingSetor = async () => {
@@ -174,6 +178,7 @@ export function useSetoresTab(): UseSetoresTabReturn {
     panelOpen,
     editingSetor,
     panelLoading,
+    initialName,
     openCreate,
     openEdit,
     closePanel,
