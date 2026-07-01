@@ -54,7 +54,7 @@ func TestUpdateTicketRejectsCrossTenantAccess(t *testing.T) {
 	router.PUT("/tickets/:ticketId", func(c *gin.Context) {
 		c.Set("db", db)
 		c.Set("tenantId", tenantB.String())
-		c.Set("userProfile", "admin")
+		c.Set("alcance", "tenant")
 		c.Set("userId", float64(10))
 		controller.UpdateTicket(c)
 	})
@@ -98,7 +98,7 @@ func TestUpdateTicketCreatesTenantScopedLog(t *testing.T) {
 	router.PUT("/tickets/:ticketId", func(c *gin.Context) {
 		c.Set("db", db)
 		c.Set("tenantId", tenantID.String())
-		c.Set("userProfile", "admin")
+		c.Set("alcance", "tenant")
 		c.Set("userId", float64(10))
 		controller.UpdateTicket(c)
 	})

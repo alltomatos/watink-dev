@@ -77,7 +77,7 @@ func TestUpdateTicket(t *testing.T) {
 	r.Use(func(c *gin.Context) {
 		c.Set("db", db)
 		c.Set("tenantId", tenantID)
-		c.Set("userProfile", "admin")
+		c.Set("alcance", "tenant")
 		c.Set("userId", float64(1)) // float64 as Gin parses JSON numbers
 		c.Next()
 	})

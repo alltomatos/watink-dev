@@ -348,10 +348,54 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 
 **Referência:** [`docs/agents/proxy.md`](docs/agents/proxy.md) · ADR 0021 (proxy anti-ban) · ADR 0016 (risco estrutural)
 
+## Módulo: Acessos (Usuários, Setores, Cargos, Permissões)
+
+**Responsabilidade:** Autorização do tenant. Substitui o RBAC legado (Profile string + Group + Role inerte) por um modelo de **3 dimensões independentes**: **Cargo** (o que o User pode fazer, via `cargo_permissoes`), **Setor** (onde está — N:N via `user_setores`, com marca `ehGestor`), e **Alcance** (até onde vale — `próprio | setor | tenant | plataforma`). Permissão é **barreira real no backend** (`RequirePermission`), não mais cosmética de menu. Reset de banco autorizado (dev) — sem migração de dado legado.
+
+**Invariants:**
+- Sempre usar `auth.GetScoped(c, "Users"|"Setores"|"Cargos")` — nunca `c.Get("tenantId")` bruto.
+- **Enforcement faseado**: rotas sensíveis (users/setores/cargos/conexões/faturamento/relatórios/reassign-close-ticket) ganham `RequirePermission` primeiro; demais rotas expandem depois. Nenhuma rota nova de escrita entra sem gate.
+- Catálogo de Permission é `recurso:ação` (ex. `tickets:reassign`, `sectors:manage`) — nunca granularidade de menu (`resource:view`) para ações que mutam estado.
+- Gestor = marca `ehGestor` no vínculo `user_setores`, **não** um Cargo separado — o pacote de gestão soma às permissões do Cargo base, escopado (Alcance=`setor`) só aos Setores marcados.
+- Gerente Geral/Administrador = mesmo Cargo/pacote, Alcance=`tenant` (ignora a marca de setor — vale para todos).
+- **Dono do tenant (`Tenant.OwnerID`) é blindado**: sempre Administrador, não pode perder o Cargo, não pode ser excluído; bloquear remoção do último Administrador do tenant (anti-lockout).
+- Setor e Queue são distintos: Setor organiza pessoas/gestão/permissão; Queue roteia Tickets. Setor→Queue é 1:N via `setor_filas`; não fundir os dois conceitos.
+- Superadmin (Alcance=`plataforma`) vive no plugin SaaS, fora do RBAC do tenant — não modelar como Cargo do tenant.
+- Frontend: uma única **Central de Acessos** com abas (Usuários · Setores · Cargos) — Permissions não têm tela própria, aparecem dentro da edição de Cargo (matriz recurso×ação).
+
+**O que NÃO fazer:**
+- Não reintroduzir `Group`, `user_roles`, `group_roles`, `RolePermission.Scope/Conditions` — descontinuados no reset (ADR 0022). Se precisar de ABAC condicional no futuro, desenhar de novo, não reativar o campo morto.
+- Não deixar uma rota de mutação sem `RequirePermission` "pra depois" — vira dívida idêntica ao estado anterior (permissão sem enforcement).
+- Não modelar Gestor como Cargo próprio por Setor (ex. "Gestor de Vendas", "Gestor de Suporte") — multiplica cargos quase idênticos; usar a marca `ehGestor` + Cargo único "Gestor".
+- Não permitir remover/rebaixar o último Administrador do tenant nem o dono (`OwnerID`) pela API — validar antes de qualquer DELETE/UPDATE em Users ou vínculos de Cargo.
+- Não expor Permissions como CRUD solto no frontend — vivem dentro da tela de Cargo.
+- Não confundir Setor com Queue nem fundir os dois modelos nesta refatoração (risco alto no motor de roteamento — fora de escopo).
+
+**Referência:** [`docs/agents/acessos.md`](docs/agents/acessos.md) · ADR 0022 (modelo Cargo/Setor/Alcance + enforcement real)
+
+## Módulo: Onboarding (Setup Wizard + Checklist)
+
+**Responsabilidade:** Reduzir o time-to-value do primeiro acesso — Wizard de Setup Inicial (`POST /initial-setup`, single-step) cria Tenant+Cargo/Setor/Queue/User Administrador; Checklist pós-login (card no Dashboard) guia a criação do primeiro Setor real (com Queue vinculada) e do primeiro usuário adicional.
+
+**Invariants:**
+- Wizard continua **single-step** — Nome Fantasia (novo, obrigatório, vira `Tenant.Name`) + dados do admin. Não expandir para multi-step sem nova mentoria.
+- Checklist usa **estado derivado**, nunca persistido: item completo quando a contagem de Setores/Usuários do tenant excede o criado automaticamente no setup (`> 1`). Não introduzir uma flag de "onboarding completo" no banco.
+- Checklist **não cria nada por conta própria** — só linka para os fluxos reais já existentes na Central de Acessos (SetorController, UserController). Nenhum endpoint novo de criação.
+- Checklist só é visível para `alcance IN (tenant, plataforma)` — quem não tem permissão de criar Setor/Usuário não deve ver a sugestão.
+- "Criar setor" no checklist cria **Setor + Queue vinculada juntos**, numa ação só — não expor a distinção técnica Setor/Queue ao usuário nesse fluxo guiado.
+
+**O que NÃO fazer:**
+- Não transformar o wizard em multi-step para acomodar o guia de primeiro uso — isso é escopo do checklist pós-login, não do setup.
+- Não persistir estado de progresso do checklist (flag/Setting) — a contagem em tempo real já resolve, inclusive para quem cria por fora do checklist.
+- Não bloquear o uso do sistema até o checklist ser completado — ele é dispensável a qualquer momento.
+- Não mostrar o checklist para Cargos sem alcance tenant/plataforma.
+
+**Referência:** [`docs/agents/onboarding.md`](docs/agents/onboarding.md)
+
 ## Domain Docs
 
 - **Glossário**: [`CONTEXT.md`](CONTEXT.md)
-- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0009** para stage upsert, **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes. **FlowBuilder/Automação**: **0011** FlowRun unificado · **0012** trigger polimórfico · **0013** contrato versionado FlowGraph · **0014** channel adapters · **0015** pgvector RAG · **0016** campanhas anti-ban (risco estrutural + opt-in + roadmap BSP) · **0017** scheduler multi-node. **Base de Conhecimento/RAG**: **0015** (atualizado) pgvector RAG · **0018** microsserviço watink-knowledge + trust boundary · **0019** S3 Storage Driver · **0020** Agent Runtime
+- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0009** para stage upsert, **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes. **FlowBuilder/Automação**: **0011** FlowRun unificado · **0012** trigger polimórfico · **0013** contrato versionado FlowGraph · **0014** channel adapters · **0015** pgvector RAG · **0016** campanhas anti-ban (risco estrutural + opt-in + roadmap BSP) · **0017** scheduler multi-node. **Base de Conhecimento/RAG**: **0015** (atualizado) pgvector RAG · **0018** microsserviço watink-knowledge + trust boundary · **0019** S3 Storage Driver · **0020** Agent Runtime. **Acessos/RBAC**: **0022** modelo Cargo/Setor/Alcance + enforcement real (supera **0005**, ABAC via RolePermission.Scope/Conditions nunca implementado)
 - **Arquitetura**: [`docs/dev/architecture.md`](docs/dev/architecture.md)
 - **Frontend DS**: [`docs/frontend/design-system.md`](docs/frontend/design-system.md)
 - **Git Workflow**: [`docs/dev/git_workflow_policy.md`](docs/dev/git_workflow_policy.md)

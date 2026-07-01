@@ -52,7 +52,7 @@ func setupMessageContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, 
 	c.Request = req
 
 	c.Set("tenantId", tenantID)
-	c.Set("userProfile", "admin")
+	c.Set("alcance", "tenant")
 	c.Set("userId", float64(1))
 	scoped := db.Where(`"tenantId" = ?`, tenantID)
 	c.Set("db", scoped)
@@ -211,7 +211,7 @@ func TestMessageController_SendMessage_Multipart_SavesMediaAndPublishes(t *testi
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	c.Request = req
 	c.Set("tenantId", tenantID)
-	c.Set("userProfile", "admin")
+	c.Set("alcance", "tenant")
 	c.Set("userId", float64(1))
 	scoped := db.Where(`"tenantId" = ?`, tenantID)
 	c.Set("db", scoped)

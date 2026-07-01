@@ -32,12 +32,13 @@ func (ctrl *SetupController) CheckSetup(c *gin.Context) {
 }
 
 type SetupRequest struct {
-	FirstName  string `json:"firstName" binding:"required"`
-	LastName   string `json:"lastName"`
-	Email      string `json:"email" binding:"required,email"`
-	Password   string `json:"password" binding:"required"`
-	Document   string `json:"document"`
-	BackendURL string `json:"backendUrl"`
+	CompanyName string `json:"companyName" binding:"required"`
+	FirstName   string `json:"firstName" binding:"required"`
+	LastName    string `json:"lastName"`
+	Email       string `json:"email" binding:"required,email"`
+	Password    string `json:"password" binding:"required"`
+	Document    string `json:"document"`
+	BackendURL  string `json:"backendUrl"`
 }
 
 // @Summary      Configuração inicial do tenant
@@ -65,6 +66,10 @@ func (ctrl *SetupController) InitialSetup(c *gin.Context) {
 		return
 	}
 
+	if _, err := utils.ValidateStringField(req.CompanyName, "companyName", 255); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if _, err := utils.ValidateStringField(req.FirstName, "firstName", 100); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -87,12 +92,13 @@ func (ctrl *SetupController) InitialSetup(c *gin.Context) {
 	}
 
 	seedData := domain.TenantSeedData{
-		FirstName:  req.FirstName,
-		LastName:   req.LastName,
-		Email:      req.Email,
-		Password:   req.Password,
-		Document:   req.Document,
-		BackendURL: req.BackendURL,
+		CompanyName: req.CompanyName,
+		FirstName:   req.FirstName,
+		LastName:    req.LastName,
+		Email:       req.Email,
+		Password:    req.Password,
+		Document:    req.Document,
+		BackendURL:  req.BackendURL,
 	}
 	if err := ctrl.setupService.InitializeTenant(seedData); err != nil {
 		utils.RespondWithInternalError(c, err, "InitializeTenant")
