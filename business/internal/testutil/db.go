@@ -134,6 +134,7 @@ func allModels() []interface{} {
 		&models.Setor{},
 		&models.Cargo{},
 		&models.Permission{},
+		&models.CargoPermissao{},
 		&models.UserSetor{},
 		&models.SetorFila{},
 		&models.Flow{},

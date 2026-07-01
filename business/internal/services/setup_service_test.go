@@ -98,7 +98,7 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 
 	// Cargo Administrador deve ter TODAS as permissions do catálogo (7 seeded)
 	var assigned int64
-	if err := db.Table("cargo_permissoes").Where("cargo_id = ?", *user.CargoID).Count(&assigned).Error; err != nil {
+	if err := db.Table("cargo_permissoes").Where(`"cargoId" = ?`, *user.CargoID).Count(&assigned).Error; err != nil {
 		t.Fatalf("count cargo permissions: %v", err)
 	}
 	if assigned != 7 {

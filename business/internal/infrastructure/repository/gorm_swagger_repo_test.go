@@ -82,7 +82,7 @@ func TestGORMSwaggerPermissionRepo_HasSwaggerPermission_WithPermission(t *testin
 	var permID int
 	require.NoError(t, db.Raw(`SELECT id FROM "Permissions" WHERE resource = ? AND action = ?`, "swagger", "view").Scan(&permID).Error)
 
-	require.NoError(t, db.Exec(`INSERT INTO cargo_permissoes (cargo_id, permission_id) VALUES (?, ?)`, cargoID, permID).Error)
+	require.NoError(t, db.Exec(`INSERT INTO cargo_permissoes ("cargoId", "permissionId") VALUES (?, ?)`, cargoID, permID).Error)
 
 	ok, err := repo.HasSwaggerPermission(userID, tenantID)
 	require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestGORMSwaggerPermissionRepo_HasSwaggerPermission_NoMatchingPermission(t *
 	var permID int
 	require.NoError(t, db.Raw(`SELECT id FROM "Permissions" WHERE resource = ? AND action = ?`, "tickets", "read").Scan(&permID).Error)
 
-	require.NoError(t, db.Exec(`INSERT INTO cargo_permissoes (cargo_id, permission_id) VALUES (?, ?)`, cargoID, permID).Error)
+	require.NoError(t, db.Exec(`INSERT INTO cargo_permissoes ("cargoId", "permissionId") VALUES (?, ?)`, cargoID, permID).Error)
 
 	ok, err := repo.HasSwaggerPermission(userID, tenantID)
 	require.NoError(t, err)

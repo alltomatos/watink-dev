@@ -29,8 +29,8 @@ func (r *GORMSwaggerPermissionRepository) HasSwaggerPermission(userID int, tenan
 
 	var count int64
 	r.db.Table("cargo_permissoes AS cp").
-		Joins("JOIN \"Permissions\" p ON p.id = cp.permission_id").
-		Where("cp.cargo_id = ? AND p.resource = ? AND p.action = ?",
+		Joins(`JOIN "Permissions" p ON p.id = cp."permissionId"`).
+		Where(`cp."cargoId" = ? AND p.resource = ? AND p.action = ?`,
 			*user.CargoID, "swagger", "view").
 		Count(&count)
 
