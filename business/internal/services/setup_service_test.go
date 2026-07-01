@@ -20,6 +20,11 @@ func seedPermissions(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	perms := []models.Permission{
 		{Resource: "tickets", Action: "read", IsSystem: true},
+		{Resource: "tickets", Action: "create", IsSystem: true},
+		{Resource: "tickets", Action: "update", IsSystem: true},
+		{Resource: "contacts", Action: "read", IsSystem: true},
+		{Resource: "contacts", Action: "create", IsSystem: true},
+		{Resource: "contacts", Action: "update", IsSystem: true},
 		{Resource: "settings", Action: "update", IsSystem: true},
 	}
 	if err := db.Create(&perms).Error; err != nil {
@@ -76,11 +81,11 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 	if user.TenantID != tenant.ID {
 		t.Fatalf("user tenantId mismatch: got %s, want %s", user.TenantID, tenant.ID)
 	}
-	if user.Profile != "superadmin" {
-		t.Fatalf("user profile: got %q, want superadmin", user.Profile)
+	if user.Alcance != "tenant" {
+		t.Fatalf("user alcance: got %q, want tenant", user.Alcance)
 	}
-	if user.GroupID == nil {
-		t.Fatal("user groupId must not be nil")
+	if user.CargoID == nil {
+		t.Fatal("user cargoId must not be nil")
 	}
 	if !user.CheckPassword("secret123") {
 		t.Fatal("user password check failed")
@@ -91,13 +96,26 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 		t.Fatalf("tenant ownerId not set correctly: got %v, want %d", tenant.OwnerID, user.ID)
 	}
 
-	// Group permissions
+	// Cargo Administrador deve ter TODAS as permissions do catálogo (7 seeded)
 	var assigned int64
-	if err := db.Table("group_permissions").Where("group_id = ?", *user.GroupID).Count(&assigned).Error; err != nil {
-		t.Fatalf("count group permissions: %v", err)
+	if err := db.Table("cargo_permissoes").Where("cargo_id = ?", *user.CargoID).Count(&assigned).Error; err != nil {
+		t.Fatalf("count cargo permissions: %v", err)
 	}
-	if assigned != 2 {
-		t.Fatalf("expected 2 group permissions, got %d", assigned)
+	if assigned != 7 {
+		t.Fatalf("expected 7 cargo permissions, got %d", assigned)
+	}
+
+	// Setor "Geral" criado e vinculado ao Administrador como gestor
+	var setor models.Setor
+	if err := db.First(&setor, `"tenantId" = ? AND name = ?`, tenant.ID, "Geral").Error; err != nil {
+		t.Fatalf("default setor not created: %v", err)
+	}
+	var userSetor models.UserSetor
+	if err := db.First(&userSetor, "\"userId\" = ? AND \"setorId\" = ?", user.ID, setor.ID).Error; err != nil {
+		t.Fatalf("user_setores link not created: %v", err)
+	}
+	if !userSetor.EhGestor {
+		t.Fatal("expected Administrador to be marked ehGestor on default Setor")
 	}
 
 	// Queue
@@ -139,7 +157,7 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 func TestSetupServiceInitializeTenantRollsBackOnFailure(t *testing.T) {
 	db := newSetupTestDB(t)
 
-	// Sabotage: drop Queues so transaction will fail at step 8
+	// Sabotage: drop Queues so transaction will fail at the Day-0 Queue step
 	if err := db.Exec(`DROP TABLE "Queues"`).Error; err != nil {
 		t.Fatalf("drop queues: %v", err)
 	}
@@ -155,7 +173,7 @@ func TestSetupServiceInitializeTenantRollsBackOnFailure(t *testing.T) {
 	}
 
 	// Verify full rollback: no orphans
-	for _, table := range []string{"Tenants", "Users", "Groups", "Settings", "Tags"} {
+	for _, table := range []string{"Tenants", "Users", "Cargos", "Setores", "Settings", "Tags"} {
 		var count int64
 		if err := db.Table(table).Count(&count).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			t.Fatalf("count %s: %v", table, err)

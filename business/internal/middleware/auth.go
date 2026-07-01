@@ -67,7 +67,7 @@ func IsAuth(db *gorm.DB) gin.HandlerFunc {
 
 		c.Set("userId", claims["id"])
 		c.Set("userEmail", claims["email"])
-		c.Set("userProfile", claims["profile"])
+		c.Set("alcance", claims["alcance"])
 		c.Set("tenantId", tenantID)
 
 		tx := db.Session(&gorm.Session{})
@@ -79,13 +79,13 @@ func IsAuth(db *gorm.DB) gin.HandlerFunc {
 }
 
 // SuperAdminOnly returns middleware that restricts access to users
-// with the "superadmin" profile. Must be used AFTER IsAuth so that
-// userProfile is already set in the gin.Context.
+// with Alcance "plataforma" (equivalente ao antigo profile "superadmin").
+// Must be used AFTER IsAuth so that alcance is already set in the gin.Context.
 func SuperAdminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		profile, _ := c.Get("userProfile")
-		profileStr, ok := profile.(string)
-		if !ok || profileStr != "superadmin" {
+		alcance, _ := c.Get("alcance")
+		alcanceStr, ok := alcance.(string)
+		if !ok || alcanceStr != "plataforma" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "superadmin access required"})
 			c.Abort()
 			return

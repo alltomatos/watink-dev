@@ -96,7 +96,7 @@ func setupWhatsappRouter(ctrl *WhatsappController, method, path string, handler 
 	router.Use(func(c *gin.Context) {
 		c.Set("tenantId", testTenantID)
 		c.Set("db", db)
-		c.Set("userProfile", "admin")
+		c.Set("alcance", "tenant")
 		c.Next()
 	})
 	router.Handle(method, path, handler)

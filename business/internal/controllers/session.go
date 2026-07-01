@@ -57,7 +57,7 @@ func (ac *AuthController) Login(c *gin.Context) {
 	claims := utils.JWTClaims{
 		Name:         domainUser.Name,
 		ID:           domainUser.ID,
-		Profile:      domainUser.Profile,
+		Alcance:      domainUser.Alcance,
 		TenantID:     domainUser.TenantID,
 		TokenVersion: domainUser.TokenVersion,
 	}
@@ -147,7 +147,7 @@ func (ac *AuthController) RefreshToken(c *gin.Context) {
 	newClaims := utils.JWTClaims{
 		Name:         user.Name,
 		ID:           user.ID,
-		Profile:      user.Profile,
+		Alcance:      user.Alcance,
 		TenantID:     user.TenantID,
 		TokenVersion: user.TokenVersion,
 	}

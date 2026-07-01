@@ -113,7 +113,7 @@ func TestTenantUUIDFromContext_NilValue_ReturnsError(t *testing.T) {
 func TestGetScoped_MissingTenantID_Returns400(t *testing.T) {
 	db := newSQLiteDB(t)
 	c, w := ginCtxWithDB(t, db, func(c *gin.Context) {
-		c.Set("userProfile", "admin")
+		c.Set("alcance", "tenant")
 	})
 	_, _, ok := GetScoped(c, "Tickets")
 	if ok {
@@ -129,7 +129,7 @@ func TestGetScoped_ValidTenant_ReturnsDB(t *testing.T) {
 	tenantID := uuid.New()
 	c, w := ginCtxWithDB(t, db, func(c *gin.Context) {
 		c.Set("tenantId", tenantID)
-		c.Set("userProfile", "admin")
+		c.Set("alcance", "tenant")
 	})
 	scopedDB, gotTenant, ok := GetScoped(c, "Tickets")
 	if !ok {
@@ -148,17 +148,17 @@ func TestGetScoped_ValidTenant_ReturnsDB(t *testing.T) {
 
 // ── GetScopedDB ───────────────────────────────────────────────────────────────
 
-func TestGetScopedDB_AdminProfile_ScopesByTenantOnly(t *testing.T) {
+func TestGetScopedDB_TenantAlcance_ScopesByTenantOnly(t *testing.T) {
 	db := newSQLiteDB(t)
 	tenantID := uuid.New()
 	c, _ := ginCtxWithDB(t, db, func(c *gin.Context) {
 		c.Set("tenantId", tenantID)
-		c.Set("userProfile", "admin")
+		c.Set("alcance", "tenant")
 		c.Set("userId", float64(1))
 	})
 	scopedDB := GetScopedDB(c, "Tickets")
 	if scopedDB == nil {
-		t.Fatal("expected non-nil DB for admin")
+		t.Fatal("expected non-nil DB for alcance=tenant")
 	}
 	// Statement should contain the tenantId clause only (no userId restriction)
 	stmt := scopedDB.Statement
@@ -167,26 +167,26 @@ func TestGetScopedDB_AdminProfile_ScopesByTenantOnly(t *testing.T) {
 	}
 }
 
-func TestGetScopedDB_AgentProfile_TicketsScopeContainsTenant(t *testing.T) {
+func TestGetScopedDB_ProprioAlcance_TicketsScopeContainsTenant(t *testing.T) {
 	db := newSQLiteDB(t)
 	tenantID := uuid.New()
 	c, _ := ginCtxWithDB(t, db, func(c *gin.Context) {
 		c.Set("tenantId", tenantID)
-		c.Set("userProfile", "agent")
+		c.Set("alcance", "proprio")
 		c.Set("userId", float64(42))
 	})
 	scopedDB := GetScopedDB(c, "Tickets")
 	if scopedDB == nil {
-		t.Fatal("expected non-nil DB for agent")
+		t.Fatal("expected non-nil DB for alcance=proprio")
 	}
 }
 
-func TestGetScopedDB_AgentProfile_ContactsScope(t *testing.T) {
+func TestGetScopedDB_ProprioAlcance_ContactsScope(t *testing.T) {
 	db := newSQLiteDB(t)
 	tenantID := uuid.New()
 	c, _ := ginCtxWithDB(t, db, func(c *gin.Context) {
 		c.Set("tenantId", tenantID)
-		c.Set("userProfile", "agent")
+		c.Set("alcance", "proprio")
 		c.Set("userId", float64(7))
 	})
 	scopedDB := GetScopedDB(c, "Contacts")
@@ -198,7 +198,7 @@ func TestGetScopedDB_AgentProfile_ContactsScope(t *testing.T) {
 func TestGetScopedDB_MissingTenantID_UsesNilTenant(t *testing.T) {
 	db := newSQLiteDB(t)
 	c, _ := ginCtxWithDB(t, db, func(c *gin.Context) {
-		c.Set("userProfile", "admin")
+		c.Set("alcance", "tenant")
 	})
 	// Missing tenantId: GetScopedDB falls back to uuid.Nil (no panic expected)
 	scopedDB := GetScopedDB(c, "Tickets")

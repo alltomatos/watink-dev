@@ -19,7 +19,7 @@ func TestGORMUserRepo_Create_IDPropagated(t *testing.T) {
 		Name:         "Carlos C",
 		Email:        "carlos@tenant-a.com",
 		PasswordHash: "$2a$10$hash_carlos",
-		Profile:      "agent",
+		Alcance:      "proprio",
 		TenantID:     tenantA,
 		Configs:      "{}",
 	}
@@ -38,7 +38,7 @@ func TestGORMUserRepo_Save_CreatePath(t *testing.T) {
 		Name:         "Diana D",
 		Email:        "diana@tenant-a.com",
 		PasswordHash: "$2a$10$hash_diana",
-		Profile:      "agent",
+		Alcance:      "proprio",
 		TenantID:     tenantA,
 		Configs:      "{}",
 	}

@@ -30,16 +30,16 @@ func (m *mockUserRepo) FindAll(ctx context.Context, tenantID uuid.UUID) ([]domai
 		ID       int
 		Name     string
 		Email    string
-		Profile  string
+		Alcance  string
 		TenantID string `gorm:"column:tenantId"`
 	}
-	if err := m.db.Raw(`SELECT id, name, email, profile, "tenantId" FROM "Users" WHERE "tenantId" = ?`, tenantID).Scan(&rows).Error; err != nil {
+	if err := m.db.Raw(`SELECT id, name, email, alcance, "tenantId" FROM "Users" WHERE "tenantId" = ?`, tenantID).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	users := make([]domain.User, len(rows))
 	for i, r := range rows {
 		tid, _ := uuid.Parse(r.TenantID)
-		users[i] = domain.User{ID: r.ID, Name: r.Name, Email: r.Email, Profile: r.Profile, TenantID: tid}
+		users[i] = domain.User{ID: r.ID, Name: r.Name, Email: r.Email, Alcance: r.Alcance, TenantID: tid}
 	}
 	return users, nil
 }
@@ -49,11 +49,11 @@ func (m *mockUserRepo) FindByID(ctx context.Context, id int, tenantID uuid.UUID)
 		ID       int
 		Name     string
 		Email    string
-		Profile  string
+		Alcance  string
 		TenantID string `gorm:"column:tenantId"`
 		Configs  string
 	}
-	res := m.db.Raw(`SELECT id, name, email, profile, "tenantId", configs FROM "Users" WHERE id = ? AND "tenantId" = ?`, id, tenantID).Scan(&row)
+	res := m.db.Raw(`SELECT id, name, email, alcance, "tenantId", configs FROM "Users" WHERE id = ? AND "tenantId" = ?`, id, tenantID).Scan(&row)
 	if res.Error != nil {
 		return nil, res.Error
 	}
@@ -61,7 +61,7 @@ func (m *mockUserRepo) FindByID(ctx context.Context, id int, tenantID uuid.UUID)
 		return nil, nil
 	}
 	tid, _ := uuid.Parse(row.TenantID)
-	return &domain.User{ID: row.ID, Name: row.Name, Email: row.Email, Profile: row.Profile, TenantID: tid, Configs: row.Configs}, nil
+	return &domain.User{ID: row.ID, Name: row.Name, Email: row.Email, Alcance: row.Alcance, TenantID: tid, Configs: row.Configs}, nil
 }
 
 func (m *mockUserRepo) FindByIDDetail(ctx context.Context, id int, tenantID uuid.UUID) (*models.User, error) {
@@ -86,8 +86,8 @@ func (m *mockUserRepo) FindByEmailForAuth(ctx context.Context, email string) (*d
 
 func (m *mockUserRepo) Create(ctx context.Context, user *domain.User) error {
 	res := m.db.Exec(
-		`INSERT INTO "Users" (name, email, "passwordHash", profile, "tenantId", configs, "createdAt", "updatedAt") VALUES (?,?,?,?,?,?, NOW(), NOW())`,
-		user.Name, user.Email, user.PasswordHash, user.Profile, user.TenantID, user.Configs,
+		`INSERT INTO "Users" (name, email, "passwordHash", alcance, "tenantId", configs, "createdAt", "updatedAt") VALUES (?,?,?,?,?,?, NOW(), NOW())`,
+		user.Name, user.Email, user.PasswordHash, user.Alcance, user.TenantID, user.Configs,
 	)
 	if res.Error != nil {
 		return res.Error
@@ -143,7 +143,7 @@ func setupUserContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, pat
 	}
 	c.Request = req
 	c.Set("tenantId", tenantID)
-	c.Set("userProfile", "admin")
+	c.Set("alcance", "tenant")
 	c.Set("userId", float64(1))
 	scoped := db.Where(`"tenantId" = ?`, tenantID)
 	c.Set("db", scoped)

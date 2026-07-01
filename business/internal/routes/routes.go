@@ -38,8 +38,6 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	dealController := controllers.NewDealController()
 	kbController := controllers.NewKnowledgeBaseController(rabbitMQ, s3Store)
 	kbInspectController := controllers.NewKnowledgeInspectController(flow.NewHTTPRetrieverFromEnv())
-	groupController := controllers.NewGroupController(container.PermissionRepo)
-	roleController := controllers.NewRoleController(container.PermissionRepo)
 	// FlowBuilder FASE 1: build a channel registry + runtime skeleton for the
 	// on-demand run endpoint (POST /flows/:id/run). Uses the worker DB
 	// (container.DB) with manual WHERE "tenantId"; RLS is inert in StartFlow.
@@ -217,20 +215,9 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 			saas.POST("/plans", controllers.CreatePlan)
 		}
 
-		// RBAC
-		protected.GET("/groups", groupController.List)
-		protected.POST("/groups", groupController.Create)
-		protected.GET("/groups/:groupId", groupController.Show)
-		protected.PUT("/groups/:groupId", groupController.Update)
-		protected.DELETE("/groups/:groupId", groupController.Delete)
-		protected.GET("/permissions", groupController.ListPermissions)
-
-		// Roles
-		protected.GET("/roles", roleController.List)
-		protected.POST("/roles", roleController.Create)
-		protected.GET("/roles/:roleId", roleController.Show)
-		protected.PUT("/roles/:roleId", roleController.Update)
-		protected.DELETE("/roles/:roleId", roleController.Delete)
+		// RBAC (Setor/Cargo/Permissions): controllers novos são outro GAP.
+		// Rotas /groups, /roles e /permissions removidas junto com o modelo legado
+		// (ADR 0022) — substituição por /setores e /cargos fica para o próximo GAP.
 
 		// Flows
 		protected.GET("/flows", flowController.List)

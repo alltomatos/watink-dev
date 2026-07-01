@@ -43,7 +43,7 @@ func TestGORMSwaggerPermissionRepo_HasSwaggerPermission_UserNotFound(t *testing.
 	assert.False(t, ok)
 }
 
-func TestGORMSwaggerPermissionRepo_HasSwaggerPermission_UserWithoutGroup(t *testing.T) {
+func TestGORMSwaggerPermissionRepo_HasSwaggerPermission_UserWithoutCargo(t *testing.T) {
 	db := setupSwaggerTestDB(t)
 	repo := NewGORMSwaggerPermissionRepo(db)
 
@@ -66,45 +66,23 @@ func TestGORMSwaggerPermissionRepo_HasSwaggerPermission_WithPermission(t *testin
 	repo := NewGORMSwaggerPermissionRepo(db)
 
 	tenantID := uuid.New()
-	groupID := 1
+	require.NoError(t, db.Exec(`INSERT INTO "Cargos" (name, "tenantId") VALUES (?, ?)`, "SwaggerUsers", tenantID.String()).Error)
+	var cargoID int
+	require.NoError(t, db.Raw(`SELECT id FROM "Cargos" WHERE name = ? AND "tenantId" = ?`, "SwaggerUsers", tenantID.String()).Scan(&cargoID).Error)
+
 	require.NoError(t, db.Exec(
-		`INSERT INTO "Users" (name, email, "passwordHash", "tenantId", "groupId") VALUES (?, ?, ?, ?, ?)`,
-		"Bob", "bob@test.com", "x", tenantID.String(), groupID,
+		`INSERT INTO "Users" (name, email, "passwordHash", "tenantId", "cargoId") VALUES (?, ?, ?, ?, ?)`,
+		"Bob", "bob@test.com", "x", tenantID.String(), cargoID,
 	).Error)
 
 	var userID int
 	require.NoError(t, db.Raw(`SELECT id FROM "Users" WHERE email = ?`, "bob@test.com").Scan(&userID).Error)
 
-	require.NoError(t, db.Exec(`INSERT INTO "Permissions" (resource, action) VALUES (?, ?)`, "view", "swagger").Error)
+	require.NoError(t, db.Exec(`INSERT INTO "Permissions" (resource, action) VALUES (?, ?)`, "swagger", "view").Error)
 	var permID int
-	require.NoError(t, db.Raw(`SELECT id FROM "Permissions" WHERE resource = ? AND action = ?`, "view", "swagger").Scan(&permID).Error)
+	require.NoError(t, db.Raw(`SELECT id FROM "Permissions" WHERE resource = ? AND action = ?`, "swagger", "view").Scan(&permID).Error)
 
-	require.NoError(t, db.Exec(`INSERT INTO group_permissions (group_id, permission_id) VALUES (?, ?)`, groupID, permID).Error)
-
-	ok, err := repo.HasSwaggerPermission(userID, tenantID)
-	require.NoError(t, err)
-	assert.True(t, ok)
-}
-
-func TestGORMSwaggerPermissionRepo_HasSwaggerPermission_WithViewSwaggerPermission(t *testing.T) {
-	db := setupSwaggerTestDB(t)
-	repo := NewGORMSwaggerPermissionRepo(db)
-
-	tenantID := uuid.New()
-	groupID := 2
-	require.NoError(t, db.Exec(
-		`INSERT INTO "Users" (name, email, "passwordHash", "tenantId", "groupId") VALUES (?, ?, ?, ?, ?)`,
-		"Carol", "carol@test.com", "x", tenantID.String(), groupID,
-	).Error)
-
-	var userID int
-	require.NoError(t, db.Raw(`SELECT id FROM "Users" WHERE email = ?`, "carol@test.com").Scan(&userID).Error)
-
-	require.NoError(t, db.Exec(`INSERT INTO "Permissions" (resource, action) VALUES (?, ?)`, "view_swagger", "allow").Error)
-	var permID int
-	require.NoError(t, db.Raw(`SELECT id FROM "Permissions" WHERE resource = ? AND action = ?`, "view_swagger", "allow").Scan(&permID).Error)
-
-	require.NoError(t, db.Exec(`INSERT INTO group_permissions (group_id, permission_id) VALUES (?, ?)`, groupID, permID).Error)
+	require.NoError(t, db.Exec(`INSERT INTO cargo_permissoes (cargo_id, permission_id) VALUES (?, ?)`, cargoID, permID).Error)
 
 	ok, err := repo.HasSwaggerPermission(userID, tenantID)
 	require.NoError(t, err)
@@ -116,10 +94,13 @@ func TestGORMSwaggerPermissionRepo_HasSwaggerPermission_NoMatchingPermission(t *
 	repo := NewGORMSwaggerPermissionRepo(db)
 
 	tenantID := uuid.New()
-	groupID := 3
+	require.NoError(t, db.Exec(`INSERT INTO "Cargos" (name, "tenantId") VALUES (?, ?)`, "Atendente", tenantID.String()).Error)
+	var cargoID int
+	require.NoError(t, db.Raw(`SELECT id FROM "Cargos" WHERE name = ? AND "tenantId" = ?`, "Atendente", tenantID.String()).Scan(&cargoID).Error)
+
 	require.NoError(t, db.Exec(
-		`INSERT INTO "Users" (name, email, "passwordHash", "tenantId", "groupId") VALUES (?, ?, ?, ?, ?)`,
-		"Dave", "dave@test.com", "x", tenantID.String(), groupID,
+		`INSERT INTO "Users" (name, email, "passwordHash", "tenantId", "cargoId") VALUES (?, ?, ?, ?, ?)`,
+		"Dave", "dave@test.com", "x", tenantID.String(), cargoID,
 	).Error)
 
 	var userID int
@@ -130,7 +111,7 @@ func TestGORMSwaggerPermissionRepo_HasSwaggerPermission_NoMatchingPermission(t *
 	var permID int
 	require.NoError(t, db.Raw(`SELECT id FROM "Permissions" WHERE resource = ? AND action = ?`, "tickets", "read").Scan(&permID).Error)
 
-	require.NoError(t, db.Exec(`INSERT INTO group_permissions (group_id, permission_id) VALUES (?, ?)`, groupID, permID).Error)
+	require.NoError(t, db.Exec(`INSERT INTO cargo_permissoes (cargo_id, permission_id) VALUES (?, ?)`, cargoID, permID).Error)
 
 	ok, err := repo.HasSwaggerPermission(userID, tenantID)
 	require.NoError(t, err)

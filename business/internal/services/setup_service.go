@@ -51,7 +51,7 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 			Status:   "active",
 			Document: data.Document,
 		}
-// Helper para GORM com SQLite: desabilita RETURNING (incompatível)
+		// Helper para GORM com SQLite: desabilita RETURNING (incompatível)
 		// Em produção PG funciona nativamente, aqui forçamos insert básico
 		if err := tx.Session(&gorm.Session{CreateBatchSize: 1}).Create(&tenant).Error; err != nil {
 			return err
@@ -67,30 +67,76 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 			return err
 		}
 
-		// 4. Admin Group
-		group := models.Group{Name: "Admin", TenantID: tenant.ID}
-		if err := tx.Create(&group).Error; err != nil {
+		// 4. Cargos-padrão do tenant (ADR 0022): Atendente, Gestor, Gerente Geral,
+		// Administrador. Cada um herda o conjunto do anterior + permissões extras.
+		var allPerms []models.Permission
+		if err := tx.Find(&allPerms).Error; err != nil {
 			return err
 		}
-
-		// 5. Assign all permissions to group
-		var perms []models.Permission
-		if err := tx.Find(&perms).Error; err != nil {
-			return err
+		permByName := make(map[string]models.Permission, len(allPerms))
+		for _, p := range allPerms {
+			permByName[p.GetName()] = p
 		}
-		for _, p := range perms {
-			if err := tx.Exec("INSERT INTO group_permissions (group_id, permission_id) VALUES (?, ?)", group.ID, p.ID).Error; err != nil {
-				return err
+		lookupPerms := func(names ...string) []models.Permission {
+			out := make([]models.Permission, 0, len(names))
+			for _, n := range names {
+				if p, ok := permByName[n]; ok {
+					out = append(out, p)
+				}
 			}
+			return out
 		}
 
-		// 6. Superadmin User
+		atendentePermNames := []string{
+			"tickets:read", "tickets:create", "tickets:update",
+			"contacts:read", "contacts:create", "contacts:update",
+		}
+		atendenteCargo := models.Cargo{Name: "Atendente", TenantID: tenant.ID}
+		if err := tx.Create(&atendenteCargo).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&atendenteCargo).Association("Permissions").Append(lookupPerms(atendentePermNames...)); err != nil {
+			return err
+		}
+
+		gestorPermNames := append(append([]string{}, atendentePermNames...),
+			"tickets:reassign", "tickets:close", "tickets:export",
+			"reports:view-sector", "users:read", "setores:read",
+		)
+		gestorCargo := models.Cargo{Name: "Gestor", TenantID: tenant.ID}
+		if err := tx.Create(&gestorCargo).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&gestorCargo).Association("Permissions").Append(lookupPerms(gestorPermNames...)); err != nil {
+			return err
+		}
+
+		gerenteGeralPermNames := append(append([]string{}, gestorPermNames...),
+			"reports:view-tenant", "users:manage", "setores:manage", "cargos:read",
+		)
+		gerenteGeralCargo := models.Cargo{Name: "Gerente Geral", TenantID: tenant.ID}
+		if err := tx.Create(&gerenteGeralCargo).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&gerenteGeralCargo).Association("Permissions").Append(lookupPerms(gerenteGeralPermNames...)); err != nil {
+			return err
+		}
+
+		adminCargo := models.Cargo{Name: "Administrador", TenantID: tenant.ID}
+		if err := tx.Create(&adminCargo).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&adminCargo).Association("Permissions").Append(allPerms); err != nil {
+			return err
+		}
+
+		// 5. Administrador User
 		user := models.User{
 			Name:     data.FirstName + " " + data.LastName,
 			Email:    data.Email,
-			Profile:  "superadmin",
+			CargoID:  &adminCargo.ID,
+			Alcance:  "tenant",
 			TenantID: tenant.ID,
-			GroupID:  &group.ID,
 			Configs:  `{"dashboard":{"widgets":[{"id":"tickets_info","visible":true,"width":4,"order":1},{"id":"attendance_chart","visible":true,"width":8,"order":2}]}}`,
 		}
 		if err := user.HashPassword(data.Password); err != nil {
@@ -100,12 +146,12 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 			return err
 		}
 
-		// 7. Update Tenant Owner
+		// 6. Update Tenant Owner
 		if err := tx.Model(&tenant).Update("ownerId", user.ID).Error; err != nil {
 			return err
 		}
 
-		// 8. Day-0 Assets: Queue
+		// 7. Day-0 Assets: Queue (criada antes do Setor para vincular via SetorFila)
 		queue := models.Queue{
 			Name:                 "Atendimento Inicial",
 			Color:                "#000000",
@@ -113,6 +159,18 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 			DistributionStrategy: "MANUAL",
 		}
 		if err := tx.Create(&queue).Error; err != nil {
+			return err
+		}
+
+		// 8. Day-0 Assets: Setor inicial, vinculado à Queue e ao Administrador (gestor)
+		setor := models.Setor{Name: "Geral", TenantID: tenant.ID}
+		if err := tx.Create(&setor).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&models.SetorFila{SetorID: setor.ID, QueueID: queue.ID}).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&models.UserSetor{UserID: user.ID, SetorID: setor.ID, EhGestor: true}).Error; err != nil {
 			return err
 		}
 

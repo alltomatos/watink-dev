@@ -14,7 +14,7 @@ import (
 type JWTClaims struct {
 	Name         string
 	ID           int
-	Profile      string
+	Alcance      string
 	TenantID     uuid.UUID
 	TokenVersion int
 }
@@ -28,7 +28,7 @@ func GenerateAccessToken(claims JWTClaims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"username": claims.Name,
 		"id":       claims.ID,
-		"profile":  claims.Profile,
+		"alcance":  claims.Alcance,
 		"tenantId": claims.TenantID,
 		"exp":      time.Now().Add(time.Hour * 2).Unix(),
 	})

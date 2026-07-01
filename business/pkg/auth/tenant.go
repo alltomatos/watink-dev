@@ -41,10 +41,10 @@ func GetDB(c *gin.Context) *gorm.DB {
 }
 
 // GetScopedDB applies table-specific scoping rules to the database context.
-// It adds tenant scoping and optionally user-specific filtering based on profile.
+// It adds tenant scoping and optionally user-specific filtering based on alcance.
 func GetScopedDB(c *gin.Context, table string) *gorm.DB {
 	db := GetDB(c)
-	userProfile, _ := c.Get("userProfile")
+	alcance, _ := c.Get("alcance")
 	userID, _ := c.Get("userId")
 	tenantID, err := TenantUUIDFromContext(c)
 	if err != nil {
@@ -53,8 +53,9 @@ func GetScopedDB(c *gin.Context, table string) *gorm.DB {
 		tenantID = uuid.Nil
 	}
 
-	// admin and superadmin see everything within the tenant.
-	if userProfile == "admin" || userProfile == "superadmin" {
+	// alcance "tenant" (Gerente Geral/Administrador) e "plataforma" (superadmin)
+	// enxergam tudo dentro do tenant.
+	if alcance == "tenant" || alcance == "plataforma" {
 		return db.Where("\"tenantId\" = ?", tenantID)
 	}
 
