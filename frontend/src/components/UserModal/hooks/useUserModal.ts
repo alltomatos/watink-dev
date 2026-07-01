@@ -5,13 +5,12 @@ import { i18n } from "../../../translate/i18n";
 import api from "../../../services/api";
 import toastError from "../../../errors/toastError";
 import useWhatsApps from "../../../hooks/useWhatsApps";
-import type { Group, Role, UserFormValues, UserSavePayload, UserDetail, UserQueue } from "../userModalTypes";
+import type { UserFormValues, UserSavePayload, UserDetail, UserQueue } from "../userModalTypes";
 
 const INITIAL_STATE: UserFormValues = {
   name: "",
   email: "",
   password: "",
-  groupIds: [],
 };
 
 interface UseUserModalReturn {
@@ -22,16 +21,24 @@ interface UseUserModalReturn {
   setShowPassword: React.Dispatch<React.SetStateAction<boolean>>;
   whatsappId: number | string;
   setWhatsappId: React.Dispatch<React.SetStateAction<number | string>>;
-  groups: Group[];
-  roles: Role[];
-  selectedRoleIds: number[];
-  setSelectedRoleIds: React.Dispatch<React.SetStateAction<number[]>>;
   whatsApps: ReturnType<typeof useWhatsApps>["whatsApps"];
   whatsAppsLoading: boolean;
   handleClose: () => void;
   handleSaveUser: (values: UserFormValues) => Promise<void>;
 }
 
+/**
+ * Modal usado hoje só para o usuário logado editar o PRÓPRIO perfil (avatar
+ * do topo → "Meu perfil", ver layout/MainLayout.tsx), sempre com userId
+ * definido — nunca criação solta. A gestão de Cargo/Setor/Alcance de
+ * terceiros vive na Central de Acessos (pages/Acessos), não aqui.
+ *
+ * Não busca /groups nem /roles: essas rotas foram removidas do backend no
+ * ADR 0022 (RBAC Cargo/Setor/Alcance) — o dropdown de Cargo teria que ir por
+ * /cargos, mas trocar o próprio cargo é ação de risco de lockout que já tem
+ * um fluxo dedicado (Central de Acessos → aba Usuários), então este modal
+ * fica só com os campos de perfil básico (nome/email/senha/fila/whatsapp).
+ */
 export function useUserModal(
   userId: number | string | undefined,
   open: boolean,
@@ -41,48 +48,20 @@ export function useUserModal(
   const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [whatsappId, setWhatsappId] = useState<number | string>("");
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
   const { loading: whatsAppsLoading, whatsApps } = useWhatsApps();
-
-  useEffect(() => {
-    const fetchGroups = async () => {
-      try {
-        const { data } = await api.get<Group[]>("/groups");
-        setGroups(data);
-      } catch (err) {
-        toastError(err);
-      }
-    };
-    const fetchRoles = async () => {
-      try {
-        const { data } = await api.get<Role[]>("/roles");
-        setRoles(data);
-      } catch (err) {
-        toastError(err);
-      }
-    };
-    fetchGroups();
-    fetchRoles();
-  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
       if (!userId || !open) return;
       try {
         const { data } = await api.get<UserDetail>(`/users/${userId}`);
-        const userGroupIds = data.groups?.map((group: Group) => group.id) ?? [];
-        const userRoleIds = data.roles?.map((role: Role) => role.id) ?? [];
         setUser((prev) => ({
           ...prev,
           name: data.name,
           email: data.email,
-          groupIds: userGroupIds,
         }));
         const userQueueIds = data.queues?.map((queue: UserQueue) => queue.id) ?? [];
         setSelectedQueueIds(userQueueIds);
-        setSelectedRoleIds(userRoleIds);
         setWhatsappId(data.whatsappId ? data.whatsappId : "");
       } catch (err) {
         toastError(err);
@@ -94,7 +73,6 @@ export function useUserModal(
   const handleClose = () => {
     onClose();
     setUser(INITIAL_STATE);
-    setSelectedRoleIds([]);
     setSelectedQueueIds([]);
     setWhatsappId("");
   };
@@ -103,12 +81,9 @@ export function useUserModal(
     const userData: UserSavePayload = {
       name: values.name,
       email: values.email,
-      password: values.password,
       whatsappId: whatsappId === "" ? null : Number(whatsappId),
-      queueIds: selectedQueueIds,
-      roleIds: selectedRoleIds,
-      groupIds: values.groupIds ?? [],
     };
+    if (values.password) userData.password = values.password;
     try {
       if (userId) {
         await api.put(`/users/${userId}`, userData);
@@ -130,10 +105,6 @@ export function useUserModal(
     setShowPassword,
     whatsappId,
     setWhatsappId,
-    groups,
-    roles,
-    selectedRoleIds,
-    setSelectedRoleIds,
     whatsApps,
     whatsAppsLoading,
     handleClose,
