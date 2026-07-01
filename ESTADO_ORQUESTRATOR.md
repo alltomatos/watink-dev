@@ -438,3 +438,37 @@ GAP-7 [T2] Testes (herança, escopo gestor, enforcement 403, anti-lockout 409)
 
 ## Bug ativo que este trabalho fecha
 `GroupEdit` envia `userIds` em `PUT /groups/:id`, mas o backend ignora — vínculo user↔grupo pela tela de Grupo nunca persistia. Desaparece por construção no novo modelo (`user_setores` explícito).
+
+## Status GAP-1 (2026-07-01) — ✅ CONCLUÍDO
+
+Branch `refactor/acessos-gap1-schema` (push feito, PR ainda não aberto —
+aguardando completar GAP-3/4/5 antes de abrir PR único ou incremental).
+
+- Reset de schema aplicado no banco de dev real (DROP DATABASE + CREATE
+  DATABASE TEMPLATE template0 — reset total, não patch condicional, dado que
+  o Watink é instalado em múltiplos ambientes).
+- Backup completo pré-reset em `.backups/watink_pre_acessos_reset.dump` (~1GB).
+- Modelos novos: `Setor`, `Cargo`, `CargoPermissao`, `UserSetor`, `SetorFila`.
+- `User.Profile`/`GroupID` removidos; `User.CargoID`/`Alcance` adicionados.
+- Catálogo de Permission: 47 entradas `recurso:ação` (era `resource:view` de
+  menu). `InitializeTenant` cria 4 Cargos-padrão + Setor "Geral" + admin
+  blindado (dono, alcance=tenant).
+- Descoberta/fix: `Cargo.Permissions` via tag `many2many` do GORM não
+  funciona com tabela de junção de colunas customizadas (Association()
+  resolve nomes de coluna independente do struct explícito) — gerenciado
+  manualmente (`attachCargoPermissions`/`loadCargoPermissions`), mesmo padrão
+  de `UserSetor`/`SetorFila`.
+- Validado: suíte 100% verde, boot limpo, `/initial-setup` + `/auth/login`
+  end-to-end confirmados manualmente contra o Postgres real de dev.
+
+### Próximo lote (paralelizável — arquivos sem overlap)
+- GAP-2a: `effectivePermissions`/`RequirePermission` helper (pacote de Gestor
+  via `user_setores.ehGestor`, escopado por Alcance) — arquivo novo em
+  `business/pkg/auth/`.
+- GAP-3: controller `Setor` (CRUD + membros + ehGestor + filas vinculadas) —
+  arquivo novo `setor.go`.
+- GAP-4: controller `Cargo` (renomeia `role.go`, já deletado no GAP-1) —
+  arquivo novo `cargo.go`.
+
+Depois: GAP-5 (User atualizado, depende de 3+4) → rotas (routes.go,
+sequencial) → GAP-2b (aplicar enforcement) + GAP-6 (frontend) → GAP-7 (testes).
