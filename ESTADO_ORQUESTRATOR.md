@@ -390,3 +390,51 @@ DOC-2  Atualizar memória (QuickAnswerEditor resolvido) ............ [∥] ⏱�
 
 ### Sequenciamento crítico para evitar conflito de merge em `proxy.go`
 `proxy.go` é tocado por **P1-A, P3-BATCH, P3-UPDDUP, G-PX**. Ordem obrigatória: **P1-A → P3-UPDDUP → P3-BATCH → G-PX** (decompor por último, depois que os fixes de comportamento aterrissaram). `ProxySection.tsx`: **G-PS → P4-CONFIRM**.
+---
+
+# Módulo: Acessos (Usuários, Setores, Cargos, Permissões) — 2026-07-01
+
+Refatoração aprovada via mentoria (`grill-feature-with-docs`). Ver ADR 0022,
+`docs/agents/acessos.md`, bloco `## Módulo: Acessos` no CLAUDE.md.
+
+## GAPs
+
+```
+GAP-1 [T3] Reset de schema RBAC (Setor/Cargo/junções; drop Group/Role/RolePermission)
+├── models novos: Setor, Cargo (renomeia Role), user_setores, setor_filas, cargo_permissoes
+├── Users: remove Profile/GroupID; adiciona cargoId, alcance
+├── seed: catálogo recurso:ação + Cargos-padrão (Atendente/Gestor/Gerente Geral/Administrador) + 1º Admin
+└── depends_on: ∅ — RAIZ, bloqueante, feito por schema real de dev (não delegado a agente autônomo)
+
+GAP-2a [T3] effectivePermissions() + RequirePermission (helper, sem aplicar ainda)
+└── depends_on: GAP-1
+
+GAP-3 [T2] Backend CRUD Setor (novo controller, substitui group.go)
+└── depends_on: GAP-1
+
+GAP-4 [T2] Backend CRUD Cargo (renomeia role.go)
+└── depends_on: GAP-1
+
+GAP-5 [T2] Backend User atualizado (cargoId/setorIds+ehGestor/alcance) + anti-lockout dono/último Admin
+└── depends_on: GAP-1, GAP-3, GAP-4
+
+GAP-2b [T3] Aplicar RequirePermission nas rotas sensíveis (users/setores/cargos/conexões/faturamento/relatórios/reassign-close-ticket)
+└── depends_on: GAP-2a, GAP-3, GAP-4, GAP-5
+
+GAP-6 [T2] Frontend Central de Acessos (abas Usuários/Setores/Cargos, substitui 7 rotas antigas)
+└── depends_on: GAP-3, GAP-4, GAP-5
+
+GAP-7 [T2] Testes (herança, escopo gestor, enforcement 403, anti-lockout 409)
+└── depends_on: GAP-2b, GAP-6
+```
+
+## Aprovação do dono
+- **GAP-1** (reset destrutivo do banco de dev) — ✅ aprovado 2026-07-01.
+- **GAP-2/2b** (enforcement real de autorização) — ✅ aprovado 2026-07-01.
+
+## Arquivos identificados
+- Backend: `business/internal/models/{user,group,permission}.go`, `business/internal/database/database.go` (AutoMigrate+seed), `business/internal/controllers/{user,user_mutation,group,role}.go`, `business/internal/routes/routes.go`, `business/pkg/auth/tenant.go`, `business/internal/middleware/auth.go`, `business/internal/infrastructure/repository/gorm_user_repo.go` (effectivePermissionNames).
+- Frontend: `frontend/src/pages/{Users,UserEdit,Groups,GroupEdit,Roles,RoleEdit,Access}/*`, `frontend/src/components/UserModal/*`, `frontend/src/routes/index.tsx` (7 rotas a substituir).
+
+## Bug ativo que este trabalho fecha
+`GroupEdit` envia `userIds` em `PUT /groups/:id`, mas o backend ignora — vínculo user↔grupo pela tela de Grupo nunca persistia. Desaparece por construção no novo modelo (`user_setores` explícito).
