@@ -46,6 +46,10 @@ func (tc *TicketController) UpdateTicket(c *gin.Context) {
 		utils.RespondWithBindError(c, err)
 		return
 	}
+	if _, err := utils.ValidateStringField(input.Status, "status", 50); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	updateInput := usecases.UpdateTicketInput{
 		TicketID: ticket.ID,
@@ -97,6 +101,10 @@ func (tc *TicketController) RecoverHistory(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		utils.RespondWithBindError(c, err)
+		return
+	}
+	if _, err := utils.ValidateStringField(input.Range, "range", 20); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
