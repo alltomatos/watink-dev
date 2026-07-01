@@ -562,3 +562,46 @@ fora do escopo desta refatoração inicial.
   (GAP-2a: 10 testes; GAP-3: 18; GAP-4: 15; GAP-5: 9; suíte completa 100%
   verde a cada passo). Avaliar lacunas de cobertura combinada (ex: fluxo
   ponta-a-ponta gestor-escopado-a-um-setor-só) antes de fechar.
+
+## Status GAP-6 (2026-07-01) — ✅ CONCLUÍDO — Refatoração de Acessos completa (GAP-1 a GAP-6)
+
+Frontend: Central de Acessos em `/acessos/:tab` (usuarios|setores|cargos),
+substituindo 7 rotas antigas + consolidando 2 itens de menu em 1. Sheets
+laterais para editar User/Setor/Cargo; matriz de permissões recurso×ação no
+Cargo. `UserModal` corrigido (chamava `/groups`/`/roles`, rotas já removidas
+desde o GAP-1 — bug latente que só apareceria ao abrir "Meu perfil").
+
+**Verificação manual no navegador (não só typecheck/lint/build) encontrou
+2 bugs reais que nenhuma ferramenta estática pegaria:**
+
+1. **Menu não navegava para `/acessos`**: o agente editou
+   `AdminNavItems.tsx` (código MORTO — não importado por nada usado), mas o
+   menu real é `SidebarNav.tsx` (usado por `MainSidebar`, que `MainLayout.tsx`
+   de fato renderiza), com uma lista de itens PARALELA e desatualizada.
+   Corrigido consolidando o item ali também.
+2. **Cargo Administrador com 46/47 permissões (Flows 3/4)**: `dropLegacyRBAC()`
+   tinha `('flows','read')` na lista de permissões legadas a apagar — mas
+   colide (mesmo resource+action) com a permissão NOVA `flows:read` do
+   catálogo `recurso:ação`. A cada boot do servidor, a permissão nova era
+   apagada e recriada com ID novo, SEM o vínculo ao Administrador (que só é
+   atribuído uma vez, no `InitializeTenant`). Corrigido removendo essa
+   entrada da lista de DELETE. Validado: reset total + restart do servidor
+   (cenário exato do bug) → 47/47 sobrevive.
+
+Ambos só apareceram testando de verdade (login real + navegação + inspeção
+da matriz), confirmando a importância de verificação manual além de
+build/lint/typecheck para mudanças de frontend.
+
+**Com isso, a refatoração completa do ADR 0022 (Cargo/Setor/Alcance +
+enforcement real) está pronta**: schema, 3 controllers novos (Setor/Cargo/
+User atualizado), effectivePermissions com pacote de Gestor, anti-lockout,
+RequirePermission aplicado no primeiro lote de rotas, e frontend consolidado
+numa Central de Acessos. Suíte Go 100% verde, typecheck/lint/build frontend
+limpos. Push final: `a829f393b`.
+
+### Pendente
+- **GAP-7** (consolidação/lacunas de teste combinado) — avaliar se algo
+  além da cobertura incremental já feita (GAP-2a: 10 · GAP-3: 18 · GAP-4: 15
+  · GAP-5: 9 testes) é necessário antes de considerar a refatoração encerrada.
+- PR de `refactor/acessos-gap1-schema` → `develop` ainda não aberto —
+  aguardando decisão do dono sobre revisar antes ou seguir direto.
