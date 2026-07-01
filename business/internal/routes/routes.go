@@ -30,6 +30,8 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	proxyController := controllers.NewProxyController()
 	proxyGroupController := controllers.NewProxyGroupController()
 	connectionGroupController := controllers.NewConnectionGroupController()
+	setorController := controllers.NewSetorController()
+	cargoController := controllers.NewCargoController()
 	pluginController := controllers.NewPluginController(container.PlanLimitSvc)
 	authController := controllers.NewAuthController(container.UserRepo)
 	settingController := controllers.NewSettingController(container.SettingRepo, container.Broadcast)
@@ -215,9 +217,26 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 			saas.POST("/plans", controllers.CreatePlan)
 		}
 
-		// RBAC (Setor/Cargo/Permissions): controllers novos são outro GAP.
-		// Rotas /groups, /roles e /permissions removidas junto com o modelo legado
-		// (ADR 0022) — substituição por /setores e /cargos fica para o próximo GAP.
+		// RBAC (Setor/Cargo/Permissions) — ADR 0022. Rotas /groups, /roles e
+		// /permissions legadas removidas junto com o modelo antigo. Enforcement
+		// granular (RequirePermission por rota) é um GAP futuro (GAP-2b) — por
+		// ora só auth.GetScoped (tenant isolation), como o resto do projeto.
+		protected.GET("/setores", setorController.List)
+		protected.POST("/setores", setorController.Create)
+		protected.GET("/setores/:setorId", setorController.Show)
+		protected.PUT("/setores/:setorId", setorController.Update)
+		protected.DELETE("/setores/:setorId", setorController.Delete)
+		protected.POST("/setores/:setorId/members", setorController.AddMember)
+		protected.PUT("/setores/:setorId/members/:userId", setorController.UpdateMember)
+		protected.DELETE("/setores/:setorId/members/:userId", setorController.RemoveMember)
+		protected.PUT("/setores/:setorId/queues", setorController.SetQueues)
+
+		protected.GET("/cargos", cargoController.List)
+		protected.POST("/cargos", cargoController.Create)
+		protected.GET("/cargos/catalog/permissions", cargoController.ListPermissionsCatalog)
+		protected.GET("/cargos/:cargoId", cargoController.Show)
+		protected.PUT("/cargos/:cargoId", cargoController.Update)
+		protected.DELETE("/cargos/:cargoId", cargoController.Delete)
 
 		// Flows
 		protected.GET("/flows", flowController.List)
