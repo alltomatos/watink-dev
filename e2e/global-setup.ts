@@ -14,6 +14,7 @@ async function globalSetup() {
   if (needsSetup) {
     const setupResp = await api.post("initial-setup", {
       data: {
+        companyName: "Watink E2E Test",
         firstName: "Admin",
         lastName: "E2E",
         email: ADMIN_EMAIL,

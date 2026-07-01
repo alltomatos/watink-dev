@@ -201,12 +201,13 @@ type EntityTagRepository interface {
 
 // TenantSeedData holds the data required to bootstrap the first tenant.
 type TenantSeedData struct {
-	FirstName  string
-	LastName   string
-	Email      string
-	Password   string
-	Document   string
-	BackendURL string
+	CompanyName string
+	FirstName   string
+	LastName    string
+	Email       string
+	Password    string
+	Document    string
+	BackendURL  string
 }
 
 // SetupServiceInterface defines the contract for tenant initialization.

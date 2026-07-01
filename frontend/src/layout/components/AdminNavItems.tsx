@@ -1,7 +1,6 @@
 import React, { useContext } from "react";
 import {
   Settings,
-  Users,
   Network,
   Library,
   Shield,
@@ -61,21 +60,8 @@ const AdminNavItems: React.FC<AdminNavItemsProps> = ({
         perform="users:read"
         yes={() => (
           <NavButton
-            to="/users"
-            primary={ts("mainDrawer.listItems.users")}
-            icon={<Users />}
-            iconTheme="users"
-            collapsed={collapsed}
-          />
-        )}
-      />
-      <Can
-        user={user}
-        perform="roles:read"
-        yes={() => (
-          <NavButton
-            to="/access"
-            primary="Acesso e Permissões"
+            to="/acessos"
+            primary="Acessos"
             icon={<Shield />}
             iconTheme="access"
             collapsed={collapsed}

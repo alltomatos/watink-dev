@@ -7,6 +7,7 @@ import { Label } from "../../components/ui/label";
 import api from "../../services/api";
 
 interface SetupData {
+  companyName: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -19,6 +20,7 @@ const InitialSetup: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [setupData, setSetupData] = useState<SetupData>({
+    companyName: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -34,7 +36,12 @@ const InitialSetup: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!setupData.firstName || !setupData.email || !setupData.password) {
+    if (
+      !setupData.companyName ||
+      !setupData.firstName ||
+      !setupData.email ||
+      !setupData.password
+    ) {
       toast.error("Por favor, preencha todos os campos obrigatórios.");
       return;
     }
@@ -87,6 +94,18 @@ const InitialSetup: React.FC = () => {
           </h1>
 
           <form className="w-full space-y-4" noValidate onSubmit={handleSubmit}>
+            <div className="space-y-1">
+              <Label htmlFor="companyName">Nome Fantasia da Empresa *</Label>
+              <Input
+                id="companyName"
+                name="companyName"
+                value={setupData.companyName}
+                onChange={handleChange}
+                autoFocus
+                required
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label htmlFor="firstName">Nome *</Label>
@@ -95,7 +114,6 @@ const InitialSetup: React.FC = () => {
                   name="firstName"
                   value={setupData.firstName}
                   onChange={handleChange}
-                  autoFocus
                   required
                 />
               </div>

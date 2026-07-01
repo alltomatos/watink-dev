@@ -47,11 +47,11 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 
 		// 2. Tenant
 		tenant := models.Tenant{
-			Name:     data.FirstName + "'s Workspace",
+			Name:     data.CompanyName,
 			Status:   "active",
 			Document: data.Document,
 		}
-// Helper para GORM com SQLite: desabilita RETURNING (incompatível)
+		// Helper para GORM com SQLite: desabilita RETURNING (incompatível)
 		// Em produção PG funciona nativamente, aqui forçamos insert básico
 		if err := tx.Session(&gorm.Session{CreateBatchSize: 1}).Create(&tenant).Error; err != nil {
 			return err
@@ -67,30 +67,92 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 			return err
 		}
 
-		// 4. Admin Group
-		group := models.Group{Name: "Admin", TenantID: tenant.ID}
-		if err := tx.Create(&group).Error; err != nil {
+		// 4. Cargos-padrão do tenant (ADR 0022): Atendente, Gestor, Gerente Geral,
+		// Administrador. Cada um herda o conjunto do anterior + permissões extras.
+		var allPerms []models.Permission
+		if err := tx.Find(&allPerms).Error; err != nil {
 			return err
 		}
-
-		// 5. Assign all permissions to group
-		var perms []models.Permission
-		if err := tx.Find(&perms).Error; err != nil {
-			return err
+		permByName := make(map[string]models.Permission, len(allPerms))
+		for _, p := range allPerms {
+			permByName[p.GetName()] = p
 		}
-		for _, p := range perms {
-			if err := tx.Exec("INSERT INTO group_permissions (group_id, permission_id) VALUES (?, ?)", group.ID, p.ID).Error; err != nil {
-				return err
+		lookupPerms := func(names ...string) []models.Permission {
+			out := make([]models.Permission, 0, len(names))
+			for _, n := range names {
+				if p, ok := permByName[n]; ok {
+					out = append(out, p)
+				}
 			}
+			return out
 		}
 
-		// 6. Superadmin User
+		atendentePermNames := []string{
+			"tickets:read", "tickets:create", "tickets:update",
+			"contacts:read", "contacts:create", "contacts:update",
+		}
+		atendenteCargo := models.Cargo{
+			Name:        "Atendente",
+			Description: "Atende tickets e contatos do dia a dia — cria, lê e atualiza, sem acesso a configurações do sistema.",
+			TenantID:    tenant.ID,
+		}
+		if err := tx.Create(&atendenteCargo).Error; err != nil {
+			return err
+		}
+		if err := attachCargoPermissions(tx, atendenteCargo.ID, lookupPerms(atendentePermNames...)); err != nil {
+			return err
+		}
+
+		gestorPermNames := append(append([]string{}, atendentePermNames...),
+			"tickets:reassign", "tickets:close", "tickets:export",
+			"reports:view-sector", "users:read", "setores:read",
+		)
+		gestorCargo := models.Cargo{
+			Name:        "Gestor",
+			Description: "Tudo do Atendente, mais reatribuir/fechar/exportar tickets e ver relatórios do(s) setor(es) que gerencia.",
+			TenantID:    tenant.ID,
+		}
+		if err := tx.Create(&gestorCargo).Error; err != nil {
+			return err
+		}
+		if err := attachCargoPermissions(tx, gestorCargo.ID, lookupPerms(gestorPermNames...)); err != nil {
+			return err
+		}
+
+		gerenteGeralPermNames := append(append([]string{}, gestorPermNames...),
+			"reports:view-tenant", "users:manage", "setores:manage", "cargos:read",
+		)
+		gerenteGeralCargo := models.Cargo{
+			Name:        "Gerente Geral",
+			Description: "Tudo do Gestor, mas para TODOS os setores da empresa — vê relatórios do tenant inteiro e gerencia usuários/setores/cargos.",
+			TenantID:    tenant.ID,
+		}
+		if err := tx.Create(&gerenteGeralCargo).Error; err != nil {
+			return err
+		}
+		if err := attachCargoPermissions(tx, gerenteGeralCargo.ID, lookupPerms(gerenteGeralPermNames...)); err != nil {
+			return err
+		}
+
+		adminCargo := models.Cargo{
+			Name:        "Administrador",
+			Description: "Acesso total ao sistema — configurações, conexões, faturamento e todas as permissões do catálogo.",
+			TenantID:    tenant.ID,
+		}
+		if err := tx.Create(&adminCargo).Error; err != nil {
+			return err
+		}
+		if err := attachCargoPermissions(tx, adminCargo.ID, allPerms); err != nil {
+			return err
+		}
+
+		// 5. Administrador User
 		user := models.User{
 			Name:     data.FirstName + " " + data.LastName,
 			Email:    data.Email,
-			Profile:  "superadmin",
+			CargoID:  &adminCargo.ID,
+			Alcance:  "tenant",
 			TenantID: tenant.ID,
-			GroupID:  &group.ID,
 			Configs:  `{"dashboard":{"widgets":[{"id":"tickets_info","visible":true,"width":4,"order":1},{"id":"attendance_chart","visible":true,"width":8,"order":2}]}}`,
 		}
 		if err := user.HashPassword(data.Password); err != nil {
@@ -100,19 +162,32 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 			return err
 		}
 
-		// 7. Update Tenant Owner
+		// 6. Update Tenant Owner
 		if err := tx.Model(&tenant).Update("ownerId", user.ID).Error; err != nil {
 			return err
 		}
 
-		// 8. Day-0 Assets: Queue
+		// 7. Day-0 Assets: Queue (criada antes do Setor para vincular via SetorFila)
 		queue := models.Queue{
 			Name:                 "Atendimento Inicial",
 			Color:                "#000000",
+			GreetingMessage:      "Olá! Recebemos sua mensagem e em breve um de nossos atendentes vai falar com você.",
 			TenantID:             tenant.ID,
 			DistributionStrategy: "MANUAL",
 		}
 		if err := tx.Create(&queue).Error; err != nil {
+			return err
+		}
+
+		// 8. Day-0 Assets: Setor inicial, vinculado à Queue e ao Administrador (gestor)
+		setor := models.Setor{Name: "Geral", TenantID: tenant.ID}
+		if err := tx.Create(&setor).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&models.SetorFila{SetorID: setor.ID, QueueID: queue.ID}).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&models.UserSetor{UserID: user.ID, SetorID: setor.ID, EhGestor: true}).Error; err != nil {
 			return err
 		}
 
@@ -143,4 +218,20 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 
 		return nil
 	})
+}
+
+// attachCargoPermissions grants a set of Permissions to a Cargo via explicit
+// CargoPermissao rows (cargo_permissoes, camelCase columns). Not done via
+// GORM's many2many Association(): that API resolves join-table column names
+// independently of the explicit CargoPermissao struct and falls back to
+// snake_case conventions, causing a runtime mismatch.
+func attachCargoPermissions(tx *gorm.DB, cargoID int, perms []models.Permission) error {
+	if len(perms) == 0 {
+		return nil
+	}
+	rows := make([]models.CargoPermissao, len(perms))
+	for i, p := range perms {
+		rows[i] = models.CargoPermissao{CargoID: cargoID, PermissionID: p.ID}
+	}
+	return tx.Create(&rows).Error
 }

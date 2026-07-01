@@ -144,10 +144,11 @@ func TestSetupController_InitialSetup_Success(t *testing.T) {
 	ctrl := NewSetupController(svc)
 
 	payload := map[string]string{
-		"firstName": "Ronaldo",
-		"lastName":  "Davi",
-		"email":     "ronaldo@watink.com",
-		"password":  "strongpass",
+		"companyName": "Acme Ltda",
+		"firstName":   "Ronaldo",
+		"lastName":    "Davi",
+		"email":       "ronaldo@watink.com",
+		"password":    "strongpass",
 	}
 	body, _ := json.Marshal(payload)
 

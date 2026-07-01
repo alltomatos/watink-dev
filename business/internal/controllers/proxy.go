@@ -24,9 +24,16 @@ func proxyKey(scheme, host string, port int) string {
 // proxyExistsForTenant reports whether a proxy with the same (scheme, host, port)
 // already exists for the tenant.
 func proxyExistsForTenant(db *gorm.DB, tenantID interface{}, scheme, host string, port int) bool {
+	return proxyExistsForTenantExcluding(db, tenantID, scheme, host, port, 0)
+}
+
+// proxyExistsForTenantExcluding is proxyExistsForTenant but ignores a given id
+// — used by Update so editing a proxy WITHOUT changing its endpoint never
+// false-positives against itself.
+func proxyExistsForTenantExcluding(db *gorm.DB, tenantID interface{}, scheme, host string, port, excludeID int) bool {
 	var n int64
 	db.Session(&gorm.Session{NewDB: true}).Model(&models.Proxy{}).
-		Where(`"tenantId" = ? AND scheme = ? AND host = ? AND port = ?`, tenantID, scheme, host, port).
+		Where(`"tenantId" = ? AND scheme = ? AND host = ? AND port = ? AND id <> ?`, tenantID, scheme, host, port, excludeID).
 		Count(&n)
 	return n > 0
 }
@@ -386,29 +393,55 @@ func (pc *ProxyController) Update(c *gin.Context) {
 		return
 	}
 
-	fields := map[string]interface{}{
-		"label":        in.Label,
-		"username":     in.Username,
-		"notes":        in.Notes,
-		"proxyGroupId": in.ProxyGroupID,
-	}
+	// Endpoint EFETIVO pós-update: usa o valor novo quando veio no payload,
+	// senão preserva o existente — precisa disso calculado ANTES de montar o
+	// fields map pra saber se o endpoint realmente mudou.
+	effScheme := existing.Scheme
 	if in.Scheme != "" {
 		scheme := normalizeScheme(in.Scheme)
 		if !allowedProxySchemes[scheme] {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "scheme inválido: use 'http' ou 'socks5'"})
 			return
 		}
-		fields["scheme"] = scheme
+		effScheme = scheme
 	}
+	effHost := existing.Host
 	if strings.TrimSpace(in.Host) != "" {
-		fields["host"] = in.Host
+		effHost = in.Host
 	}
+	effPort := existing.Port
 	if in.Port != 0 {
 		if in.Port < 1 || in.Port > 65535 {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "port inválido"})
 			return
 		}
-		fields["port"] = in.Port
+		effPort = in.Port
+	}
+	endpointChanged := effScheme != existing.Scheme || effHost != existing.Host || effPort != existing.Port
+
+	if endpointChanged && proxyExistsForTenantExcluding(db, tenantID, effScheme, effHost, effPort, id) {
+		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("proxy %s://%s:%d já está cadastrado", effScheme, effHost, effPort)})
+		return
+	}
+
+	fields := map[string]interface{}{
+		"label":        in.Label,
+		"username":     in.Username,
+		"notes":        in.Notes,
+		"proxyGroupId": in.ProxyGroupID,
+		"scheme":       effScheme,
+		"host":         effHost,
+		"port":         effPort,
+	}
+	if endpointChanged {
+		// Endpoint mudou: geo/healthy do endpoint ANTIGO não têm mais nada a ver
+		// com o novo — sem isso, um operador atribui "só Fortaleza" e o filtro
+		// de cidade continua apontando pro endereço antigo até o próximo teste.
+		fields["healthy"] = false
+		fields["country"] = ""
+		fields["countryCode"] = ""
+		fields["city"] = ""
+		fields["lastCheckedAt"] = nil
 	}
 	if in.Password != "" {
 		if !cryptobox.IsConfigured() {

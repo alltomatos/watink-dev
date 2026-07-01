@@ -18,20 +18,14 @@ const Login = lazy(() => import("../pages/Login"));
 const Connections = lazy(() => import("../pages/Connections"));
 const ConnectionConfig = lazy(() => import("../pages/Connections/ConnectionConfig"));
 const Settings = lazy(() => import("../pages/Settings"));
-const Users = lazy(() => import("../pages/Users"));
-const UserEdit = lazy(() => import("../pages/UserEdit"));
+const Acessos = lazy(() => import("../pages/Acessos"));
 const UserProfile = lazy(() => import("../pages/UserProfile"));
 const ResetPassword = lazy(() => import("../pages/ResetPassword"));
 const MyActivities = lazy(() => import("../pages/MyActivities"));
-const GroupEdit = lazy(() => import("../pages/GroupEdit"));
 const Contacts = lazy(() => import("../pages/Contacts"));
 const QuickAnswers = lazy(() => import("../pages/QuickAnswers"));
 const QuickAnswerEditor = lazy(() => import("../pages/QuickAnswers/QuickAnswerEditor"));
-const Access = lazy(() => import("../pages/Access"));
-const Groups = lazy(() => import("../pages/Groups"));
 const TagManager = lazy(() => import("../pages/TagManager"));
-const Roles = lazy(() => import("../pages/Roles"));
-const RoleEdit = lazy(() => import("../pages/RoleEdit"));
 const Queues = lazy(() => import("../pages/Queues"));
 const KnowledgeBase = lazy(() => import("../pages/KnowledgeBase"));
 const KnowledgeBaseConfig = lazy(() => import("../pages/KnowledgeBase/KnowledgeBaseConfig"));
@@ -54,7 +48,7 @@ import { WhatsAppsProvider } from "../context/WhatsApp/WhatsAppsContext";
 import { ThemeProvider } from "../context/DarkMode";
 import { TicketsProvider } from "../context/Tickets/TicketsContext";
 import PrivateRoute from "./Route";
-import { Route } from "react-router-dom";
+import { Route, Navigate } from "react-router-dom";
 import StatusCheck from "../components/StatusCheck";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -78,22 +72,17 @@ const PrivateRoutes = () => {
      <Route path="/connections" element={<PrivateRoute isPrivate><Connections /></PrivateRoute>} />
      <Route path="/connections/:whatsappId" element={<PrivateRoute isPrivate><ConnectionConfig /></PrivateRoute>} />
      <Route path="/contacts" element={<PrivateRoute isPrivate><Contacts /></PrivateRoute>} />
-     <Route path="/users" element={<PrivateRoute isPrivate><Users /></PrivateRoute>} />
-     <Route path="/users/:userId" element={<PrivateRoute isPrivate><UserEdit /></PrivateRoute>} />
+     <Route path="/acessos" element={<Navigate to="/acessos/usuarios" replace />} />
+     <Route path="/acessos/:tab" element={<PrivateRoute isPrivate><Acessos /></PrivateRoute>} />
      <Route path="/profile" element={<PrivateRoute isPrivate><UserProfile /></PrivateRoute>} />
      <Route path="/reset-password" element={<PrivateRoute isPrivate><ResetPassword /></PrivateRoute>} />
      <Route path="/my-activities" element={<PrivateRoute isPrivate><MyActivities /></PrivateRoute>} />
-     <Route path="/access" element={<PrivateRoute isPrivate><Access /></PrivateRoute>} />
-     <Route path="/groups/:groupId" element={<PrivateRoute isPrivate><GroupEdit /></PrivateRoute>} />
      <Route path="/quickAnswers" element={<PrivateRoute isPrivate><QuickAnswers /></PrivateRoute>} />
      <Route path="/quick-answers" element={<PrivateRoute isPrivate><QuickAnswers /></PrivateRoute>} />
      <Route path="/quick-answers/new" element={<PrivateRoute isPrivate><QuickAnswerEditor /></PrivateRoute>} />
      <Route path="/quick-answers/:id/edit" element={<PrivateRoute isPrivate><QuickAnswerEditor /></PrivateRoute>} />
      <Route path="/Settings" element={<PrivateRoute isPrivate><Settings /></PrivateRoute>} />
-     <Route path="/groups" element={<PrivateRoute isPrivate><Groups /></PrivateRoute>} />
      <Route path="/tags" element={<PrivateRoute isPrivate><TagManager /></PrivateRoute>} />
-     <Route path="/roles" element={<PrivateRoute isPrivate><Roles /></PrivateRoute>} />
-     <Route path="/roles/:roleId" element={<PrivateRoute isPrivate><RoleEdit /></PrivateRoute>} />
      <Route path="/queues" element={<PrivateRoute isPrivate><Queues /></PrivateRoute>} />
      <Route path="/knowledge-bases" element={<PrivateRoute isPrivate><KnowledgeBase /></PrivateRoute>} />
      <Route path="/knowledge-bases/:knowledgeBaseId" element={<PrivateRoute isPrivate><KnowledgeBaseConfig /></PrivateRoute>} />
