@@ -92,7 +92,12 @@ func StartEventListener(rabbitMQ *RabbitMQService, eventListener *EventListener)
 		case "message.media":
 			return eventListener.handleMediaDownloaded(ctx, env.Payload, tid)
 		case "contact.update":
-			return handleContactUpdate(ctx, eventListener.contacts, eventListener.bcast(), env.Payload, tid)
+			if err := handleContactUpdate(ctx, eventListener.contacts, eventListener.bcast(), env.Payload, tid); err != nil {
+				return err
+			}
+			// Mesmo evento de enriquecimento — também atualiza a foto da PRÓPRIA
+			// conexão quando o número bate (não é um contato, é o número da sessão).
+			return syncConnectionProfilePic(ctx, eventListener.sessions, eventListener.bcast(), env.Payload, tid)
 		case "contact.import":
 			return handleContactImport(ctx, eventListener.contacts, env.Payload, tid)
 		case "session.jid_registered":

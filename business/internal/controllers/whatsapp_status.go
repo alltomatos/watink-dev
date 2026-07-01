@@ -8,7 +8,54 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
+
+// proxySummary resolves the human-friendly proxy/proxy-group info for a
+// connection's detail view. Never includes the credential — same safety as
+// toProxyResponse in proxy.go. Returns nil when proxyMode is "none" or the
+// referenced row was deleted (dangling id).
+func proxySummary(db *gorm.DB, tenantID interface{}, w *models.Whatsapp) gin.H {
+	fresh := db.Session(&gorm.Session{NewDB: true})
+	switch w.ProxyMode {
+	case "single":
+		if w.ProxyID == nil {
+			return nil
+		}
+		var p models.Proxy
+		if err := fresh.Where(`id = ? AND "tenantId" = ?`, *w.ProxyID, tenantID).First(&p).Error; err != nil {
+			return nil
+		}
+		return gin.H{
+			"mode": "single", "id": p.ID, "label": p.Label,
+			"endpoint": p.Scheme + "://" + p.Host + ":" + strconv.Itoa(p.Port),
+			"status":   p.Status, "healthy": p.Healthy,
+			"city": p.City, "country": p.Country, "countryCode": p.CountryCode,
+		}
+	case "group":
+		if w.ProxyGroupID == nil {
+			return nil
+		}
+		var g models.ProxyGroup
+		if err := fresh.Where(`id = ? AND "tenantId" = ?`, *w.ProxyGroupID, tenantID).First(&g).Error; err != nil {
+			return nil
+		}
+		result := gin.H{"mode": "group", "id": g.ID, "name": g.Name, "rotationStrategy": g.RotationStrategy}
+		// O pick sticky atual (se houver) ajuda a UI mostrar "usando agora: host:port".
+		if w.ProxyID != nil {
+			var p models.Proxy
+			if err := fresh.Where(`id = ? AND "tenantId" = ?`, *w.ProxyID, tenantID).First(&p).Error; err == nil {
+				result["current"] = gin.H{
+					"id": p.ID, "endpoint": p.Scheme + "://" + p.Host + ":" + strconv.Itoa(p.Port),
+					"city": p.City, "country": p.Country, "countryCode": p.CountryCode,
+				}
+			}
+		}
+		return result
+	default:
+		return nil
+	}
+}
 
 // @Summary      Detalhar conexão WhatsApp
 // @Tags         whatsapp
@@ -18,7 +65,7 @@ import (
 // @Security     BearerAuth
 // @Router       /whatsapp/{id} [get]
 func (wc *WhatsappController) ShowWhatsapp(c *gin.Context) {
-	_, tenantID, ok := auth.GetScoped(c, "Whatsapps")
+	db, tenantID, ok := auth.GetScoped(c, "Whatsapps")
 	if !ok {
 		return
 	}
@@ -54,11 +101,17 @@ func (wc *WhatsappController) ShowWhatsapp(c *gin.Context) {
 		"updatedAt":       whatsappModel.UpdatedAt,
 		"firstConnection": whatsappModel.FirstConnection,
 		"engineType":      whatsappModel.EngineType,
+		"proxyMode":       whatsappModel.ProxyMode,
+		"proxyId":         whatsappModel.ProxyID,
+		"proxyGroupId":    whatsappModel.ProxyGroupID,
 	}
 
 	// Adiciona relations apenas se existirem
 	if len(whatsappModel.Queues) > 0 {
 		response["queues"] = whatsappModel.Queues
+	}
+	if ps := proxySummary(db, tenantID, whatsappModel); ps != nil {
+		response["proxy"] = ps
 	}
 
 	c.JSON(http.StatusOK, response)
