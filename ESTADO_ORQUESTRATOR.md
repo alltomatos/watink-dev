@@ -510,3 +510,29 @@ verificação do log antes de prosseguir.
 - GAP-5: User atualizado (payload `cargoId`/`setorIds[]`+`ehGestor`/`alcance`)
   + anti-lockout no `UserController` (bloquear remover/rebaixar o último
   Administrador do tenant ou o dono via `Tenant.OwnerID`).
+
+## Status GAP-5 (2026-07-01) — ✅ CONCLUÍDO
+
+- `CreateUser`/`UpdateUser` aceitam `setores[]` (`{setorId, ehGestor}`),
+  replace (não merge) no Update, validado cross-tenant antes de aplicar.
+- Anti-lockout (`user_lockout.go`): `DeleteUser` bloqueia (409) excluir o
+  dono do tenant ou o último Administrador; `UpdateUser` bloqueia (409)
+  trocar o cargoId do dono/último Administrador para um Cargo que não seja
+  "Administrador".
+- 9 testes novos + suíte completa 100% verde.
+- Validado end-to-end via API real: deletar único admin → 409; rebaixar
+  cargo do dono → 409; criar usuário com `cargoId`+`setores[ehGestor:true]`
+  → sucesso, vínculo confirmado no banco.
+- Push: `022d03ef4`.
+
+### Restante do DAG (não iniciado)
+- **GAP-2b**: aplicar `RequirePermission` nas rotas sensíveis (faseado:
+  users/setores/cargos primeiro, depois conexões/faturamento/relatórios/
+  reassign-close-ticket).
+- **GAP-6**: frontend — Central de Acessos com abas (Usuários/Setores/
+  Cargos), substituindo as 6 telas antigas (`Users`, `Groups`, `GroupEdit`,
+  `Roles`, `RoleEdit`, `Access`) e o `UserModal` atual.
+- **GAP-7**: testes de integração ponta a ponta cobrindo os invariantes do
+  ADR 0022 (herança de setor, escopo de gestor, enforcement 403,
+  anti-lockout 409) — muitos já cobertos incrementalmente por GAP; avaliar
+  o que falta de cobertura combinada.
