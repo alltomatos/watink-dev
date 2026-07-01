@@ -11,8 +11,8 @@ import (
 // Setor. M2M com Permission via cargo_permissoes.
 //
 // Permissions NÃO usa a tag many2many do GORM: a API Association() resolve
-// nomes de coluna da tabela de junção de forma independente do struct de
-// junção explícito (CargoPermissao), e força convenção snake_case mesmo com
+// nomes de coluna da tabela de junção por conta própria, sem respeitar o
+// struct de junção explícito (CargoPermissao), e força convenção snake_case mesmo com
 // column: customizado — causando mismatch em runtime. Gerenciado manualmente
 // via CargoPermissao (mesmo padrão de UserSetor/SetorFila): escrita por
 // Create(), leitura por query explícita.
