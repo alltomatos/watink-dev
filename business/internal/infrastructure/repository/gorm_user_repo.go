@@ -38,7 +38,7 @@ func (r *GORMUserRepository) FindByID(ctx context.Context, id int, tenantID uuid
 		return nil, err
 	}
 	du := userModelToDomain(&m)
-	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.CargoID)
+	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.CargoID, m.TenantID)
 	return du, nil
 }
 
@@ -95,7 +95,7 @@ func (r *GORMUserRepository) FindByEmailForAuth(ctx context.Context, email strin
 		return nil, err
 	}
 	du := userModelToDomain(&m)
-	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.CargoID)
+	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.CargoID, m.TenantID)
 	return du, nil
 }
 
@@ -116,12 +116,26 @@ func loadCargoPermissions(ctx context.Context, db *gorm.DB, cargoID int) ([]mode
 }
 
 // effectivePermissionNames aggregates a user's EFFECTIVE permission names
-// ("resource:action") from their Cargo's grants (cargo_permissoes — ADR 0022).
-// Best-effort: a load error yields fewer names, never an auth failure.
+// ("resource:action") from their Cargo's grants (cargo_permissoes — ADR 0022),
+// PLUS the Gestor package when the user is marked ehGestor=true in ANY
+// user_setores row.
 //
-// TODO(GAP-2a): somar pacote de Gestor via user_setores.ehGestor, escopado por
-// Alcance (próprio|setor|tenant|plataforma) — ainda não implementado neste GAP.
-func (r *GORMUserRepository) effectivePermissionNames(ctx context.Context, userID int, cargoID *int) []string {
+// The Gestor package is NOT "the user's CargoID equals the Gestor Cargo" —
+// that would conflate Cargo (what the user does) with the ehGestor mark
+// (where they manage). Instead: if user_setores has any row with
+// ehGestor=true for this user, we look up the Cargo literally named "Gestor"
+// within the same tenant and union its Permissions in. A user whose base
+// Cargo is "Atendente" but who is marked ehGestor of "Vendas" still gets the
+// Gestor package — scoped in practice by Alcance (RequirePermission +
+// GetScopedDB), not by this name-based lookup.
+//
+// If the tenant has no Cargo literally named "Gestor" (future customization
+// removed/renamed it), this simply contributes nothing extra — it does not
+// create one and does not fail.
+//
+// Best-effort throughout: a load error yields fewer names, never an auth
+// failure.
+func (r *GORMUserRepository) effectivePermissionNames(ctx context.Context, userID int, cargoID *int, tenantID uuid.UUID) []string {
 	set := make(map[string]struct{})
 
 	if cargoID != nil {
@@ -132,11 +146,47 @@ func (r *GORMUserRepository) effectivePermissionNames(ctx context.Context, userI
 		}
 	}
 
+	if isGestorOfAnySetor(ctx, r.db, userID) {
+		if gestorCargoID, ok := findGestorCargoID(ctx, r.db, tenantID); ok {
+			if perms, err := loadCargoPermissions(ctx, r.db, gestorCargoID); err == nil {
+				for i := range perms {
+					set[perms[i].GetName()] = struct{}{}
+				}
+			}
+		}
+	}
+
 	names := make([]string, 0, len(set))
 	for n := range set {
 		names = append(names, n)
 	}
 	return names
+}
+
+// isGestorOfAnySetor reports whether userID has at least one user_setores
+// row with ehGestor=true. Best-effort: any query error is treated as "not a
+// gestor" (fail-closed on the extra grant, never on the base Cargo grant).
+func isGestorOfAnySetor(ctx context.Context, db *gorm.DB, userID int) bool {
+	var count int64
+	err := db.WithContext(ctx).
+		Model(&models.UserSetor{}).
+		Where(`"userId" = ? AND "ehGestor" = true`, userID).
+		Count(&count).Error
+	return err == nil && count > 0
+}
+
+// findGestorCargoID looks up the Cargo literally named "Gestor" within
+// tenantID. Returns ok=false (not an error) when the tenant has no such
+// Cargo — a customized/renamed tenant simply gets no extra Gestor package.
+func findGestorCargoID(ctx context.Context, db *gorm.DB, tenantID uuid.UUID) (int, bool) {
+	var cargo models.Cargo
+	err := db.WithContext(ctx).
+		Where(`"name" = ? AND "tenantId" = ?`, "Gestor", tenantID).
+		First(&cargo).Error
+	if err != nil {
+		return 0, false
+	}
+	return cargo.ID, true
 }
 
 // FindAll returns all users under tenantID.
