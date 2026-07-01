@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"net/url"
 	"strconv"
@@ -165,32 +164,39 @@ func (wss *WhatsAppSessionService) pickGroupProxy(whatsapp models.Whatsapp) (*mo
 		}
 	}
 
-	// Atomic LRU pick: a single UPDATE ... WHERE id = (SELECT ... FOR UPDATE SKIP
-	// LOCKED) bumps lastUsedAt and RETURNs the row. SKIP LOCKED guarantees two
-	// connections starting concurrently against the same group cannot grab the
-	// same proxy, so rotate spreads correctly even under races. A failed bump
-	// surfaces as no row → fail-closed (we never silently reuse a stale IP).
+	// Atomic LRU pick + persist NA MESMA TRANSAÇÃO: se o Update(proxyId) falhar,
+	// a transação inteira sofre ROLLBACK (inclusive o bump de lastUsedAt) e o
+	// erro sobe — fail-closed real. Antes, o Update do proxyId era best-effort
+	// FORA da transação (só logava em falha): uma falha silenciosa da escrita
+	// fazia o sticky degradar pra rotate no próximo pick (sem proxyId
+	// persistido, o LRU escolhia outro proxy — trocando o IP de saída e
+	// enfraquecendo a postura anti-ban sem nenhum sinal visível ao operador).
+	//
+	// SKIP LOCKED garante que dois starts concorrentes no mesmo grupo não
+	// pegam o mesmo proxy, então rotate se espalha corretamente mesmo sob race.
 	var p models.Proxy
-	err := wss.db.Raw(`
-		UPDATE "Proxies" SET "lastUsedAt" = now()
-		WHERE id = (
-			SELECT id FROM "Proxies"
-			WHERE "tenantId" = ? AND "proxyGroupId" = ? AND status = 'active'
-			ORDER BY "lastUsedAt" ASC NULLS FIRST
-			LIMIT 1
-			FOR UPDATE SKIP LOCKED
-		)
-		RETURNING *`, whatsapp.TenantID, group.ID).Scan(&p).Error
-	if err != nil || p.ID == 0 {
-		return nil, fmt.Errorf("nenhum proxy ativo disponível no grupo %d para a conexão %d", group.ID, whatsapp.ID)
-	}
-
-	// Persist the sticky pick. Non-fatal (the returned proxy is still used), but
-	// log so a broken sticky/rotate guarantee is observable.
-	if err := wss.db.Model(&models.Whatsapp{}).
-		Where(`id = ? AND "tenantId" = ?`, whatsapp.ID, whatsapp.TenantID).
-		Update("proxyId", p.ID).Error; err != nil {
-		log.Printf("warn: falha ao persistir proxyId sticky da conexão %d: %v", whatsapp.ID, err)
+	txErr := wss.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Raw(`
+			UPDATE "Proxies" SET "lastUsedAt" = now()
+			WHERE id = (
+				SELECT id FROM "Proxies"
+				WHERE "tenantId" = ? AND "proxyGroupId" = ? AND status = 'active'
+				ORDER BY "lastUsedAt" ASC NULLS FIRST
+				LIMIT 1
+				FOR UPDATE SKIP LOCKED
+			)
+			RETURNING *`, whatsapp.TenantID, group.ID).Scan(&p).Error; err != nil {
+			return err
+		}
+		if p.ID == 0 {
+			return fmt.Errorf("nenhum proxy ativo disponível no grupo %d para a conexão %d", group.ID, whatsapp.ID)
+		}
+		return tx.Model(&models.Whatsapp{}).
+			Where(`id = ? AND "tenantId" = ?`, whatsapp.ID, whatsapp.TenantID).
+			Update("proxyId", p.ID).Error
+	})
+	if txErr != nil {
+		return nil, fmt.Errorf("falha ao selecionar/persistir proxy do grupo %d para a conexão %d: %w", group.ID, whatsapp.ID, txErr)
 	}
 	return &p, nil
 }

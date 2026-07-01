@@ -208,3 +208,49 @@ func TestPickGroupProxy_NoActive_FailsClosed(t *testing.T) {
 		t.Fatal("no command should be published when group is empty")
 	}
 }
+
+// TestPickGroupProxy_PersistFailure_RollsBackLastUsedAt prova o invariante
+// P3-STICKY: pick (bump de lastUsedAt) e persist (Update proxyId) devem ser
+// atômicos. Antes desta correção, o Update do proxyId era best-effort FORA da
+// transação — uma falha aí só logava um warn, mas o bump de lastUsedAt já
+// tinha comitado. No próximo pick, sem proxyId salvo, o sticky-check falhava
+// e o LRU escolhia OUTRO proxy: sticky degradava pra rotate silenciosamente.
+//
+// Simula a falha do Update(proxyId) dropando a coluna ANTES de chamar
+// StartWhatsAppSession (o pick em Proxies continua funcionando; só o segundo
+// UPDATE, em Whatsapps, falha). Com a transação única, isso deve fazer
+// ROLLBACK do bump de lastUsedAt também — prova mais forte do que só checar
+// o erro de retorno.
+func TestPickGroupProxy_PersistFailure_RollsBackLastUsedAt(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	tenantID := uuid.New()
+	group := models.ProxyGroup{TenantID: tenantID, Name: "g", RotationStrategy: "sticky"}
+	db.Create(&group)
+	p := models.Proxy{TenantID: tenantID, Scheme: "http", Host: "a", Port: 1, Status: "active", ProxyGroupID: &group.ID}
+	db.Create(&p)
+	w := models.Whatsapp{ID: 1, TenantID: tenantID, Name: "s", ProxyMode: "group", ProxyGroupID: &group.ID}
+	db.Create(&w)
+
+	if err := db.Exec(`ALTER TABLE "Whatsapps" DROP COLUMN "proxyId"`).Error; err != nil {
+		t.Fatalf("failed to drop column for test setup: %v", err)
+	}
+
+	pub := &mockCommandPublisher{}
+	mockRedis := &mockRedisService{}
+	wss := NewWhatsAppSessionService(db, pub, mockRedis, NewRedisBroadcast(mockRedis, nil))
+
+	if err := wss.StartWhatsAppSession(w, false, "", false); err == nil {
+		t.Fatal("expected error when proxyId persist fails")
+	}
+	if pub.lastPayload != nil {
+		t.Fatal("no command should be published when the pick transaction rolls back")
+	}
+
+	var reloaded models.Proxy
+	if err := db.First(&reloaded, p.ID).Error; err != nil {
+		t.Fatalf("reload proxy: %v", err)
+	}
+	if reloaded.LastUsedAt != nil {
+		t.Fatal("lastUsedAt should have ROLLED BACK with the failed proxyId persist — sticky must not silently degrade to rotate")
+	}
+}

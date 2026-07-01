@@ -175,7 +175,7 @@ func TestAuthController_Login_Success(t *testing.T) {
 		Email:        "test@watink.com",
 		PasswordHash: "$2a$10$ORoXEjnLJ7u4l4Ud0OPr8.FdCHuUyAR7lRJ05gIdiCtSrpVgqP/0e",
 		TenantID:     tenantID,
-		Profile:      "admin",
+		Alcance:      "tenant",
 	}
 	mockRepo.On("FindByEmailForAuth", mock.Anything, "test@watink.com").Return(user, nil)
 
@@ -308,7 +308,7 @@ func TestAuthController_RefreshToken_Success(t *testing.T) {
 		Name:         "Alice",
 		Email:        "alice@watink.com",
 		TenantID:     tenantID,
-		Profile:      "admin",
+		Alcance:      "tenant",
 		TokenVersion: 0,
 	}
 	mockRepo := new(MockUserRepo)

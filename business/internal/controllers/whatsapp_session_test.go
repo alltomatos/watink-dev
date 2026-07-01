@@ -56,7 +56,7 @@ func setupSessionGinContext(tenantID uuid.UUID, method, path string, db *gorm.DB
 	req, _ := http.NewRequest(method, path, nil)
 	c.Request = req
 	c.Set("tenantId", tenantID)
-	c.Set("userProfile", "admin")
+	c.Set("alcance", "tenant")
 	c.Set("userId", float64(1))
 	c.Set("db", db)
 	return c, w

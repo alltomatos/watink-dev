@@ -36,6 +36,10 @@ func Connect() {
 }
 
 func Migrate() {
+	if err := dropLegacyRBAC(); err != nil {
+		log.Printf("Warning: failed to drop legacy RBAC schema: %v", err)
+	}
+
 	err := DB.AutoMigrate(
 		&models.Plan{},
 		&models.Tenant{},
@@ -47,10 +51,12 @@ func Migrate() {
 		&models.Queue{},
 		&models.Ticket{},
 		&models.Message{},
-		&models.Group{},
+		&models.Setor{},
+		&models.Cargo{},
 		&models.Permission{},
-		&models.Role{},
-		&models.RolePermission{},
+		&models.CargoPermissao{},
+		&models.UserSetor{},
+		&models.SetorFila{},
 		&models.Flow{},
 		&models.FlowRun{},
 		&models.FlowRunLog{},
@@ -86,47 +92,124 @@ func Migrate() {
 	Seed()
 }
 
+// Seed recria o catálogo de Permissions em granularidade recurso:ação
+// (ADR 0022) — não mais resource:view de menu. Cargos-padrão e o primeiro
+// Administrador são criados por SetupService.InitializeTenant, não aqui.
 func Seed() {
-	// Seed Permissions
 	permissions := []models.Permission{
-		{Resource: "pipelines", Action: "view", Description: "Visualizar menu de Pipelines"},
-		{Resource: "chats", Action: "view", Description: "Visualizar menu de Chats/Tickets"},
-		{Resource: "admin", Action: "view", Description: "Visualizar menu de Administração"},
-		{Resource: "queues", Action: "view", Description: "Gerenciar Filas (Admin)"},
-		{Resource: "settings", Action: "view", Description: "Gerenciar Configurações (Admin)"},
-		{Resource: "groups", Action: "view", Description: "Gerenciar Grupos de Usuários"},
-		{Resource: "users", Action: "view", Description: "Gerenciar Usuários"},
-		{Resource: "view", Action: "swagger", Description: "Visualizar documentação Swagger"},
-		// FB0-B8: gate the FlowBuilder menu item (frontend Can perform="flows:read").
+		// users
+		{Resource: "users", Action: "read", Description: "Visualizar Usuários"},
+		{Resource: "users", Action: "create", Description: "Criar Usuários"},
+		{Resource: "users", Action: "update", Description: "Editar Usuários"},
+		{Resource: "users", Action: "delete", Description: "Excluir Usuários"},
+		{Resource: "users", Action: "manage", Description: "Gerenciar Cargo/Setor de outros usuários"},
+		// setores
+		{Resource: "setores", Action: "read", Description: "Visualizar Setores"},
+		{Resource: "setores", Action: "create", Description: "Criar Setores"},
+		{Resource: "setores", Action: "update", Description: "Editar Setores"},
+		{Resource: "setores", Action: "delete", Description: "Excluir Setores"},
+		{Resource: "setores", Action: "manage", Description: "Gerenciar membros/gestores de Setores"},
+		// cargos
+		{Resource: "cargos", Action: "read", Description: "Visualizar Cargos"},
+		{Resource: "cargos", Action: "create", Description: "Criar Cargos"},
+		{Resource: "cargos", Action: "update", Description: "Editar Cargos"},
+		{Resource: "cargos", Action: "delete", Description: "Excluir Cargos"},
+		{Resource: "cargos", Action: "manage", Description: "Gerenciar permissões de Cargos"},
+		// tickets
+		{Resource: "tickets", Action: "read", Description: "Visualizar Tickets"},
+		{Resource: "tickets", Action: "create", Description: "Criar Tickets"},
+		{Resource: "tickets", Action: "update", Description: "Editar Tickets"},
+		{Resource: "tickets", Action: "delete", Description: "Excluir Tickets"},
+		{Resource: "tickets", Action: "reassign", Description: "Transferir/reatribuir Tickets"},
+		{Resource: "tickets", Action: "close", Description: "Encerrar Tickets"},
+		{Resource: "tickets", Action: "export", Description: "Exportar Tickets"},
+		// contacts
+		{Resource: "contacts", Action: "read", Description: "Visualizar Contatos"},
+		{Resource: "contacts", Action: "create", Description: "Criar Contatos"},
+		{Resource: "contacts", Action: "update", Description: "Editar Contatos"},
+		{Resource: "contacts", Action: "delete", Description: "Excluir Contatos"},
+		// connections (WhatsApp/Conexões)
+		{Resource: "connections", Action: "read", Description: "Visualizar Conexões"},
+		{Resource: "connections", Action: "create", Description: "Criar Conexões"},
+		{Resource: "connections", Action: "update", Description: "Editar Conexões"},
+		{Resource: "connections", Action: "delete", Description: "Excluir Conexões"},
+		// pipelines
+		{Resource: "pipelines", Action: "read", Description: "Visualizar Pipelines"},
+		{Resource: "pipelines", Action: "create", Description: "Criar Pipelines"},
+		{Resource: "pipelines", Action: "update", Description: "Editar Pipelines"},
+		{Resource: "pipelines", Action: "delete", Description: "Excluir Pipelines"},
+		// flows
 		{Resource: "flows", Action: "read", Description: "Visualizar/gerenciar Flows (Automação)"},
+		{Resource: "flows", Action: "create", Description: "Criar Flows"},
+		{Resource: "flows", Action: "update", Description: "Editar Flows"},
+		{Resource: "flows", Action: "delete", Description: "Excluir Flows"},
+		// settings (inclui faturamento/billing por ora)
+		{Resource: "settings", Action: "read", Description: "Visualizar Configurações"},
+		{Resource: "settings", Action: "update", Description: "Editar Configurações"},
+		// reports (escopo distinto)
+		{Resource: "reports", Action: "view-sector", Description: "Visualizar Relatórios do Setor"},
+		{Resource: "reports", Action: "view-tenant", Description: "Visualizar Relatórios do Tenant"},
+		// queues
+		{Resource: "queues", Action: "read", Description: "Visualizar Filas"},
+		{Resource: "queues", Action: "create", Description: "Criar Filas"},
+		{Resource: "queues", Action: "update", Description: "Editar Filas"},
+		{Resource: "queues", Action: "delete", Description: "Excluir Filas"},
+		// swagger
+		{Resource: "swagger", Action: "view", Description: "Visualizar documentação Swagger"},
 	}
 
 	for _, p := range permissions {
 		DB.FirstOrCreate(&p, models.Permission{Resource: p.Resource, Action: p.Action})
 	}
 
-	// FB0-B8 backfill: tenants created before flows:read existed don't have it
-	// attached to their Admin group. Attach it idempotently so the FlowBuilder
-	// sidebar item (frontend Can perform="flows:read") shows for ALL Admin-group
-	// members on existing installs — not only superadmin/admin-profile users
-	// (who bypass the check). Mirrors the proven group_permissions insert in
-	// SetupService.InitializeTenant.
-	var flowsPerm models.Permission
-	if err := DB.Where("resource = ? AND action = ?", "flows", "read").First(&flowsPerm).Error; err == nil {
-		if err := DB.Exec(`
-			INSERT INTO group_permissions (group_id, permission_id)
-			SELECT g.id, ?
-			FROM "Groups" g
-			WHERE g.name = 'Admin'
-			  AND NOT EXISTS (
-			    SELECT 1 FROM group_permissions gp
-			    WHERE gp.group_id = g.id AND gp.permission_id = ?
-			  )`, flowsPerm.ID, flowsPerm.ID).Error; err != nil {
-			fmt.Printf("Seed: flows:read backfill skipped: %v\n", err)
-		}
+	fmt.Println("Database seeding completed")
+}
+
+// dropLegacyRBAC remove o schema RBAC legado (Group/Role/RolePermission +
+// tabelas de junção mortas) num reset destrutivo autorizado em dev — sem
+// migração de dado (ADR 0022). Cada statement roda isolado; erros de
+// "does not exist" são esperados e ignorados, outros erros são logados mas
+// não interrompem a migração (fail-forward para não travar boot em dev).
+func dropLegacyRBAC() error {
+	statements := []string{
+		`DROP TABLE IF EXISTS group_permissions CASCADE`,
+		`DROP TABLE IF EXISTS group_roles CASCADE`,
+		`DROP TABLE IF EXISTS user_permissions CASCADE`,
+		`DROP TABLE IF EXISTS user_roles CASCADE`,
+		`DROP TABLE IF EXISTS role_permissions CASCADE`,
+		`ALTER TABLE "Users" DROP COLUMN IF EXISTS profile`,
+		`ALTER TABLE "Users" DROP COLUMN IF EXISTS "groupId"`,
+		`DROP TABLE IF EXISTS "Groups" CASCADE`,
+		`DROP TABLE IF EXISTS "Roles" CASCADE`,
+		`DROP TABLE IF EXISTS "RolePermissions" CASCADE`,
+		// Catálogo legado de granularidade MENU (resource:view) — Seed() só usa
+		// FirstOrCreate (nunca remove), então sem isso essas entradas ficam
+		// poluindo o catálogo novo recurso:ação para sempre. DELETE seletivo (não
+		// TRUNCATE da tabela toda) para não apagar cargo_permissoes já associadas
+		// ao catálogo novo em bootups subsequentes.
+		//
+		// NOTA: ('flows','read') do catálogo antigo NÃO entra aqui — colide
+		// (mesmo resource+action) com a permissão nova 'flows:read' (ação real,
+		// não menu) criada pelo Seed(). Incluí-la aqui apagava a permissão nova
+		// a cada boot (DELETE por resource+action, sem distinguir a intenção),
+		// e a cascata removia o vínculo cargo_permissoes do Administrador —
+		// bug real observado: Administrador ficava com 3/4 permissions de
+		// flows após um segundo restart do servidor.
+		`DELETE FROM "Permissions" WHERE (resource, action) IN (
+			('admin','view'), ('chats','view'), ('groups','view'), ('pipelines','view'),
+			('queues','view'), ('settings','view'), ('view','swagger')
+		)`,
 	}
 
-	fmt.Println("Database seeding completed")
+	for _, stmt := range statements {
+		if err := DB.Exec(stmt).Error; err != nil {
+			if strings.Contains(strings.ToLower(err.Error()), "does not exist") {
+				continue
+			}
+			log.Printf("dropLegacyRBAC: statement failed (%s): %v", stmt, err)
+		}
+	}
+	return nil
 }
 
 func addCustomIndexes() error {

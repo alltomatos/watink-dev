@@ -19,8 +19,6 @@ import { Button } from "@/components/ui/button";
 import type { UserModalProps } from "./userModalTypes";
 import { useUserModal } from "./hooks/useUserModal";
 import UserFormFields from "./components/UserFormFields";
-import RolesDropdown from "./components/RolesDropdown";
-import GroupsDropdown from "./components/GroupsDropdown";
 import WhatsAppSelect from "./components/WhatsAppSelect";
 
 const UserModal: React.FC<UserModalProps> = ({ open, onClose, userId }) => {
@@ -32,10 +30,6 @@ const UserModal: React.FC<UserModalProps> = ({ open, onClose, userId }) => {
     setShowPassword,
     whatsappId,
     setWhatsappId,
-    groups,
-    roles,
-    selectedRoleIds,
-    setSelectedRoleIds,
     whatsApps,
     whatsAppsLoading,
     handleClose,
@@ -62,35 +56,13 @@ const UserModal: React.FC<UserModalProps> = ({ open, onClose, userId }) => {
             actions.setSubmitting(false);
           }}
         >
-          {({ touched, errors, isSubmitting, values, setFieldValue }) => (
+          {({ touched, errors, isSubmitting }) => (
             <Form className="space-y-4">
               <UserFormFields
                 touched={touched as Partial<Record<"name" | "email" | "password", string>>}
                 errors={errors}
                 showPassword={showPassword}
                 onTogglePassword={() => setShowPassword((p) => !p)}
-              />
-
-              <RolesDropdown
-                roles={roles}
-                selectedRoleIds={selectedRoleIds}
-                onToggle={(roleId, checked) =>
-                  setSelectedRoleIds((prev) =>
-                    checked ? [...prev, roleId] : prev.filter((id) => id !== roleId)
-                  )
-                }
-              />
-
-              <GroupsDropdown
-                groups={groups}
-                selectedGroupIds={values.groupIds ?? []}
-                onToggle={(groupId, checked) => {
-                  const current = values.groupIds ?? [];
-                  setFieldValue(
-                    "groupIds",
-                    checked ? [...current, groupId] : current.filter((id) => id !== groupId)
-                  );
-                }}
               />
 
               <Can

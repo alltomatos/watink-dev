@@ -30,11 +30,11 @@ _Avoid_: Case, chamado, issue, conversation
 **Contact**: Pessoa ou grupo do WhatsApp que envia ou recebe mensagens. Pode ser individual (pessoa) ou grupo (isGroup=true). Vincula-se a um Ticket como remetente.
 _Avoid_: Customer, client, destinatário, pessoa
 
-**User**: Agente ou administrador da plataforma que atende Tickets. Possui perfil, permissões, roles e filas associadas.
-_Avoid_: Agent, attendant, operador, atendente
+**User**: Agente ou administrador da plataforma que atende Tickets. A autoridade de um User é resolvida por 3 dimensões independentes (ADR 0022): **Cargo** (o que pode fazer), **Setor(es)** (onde está, N:N, com marca opcional de Gestor) e **Alcance** (até onde vale — próprio/setor/tenant/plataforma). Substitui o antigo campo `Profile` e o vínculo singular `GroupID`.
+_Avoid_: Agent, attendant, operador, atendente, Profile, perfil
 
-**Queue**: Departamento ou fila de atendimento que agrupa Tickets. Define estratégia de distribuição (Round-Robin ou Balanced) e saudações. Possui associação many-to-many com Whatsapps.
-_Avoid_: Department, team, setor, fila (ambíguo em PT sem contexto)
+**Queue**: Fila de roteamento de Tickets — mecanismo técnico de distribuição (estratégia Round-Robin ou Balanced, saudações). Distinta de **Setor** (unidade organizacional de pessoas/permissões): um Setor tem 1+ Queues (`setor_filas`), mas Queue não carrega gestão nem permissões.
+_Avoid_: Department, team, setor (não são sinônimos — ver **Setor**)
 
 **ChannelSession**: Sessão ativa de um canal de comunicação (WhatsApp/Telegram). Contém QR code, status de conexão, e configurações por tenant. Representa o estado runtime de um Whatsapp.
 _Avoid_: Session, conexão, wbot, instancia
@@ -121,17 +121,41 @@ _Avoid_: Template, canned response, resposta padrão
 
 **QuickAnswer dispatch**: Ação de envio de uma QuickAnswer pelo backend, que resolve variáveis de interpolação e despacha o payload ao engine via RabbitMQ. Acionado por `POST /quickAnswers/:id/send`.
 
-**Tenant**: Organização cliente na plataforma SaaS. Isolamento de dados garantido por PostgreSQL RLS (`app.current_tenant`). Cada Tenant possui Users, Queues, Whatsapps, e Settings próprios.
+**Tenant**: Organização cliente na plataforma SaaS. `Name` é o Nome Fantasia informado no Wizard de Setup Inicial (não mais um placeholder autogerado). Isolamento de dados garantido por PostgreSQL RLS (`app.current_tenant`). Cada Tenant possui Users, Queues, Whatsapps, e Settings próprios.
 _Avoid_: Account, organization, empresa, cliente
 
-**Role**: Conjunto nomeado de Permissions com escopo (ABAC via Scope/Conditions JSONB em RolePermission). Usuários e Groups associam-se a Roles.
-_Avoid_: Profile, perfil, cargo
+**Wizard de Setup Inicial**: Formulário público single-step (`POST /initial-setup`), exibido quando o sistema detecta zero usuários/tenants. Coleta Nome Fantasia (vira `Tenant.Name`), dados do Administrador e CPF/CNPJ opcional; cria atomicamente Tenant+Cargos-padrão+Setor+Queue+Tag+Settings.
+_Avoid_: Onboarding wizard, tela de setup, cadastro inicial
 
-**Permission**: Capacidade granular de ação no sistema. Associada a Users, Roles, e Groups.
-_Avoid_: Ability, capacidade, permissão (genérica)
+**Checklist de Onboarding**: Card dispensável no Dashboard, pós-login, visível só para Alcance tenant/plataforma. Guia a criação do primeiro Setor real e do primeiro usuário adicional via os fluxos já existentes — estado derivado por contagem, nunca persistido.
+_Avoid_: Tour guiado, first-run experience, getting started
 
-**Group**: Agrupamento de Users com Roles e Permissions compartilhadas. Herda permissões de Roles associadas.
-_Avoid_: Team, equipe, grupo (ambíguo sem contexto)
+**Cargo**: Conjunto nomeado de Permissions que define **o que** um User pode fazer — o portador de permissões (ex.: Atendente, Gestor, Gerente Geral, Administrador). Tenant-scoped. Renomeia o antigo **Role**; a herança é resolvida de verdade no backend via `RequirePermission` (ADR 0022), não apenas no frontend. O escopo (meu setor vs tenant inteiro) NÃO mora no Cargo — vem do **Alcance**, dimensão ortogonal.
+_Avoid_: Role, papel, função, Profile, perfil
+
+**Permission**: Capacidade granular de ação no sistema, no formato `recurso:ação` (ex.: `tickets:reassign`, `sectors:manage`). Associada a Cargos via `cargo_permissoes`. Barra a ação de verdade no backend (`RequirePermission`) — não é mais só um gate de visibilidade de menu no frontend.
+_Avoid_: Ability, capacidade, permissão (genérica), permissão de menu (legado)
+
+**Setor**: Unidade organizacional que agrupa Users (M:N via `user_setores`) para fins de gestão, relatórios e roteamento — distinto de Cargo (que carrega permissões). Um Setor tem 1+ Queues associadas (`setor_filas`); a visibilidade de Tickets de um agente deriva do(s) Setor(es) a que pertence. O vínculo `user_setores` carrega a marca `ehGestor` (ver **Gestor**).
+_Avoid_: Group (descontinuado — ver abaixo), Team, Department, equipe (isolado)
+
+**Alcance**: Dimensão ortogonal ao Cargo que define até onde a autoridade de um User se estende: `próprio` (só o que é seu) · `setor` (só o(s) Setor(es) que gerencia) · `tenant` (toda a organização) · `plataforma` (todos os tenants — reservado ao Superadmin, plugin SaaS). Um Gestor e um Gerente Geral podem ter o mesmo Cargo/permissões; o que muda é o Alcance.
+_Avoid_: Scope (isolado, ambíguo com RolePermission.Scope legado), nível de acesso
+
+**Gestor (Responsável do Setor)**: Marca (`ehGestor=true`) no vínculo `user_setores` de um User para um Setor específico. Não é um Cargo separado — é o Cargo do usuário + a marca de gestão, escopada (Alcance=`setor`) apenas aos Setores em que ele é marcado. Um User pode ser Gestor de múltiplos Setores simultaneamente (ex.: Comercial e Vendas).
+_Avoid_: Manager (isolado), supervisor (termo legado sem permissões reais), líder
+
+**Gerente Geral**: Cargo com Alcance=`tenant` — mesmas capacidades de gestão de um Gestor, mas aplicadas a TODOS os Setores da organização, sem precisar de marca por Setor.
+_Avoid_: Supervisor geral, admin operacional
+
+**Administrador do Tenant**: Cargo com Alcance=`tenant` e todas as Permissions do catálogo. O dono do tenant (`Tenant.OwnerID`) é blindado como Administrador: não pode perder o Cargo, não pode ser excluído, e o sistema bloqueia a remoção do último Administrador (proteção anti-lockout).
+_Avoid_: Admin (isolado, ambíguo com Superadmin)
+
+**Superadmin**: Nível de Alcance=`plataforma` — gerencia todos os Tenants. Vive no plugin SaaS (cross-tenant), fora do RBAC de um tenant individual. Não é um Cargo do tenant.
+_Avoid_: Admin, super admin (sem hífen), root
+
+**Group**: Conceito legado e DESCONTINUADO (ADR 0022) — substituído por **Setor** (agrupa pessoas) + **Cargo** (carrega permissões). Não usar em código novo, docs ou conversas.
+_Avoid_: (termo a evitar — use Setor ou Cargo conforme o caso)
 
 **DistributionStrategy**: Estratégia de atribuição de Tickets a Users dentro de um Queue. Valores: `AUTO_ROUND_ROBIN` (sequência cíclica) ou `AUTO_BALANCED` (menor carga).
 _Avoid_: Assignment, alocação, round-robin (isolado)
@@ -231,11 +255,15 @@ Tenant ──1:N──> Setting
 Tenant ──1:N──> Ticket
 
 User ──M:N──> Queue        (via user_queues)
-User ──M:N──> Permission   (via user_permissions)
-User ──M:N──> Role          (via user_roles)
+User ──N:1──> Cargo         (cargoId; cargo base do usuário)
+User ──M:N──> Setor         (via user_setores; carrega ehGestor bool)
+User.alcance ← enum: próprio | setor | tenant | plataforma
 
 Queue ──M:N──> Whatsapp     (via whatsapp_queues)
 Queue ──self──> Queue        (ParentID)
+
+Setor ──M:N──> Queue        (via setor_filas; Setor organiza, Queue roteia)
+Cargo ──M:N──> Permission   (via cargo_permissoes)
 
 Contact ──1:N──> Ticket
 Ticket ──1:N──> Message
@@ -244,12 +272,9 @@ Ticket ──N:1──> User (assignee)
 Ticket.TicketType ← derivado de flags: isGroup, isCommunity, isSubGroup, isNewsletter
 
 Whatsapp ──1:N──> Ticket
-
-Group ──M:N──> Permission   (via group_permissions)
-Group ──M:N──> Role          (via group_roles)
-
-Role ──M:N──> Permission     (via role_permissions, com Scope/Conditions JSONB)
 ```
+
+**[REMOVIDO no ADR 0022 — reset de banco]**: `Group`, `user_permissions`, `user_roles`, `group_permissions`, `group_roles`, `RolePermission.Scope/Conditions` (ABAC nunca implementado). Substituídos por `user_setores`, `setor_filas`, `cargo_permissoes`.
 
 ## RabbitMQ Routing Key Pattern
 
