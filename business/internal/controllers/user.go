@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 
@@ -151,4 +152,13 @@ func formatInt(v interface{}) int64 {
 	default:
 		return 0
 	}
+}
+
+// safeInt narrows an int64 to int, returning ok=false when the value falls
+// outside the platform int range instead of silently truncating/overflowing.
+func safeInt(n int64) (int, bool) {
+	if n < math.MinInt || n > math.MaxInt {
+		return 0, false
+	}
+	return int(n), true
 }

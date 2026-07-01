@@ -404,7 +404,7 @@ func (cc *CargoController) ListPermissionsCatalog(c *gin.Context) {
 }
 
 // uniqueInts returns the count of distinct ints — usado para validar que
-// "IN (?)" bateu 1:1 com a lista pedida (duplicatas no payload não devem
+// "IN (?)" bateu 1:1 com a lista pedida (repetições no payload não devem
 // mascarar um ID inexistente na contagem).
 func uniqueInts(xs []int) []int {
 	seen := make(map[int]struct{}, len(xs))

@@ -231,7 +231,11 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 	if v, ok := req["cargoId"]; ok {
 		var newCargoID *int
 		if v != "" && v != nil {
-			n := int(formatInt(v))
+			n, okRange := safeInt(formatInt(v))
+			if !okRange {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "field 'cargoId' is out of range"})
+				return
+			}
 			newCargoID = &n
 		}
 
@@ -265,7 +269,12 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "each item in 'setores' must be an object {setorId, ehGestor}"})
 				return
 			}
-			vinculo := setorVinculo{SetorID: int(formatInt(m["setorId"]))}
+			setorID, okRange := safeInt(formatInt(m["setorId"]))
+			if !okRange {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "field 'setorId' is out of range"})
+				return
+			}
+			vinculo := setorVinculo{SetorID: setorID}
 			if eg, ok := m["ehGestor"].(bool); ok {
 				vinculo.EhGestor = eg
 			}
