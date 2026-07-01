@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/alltomatos/watinkdev/business/internal/application/usecases"
@@ -105,6 +106,20 @@ func TestUpdateTicket(t *testing.T) {
 			t.Fatalf("expected 404, got %d", res.Code)
 		}
 	})
+
+	// M18/GAP-VAL-3: status sem ValidateStringField aceitava qualquer string
+	// livre, sem limite de tamanho — prova o invariante agora aplicado.
+	t.Run("status too long returns 400", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]interface{}{"status": strings.Repeat("x", 51)})
+		req := httptest.NewRequest(http.MethodPut, "/tickets/"+strconv.Itoa(ticket.ID), bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		res := httptest.NewRecorder()
+		r.ServeHTTP(res, req)
+
+		if res.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 for oversized status, got %d — %s", res.Code, res.Body.String())
+		}
+	})
 }
 
 func TestRecoverHistory(t *testing.T) {
@@ -164,6 +179,20 @@ func TestRecoverHistory(t *testing.T) {
 
 		if res.Code != http.StatusNotFound {
 			t.Fatalf("expected 404, got %d", res.Code)
+		}
+	})
+
+	// M18/GAP-VAL-3: range sem ValidateStringField aceitava qualquer string
+	// livre, sem limite de tamanho — prova o invariante agora aplicado.
+	t.Run("range too long returns 400", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{"range": strings.Repeat("x", 21)})
+		req := httptest.NewRequest(http.MethodPost, "/tickets/"+strconv.Itoa(ticket.ID)+"/history/recover", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		res := httptest.NewRecorder()
+		r.ServeHTTP(res, req)
+
+		if res.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 for oversized range, got %d — %s", res.Code, res.Body.String())
 		}
 	})
 

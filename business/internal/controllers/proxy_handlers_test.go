@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -160,5 +162,106 @@ func TestInterpretProbeResponse_GeoBestEffort(t *testing.T) {
 	r3 := interpretProbeResponse(mk(200, `{"status":"fail"}`), 5)
 	if !r3.OK || r3.City != "" {
 		t.Fatalf("status:fail deveria manter OK sem geo: %+v", r3)
+	}
+}
+
+// setupProxyCtxWithBody é setupProxyCtx + um corpo JSON, para handlers que
+// fazem ShouldBindJSON (Update).
+func setupProxyCtxWithBody(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method, path, paramVal string, body interface{}) (*gin.Context, *httptest.ResponseRecorder) {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	b, _ := json.Marshal(body)
+	c.Request = httptest.NewRequest(method, path, bytes.NewBuffer(b))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Set("tenantId", tenantID)
+	c.Set("userProfile", "admin")
+	c.Set("userId", float64(1))
+	c.Set("db", db.Where(`"tenantId" = ?`, tenantID))
+	c.Params = gin.Params{{Key: "id", Value: paramVal}}
+	return c, w
+}
+
+// P3-UPDDUP: editar o endpoint de um proxy para bater com outro JÁ EXISTENTE
+// do tenant deve ser rejeitado com 409, não silenciosamente furar o dedup
+// lógico (scheme,host,port) que o Create já impõe.
+func TestProxyUpdate_EndpointDuplicate_Conflict(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	tenantID := uuid.New()
+	a := models.Proxy{TenantID: tenantID, Scheme: "http", Host: "a.example", Port: 1, Status: "active"}
+	b := models.Proxy{TenantID: tenantID, Scheme: "http", Host: "b.example", Port: 2, Status: "active"}
+	db.Create(&a)
+	db.Create(&b)
+
+	// Edita B para ter o MESMO endpoint de A.
+	c, w := setupProxyCtxWithBody(t, db, tenantID, "PUT", "/proxies/"+strconv.Itoa(b.ID), strconv.Itoa(b.ID),
+		map[string]interface{}{"scheme": "http", "host": "a.example", "port": 1})
+	NewProxyController().Update(c)
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409; body=%s", w.Code, w.Body.String())
+	}
+	var reloadedB models.Proxy
+	db.First(&reloadedB, b.ID)
+	if reloadedB.Host == "a.example" {
+		t.Fatal("update deveria ter sido rejeitado — endpoint duplicado não pode persistir")
+	}
+}
+
+// P3-UPDDUP: mudar o endpoint de um proxy TESTADO (healthy=true, geo
+// preenchida) deve resetar healthy/geo — senão o operador vê "OK, Fortaleza"
+// para um IP que, na verdade, nunca foi testado.
+func TestProxyUpdate_EndpointChanged_ResetsHealthAndGeo(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	tenantID := uuid.New()
+	p := models.Proxy{
+		TenantID: tenantID, Scheme: "http", Host: "old.example", Port: 1, Status: "active",
+		Healthy: true, City: "Fortaleza", Country: "Brazil", CountryCode: "BR",
+	}
+	db.Create(&p)
+
+	c, w := setupProxyCtxWithBody(t, db, tenantID, "PUT", "/proxies/"+strconv.Itoa(p.ID), strconv.Itoa(p.ID),
+		map[string]interface{}{"scheme": "http", "host": "new.example", "port": 1})
+	NewProxyController().Update(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	var reloaded models.Proxy
+	db.First(&reloaded, p.ID)
+	if reloaded.Healthy || reloaded.City != "" || reloaded.Country != "" || reloaded.CountryCode != "" {
+		t.Fatalf("healthy/geo deveriam ter sido resetados após mudar o endpoint: %+v", reloaded)
+	}
+	if reloaded.Host != "new.example" {
+		t.Fatalf("host não foi atualizado: %q", reloaded.Host)
+	}
+}
+
+// Editar SEM mudar o endpoint (ex.: só o label) preserva healthy/geo — não
+// pode resetar à toa a cada edição.
+func TestProxyUpdate_EndpointUnchanged_PreservesHealthAndGeo(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	tenantID := uuid.New()
+	p := models.Proxy{
+		TenantID: tenantID, Scheme: "http", Host: "same.example", Port: 1, Status: "active",
+		Healthy: true, City: "Fortaleza",
+	}
+	db.Create(&p)
+
+	c, w := setupProxyCtxWithBody(t, db, tenantID, "PUT", "/proxies/"+strconv.Itoa(p.ID), strconv.Itoa(p.ID),
+		map[string]interface{}{"label": "novo rótulo"})
+	NewProxyController().Update(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	var reloaded models.Proxy
+	db.First(&reloaded, p.ID)
+	if !reloaded.Healthy || reloaded.City != "Fortaleza" {
+		t.Fatalf("healthy/geo NÃO deveriam ter sido resetados (endpoint não mudou): %+v", reloaded)
+	}
+	if reloaded.Label != "novo rótulo" {
+		t.Fatalf("label não foi atualizado: %q", reloaded.Label)
 	}
 }
