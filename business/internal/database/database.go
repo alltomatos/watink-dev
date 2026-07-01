@@ -187,9 +187,17 @@ func dropLegacyRBAC() error {
 		// poluindo o catálogo novo recurso:ação para sempre. DELETE seletivo (não
 		// TRUNCATE da tabela toda) para não apagar cargo_permissoes já associadas
 		// ao catálogo novo em bootups subsequentes.
+		//
+		// NOTA: ('flows','read') do catálogo antigo NÃO entra aqui — colide
+		// (mesmo resource+action) com a permissão nova 'flows:read' (ação real,
+		// não menu) criada pelo Seed(). Incluí-la aqui apagava a permissão nova
+		// a cada boot (DELETE por resource+action, sem distinguir a intenção),
+		// e a cascata removia o vínculo cargo_permissoes do Administrador —
+		// bug real observado: Administrador ficava com 3/4 permissions de
+		// flows após um segundo restart do servidor.
 		`DELETE FROM "Permissions" WHERE (resource, action) IN (
 			('admin','view'), ('chats','view'), ('groups','view'), ('pipelines','view'),
-			('queues','view'), ('settings','view'), ('view','swagger'), ('flows','read')
+			('queues','view'), ('settings','view'), ('view','swagger')
 		)`,
 	}
 
