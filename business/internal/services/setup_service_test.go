@@ -38,12 +38,13 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 
 	svc := NewSetupService(db)
 	err := svc.InitializeTenant(TenantSeedData{
-		FirstName:  "Maria",
-		LastName:   "Silva",
-		Email:      "maria@example.com",
-		Password:   "secret123",
-		Document:   "12345678000199",
-		BackendURL: "https://api.example.com",
+		CompanyName: "Acme Ltda",
+		FirstName:   "Maria",
+		LastName:    "Silva",
+		Email:       "maria@example.com",
+		Password:    "secret123",
+		Document:    "12345678000199",
+		BackendURL:  "https://api.example.com",
 	})
 	if err != nil {
 		t.Fatalf("InitializeTenant: %v", err)
@@ -57,8 +58,8 @@ func TestSetupServiceInitializeTenantCreatesAtomicDayZeroWorkspace(t *testing.T)
 	if tenant.ID == uuid.Nil {
 		t.Fatal("tenant ID must not be zero")
 	}
-	if tenant.Name != "Maria's Workspace" {
-		t.Fatalf("tenant name: got %q, want %q", tenant.Name, "Maria's Workspace")
+	if tenant.Name != "Acme Ltda" {
+		t.Fatalf("tenant name: got %q, want %q", tenant.Name, "Acme Ltda")
 	}
 	if tenant.Status != "active" || tenant.Document != "12345678000199" {
 		t.Fatalf("tenant unexpected: %+v", tenant)

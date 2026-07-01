@@ -47,7 +47,7 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 
 		// 2. Tenant
 		tenant := models.Tenant{
-			Name:     data.FirstName + "'s Workspace",
+			Name:     data.CompanyName,
 			Status:   "active",
 			Document: data.Document,
 		}
@@ -91,7 +91,11 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 			"tickets:read", "tickets:create", "tickets:update",
 			"contacts:read", "contacts:create", "contacts:update",
 		}
-		atendenteCargo := models.Cargo{Name: "Atendente", TenantID: tenant.ID}
+		atendenteCargo := models.Cargo{
+			Name:        "Atendente",
+			Description: "Atende tickets e contatos do dia a dia — cria, lê e atualiza, sem acesso a configurações do sistema.",
+			TenantID:    tenant.ID,
+		}
 		if err := tx.Create(&atendenteCargo).Error; err != nil {
 			return err
 		}
@@ -103,7 +107,11 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 			"tickets:reassign", "tickets:close", "tickets:export",
 			"reports:view-sector", "users:read", "setores:read",
 		)
-		gestorCargo := models.Cargo{Name: "Gestor", TenantID: tenant.ID}
+		gestorCargo := models.Cargo{
+			Name:        "Gestor",
+			Description: "Tudo do Atendente, mais reatribuir/fechar/exportar tickets e ver relatórios do(s) setor(es) que gerencia.",
+			TenantID:    tenant.ID,
+		}
 		if err := tx.Create(&gestorCargo).Error; err != nil {
 			return err
 		}
@@ -114,7 +122,11 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 		gerenteGeralPermNames := append(append([]string{}, gestorPermNames...),
 			"reports:view-tenant", "users:manage", "setores:manage", "cargos:read",
 		)
-		gerenteGeralCargo := models.Cargo{Name: "Gerente Geral", TenantID: tenant.ID}
+		gerenteGeralCargo := models.Cargo{
+			Name:        "Gerente Geral",
+			Description: "Tudo do Gestor, mas para TODOS os setores da empresa — vê relatórios do tenant inteiro e gerencia usuários/setores/cargos.",
+			TenantID:    tenant.ID,
+		}
 		if err := tx.Create(&gerenteGeralCargo).Error; err != nil {
 			return err
 		}
@@ -122,7 +134,11 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 			return err
 		}
 
-		adminCargo := models.Cargo{Name: "Administrador", TenantID: tenant.ID}
+		adminCargo := models.Cargo{
+			Name:        "Administrador",
+			Description: "Acesso total ao sistema — configurações, conexões, faturamento e todas as permissões do catálogo.",
+			TenantID:    tenant.ID,
+		}
 		if err := tx.Create(&adminCargo).Error; err != nil {
 			return err
 		}
@@ -155,6 +171,7 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 		queue := models.Queue{
 			Name:                 "Atendimento Inicial",
 			Color:                "#000000",
+			GreetingMessage:      "Olá! Recebemos sua mensagem e em breve um de nossos atendentes vai falar com você.",
 			TenantID:             tenant.ID,
 			DistributionStrategy: "MANUAL",
 		}

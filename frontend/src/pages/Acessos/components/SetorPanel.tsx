@@ -21,6 +21,8 @@ interface SetorPanelProps {
   open: boolean;
   loading: boolean;
   editingSetor: SetorDetail | null;
+  /** Nome pré-preenchido no fluxo de criação guiada (ex: Onboarding Checklist). */
+  initialName?: string;
   onClose: () => void;
   onSaveName: (id: number | null, name: string) => Promise<boolean>;
   onAddMember: (setorId: number, userId: number, ehGestor: boolean) => Promise<void>;
@@ -33,6 +35,7 @@ const SetorPanel: React.FC<SetorPanelProps> = ({
   open,
   loading,
   editingSetor,
+  initialName,
   onClose,
   onSaveName,
   onAddMember,
@@ -44,8 +47,8 @@ const SetorPanel: React.FC<SetorPanelProps> = ({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setName(editingSetor?.name ?? "");
-  }, [editingSetor]);
+    setName(editingSetor?.name ?? initialName ?? "");
+  }, [editingSetor, initialName]);
 
   const isNew = !editingSetor;
 

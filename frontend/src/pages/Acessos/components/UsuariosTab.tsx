@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,21 @@ const UsuariosTab: React.FC = () => {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deletingUser, setDeletingUser] = useState<AcessosUserListItem | null>(null);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Auto-abertura do fluxo de criação guiada (ex: Onboarding Checklist do
+  // Dashboard) via query param — ver docs/agents/onboarding.md. Não é um
+  // endpoint novo: só reaproveita o openCreate() já existente.
+  useEffect(() => {
+    if (searchParams.get("autoOpen") === "create") {
+      openCreate();
+      const next = new URLSearchParams(searchParams);
+      next.delete("autoOpen");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex flex-col gap-4">

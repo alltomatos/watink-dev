@@ -605,3 +605,96 @@ limpos. Push final: `a829f393b`.
   · GAP-5: 9 testes) é necessário antes de considerar a refatoração encerrada.
 - PR de `refactor/acessos-gap1-schema` → `develop` ainda não aberto —
   aguardando decisão do dono sobre revisar antes ou seguir direto.
+
+## Módulo Onboarding — Wizard + Checklist (2026-07-01)
+
+Escopo mentorado via `/grill-feature-with-docs` após a refatoração de Acessos
+(ADR 0022): melhorar o Wizard de Setup Inicial (cadastro da empresa) e
+introduzir um Checklist pós-login guiando o primeiro Setor real e o primeiro
+usuário adicional. Documentação preparada antes da implementação:
+`docs/agents/onboarding.md`, bloco `## Módulo: Onboarding` no `CLAUDE.md`,
+termos novos no `CONTEXT.md` (Wizard de Setup Inicial, Checklist de
+Onboarding, verbete Tenant corrigido). Mesma branch da refatoração de
+Acessos (`refactor/acessos-gap1-schema`) — continuação do mesmo esforço.
+
+### Status GAP-A (2026-07-01) — ✅ CONCLUÍDO — Backend
+
+- `domain.TenantSeedData`/`SetupRequest` ganham `CompanyName` (obrigatório,
+  validado via `ValidateStringField`) → `Tenant.Name` (antes:
+  `"{firstName}'s Workspace"`).
+- Os 4 Cargos-padrão (Atendente/Gestor/Gerente Geral/Administrador) ganham
+  `Description` real explicando o que cada um cobre.
+- Queue "Atendimento Inicial" ganha `GreetingMessage` padrão.
+- Testes ajustados (`setup_service_test.go`, `setup_mock_test.go`) — suíte
+  completa (`services`+`controllers`) 100% verde. `go build`/`go vet` limpos.
+
+### Status GAP-B (2026-07-01) — ✅ CONCLUÍDO — Frontend do Wizard
+
+- `frontend/src/pages/InitialSetup/index.tsx`: campo "Nome Fantasia da
+  Empresa *" adicionado (full-width, acima de Nome/Sobrenome), incluído na
+  validação client-side e no payload de submissão.
+- Validado em browser: campo renderiza corretamente; submit com payload
+  completo retorna 403 "System already initialized" tratado via toast
+  (sistema já estava inicializado no ambiente de dev — confirma o
+  tratamento de erro do fluxo real, não só o caminho feliz).
+
+### Status GAP-C (2026-07-01) — ✅ CONCLUÍDO — Checklist de Onboarding
+
+Implementado via workflow (fases Investigate → Implement → Review → Fix;
+review não encontrou findings). Arquivos novos:
+`frontend/src/pages/Dashboard/hooks/useOnboardingChecklist.ts` (estado 100%
+derivado — contagem via `GET /setores`/`GET /users`, sem flag persistida) e
+`frontend/src/pages/Dashboard/components/OnboardingChecklistCard.tsx` (card
+no Dashboard, logo após `DashboardKpiRow`). Extensão cirúrgica em
+`SetorPanel`/`SetoresTab`/`UsuariosTab`/`useSetoresTab` para suportar
+auto-abertura do painel de criação via query param (`?autoOpen=create`,
++`suggestedName` para Setor) — mecanismo que não existia antes.
+
+**Achado da investigação prévia**: não existe atalho de backend para criar
+Setor+Queue vinculados numa chamada só (`POST /setores` só aceita `name`; o
+vínculo de Queue só é possível depois, via `PUT /setores/:id/queues`, com o
+painel fechando automaticamente após criar). Decisão registrada: o
+checklist NÃO tenta bundlar Setor+Queue nem manter o painel aberto para
+forçar esse fluxo — linka para `/acessos/setores` com nome sugerido
+pré-preenchido (chips: Atendimento/Vendas/Suporte/Financeiro), dentro do
+limite já documentado ("não é um tour guiado interativo").
+
+**Validado manualmente em browser (não só typecheck/lint/build)**, com o
+tenant de dev real (`admin@test.com`, 1 Setor + 1 User pré-existentes):
+- Card aparece para o Administrador (alcance=tenant), ambos os itens
+  pendentes (contagens reais 1/1 confirmadas via API).
+- Clique no chip "Atendimento" → navega para `/acessos/setores`, painel
+  "Novo Setor" auto-abre com nome pré-preenchido "Atendimento" — criado com
+  sucesso (contagem via `PUT`/`POST` real, não mock).
+- Item "Criar setor" desaparece (botão+chips somem) assim que a contagem
+  passa de 1 para 2 — sem reload manual necessário além da navegação de
+  volta ao Dashboard.
+- Botão "Criar usuário" → mesma auto-abertura em `/acessos/usuarios`,
+  usuário criado com sucesso.
+- Card inteiro desaparece quando os 2 itens ficam completos (allDone) —
+  e reaparece corretamente depois que os registros de teste foram
+  removidos (contagem de volta a 1/1), confirmando que o estado é
+  realmente derivado em tempo real, não cacheado.
+- Setor e usuário de teste criados durante a verificação foram apagados ao
+  final, restaurando o tenant de dev ao estado anterior (1 Setor + 1 User).
+
+Suíte Go completa 100% verde, `npm run typecheck`/`lint`/`build` limpos.
+
+### Achado incidental (fora de escopo, sinalizado separadamente)
+
+Durante a verificação manual, os logs do `watink-business` mostraram
+`ERROR: syntax error at or near "$1"` em toda requisição autenticada —
+`business/internal/middleware/auth.go:74` usa
+`tx.Exec("SET LOCAL app.current_tenant = ?", tenantID)`, e o Postgres não
+aceita bind parameter nessa posição do `SET LOCAL` (precisa de
+`set_config()` para aceitar parâmetro). Efeito: a RLS por
+`app.current_tenant` está silenciosamente inerte em toda a aplicação — a
+proteção real hoje é 100% o filtro manual `WHERE tenantId`. Não é
+bloqueante para o Onboarding; sinalizado como tarefa separada
+(`task_10ab6677`) em vez de corrigido aqui, para não misturar escopos.
+
+### Pendente (Onboarding)
+- Commit + push das mudanças de GAP-A/B/C na branch
+  `refactor/acessos-gap1-schema`.
+- Mesma decisão em aberto de antes: PR `refactor/acessos-gap1-schema` →
+  `develop` ainda não aberto.

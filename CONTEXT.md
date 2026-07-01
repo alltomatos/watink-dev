@@ -121,8 +121,14 @@ _Avoid_: Template, canned response, resposta padrão
 
 **QuickAnswer dispatch**: Ação de envio de uma QuickAnswer pelo backend, que resolve variáveis de interpolação e despacha o payload ao engine via RabbitMQ. Acionado por `POST /quickAnswers/:id/send`.
 
-**Tenant**: Organização cliente na plataforma SaaS. Isolamento de dados garantido por PostgreSQL RLS (`app.current_tenant`). Cada Tenant possui Users, Queues, Whatsapps, e Settings próprios.
+**Tenant**: Organização cliente na plataforma SaaS. `Name` é o Nome Fantasia informado no Wizard de Setup Inicial (não mais um placeholder autogerado). Isolamento de dados garantido por PostgreSQL RLS (`app.current_tenant`). Cada Tenant possui Users, Queues, Whatsapps, e Settings próprios.
 _Avoid_: Account, organization, empresa, cliente
+
+**Wizard de Setup Inicial**: Formulário público single-step (`POST /initial-setup`), exibido quando o sistema detecta zero usuários/tenants. Coleta Nome Fantasia (vira `Tenant.Name`), dados do Administrador e CPF/CNPJ opcional; cria atomicamente Tenant+Cargos-padrão+Setor+Queue+Tag+Settings.
+_Avoid_: Onboarding wizard, tela de setup, cadastro inicial
+
+**Checklist de Onboarding**: Card dispensável no Dashboard, pós-login, visível só para Alcance tenant/plataforma. Guia a criação do primeiro Setor real e do primeiro usuário adicional via os fluxos já existentes — estado derivado por contagem, nunca persistido.
+_Avoid_: Tour guiado, first-run experience, getting started
 
 **Cargo**: Conjunto nomeado de Permissions que define **o que** um User pode fazer — o portador de permissões (ex.: Atendente, Gestor, Gerente Geral, Administrador). Tenant-scoped. Renomeia o antigo **Role**; a herança é resolvida de verdade no backend via `RequirePermission` (ADR 0022), não apenas no frontend. O escopo (meu setor vs tenant inteiro) NÃO mora no Cargo — vem do **Alcance**, dimensão ortogonal.
 _Avoid_: Role, papel, função, Profile, perfil
