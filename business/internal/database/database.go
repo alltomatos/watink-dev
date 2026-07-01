@@ -54,6 +54,7 @@ func Migrate() {
 		&models.Setor{},
 		&models.Cargo{},
 		&models.Permission{},
+		&models.CargoPermissao{},
 		&models.UserSetor{},
 		&models.SetorFila{},
 		&models.Flow{},
@@ -181,6 +182,15 @@ func dropLegacyRBAC() error {
 		`DROP TABLE IF EXISTS "Groups" CASCADE`,
 		`DROP TABLE IF EXISTS "Roles" CASCADE`,
 		`DROP TABLE IF EXISTS "RolePermissions" CASCADE`,
+		// Catálogo legado de granularidade MENU (resource:view) — Seed() só usa
+		// FirstOrCreate (nunca remove), então sem isso essas entradas ficam
+		// poluindo o catálogo novo recurso:ação para sempre. DELETE seletivo (não
+		// TRUNCATE da tabela toda) para não apagar cargo_permissoes já associadas
+		// ao catálogo novo em bootups subsequentes.
+		`DELETE FROM "Permissions" WHERE (resource, action) IN (
+			('admin','view'), ('chats','view'), ('groups','view'), ('pipelines','view'),
+			('queues','view'), ('settings','view'), ('view','swagger'), ('flows','read')
+		)`,
 	}
 
 	for _, stmt := range statements {

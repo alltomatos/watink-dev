@@ -48,7 +48,6 @@ func (r *GORMUserRepository) FindByIDDetail(ctx context.Context, id int, tenantI
 	var m models.User
 	err := r.db.WithContext(ctx).
 		Preload("Cargo").
-		Preload("Cargo.Permissions").
 		Where("id = ? AND \"tenantId\" = ?", id, tenantID).
 		First(&m).Error
 	if err != nil {
@@ -56,6 +55,12 @@ func (r *GORMUserRepository) FindByIDDetail(ctx context.Context, id int, tenantI
 			return nil, nil
 		}
 		return nil, err
+	}
+	if m.CargoID != nil {
+		perms, permErr := loadCargoPermissions(ctx, r.db, *m.CargoID)
+		if permErr == nil {
+			m.Cargo.Permissions = perms
+		}
 	}
 	return &m, nil
 }
@@ -94,11 +99,25 @@ func (r *GORMUserRepository) FindByEmailForAuth(ctx context.Context, email strin
 	return du, nil
 }
 
+// loadCargoPermissions loads a Cargo's Permissions via an explicit JOIN
+// against cargo_permissoes (camelCase columns cargoId/permissionId). Not done
+// via GORM's many2many Association()/Preload: that API resolves join-table
+// column names independently of the explicit CargoPermissao struct and falls
+// back to snake_case conventions, causing a runtime mismatch even though the
+// table itself was created with the correct (camelCase) columns.
+func loadCargoPermissions(ctx context.Context, db *gorm.DB, cargoID int) ([]models.Permission, error) {
+	var perms []models.Permission
+	err := db.WithContext(ctx).
+		Table(`"Permissions"`).
+		Joins(`JOIN cargo_permissoes ON cargo_permissoes."permissionId" = "Permissions".id`).
+		Where(`cargo_permissoes."cargoId" = ?`, cargoID).
+		Find(&perms).Error
+	return perms, err
+}
+
 // effectivePermissionNames aggregates a user's EFFECTIVE permission names
 // ("resource:action") from their Cargo's grants (cargo_permissoes — ADR 0022).
-// Uses GORM associations so the join-table column naming
-// (joinForeignKey:cargoId/permissionId) is resolved from the model tags, never
-// hardcoded. Best-effort: a load error yields fewer names, never an auth failure.
+// Best-effort: a load error yields fewer names, never an auth failure.
 //
 // TODO(GAP-2a): somar pacote de Gestor via user_setores.ehGestor, escopado por
 // Alcance (próprio|setor|tenant|plataforma) — ainda não implementado neste GAP.
@@ -106,12 +125,9 @@ func (r *GORMUserRepository) effectivePermissionNames(ctx context.Context, userI
 	set := make(map[string]struct{})
 
 	if cargoID != nil {
-		var cargo models.Cargo
-		if err := r.db.WithContext(ctx).
-			Preload("Permissions").
-			First(&cargo, *cargoID).Error; err == nil {
-			for i := range cargo.Permissions {
-				set[cargo.Permissions[i].GetName()] = struct{}{}
+		if perms, err := loadCargoPermissions(ctx, r.db, *cargoID); err == nil {
+			for i := range perms {
+				set[perms[i].GetName()] = struct{}{}
 			}
 		}
 	}

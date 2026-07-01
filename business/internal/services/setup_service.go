@@ -95,7 +95,7 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 		if err := tx.Create(&atendenteCargo).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&atendenteCargo).Association("Permissions").Append(lookupPerms(atendentePermNames...)); err != nil {
+		if err := attachCargoPermissions(tx, atendenteCargo.ID, lookupPerms(atendentePermNames...)); err != nil {
 			return err
 		}
 
@@ -107,7 +107,7 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 		if err := tx.Create(&gestorCargo).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&gestorCargo).Association("Permissions").Append(lookupPerms(gestorPermNames...)); err != nil {
+		if err := attachCargoPermissions(tx, gestorCargo.ID, lookupPerms(gestorPermNames...)); err != nil {
 			return err
 		}
 
@@ -118,7 +118,7 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 		if err := tx.Create(&gerenteGeralCargo).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&gerenteGeralCargo).Association("Permissions").Append(lookupPerms(gerenteGeralPermNames...)); err != nil {
+		if err := attachCargoPermissions(tx, gerenteGeralCargo.ID, lookupPerms(gerenteGeralPermNames...)); err != nil {
 			return err
 		}
 
@@ -126,7 +126,7 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 		if err := tx.Create(&adminCargo).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&adminCargo).Association("Permissions").Append(allPerms); err != nil {
+		if err := attachCargoPermissions(tx, adminCargo.ID, allPerms); err != nil {
 			return err
 		}
 
@@ -201,4 +201,20 @@ func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 
 		return nil
 	})
+}
+
+// attachCargoPermissions grants a set of Permissions to a Cargo via explicit
+// CargoPermissao rows (cargo_permissoes, camelCase columns). Not done via
+// GORM's many2many Association(): that API resolves join-table column names
+// independently of the explicit CargoPermissao struct and falls back to
+// snake_case conventions, causing a runtime mismatch.
+func attachCargoPermissions(tx *gorm.DB, cargoID int, perms []models.Permission) error {
+	if len(perms) == 0 {
+		return nil
+	}
+	rows := make([]models.CargoPermissao, len(perms))
+	for i, p := range perms {
+		rows[i] = models.CargoPermissao{CargoID: cargoID, PermissionID: p.ID}
+	}
+	return tx.Create(&rows).Error
 }

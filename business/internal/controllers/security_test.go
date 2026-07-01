@@ -49,8 +49,8 @@ func (r *sqliteSwaggerPermRepo) HasSwaggerPermission(userID int, tenantID uuid.U
 	}
 	var count int64
 	r.db.Table("cargo_permissoes AS cp").
-		Joins("JOIN \"Permissions\" p ON p.id = cp.permission_id").
-		Where("cp.cargo_id = ? AND p.resource = ? AND p.action = ?",
+		Joins(`JOIN "Permissions" p ON p.id = cp."permissionId"`).
+		Where(`cp."cargoId" = ? AND p.resource = ? AND p.action = ?`,
 			*user.CargoID, "swagger", "view").
 		Count(&count)
 	return count > 0, nil
@@ -168,7 +168,7 @@ func TestSwaggerController_HasSwaggerCargoPermission_SameTenant(t *testing.T) {
 	}
 
 	// Seed: associação cargo-permissão
-	if err := db.Exec("INSERT INTO cargo_permissoes (cargo_id, permission_id) VALUES (?, ?)", cargo.ID, perm.ID).Error; err != nil {
+	if err := db.Exec(`INSERT INTO cargo_permissoes ("cargoId", "permissionId") VALUES (?, ?)`, cargo.ID, perm.ID).Error; err != nil {
 		t.Fatal(err)
 	}
 
@@ -206,7 +206,7 @@ func TestSwaggerController_HasSwaggerCargoPermission_CrossTenant(t *testing.T) {
 	}
 
 	// Seed: associação cargoA-permissão
-	if err := db.Exec("INSERT INTO cargo_permissoes (cargo_id, permission_id) VALUES (?, ?)", cargoA.ID, perm.ID).Error; err != nil {
+	if err := db.Exec(`INSERT INTO cargo_permissoes ("cargoId", "permissionId") VALUES (?, ?)`, cargoA.ID, perm.ID).Error; err != nil {
 		t.Fatal(err)
 	}
 

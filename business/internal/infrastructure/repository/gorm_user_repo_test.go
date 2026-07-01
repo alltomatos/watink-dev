@@ -210,7 +210,7 @@ func TestGORMUserRepo_FindByEmailForAuth_ReturnsCargoPermissions(t *testing.T) {
 
 	cargo := models.Cargo{Name: "Atendente", TenantID: tenantID}
 	require.NoError(t, db.Create(&cargo).Error)
-	require.NoError(t, db.Model(&cargo).Association("Permissions").Append(&perm))
+	require.NoError(t, db.Create(&models.CargoPermissao{CargoID: cargo.ID, PermissionID: perm.ID}).Error)
 
 	// Alcance "proprio" de propósito: força o caminho de permissão via Cargo
 	// (não o bypass de alcance tenant/plataforma).
