@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 
@@ -72,10 +73,10 @@ func (uc *UserController) ShowUser(c *gin.Context) {
 		"id":         userModel.ID,
 		"name":       userModel.Name,
 		"email":      userModel.Email,
-		"profile":    userModel.Profile,
+		"alcance":    userModel.Alcance,
 		"whatsappId": userModel.WhatsappID,
 		"tenantId":   userModel.TenantID,
-		"groupId":    userModel.GroupID,
+		"cargoId":    userModel.CargoID,
 		"configs":    userModel.Configs,
 		"createdAt":  userModel.CreatedAt,
 		"updatedAt":  userModel.UpdatedAt,
@@ -85,21 +86,24 @@ func (uc *UserController) ShowUser(c *gin.Context) {
 	if len(userModel.Queues) > 0 {
 		response["queues"] = userModel.Queues
 	}
-	if len(userModel.Permissions) > 0 {
-		permissions := make([]map[string]interface{}, len(userModel.Permissions))
-		for i, p := range userModel.Permissions {
-			permissions[i] = map[string]interface{}{
-				"id":          p.ID,
-				"name":        p.GetName(),
-				"resource":    p.Resource,
-				"action":      p.Action,
-				"description": p.Description,
-			}
+	if userModel.CargoID != nil {
+		response["cargo"] = map[string]interface{}{
+			"id":   userModel.Cargo.ID,
+			"name": userModel.Cargo.Name,
 		}
-		response["permissions"] = permissions
-	}
-	if len(userModel.Roles) > 0 {
-		response["roles"] = userModel.Roles
+		if len(userModel.Cargo.Permissions) > 0 {
+			permissions := make([]map[string]interface{}, len(userModel.Cargo.Permissions))
+			for i, p := range userModel.Cargo.Permissions {
+				permissions[i] = map[string]interface{}{
+					"id":          p.ID,
+					"name":        p.GetName(),
+					"resource":    p.Resource,
+					"action":      p.Action,
+					"description": p.Description,
+				}
+			}
+			response["permissions"] = permissions
+		}
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -113,11 +117,22 @@ func (uc *UserController) ShowUser(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /users/{userId} [delete]
 func (uc *UserController) DeleteUser(c *gin.Context) {
-	_, tenantID, ok := auth.GetScoped(c, "Users")
+	db, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
 		return
 	}
 	id, _ := strconv.Atoi(c.Param("userId"))
+
+	// Anti-lockout (ADR 0022): nem o dono do tenant nem o último Administrador
+	// podem ser excluídos — travaria a organização inteira pra fora do sistema.
+	if isTenantOwner(db, id, tenantID) {
+		c.JSON(http.StatusConflict, gin.H{"error": "não é possível excluir o dono do tenant"})
+		return
+	}
+	if isLastAdminOfTenant(db, id, tenantID) {
+		c.JSON(http.StatusConflict, gin.H{"error": "não é possível excluir o último Administrador do tenant"})
+		return
+	}
 
 	if err := uc.userRepo.Delete(c.Request.Context(), id, tenantID); err != nil {
 		utils.RespondWithInternalError(c, err, "DeleteUser")
@@ -137,4 +152,13 @@ func formatInt(v interface{}) int64 {
 	default:
 		return 0
 	}
+}
+
+// safeInt narrows an int64 to int, returning ok=false when the value falls
+// outside the platform int range instead of silently truncating/overflowing.
+func safeInt(n int64) (int, bool) {
+	if n < math.MinInt || n > math.MaxInt {
+		return 0, false
+	}
+	return int(n), true
 }

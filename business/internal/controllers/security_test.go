@@ -1,13 +1,11 @@
 package controllers
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
@@ -41,18 +39,19 @@ func (r *brokenVersionRepo) GetPostgresVersion(_ context.Context) (string, error
 var _ domain.VersionRepository = (*brokenVersionRepo)(nil)
 
 // sqliteSwaggerPermRepo adapts *gorm.DB to domain.SwaggerPermissionRepository for tests.
+// Reflete a resolução via Cargo/cargo_permissoes (ADR 0022).
 type sqliteSwaggerPermRepo struct{ db *gorm.DB }
 
 func (r *sqliteSwaggerPermRepo) HasSwaggerPermission(userID int, tenantID uuid.UUID) (bool, error) {
 	var user models.User
-	if err := r.db.Where("id = ? AND \"tenantId\" = ?", userID, tenantID).First(&user).Error; err != nil || user.GroupID == nil {
+	if err := r.db.Where("id = ? AND \"tenantId\" = ?", userID, tenantID).First(&user).Error; err != nil || user.CargoID == nil {
 		return false, nil
 	}
 	var count int64
-	r.db.Table("group_permissions AS gp").
-		Joins("JOIN \"Permissions\" p ON p.id = gp.permission_id").
-		Where("gp.group_id = ? AND ((p.resource = ? AND p.action = ?) OR (p.resource = ? AND p.action = ?))",
-			*user.GroupID, "view", "swagger", "view_swagger", "allow").
+	r.db.Table("cargo_permissoes AS cp").
+		Joins(`JOIN "Permissions" p ON p.id = cp."permissionId"`).
+		Where(`cp."cargoId" = ? AND p.resource = ? AND p.action = ?`,
+			*user.CargoID, "swagger", "view").
 		Count(&count)
 	return count > 0, nil
 }
@@ -63,187 +62,6 @@ var _ domain.SwaggerPermissionRepository = (*sqliteSwaggerPermRepo)(nil)
 func setupGroupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	return testutil.NewTestDB(t)
-}
-
-// TestGroupUpdateRejectsCrossTenantRole verifica que GroupController.Update
-// rejeita (400) a associação de roles de outro tenant — fail-fast, não filtro silencioso.
-func TestGroupUpdateRejectsCrossTenantRole(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	db := setupGroupTestDB(t)
-	controller := NewGroupController(&sqlitePermRepo{db})
-
-	tenantA := uuid.New()
-	tenantB := uuid.New()
-
-	// Seed: grupo no tenant A
-	group := models.Group{Name: "Admins", TenantID: tenantA}
-	if err := db.Create(&group).Error; err != nil {
-		t.Fatal(err)
-	}
-
-	// Seed: role no tenant B (target do ataque)
-	roleB := models.Role{Name: "SuperAdmin", TenantID: tenantB}
-	if err := db.Create(&roleB).Error; err != nil {
-		t.Fatal(err)
-	}
-
-	// Seed: role no tenant A (role legítima)
-	roleA := models.Role{Name: "User", TenantID: tenantA}
-	if err := db.Create(&roleA).Error; err != nil {
-		t.Fatal(err)
-	}
-
-	// Ataque: tentar associar a role do tenant B ao grupo do tenant A
-	payload := map[string]interface{}{
-		"roles": []int{roleB.ID},
-	}
-	body, _ := json.Marshal(payload)
-
-	router := gin.New()
-	router.PUT("/groups/:groupId", func(c *gin.Context) {
-		c.Set("tenantId", tenantA.String())
-		c.Set("db", db) // Injetar DB no contexto para getDB(c)
-		controller.Update(c)
-	})
-
-	req := httptest.NewRequest(http.MethodPut, "/groups/"+strconv.Itoa(group.ID), bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-
-	if res.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 Bad Request for cross-tenant role, got %d: %s", res.Code, res.Body.String())
-	}
-
-	// Verifica que a associação NÃO foi persistida
-	var count int64
-	db.Table("group_roles").Where("group_id = ? AND role_id = ?", group.ID, roleB.ID).Count(&count)
-	if count != 0 {
-		t.Fatal("cross-tenant role association should NOT have been persisted")
-	}
-}
-
-// TestGroupUpdateAcceptsSameTenantRole verifica que a associação de roles
-// do mesmo tenant funciona normalmente após a correção de segurança.
-func TestGroupUpdateAcceptsSameTenantRole(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	db := setupGroupTestDB(t)
-	controller := NewGroupController(&sqlitePermRepo{db})
-
-	tenantA := uuid.New()
-
-	group := models.Group{Name: "Admins", TenantID: tenantA}
-	if err := db.Create(&group).Error; err != nil {
-		t.Fatal(err)
-	}
-
-	roleA := models.Role{Name: "User", TenantID: tenantA}
-	if err := db.Create(&roleA).Error; err != nil {
-		t.Fatal(err)
-	}
-
-	payload := map[string]interface{}{
-		"roles": []int{roleA.ID},
-	}
-	body, _ := json.Marshal(payload)
-
-	router := gin.New()
-	router.PUT("/groups/:groupId", func(c *gin.Context) {
-		c.Set("tenantId", tenantA.String())
-		c.Set("db", db) // Injetar DB no contexto para getDB(c)
-		controller.Update(c)
-	})
-
-	req := httptest.NewRequest(http.MethodPut, "/groups/"+strconv.Itoa(group.ID), bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-
-	if res.Code != http.StatusOK {
-		t.Fatalf("expected 200 OK for same-tenant role, got %d: %s", res.Code, res.Body.String())
-	}
-
-	// Verifica que a associação FOI persistida
-	var count int64
-	db.Table("group_roles").Where("group_id = ? AND role_id = ?", group.ID, roleA.ID).Count(&count)
-	if count != 1 {
-		t.Fatalf("same-tenant role association should have been persisted, got count=%d", count)
-	}
-}
-
-// TestGroupUpdateRejectsInvalidPermission verifica que Permission inexistente
-// é rejeitada (400) — cardinalidade fail-fast.
-func TestGroupUpdateRejectsInvalidPermission(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	db := setupGroupTestDB(t)
-	controller := NewGroupController(&sqlitePermRepo{db})
-
-	tenantA := uuid.New()
-
-	group := models.Group{Name: "Admins", TenantID: tenantA}
-	if err := db.Create(&group).Error; err != nil {
-		t.Fatal(err)
-	}
-
-	// IDs de permissões que não existem no banco
-	payload := map[string]interface{}{
-		"permissions": []int{99999, 88888},
-	}
-	body, _ := json.Marshal(payload)
-
-	router := gin.New()
-	router.PUT("/groups/:groupId", func(c *gin.Context) {
-		c.Set("tenantId", tenantA.String())
-		c.Set("db", db) // Injetar DB no contexto para getDB(c)
-		controller.Update(c)
-	})
-
-	req := httptest.NewRequest(http.MethodPut, "/groups/"+strconv.Itoa(group.ID), bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-
-	if res.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 Bad Request for non-existent permission, got %d: %s", res.Code, res.Body.String())
-	}
-}
-
-// TestRoleUpdateRejectsInvalidPermission verifica que RoleController.Update
-// rejeita permissões inexistentes — fail-fast cardinalidade (Permission é global, sem tenantId).
-func TestRoleUpdateRejectsInvalidPermission(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	db := testutil.NewTestDB(t)
-
-	controller := NewRoleController(&sqlitePermRepo{db})
-	tenantA := uuid.New()
-
-	role := models.Role{Name: "Operator", TenantID: tenantA}
-	if err := db.Create(&role).Error; err != nil {
-		t.Fatal(err)
-	}
-
-	// Permissões inexistentes
-	payload := map[string]interface{}{
-		"permissions": []int{99999},
-	}
-	body, _ := json.Marshal(payload)
-
-	router := gin.New()
-	router.PUT("/roles/:roleId", func(c *gin.Context) {
-		c.Set("tenantId", tenantA.String())
-		c.Set("db", db) // Injetar DB no contexto para getDB(c)
-		controller.Update(c)
-	})
-
-	req := httptest.NewRequest(http.MethodPut, "/roles/"+strconv.Itoa(role.ID), bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	res := httptest.NewRecorder()
-	router.ServeHTTP(res, req)
-
-	if res.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 Bad Request for non-existent permission, got %d: %s", res.Code, res.Body.String())
-	}
 }
 
 // TestVersionController_GetVersion testa o endpoint de versão básico (mocked).
@@ -329,45 +147,45 @@ func TestSwaggerController_SwaggerJSON_AccessDenied(t *testing.T) {
 	}
 }
 
-// TestSwaggerController_HasSwaggerGroupPermission_SameTenant testa permissão swagger legítima.
-func TestSwaggerController_HasSwaggerGroupPermission_SameTenant(t *testing.T) {
+// TestSwaggerController_HasSwaggerCargoPermission_SameTenant testa permissão swagger legítima via Cargo.
+func TestSwaggerController_HasSwaggerCargoPermission_SameTenant(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupGroupTestDB(t)
 	controller := NewSwaggerController(&sqliteSwaggerPermRepo{db})
 
 	tenant := uuid.New()
 
-	// Seed: grupo
-	group := models.Group{Name: "SwaggerUsers", TenantID: tenant}
-	if err := db.Create(&group).Error; err != nil {
+	// Seed: cargo
+	cargo := models.Cargo{Name: "SwaggerUsers", TenantID: tenant}
+	if err := db.Create(&cargo).Error; err != nil {
 		t.Fatal(err)
 	}
 
 	// Seed: permissão swagger
-	perm := models.Permission{Resource: "view", Action: "swagger", Description: "Allow Swagger Access"}
+	perm := models.Permission{Resource: "swagger", Action: "view", Description: "Allow Swagger Access"}
 	if err := db.Create(&perm).Error; err != nil {
 		t.Fatal(err)
 	}
 
-	// Seed: associação grupo-permissão
-	if err := db.Exec("INSERT INTO group_permissions (group_id, permission_id) VALUES (?, ?)", group.ID, perm.ID).Error; err != nil {
+	// Seed: associação cargo-permissão
+	if err := db.Exec(`INSERT INTO cargo_permissoes ("cargoId", "permissionId") VALUES (?, ?)`, cargo.ID, perm.ID).Error; err != nil {
 		t.Fatal(err)
 	}
 
-	// Seed: usuário neste grupo
-	user := models.User{Name: "testuser", Email: "test@example.com", PasswordHash: "x", GroupID: &group.ID, TenantID: tenant}
+	// Seed: usuário com este cargo
+	user := models.User{Name: "testuser", Email: "test@example.com", PasswordHash: "x", CargoID: &cargo.ID, TenantID: tenant}
 	if err := db.Create(&user).Error; err != nil {
 		t.Fatal(err)
 	}
 
-	hasAccess := controller.hasSwaggerGroupPermission(user.ID, tenant.String())
+	hasAccess := controller.hasSwaggerCargoPermission(user.ID, tenant.String())
 	if !hasAccess {
 		t.Fatal("expected true for user with valid swagger permission")
 	}
 }
 
-// TestSwaggerController_HasSwaggerGroupPermission_CrossTenant testa falha de permissão cross-tenant.
-func TestSwaggerController_HasSwaggerGroupPermission_CrossTenant(t *testing.T) {
+// TestSwaggerController_HasSwaggerCargoPermission_CrossTenant testa falha de permissão cross-tenant.
+func TestSwaggerController_HasSwaggerCargoPermission_CrossTenant(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupGroupTestDB(t)
 	controller := NewSwaggerController(&sqliteSwaggerPermRepo{db})
@@ -375,31 +193,31 @@ func TestSwaggerController_HasSwaggerGroupPermission_CrossTenant(t *testing.T) {
 	tenantA := uuid.New()
 	tenantB := uuid.New()
 
-	// Seed: grupo em tenant A
-	groupA := models.Group{Name: "UsersA", TenantID: tenantA}
-	if err := db.Create(&groupA).Error; err != nil {
+	// Seed: cargo em tenant A
+	cargoA := models.Cargo{Name: "UsersA", TenantID: tenantA}
+	if err := db.Create(&cargoA).Error; err != nil {
 		t.Fatal(err)
 	}
 
 	// Seed: permissão swagger (global)
-	perm := models.Permission{Resource: "view", Action: "swagger", Description: "Allow Swagger Access"}
+	perm := models.Permission{Resource: "swagger", Action: "view", Description: "Allow Swagger Access"}
 	if err := db.Create(&perm).Error; err != nil {
 		t.Fatal(err)
 	}
 
-	// Seed: associação grupoA-permissão
-	if err := db.Exec("INSERT INTO group_permissions (group_id, permission_id) VALUES (?, ?)", groupA.ID, perm.ID).Error; err != nil {
+	// Seed: associação cargoA-permissão
+	if err := db.Exec(`INSERT INTO cargo_permissoes ("cargoId", "permissionId") VALUES (?, ?)`, cargoA.ID, perm.ID).Error; err != nil {
 		t.Fatal(err)
 	}
 
 	// Seed: usuário em tenant A
-	userA := models.User{Name: "userA", Email: "a@example.com", PasswordHash: "x", GroupID: &groupA.ID, TenantID: tenantA}
+	userA := models.User{Name: "userA", Email: "a@example.com", PasswordHash: "x", CargoID: &cargoA.ID, TenantID: tenantA}
 	if err := db.Create(&userA).Error; err != nil {
 		t.Fatal(err)
 	}
 
 	// Ataque: usuário tenta acessar permissão de outro tenant (B)
-	hasAccess := controller.hasSwaggerGroupPermission(userA.ID, tenantB.String())
+	hasAccess := controller.hasSwaggerCargoPermission(userA.ID, tenantB.String())
 	if hasAccess {
 		t.Fatal("expected false for user accessing cross-tenant swagger permission")
 	}

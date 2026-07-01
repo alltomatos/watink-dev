@@ -24,7 +24,7 @@ func NewGORMUserRepo(db *gorm.DB) *GORMUserRepository {
 }
 
 // FindByID returns the user with the given id under tenantID, or nil if not found.
-// Effective permissions (user + group) are populated so the refresh path keeps
+// Effective permissions (Cargo) are populated so the refresh path keeps
 // the frontend Can gate working across token refreshes.
 func (r *GORMUserRepository) FindByID(ctx context.Context, id int, tenantID uuid.UUID) (*domain.User, error) {
 	var m models.User
@@ -38,17 +38,16 @@ func (r *GORMUserRepository) FindByID(ctx context.Context, id int, tenantID uuid
 		return nil, err
 	}
 	du := userModelToDomain(&m)
-	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.GroupID)
+	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.CargoID, m.TenantID)
 	return du, nil
 }
 
-// FindByIDDetail returns the user with relations (Queues, Permissions, Roles) loaded.
+// FindByIDDetail returns the user with relations (Queues, Cargo.Permissions) loaded.
 // Usado no endpoint de detalhe enriquecido.
 func (r *GORMUserRepository) FindByIDDetail(ctx context.Context, id int, tenantID uuid.UUID) (*models.User, error) {
 	var m models.User
 	err := r.db.WithContext(ctx).
-		Preload("Permissions").
-		Preload("Roles").
+		Preload("Cargo").
 		Where("id = ? AND \"tenantId\" = ?", id, tenantID).
 		First(&m).Error
 	if err != nil {
@@ -56,6 +55,12 @@ func (r *GORMUserRepository) FindByIDDetail(ctx context.Context, id int, tenantI
 			return nil, nil
 		}
 		return nil, err
+	}
+	if m.CargoID != nil {
+		perms, permErr := loadCargoPermissions(ctx, r.db, *m.CargoID)
+		if permErr == nil {
+			m.Cargo.Permissions = perms
+		}
 	}
 	return &m, nil
 }
@@ -76,7 +81,7 @@ func (r *GORMUserRepository) FindByEmail(ctx context.Context, email string, tena
 }
 
 // FindByEmailForAuth returns the user by email across all tenants (login use only),
-// with effective permissions (user + group) populated for the frontend Can gate.
+// with effective permissions (Cargo) populated for the frontend Can gate.
 func (r *GORMUserRepository) FindByEmailForAuth(ctx context.Context, email string) (*domain.User, error) {
 	var m models.User
 	err := r.db.WithContext(ctx).
@@ -90,35 +95,63 @@ func (r *GORMUserRepository) FindByEmailForAuth(ctx context.Context, email strin
 		return nil, err
 	}
 	du := userModelToDomain(&m)
-	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.GroupID)
+	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.CargoID, m.TenantID)
 	return du, nil
 }
 
+// loadCargoPermissions loads a Cargo's Permissions via an explicit JOIN
+// against cargo_permissoes (camelCase columns cargoId/permissionId). Not done
+// via GORM's many2many Association()/Preload: that API resolves join-table
+// column names independently of the explicit CargoPermissao struct and falls
+// back to snake_case conventions, causing a runtime mismatch even though the
+// table itself was created with the correct (camelCase) columns.
+func loadCargoPermissions(ctx context.Context, db *gorm.DB, cargoID int) ([]models.Permission, error) {
+	var perms []models.Permission
+	err := db.WithContext(ctx).
+		Table(`"Permissions"`).
+		Joins(`JOIN cargo_permissoes ON cargo_permissoes."permissionId" = "Permissions".id`).
+		Where(`cargo_permissoes."cargoId" = ?`, cargoID).
+		Find(&perms).Error
+	return perms, err
+}
+
 // effectivePermissionNames aggregates a user's EFFECTIVE permission names
-// ("resource:action") from two sources: the user's direct grants
-// (user_permissions) and their group's grants (group_permissions — the path the
-// tenant seed uses). Uses GORM associations so the join-table column naming
-// (joinForeignKey:groupId/permissionId) is resolved from the model tags, never
-// hardcoded. Best-effort: a load error yields fewer names, never an auth failure.
-func (r *GORMUserRepository) effectivePermissionNames(ctx context.Context, userID int, groupID *int) []string {
+// ("resource:action") from their Cargo's grants (cargo_permissoes — ADR 0022),
+// PLUS the Gestor package when the user is marked ehGestor=true in ANY
+// user_setores row.
+//
+// The Gestor package is NOT "the user's CargoID equals the Gestor Cargo" —
+// that would conflate Cargo (what the user does) with the ehGestor mark
+// (where they manage). Instead: if user_setores has any row with
+// ehGestor=true for this user, we look up the Cargo literally named "Gestor"
+// within the same tenant and union its Permissions in. A user whose base
+// Cargo is "Atendente" but who is marked ehGestor of "Vendas" still gets the
+// Gestor package — scoped in practice by Alcance (RequirePermission +
+// GetScopedDB), not by this name-based lookup.
+//
+// If the tenant has no Cargo literally named "Gestor" (future customization
+// removed/renamed it), this simply contributes nothing extra — it does not
+// create one and does not fail.
+//
+// Best-effort throughout: a load error yields fewer names, never an auth
+// failure.
+func (r *GORMUserRepository) effectivePermissionNames(ctx context.Context, userID int, cargoID *int, tenantID uuid.UUID) []string {
 	set := make(map[string]struct{})
 
-	var userPerms []models.Permission
-	if err := r.db.WithContext(ctx).
-		Model(&models.User{ID: userID}).
-		Association("Permissions").Find(&userPerms); err == nil {
-		for i := range userPerms {
-			set[userPerms[i].GetName()] = struct{}{}
+	if cargoID != nil {
+		if perms, err := loadCargoPermissions(ctx, r.db, *cargoID); err == nil {
+			for i := range perms {
+				set[perms[i].GetName()] = struct{}{}
+			}
 		}
 	}
 
-	if groupID != nil {
-		var g models.Group
-		if err := r.db.WithContext(ctx).
-			Preload("Permissions").
-			First(&g, *groupID).Error; err == nil {
-			for i := range g.Permissions {
-				set[g.Permissions[i].GetName()] = struct{}{}
+	if isGestorOfAnySetor(ctx, r.db, userID) {
+		if gestorCargoID, ok := findGestorCargoID(ctx, r.db, tenantID); ok {
+			if perms, err := loadCargoPermissions(ctx, r.db, gestorCargoID); err == nil {
+				for i := range perms {
+					set[perms[i].GetName()] = struct{}{}
+				}
 			}
 		}
 	}
@@ -128,6 +161,32 @@ func (r *GORMUserRepository) effectivePermissionNames(ctx context.Context, userI
 		names = append(names, n)
 	}
 	return names
+}
+
+// isGestorOfAnySetor reports whether userID has at least one user_setores
+// row with ehGestor=true. Best-effort: any query error is treated as "not a
+// gestor" (fail-closed on the extra grant, never on the base Cargo grant).
+func isGestorOfAnySetor(ctx context.Context, db *gorm.DB, userID int) bool {
+	var count int64
+	err := db.WithContext(ctx).
+		Model(&models.UserSetor{}).
+		Where(`"userId" = ? AND "ehGestor" = true`, userID).
+		Count(&count).Error
+	return err == nil && count > 0
+}
+
+// findGestorCargoID looks up the Cargo literally named "Gestor" within
+// tenantID. Returns ok=false (not an error) when the tenant has no such
+// Cargo — a customized/renamed tenant simply gets no extra Gestor package.
+func findGestorCargoID(ctx context.Context, db *gorm.DB, tenantID uuid.UUID) (int, bool) {
+	var cargo models.Cargo
+	err := db.WithContext(ctx).
+		Where(`"name" = ? AND "tenantId" = ?`, "Gestor", tenantID).
+		First(&cargo).Error
+	if err != nil {
+		return 0, false
+	}
+	return cargo.ID, true
 }
 
 // FindAll returns all users under tenantID.
@@ -188,10 +247,10 @@ func userModelToDomain(m *models.User) *domain.User {
 		Email:        m.Email,
 		PasswordHash: m.PasswordHash,
 		TokenVersion: m.TokenVersion,
-		Profile:      m.Profile,
 		WhatsappID:   m.WhatsappID,
 		TenantID:     m.TenantID,
-		GroupID:      m.GroupID,
+		CargoID:      m.CargoID,
+		Alcance:      m.Alcance,
 		Configs:      m.Configs,
 		CreatedAt:    m.CreatedAt,
 		UpdatedAt:    m.UpdatedAt,
@@ -205,10 +264,10 @@ func userDomainToModel(d *domain.User) *models.User {
 		Email:        d.Email,
 		PasswordHash: d.PasswordHash,
 		TokenVersion: d.TokenVersion,
-		Profile:      d.Profile,
 		WhatsappID:   d.WhatsappID,
 		TenantID:     d.TenantID,
-		GroupID:      d.GroupID,
+		CargoID:      d.CargoID,
+		Alcance:      d.Alcance,
 		Configs:      d.Configs,
 		CreatedAt:    d.CreatedAt,
 		UpdatedAt:    d.UpdatedAt,

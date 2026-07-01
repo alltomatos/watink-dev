@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Kanban,
   MessageSquare,
-  Users,
   Contact,
   GitMerge,
   MessageCircle,
@@ -209,22 +208,8 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed, isLightSidebar, acti
         perform="users:read"
         yes={() => (
           <SidebarItem
-            to="/users"
-            label={i18n.t("mainDrawer.listItems.users")}
-            icon={<Users size={20} />}
-            collapsed={collapsed}
-            activeColor="var(--nav-icon-blue)"
-          />
-        )}
-      />
-
-      <Can
-        user={user}
-        perform="roles:read"
-        yes={() => (
-          <SidebarItem
-            to="/access"
-            label="Acesso e Permissões"
+            to="/acessos"
+            label="Acessos"
             icon={<Shield size={20} />}
             collapsed={collapsed}
             activeColor="var(--nav-icon-red)"

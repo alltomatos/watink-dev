@@ -23,15 +23,15 @@ func (r *GORMSwaggerPermissionRepository) HasSwaggerPermission(userID int, tenan
 	}
 
 	var user models.User
-	if err := r.db.Where("id = ? AND \"tenantId\" = ?", userID, tenantID).First(&user).Error; err != nil || user.GroupID == nil {
+	if err := r.db.Where("id = ? AND \"tenantId\" = ?", userID, tenantID).First(&user).Error; err != nil || user.CargoID == nil {
 		return false, nil
 	}
 
 	var count int64
-	r.db.Table("group_permissions AS gp").
-		Joins("JOIN \"Permissions\" p ON p.id = gp.permission_id").
-		Where("gp.group_id = ? AND ((p.resource = ? AND p.action = ?) OR (p.resource = ? AND p.action = ?))",
-			*user.GroupID, "view", "swagger", "view_swagger", "allow").
+	r.db.Table("cargo_permissoes AS cp").
+		Joins(`JOIN "Permissions" p ON p.id = cp."permissionId"`).
+		Where(`cp."cargoId" = ? AND p.resource = ? AND p.action = ?`,
+			*user.CargoID, "swagger", "view").
 		Count(&count)
 
 	return count > 0, nil

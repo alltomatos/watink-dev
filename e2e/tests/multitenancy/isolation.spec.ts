@@ -13,7 +13,7 @@ async function setupSecondTenant(name: string, email: string, password: string) 
   const { needsSetup } = await check.json();
   if (needsSetup) {
     await anon.post("initial-setup", {
-      data: { firstName: name, lastName: "Tenant", email, password },
+      data: { companyName: name, firstName: name, lastName: "Tenant", email, password },
     });
   }
   await anon.dispose();

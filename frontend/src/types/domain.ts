@@ -86,46 +86,35 @@ export interface ConnectionGroup {
   connectionCount?: number;
 }
 
-/** Minimal group record returned by GET /groups */
-export interface Group {
-  id: number;
-  name: string;
-}
-
-/** Minimal role record returned by GET /roles */
-export interface Role {
-  id: number;
-  name: string;
-}
-
 /** Minimal queue stub embedded in user API responses */
 export interface UserQueue {
   id: number;
   name: string;
 }
 
-/** Full user record returned by GET /users/:id */
+/** Full user record returned by GET /users/:id (ver ShowUser em user.go) */
 export interface UserDetail {
   id: number;
   name: string;
   email: string;
   password?: string;
   whatsappId?: number | null;
-  groupIds?: number[];
-  groups?: Group[];
-  roles?: Role[];
+  cargoId?: number | null;
+  alcance?: string;
   queues?: UserQueue[];
+  cargo?: { id: number; name: string };
 }
 
-/** Payload sent to POST /users and PUT /users/:id */
+/**
+ * Payload de POST /users e PUT /users/:id (ver createUserRequest em
+ * user_mutation.go — ADR 0022, RBAC Cargo/Setor/Alcance). "queueIds"/"roleIds"/
+ * "groupIds" legados (Group/Role) não existem mais neste contrato.
+ */
 export interface UserSavePayload {
   name: string;
   email: string;
   password?: string;
   whatsappId: number | null;
-  queueIds: number[];
-  roleIds: number[];
-  groupIds: number[];
 }
 
 export interface PipelineStage {
