@@ -267,6 +267,7 @@ jobs:
 
           base = os.environ["SMOKE_BASE_URL"]
           payload = {
+              "companyName": "Watink Smoke Test",
               "firstName": "Admin",
               "lastName": "Test",
               "email": os.environ["SMOKE_EMAIL"],
