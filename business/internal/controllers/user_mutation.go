@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,6 +11,8 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // @Summary      Criar usuário
@@ -20,18 +23,58 @@ import (
 // @Success      200   {object}  map[string]interface{}
 // @Security     BearerAuth
 // @Router       /users [post]
+type setorVinculo struct {
+	SetorID  int  `json:"setorId"`
+	EhGestor bool `json:"ehGestor"`
+}
+
 type createUserRequest struct {
-	Name       string `json:"name" binding:"required"`
-	Email      string `json:"email" binding:"required,email"`
-	Password   string `json:"password" binding:"required"`
-	Alcance    string `json:"alcance"`
-	WhatsappID *int   `json:"whatsappId"`
-	CargoID    *int   `json:"cargoId"`
-	Configs    string `json:"configs"`
+	Name       string         `json:"name" binding:"required"`
+	Email      string         `json:"email" binding:"required,email"`
+	Password   string         `json:"password" binding:"required"`
+	Alcance    string         `json:"alcance"`
+	WhatsappID *int           `json:"whatsappId"`
+	CargoID    *int           `json:"cargoId"`
+	Configs    string         `json:"configs"`
+	Setores    []setorVinculo `json:"setores"`
+}
+
+// replaceUserSetores aplica o conjunto de vínculos de Setor de um usuário
+// (replace, não merge): apaga os vínculos antigos e insere os novos dentro de
+// uma transação. Valida que todos os setorId pertencem ao tenant ANTES de
+// aplicar qualquer mudança (all-or-nothing).
+func replaceUserSetores(db *gorm.DB, userID int, tenantID uuid.UUID, vinculos []setorVinculo) error {
+	if vinculos == nil {
+		return nil
+	}
+	setorIDs := make([]int, len(vinculos))
+	for i, v := range vinculos {
+		setorIDs[i] = v.SetorID
+	}
+	if len(setorIDs) > 0 {
+		var count int64
+		db.Session(&gorm.Session{NewDB: true}).Model(&models.Setor{}).
+			Where(`id IN ? AND "tenantId" = ?`, setorIDs, tenantID).
+			Count(&count)
+		if int(count) != len(uniqueInts(setorIDs)) {
+			return fmt.Errorf("um ou mais setorId não pertencem a este tenant")
+		}
+	}
+	return db.Session(&gorm.Session{NewDB: true}).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where(`"userId" = ?`, userID).Delete(&models.UserSetor{}).Error; err != nil {
+			return err
+		}
+		for _, v := range vinculos {
+			if err := tx.Create(&models.UserSetor{UserID: userID, SetorID: v.SetorID, EhGestor: v.EhGestor}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (uc *UserController) CreateUser(c *gin.Context) {
-	_, tenantID, ok := auth.GetScoped(c, "Users")
+	db, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
 		return
 	}
@@ -96,6 +139,11 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		return
 	}
 
+	if err := replaceUserSetores(db, domainUser.ID, tenantID, req.Setores); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, domainUser)
 }
 
@@ -109,7 +157,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /users/{userId} [put]
 func (uc *UserController) UpdateUser(c *gin.Context) {
-	_, tenantID, ok := auth.GetScoped(c, "Users")
+	db, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
 		return
 	}
@@ -181,11 +229,51 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 		}
 	}
 	if v, ok := req["cargoId"]; ok {
-		if v == "" || v == nil {
+		var newCargoID *int
+		if v != "" && v != nil {
+			n := int(formatInt(v))
+			newCargoID = &n
+		}
+
+		// Anti-lockout (ADR 0022): o dono do tenant e o último Administrador só
+		// podem trocar para outro Cargo "Administrador" — nunca para um cargo
+		// diferente, o que os rebaixaria e travaria a organização.
+		if isTenantOwner(db, id, tenantID) || isLastAdminOfTenant(db, id, tenantID) {
+			if !isCargoAdministrador(db, newCargoID, tenantID) {
+				c.JSON(http.StatusConflict, gin.H{"error": "não é possível trocar o cargo do dono/último Administrador do tenant para um cargo que não seja Administrador"})
+				return
+			}
+		}
+
+		if newCargoID == nil {
 			updateMap["cargoId"] = nil
 		} else {
-			s := formatInt(v)
-			updateMap["cargoId"] = s
+			updateMap["cargoId"] = *newCargoID
+		}
+	}
+
+	if v, ok := req["setores"]; ok {
+		raw, isSlice := v.([]interface{})
+		if !isSlice {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "field 'setores' must be an array"})
+			return
+		}
+		vinculos := make([]setorVinculo, 0, len(raw))
+		for _, item := range raw {
+			m, isMap := item.(map[string]interface{})
+			if !isMap {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "each item in 'setores' must be an object {setorId, ehGestor}"})
+				return
+			}
+			vinculo := setorVinculo{SetorID: int(formatInt(m["setorId"]))}
+			if eg, ok := m["ehGestor"].(bool); ok {
+				vinculo.EhGestor = eg
+			}
+			vinculos = append(vinculos, vinculo)
+		}
+		if err := replaceUserSetores(db, id, tenantID, vinculos); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
 		}
 	}
 

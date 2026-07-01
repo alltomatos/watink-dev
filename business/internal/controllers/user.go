@@ -116,11 +116,22 @@ func (uc *UserController) ShowUser(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /users/{userId} [delete]
 func (uc *UserController) DeleteUser(c *gin.Context) {
-	_, tenantID, ok := auth.GetScoped(c, "Users")
+	db, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
 		return
 	}
 	id, _ := strconv.Atoi(c.Param("userId"))
+
+	// Anti-lockout (ADR 0022): nem o dono do tenant nem o último Administrador
+	// podem ser excluídos — travaria a organização inteira pra fora do sistema.
+	if isTenantOwner(db, id, tenantID) {
+		c.JSON(http.StatusConflict, gin.H{"error": "não é possível excluir o dono do tenant"})
+		return
+	}
+	if isLastAdminOfTenant(db, id, tenantID) {
+		c.JSON(http.StatusConflict, gin.H{"error": "não é possível excluir o último Administrador do tenant"})
+		return
+	}
 
 	if err := uc.userRepo.Delete(c.Request.Context(), id, tenantID); err != nil {
 		utils.RespondWithInternalError(c, err, "DeleteUser")
