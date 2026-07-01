@@ -528,20 +528,8 @@ func (sc *SetorController) SetQueues(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"setorId": setorID, "queueIds": uniqueInts(in.QueueIDs)})
 }
 
-// uniqueInts dedups a slice of ints preserving first-seen order — evita
-// contagem de validação divergente da inserção quando o payload tem
-// duplicatas, e evita erro de PK duplicada no insert em lote.
-func uniqueInts(in []int) []int {
-	seen := make(map[int]bool, len(in))
-	out := make([]int, 0, len(in))
-	for _, v := range in {
-		if !seen[v] {
-			seen[v] = true
-			out = append(out, v)
-		}
-	}
-	return out
-}
+// uniqueInts is defined in cargo.go (identical dedup helper needed by both
+// controllers) — reused here to avoid a duplicate declaration in the package.
 
 // ============================================================================
 // ROTAS A REGISTRAR (NÃO editado neste PR — registrar depois em
