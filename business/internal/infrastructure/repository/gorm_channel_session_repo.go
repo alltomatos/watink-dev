@@ -72,10 +72,20 @@ func (r *GORMChannelSessionRepository) FindAll(ctx context.Context, tenantID uui
 	return sessions, nil
 }
 
-// Create inserts a new channel session record.
+// Create inserts a new channel session record. channelSessionDomainToModel
+// builds a NEW *models.Whatsapp, so the DB-generated ID/timestamps land on that
+// struct, not on the caller's session. É obrigatório copiar de volta para o
+// session do caller, senão CreateWhatsapp usa `input` como corpo da resposta
+// HTTP e o JSON sai com ID=0.
 func (r *GORMChannelSessionRepository) Create(ctx context.Context, session *domain.ChannelSession) error {
 	m := channelSessionDomainToModel(session)
-	return r.db.WithContext(ctx).Create(m).Error
+	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
+		return err
+	}
+	session.ID = m.ID
+	session.CreatedAt = m.CreatedAt
+	session.UpdatedAt = m.UpdatedAt
+	return nil
 }
 
 // Update applies a partial update on the session identified by session.ID + session.TenantID.
@@ -165,6 +175,7 @@ func whatsappModelToDomain(m *models.Whatsapp) *domain.ChannelSession {
 		ProxyID:           m.ProxyID,
 		ProxyGroupID:      m.ProxyGroupID,
 		ConnectionGroupID: m.ConnectionGroupID,
+		Wid:               m.Wid,
 	}
 }
 
@@ -196,5 +207,6 @@ func channelSessionDomainToModel(d *domain.ChannelSession) *models.Whatsapp {
 		ProxyID:           d.ProxyID,
 		ProxyGroupID:      d.ProxyGroupID,
 		ConnectionGroupID: d.ConnectionGroupID,
+		Wid:               d.Wid,
 	}
 }

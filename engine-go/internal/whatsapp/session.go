@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -56,18 +55,23 @@ func (s *WhatsAppService) StartClient(id int, tenantID, name string, timestamp i
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 
 	if proxyURL != "" {
-		if u, parseErr := url.Parse(proxyURL); parseErr == nil {
-			client.SetProxy(func(_ *http.Request) (*url.URL, error) { return u, nil })
-			// NUNCA logar a URL completa — o userinfo (user:senha) é secreto.
-			// Loga só scheme://host:port, sem credenciais.
-			log.Printf("Proxy configured for session %d: %s://%s", id, u.Scheme, u.Host)
-		} else {
-			// Fail-loud: proxy informado mas inválido. Não conectar silenciosamente
-			// sem proxy (vazaria o IP real). O business valida antes; o client novo
-			// ainda não foi registrado em s.clients, então basta retornar.
-			log.Printf("Proxy URL inválida para session %d — abortando start para evitar vazamento de IP", id)
+		// Parse local PRIMEIRO: serve ao log redigido E garante que um erro nunca
+		// exponha a URL crua (que tem user:senha). NUNCA logar/propagar o err do
+		// SetProxyAddress — o *url.Error do net/url inclui a URL crua.
+		u, perr := url.Parse(proxyURL)
+		if perr != nil || u.Host == "" {
+			log.Printf("Proxy inválido para session %d (parse) — abortando start para evitar vazamento de IP", id)
 			return fmt.Errorf("invalid proxy URL for session %d", id)
 		}
+		// SetProxyAddress (não SetProxy) — despacha socks5:// ao dialer SOCKS, de
+		// modo que o WEBSOCKET de controle também roteie pelo proxy (senão vaza o
+		// IP real). http/https vão para o http.Transport. Ver ADR 0021.
+		if err := client.SetProxyAddress(proxyURL); err != nil {
+			// NÃO incluir err (pode conter a URL crua) — só scheme://host redigido.
+			log.Printf("Proxy rejeitado para session %d (%s://%s) — abortando start", id, u.Scheme, u.Host)
+			return fmt.Errorf("proxy rejected for session %d (scheme %s)", id, u.Scheme)
+		}
+		log.Printf("Proxy configured for session %d: %s://%s", id, u.Scheme, u.Host)
 	}
 
 	// Preserve any previously-registered client so a transient start failure
@@ -128,7 +132,11 @@ func (s *WhatsAppService) StartClient(id int, tenantID, name string, timestamp i
 	} else {
 		log.Printf("Reconnected session %d", id)
 		if client.IsLoggedIn() {
-			s.emitStatus(id, tenantID, "CONNECTED")
+			// emitConnected (não emitStatus) — reusa o mesmo enriquecimento do
+			// primeiro login (número + foto de perfil via GetProfilePictureInfo).
+			// Sem isso, toda RECONEXÃO (Parar+Iniciar) deixava number/profilePicUrl
+			// intocados no banco, mesmo a sessão estando saudável.
+			s.emitConnected(client, id, tenantID)
 		} else {
 			log.Printf("Session %d has device ID but is not logged in — requesting QR", id)
 			qrChan, err = client.GetQRChannel(context.Background())
