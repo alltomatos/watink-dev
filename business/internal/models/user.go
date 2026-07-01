@@ -14,19 +14,18 @@ type User struct {
 	Email        string    `gorm:"unique;not null" json:"email"`
 	PasswordHash string    `gorm:"column:passwordHash;not null" json:"-"`
 	TokenVersion int       `gorm:"column:tokenVersion;default:0" json:"tokenVersion"`
-	Profile      string    `gorm:"default:'admin'" json:"profile"`
 	WhatsappID   *int      `gorm:"column:whatsappId" json:"whatsappId"`
 	TenantID     uuid.UUID `gorm:"column:tenantId;type:uuid" json:"tenantId"`
-	GroupID      *int      `gorm:"column:groupId" json:"groupId"`
+	CargoID      *int      `gorm:"column:cargoId" json:"cargoId"`
+	Alcance      string    `gorm:"column:alcance;default:'proprio'" json:"alcance"`
 	Configs      string    `gorm:"type:json;default:'{}'" json:"configs"`
 	CreatedAt    time.Time `gorm:"column:createdAt" json:"createdAt"`
 	UpdatedAt    time.Time `gorm:"column:updatedAt" json:"updatedAt"`
 
 	// Relations
-	Tenant      Tenant       `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
-	Queues      []Queue      `gorm:"many2many:user_queues;joinForeignKey:userId;joinReferences:queueId" json:"queues,omitempty"`
-	Permissions []Permission `gorm:"many2many:user_permissions;" json:"permissions,omitempty"`
-	Roles       []Role       `gorm:"many2many:user_roles;" json:"roles,omitempty"`
+	Tenant Tenant  `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
+	Queues []Queue `gorm:"many2many:user_queues;joinForeignKey:userId;joinReferences:queueId" json:"queues,omitempty"`
+	Cargo  Cargo   `gorm:"foreignKey:CargoID" json:"cargo,omitempty"`
 }
 
 func (User) TableName() string {

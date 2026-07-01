@@ -27,7 +27,7 @@ func newTicketListContext(t *testing.T, db *gorm.DB, tenantID uuid.UUID, method,
 	req, _ := http.NewRequest(method, path, nil)
 	c.Request = req
 	c.Set("tenantId", tenantID)
-	c.Set("userProfile", "admin")
+	c.Set("alcance", "tenant")
 	c.Set("userId", float64(1))
 	scoped := db.Where(`"tenantId" = ?`, tenantID)
 	c.Set("db", scoped)

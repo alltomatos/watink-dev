@@ -34,7 +34,7 @@ func extractToken(c *gin.Context) string {
 	return c.Query("token")
 }
 
-// parseUserFromToken valida JWT e extrai userID, profile, tenantID.
+// parseUserFromToken valida JWT e extrai userID, alcance, tenantID.
 // Função pura — sem acesso a DB ou estado global.
 func parseUserFromToken(tokenString string) (int, string, string, error) {
 	secret := os.Getenv("JWT_SECRET")
@@ -57,7 +57,7 @@ func parseUserFromToken(tokenString string) (int, string, string, error) {
 		return 0, "", "", fmt.Errorf("invalid token claims")
 	}
 
-	profile, _ := claims["profile"].(string)
+	alcance, _ := claims["alcance"].(string)
 	tenantID, _ := claims["tenantId"].(string)
 	userID := 0
 	switch v := claims["id"].(type) {
@@ -70,10 +70,10 @@ func parseUserFromToken(tokenString string) (int, string, string, error) {
 		userID = parsed
 	}
 
-	return userID, strings.ToLower(profile), tenantID, nil
+	return userID, strings.ToLower(alcance), tenantID, nil
 }
 
-func (sc *SwaggerController) hasSwaggerGroupPermission(userID int, tenantID string) bool {
+func (sc *SwaggerController) hasSwaggerCargoPermission(userID int, tenantID string) bool {
 	if userID <= 0 || tenantID == "" {
 		return false
 	}
@@ -99,13 +99,13 @@ func (sc *SwaggerController) ensureSwaggerAccess(c *gin.Context) bool {
 		return false
 	}
 
-	userID, profile, tenantID, err := parseUserFromToken(token)
+	userID, alcance, tenantID, err := parseUserFromToken(token)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 		return false
 	}
 
-	if profile == "superadmin" || sc.hasSwaggerGroupPermission(userID, tenantID) {
+	if alcance == "plataforma" || sc.hasSwaggerCargoPermission(userID, tenantID) {
 		return true
 	}
 

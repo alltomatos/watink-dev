@@ -26,7 +26,7 @@ func setupSaasTestDB(t *testing.T) *gorm.DB {
 // saas.go uses auth.GetDB(c) which reads c.Get("db") — no tenant scoping required.
 func injectSaasContext(c *gin.Context, db *gorm.DB) {
 	c.Set("db", db)
-	c.Set("userProfile", "superadmin")
+	c.Set("alcance", "plataforma")
 	c.Set("userId", float64(1))
 	// tenantId is not required by saas handlers (they are not tenant-scoped)
 }

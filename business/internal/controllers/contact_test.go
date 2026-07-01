@@ -17,12 +17,12 @@ import (
 	"gorm.io/gorm"
 )
 
-// testScopedMiddleware simula o middleware de autenticação injetando DB, tenantId e userProfile.
+// testScopedMiddleware simula o middleware de autenticação injetando DB, tenantId e alcance.
 func testScopedMiddleware(db *gorm.DB, tenantID string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set("db", db)
 		c.Set("tenantId", tenantID)
-		c.Set("userProfile", "admin")
+		c.Set("alcance", "tenant")
 		c.Set("userId", 1)
 		c.Next()
 	}

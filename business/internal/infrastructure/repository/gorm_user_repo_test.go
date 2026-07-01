@@ -46,14 +46,14 @@ func seedTwoTenantsUsers(t *testing.T, db *gorm.DB) (tenantA, tenantB uuid.UUID,
 		Name:         "Alice A",
 		Email:        "alice@tenant-a.com",
 		PasswordHash: "$2a$10$hash_alice",
-		Profile:      "admin",
+		Alcance:      "tenant",
 		TenantID:     tenantA,
 	}
 	userB = &models.User{
 		Name:         "Bob B",
 		Email:        "bob@tenant-b.com",
 		PasswordHash: "$2a$10$hash_bob",
-		Profile:      "agent",
+		Alcance:      "proprio",
 		TenantID:     tenantB,
 	}
 	require.NoError(t, db.Create(userA).Error)
@@ -193,11 +193,11 @@ func TestGORMUserRepo_FindByEmailForAuth_CrossTenant(t *testing.T) {
 	assert.Nil(t, notFound, "FindByEmailForAuth deveria retornar nil para email inexistente")
 }
 
-// TestGORMUserRepo_FindByEmailForAuth_ReturnsGroupPermissions verifica que o login
-// devolve as permissões EFETIVAS do usuário (vindas do grupo) — sem isso o frontend
-// Can (perform="flows:read") só passa pelo bypass admin/superadmin, e o item do
-// FlowBuilder nunca aparece para perfis não-admin.
-func TestGORMUserRepo_FindByEmailForAuth_ReturnsGroupPermissions(t *testing.T) {
+// TestGORMUserRepo_FindByEmailForAuth_ReturnsCargoPermissions verifica que o login
+// devolve as permissões EFETIVAS do usuário (vindas do Cargo) — sem isso o frontend
+// Can (perform="flows:read") nunca libera o item do FlowBuilder para quem não tem
+// alcance tenant/plataforma (ADR 0022).
+func TestGORMUserRepo_FindByEmailForAuth_ReturnsCargoPermissions(t *testing.T) {
 	db := setupUserTestDB(t)
 	repo := NewGORMUserRepo(db)
 	ctx := context.Background()
@@ -208,18 +208,19 @@ func TestGORMUserRepo_FindByEmailForAuth_ReturnsGroupPermissions(t *testing.T) {
 	perm := models.Permission{Resource: "flows", Action: "read"}
 	require.NoError(t, db.Create(&perm).Error)
 
-	group := models.Group{Name: "Admin", TenantID: tenantID}
-	require.NoError(t, db.Create(&group).Error)
-	require.NoError(t, db.Model(&group).Association("Permissions").Append(&perm))
+	cargo := models.Cargo{Name: "Atendente", TenantID: tenantID}
+	require.NoError(t, db.Create(&cargo).Error)
+	require.NoError(t, db.Model(&cargo).Association("Permissions").Append(&perm))
 
-	// Perfil NÃO-admin de propósito: força o caminho de permissão (não o bypass).
+	// Alcance "proprio" de propósito: força o caminho de permissão via Cargo
+	// (não o bypass de alcance tenant/plataforma).
 	user := &models.User{
 		Name:         "Carol",
 		Email:        "carol@tenant.com",
 		PasswordHash: "$2a$10$hash_carol",
-		Profile:      "agent",
+		Alcance:      "proprio",
 		TenantID:     tenantID,
-		GroupID:      &group.ID,
+		CargoID:      &cargo.ID,
 	}
 	require.NoError(t, db.Create(user).Error)
 
@@ -227,5 +228,5 @@ func TestGORMUserRepo_FindByEmailForAuth_ReturnsGroupPermissions(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	assert.Contains(t, got.Permissions, "flows:read",
-		"login deve retornar as permissões efetivas do grupo (flows:read) para o Can liberar o item")
+		"login deve retornar as permissões efetivas do Cargo (flows:read) para o Can liberar o item")
 }

@@ -24,7 +24,7 @@ func NewGORMUserRepo(db *gorm.DB) *GORMUserRepository {
 }
 
 // FindByID returns the user with the given id under tenantID, or nil if not found.
-// Effective permissions (user + group) are populated so the refresh path keeps
+// Effective permissions (Cargo) are populated so the refresh path keeps
 // the frontend Can gate working across token refreshes.
 func (r *GORMUserRepository) FindByID(ctx context.Context, id int, tenantID uuid.UUID) (*domain.User, error) {
 	var m models.User
@@ -38,17 +38,17 @@ func (r *GORMUserRepository) FindByID(ctx context.Context, id int, tenantID uuid
 		return nil, err
 	}
 	du := userModelToDomain(&m)
-	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.GroupID)
+	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.CargoID)
 	return du, nil
 }
 
-// FindByIDDetail returns the user with relations (Queues, Permissions, Roles) loaded.
+// FindByIDDetail returns the user with relations (Queues, Cargo.Permissions) loaded.
 // Usado no endpoint de detalhe enriquecido.
 func (r *GORMUserRepository) FindByIDDetail(ctx context.Context, id int, tenantID uuid.UUID) (*models.User, error) {
 	var m models.User
 	err := r.db.WithContext(ctx).
-		Preload("Permissions").
-		Preload("Roles").
+		Preload("Cargo").
+		Preload("Cargo.Permissions").
 		Where("id = ? AND \"tenantId\" = ?", id, tenantID).
 		First(&m).Error
 	if err != nil {
@@ -76,7 +76,7 @@ func (r *GORMUserRepository) FindByEmail(ctx context.Context, email string, tena
 }
 
 // FindByEmailForAuth returns the user by email across all tenants (login use only),
-// with effective permissions (user + group) populated for the frontend Can gate.
+// with effective permissions (Cargo) populated for the frontend Can gate.
 func (r *GORMUserRepository) FindByEmailForAuth(ctx context.Context, email string) (*domain.User, error) {
 	var m models.User
 	err := r.db.WithContext(ctx).
@@ -90,35 +90,28 @@ func (r *GORMUserRepository) FindByEmailForAuth(ctx context.Context, email strin
 		return nil, err
 	}
 	du := userModelToDomain(&m)
-	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.GroupID)
+	du.Permissions = r.effectivePermissionNames(ctx, m.ID, m.CargoID)
 	return du, nil
 }
 
 // effectivePermissionNames aggregates a user's EFFECTIVE permission names
-// ("resource:action") from two sources: the user's direct grants
-// (user_permissions) and their group's grants (group_permissions — the path the
-// tenant seed uses). Uses GORM associations so the join-table column naming
-// (joinForeignKey:groupId/permissionId) is resolved from the model tags, never
+// ("resource:action") from their Cargo's grants (cargo_permissoes — ADR 0022).
+// Uses GORM associations so the join-table column naming
+// (joinForeignKey:cargoId/permissionId) is resolved from the model tags, never
 // hardcoded. Best-effort: a load error yields fewer names, never an auth failure.
-func (r *GORMUserRepository) effectivePermissionNames(ctx context.Context, userID int, groupID *int) []string {
+//
+// TODO(GAP-2a): somar pacote de Gestor via user_setores.ehGestor, escopado por
+// Alcance (próprio|setor|tenant|plataforma) — ainda não implementado neste GAP.
+func (r *GORMUserRepository) effectivePermissionNames(ctx context.Context, userID int, cargoID *int) []string {
 	set := make(map[string]struct{})
 
-	var userPerms []models.Permission
-	if err := r.db.WithContext(ctx).
-		Model(&models.User{ID: userID}).
-		Association("Permissions").Find(&userPerms); err == nil {
-		for i := range userPerms {
-			set[userPerms[i].GetName()] = struct{}{}
-		}
-	}
-
-	if groupID != nil {
-		var g models.Group
+	if cargoID != nil {
+		var cargo models.Cargo
 		if err := r.db.WithContext(ctx).
 			Preload("Permissions").
-			First(&g, *groupID).Error; err == nil {
-			for i := range g.Permissions {
-				set[g.Permissions[i].GetName()] = struct{}{}
+			First(&cargo, *cargoID).Error; err == nil {
+			for i := range cargo.Permissions {
+				set[cargo.Permissions[i].GetName()] = struct{}{}
 			}
 		}
 	}
@@ -188,10 +181,10 @@ func userModelToDomain(m *models.User) *domain.User {
 		Email:        m.Email,
 		PasswordHash: m.PasswordHash,
 		TokenVersion: m.TokenVersion,
-		Profile:      m.Profile,
 		WhatsappID:   m.WhatsappID,
 		TenantID:     m.TenantID,
-		GroupID:      m.GroupID,
+		CargoID:      m.CargoID,
+		Alcance:      m.Alcance,
 		Configs:      m.Configs,
 		CreatedAt:    m.CreatedAt,
 		UpdatedAt:    m.UpdatedAt,
@@ -205,10 +198,10 @@ func userDomainToModel(d *domain.User) *models.User {
 		Email:        d.Email,
 		PasswordHash: d.PasswordHash,
 		TokenVersion: d.TokenVersion,
-		Profile:      d.Profile,
 		WhatsappID:   d.WhatsappID,
 		TenantID:     d.TenantID,
-		GroupID:      d.GroupID,
+		CargoID:      d.CargoID,
+		Alcance:      d.Alcance,
 		Configs:      d.Configs,
 		CreatedAt:    d.CreatedAt,
 		UpdatedAt:    d.UpdatedAt,

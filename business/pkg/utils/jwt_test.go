@@ -43,7 +43,7 @@ func TestGenerateAccessToken_ValidSecret_ReturnsToken(t *testing.T) {
 	tok, err := GenerateAccessToken(JWTClaims{
 		Name:     "alice",
 		ID:       42,
-		Profile:  "admin",
+		Alcance:  "tenant",
 		TenantID: tenantID,
 	})
 	if err != nil {

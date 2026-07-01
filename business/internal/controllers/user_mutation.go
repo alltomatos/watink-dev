@@ -24,9 +24,9 @@ type createUserRequest struct {
 	Name       string `json:"name" binding:"required"`
 	Email      string `json:"email" binding:"required,email"`
 	Password   string `json:"password" binding:"required"`
-	Profile    string `json:"profile"`
+	Alcance    string `json:"alcance"`
 	WhatsappID *int   `json:"whatsappId"`
-	GroupID    *int   `json:"groupId"`
+	CargoID    *int   `json:"cargoId"`
 	Configs    string `json:"configs"`
 }
 
@@ -55,7 +55,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if _, err := utils.ValidateStringField(req.Profile, "profile", 50); err != nil {
+	if _, err := utils.ValidateStringField(req.Alcance, "alcance", 50); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -70,9 +70,9 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		return
 	}
 
-	profile := req.Profile
-	if profile == "" {
-		profile = "user"
+	alcance := req.Alcance
+	if alcance == "" {
+		alcance = "proprio"
 	}
 
 	configs := req.Configs
@@ -85,9 +85,9 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		Email:        req.Email,
 		PasswordHash: tmp.PasswordHash,
 		TenantID:     tenantID,
-		Profile:      profile,
+		Alcance:      alcance,
 		WhatsappID:   req.WhatsappID,
-		GroupID:      req.GroupID,
+		CargoID:      req.CargoID,
 		Configs:      configs,
 	}
 
@@ -164,13 +164,13 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 		}
 		updateMap["email"] = email
 	}
-	if v, ok := req["profile"].(string); ok {
-		profile, err := utils.ValidateStringField(v, "profile", 50)
+	if v, ok := req["alcance"].(string); ok {
+		alcance, err := utils.ValidateStringField(v, "alcance", 50)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		updateMap["profile"] = profile
+		updateMap["alcance"] = alcance
 	}
 	if v, ok := req["whatsappId"]; ok {
 		if v == "" || v == nil {
@@ -180,12 +180,12 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 			updateMap["whatsappId"] = s
 		}
 	}
-	if v, ok := req["groupId"]; ok {
+	if v, ok := req["cargoId"]; ok {
 		if v == "" || v == nil {
-			updateMap["groupId"] = nil
+			updateMap["cargoId"] = nil
 		} else {
 			s := formatInt(v)
-			updateMap["groupId"] = s
+			updateMap["cargoId"] = s
 		}
 	}
 

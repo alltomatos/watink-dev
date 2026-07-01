@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +28,7 @@ func makeValidToken(t *testing.T, secret string, extra jwt.MapClaims) string {
 	claims := jwt.MapClaims{
 		"id":       "user-001",
 		"email":    "test@example.com",
-		"profile":  "admin",
+		"alcance":  "tenant",
 		"tenantId": uuid.New().String(),
 		"exp":      time.Now().Add(time.Hour).Unix(),
 	}
@@ -105,7 +105,7 @@ func TestIsAuth(t *testing.T) {
 		claims := jwt.MapClaims{
 			"id":       "user-001",
 			"email":    "test@example.com",
-			"profile":  "admin",
+			"alcance":  "tenant",
 			"tenantId": uuid.New().String(),
 			"exp":      time.Now().Add(-time.Hour).Unix(),
 		}
@@ -143,11 +143,11 @@ func TestIsAuth(t *testing.T) {
 		r.Use(IsAuth(db))
 		r.GET("/ping", func(c *gin.Context) {
 			userId, _ := c.Get("userId")
-			userProfile, _ := c.Get("userProfile")
+			alcance, _ := c.Get("alcance")
 			tid, _ := c.Get("tenantId")
 			dbVal, dbExists := c.Get("db")
 			assert.NotNil(t, userId)
-			assert.NotNil(t, userProfile)
+			assert.NotNil(t, alcance)
 			assert.Equal(t, tenantID, tid)
 			assert.True(t, dbExists)
 			assert.NotNil(t, dbVal)
@@ -168,11 +168,11 @@ func TestSuperAdminOnly_Middleware(t *testing.T) {
 	// Set up Gin with test mode
 	gin.SetMode(gin.TestMode)
 
-	// Test 1: SuperAdminOnly com perfil "superadmin" → deve permitir acesso
+	// Test 1: SuperAdminOnly com alcance "plataforma" → deve permitir acesso
 	t.Run("superadmin_success", func(t *testing.T) {
 		r := gin.New()
 		r.Use(func(c *gin.Context) {
-			c.Set("userProfile", "superadmin")
+			c.Set("alcance", "plataforma")
 		})
 		r.GET("/protected", SuperAdminOnly(), func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "access granted"})
@@ -186,11 +186,11 @@ func TestSuperAdminOnly_Middleware(t *testing.T) {
 		assert.Contains(t, w.Body.String(), "access granted")
 	})
 
-	// Test 2: SuperAdminOnly com perfil diferente → deve retornar 403
+	// Test 2: SuperAdminOnly com alcance diferente → deve retornar 403
 	t.Run("non_superadmin_forbidden", func(t *testing.T) {
 		r := gin.New()
 		r.Use(func(c *gin.Context) {
-			c.Set("userProfile", "admin")
+			c.Set("alcance", "tenant")
 		})
 		r.GET("/protected", SuperAdminOnly(), func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "access granted"})
@@ -204,11 +204,11 @@ func TestSuperAdminOnly_Middleware(t *testing.T) {
 		assert.Contains(t, w.Body.String(), "superadmin access required")
 	})
 
-	// Test 3: SuperAdminOnly com perfil não string → deve retornar 403
+	// Test 3: SuperAdminOnly com alcance não string → deve retornar 403
 	t.Run("invalid_profile_type_forbidden", func(t *testing.T) {
 		r := gin.New()
 		r.Use(func(c *gin.Context) {
-			c.Set("userProfile", 123)
+			c.Set("alcance", 123)
 		})
 		r.GET("/protected", SuperAdminOnly(), func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"message": "access granted"})
@@ -222,7 +222,7 @@ func TestSuperAdminOnly_Middleware(t *testing.T) {
 		assert.Contains(t, w.Body.String(), "superadmin access required")
 	})
 
-	// Test 4: SuperAdminOnly sem perfil definido → deve retornar 403
+	// Test 4: SuperAdminOnly sem alcance definido → deve retornar 403
 	t.Run("missing_profile_forbidden", func(t *testing.T) {
 		r := gin.New()
 		r.GET("/protected", SuperAdminOnly(), func(c *gin.Context) {

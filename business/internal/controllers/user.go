@@ -72,10 +72,10 @@ func (uc *UserController) ShowUser(c *gin.Context) {
 		"id":         userModel.ID,
 		"name":       userModel.Name,
 		"email":      userModel.Email,
-		"profile":    userModel.Profile,
+		"alcance":    userModel.Alcance,
 		"whatsappId": userModel.WhatsappID,
 		"tenantId":   userModel.TenantID,
-		"groupId":    userModel.GroupID,
+		"cargoId":    userModel.CargoID,
 		"configs":    userModel.Configs,
 		"createdAt":  userModel.CreatedAt,
 		"updatedAt":  userModel.UpdatedAt,
@@ -85,21 +85,24 @@ func (uc *UserController) ShowUser(c *gin.Context) {
 	if len(userModel.Queues) > 0 {
 		response["queues"] = userModel.Queues
 	}
-	if len(userModel.Permissions) > 0 {
-		permissions := make([]map[string]interface{}, len(userModel.Permissions))
-		for i, p := range userModel.Permissions {
-			permissions[i] = map[string]interface{}{
-				"id":          p.ID,
-				"name":        p.GetName(),
-				"resource":    p.Resource,
-				"action":      p.Action,
-				"description": p.Description,
-			}
+	if userModel.CargoID != nil {
+		response["cargo"] = map[string]interface{}{
+			"id":   userModel.Cargo.ID,
+			"name": userModel.Cargo.Name,
 		}
-		response["permissions"] = permissions
-	}
-	if len(userModel.Roles) > 0 {
-		response["roles"] = userModel.Roles
+		if len(userModel.Cargo.Permissions) > 0 {
+			permissions := make([]map[string]interface{}, len(userModel.Cargo.Permissions))
+			for i, p := range userModel.Cargo.Permissions {
+				permissions[i] = map[string]interface{}{
+					"id":          p.ID,
+					"name":        p.GetName(),
+					"resource":    p.Resource,
+					"action":      p.Action,
+					"description": p.Description,
+				}
+			}
+			response["permissions"] = permissions
+		}
 	}
 
 	c.JSON(http.StatusOK, response)
