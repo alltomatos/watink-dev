@@ -200,6 +200,13 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.GET("/knowledge-bases/:knowledgeBaseId/sources/:sourceId/chunks", kbInspectController.Chunks)
 		protected.POST("/knowledge-bases/:knowledgeBaseId/query", kbInspectController.Query)
 
+		// Self-service do próprio perfil — SEM RequirePermission: todo usuário
+		// autenticado edita o próprio nome/email/senha/whatsapp (o gate users:*
+		// é para administrar TERCEIROS). UpdateMe nunca aceita campos de RBAC
+		// (alcance/cargoId/setores) — ver user_me.go.
+		protected.GET("/me", userController.GetMe)
+		protected.PUT("/me", userController.UpdateMe)
+
 		// Users
 		protected.GET("/users", auth.RequirePermission("users", "read"), userController.ListUsers)
 		protected.GET("/users/", auth.RequirePermission("users", "read"), userController.ListUsers)

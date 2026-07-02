@@ -697,4 +697,99 @@ bloqueante para o Onboarding; sinalizado como tarefa separada
 - Commit + push das mudanças de GAP-A/B/C na branch
   `refactor/acessos-gap1-schema`.
 - Mesma decisão em aberto de antes: PR `refactor/acessos-gap1-schema` →
-  `develop` ainda não aberto.
+  `develop` ainda não aberto. **[RESOLVIDO]** PR #302 → develop (merge
+  fabf618f1) e release PR #303 develop → main (merge 1d9ca68d7). Branch
+  `refactor/acessos-gap1-schema` deletada (local + remota).
+
+---
+
+# DAG — Remediação de QA (pós-refatoração Acessos + Onboarding)
+
+**Origem:** [`docs/qa/plano-qa-pos-refatoracao-acessos-onboarding.md`](docs/qa/plano-qa-pos-refatoracao-acessos-onboarding.md)
+(auditoria adversarial multi-agente; 16 achados confirmados: 2 P1, 10 P2,
+4 P3 + 30 P3 prováveis). **Branch:** `fix/qa-acessos-onboarding` (de develop).
+**Diagnóstico (Fase 3) já pronto — orchestrator consome, não re-audita.**
+
+## Item externo (não duplicar)
+- **RLS-EXT** — bug RLS inerte `SET LOCAL app.current_tenant` em
+  `middleware/auth.go:74` — já rastreado em task separada (`task_10ab6677`).
+  Coordenar com T3.x (schema/perf), não recriar.
+
+## Onda 0 — P1 (bloqueia release; JÁ vivo em main) · TIER T3 · ✅ CONCLUÍDA (2026-07-02)
+- [x] **T0.1**: P1-1 — `UpdateUser`/`CreateUser` (`user_mutation.go`): enum
+  `alcance` validado; no-escalation (`alcanceRank`: ator nunca concede acima
+  do próprio); tenant-guard em `cargoId` via `cargoBelongsToTenant`
+  (Session NewDB). Funde P2-1 write-path. **Aprovado pelo dono (gate T3).**
+- [x] **T0.2**: P1-2 — self-service via **rota `/me` dedicada** (decisão do
+  dono): `GET/PUT /me` sem `RequirePermission` (`user_me.go`); `UpdateMe`
+  com whitelist estrita `name/email/password/whatsappId` — RBAC ignorado.
+  Front `useUserModal.ts` aponta para `/me`.
+- [x] **T0.3**: 9 testes novos em `user_rbac_test.go` (self-promo→403;
+  enum→400; cargo cross-tenant→400; alcance dentro do escopo→200; Create
+  no-escalation→403; Create cargo cross-tenant→400; GetMe→perfil próprio;
+  UpdateMe self-service→200; UpdateMe ignora RBAC). Mock `Update` estendido
+  p/ persistir alcance (torna o teste de "ignora RBAC" significativo).
+  **Validação:** pacote controllers 100% verde (177s), go build/vet limpos,
+  frontend typecheck/lint limpos, swagger regenerado (rotas `/me`).
+  **Débito de teste:** e2e do fluxo Atendente ("Meu perfil" via UI) fica
+  para T2.1 (Onda 2) — cobertura unit do handler + rota gate-free já garante
+  o invariante; a fiação end-to-end é o que o e2e adiciona.
+
+## Onda 1 — P2 segurança + regressão funcional visível · T2/T3
+- [ ] **T1.1**: P2-1 read-path defense-in-depth — tenant-guard em
+  `cargoHasPermission`/`loadCargoPermissions`/`effectivePermissionNames`
+  (JOIN em `Cargos` com `tenantId`). | depends_on: [T0.1] | **T3 (auth)**
+- [ ] **T1.2**: P2-3 + P2-4 — realinhar `Can`/`SidebarNav`/gates de
+  superadmin de `user.profile` (morto) → `user.alcance` + catálogo real de
+  permissões; devolver Dashboard/Tags/Respostas Rápidas + páginas superadmin
+  (Monitor/Swagger/S3). | depends_on: [] | T2 (frontend)
+- [ ] **T1.3**: P2-2 — decidir: aplicar `RequirePermission("connections",…)`
+  às rotas `/proxies`,`/proxy-groups`,`/connection-groups` **ou** corrigir os
+  comentários enganosos (`routes.go:130`). | depends_on: [] | T3 se aplicar
+  gate / T1 se só doc
+- [ ] **T1.4**: P2-5 + P2-6 — hardening wizard: senha mínima 8+ (backend +
+  front) e normalização de email (`ToLower`+`TrimSpace` no setup/criação e
+  em `FindByEmailForAuth`). | depends_on: [] | T2
+
+## Onda 2 — testes de regressão de segurança + docs que induzem a erro · T1/T2
+- [ ] **T2.1**: P2-10 — `e2e/tests/admin/permissions.spec.ts` (Atendente →
+  403 em `GET /users`, `POST /setores`, `PUT /whatsapp`) +
+  `anti-lockout.spec.ts` (DELETE owner → 4xx; rebaixar último Admin → 4xx).
+  | depends_on: [T0.1, T0.2] | T2
+- [ ] **T2.2**: P2-7 + P2-8 + P2-9 — corrigir CLAUDE.md/onboarding.md/
+  acessos.md/CONTEXT.md/ADR 0022 para o comportamento REAL (sem bundle
+  Setor+Queue; Gestor concede ação sem escopo por Setor; visibilidade de
+  Tickets é client-side, não derivada do Setor). | depends_on: [] | T1
+- [ ] **T2.3**: P3-4 — `e2e/tests/onboarding/setup-wizard.spec.ts`
+  (re-init → 403; payload inválido → 400) + `checklist.spec.ts`. Absorve
+  GAP-7. | depends_on: [] | T2
+
+## Onda 3 — higiene, dívida de schema e performance latente · T1/T2/T3
+- [ ] **T3.1**: Schema — índices RBAC (`Cargos(tenantId,name)`,
+  `user_setores(setorId)`) + `UNIQUE(resource,action)` em `Permissions` +
+  `UNIQUE(tenantId,name)` em `Setores`/`Cargos` + Seed idempotente
+  (`OnConflict{DoNothing}`). | depends_on: [] | **T3 (schema)**
+- [ ] **T3.2**: P3-1 — cache do `RequirePermission` por
+  `(userId,tokenVersion,tenantId)` TTL 30-60s **antes** de expandir o
+  rollout do gate. | depends_on: [T1.1] | T2
+- [ ] **T3.3**: P3-2 + checklist — N+1 `resolveUserSetores` (reusar estado
+  `setores`) + guard `dismissed`/`allDone` no `useOnboardingChecklist`. |
+  depends_on: [] | T1
+- [ ] **T3.4**: Código morto — deletar cadeia `MainListItems`/`AdminNavItems`/
+  `MainNavItems`/`useMainListItems`/`mainListItemsTypes`; DTO
+  `UserDetailResponse` (Profile/GroupID/Roles); `c.Set("userEmail")` de claim
+  inexistente; tipos `profile`/`role` em `types/domain.ts`+`useAuth`+Flow. |
+  depends_on: [T1.2] | T1
+- [ ] **T3.5**: i18n namespace `acessos.*` (pt/en/es) + migração das tabs de
+  Acessos para React Query. | depends_on: [] | T2
+- [ ] **T3.6**: `SetorController.Delete` fail-closed (capturar `.Error` do
+  Count) + P3-3 lock do setup concorrente (`pg_advisory_xact_lock`). |
+  depends_on: [] | T2
+
+## Regra de ouro (invariante ADR 0022)
+Nenhuma rota nova de escrita entra sem `RequirePermission`; expandir o gate
+às rotas do backlog exige o cache de T3.2 no lugar + 1 teste 403 por rota.
+
+## Gate de aprovação (T3)
+Onda 0 (T0.1, T0.2), T1.1, T1.3-se-gate e T3.1 são **T3 (auth/schema)** —
+**PARADA obrigatória**: aguardando aprovação do dono antes de aplicar.
