@@ -930,16 +930,27 @@ migração de dado legado (ambiente de desenvolvimento).
   antes de codar); C1 não precisou (seu escopo não dependia do schema da
   Onda B). Verificado e corrigido no merge — sem perda de trabalho, mas
   fica registrado para vigiar em ondas futuras.
-- [ ] **C4**: `Client`↔`Contact` link/unlink — bloqueia só com confirmação
-  explícita quando o Contact já pertence a outro Client (reatribuição
-  permitida, não bloqueio duro). | depends_on: [B1, C3] | T2
-- [ ] **C5**: `ClientAddress` CRUD aninhado, wired a C1 (lookup) + C2
-  (geocode) no momento do save. | depends_on: [C1, C2, C3] | T2
-- [ ] **C6**: Endpoint de histórico do Client — transitivo via
-  `Ticket`/`Deal`.`Contact.ClientID` (nunca desnormalizado). Payload de
-  Contact/Ticket passa a embutir `client.socialName` quando existir, para o
-  frontend resolver o nome de exibição sem lógica própria. | depends_on:
-  [B1, C3] | T2
+- [x] **C4**: `LinkContact`/`UnlinkContact` em
+  `client_contact_link.go` — 409 com `requiresConfirmation` quando o
+  Contact já pertence a outro Client e `confirmReassign` não veio `true`;
+  reatribuição efetiva com confirmação. Commit `cabee7219`.
+- [x] **C5**: `ClientAddress` CRUD aninhado em `client_address.go` —
+  `isPrimary` exclusivo por Client (helper compartilhado), geocoding
+  best-effort (C1/C2) síncrono mas nunca bloqueante em Create/Update, hard
+  delete em `ClientAddress` (só `Client` precisa soft-delete). Commit
+  `0cd298146`.
+- [x] **C6**: `client_history.go` (`GET` transitivo via `Contact.ClientID`
+  IN, `Ticket`+`Deal`, limite 50, `Preload("Contact")`) + `Preload("Contact.Client")`
+  trocado em `ticket.go:65,147` e `deal.go:67,102`. **Pendente**:
+  `contact.go` (`ListContacts`/`ShowContact`) usa `domain.ContactRepository`
+  — não ganhou `Preload("Client")` porque exigiria tocar a interface do
+  repositório, fora do escopo cirúrgico. Fica registrado para a Onda F
+  (F4, exibição de Nome Social) resolver ou explicitamente aceitar o gap
+  na tela de Contatos. Commit `23dacc0d0`.
+- Todos verificados por grep explícito dos métodos/arquivos esperados +
+  `go build`/`go vet`/`go test ./internal/controllers/...` (220s, verde,
+  inclusive os testes pré-existentes de `ticket.go`/`deal.go` que a Parte 2
+  de C6 tocou).
 
 ## Onda D — wiring de rotas (fatia única, arquivo compartilhado `routes.go`)
 - [ ] **D1**: Registrar todas as rotas novas em `routes.go` sob
