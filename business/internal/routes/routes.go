@@ -25,6 +25,8 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	userController := controllers.NewUserController(container.UserRepo, container.PlanLimitSvc)
 	queueController := controllers.NewQueueController()
 	contactController := controllers.NewContactController(container.ContactRepo, container.ChannelSessionRepo, rabbitMQ, container.Broadcast)
+	clientController := controllers.NewClientController()
+	addressLookupController := controllers.NewAddressLookupController()
 	sessionController := controllers.NewSessionController(container.ChannelSessionRepo, container.Broadcast, container.SessionService)
 	ticketController := controllers.NewTicketController(container.UpdateTicket, container.Broadcast, container.MessageRepo, rabbitMQ)
 	whatsappController := controllers.NewWhatsappController(container.ChannelSessionRepo, container.PlanLimitSvc, container.Broadcast, container.SessionService)
@@ -169,6 +171,23 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.POST("/contacts/:contactId/sync", contactController.SyncContact)
 		protected.PUT("/contacts/:contactId", contactController.UpdateContact)
 		protected.DELETE("/contacts/:contactId", contactController.DeleteContact)
+
+		// Clients (CRM) — ADR 0023. Rota nova, gateada desde o início
+		// (invariante do módulo Acessos): nenhuma rota nova de escrita/leitura
+		// entra sem auth.RequirePermission.
+		protected.GET("/clients", auth.RequirePermission("clients", "read"), clientController.List)
+		protected.GET("/clients/:id", auth.RequirePermission("clients", "read"), clientController.Show)
+		protected.POST("/clients", auth.RequirePermission("clients", "create"), clientController.Create)
+		protected.PUT("/clients/:id", auth.RequirePermission("clients", "update"), clientController.Update)
+		protected.DELETE("/clients/:id", auth.RequirePermission("clients", "delete"), clientController.Delete)
+		protected.GET("/clients/:id/history", auth.RequirePermission("clients", "read"), clientController.History)
+		protected.GET("/clients/:id/addresses", auth.RequirePermission("clients", "read"), clientController.ListAddresses)
+		protected.POST("/clients/:id/addresses", auth.RequirePermission("clients", "manage"), clientController.CreateAddress)
+		protected.PUT("/clients/:id/addresses/:addressId", auth.RequirePermission("clients", "manage"), clientController.UpdateAddress)
+		protected.DELETE("/clients/:id/addresses/:addressId", auth.RequirePermission("clients", "manage"), clientController.DeleteAddress)
+		protected.POST("/clients/:id/contacts/:contactId/link", auth.RequirePermission("clients", "manage"), clientController.LinkContact)
+		protected.DELETE("/clients/:id/contacts/:contactId", auth.RequirePermission("clients", "manage"), clientController.UnlinkContact)
+		protected.GET("/addresses/lookup", auth.RequirePermission("clients", "read"), addressLookupController.Lookup)
 
 		// Queues
 		protected.GET("/queue", queueController.ListQueues)
