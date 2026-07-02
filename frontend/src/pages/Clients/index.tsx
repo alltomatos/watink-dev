@@ -74,7 +74,7 @@ const Clients: React.FC = () => {
           <ClientModal
             open={modalOpen}
             onClose={handleCloseModal}
-            client={selectedClient ? { ...selectedClient, contacts: undefined } : null}
+            client={selectedClient}
           />
 
           <ConfirmationModal

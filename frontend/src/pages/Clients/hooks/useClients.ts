@@ -1,16 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
 import api from "../../../services/api";
+import type { ClientRecord } from "../clientTypes";
 
-export interface Client {
-  id: string;
-  type: "pf" | "pj";
-  name: string;
-  document?: string;
-  email?: string;
-  phone?: string;
-  contacts?: unknown[];
-}
+// Client mirrors the real backend response (ClientRecord) — kept as a
+// separate exported alias so existing imports (`import type { Client } from
+// "../hooks/useClients"`) keep working without churn across the module.
+export type Client = ClientRecord;
 
 interface UseClientsReturn {
   clients: Client[];

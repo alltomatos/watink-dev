@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { ClientContact, ContactInput, AddressInput } from "./clientTypes";
+import { ClientContact, ClientRecord } from "./clientTypes";
 import { useClientModal } from "./hooks/useClientModal";
 import BasicDataTab from "./components/BasicDataTab";
 import ContactsTab from "./components/ContactsTab";
@@ -19,17 +19,7 @@ import AddressesTab from "./components/AddressesTab";
 interface ClientModalProps {
   open: boolean;
   onClose: () => void;
-  client?: {
-    id: string;
-    type?: string;
-    name?: string;
-    document?: string;
-    email?: string;
-    phone?: string;
-    notes?: string;
-    contacts?: ContactInput[];
-    addresses?: AddressInput[];
-  } | null;
+  client?: ClientRecord | null;
   initialContact?: ClientContact;
 }
 
