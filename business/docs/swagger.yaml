@@ -31,6 +31,173 @@ definitions:
       updatedAt:
         type: string
     type: object
+  models.Client:
+    properties:
+      addresses:
+        items:
+          $ref: '#/definitions/models.ClientAddress'
+        type: array
+      contacts:
+        description: Relations
+        items:
+          $ref: '#/definitions/models.Contact'
+        type: array
+      createdAt:
+        type: string
+      document:
+        description: |-
+          Document is a TRANSIENT (gorm:"-", not persisted) field the controller
+          populates in API responses after decrypting DocumentEnc. It exists so
+          JSON consumers keep seeing a plain "document" field — do not mistake it
+          for a duplicate/dead column.
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      notes:
+        type: string
+      phone:
+        type: string
+      socialName:
+        description: |-
+          SocialName is exclusive to PF (LGPD — Decreto 8.727/2016). When set, it
+          replaces the civil name on every display surface (ticket list, chat
+          bubble, header, notifications, Pipeline/Deal, Protocol, reports).
+        type: string
+      tenantId:
+        type: string
+      type:
+        description: |-
+          Type is "pf" (pessoa física) or "pj" (pessoa jurídica). Enum validation
+          happens in the controller, not here.
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.ClientAddress:
+    properties:
+      city:
+        type: string
+      clientId:
+        type: integer
+      complement:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      isPrimary:
+        type: boolean
+      label:
+        type: string
+      latitude:
+        description: |-
+          Latitude/Longitude are nullable — populated best-effort by geocoding;
+          a failed/unavailable geocode leaves them NULL and never blocks the save.
+        type: number
+      longitude:
+        type: number
+      neighborhood:
+        type: string
+      number:
+        type: string
+      state:
+        type: string
+      street:
+        type: string
+      tenantId:
+        type: string
+      updatedAt:
+        type: string
+      zipCode:
+        type: string
+    type: object
+  models.Contact:
+    properties:
+      client:
+        $ref: '#/definitions/models.Client'
+      clientId:
+        description: |-
+          ClientID is nullable — a Contact can exist and generate Tickets without
+          ever being linked to a Client (someone messages in without being
+          registered). A Contact belongs to at most one Client; the link is
+          always manual (ADR 0023) — no unique constraint here, since multiple
+          Contacts may point to the same Client.
+        type: integer
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      isGroup:
+        type: boolean
+      lid:
+        type: string
+      name:
+        type: string
+      number:
+        type: string
+      profilePicUrl:
+        type: string
+      tenantId:
+        type: string
+      tickets:
+        description: Relations
+        items:
+          $ref: '#/definitions/models.Ticket'
+        type: array
+      updatedAt:
+        type: string
+      wallet:
+        $ref: '#/definitions/models.User'
+      walletUserId:
+        type: integer
+    type: object
+  models.Message:
+    properties:
+      ack:
+        type: integer
+      body:
+        type: string
+      contactId:
+        type: integer
+      createdAt:
+        type: string
+      dataJson:
+        type: string
+      fromMe:
+        type: boolean
+      id:
+        type: string
+      isDeleted:
+        type: boolean
+      mediaType:
+        type: string
+      mediaUrl:
+        type: string
+      participant:
+        type: string
+      quotedMsgId:
+        type: string
+      reactions:
+        type: string
+      read:
+        type: boolean
+      tenantId:
+        type: string
+      ticket:
+        allOf:
+        - $ref: '#/definitions/models.Ticket'
+        description: Relations
+      ticketId:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
   models.Permission:
     properties:
       action:
@@ -48,6 +215,205 @@ definitions:
       updatedAt:
         type: string
     type: object
+  models.Queue:
+    properties:
+      color:
+        type: string
+      createdAt:
+        type: string
+      distributionStrategy:
+        type: string
+      greetingMessage:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      parent:
+        allOf:
+        - $ref: '#/definitions/models.Queue'
+        description: Relations
+      parentId:
+        type: integer
+      prioritizeWallet:
+        type: boolean
+      tenantId:
+        type: string
+      updatedAt:
+        type: string
+      whatsapps:
+        items:
+          $ref: '#/definitions/models.Whatsapp'
+        type: array
+    type: object
+  models.Tenant:
+    properties:
+      createdAt:
+        type: string
+      document:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      ownerId:
+        type: integer
+      status:
+        type: string
+      updatedAt:
+        type: string
+      users:
+        description: Relations
+        items:
+          $ref: '#/definitions/models.User'
+        type: array
+    type: object
+  models.Ticket:
+    properties:
+      contact:
+        allOf:
+        - $ref: '#/definitions/models.Contact'
+        description: Relations
+      contactId:
+        type: integer
+      createdAt:
+        type: string
+      id:
+        type: integer
+      isCommunity:
+        type: boolean
+      isGroup:
+        type: boolean
+      isSubGroup:
+        type: boolean
+      lastMessage:
+        type: string
+      messages:
+        items:
+          $ref: '#/definitions/models.Message'
+        type: array
+      queueId:
+        type: integer
+      status:
+        type: string
+      tenantId:
+        type: string
+      unreadMessages:
+        type: integer
+      updatedAt:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+      userId:
+        type: integer
+      whatsappId:
+        type: integer
+    type: object
+  models.User:
+    properties:
+      alcance:
+        type: string
+      cargo:
+        $ref: '#/definitions/models.Cargo'
+      cargoId:
+        type: integer
+      configs:
+        type: string
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      queues:
+        items:
+          $ref: '#/definitions/models.Queue'
+        type: array
+      tenant:
+        allOf:
+        - $ref: '#/definitions/models.Tenant'
+        description: Relations
+      tenantId:
+        type: string
+      tokenVersion:
+        type: integer
+      updatedAt:
+        type: string
+      whatsappId:
+        type: integer
+    type: object
+  models.Whatsapp:
+    properties:
+      battery:
+        type: string
+      connectionGroupId:
+        type: integer
+      createdAt:
+        type: string
+      engineType:
+        type: string
+      farewellMessage:
+        type: string
+      firstConnection:
+        type: string
+      greetingMessage:
+        type: string
+      id:
+        type: integer
+      isDefault:
+        type: boolean
+      keepAlive:
+        type: boolean
+      lastConnectedAt:
+        type: string
+      name:
+        type: string
+      number:
+        type: string
+      plugged:
+        type: boolean
+      profilePicUrl:
+        type: string
+      proxyGroupId:
+        type: integer
+      proxyId:
+        type: integer
+      proxyMode:
+        description: |-
+          Proxy assignment (anti-ban). ProxyMode: "none" | "single" | "group".
+            single → ProxyID fixo. group → ProxyGroupID + ProxyID guarda o pick atual
+            (sticky) ou o último usado (rotate).
+        type: string
+      qrcode:
+        type: string
+      queues:
+        items:
+          $ref: '#/definitions/models.Queue'
+        type: array
+      retries:
+        type: integer
+      session:
+        type: string
+      status:
+        type: string
+      syncHistory:
+        type: boolean
+      syncPeriod:
+        type: string
+      tenantId:
+        type: string
+      tickets:
+        description: Relations
+        items:
+          $ref: '#/definitions/models.Ticket'
+        type: array
+      updatedAt:
+        type: string
+      wid:
+        type: string
+    type: object
 host: localhost:8082
 info:
   contact:
@@ -61,6 +427,37 @@ info:
   title: Watink Business API
   version: 2.0.0
 paths:
+  /addresses/lookup:
+    get:
+      parameters:
+      - description: CEP (com ou sem máscara)
+        in: query
+        name: cep
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Buscar endereço por CEP
+      tags:
+      - addresses
   /auth/login:
     post:
       consumes:
@@ -238,6 +635,277 @@ paths:
       summary: Catálogo global de permissions
       tags:
       - cargos
+  /clients:
+    get:
+      parameters:
+      - description: Busca por nome ou nome social
+        in: query
+        name: searchParam
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Listar clientes
+      tags:
+      - clients
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Client'
+      security:
+      - BearerAuth: []
+      summary: Criar cliente
+      tags:
+      - clients
+  /clients/{id}:
+    delete:
+      parameters:
+      - description: ID do cliente
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover cliente
+      tags:
+      - clients
+    get:
+      parameters:
+      - description: ID do cliente
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Client'
+      security:
+      - BearerAuth: []
+      summary: Detalhar cliente
+      tags:
+      - clients
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do cliente
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Client'
+      security:
+      - BearerAuth: []
+      summary: Atualizar cliente
+      tags:
+      - clients
+  /clients/{id}/addresses:
+    get:
+      parameters:
+      - description: ID do cliente
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Listar endereços do cliente
+      tags:
+      - clients
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do cliente
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ClientAddress'
+      security:
+      - BearerAuth: []
+      summary: Criar endereço do cliente
+      tags:
+      - clients
+  /clients/{id}/addresses/{addressId}:
+    delete:
+      parameters:
+      - description: ID do cliente
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID do endereço
+        in: path
+        name: addressId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover endereço do cliente
+      tags:
+      - clients
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do cliente
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID do endereço
+        in: path
+        name: addressId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ClientAddress'
+      security:
+      - BearerAuth: []
+      summary: Atualizar endereço do cliente
+      tags:
+      - clients
+  /clients/{id}/contacts/{contactId}:
+    delete:
+      parameters:
+      - description: ID do cliente
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID do contato
+        in: path
+        name: contactId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Desvincular contato do cliente
+      tags:
+      - clients
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do cliente
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID do contato
+        in: path
+        name: contactId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Contact'
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Vincular contato ao cliente
+      tags:
+      - clients
+  /clients/{id}/history:
+    get:
+      parameters:
+      - description: ID do cliente
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Histórico transitivo do cliente
+      tags:
+      - clients
   /connection-groups:
     get:
       produces:

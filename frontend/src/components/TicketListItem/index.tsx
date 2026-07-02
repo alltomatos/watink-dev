@@ -13,6 +13,7 @@ import MarkdownWrapper from "../MarkdownWrapper";
 import { AuthContext } from "../../context/Auth/AuthContext";
 import toastError from "../../errors/toastError";
 import { getBackendUrl } from "../../helpers/urlUtils";
+import { getContactDisplayName } from "../../utils/clientDisplayName";
 
 interface Queue {
   color?: string;
@@ -29,6 +30,7 @@ interface Contact {
   profilePicUrl?: string | null;
   isGroup?: boolean;
   number?: string;
+  client?: { id: number; socialName?: string | null } | null;
 }
 
 interface Ticket {
@@ -145,10 +147,10 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
               ? getBackendUrl(ticket.contact?.profilePicUrl)
               : null
           }
-          name={ticket.contact?.name ?? ""}
+          name={getContactDisplayName(ticket.contact)}
           size="md"
           isGroup={ticket.isGroup || ticket.contact?.isGroup}
-          aria-label={ticket.contact?.name ?? ""}
+          aria-label={getContactDisplayName(ticket.contact)}
         />
         {ticketType !== "individual" && (
           <span className={cn(
@@ -169,7 +171,7 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
         {/* Linha 1 — nome + horário */}
         <div className="flex items-baseline justify-between">
           <span className="truncate text-[0.8125rem] font-semibold leading-tight text-foreground">
-            {ticket.contact?.name ?? ""}
+            {getContactDisplayName(ticket.contact)}
           </span>
           <span className="ml-2 shrink-0 text-[0.6875rem] text-muted-foreground">
             {timeLabel}

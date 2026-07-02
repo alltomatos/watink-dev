@@ -16,6 +16,7 @@ import {
   parseData,
 } from "../utils/messageHelpers";
 import { Message } from "../types";
+import { getContactDisplayName } from "../../../utils/clientDisplayName";
 import MessageMedia from "./MessageMedia";
 import QuotedMessage from "./QuotedMessage";
 
@@ -156,7 +157,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                   (parseData(message.dataJson).senderPicUrl as string) || ""
                 )}
                 name={
-                  message.contact?.name ||
+                  getContactDisplayName(message.contact) ||
                   (parseData(message.dataJson).pushName as string) ||
                   message.participant?.replace(/\D/g, "") ||
                   undefined

@@ -6,6 +6,7 @@ export interface ContactInfo {
   lid?: string;
   profilePicUrl?: string | null;
   isGroup?: boolean;
+  client?: { id: number; socialName?: string | null } | null;
 }
 
 export interface TicketInfo {

@@ -62,7 +62,7 @@ func (tc *TicketController) ListTickets(c *gin.Context) {
 
 	var tickets []models.Ticket
 	query := db.
-		Preload("Contact").
+		Preload("Contact.Client").
 		Preload("User").
 		Order("\"updatedAt\" DESC")
 
@@ -144,7 +144,7 @@ func (tc *TicketController) ShowTicket(c *gin.Context) {
 
 	var ticket models.Ticket
 	if err := db.Where("id = ?", ticketID).
-		Preload("Contact").
+		Preload("Contact.Client").
 		Preload("User").
 		First(&ticket).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ticket not found"})

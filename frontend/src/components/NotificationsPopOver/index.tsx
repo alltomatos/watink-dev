@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { MessageSquare, Trash2 } from "lucide-react";
+import { MessageSquare, Trash2, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 
 import TicketListItem from "../TicketListItem";
 import { i18n } from "../../translate/i18n";
@@ -9,7 +10,7 @@ import { useNotifications } from "./hooks/useNotifications";
 
 const NotificationsPopOver = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { notifications, clearNotifications } = useNotifications();
+  const { notifications, clearNotifications, muted, toggleMuted } = useNotifications();
   const count = notifications.length;
 
   return (
@@ -21,8 +22,8 @@ const NotificationsPopOver = () => {
           aria-label="Open Notifications"
           className="relative"
         >
-          <MessageSquare className="w-5 h-5" />
-          {count > 0 && (
+          {muted ? <BellOff className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
+          {!muted && count > 0 && (
             <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
               {count > 99 ? "99+" : count}
             </span>
@@ -34,6 +35,17 @@ const NotificationsPopOver = () => {
         sideOffset={8}
         className="w-[350px] max-sm:w-[270px] p-0"
       >
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            {muted ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+            Silenciar som e card
+          </span>
+          <Switch
+            checked={muted}
+            onCheckedChange={toggleMuted}
+            aria-label="Silenciar notificações (som e card)"
+          />
+        </div>
         {count > 0 && (
           <div className="flex items-center justify-between px-4 py-2 border-b border-border">
             <span className="text-sm font-medium text-foreground">

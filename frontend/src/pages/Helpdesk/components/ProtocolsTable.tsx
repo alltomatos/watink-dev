@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Can } from "../../../components/Can";
 import { User } from "../../../types/domain";
+import { getContactDisplayName } from "@/utils/clientDisplayName";
 import {
   ProtocolListItem,
   statusLabels,
@@ -79,7 +80,7 @@ const ProtocolsTable: React.FC<ProtocolsTableProps> = ({
               >
                 {protocol.subject}
               </TableCell>
-              <TableCell>{protocol.contact?.name ?? "-"}</TableCell>
+              <TableCell>{getContactDisplayName(protocol.contact) || "-"}</TableCell>
               <TableCell>
                 <Badge
                   variant="secondary"

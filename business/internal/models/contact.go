@@ -16,12 +16,19 @@ type Contact struct {
 	TenantID      uuid.UUID `gorm:"column:tenantId;type:uuid" json:"tenantId"`
 	Lid           *string   `gorm:"unique" json:"lid"`
 	WalletUserID  *int      `gorm:"column:walletUserId" json:"walletUserId"`
-	CreatedAt     time.Time `gorm:"column:createdAt" json:"createdAt"`
-	UpdatedAt     time.Time `gorm:"column:updatedAt" json:"updatedAt"`
+	// ClientID is nullable — a Contact can exist and generate Tickets without
+	// ever being linked to a Client (someone messages in without being
+	// registered). A Contact belongs to at most one Client; the link is
+	// always manual (ADR 0023) — no unique constraint here, since multiple
+	// Contacts may point to the same Client.
+	ClientID  *int      `gorm:"column:clientId" json:"clientId"`
+	CreatedAt time.Time `gorm:"column:createdAt" json:"createdAt"`
+	UpdatedAt time.Time `gorm:"column:updatedAt" json:"updatedAt"`
 
 	// Relations
 	Tickets []Ticket `gorm:"foreignKey:ContactID" json:"tickets,omitempty"`
 	Wallet  *User    `gorm:"foreignKey:WalletUserID" json:"wallet,omitempty"`
+	Client  *Client  `gorm:"foreignKey:ClientID" json:"client,omitempty"`
 }
 
 func (Contact) TableName() string {
