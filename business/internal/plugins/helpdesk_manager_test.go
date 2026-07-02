@@ -110,7 +110,7 @@ func TestPluginManager_Register_MultipleDistinctPlugins(t *testing.T) {
 
 	// Register two distinct plugins
 	pm.Register(&HelpdeskPlugin{})
-	pm.Register(&ClientesPlugin{})
+	pm.Register(&WebchatPlugin{})
 
 	installed := pm.GetInstalled()
 	assert.Len(t, installed, 2)
@@ -131,4 +131,3 @@ func TestCoreImpl_EmitSocketEvent_NoOp(t *testing.T) {
 	// Should not panic
 	c.EmitSocketEvent("room", "event", nil)
 }
-

@@ -126,7 +126,6 @@ func main() {
 		pluginManager := plugins.NewPluginManager(database.DB, apiGroup)
 		pluginManager.Register(&plugins.HelpdeskPlugin{})
 		pluginManager.Register(&plugins.WebchatPlugin{})
-		pluginManager.Register(&plugins.ClientesPlugin{})
 		pluginManager.Register(&plugins.SaaSPlugin{})
 
 		// Knowledge Base file sources: build the S3-compatible object store from
