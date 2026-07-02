@@ -10,6 +10,44 @@ definitions:
     - email
     - password
     type: object
+  models.Cargo:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      isSystem:
+        type: boolean
+      name:
+        type: string
+      permissions:
+        items:
+          $ref: '#/definitions/models.Permission'
+        type: array
+      tenantId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.Permission:
+    properties:
+      action:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      isSystem:
+        type: boolean
+      resource:
+        type: string
+      updatedAt:
+        type: string
+    type: object
 host: localhost:8082
 info:
   contact:
@@ -89,6 +127,117 @@ paths:
       summary: Refresh token
       tags:
       - auth
+  /cargos:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Cargo'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar cargos
+      tags:
+      - cargos
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Cargo'
+      security:
+      - BearerAuth: []
+      summary: Criar cargo
+      tags:
+      - cargos
+  /cargos/{cargoId}:
+    delete:
+      parameters:
+      - description: ID do cargo
+        in: path
+        name: cargoId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Excluir cargo
+      tags:
+      - cargos
+    get:
+      parameters:
+      - description: ID do cargo
+        in: path
+        name: cargoId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Cargo'
+      security:
+      - BearerAuth: []
+      summary: Detalhar cargo
+      tags:
+      - cargos
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do cargo
+        in: path
+        name: cargoId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Cargo'
+      security:
+      - BearerAuth: []
+      summary: Atualizar cargo
+      tags:
+      - cargos
+  /cargos/catalog/permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/models.Permission'
+              type: array
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Catálogo global de permissions
+      tags:
+      - cargos
   /connection-groups:
     get:
       produces:
@@ -739,118 +888,6 @@ paths:
       summary: Assistente de IA do FlowBuilder (dicas + rascunho de fluxo)
       tags:
       - flows
-  /groups:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
-      security:
-      - BearerAuth: []
-      summary: Listar grupos
-      tags:
-      - rbac
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Dados do grupo
-        in: body
-        name: body
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Criar grupo
-      tags:
-      - rbac
-  /groups/{groupId}:
-    delete:
-      parameters:
-      - description: ID do grupo
-        in: path
-        name: groupId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Remover grupo
-      tags:
-      - rbac
-    get:
-      parameters:
-      - description: ID do grupo
-        in: path
-        name: groupId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Detalhar grupo
-      tags:
-      - rbac
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: ID do grupo
-        in: path
-        name: groupId
-        required: true
-        type: integer
-      - description: Campos a atualizar
-        in: body
-        name: body
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Atualizar grupo
-      tags:
-      - rbac
   /initial-setup:
     post:
       consumes:
@@ -1133,6 +1170,45 @@ paths:
       summary: Reprocessar uma fonte (re-disparar ingestão)
       tags:
       - knowledge-base
+  /me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Meu perfil
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: name/email/password/whatsappId
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar meu perfil
+      tags:
+      - users
   /media/{messageId}/download:
     post:
       parameters:
@@ -1218,23 +1294,6 @@ paths:
       summary: Enviar mensagem
       tags:
       - messages
-  /permissions:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
-      security:
-      - BearerAuth: []
-      summary: Listar permissões disponíveis
-      tags:
-      - rbac
   /pipelines:
     get:
       produces:
@@ -1979,118 +2038,6 @@ paths:
       summary: Disparar resposta rápida
       tags:
       - quick-answers
-  /roles:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              additionalProperties: true
-              type: object
-            type: array
-      security:
-      - BearerAuth: []
-      summary: Listar papéis
-      tags:
-      - rbac
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Dados do papel
-        in: body
-        name: body
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Criar papel
-      tags:
-      - rbac
-  /roles/{roleId}:
-    delete:
-      parameters:
-      - description: ID do papel
-        in: path
-        name: roleId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Remover papel
-      tags:
-      - rbac
-    get:
-      parameters:
-      - description: ID do papel
-        in: path
-        name: roleId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Detalhar papel
-      tags:
-      - rbac
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: ID do papel
-        in: path
-        name: roleId
-        required: true
-        type: integer
-      - description: Campos a atualizar
-        in: body
-        name: body
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Atualizar papel
-      tags:
-      - rbac
   /saas/plans:
     get:
       produces:
@@ -2170,6 +2117,251 @@ paths:
       summary: Plano do tenant (superadmin)
       tags:
       - saas
+  /setores:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar setores
+      tags:
+      - setores
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Criar setor
+      tags:
+      - setores
+  /setores/{setorId}:
+    delete:
+      parameters:
+      - description: ID do setor
+        in: path
+        name: setorId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover setor
+      tags:
+      - setores
+    get:
+      parameters:
+      - description: ID do setor
+        in: path
+        name: setorId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Detalhar setor
+      tags:
+      - setores
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do setor
+        in: path
+        name: setorId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar setor
+      tags:
+      - setores
+  /setores/{setorId}/members:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do setor
+        in: path
+        name: setorId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Adicionar membro ao setor
+      tags:
+      - setores
+  /setores/{setorId}/members/{userId}:
+    delete:
+      parameters:
+      - description: ID do setor
+        in: path
+        name: setorId
+        required: true
+        type: integer
+      - description: ID do usuário
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remover membro do setor
+      tags:
+      - setores
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do setor
+        in: path
+        name: setorId
+        required: true
+        type: integer
+      - description: ID do usuário
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Atualizar vínculo de membro do setor
+      tags:
+      - setores
+  /setores/{setorId}/queues:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do setor
+        in: path
+        name: setorId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Definir filas do setor
+      tags:
+      - setores
   /settings:
     get:
       produces:
