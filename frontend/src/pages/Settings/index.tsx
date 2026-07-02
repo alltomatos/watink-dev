@@ -45,7 +45,7 @@ const Settings: React.FC = () => {
   } = useSettings();
 
   const sharedProps = { getSettingValue, handleUpdateSetting };
-  const isSuperAdmin = (user?.profile || "").toLowerCase() === "superadmin";
+  const isSuperAdmin = (user as unknown as { alcance?: string })?.alcance === "plataforma";
 
   return (
     <PageLayout>
@@ -53,7 +53,7 @@ const Settings: React.FC = () => {
         <div className="flex gap-2">
           <Can
             user={user}
-            perform="marketplace:read"
+            perform="settings:update"
             yes={() => (
               <Button variant="ghost" onClick={() => navigate("/admin/settings/marketplace")}>
                 <Puzzle className="mr-2 h-4 w-4" />

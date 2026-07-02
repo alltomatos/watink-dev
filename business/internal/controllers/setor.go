@@ -270,8 +270,13 @@ func (sc *SetorController) Delete(c *gin.Context) {
 	}
 
 	var memberCount int64
-	db.Session(&gorm.Session{NewDB: true}).Model(&models.UserSetor{}).
-		Where(`"setorId" = ?`, setorID).Count(&memberCount)
+	// Fail-closed: uma falha no Count NÃO pode deixar memberCount=0 e liberar a
+	// exclusão de um Setor que talvez tenha membros (antes o .Error era ignorado).
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.UserSetor{}).
+		Where(`"setorId" = ?`, setorID).Count(&memberCount).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "DeleteSetor")
+		return
+	}
 	if memberCount > 0 {
 		c.JSON(http.StatusConflict, gin.H{
 			"error": "não é possível excluir um Setor com membros vinculados — realoque os usuários primeiro",

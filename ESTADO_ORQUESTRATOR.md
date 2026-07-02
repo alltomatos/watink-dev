@@ -697,4 +697,163 @@ bloqueante para o Onboarding; sinalizado como tarefa separada
 - Commit + push das mudanças de GAP-A/B/C na branch
   `refactor/acessos-gap1-schema`.
 - Mesma decisão em aberto de antes: PR `refactor/acessos-gap1-schema` →
-  `develop` ainda não aberto.
+  `develop` ainda não aberto. **[RESOLVIDO]** PR #302 → develop (merge
+  fabf618f1) e release PR #303 develop → main (merge 1d9ca68d7). Branch
+  `refactor/acessos-gap1-schema` deletada (local + remota).
+
+---
+
+# DAG — Remediação de QA (pós-refatoração Acessos + Onboarding)
+
+**Origem:** [`docs/qa/plano-qa-pos-refatoracao-acessos-onboarding.md`](docs/qa/plano-qa-pos-refatoracao-acessos-onboarding.md)
+(auditoria adversarial multi-agente; 16 achados confirmados: 2 P1, 10 P2,
+4 P3 + 30 P3 prováveis). **Branch:** `fix/qa-acessos-onboarding` (de develop).
+**Diagnóstico (Fase 3) já pronto — orchestrator consome, não re-audita.**
+
+## Item externo (não duplicar)
+- **RLS-EXT** — bug RLS inerte `SET LOCAL app.current_tenant` em
+  `middleware/auth.go:74` — já rastreado em task separada (`task_10ab6677`).
+  Coordenar com T3.x (schema/perf), não recriar.
+
+## Onda 0 — P1 (bloqueia release; JÁ vivo em main) · TIER T3 · ✅ CONCLUÍDA (2026-07-02)
+- [x] **T0.1**: P1-1 — `UpdateUser`/`CreateUser` (`user_mutation.go`): enum
+  `alcance` validado; no-escalation (`alcanceRank`: ator nunca concede acima
+  do próprio); tenant-guard em `cargoId` via `cargoBelongsToTenant`
+  (Session NewDB). Funde P2-1 write-path. **Aprovado pelo dono (gate T3).**
+- [x] **T0.2**: P1-2 — self-service via **rota `/me` dedicada** (decisão do
+  dono): `GET/PUT /me` sem `RequirePermission` (`user_me.go`); `UpdateMe`
+  com whitelist estrita `name/email/password/whatsappId` — RBAC ignorado.
+  Front `useUserModal.ts` aponta para `/me`.
+- [x] **T0.3**: 9 testes novos em `user_rbac_test.go` (self-promo→403;
+  enum→400; cargo cross-tenant→400; alcance dentro do escopo→200; Create
+  no-escalation→403; Create cargo cross-tenant→400; GetMe→perfil próprio;
+  UpdateMe self-service→200; UpdateMe ignora RBAC). Mock `Update` estendido
+  p/ persistir alcance (torna o teste de "ignora RBAC" significativo).
+  **Validação:** pacote controllers 100% verde (177s), go build/vet limpos,
+  frontend typecheck/lint limpos, swagger regenerado (rotas `/me`).
+  **Débito de teste:** e2e do fluxo Atendente ("Meu perfil" via UI) fica
+  para T2.1 (Onda 2) — cobertura unit do handler + rota gate-free já garante
+  o invariante; a fiação end-to-end é o que o e2e adiciona.
+
+## Onda 1 — P2 segurança + regressão funcional visível · T2/T3 · ✅ CONCLUÍDA (2026-07-02)
+- [x] **T1.1**: P2-1 read-path defense-in-depth — `loadCargoPermissions`
+  (repo) e `cargoHasPermission` (middleware) agora fazem JOIN em `"Cargos"`
+  filtrando `tenantId`; um cargoId cross-tenant nunca concede permissão no
+  read-path, mesmo que tenha vazado para a linha do usuário. **Aprovado
+  como hardening (torna mais restrito, não muda fluxo legítimo).**
+- [x] **T1.2**: P2-3 + P2-4 — delegado a subagente; 11 arquivos frontend:
+  `Can` decide por `alcance ∈ {tenant,plataforma}` (bypass) + `permissions`;
+  gates de superadmin (Swagger/Monitor/VersionFooter/VersionDashboard/
+  Settings-S3/TicketOptionsMenu/Helpdesk/TransferTicket) → `alcance ===
+  "plataforma"`; `SidebarNav` realinhado ao catálogo real (dashboard/tags/
+  quick-answers/helpdesk → `tickets:read`; clients → sem gate). Admin volta
+  a ver tudo por bypass. Cast pontual de `alcance` (tipo global fica p/ T3.4).
+- [x] **T1.3**: P2-2 — **gate aplicado** (escolha segura, alinha com as rotas
+  irmãs `/whatsapp` e satisfaz o invariante ADR 0022): `/proxies`,
+  `/proxy-groups`, `/connection-groups` agora gated por
+  `connections:<ação>`; comentário enganoso corrigido. Fecha o buraco de um
+  não-admin zerar o pool (`DELETE /proxies`).
+- [x] **T1.4**: P2-5 + P2-6 — `validatePasswordStrength` (mín. 8) em setup/
+  CreateUser/UpdateUser/UpdateMe; `normalizeEmail` (lowercase+trim) no
+  setup/create/update e login case-insensitive via `LOWER(email)` em
+  `FindByEmailForAuth`. Front `InitialSetup` espelha (mín. 8 + email
+  lowercase). 3 testes novos (setup senha curta→400; CreateUser senha
+  curta→400; CreateUser normaliza email).
+  **Validação Onda 1:** build/vet limpos, frontend typecheck/lint limpos,
+  testes controllers/auth/repository/services verdes; suíte completa em
+  verificação final.
+
+### Débitos sinalizados pelo subagente T1.2 (para ondas posteriores)
+- Nav legado morto (`layout/components/MainNavItems`, `AdminNavItems`,
+  `MainListItems`) usa performs inexistentes mas NÃO é renderizado — deletar
+  em T3.4.
+- Páginas de plugin (`Clients`, `Marketplace`) com performs fora do catálogo
+  — hoje visíveis ao Admin por bypass; alinhar/remover gate numa passada de
+  plugins (fora do escopo das ondas atuais).
+
+## Onda 2 — testes de regressão de segurança + docs que induzem a erro · T1/T2 · ✅ CONCLUÍDA (2026-07-02)
+- [x] **T2.1**: P2-10 — delegado; `e2e/tests/admin/permissions.spec.ts`
+  (Atendente → 403 em GET /users, POST /setores, PUT /whatsapp; GET /me → 200
+  controle) + `anti-lockout.spec.ts` (DELETE owner → 409; rebaixar último
+  Admin → 409). Segue o fixture `auth.fixture` existente.
+- [x] **T2.2**: P2-7 + P2-8 + P2-9 — delegado; corrigidos CLAUDE.md,
+  onboarding.md, acessos.md, ADR 0022, CONTEXT.md + comentário setor_fila.go:
+  sem bundle Setor+Queue; Gestor concede ação tenant-wide (escopo por Setor =
+  roadmap); visibilidade de Tickets client-side; `/permissions`→
+  `/cargos/catalog/permissions`; `setorIds[]`→`setores:[{setorId,ehGestor}]`;
+  `sectors:manage`→`setores:manage`; RLS "inerte" no verbete Tenant; Status
+  Atual atualizado; Setor→Queue M:N.
+- [x] **T2.3**: P3-4 — delegado; `e2e/tests/onboarding/setup-wizard.spec.ts`
+  (re-init → 403; payload vazio → 403) + `checklist.spec.ts` (endpoints do
+  hook + regra derivada > 1). Absorve GAP-7.
+
+## Onda 3 — higiene, dívida de schema e performance latente · ✅ CONCLUÍDA (parcial — T3.2 deferido)
+- [x] **T3.1**: índices RBAC (`user_setores(setorId)`) + UNIQUE
+  (`Cargos(tenantId,name)`, `Setores(tenantId,name)`, `Permissions(resource,
+  action)`) em `addCustomIndexes`, best-effort (não trava boot em dado legado
+  com duplicata). Roda antes do Seed — a UNIQUE de Permissions já protege o
+  catálogo. Seed mantido em FirstOrCreate (ignora erro de corrida; a UNIQUE
+  impede duplicar).
+- [ ] **T3.2**: **DEFERIDO** — cache do `RequirePermission`. Só necessário
+  ANTES de expandir o rollout do gate (não feito nestas ondas); impacto atual
+  baixo (1 rota quente). Um cache correto exige Redis + bump de `tokenVersion`
+  na mudança de PERMISSÃO (hoje só bumpa em credencial), senão serve permissão
+  revogada até o TTL; e um cache in-memory ilimitado em `pkg/auth` é risco de
+  memória. Decisão: não introduzir auth-cache meia-boca agora — reabrir junto
+  com a expansão do gate.
+- [x] **T3.3**: N+1 eliminado — `ShowUser` agora devolve `setores[]` (vínculos
+  do usuário), e `useUsuariosTab.openEdit` lê `data.setores` em vez de cruzar
+  `GET /setores/:id` de todos os setores. Checklist: `fetchCounts` guarda por
+  `dismissed` (0 fetch se dispensado) e usa `Promise.allSettled` (um 403 em
+  /users não descarta o /setores).
+- [x] **T3.4**: código morto removido — 5 arquivos de nav legado
+  (`MainListItems`/`AdminNavItems`/`MainNavItems`/`useMainListItems`/
+  `mainListItemsTypes`), DTO `UserDetailResponse` (pacote `dto` esvaziado e
+  removido), `c.Set("userEmail")` (claim inexistente). **Deferido:** remoção
+  dos tipos `profile`/`role` de `domain.ts`/`useAuth` — `UserProfile/index.tsx`
+  ainda lê `user?.profile` (página com débito próprio no plano); remover o
+  tipo agora quebraria o typecheck. Fica para a limpeza da página UserProfile.
+- [x] **T3.6**: `SetorController.Delete` fail-closed (captura `.Error` do
+  Count); `InitializeTenant` com `pg_advisory_xact_lock` + re-check de
+  `tenantCount` na tx (barreira concorrente do setup, P3-3).
+
+### Não incluído nas ondas (débito remanescente registrado)
+- **T3.5** (i18n namespace `acessos.*` + migração das tabs para React Query) —
+  não executado; churn alto, valor baixo, sem risco. Fica para uma passada de
+  higiene de frontend dedicada.
+- Páginas de plugin (`Clients`/`Marketplace`) com performs fora do catálogo.
+- Tipos `profile`/`role` + página `UserProfile` (contrato `signature`/avatar
+  multipart + `PUT /users/:id/configs` inexistente) — cluster de débito da
+  UserProfile.
+- **RLS inerte** (`SET LOCAL app.current_tenant`, `middleware/auth.go`) —
+  task externa `task_10ab6677`, deliberadamente não tocada aqui.
+
+## Onda 3 — higiene, dívida de schema e performance latente · T1/T2/T3
+- [ ] **T3.1**: Schema — índices RBAC (`Cargos(tenantId,name)`,
+  `user_setores(setorId)`) + `UNIQUE(resource,action)` em `Permissions` +
+  `UNIQUE(tenantId,name)` em `Setores`/`Cargos` + Seed idempotente
+  (`OnConflict{DoNothing}`). | depends_on: [] | **T3 (schema)**
+- [ ] **T3.2**: P3-1 — cache do `RequirePermission` por
+  `(userId,tokenVersion,tenantId)` TTL 30-60s **antes** de expandir o
+  rollout do gate. | depends_on: [T1.1] | T2
+- [ ] **T3.3**: P3-2 + checklist — N+1 `resolveUserSetores` (reusar estado
+  `setores`) + guard `dismissed`/`allDone` no `useOnboardingChecklist`. |
+  depends_on: [] | T1
+- [ ] **T3.4**: Código morto — deletar cadeia `MainListItems`/`AdminNavItems`/
+  `MainNavItems`/`useMainListItems`/`mainListItemsTypes`; DTO
+  `UserDetailResponse` (Profile/GroupID/Roles); `c.Set("userEmail")` de claim
+  inexistente; tipos `profile`/`role` em `types/domain.ts`+`useAuth`+Flow. |
+  depends_on: [T1.2] | T1
+- [ ] **T3.5**: i18n namespace `acessos.*` (pt/en/es) + migração das tabs de
+  Acessos para React Query. | depends_on: [] | T2
+- [ ] **T3.6**: `SetorController.Delete` fail-closed (capturar `.Error` do
+  Count) + P3-3 lock do setup concorrente (`pg_advisory_xact_lock`). |
+  depends_on: [] | T2
+
+## Regra de ouro (invariante ADR 0022)
+Nenhuma rota nova de escrita entra sem `RequirePermission`; expandir o gate
+às rotas do backlog exige o cache de T3.2 no lugar + 1 teste 403 por rota.
+
+## Gate de aprovação (T3)
+Onda 0 (T0.1, T0.2), T1.1, T1.3-se-gate e T3.1 são **T3 (auth/schema)** —
+**PARADA obrigatória**: aguardando aprovação do dono antes de aplicar.

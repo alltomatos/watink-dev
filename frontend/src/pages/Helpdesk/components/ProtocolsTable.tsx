@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { Can } from "../../../components/Can";
+import { User } from "../../../types/domain";
 import {
   ProtocolListItem,
   statusLabels,
@@ -25,14 +26,14 @@ import {
 interface ProtocolsTableProps {
   protocols: ProtocolListItem[];
   loading: boolean;
-  userProfile: string;
+  user?: User;
   onViewProtocol: (id: number) => void;
 }
 
 const ProtocolsTable: React.FC<ProtocolsTableProps> = ({
   protocols,
   loading,
-  userProfile,
+  user,
   onViewProtocol,
 }) => {
   if (loading) {
@@ -105,8 +106,8 @@ const ProtocolsTable: React.FC<ProtocolsTableProps> = ({
               </TableCell>
               <TableCell className="text-right">
                 <Can
-                  role={userProfile}
-                  perform="edit_helpdesk"
+                  user={user}
+                  perform="tickets:read"
                   yes={() => (
                     <Button
                       variant="ghost"

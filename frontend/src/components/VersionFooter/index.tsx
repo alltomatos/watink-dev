@@ -9,7 +9,7 @@ interface VersionFooterProps {
 
 const VersionFooter: React.FC<VersionFooterProps> = ({ collapsed = false }) => {
   const { user } = useContext(AuthContext);
-  const isSuperAdmin = (user?.profile || "").toLowerCase() === "superadmin";
+  const isSuperAdmin = (user as unknown as { alcance?: string })?.alcance === "plataforma";
 
   if (collapsed || !isSuperAdmin) {
     return null;

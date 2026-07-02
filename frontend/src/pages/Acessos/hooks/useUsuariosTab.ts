@@ -7,7 +7,6 @@ import type {
   AcessosUserDetail,
   AcessosUserListItem,
   CargoListItem,
-  SetorDetail,
   SetorListItem,
   UserSavePayload,
   UserSetorVinculo,
@@ -85,42 +84,16 @@ export function useUsuariosTab(): UseUsuariosTabReturn {
     setPanelOpen(true);
   };
 
-  // GET /users/:userId (ShowUser) não devolve os vínculos de Setor do usuário
-  // (só queues/cargo/permissions — confirmado lendo o handler Go). Não há
-  // rota própria para "setores de um usuário", então derivamos cruzando
-  // GET /setores/:id de cada setor do tenant e coletando onde este userId
-  // aparece em members — aceitável para o volume típico (dezenas de setores
-  // por tenant), sem tocar em business/*.
-  const resolveUserSetores = async (userId: number): Promise<UserSetorVinculo[]> => {
-    try {
-      const { data: setorList } = await api.get<SetorListItem[]>("/setores");
-      const details = await Promise.all(
-        (setorList || []).map((s) => api.get<SetorDetail>(`/setores/${s.id}`))
-      );
-      const vinculos: UserSetorVinculo[] = [];
-      details.forEach(({ data }) => {
-        const membership = data.members.find((m) => m.userId === userId);
-        if (membership) {
-          vinculos.push({ setorId: data.id, ehGestor: membership.ehGestor });
-        }
-      });
-      return vinculos;
-    } catch (err) {
-      toastError(err);
-      return [];
-    }
-  };
-
   const openEdit = async (user: AcessosUserListItem) => {
     setPanelOpen(true);
     setPanelLoading(true);
     try {
-      const [{ data }, vinculos] = await Promise.all([
-        api.get<AcessosUserDetail>(`/users/${user.id}`),
-        resolveUserSetores(user.id),
-      ]);
+      // ShowUser (GET /users/:id) já devolve os vínculos de Setor do usuário —
+      // elimina o antigo N+1 que cruzava GET /setores/:id de TODOS os setores
+      // do tenant só para descobrir onde este userId era membro (P3-2).
+      const { data } = await api.get<AcessosUserDetail>(`/users/${user.id}`);
       setEditingUser(data);
-      setEditingUserSetores(vinculos);
+      setEditingUserSetores(data.setores ?? []);
     } catch (err) {
       toastError(err);
       setPanelOpen(false);

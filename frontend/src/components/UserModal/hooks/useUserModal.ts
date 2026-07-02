@@ -54,7 +54,7 @@ export function useUserModal(
     const fetchUser = async () => {
       if (!userId || !open) return;
       try {
-        const { data } = await api.get<UserDetail>(`/users/${userId}`);
+        const { data } = await api.get<UserDetail>("/me");
         setUser((prev) => ({
           ...prev,
           name: data.name,
@@ -85,11 +85,9 @@ export function useUserModal(
     };
     if (values.password) userData.password = values.password;
     try {
-      if (userId) {
-        await api.put(`/users/${userId}`, userData);
-      } else {
-        await api.post("/users", userData);
-      }
+      // Sempre self-service: este modal é só o "Meu perfil" do usuário logado
+      // (ver docstring). PUT /me nunca aceita campos de RBAC — o backend ignora.
+      await api.put("/me", userData);
       toast.success(i18n.t("userModal.success"));
       handleClose();
     } catch (err) {

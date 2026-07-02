@@ -27,7 +27,7 @@ interface QueueData {
 
 const MonitorQueues: React.FC = () => {
   const { user } = useContext(AuthContext);
-  const isSuperAdmin = (user?.profile || "").toLowerCase() === "superadmin";
+  const isSuperAdmin = (user as unknown as { alcance?: string })?.alcance === "plataforma";
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<QueueData>({ connected: false, queues: [], total: 0 });
