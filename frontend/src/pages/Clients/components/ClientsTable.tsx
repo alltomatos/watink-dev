@@ -80,7 +80,7 @@ export function ClientsTable({ clients, loading, user, onEdit, onDelete }: Clien
                   <div className="flex items-center justify-end gap-1">
                     <Can
                       user={user}
-                      perform="edit_clients"
+                      perform="clients:update"
                       yes={() => (
                         <Button
                           variant="ghost"
@@ -94,7 +94,7 @@ export function ClientsTable({ clients, loading, user, onEdit, onDelete }: Clien
                     />
                     <Can
                       user={user}
-                      perform="delete_clients"
+                      perform="clients:delete"
                       yes={() => (
                         <Button
                           variant="ghost"
