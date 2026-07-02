@@ -2,11 +2,16 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
 	"gorm.io/gorm"
 )
+
+// ErrAlreadyInitialized é retornado quando InitializeTenant corre contra um
+// sistema que já tem tenant — a barreira concorrente do setup (P3-3).
+var ErrAlreadyInitialized = errors.New("system already initialized")
 
 type SetupService struct {
 	db *gorm.DB
@@ -32,6 +37,22 @@ func (s *SetupService) NeedsSetup(ctx context.Context) (bool, error) {
 
 func (s *SetupService) InitializeTenant(data TenantSeedData) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 0. Barreira concorrente (P3-3): NeedsSetup no controller é
+		// check-then-act fora de transação — dois POST /initial-setup
+		// simultâneos numa instalação virgem (emails diferentes) escapariam e
+		// criariam 2 tenants. pg_advisory_xact_lock serializa os setups (o lock
+		// é liberado no commit/rollback desta tx) e o re-check dentro da tx
+		// aborta o segundo. Best-effort no lock: bancos sem suporte (ex.: SQLite)
+		// só perdem a serialização, não a corretude do re-check.
+		_ = tx.Exec(`SELECT pg_advisory_xact_lock(742042742042)`).Error
+		var tenantCount int64
+		if err := tx.Model(&models.Tenant{}).Count(&tenantCount).Error; err != nil {
+			return err
+		}
+		if tenantCount > 0 {
+			return ErrAlreadyInitialized
+		}
+
 		// 1. Plan
 		var plan models.Plan
 		err := tx.Where("name = ?", "Community").First(&plan).Error

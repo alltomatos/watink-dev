@@ -28,7 +28,7 @@ export interface UseVersionDashboardReturn {
 
 export function useVersionDashboard(): UseVersionDashboardReturn {
   const { user } = useContext(AuthContext);
-  const isSuperAdmin = (user?.profile || "").toLowerCase() === "superadmin";
+  const isSuperAdmin = (user as unknown as { alcance?: string })?.alcance === "plataforma";
 
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [loading, setLoading] = useState(true);

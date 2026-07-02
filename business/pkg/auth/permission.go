@@ -63,7 +63,7 @@ func RequirePermission(resource, action string) gin.HandlerFunc {
 			return
 		}
 
-		hasViaCargo, err := cargoHasPermission(db, user.CargoID, resource, action)
+		hasViaCargo, err := cargoHasPermission(db, user.CargoID, tenantID, resource, action)
 		if err != nil {
 			denyPermission(c, resource, action)
 			return
@@ -114,7 +114,12 @@ func userIDFromContext(c *gin.Context) (int, bool) {
 // resource:action, via an explicit JOIN against cargo_permissoes (camelCase
 // columns cargoId/permissionId — NOT GORM's many2many Association(), which
 // falls back to snake_case join-table columns; see models/cargo.go).
-func cargoHasPermission(db *gorm.DB, cargoID *int, resource, action string) (bool, error) {
+//
+// Defense-in-depth (P2-1): JOIN em "Cargos" filtrando por tenantId — um
+// cargoId de outro tenant nunca concede permissão aqui, mesmo que tenha vazado
+// para a linha do usuário (Permissions é catálogo global; só o vínculo
+// Cargo↔tenant é a barreira). Espelha loadCargoPermissions no repositório.
+func cargoHasPermission(db *gorm.DB, cargoID *int, tenantID uuid.UUID, resource, action string) (bool, error) {
 	if cargoID == nil {
 		return false, nil
 	}
@@ -122,7 +127,8 @@ func cargoHasPermission(db *gorm.DB, cargoID *int, resource, action string) (boo
 	err := db.
 		Table(`"Permissions"`).
 		Joins(`JOIN cargo_permissoes ON cargo_permissoes."permissionId" = "Permissions".id`).
-		Where(`cargo_permissoes."cargoId" = ? AND "Permissions".resource = ? AND "Permissions".action = ?`, *cargoID, resource, action).
+		Joins(`JOIN "Cargos" ON "Cargos".id = cargo_permissoes."cargoId"`).
+		Where(`cargo_permissoes."cargoId" = ? AND "Cargos"."tenantId" = ? AND "Permissions".resource = ? AND "Permissions".action = ?`, *cargoID, tenantID, resource, action).
 		Count(&count).Error
 	if err != nil {
 		return false, err
@@ -159,5 +165,5 @@ func gestorPackageHasPermission(db *gorm.DB, userID int, tenantID uuid.UUID, res
 		return false, err
 	}
 
-	return cargoHasPermission(db, &cargo.ID, resource, action)
+	return cargoHasPermission(db, &cargo.ID, tenantID, resource, action)
 }

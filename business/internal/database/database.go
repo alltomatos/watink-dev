@@ -243,6 +243,31 @@ func addCustomIndexes() error {
 			return fmt.Errorf("create index: %w", err)
 		}
 	}
+
+	// RBAC (ADR 0022): índices de lookup por request + integridade.
+	//  - user_setores(setorId): lookup reverso no Setor.List (agrega membros/
+	//    gestores) e nos joins de permissão; sem ele é seq scan na junção.
+	//  - Cargos(tenantId,name) UNIQUE: serve o lookup do Cargo "Gestor" por
+	//    request E garante nome único por tenant (reforça o anti-lockout).
+	//  - Setores(tenantId,name) UNIQUE: nome de Setor único por tenant.
+	//  - Permissions(resource,action) UNIQUE: uma linha por permissão — impede
+	//    duplicação no Seed concorrente (Swarm multi-node) e casa o read-path.
+	// As UNIQUE são BEST-EFFORT: num banco legado que já tenha linhas repetidas
+	// a criação falha; logamos e seguimos (não travar o boot). No fluxo de reset
+	// do projeto o banco está limpo e todas passam — e como addCustomIndexes
+	// roda ANTES do Seed(), a UNIQUE de Permissions já existe quando o catálogo
+	// é populado.
+	rbacIndexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_user_setores_setor ON user_setores ("setorId")`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_cargos_tenant_name ON "Cargos" ("tenantId", name)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_setores_tenant_name ON "Setores" ("tenantId", name)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_permissions_resource_action ON "Permissions" (resource, action)`,
+	}
+	for _, ddl := range rbacIndexes {
+		if err := DB.Exec(ddl).Error; err != nil {
+			log.Printf("addCustomIndexes (RBAC best-effort): %q falhou (provável dado repetido legado): %v", ddl, err)
+		}
+	}
 	return nil
 }
 

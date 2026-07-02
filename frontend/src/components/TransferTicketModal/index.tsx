@@ -75,8 +75,8 @@ const TransferTicketModal = ({
             />
 
             <Can
-              role={loggedInUser.profile}
-              perform="ticket-options:transferWhatsapp"
+              user={loggedInUser}
+              perform="tickets:reassign"
               yes={() =>
                 !loadingWhatsapps && (
                   <WhatsappSelect

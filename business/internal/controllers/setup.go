@@ -82,6 +82,10 @@ func (ctrl *SetupController) InitialSetup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := validatePasswordStrength(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if _, err := utils.ValidateStringField(req.Document, "document", 50); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -95,7 +99,7 @@ func (ctrl *SetupController) InitialSetup(c *gin.Context) {
 		CompanyName: req.CompanyName,
 		FirstName:   req.FirstName,
 		LastName:    req.LastName,
-		Email:       req.Email,
+		Email:       normalizeEmail(req.Email),
 		Password:    req.Password,
 		Document:    req.Document,
 		BackendURL:  req.BackendURL,
