@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
+import type { AxiosError } from "axios";
 import api from "../../../services/api";
 import {
-  ClientFormData, ContactInput, AddressInput, ClientAddress, ClientContact, ClientRecord,
-  EMPTY_CONTACT, EMPTY_ADDRESS,
+  ClientFormData, AddressInput, ClientAddress, ClientContact, ClientRecord,
+  PendingReassign, EMPTY_ADDRESS,
 } from "../clientTypes";
 
 // ClientProp is what the modal receives to seed the form when editing — the
@@ -13,20 +14,31 @@ import {
 // fetched independently — see docs note in handleSubmit below.
 type ClientProp = ClientRecord;
 
+interface LinkConflictBody {
+  error?: string;
+  requiresConfirmation?: boolean;
+  currentClientId?: number;
+  currentClientName?: string;
+}
+
 export interface UseClientModalReturn {
   loading: boolean;
   formData: ClientFormData;
+  clientId: number | null;
+  linkedContacts: ClientContact[];
+  contactResults: ClientContact[];
+  pendingReassign: PendingReassign | null;
   handleChange: (field: keyof ClientFormData, value: string) => void;
-  handleAddExistingContact: () => void;
-  handleAddNewContact: () => void;
-  handleContactChange: (index: number, field: keyof ContactInput, value: string | boolean | null) => void;
-  handleRemoveContact: (index: number) => void;
   handleAddAddress: () => void;
   handleAddressChange: (index: number, field: keyof AddressInput, value: string) => void;
   handleRemoveAddress: (index: number) => void;
   handleCepBlur: (index: number) => Promise<void>;
   handleSubmit: () => Promise<void>;
   fetchContacts: (inputValue: string) => void;
+  handleLinkContact: (contactId: number, confirmReassign?: boolean) => Promise<void>;
+  handleUnlinkContact: (contactId: number) => Promise<void>;
+  handleConfirmReassign: () => Promise<void>;
+  handleCancelReassign: () => void;
 }
 
 export const useClientModal = (
@@ -36,15 +48,31 @@ export const useClientModal = (
   onClose: () => void,
 ): UseClientModalReturn => {
   const [loading, setLoading] = useState(false);
+  const [clientId, setClientId] = useState<number | null>(client?.id ?? null);
   const [formData, setFormData] = useState<ClientFormData>({
     type: "pf", name: "", socialName: "", document: "", email: "", phone: "", notes: "",
-    contacts: [], addresses: [],
+    addresses: [],
   });
+  const [linkedContacts, setLinkedContacts] = useState<ClientContact[]>([]);
+  const [contactResults, setContactResults] = useState<ClientContact[]>([]);
+  const [pendingReassign, setPendingReassign] = useState<PendingReassign | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchLinkedContacts = (id: number) => {
+    api.get<{ contacts: ClientContact[] }>(`/contacts`, { params: { clientId: id } })
+      .then(({ data }) => setLinkedContacts(data.contacts ?? []))
+      .catch(() => {
+        // Non-fatal — the tab still works for linking new contacts even if
+        // the initial list fails to load.
+      });
+  };
 
   useEffect(() => {
     if (!open) return;
+    setContactResults([]);
+    setPendingReassign(null);
     if (client) {
+      setClientId(client.id);
       setFormData({
         type: client.type || "pf",
         name: client.name ?? "",
@@ -55,8 +83,7 @@ export const useClientModal = (
         notes: client.notes ?? "",
         // Contacts/addresses are separate backend resources (not part of the
         // ClientRecord response) — fetch addresses so edit mode shows the
-        // existing list; linked contacts stay out of scope here (F2).
-        contacts: [],
+        // existing list; linked contacts are fetched via fetchLinkedContacts.
         addresses: [],
       });
       api.get<{ addresses: ClientAddress[] }>(`/clients/${client.id}/addresses`)
@@ -78,18 +105,14 @@ export const useClientModal = (
         .catch(() => {
           toast.error("Erro ao carregar endereços do cliente");
         });
+      fetchLinkedContacts(client.id);
     } else {
-      const initContacts: ContactInput[] = initialContact
-        ? [{
-            name: initialContact.name ?? "",
-            role: "",
-            phone: initialContact.number ?? "",
-            email: initialContact.email ?? "",
-            isPrimary: true,
-            contactId: initialContact.id ?? null,
-            isNew: true,
-          }]
-        : [];
+      setClientId(null);
+      setLinkedContacts(
+        initialContact
+          ? [{ id: initialContact.id, name: initialContact.name, number: initialContact.number, email: initialContact.email }]
+          : [],
+      );
       setFormData({
         type: "pf",
         name: initialContact ? initialContact.name ?? "" : "",
@@ -98,22 +121,28 @@ export const useClientModal = (
         email: initialContact?.email ?? "",
         phone: initialContact?.number ?? "",
         notes: "",
-        contacts: initContacts,
         addresses: [],
       });
     }
   }, [client, open, initialContact]);
 
+  // fetchContacts populates contactResults with the search matches (GET
+  // /contacts?searchParam=) so ContactsTab can render an autocomplete list —
+  // previously this call fired and discarded the response.
   const fetchContacts = (inputValue: string) => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    if (!inputValue) return;
+    if (!inputValue) {
+      setContactResults([]);
+      return;
+    }
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        await api.get<{ contacts: ClientContact[] }>("/contacts", {
+        const { data } = await api.get<{ contacts: ClientContact[] }>("/contacts", {
           params: { searchParam: inputValue },
         });
+        setContactResults(data.contacts ?? []);
       } catch {
-        // silent
+        setContactResults([]);
       }
     }, 500);
   };
@@ -122,33 +151,57 @@ export const useClientModal = (
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleAddExistingContact = () => {
-    setFormData((prev) => ({
-      ...prev,
-      contacts: [...prev.contacts, { ...EMPTY_CONTACT(), isNew: false }],
-    }));
+  // handleLinkContact links an EXISTING Contact to this (already saved)
+  // Client — POST /clients/:clientId/contacts/:contactId/link. A 409 means
+  // the Contact already belongs to a different Client (ADR 0023): capture
+  // the payload into pendingReassign so ContactsTab can render
+  // ConfirmationModal instead of failing silently.
+  const handleLinkContact = async (contactId: number, confirmReassign = false) => {
+    if (!clientId) {
+      toast.error("Salve o cliente antes de vincular contatos");
+      return;
+    }
+    try {
+      await api.post(`/clients/${clientId}/contacts/${contactId}/link`, { confirmReassign });
+      toast.success("Contato vinculado com sucesso");
+      setContactResults([]);
+      setPendingReassign(null);
+      fetchLinkedContacts(clientId);
+    } catch (err) {
+      const axiosErr = err as AxiosError<LinkConflictBody>;
+      if (axiosErr.response?.status === 409 && axiosErr.response.data?.requiresConfirmation) {
+        const body = axiosErr.response.data;
+        const contact = contactResults.find((c) => Number(c.id) === contactId);
+        setPendingReassign({
+          contactId,
+          contactName: contact?.name ?? "este contato",
+          currentClientId: body.currentClientId ?? 0,
+          currentClientName: body.currentClientName ?? "outro cliente",
+        });
+        return;
+      }
+      toast.error("Erro ao vincular contato");
+    }
   };
 
-  const handleAddNewContact = () => {
-    setFormData((prev) => ({
-      ...prev,
-      contacts: [...prev.contacts, EMPTY_CONTACT()],
-    }));
+  const handleConfirmReassign = async () => {
+    if (!pendingReassign) return;
+    await handleLinkContact(pendingReassign.contactId, true);
   };
 
-  const handleContactChange = (index: number, field: keyof ContactInput, value: string | boolean | null) => {
-    setFormData((prev) => {
-      const contacts = [...prev.contacts];
-      contacts[index] = { ...contacts[index], [field]: value };
-      return { ...prev, contacts };
-    });
+  const handleCancelReassign = () => {
+    setPendingReassign(null);
   };
 
-  const handleRemoveContact = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      contacts: prev.contacts.filter((_, i) => i !== index),
-    }));
+  const handleUnlinkContact = async (contactId: number) => {
+    if (!clientId) return;
+    try {
+      await api.delete(`/clients/${clientId}/contacts/${contactId}`);
+      toast.success("Contato desvinculado");
+      setLinkedContacts((prev) => prev.filter((c) => Number(c.id) !== contactId));
+    } catch {
+      toast.error("Erro ao desvincular contato");
+    }
   };
 
   const handleAddAddress = () => {
@@ -221,16 +274,17 @@ export const useClientModal = (
     }
     try {
       setLoading(true);
-      let clientId: number;
+      let savedClientId: number;
       if (client) {
         await api.put(`/clients/${client.id}`, clientPayload());
-        clientId = client.id;
+        savedClientId = client.id;
         toast.success("Cliente atualizado com sucesso");
       } else {
         const { data } = await api.post<ClientRecord>("/clients", clientPayload());
-        clientId = data.id;
+        savedClientId = data.id;
         toast.success("Cliente criado com sucesso");
       }
+      setClientId(savedClientId);
 
       for (const address of formData.addresses) {
         const addressPayload = {
@@ -245,9 +299,9 @@ export const useClientModal = (
           isPrimary: address.isPrimary,
         };
         if (address.id) {
-          await api.put(`/clients/${clientId}/addresses/${address.id}`, addressPayload);
+          await api.put(`/clients/${savedClientId}/addresses/${address.id}`, addressPayload);
         } else {
-          await api.post(`/clients/${clientId}/addresses`, addressPayload);
+          await api.post(`/clients/${savedClientId}/addresses`, addressPayload);
         }
       }
 
@@ -260,10 +314,10 @@ export const useClientModal = (
   };
 
   return {
-    loading, formData,
-    handleChange, handleAddExistingContact, handleAddNewContact,
-    handleContactChange, handleRemoveContact,
+    loading, formData, clientId, linkedContacts, contactResults, pendingReassign,
+    handleChange,
     handleAddAddress, handleAddressChange, handleRemoveAddress,
     handleCepBlur, handleSubmit, fetchContacts,
+    handleLinkContact, handleUnlinkContact, handleConfirmReassign, handleCancelReassign,
   };
 };

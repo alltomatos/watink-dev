@@ -42,6 +42,19 @@ const BasicDataTab: React.FC<BasicDataTabProps> = ({ formData, onChange }) => (
         />
       </div>
     </div>
+    {formData.type === "pf" && (
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium">Nome Social</label>
+        <Input
+          value={formData.socialName}
+          onChange={(e) => onChange("socialName", e.target.value)}
+          placeholder="Nome social (opcional)"
+        />
+        <p className="text-xs text-muted-foreground">
+          Quando preenchido, este nome substitui o nome civil em todo o sistema (LGPD).
+        </p>
+      </div>
+    )}
     <div className="grid grid-cols-3 gap-4">
       <div className="space-y-1.5">
         <label className="text-sm font-medium">

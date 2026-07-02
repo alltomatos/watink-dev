@@ -1,13 +1,14 @@
 /* @jsxImportSource react */
 import React, { useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { ClientContact, ClientRecord } from "./clientTypes";
@@ -27,22 +28,25 @@ const ClientModal: React.FC<ClientModalProps> = ({ open, onClose, client, initia
   const [tab, setTab] = useState("basic");
 
   const {
-    loading, formData,
-    handleChange, handleAddExistingContact, handleAddNewContact,
-    handleContactChange, handleRemoveContact,
+    loading, formData, clientId,
+    handleChange,
     handleAddAddress, handleAddressChange, handleRemoveAddress,
-    handleCepBlur, handleSubmit, fetchContacts,
+    handleCepBlur, handleSubmit, fetchContacts, contactResults,
+    linkedContacts, pendingReassign, handleLinkContact, handleUnlinkContact,
+    handleConfirmReassign, handleCancelReassign,
   } = useClientModal(open, client, initialContact, onClose);
 
-  const contactCount = formData.contacts.length;
+  const contactCount = linkedContacts.length;
   const addressCount = formData.addresses.length;
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{client ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto p-6">
+        <SheetHeader>
+          <SheetTitle>{client ? "Editar Cliente" : "Novo Cliente"}</SheetTitle>
+        </SheetHeader>
+
+        <Separator className="my-4" />
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="grid w-full grid-cols-3">
@@ -53,12 +57,15 @@ const ClientModal: React.FC<ClientModalProps> = ({ open, onClose, client, initia
 
           <BasicDataTab formData={formData} onChange={handleChange} />
           <ContactsTab
-            contacts={formData.contacts}
-            onAddExisting={handleAddExistingContact}
-            onAddNew={handleAddNewContact}
-            onContactChange={handleContactChange}
-            onRemove={handleRemoveContact}
-            onFetchContacts={fetchContacts}
+            clientId={clientId}
+            linkedContacts={linkedContacts}
+            contactResults={contactResults}
+            pendingReassign={pendingReassign}
+            onSearch={fetchContacts}
+            onLink={handleLinkContact}
+            onUnlink={handleUnlinkContact}
+            onConfirmReassign={handleConfirmReassign}
+            onCancelReassign={handleCancelReassign}
           />
           <AddressesTab
             addresses={formData.addresses}
@@ -69,7 +76,7 @@ const ClientModal: React.FC<ClientModalProps> = ({ open, onClose, client, initia
           />
         </Tabs>
 
-        <DialogFooter>
+        <SheetFooter className="mt-6 gap-2">
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? (
@@ -78,9 +85,9 @@ const ClientModal: React.FC<ClientModalProps> = ({ open, onClose, client, initia
               "Salvar"
             )}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 };
 
