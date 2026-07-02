@@ -11,36 +11,14 @@ vi.mock("react-router-dom", () => ({
   useParams: () => ({ ticketId: undefined }),
 }));
 
-vi.mock("../../../services/api", () => ({
-  default: { put: vi.fn().mockResolvedValue({}) },
-}));
-
-vi.mock("../../../context/Auth/AuthContext", () => ({
-  AuthContext: React.createContext({ user: { id: 1 } }),
-}));
-
 vi.mock("../../../helpers/urlUtils", () => ({
   getBackendUrl: (url: string | null) => url,
-}));
-
-vi.mock("../../../translate/i18n", () => ({
-  i18n: { t: (key: string) => (key === "ticketsList.buttons.accept" ? "Aceitar" : key) },
 }));
 
 vi.mock("../../MarkdownWrapper", () => ({
   default: ({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   ),
-}));
-
-vi.mock("../../ButtonWithSpinner", () => ({
-  default: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode;
-    onClick: React.MouseEventHandler;
-  }) => <button onClick={onClick}>{children}</button>,
 }));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -123,27 +101,24 @@ describe("TicketListItem", () => {
     expect(screen.queryByText("0")).toBeNull();
   });
 
-  it("exibe botões Aceitar e Espiar quando status=pending e não é grupo", () => {
-    render(
-      <TicketListItem ticket={{ ...baseTicket, status: "pending" as const }} />
-    );
-    expect(screen.getByText("Aceitar")).toBeTruthy();
-    expect(screen.getByText("Espiar")).toBeTruthy();
-  });
-
-  it("não exibe botões Aceitar/Espiar quando status=open", () => {
-    render(<TicketListItem ticket={{ ...baseTicket, status: "open" as const }} />);
-    expect(screen.queryByText("Aceitar")).toBeNull();
-    expect(screen.queryByText("Espiar")).toBeNull();
-  });
-
-  it("não exibe botões Aceitar/Espiar em tickets pending que são grupos", () => {
+  it("exibe o nome da conexão como badge", () => {
     render(
       <TicketListItem
-        ticket={{ ...baseTicket, status: "pending" as const, isGroup: true }}
+        ticket={{ ...baseTicket, whatsapp: { name: "zap-01" } }}
       />
     );
-    expect(screen.queryByText("Aceitar")).toBeNull();
-    expect(screen.queryByText("Espiar")).toBeNull();
+    expect(screen.getByText("zap-01")).toBeTruthy();
+  });
+
+  it("exibe as tags do ticket", () => {
+    render(
+      <TicketListItem
+        ticket={{
+          ...baseTicket,
+          tags: [{ id: 1, name: "Urgente", color: "red" }],
+        }}
+      />
+    );
+    expect(screen.getByText("Urgente")).toBeTruthy();
   });
 });
