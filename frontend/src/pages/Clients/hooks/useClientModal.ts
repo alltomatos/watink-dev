@@ -283,6 +283,19 @@ export const useClientModal = (
         const { data } = await api.post<ClientRecord>("/clients", clientPayload());
         savedClientId = data.id;
         toast.success("Cliente criado com sucesso");
+        // A pré-seleção de um Contact (ex: botão "Cadastrar Cliente" a partir
+        // do sidebar de um Ticket) só preenche os campos de texto acima —
+        // sem este link, o Contact nunca fica de fato vinculado ao Client
+        // recém-criado (Contact.ClientID continua nulo).
+        if (initialContact?.id) {
+          try {
+            await api.post(`/clients/${savedClientId}/contacts/${initialContact.id}/link`, {
+              confirmReassign: false,
+            });
+          } catch {
+            toast.error("Cliente criado, mas não foi possível vincular o contato automaticamente");
+          }
+        }
       }
       setClientId(savedClientId);
 
