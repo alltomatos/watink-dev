@@ -56,6 +56,8 @@ Frontend (React/Vite) ←REST/SSE→ Backend Go (Gin/GORM) ←SQL→ PostgreSQL
 | Base de Conhecimento — fonte arquivo (S3/MinIO + parsers PDF/docx/xlsx) | ✅ Concluída (PR #259) |
 | Base de Conhecimento — UI (lista, fontes, upload, status SSE tempo-real) | ✅ Concluída (PR #260) |
 | Conexões — Subsistema de proxy anti-ban (cripto-at-rest, import Webshare, grupos+rotação, geo cidade/país, teste/test-all, auto-isolação no ban, filtros) | ✅ Concluída (PRs #292-#296) |
+| Acessos (ADR 0022) — modelo Cargo/Setor/Alcance + `RequirePermission` fail-closed + anti-lockout | ✅ Concluída (PR #302) |
+| Onboarding — Wizard `POST /initial-setup` (Nome Fantasia) + Checklist derivado no Dashboard | ✅ Concluída (PR #303) |
 
 ## Services & Ports
 
@@ -110,7 +112,7 @@ docker compose -f docker-compose.dev.yml logs --tail=100 watink-frontend
 
 ### Smoke Test
 ```bash
-SMOKE_BASE_URL=http://localhost:3000 SMOKE_EMAIL=admin@test.com SMOKE_PASS=test123 node scripts/playwright-smoke.js
+SMOKE_BASE_URL=http://localhost:3000 SMOKE_EMAIL=admin@test.com SMOKE_PASS=test1234 node scripts/playwright-smoke.js
 ```
 
 → Referência completa em [`docs/dev/commands.md`](docs/dev/commands.md)
@@ -355,11 +357,11 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 **Invariants:**
 - Sempre usar `auth.GetScoped(c, "Users"|"Setores"|"Cargos")` — nunca `c.Get("tenantId")` bruto.
 - **Enforcement faseado**: rotas sensíveis (users/setores/cargos/conexões/faturamento/relatórios/reassign-close-ticket) ganham `RequirePermission` primeiro; demais rotas expandem depois. Nenhuma rota nova de escrita entra sem gate.
-- Catálogo de Permission é `recurso:ação` (ex. `tickets:reassign`, `sectors:manage`) — nunca granularidade de menu (`resource:view`) para ações que mutam estado.
-- Gestor = marca `ehGestor` no vínculo `user_setores`, **não** um Cargo separado — o pacote de gestão soma às permissões do Cargo base, escopado (Alcance=`setor`) só aos Setores marcados.
+- Catálogo de Permission é `recurso:ação` (ex. `tickets:reassign`, `setores:manage`) — nunca granularidade de menu (`resource:view`) para ações que mutam estado.
+- Gestor = marca `ehGestor` no vínculo `user_setores`, **não** um Cargo separado — o pacote de gestão soma às permissões do Cargo base. **Hoje esse pacote é concedido em nível de AÇÃO (`recurso:ação`) tenant-wide**: `gestorPackageHasPermission` só verifica se o user tem alguma linha `user_setores` com `ehGestor=true` + o Cargo "Gestor" do tenant — NÃO restringe por qual Setor pertence o recurso da requisição. O escopo de dados por Setor (Alcance=`setor` limitando ao(s) Setor(es) marcado(s)) é **roadmap, ainda NÃO implementado** — não prometer o que o código não faz.
 - Gerente Geral/Administrador = mesmo Cargo/pacote, Alcance=`tenant` (ignora a marca de setor — vale para todos).
 - **Dono do tenant (`Tenant.OwnerID`) é blindado**: sempre Administrador, não pode perder o Cargo, não pode ser excluído; bloquear remoção do último Administrador do tenant (anti-lockout).
-- Setor e Queue são distintos: Setor organiza pessoas/gestão/permissão; Queue roteia Tickets. Setor→Queue é 1:N via `setor_filas`; não fundir os dois conceitos.
+- Setor e Queue são distintos: Setor organiza pessoas/gestão/permissão; Queue roteia Tickets. Setor→Queue é M:N via tabela de junção `setor_filas`; não fundir os dois conceitos.
 - Superadmin (Alcance=`plataforma`) vive no plugin SaaS, fora do RBAC do tenant — não modelar como Cargo do tenant.
 - Frontend: uma única **Central de Acessos** com abas (Usuários · Setores · Cargos) — Permissions não têm tela própria, aparecem dentro da edição de Cargo (matriz recurso×ação).
 
@@ -382,7 +384,7 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 - Checklist usa **estado derivado**, nunca persistido: item completo quando a contagem de Setores/Usuários do tenant excede o criado automaticamente no setup (`> 1`). Não introduzir uma flag de "onboarding completo" no banco.
 - Checklist **não cria nada por conta própria** — só linka para os fluxos reais já existentes na Central de Acessos (SetorController, UserController). Nenhum endpoint novo de criação.
 - Checklist só é visível para `alcance IN (tenant, plataforma)` — quem não tem permissão de criar Setor/Usuário não deve ver a sugestão.
-- "Criar setor" no checklist cria **Setor + Queue vinculada juntos**, numa ação só — não expor a distinção técnica Setor/Queue ao usuário nesse fluxo guiado.
+- "Criar setor" no checklist faz **auto-open do formulário de criação de Setor** (`/acessos/setores?autoOpen=create&suggestedName=...`, com chips Atendimento/Vendas/Suporte/Financeiro) — **não** cria Queue junto: `SetorController.Create` só faz `db.Create(&setor)`. A Queue é vinculada **depois**, na edição do Setor (`SetorQueuesSection` → `PUT /setores/:id/queues`). Não documentar um bundle "Setor + Queue numa ação só" que não existe.
 
 **O que NÃO fazer:**
 - Não transformar o wizard em multi-step para acomodar o guia de primeiro uso — isso é escopo do checklist pós-login, não do setup.

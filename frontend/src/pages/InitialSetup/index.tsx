@@ -45,9 +45,18 @@ const InitialSetup: React.FC = () => {
       toast.error("Por favor, preencha todos os campos obrigatórios.");
       return;
     }
+    if (setupData.password.length < 8) {
+      toast.error("A senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
     setLoading(true);
     try {
-      await api.post("/initial-setup", setupData);
+      // Email normalizado (lowercase + trim) para casar com o login — o backend
+      // também normaliza; isto é só paridade de UX.
+      await api.post("/initial-setup", {
+        ...setupData,
+        email: setupData.email.trim().toLowerCase(),
+      });
       toast.success("Sistema inicializado com sucesso!");
       navigate("/login");
     } catch (err: unknown) {

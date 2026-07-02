@@ -100,8 +100,11 @@ func (m *mockUserRepo) Create(ctx context.Context, user *domain.User) error {
 }
 
 func (m *mockUserRepo) Update(ctx context.Context, user *domain.User, fields map[string]interface{}) error {
-	return m.db.Exec(`UPDATE "Users" SET name = COALESCE(?, name), email = COALESCE(?, email) WHERE id = ?`,
-		fields["name"], fields["email"], user.ID).Error
+	// Persiste name/email/alcance (COALESCE ignora nil) para que testes
+	// possam observar o que o handler realmente escreveu — em especial que
+	// UpdateMe NÃO grava alcance (campo de RBAC) mesmo quando presente no payload.
+	return m.db.Exec(`UPDATE "Users" SET name = COALESCE(?, name), email = COALESCE(?, email), alcance = COALESCE(?, alcance) WHERE id = ?`,
+		fields["name"], fields["email"], fields["alcance"], user.ID).Error
 }
 
 func (m *mockUserRepo) Delete(ctx context.Context, id int, tenantID uuid.UUID) error {

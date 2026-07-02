@@ -57,7 +57,7 @@ func (r *GORMUserRepository) FindByIDDetail(ctx context.Context, id int, tenantI
 		return nil, err
 	}
 	if m.CargoID != nil {
-		perms, permErr := loadCargoPermissions(ctx, r.db, *m.CargoID)
+		perms, permErr := loadCargoPermissions(ctx, r.db, *m.CargoID, tenantID)
 		if permErr == nil {
 			m.Cargo.Permissions = perms
 		}
@@ -84,9 +84,11 @@ func (r *GORMUserRepository) FindByEmail(ctx context.Context, email string, tena
 // with effective permissions (Cargo) populated for the frontend Can gate.
 func (r *GORMUserRepository) FindByEmailForAuth(ctx context.Context, email string) (*domain.User, error) {
 	var m models.User
+	// Login case-insensitive (P2-6): casa por LOWER(email) para cobrir tanto os
+	// emails já normalizados na escrita quanto dados legados com caixa mista.
 	err := r.db.WithContext(ctx).
 		Preload("Tenant").
-		Where("email = ?", email).
+		Where("LOWER(email) = LOWER(?)", email).
 		First(&m).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -105,12 +107,19 @@ func (r *GORMUserRepository) FindByEmailForAuth(ctx context.Context, email strin
 // column names independently of the explicit CargoPermissao struct and falls
 // back to snake_case conventions, causing a runtime mismatch even though the
 // table itself was created with the correct (camelCase) columns.
-func loadCargoPermissions(ctx context.Context, db *gorm.DB, cargoID int) ([]models.Permission, error) {
+//
+// Defense-in-depth (P2-1): também faz JOIN em "Cargos" filtrando por tenantId,
+// para NUNCA resolver permissões de um Cargo de outro tenant caso um cargoId
+// cross-tenant tenha vazado para a linha do usuário. O write-path (UpdateUser/
+// CreateUser) já rejeita cargoId estrangeiro, mas o read-path não deve confiar
+// nisso — Permissions é catálogo global, só o vínculo Cargo↔tenant é a barreira.
+func loadCargoPermissions(ctx context.Context, db *gorm.DB, cargoID int, tenantID uuid.UUID) ([]models.Permission, error) {
 	var perms []models.Permission
 	err := db.WithContext(ctx).
 		Table(`"Permissions"`).
 		Joins(`JOIN cargo_permissoes ON cargo_permissoes."permissionId" = "Permissions".id`).
-		Where(`cargo_permissoes."cargoId" = ?`, cargoID).
+		Joins(`JOIN "Cargos" ON "Cargos".id = cargo_permissoes."cargoId"`).
+		Where(`cargo_permissoes."cargoId" = ? AND "Cargos"."tenantId" = ?`, cargoID, tenantID).
 		Find(&perms).Error
 	return perms, err
 }
@@ -139,7 +148,7 @@ func (r *GORMUserRepository) effectivePermissionNames(ctx context.Context, userI
 	set := make(map[string]struct{})
 
 	if cargoID != nil {
-		if perms, err := loadCargoPermissions(ctx, r.db, *cargoID); err == nil {
+		if perms, err := loadCargoPermissions(ctx, r.db, *cargoID, tenantID); err == nil {
 			for i := range perms {
 				set[perms[i].GetName()] = struct{}{}
 			}
@@ -148,7 +157,7 @@ func (r *GORMUserRepository) effectivePermissionNames(ctx context.Context, userI
 
 	if isGestorOfAnySetor(ctx, r.db, userID) {
 		if gestorCargoID, ok := findGestorCargoID(ctx, r.db, tenantID); ok {
-			if perms, err := loadCargoPermissions(ctx, r.db, gestorCargoID); err == nil {
+			if perms, err := loadCargoPermissions(ctx, r.db, gestorCargoID, tenantID); err == nil {
 				for i := range perms {
 					set[perms[i].GetName()] = struct{}{}
 				}

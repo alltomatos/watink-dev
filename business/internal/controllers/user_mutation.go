@@ -39,6 +39,65 @@ type createUserRequest struct {
 	Setores    []setorVinculo `json:"setores"`
 }
 
+// alcanceRank ordena os alcances do ADR 0022 (proprio < setor < tenant <
+// plataforma). Serve para (a) validar o enum e (b) impedir escalonamento de
+// privilégio: um ator nunca concede a outro (nem a si) um alcance acima do
+// próprio. Sem isso, qualquer portador de users:update se auto-promoveria a
+// plataforma → bypass total do RBAC + rotas SaaS cross-tenant (P1-1).
+var alcanceRank = map[string]int{
+	"proprio":    0,
+	"setor":      1,
+	"tenant":     2,
+	"plataforma": 3,
+}
+
+func isValidAlcance(a string) bool {
+	_, ok := alcanceRank[a]
+	return ok
+}
+
+// minPasswordLen é o piso de comprimento de senha (P2-5). Sem isso o wizard
+// aceitava criar o Administrador com senha "a".
+const minPasswordLen = 8
+
+// validatePasswordStrength rejeita senhas curtas demais (após trim). Aplicado
+// em todo caminho que DEFINE uma senha (setup, criar/atualizar usuário, /me).
+func validatePasswordStrength(pwd string) error {
+	if len(strings.TrimSpace(pwd)) < minPasswordLen {
+		return fmt.Errorf("field 'password' must be at least %d characters", minPasswordLen)
+	}
+	return nil
+}
+
+// normalizeEmail deixa o email canônico (lowercase + trim) — evita o cadastro
+// "Admin@x.com" no wizard e login "admin@x.com" batendo em 401 (P2-6). O
+// read-path de login (FindByEmailForAuth) casa por LOWER(email) para cobrir
+// também dados já gravados com caixa mista.
+func normalizeEmail(s string) string {
+	return strings.ToLower(strings.TrimSpace(s))
+}
+
+// actorAlcance lê o alcance do usuário autenticado (token) do contexto Gin.
+func actorAlcance(c *gin.Context) string {
+	v, _ := c.Get("alcance")
+	s, _ := v.(string)
+	return s
+}
+
+// cargoBelongsToTenant confirma que o Cargo pertence ao tenant do ator.
+// Cargos é tenant-scoped mas Permissions é catálogo global — apontar cargoId
+// para um Cargo de outro tenant faria RequirePermission/Can avaliarem
+// permissões estrangeiras (P2-1). Session(NewDB) obrigatório: o db de
+// GetScoped acumula condições e casaria 0 linhas se reusado.
+func cargoBelongsToTenant(db *gorm.DB, cargoID int, tenantID uuid.UUID) (bool, error) {
+	var count int64
+	err := db.Session(&gorm.Session{NewDB: true}).
+		Model(&models.Cargo{}).
+		Where(`id = ? AND "tenantId" = ?`, cargoID, tenantID).
+		Count(&count).Error
+	return count > 0, err
+}
+
 // replaceUserSetores aplica o conjunto de vínculos de Setor de um usuário
 // (replace, não merge): apaga os vínculos antigos e insere os novos dentro de
 // uma transação. Valida que todos os setorId pertencem ao tenant ANTES de
@@ -98,6 +157,10 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := validatePasswordStrength(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if _, err := utils.ValidateStringField(req.Alcance, "alcance", 50); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -117,6 +180,26 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 	if alcance == "" {
 		alcance = "proprio"
 	}
+	if !isValidAlcance(alcance) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "field 'alcance' inválido"})
+		return
+	}
+	if alcanceRank[alcance] > alcanceRank[actorAlcance(c)] {
+		c.JSON(http.StatusForbidden, gin.H{"error": "não é possível conceder alcance superior ao seu"})
+		return
+	}
+
+	if req.CargoID != nil {
+		inTenant, err := cargoBelongsToTenant(db, *req.CargoID, tenantID)
+		if err != nil {
+			utils.RespondWithInternalError(c, err, "CreateUser")
+			return
+		}
+		if !inTenant {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "cargoId não pertence a este tenant"})
+			return
+		}
+	}
 
 	configs := req.Configs
 	if configs == "" {
@@ -125,7 +208,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 
 	domainUser := &domain.User{
 		Name:         req.Name,
-		Email:        req.Email,
+		Email:        normalizeEmail(req.Email),
 		PasswordHash: tmp.PasswordHash,
 		TenantID:     tenantID,
 		Alcance:      alcance,
@@ -183,6 +266,10 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if err := validatePasswordStrength(pwd); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		tmp := models.User{PasswordHash: user.PasswordHash}
 		if err := tmp.HashPassword(pwd); err != nil {
 			utils.RespondWithInternalError(c, err, "HashPassword")
@@ -210,12 +297,22 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "field 'email' must be a valid email address"})
 			return
 		}
-		updateMap["email"] = email
+		updateMap["email"] = normalizeEmail(email)
 	}
 	if v, ok := req["alcance"].(string); ok {
 		alcance, err := utils.ValidateStringField(v, "alcance", 50)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if !isValidAlcance(alcance) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "field 'alcance' inválido"})
+			return
+		}
+		// No-escalation: o ator nunca eleva o alcance de alguém (nem o próprio)
+		// acima do seu. Fecha a auto-promoção a plataforma via users:update (P1-1).
+		if alcanceRank[alcance] > alcanceRank[actorAlcance(c)] {
+			c.JSON(http.StatusForbidden, gin.H{"error": "não é possível conceder alcance superior ao seu"})
 			return
 		}
 		updateMap["alcance"] = alcance
@@ -237,6 +334,20 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 				return
 			}
 			newCargoID = &n
+		}
+
+		// Tenant-guard: o Cargo tem de pertencer a este tenant — impede herdar
+		// permissões de um Cargo estrangeiro apontando cargoId cross-tenant (P2-1).
+		if newCargoID != nil {
+			inTenant, err := cargoBelongsToTenant(db, *newCargoID, tenantID)
+			if err != nil {
+				utils.RespondWithInternalError(c, err, "UpdateUser")
+				return
+			}
+			if !inTenant {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "cargoId não pertence a este tenant"})
+				return
+			}
 		}
 
 		// Anti-lockout (ADR 0022): o dono do tenant e o último Administrador só

@@ -11,12 +11,12 @@ const Swagger: React.FC = () => {
   const { user } = useContext(AuthContext);
   const [url, setUrl] = useState("");
 
-  const profile = (user?.profile || "").toLowerCase();
+  const alcance = (user as unknown as { alcance?: string })?.alcance;
   const perms: string[] = (user as { permissions?: string[] })?.permissions || [];
   const hasPermission =
-    profile === "superadmin" ||
-    perms.includes("view_swagger") ||
-    perms.includes("view:swagger");
+    alcance === "plataforma" ||
+    alcance === "tenant" ||
+    perms.includes("swagger:view");
 
   useEffect(() => {
     if (!hasPermission) return;

@@ -9,6 +9,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type UserController struct {
@@ -55,7 +56,7 @@ func (uc *UserController) ListUsers(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /users/{userId} [get]
 func (uc *UserController) ShowUser(c *gin.Context) {
-	_, tenantID, ok := auth.GetScoped(c, "Users")
+	db, tenantID, ok := auth.GetScoped(c, "Users")
 	if !ok {
 		return
 	}
@@ -104,6 +105,22 @@ func (uc *UserController) ShowUser(c *gin.Context) {
 			}
 			response["permissions"] = permissions
 		}
+	}
+
+	// Vínculos de Setor do usuário — incluídos aqui para o frontend não ter de
+	// cruzar GET /setores/:id de todos os setores do tenant (N+1, P3-2).
+	// Session(NewDB) obrigatório: o db de GetScoped já acumulou condições.
+	type setorVinc struct {
+		SetorID  int  `json:"setorId"`
+		EhGestor bool `json:"ehGestor"`
+	}
+	var vincs []setorVinc
+	if err := db.Session(&gorm.Session{NewDB: true}).
+		Table("user_setores").
+		Select(`"setorId", "ehGestor"`).
+		Where(`"userId" = ?`, id).
+		Scan(&vincs).Error; err == nil {
+		response["setores"] = vincs
 	}
 
 	c.JSON(http.StatusOK, response)

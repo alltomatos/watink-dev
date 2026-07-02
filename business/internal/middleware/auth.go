@@ -66,7 +66,6 @@ func IsAuth(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		c.Set("userId", claims["id"])
-		c.Set("userEmail", claims["email"])
 		c.Set("alcance", claims["alcance"])
 		c.Set("tenantId", tenantID)
 

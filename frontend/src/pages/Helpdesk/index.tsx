@@ -35,8 +35,8 @@ const Helpdesk: React.FC = () => {
 
   return (
     <Can
-      role={user.profile}
-      perform="view_helpdesk"
+      user={user}
+      perform="tickets:read"
       yes={() => (
         <div className="mx-auto max-w-7xl p-6">
           <Tabs defaultValue="protocols" className="w-full">
@@ -59,8 +59,8 @@ const Helpdesk: React.FC = () => {
                     Ver Kanban
                   </Button>
                   <Can
-                    role={user.profile}
-                    perform="edit_helpdesk"
+                    user={user}
+                    perform="tickets:create"
                     yes={() => (
                       <Button onClick={handleOpenModal}>
                         <Plus className="mr-2 h-4 w-4" />
@@ -82,7 +82,7 @@ const Helpdesk: React.FC = () => {
                 <ProtocolsTable
                   protocols={protocols}
                   loading={loading}
-                  userProfile={user.profile ?? ""}
+                  user={user}
                   onViewProtocol={handleViewProtocol}
                 />
               </div>
