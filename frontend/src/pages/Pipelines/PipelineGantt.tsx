@@ -9,9 +9,11 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getContactDisplayName } from "@/utils/clientDisplayName";
 
 interface Contact {
     name?: string;
+    client?: { socialName?: string | null } | null;
 }
 
 interface Deal {
@@ -54,7 +56,7 @@ const PipelineGantt: React.FC<PipelineGanttProps> = ({ deals }) => {
                         {deals.map((deal) => (
                             <TableRow key={deal.id}>
                                 <TableCell className="font-medium">{deal.title}</TableCell>
-                                <TableCell>{deal.contact?.name}</TableCell>
+                                <TableCell>{getContactDisplayName(deal.contact)}</TableCell>
                                 <TableCell>{format(parseISO(deal.createdAt), "dd/MM/yyyy")}</TableCell>
                                 <TableCell>{format(parseISO(deal.updatedAt), "dd/MM/yyyy")}</TableCell>
                                 <TableCell>

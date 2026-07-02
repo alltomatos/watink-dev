@@ -1,6 +1,7 @@
 import React from "react";
 import PaperCard from "../../../components/PaperCard";
 import type { Protocol } from "../protocolTypes";
+import { getContactDisplayName } from "@/utils/clientDisplayName";
 
 interface ProtocolInfoCardProps {
   protocol: Protocol;
@@ -25,7 +26,7 @@ const ProtocolInfoCard: React.FC<ProtocolInfoCardProps> = ({ protocol }) => (
       <div>
         <dt className="text-xs font-medium text-muted-foreground">Contato</dt>
         <dd className="mt-0.5 text-sm">
-          {protocol.contact ? protocol.contact.name : "-"}
+          {protocol.contact ? getContactDisplayName(protocol.contact) : "-"}
         </dd>
       </div>
     </dl>
