@@ -58,6 +58,7 @@ Frontend (React/Vite) ←REST/SSE→ Backend Go (Gin/GORM) ←SQL→ PostgreSQL
 | Conexões — Subsistema de proxy anti-ban (cripto-at-rest, import Webshare, grupos+rotação, geo cidade/país, teste/test-all, auto-isolação no ban, filtros) | ✅ Concluída (PRs #292-#296) |
 | Acessos (ADR 0022) — modelo Cargo/Setor/Alcance + `RequirePermission` fail-closed + anti-lockout | ✅ Concluída (PR #302) |
 | Onboarding — Wizard `POST /initial-setup` (Nome Fantasia) + Checklist derivado no Dashboard | ✅ Concluída (PR #303) |
+| Plugins — Redesenho Marketplace + Licenciamento via Hub (ADR 0024; Hub em `watink-ecosistema/hub`) | 📋 Documentado — pré-implementação |
 
 ## Services & Ports
 
@@ -174,14 +175,14 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 
 - **NUNCA** commite `.env`, credenciais ou secrets.
 - PostgreSQL RLS + JWT `tenantId` — inclua sempre `tenantId` nas queries.
-- Plugin license validation é server-side (Watink Manager) — flag local no DB não é autoridade.
+- Plugin license validation é server-side no **Watink Hub** — token assinado Ed25519 verificado offline pelo `plugin-manager` local; `PluginInstallations.active` é só **alocação**, não autoridade de licença (ADR 0024). O `business` nunca fala com o Hub direto.
 
 ## Key Patterns
 
 - **Frontend config**: `src/config.ts` lê `import.meta.env` com fallback `window.ENV`.
 - **Engine sessions**: `.sessions_auth/` deve ser Docker volume — perder desconecta todas as sessões WhatsApp.
 - **Redis cache**: mensagens com TTL 24h em `wbot:msg:{jid}:{id}`.
-- **Plugin activation**: flipa `PluginInstallations.active` no DB após validação no Manager.
+- **Plugin activation**: opt-in por tenant via Marketplace grava `PluginInstallations.active` (alocação); plugin `pro` exige licença válida do Hub (via `plugin-manager`, pull+cache ~60s) + teto de tenants. Ver [`docs/agents/plugins.md`](docs/agents/plugins.md) e ADR 0024.
 
 ## Módulo: Pipeline
 
@@ -424,10 +425,33 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 
 **Referência:** [`docs/agents/clients.md`](docs/agents/clients.md) · ADR 0023
 
+## Módulo: Plugins (Marketplace + Licenciamento)
+
+**Responsabilidade:** Ativação **opt-in por tenant** de features (plugins) via Marketplace, com gating real de licença para as pagas. O core é **cliente** do licenciamento; a autoridade de catálogo/licença é o **Watink Hub** (`watink-ecosistema/hub`), alcançado sempre pelo `plugin-manager` local — nunca direto. Substitui o modelo "flag no banco" (ADR 0024, supera 0003).
+
+**Fronteira core vs plugin:** é plugin o que precisa ser **ativado via Marketplace** (`free` ou `pro`); é core o que está sempre-ligado (atendimento, Clientes, Pipeline, FlowBuilder, RAG). Por isso Clientes virou core (ADR 0023) e o `saas-plugin` foi **removido** (control plane é o `watink-saas`). Plugins reais restantes: `helpdesk`, `webchat`.
+
+**Invariants:**
+- Sempre `auth.GetScoped(c, "Plugins")` — nunca `c.Get("tenantId")` bruto; escritas/agregações em `Session(NewDB:true)`.
+- `business` consulta **só** o `plugin-manager` (pull+cache ~60s); nunca o Hub direto.
+- Licença = **token Ed25519 verificado offline** (`pkg/licensetoken`) — nunca flag local nem "confiar no corpo do heartbeat".
+- Licença é por **instância + teto de tenants**; a **alocação** nominal (qual tenant) é do core (`PluginInstallations`). Teto aplicado na alocação (**fail-closed** em crescimento).
+- Plugin `free` não toca o Hub; `pro` exige token válido + teto livre.
+- `degradeMode` (`readonly`|`blocked` na expiração) vem do **manifesto do plugin**, por plugin.
+
+**O que NÃO fazer:**
+- Não ler `PluginInstallations.active` como autoridade de licença — é só alocação.
+- Não chamar o Hub a partir do `business` — sempre via `plugin-manager`.
+- Não reportar licença válida sem verificar assinatura Ed25519 + `exp`.
+- Não montar teto/licença no frontend (só envia `slug + tenant/ticket` e reflete o status).
+- Não reintroduzir `saas-plugin` nem o `marketplace-hub` Node; não distribuir código de plugin dinamicamente (embarcado — anti-supply-chain).
+
+**Referência:** [`docs/agents/plugins.md`](docs/agents/plugins.md) · ADR 0024 (supera 0003) · Hub: `watink-ecosistema/hub`
+
 ## Domain Docs
 
 - **Glossário**: [`CONTEXT.md`](CONTEXT.md)
-- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0009** para stage upsert, **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes. **FlowBuilder/Automação**: **0011** FlowRun unificado · **0012** trigger polimórfico · **0013** contrato versionado FlowGraph · **0014** channel adapters · **0015** pgvector RAG · **0016** campanhas anti-ban (risco estrutural + opt-in + roadmap BSP) · **0017** scheduler multi-node. **Base de Conhecimento/RAG**: **0015** (atualizado) pgvector RAG · **0018** microsserviço watink-knowledge + trust boundary · **0019** S3 Storage Driver · **0020** Agent Runtime. **Acessos/RBAC**: **0022** modelo Cargo/Setor/Alcance + enforcement real (supera **0005**, ABAC via RolePermission.Scope/Conditions nunca implementado). **Clientes/CRM**: **0023** Client como entidade core (sai do plugin "pro"), transitividade Contact→Client, documento cifrado at-rest
+- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0009** para stage upsert, **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes. **FlowBuilder/Automação**: **0011** FlowRun unificado · **0012** trigger polimórfico · **0013** contrato versionado FlowGraph · **0014** channel adapters · **0015** pgvector RAG · **0016** campanhas anti-ban (risco estrutural + opt-in + roadmap BSP) · **0017** scheduler multi-node. **Base de Conhecimento/RAG**: **0015** (atualizado) pgvector RAG · **0018** microsserviço watink-knowledge + trust boundary · **0019** S3 Storage Driver · **0020** Agent Runtime. **Acessos/RBAC**: **0022** modelo Cargo/Setor/Alcance + enforcement real (supera **0005**, ABAC via RolePermission.Scope/Conditions nunca implementado). **Clientes/CRM**: **0023** Client como entidade core (sai do plugin "pro"), transitividade Contact→Client, documento cifrado at-rest. **Plugins/Licenciamento**: **0024** redesenho do sistema de plugins (Watink Hub como autoridade, token assinado Ed25519, trilho duplo, licença por instância+teto, fronteira core/plugin = ativação; supera **0003** no ponto da flag)
 - **Arquitetura**: [`docs/dev/architecture.md`](docs/dev/architecture.md)
 - **Frontend DS**: [`docs/frontend/design-system.md`](docs/frontend/design-system.md)
 - **Git Workflow**: [`docs/dev/git_workflow_policy.md`](docs/dev/git_workflow_policy.md)

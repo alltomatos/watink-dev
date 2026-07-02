@@ -1,8 +1,18 @@
 # Desenvolvimento de Plugins
 
+> **Licenciamento e ativação foram redesenhados (ADR 0024).** A fonte de verdade sobre o
+> *sistema* de plugins (Marketplace, licença, gating, trilho com o Hub) é
+> [`docs/agents/plugins.md`](../agents/plugins.md). **Este guia cobre só como CONSTRUIR um
+> plugin** (estrutura, RBAC, multitenancy). As seções de ativação/licença abaixo foram
+> atualizadas para o modelo novo.
+
 ## Conceito
 
-Um plugin no Watink integra-se ao Backend Go e ao Frontend React. Plugins built-in embarcam nas imagens Docker; plugins de marketplace são baixados e validados pelo Plugin Manager.
+Um plugin no Watink integra-se ao Backend Go e ao Frontend React. **Plugins são sempre embarcados
+na imagem Docker** — não há download de código em runtime (ADR 0003/0024, anti-supply-chain). O
+que o "Marketplace" faz é **ativar** (opt-in por tenant) uma feature embarcada e, para plugins
+`pro`, validar a **licença** emitida pelo Hub. Um plugin é, por definição, uma feature que precisa
+ser **ativada via Marketplace** — o que está sempre-ligado é core, não plugin.
 
 ## Estrutura de um Plugin
 
@@ -62,53 +72,34 @@ const { hasPermission } = useAuth()
 - No Backend Go: extraia o tenant com `tenantUUIDFromContext(c)`
 - Toda query deve filtrar por `tenant_id`
 
-## Ativação de Plugin Built-in
+## Ativação e Licenciamento (ADR 0024)
 
-Plugins built-in não baixam código — a ativação apenas flipa a flag no banco:
+A ativação é **opt-in por tenant** via Marketplace e grava a **alocação** em `PluginInstallations`
+(`active=true`). Essa flag **não é autoridade de licença** — é só o registro de que o tenant X
+usa o plugin Y. A autoridade de licença é o Hub (token assinado), consultado pelo `business` via
+`plugin-manager` local. Fluxo resumido:
 
-```sql
-UPDATE "PluginInstallations"
-SET active = true
-WHERE tenant_id = $1 AND plugin_slug = $2;
-```
+- **Plugin `free`**: `POST /plugins/:slug/activate` → cria `PluginInstallations(active=true)`. Não toca o Hub.
+- **Plugin `pro`**: `POST /plugins/:slug/activate` → o `business` pergunta ao `plugin-manager` se
+  a instância tem **licença válida** e **teto livre** (`alocados < tenantCap`) → aloca, ou devolve
+  `checkoutUrl` (adquirir no Hub), ou `402` (teto cheio).
 
-A validação da licença ocorre **server-side** no Watink Manager antes de flipar a flag.
+O gating em runtime cruza **licença** (plugin-manager) × **alocação** (`PluginInstallations`) via
+`PluginRegistry.GetStatus(slug, tenantId)`: `active` → segue; `readonly` → só GET; `blocked`/`unlicensed`
+→ 402. Na expiração, aplica-se o `degradeMode` do **manifesto do plugin** (`readonly`|`blocked`).
 
-## API do Watink Manager (licenças)
+> **NÃO** consulte o Hub diretamente do `business`, **nem** trate `PluginInstallations.active`
+> como prova de licença. O `business` fala só com o `plugin-manager`; a licença é um **token
+> Ed25519 verificado offline** (`pkg/licensetoken`).
 
-### `GET /api/marketplace_plugins`
+## Contrato de licença (Hub ↔ plugin-manager ↔ business)
 
-Retorna catálogo de plugins. Público.
+O contrato HTTP completo (heartbeat, catálogo, token assinado, `tenantCap`, `revocationList`) está
+em `watink-ecosistema/hub/docs/integration-clients.md` § A e resumido em
+[`docs/agents/plugins.md`](../agents/plugins.md). Pontos-chave para quem implementa no core:
 
-```bash
-curl https://watink.com/api/marketplace_plugins
-```
-
-```json
-{
-  "plugins": [{
-    "id": "uuid",
-    "name": "Helpdesk",
-    "category": "Helpdesk",
-    "price": 29.9,
-    "status": "active",
-    "version": "1.0.0"
-  }]
-}
-```
-
-### `POST /api/verify_license`
-
-Valida licença server-to-server. Chamado pelo Plugin Manager, nunca pelo frontend.
-
-```bash
-curl -X POST https://watink.com/api/verify_license \
-  -H "Content-Type: application/json" \
-  -d '{"licenseKey": "LIC-ABC-123", "tenantId": "tenant-001"}'
-```
-
-```json
-{ "status": "VALID" }
-```
-
-Resposta possível: `VALID`, `INVALID`, `{ "status": "INVALID", "reason": "NOT_FOUND" }`.
+- `plugin-manager` → Hub: `POST /api/v1/plugins/heartbeat` (renova tokens) e `GET /catalog`.
+- `business` → `plugin-manager`: `GET /internal/licenses` (pull + cache ~60s) → por plugin
+  `{status, tenantCap, exp}`, com a assinatura já verificada por `pkg/licensetoken`.
+- `frontend` → `business`: `GET /plugins/catalog`, `GET /plugins/installed`,
+  `POST /plugins/:slug/activate|deactivate`.
