@@ -128,6 +128,12 @@ func Seed() {
 		{Resource: "contacts", Action: "create", Description: "Criar Contatos"},
 		{Resource: "contacts", Action: "update", Description: "Editar Contatos"},
 		{Resource: "contacts", Action: "delete", Description: "Excluir Contatos"},
+		// clients (CRM)
+		{Resource: "clients", Action: "read", Description: "Visualizar Clientes"},
+		{Resource: "clients", Action: "create", Description: "Criar Clientes"},
+		{Resource: "clients", Action: "update", Description: "Editar Clientes"},
+		{Resource: "clients", Action: "delete", Description: "Excluir Clientes"},
+		{Resource: "clients", Action: "manage", Description: "Gerenciar vínculos de Contato e Endereços de Clientes"},
 		// connections (WhatsApp/Conexões)
 		{Resource: "connections", Action: "read", Description: "Visualizar Conexões"},
 		{Resource: "connections", Action: "create", Description: "Criar Conexões"},
