@@ -64,7 +64,7 @@ func (dc *DealController) List(c *gin.Context) {
 		var deals []models.Deal
 		if err := db.Session(&gorm.Session{NewDB: true}).
 			Where(`"ticketId" = ? AND "tenantId" = ?`, ticketID, tenantID).
-			Preload("Contact").
+			Preload("Contact.Client").
 			Preload("Stage.Pipeline").
 			Find(&deals).Error; err != nil {
 			utils.RespondWithInternalError(c, err, "DealListByTicket")
@@ -99,7 +99,7 @@ func (dc *DealController) List(c *gin.Context) {
 	var deals []models.Deal
 	if len(stageIDs) > 0 {
 		if err := db.Where(`"stageId" IN ? AND "tenantId" = ?`, stageIDs, tenantID).
-			Preload("Contact").
+			Preload("Contact.Client").
 			Find(&deals).Error; err != nil {
 			utils.RespondWithInternalError(c, err, "DealList")
 			return
