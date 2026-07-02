@@ -995,10 +995,17 @@ dedicados do `ClientController`), Onda F (frontend), Onda G (e2e).
   lookup` do backend. Coluna "Contatos" removida da listagem (API real
   não traz esse array agregado). Vínculo/confirmação de Contact e UI de
   Nome Social ficam para F2. typecheck+lint limpos. Commit `40775f16a`.
-- [ ] **F2**: Redesign visual de `ClientModal`/abas no padrão profissional
-  da Central de Acessos; campo Nome Social (exclusivo PF); UI de
-  link/unlink de Contact com diálogo de confirmação (espelha C4). |
-  depends_on: [F1] | T2
+- [x] **F2**: `ClientModal.tsx` Dialog→Sheet (confirmado no DOM real:
+  `inset-y-0 right-0 h-full`, slide-in-from-right, igual UserPanel);
+  Nome Social só em PF (helper LGPD); `ContactsTab` reescrita com busca
+  real + link/unlink + `ConfirmationModal` no 409; aba Contatos avisa
+  "Salve o cliente antes de vincular contatos" quando `!clientId`.
+  **Verificado visualmente ao vivo** (login no docker + navegação real):
+  Sheet renderiza corretamente, campo Nome Social some ao trocar pra PJ,
+  aba Endereços funcional, aba Contatos com o gate correto — screenshots
+  conferidos, sem erro de console atribuível ao módulo Clientes (só um
+  warning pré-existente de Tooltip/Popover na página de Tickets, não
+  relacionado). Commit `0f8a511ad`.
 - [ ] **F3**: Gate de permissão real — substitui `perform="view_clients"`/
   `"edit_clients"`/`"delete_clients"` (legado `rules.ts`) pelo padrão ADR
   0022 já usado em Acessos, casando com o catálogo de A2. | depends_on:
