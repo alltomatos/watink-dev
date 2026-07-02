@@ -1006,14 +1006,32 @@ dedicados do `ClientController`), Onda F (frontend), Onda G (e2e).
   conferidos, sem erro de console atribuível ao módulo Clientes (só um
   warning pré-existente de Tooltip/Popover na página de Tickets, não
   relacionado). Commit `0f8a511ad`.
-- [ ] **F3**: Gate de permissão real — substitui `perform="view_clients"`/
-  `"edit_clients"`/`"delete_clients"` (legado `rules.ts`) pelo padrão ADR
-  0022 já usado em Acessos, casando com o catálogo de A2. | depends_on:
-  [A2, F2] | T2
-- [ ] **F4**: Propagação de exibição do Nome Social — lista de Tickets,
-  bolha de chat, cabeçalho do Ticket, notificações, Pipeline/Deal,
-  Protocol — consome `client.socialName` (de C6) sem exibir os dois nomes
-  lado a lado. | depends_on: [D1] | T2
+- [x] **F3**: `perform="view_clients"`→`clients:read`,
+  `"edit_clients"`→`clients:create`(botão Novo)/`clients:update`(editar
+  linha), `"delete_clients"`→`clients:delete`. `rules.ts` não precisou de
+  ajuste (não tinha as chaves legadas). `Can/index.tsx` já implementava o
+  padrão real ADR 0022 (`user.permissions` + bypass `alcance`) — não
+  precisou mudar. Commit `bdd80904c`.
+- **Fix adicional (achado por F3, corrigido diretamente)**: menu lateral
+  "Clientes" (`SidebarNav.tsx`) usava `activePlugins.includes("clientes")`
+  — gate morto desde que o plugin foi removido (A1), o link nunca mais
+  apareceria. Trocado para `Can perform="clients:read"`, verificado ao
+  vivo no browser (link `/clients` volta a aparecer no menu). Commit
+  `39ed6d816`.
+- [x] **F4a**: `frontend/src/utils/clientDisplayName.ts`
+  (`getContactDisplayName`) + aplicado em `TicketListItem`, `TicketInfo`,
+  `MessageBubble` (chat bubble). `Contact.client?.socialName` adicionado
+  aos tipos (`types/Ticket.ts`, `MessagesList/types.ts`). Commit
+  `21ca1fe21`.
+- [ ] **F4b**: mesma propagação em Notificações (`NotificationToast`),
+  Pipeline/Deal (`PipelineKanban`, `PipelineGantt`) e Helpdesk/Protocol
+  (`ProtocolCard`, `ProtocolInfoCard`, `ProtocolsTable`), reusando
+  `getContactDisplayName` de F4a. | depends_on: [F4a] | T2
+- **Débito registrado (não bloqueante)**: `ContactController`
+  (`ListContacts`/`ShowContact`) não ganhou `Preload("Client")` — usa
+  `domain.ContactRepository` (achado de C6). A tela de Contatos (não
+  Tickets/Deals) não vai mostrar Nome Social até esse preload ser
+  adicionado. Fora do escopo desta onda; registrar como follow-up.
 
 ## Onda G — fiscalização final
 - [ ] **G1**: E2E/segurança (`/secure-e2e`) — soft-delete verificado,
