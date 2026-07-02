@@ -99,9 +99,10 @@ func BuildQuickAnswerCommand(qaType, message string, contentMap map[string]inter
 			caption = message
 		}
 		mimeType := "image/jpeg"
-		if mediaType == "video" {
+		switch mediaType {
+		case "video":
 			mimeType = "video/mp4"
-		} else if mediaType == "audio" {
+		case "audio":
 			mimeType = "audio/ogg"
 		}
 		payload = map[string]interface{}{
