@@ -193,3 +193,35 @@ func TestSetupController_InitialSetup_MissingRequiredFields(t *testing.T) {
 		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
 	}
 }
+
+// TestSetupController_InitialSetup_RejectsShortPassword verifica o piso de
+// comprimento de senha (P2-5): o Administrador inicial não pode nascer com
+// senha "a". InitializeTenant NÃO deve ser chamado.
+func TestSetupController_InitialSetup_RejectsShortPassword(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	svc := &mockSetupService{needsSetup: true}
+	ctrl := NewSetupController(svc)
+
+	payload := map[string]string{
+		"companyName": "Acme Ltda",
+		"firstName":   "Admin",
+		"email":       "admin@acme.com",
+		"password":    "a",
+	}
+	body, _ := json.Marshal(payload)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request, _ = http.NewRequest("POST", "/initial-setup", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	ctrl.InitialSetup(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for short password, got %d: %s", w.Code, w.Body.String())
+	}
+	if svc.initCalled {
+		t.Fatal("InitializeTenant must NOT be called when password is too short")
+	}
+}

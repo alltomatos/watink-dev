@@ -44,27 +44,30 @@ export function useOnboardingChecklist(): UseOnboardingChecklistReturn {
   });
 
   const fetchCounts = useCallback(async () => {
-    if (!canSeeChecklist) {
+    // Não gasta 2 requests por visita ao Dashboard quando o card nem vai
+    // aparecer (sem permissão de alcance) ou já foi dispensado nesta sessão.
+    if (!canSeeChecklist || dismissed) {
       setLoading(false);
       return;
     }
     setLoading(true);
-    try {
-      const [setoresRes, usersRes] = await Promise.all([
-        api.get<SetorListItem[]>("/setores"),
-        api.get<AcessosUsersResponse>("/users"),
-      ]);
-      const setorCount = Array.isArray(setoresRes.data) ? setoresRes.data.length : 0;
-      const userCount = Array.isArray(usersRes.data?.users) ? usersRes.data.users.length : 0;
+    // allSettled (não all): se um endpoint negar (ex.: alcance=tenant sem
+    // users:read → 403 em /users) o outro resultado ainda conta, em vez de
+    // descartar os dois e deixar o item eternamente pendente.
+    const [setoresRes, usersRes] = await Promise.allSettled([
+      api.get<SetorListItem[]>("/setores"),
+      api.get<AcessosUsersResponse>("/users"),
+    ]);
+    if (setoresRes.status === "fulfilled") {
+      const setorCount = Array.isArray(setoresRes.value.data) ? setoresRes.value.data.length : 0;
       setSetorDone(setorCount > 1);
-      setUserDone(userCount > 1);
-    } catch {
-      // Falha silenciosa — o checklist é dispensável e não deve travar o
-      // Dashboard nem exibir erro. Mantém o estado anterior (assume pendente).
-    } finally {
-      setLoading(false);
     }
-  }, [canSeeChecklist]);
+    if (usersRes.status === "fulfilled") {
+      const userCount = Array.isArray(usersRes.value.data?.users) ? usersRes.value.data.users.length : 0;
+      setUserDone(userCount > 1);
+    }
+    setLoading(false);
+  }, [canSeeChecklist, dismissed]);
 
   useEffect(() => {
     fetchCounts();

@@ -6,7 +6,7 @@ const { chromium } = require('playwright');
   
   await page.goto('http://localhost:3000/login');
   await page.fill('input[name="email"]', 'admin@test.com');
-  await page.fill('input[name="password"]', 'test123');
+  await page.fill('input[name="password"]', 'test1234');
   await page.click('button[type="submit"]');
   await page.waitForNavigation({ waitUntil: 'networkidle' });
 

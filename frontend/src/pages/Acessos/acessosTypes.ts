@@ -126,6 +126,8 @@ export interface AcessosUserDetail {
     action: string;
     description: string;
   }[];
+  /** Vínculos de Setor do usuário — ShowUser já devolve (evita N+1 no client). */
+  setores?: UserSetorVinculo[];
 }
 
 export interface UserSetorVinculo {

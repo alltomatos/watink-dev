@@ -85,8 +85,8 @@ const TicketOptionsMenu: React.FC<TicketOptionsMenuProps> = ({
           </DropdownMenuItem>
 
           <Can
-            role={user.profile}
-            perform="ticket-options:deleteTicket"
+            user={user}
+            perform="tickets:delete"
             yes={() => (
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"

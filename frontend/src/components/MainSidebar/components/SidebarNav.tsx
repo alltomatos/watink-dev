@@ -37,7 +37,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed, isLightSidebar, acti
     <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-1 custom-scrollbar">
       <Can
         user={user}
-        perform="dashboard:read"
+        perform="tickets:read"
         yes={() => (
           <SidebarItem
             to="/"
@@ -103,7 +103,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed, isLightSidebar, acti
 
       <Can
         user={user}
-        perform="quick-answers:read"
+        perform="tickets:read"
         yes={() => (
           <SidebarItem
             to="/quick-answers"
@@ -117,7 +117,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed, isLightSidebar, acti
 
       <Can
         user={user}
-        perform="tags:read"
+        perform="tickets:read"
         yes={() => (
           <SidebarItem
             to="/tags"
@@ -144,25 +144,19 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed, isLightSidebar, acti
       />
 
       {activePlugins.includes("clientes") && (
-        <Can
-          user={user}
-          perform="clients:read"
-          yes={() => (
-            <SidebarItem
-              to="/clients"
-              label={i18n.t("mainDrawer.listItems.clients")}
-              icon={<Briefcase size={20} />}
-              collapsed={collapsed}
-              activeColor="var(--nav-icon-orange)"
-            />
-          )}
+        <SidebarItem
+          to="/clients"
+          label={i18n.t("mainDrawer.listItems.clients")}
+          icon={<Briefcase size={20} />}
+          collapsed={collapsed}
+          activeColor="var(--nav-icon-orange)"
         />
       )}
 
       {activePlugins.includes("helpdesk") && (
         <Can
           user={user}
-          perform="helpdesk:read"
+          perform="tickets:read"
           yes={() => (
             <SidebarItem
               to="/helpdesk"
