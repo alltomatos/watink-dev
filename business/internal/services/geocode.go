@@ -48,7 +48,7 @@ func Geocode(ctx context.Context, street, number, neighborhood, city, state stri
 		log.Printf("geocode: request failed: %v", err)
 		return nil, nil
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("geocode: unexpected status %d from Nominatim", resp.StatusCode)

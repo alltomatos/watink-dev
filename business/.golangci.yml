@@ -13,3 +13,13 @@ linters:
     - unused
     - ineffassign
     - misspell
+  settings:
+    misspell:
+      # "Clientes"/"clientes" é o nome do domínio (módulo CRM, ADR 0023) —
+      # não é typo de "clients", aparece de propósito em descrições de
+      # permissão, comentários e Swagger. Exclusão global em vez de
+      # reescrever cada ocorrência (ao contrário de comentários isolados,
+      # este termo recorre por toda a feature).
+      ignore-rules:
+        - clientes
+        - Clientes
