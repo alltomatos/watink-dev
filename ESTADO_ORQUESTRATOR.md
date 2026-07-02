@@ -912,13 +912,24 @@ migração de dado legado (ambiente de desenvolvimento).
   `infrastructure/repository`. Commit `2c7020970`.
 
 ## Onda C — serviços/controller backend (paralelizável após B1)
-- [ ] **C1**: Serviço `AddressLookup` (proxy ViaCEP, URL vinda de Settings/
-  A3, timeout curto). | depends_on: [A3] | T2
-- [ ] **C2**: Serviço `Geocode` (Nominatim/OpenStreetMap, best-effort,
-  nunca bloqueia o save). | depends_on: [B1] | T2
-- [ ] **C3**: `ClientController` — CRUD core (list/get/create/update/
-  soft-delete), `auth.GetScoped(c,"Clients")`, wiring de cripto do
-  `Document`. | depends_on: [B1, A2] | T3
+- [x] **C1**: `services.LookupAddressByCEP` (lê Settings addressLookup*,
+  timeout 5s) + `AddressLookupController.Lookup` (`auth.GetScoped`, 400
+  CEP inválido / 200 com notFound / 502 erro externo). Rota NÃO registrada
+  (fica pra D1). Commit `77225f3ec`.
+- [x] **C2**: `services.Geocode` (Nominatim, timeout 5s, User-Agent, nunca
+  retorna erro pro chamador) + `services.SyncClientAddressGeography`
+  (`ST_MakePoint(lng,lat)` — ordem confirmada). Commit `b9fbaac4f`.
+- [x] **C3**: `ClientController` (List/Show/Create/Update/Delete) — DTO de
+  input dedicado, validação PJ+SocialName→400, cripto fail-closed na
+  escrita/fail-open na leitura, soft-delete via `gorm.DeletedAt`. Rota NÃO
+  registrada (D1). Commit `1b74997ca`.
+- **Anomalia de processo**: C1/C2/C3 nasceram de worktree baseada em
+  `develop` em vez de `feat/clientes-crm` (causa não identificada — possível
+  race na criação de worktrees paralelas). C2 e C3 detectaram e
+  autocorrigiram (`git reset --hard`/merge trazendo `feat/clientes-crm`
+  antes de codar); C1 não precisou (seu escopo não dependia do schema da
+  Onda B). Verificado e corrigido no merge — sem perda de trabalho, mas
+  fica registrado para vigiar em ondas futuras.
 - [ ] **C4**: `Client`↔`Contact` link/unlink — bloqueia só com confirmação
   explícita quando o Contact já pertence a outro Client (reatribuição
   permitida, não bloqueio duro). | depends_on: [B1, C3] | T2
