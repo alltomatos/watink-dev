@@ -3,6 +3,7 @@ const messages = {
     translations: {
       common: {
         rowsPerPage: "Rows per page",
+        loading: "Loading...",
       },
       role: {
         title: "Roles",

@@ -1,41 +1,18 @@
 import React from "react";
+import { Loader2 } from "lucide-react";
+import { i18n } from "../../translate/i18n";
 
 /**
- * PageLoader — Fallback para Suspense durante lazy-loading.
- * Apple-style: skeleton sutil com animação pulse. Zero deps.
+ * PageLoader — Fallback para Suspense durante lazy-loading de módulos/rotas.
+ * Preenche toda a área de conteúdo com um spinner central para que a troca
+ * de módulo nunca pareça uma tela em branco enquanto o chunk carrega.
  */
-if (
-  typeof document !== "undefined" &&
-  !document.getElementById("page-loader-keyframes")
-) {
-  const style = document.createElement("style");
-  style.id = "page-loader-keyframes";
-  style.textContent = `
-@keyframes pageLoaderPulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
-}
-.page-loader-bar {
-  width: 40px; height: 4px; border-radius: 2px;
-  background: var(--action-primary);
-  animation: pageLoaderPulse 1.2s ease-in-out infinite;
-}
-  `;
-  document.head.appendChild(style);
-}
-
 const PageLoader: React.FC = () => (
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      height: "100%",
-      minHeight: 200,
-      width: "100%",
-    }}
-  >
-    <div className="page-loader-bar" />
+  <div className="flex h-full min-h-[60vh] w-full flex-col items-center justify-center gap-3">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <p className="text-sm text-muted-foreground animate-pulse">
+      {i18n.t("common.loading")}
+    </p>
   </div>
 );
 
