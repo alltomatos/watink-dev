@@ -534,6 +534,18 @@ const messages = {
           deleteMessage: "Esta ação não pode ser revertida.",
         },
       },
+      flowBuilder: {
+        nodes: {
+          quickAnswer: {
+            paletteLabel: "Resposta Rápida",
+            title: "Configurar Resposta Rápida",
+            fieldLabel: "Resposta Rápida",
+            placeholder: "Selecione uma resposta rápida",
+            empty: "Nenhuma resposta rápida cadastrada",
+            helper: "Envia um modelo do módulo Respostas Rápidas.",
+          },
+        },
+      },
       users: {
         title: "Usuários",
         table: {

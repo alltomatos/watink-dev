@@ -9,7 +9,7 @@ import {
 import api from '../../services/api';
 
 import {
-  NodeEditorSidebarProps, NodeData, Pipeline, Queue, User, KnowledgeBase, NODE_TITLES,
+  NodeEditorSidebarProps, NodeData, Pipeline, Queue, User, KnowledgeBase, QuickAnswer, NODE_TITLES,
 } from './nodeEditorTypes';
 
 import StartForm from './components/node-forms/StartForm';
@@ -27,6 +27,7 @@ import HelpdeskForm from './components/node-forms/HelpdeskForm';
 import EndForm from './components/node-forms/EndForm';
 import DatabaseForm from './components/node-forms/DatabaseForm';
 import FilterForm from './components/node-forms/FilterForm';
+import QuickAnswerForm from './components/node-forms/QuickAnswerForm';
 
 const NodeEditorSidebar: React.FC<NodeEditorSidebarProps> = ({
   open, node, onClose, onSave, onDelete,
@@ -36,6 +37,7 @@ const NodeEditorSidebar: React.FC<NodeEditorSidebarProps> = ({
   const [queues, setQueues] = React.useState<Queue[]>([]);
   const [users, setUsers] = React.useState<User[]>([]);
   const [knowledgeBases, setKnowledgeBases] = React.useState<KnowledgeBase[]>([]);
+  const [quickAnswers, setQuickAnswers] = React.useState<QuickAnswer[]>([]);
 
   React.useEffect(() => {
     if (node?.data) setFormData({ ...node.data });
@@ -52,6 +54,9 @@ const NodeEditorSidebar: React.FC<NodeEditorSidebarProps> = ({
     }
     if (node.type === 'knowledge' || node.type === 'agent') {
       api.get('/knowledge-bases').then((res) => setKnowledgeBases(res.data)).catch(() => {});
+    }
+    if (node.type === 'quickAnswer') {
+      api.get('/quickAnswers').then((res) => setQuickAnswers(res.data)).catch(() => {});
     }
   }, [node]);
 
@@ -88,6 +93,8 @@ const NodeEditorSidebar: React.FC<NodeEditorSidebarProps> = ({
         return <DatabaseForm {...props} />;
       case 'filter':
         return <FilterForm {...props} />;
+      case 'quickAnswer':
+        return <QuickAnswerForm {...props} quickAnswers={quickAnswers} />;
       case 'api':
         return <ApiForm {...props} />;
       case 'helpdesk':

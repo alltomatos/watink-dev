@@ -15,10 +15,12 @@ import {
   Lightbulb,
   Bot,
   LifeBuoy,
+  Reply,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import api from '../../services/api';
 import { cn } from '@/lib/utils';
+import { i18n } from '../../translate/i18n';
 
 // ─── Color map ────────────────────────────────────────────────────────────────
 
@@ -37,6 +39,7 @@ const COLOR_MAP: Record<string, string> = {
   colorEnd: 'bg-gradient-to-b from-[var(--status-error)] to-[var(--red-700)]',
   colorTicket: 'bg-gradient-to-b from-[var(--google-pink)] to-[var(--red-700)]',
   colorHelpdesk: 'bg-gradient-to-b from-[var(--emerald-600)] to-[var(--emerald-800)]',
+  colorQuickAnswer: 'bg-gradient-to-b from-[var(--status-info)] to-[var(--google-blue)]',
 };
 
 // ─── DraggableNode ────────────────────────────────────────────────────────────
@@ -104,6 +107,12 @@ const NodesSidebar: React.FC = () => {
         <DraggableNode type="trigger" label="Gatilho" icon={Bell} colorClass="colorTrigger" />
         <DraggableNode type="message" label="Mensagem" icon={MessageSquare} colorClass="colorMessage" />
         <DraggableNode type="menu" label="Menu" icon={List} colorClass="colorMenu" />
+        <DraggableNode
+          type="quickAnswer"
+          label={i18n.t('flowBuilder.nodes.quickAnswer.paletteLabel') as string}
+          icon={Reply}
+          colorClass="colorQuickAnswer"
+        />
       </div>
 
       {/* Lógica */}

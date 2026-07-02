@@ -1,6 +1,7 @@
 import type { Condition } from './components/ConditionBuilder';
 import type { Filter } from './components/FilterBuilder';
 import type { DataField } from './components/DataBuilder';
+import { i18n } from '../../translate/i18n';
 
 export interface NodeData {
   label?: string;
@@ -57,6 +58,7 @@ export interface NodeData {
   outputVariable?: string;
   inputVariable?: string;
   filterConditions?: FilterCondition[];
+  quickAnswerId?: string;
   [key: string]: unknown;
 }
 
@@ -96,6 +98,12 @@ export interface KnowledgeBase {
   name: string;
 }
 
+export interface QuickAnswer {
+  id: string;
+  shortcut: string;
+  message: string;
+}
+
 export interface NodeEditorSidebarProps {
   open: boolean;
   node: FlowNode | null;
@@ -122,6 +130,7 @@ export const NODE_TITLES: Record<string, string> = {
   helpdesk: 'Configurar Helpdesk',
   end: 'Configurar Fim',
   output: 'Configurar Fim',
+  quickAnswer: i18n.t('flowBuilder.nodes.quickAnswer.title'),
 };
 
 export const TABLE_ALL_FIELDS: Record<string, string[]> = {
