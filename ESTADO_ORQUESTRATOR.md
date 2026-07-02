@@ -952,10 +952,18 @@ migração de dado legado (ambiente de desenvolvimento).
   inclusive os testes pré-existentes de `ticket.go`/`deal.go` que a Parte 2
   de C6 tocou).
 
-## Onda D — wiring de rotas (fatia única, arquivo compartilhado `routes.go`)
-- [ ] **D1**: Registrar todas as rotas novas em `routes.go` sob
-  `auth.RequirePermission("clients", <ação>)`. | depends_on: [C3, C4, C5,
-  C6] | T2
+## Onda D — wiring de rotas (fatia única, arquivo compartilhado `routes.go`) · ✅ CONCLUÍDA
+- [x] **D1**: 13 rotas `/clients*` + `/addresses/lookup` registradas, todas
+  sob `auth.RequirePermission("clients", <ação>)` — `/contacts` (débito
+  legado sem gate) intocado. Swagger regenerado (`docs/docs.go`,
+  `swagger.json`, `swagger.yaml`) e commitado junto. Verificado por grep
+  das 13 linhas + `go build`/`go vet`/`go test ./...` (suíte completa do
+  backend, todos os pacotes verdes). Commit `d4ca20e22`.
+
+**Backend do módulo Clientes está funcionalmente completo e wireado**
+(CRUD, endereços com geocoding, vínculo Contact↔Client, histórico
+transitivo, permissões reais). Falta: Onda E (testes unitários
+dedicados do `ClientController`), Onda F (frontend), Onda G (e2e).
 
 ## Onda E — testes backend
 - [ ] **E1**: Testes unitários `ClientController` (list/create/update/
