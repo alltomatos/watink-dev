@@ -252,8 +252,8 @@ func addCustomIndexes() error {
 	//  - Setores(tenantId,name) UNIQUE: nome de Setor único por tenant.
 	//  - Permissions(resource,action) UNIQUE: uma linha por permissão — impede
 	//    duplicação no Seed concorrente (Swarm multi-node) e casa o read-path.
-	// As UNIQUE são BEST-EFFORT: num banco legado que já tenha duplicatas a
-	// criação falha; logamos e seguimos (não travar o boot). No fluxo de reset
+	// As UNIQUE são BEST-EFFORT: num banco legado que já tenha linhas repetidas
+	// a criação falha; logamos e seguimos (não travar o boot). No fluxo de reset
 	// do projeto o banco está limpo e todas passam — e como addCustomIndexes
 	// roda ANTES do Seed(), a UNIQUE de Permissions já existe quando o catálogo
 	// é populado.
@@ -265,7 +265,7 @@ func addCustomIndexes() error {
 	}
 	for _, ddl := range rbacIndexes {
 		if err := DB.Exec(ddl).Error; err != nil {
-			log.Printf("addCustomIndexes (RBAC best-effort): %q falhou (provável duplicata legada): %v", ddl, err)
+			log.Printf("addCustomIndexes (RBAC best-effort): %q falhou (provável dado repetido legado): %v", ddl, err)
 		}
 	}
 	return nil
