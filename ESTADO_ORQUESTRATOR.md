@@ -857,3 +857,222 @@ Nenhuma rota nova de escrita entra sem `RequirePermission`; expandir o gate
 ## Gate de aprovação (T3)
 Onda 0 (T0.1, T0.2), T1.1, T1.3-se-gate e T3.1 são **T3 (auth/schema)** —
 **PARADA obrigatória**: aguardando aprovação do dono antes de aplicar.
+
+---
+
+# 🆕 Onda Clientes (CRM) — jul/2026
+
+Origem: sessão `/grill-feature-with-docs` + `/orchestrator`. Documentação de
+referência: ADR 0023, `docs/agents/clients.md`, bloco `## Módulo: Clientes
+(CRM)` no CLAUDE.md, `CONTEXT.md` (Client/ClientAddress/Contact/Tenant).
+
+## Gate de aprovação (T3) — ✅ APROVADO pelo dono
+Escopo aprovado explicitamente: "estamos em desenvolvimento, não precisamos
+de nada do legado do plugin que não seja útil, pode remover, vamos
+prosseguir." Decommission do `ClientesPlugin` autorizado sem plano de
+migração de dado legado (ambiente de desenvolvimento).
+
+## Onda A — fundações independentes (paralelizável, arquivos isolados) · ✅ CONCLUÍDA
+- [x] **A1**: Decommission `ClientesPlugin` — registro em `main.go` removido,
+  `business/internal/plugins/clientes.go` deletado, testes `ClientesPlugin`
+  removidos de `plugin_test.go`/`helpdesk_manager_test.go` (2º plugin do
+  teste de contagem trocado por `WebchatPlugin`, sem alterar o número
+  esperado). Verificado por `grep -r ClientesPlugin business/` vazio + build/
+  vet/test verdes. Commit `8e598c152`.
+- [x] **A2**: Catálogo de permissão — resource `clients` (`read`, `create`,
+  `update`, `delete`, `manage`) seedado em `database.go:132-136`, mesmo
+  padrão de `connections`/`tickets`. Nenhum teste de contagem depende de
+  `database.Seed()` (setup_service_test/permission_repo_test usam seeds
+  locais próprios) — sem ajuste necessário. Commit `e4e6fc9b2`.
+- [x] **A3**: Nova seção "Endereço (CEP)" em Configurações —
+  `AddressLookupSettings.tsx` (padrão de `AISettings.tsx`), chaves
+  `addressLookupProvider` (default `"viacep"`) e `addressLookupBaseUrl`
+  (default `"https://viacep.com.br/ws"`), registrada em `Settings/index.tsx`
+  + `SettingsSideNav.tsx`. Commit `bb9e94f9a`.
+- **Lição do processo**: os 3 agentes de worktree editaram os arquivos mas
+  não commitaram nas suas branches — o primeiro `git merge` de cada uma
+  "teve sucesso" sem trazer nenhum arquivo (merge vazio), e a verificação
+  inicial (`go build`/`go test`) não pegou isso porque o código no estado
+  ORIGINAL também compila e passa nos testes. Descoberto ao inspecionar
+  `git diff HEAD <branch>` antes do `git worktree remove` (que corretamente
+  recusou apagar o worktree A1 por ter mudanças não commitadas). Corrigido
+  commitando nas 3 worktrees antes do merge real. Verificação passou a
+  incluir grep explícito pelo resultado esperado, não só build/test verdes.
+
+## Onda B — schema (fatia única, coesa — mesmo arquivo `database.go`) · ✅ CONCLUÍDA
+- [x] **B1**: `Client` expandido (`Type`, `SocialName *string`, `DocumentEnc`
+  cifrado + `Document` transiente `gorm:"-"` pro controller decifrar,
+  `Notes`, `DeletedAt` soft-delete) + novo model `ClientAddress`
+  (endereço completo + `Latitude`/`Longitude` nullable) + `Contact.ClientID
+  *int` nullable (sem unique — N Contacts podem apontar pro mesmo Client) +
+  `AutoMigrate`/`applyRLS`(`Clients`,`ClientAddresses`)/índices
+  (`idx_contacts_client` parcial, `idx_client_addresses_tenant_client`) +
+  coluna `geog geography(Point,4326)` via SQL raw best-effort. Verificado
+  por grep explícito dos 6 pontos (não só build) + `go test` em
+  `infrastructure/repository`. Commit `2c7020970`.
+
+## Onda C — serviços/controller backend (paralelizável após B1)
+- [x] **C1**: `services.LookupAddressByCEP` (lê Settings addressLookup*,
+  timeout 5s) + `AddressLookupController.Lookup` (`auth.GetScoped`, 400
+  CEP inválido / 200 com notFound / 502 erro externo). Rota NÃO registrada
+  (fica pra D1). Commit `77225f3ec`.
+- [x] **C2**: `services.Geocode` (Nominatim, timeout 5s, User-Agent, nunca
+  retorna erro pro chamador) + `services.SyncClientAddressGeography`
+  (`ST_MakePoint(lng,lat)` — ordem confirmada). Commit `b9fbaac4f`.
+- [x] **C3**: `ClientController` (List/Show/Create/Update/Delete) — DTO de
+  input dedicado, validação PJ+SocialName→400, cripto fail-closed na
+  escrita/fail-open na leitura, soft-delete via `gorm.DeletedAt`. Rota NÃO
+  registrada (D1). Commit `1b74997ca`.
+- **Anomalia de processo**: C1/C2/C3 nasceram de worktree baseada em
+  `develop` em vez de `feat/clientes-crm` (causa não identificada — possível
+  race na criação de worktrees paralelas). C2 e C3 detectaram e
+  autocorrigiram (`git reset --hard`/merge trazendo `feat/clientes-crm`
+  antes de codar); C1 não precisou (seu escopo não dependia do schema da
+  Onda B). Verificado e corrigido no merge — sem perda de trabalho, mas
+  fica registrado para vigiar em ondas futuras.
+- [x] **C4**: `LinkContact`/`UnlinkContact` em
+  `client_contact_link.go` — 409 com `requiresConfirmation` quando o
+  Contact já pertence a outro Client e `confirmReassign` não veio `true`;
+  reatribuição efetiva com confirmação. Commit `cabee7219`.
+- [x] **C5**: `ClientAddress` CRUD aninhado em `client_address.go` —
+  `isPrimary` exclusivo por Client (helper compartilhado), geocoding
+  best-effort (C1/C2) síncrono mas nunca bloqueante em Create/Update, hard
+  delete em `ClientAddress` (só `Client` precisa soft-delete). Commit
+  `0cd298146`.
+- [x] **C6**: `client_history.go` (`GET` transitivo via `Contact.ClientID`
+  IN, `Ticket`+`Deal`, limite 50, `Preload("Contact")`) + `Preload("Contact.Client")`
+  trocado em `ticket.go:65,147` e `deal.go:67,102`. **Pendente**:
+  `contact.go` (`ListContacts`/`ShowContact`) usa `domain.ContactRepository`
+  — não ganhou `Preload("Client")` porque exigiria tocar a interface do
+  repositório, fora do escopo cirúrgico. Fica registrado para a Onda F
+  (F4, exibição de Nome Social) resolver ou explicitamente aceitar o gap
+  na tela de Contatos. Commit `23dacc0d0`.
+- Todos verificados por grep explícito dos métodos/arquivos esperados +
+  `go build`/`go vet`/`go test ./internal/controllers/...` (220s, verde,
+  inclusive os testes pré-existentes de `ticket.go`/`deal.go` que a Parte 2
+  de C6 tocou).
+
+## Onda D — wiring de rotas (fatia única, arquivo compartilhado `routes.go`) · ✅ CONCLUÍDA
+- [x] **D1**: 13 rotas `/clients*` + `/addresses/lookup` registradas, todas
+  sob `auth.RequirePermission("clients", <ação>)` — `/contacts` (débito
+  legado sem gate) intocado. Swagger regenerado (`docs/docs.go`,
+  `swagger.json`, `swagger.yaml`) e commitado junto. Verificado por grep
+  das 13 linhas + `go build`/`go vet`/`go test ./...` (suíte completa do
+  backend, todos os pacotes verdes). Commit `d4ca20e22`.
+
+**Backend do módulo Clientes está funcionalmente completo e wireado**
+(CRUD, endereços com geocoding, vínculo Contact↔Client, histórico
+transitivo, permissões reais). Falta: Onda E (testes unitários
+dedicados do `ClientController`), Onda F (frontend), Onda G (e2e).
+
+## Onda E — testes backend · ✅ CONCLUÍDA
+- [x] **E1**: Testes unitários `ClientController` (list/create/update/
+  soft-delete/link/unlink-com-confirmação/histórico-transitivo/documento-
+  nunca-em-texto-plano-na-resposta). | depends_on: [D1] | T2 · ✅ CONCLUÍDA
+  (E1a: `client_test.go`, 9 casos, commit `5ed0dcff6`. E1b: link/address/
+  history, 13 casos, commit `5b4397254` — **encontrou bug real**: `LinkContact`/
+  `ListAddresses`/`History` reusavam o `db` de `auth.GetScoped` em leituras
+  encadeadas sem `Session(NewDB:true)`, mesmo landmine do módulo Proxy;
+  corrigido diretamente (não mascarado no teste), commit `1ac486973`. Total
+  20/20 testes verdes + suíte completa do backend (`go test ./...`) verde.)
+- **Lição de prompt**: minhas instruções anteriores (C3-C6) só enfatizavam
+  `Session(NewDB:true)` em ESCRITAS encadeadas — o bug real estava em
+  LEITURAS encadeadas (`First`/`Find`/`Pluck` sequenciais no mesmo handle).
+  A regra correta é mais ampla: qualquer 2ª+ operação (leitura OU escrita)
+  no `db` retornado por `auth.GetScoped` precisa de `Session(NewDB:true)`.
+- **Achado menor registrado (não corrigido, cosmético)**: `Client.DeletedAt`
+  persiste como `deleted_at` (snake_case, default GORM) em vez do padrão
+  `deletedAt` camelCase do resto do schema — funciona corretamente, só
+  inconsistente. Considerar `gorm:"column:deletedAt"` numa limpeza futura.
+
+## Onda F — frontend (paralelizável parcialmente após D1)
+- [x] **F1**: `clientTypes.ts` (`ClientRecord`/`ClientAddress` de resposta,
+  distintos dos DTOs de escrita) + `useClients`/`useClientModal`
+  reescritos para o contrato `/clients` real — `handleSubmit` agora separa
+  Client (`POST/PUT /clients`) de Addresses (`POST/PUT /clients/:id/
+  addresses` por item, novo vs existente por presença de `id`). `fetch`
+  direto ao ViaCEP REMOVIDO — `handleCepBlur` chama `GET /addresses/
+  lookup` do backend. Coluna "Contatos" removida da listagem (API real
+  não traz esse array agregado). Vínculo/confirmação de Contact e UI de
+  Nome Social ficam para F2. typecheck+lint limpos. Commit `40775f16a`.
+- [x] **F2**: `ClientModal.tsx` Dialog→Sheet (confirmado no DOM real:
+  `inset-y-0 right-0 h-full`, slide-in-from-right, igual UserPanel);
+  Nome Social só em PF (helper LGPD); `ContactsTab` reescrita com busca
+  real + link/unlink + `ConfirmationModal` no 409; aba Contatos avisa
+  "Salve o cliente antes de vincular contatos" quando `!clientId`.
+  **Verificado visualmente ao vivo** (login no docker + navegação real):
+  Sheet renderiza corretamente, campo Nome Social some ao trocar pra PJ,
+  aba Endereços funcional, aba Contatos com o gate correto — screenshots
+  conferidos, sem erro de console atribuível ao módulo Clientes (só um
+  warning pré-existente de Tooltip/Popover na página de Tickets, não
+  relacionado). Commit `0f8a511ad`.
+- [x] **F3**: `perform="view_clients"`→`clients:read`,
+  `"edit_clients"`→`clients:create`(botão Novo)/`clients:update`(editar
+  linha), `"delete_clients"`→`clients:delete`. `rules.ts` não precisou de
+  ajuste (não tinha as chaves legadas). `Can/index.tsx` já implementava o
+  padrão real ADR 0022 (`user.permissions` + bypass `alcance`) — não
+  precisou mudar. Commit `bdd80904c`.
+- **Fix adicional (achado por F3, corrigido diretamente)**: menu lateral
+  "Clientes" (`SidebarNav.tsx`) usava `activePlugins.includes("clientes")`
+  — gate morto desde que o plugin foi removido (A1), o link nunca mais
+  apareceria. Trocado para `Can perform="clients:read"`, verificado ao
+  vivo no browser (link `/clients` volta a aparecer no menu). Commit
+  `39ed6d816`.
+- [x] **F4a**: `frontend/src/utils/clientDisplayName.ts`
+  (`getContactDisplayName`) + aplicado em `TicketListItem`, `TicketInfo`,
+  `MessageBubble` (chat bubble). `Contact.client?.socialName` adicionado
+  aos tipos (`types/Ticket.ts`, `MessagesList/types.ts`). Commit
+  `21ca1fe21`.
+- [ ] **F4b**: mesma propagação em Notificações (`NotificationToast`),
+  Pipeline/Deal (`PipelineKanban`, `PipelineGantt`) e Helpdesk/Protocol
+  (`ProtocolCard`, `ProtocolInfoCard`, `ProtocolsTable`), reusando
+  `getContactDisplayName` de F4a. | depends_on: [F4a] | T2 · ✅ CONCLUÍDA
+  (6/6 arquivos confirmados por grep, `??`→`||` corrigido — `getContactDisplayName`
+  nunca retorna `undefined`, então `??` nunca cairia no fallback textual.
+  typecheck/lint/build limpos. Commit `76b7a8c78`.)
+- **Débito registrado (não bloqueante) #1**: `ContactController`
+  (`ListContacts`/`ShowContact`) não ganhou `Preload("Client")` — usa
+  `domain.ContactRepository` (achado de C6). A tela de Contatos (não
+  Tickets/Deals) não vai mostrar Nome Social até esse preload ser
+  adicionado. Fora do escopo desta onda; registrar como follow-up.
+- **Débito registrado (não bloqueante) #2**: `Protocol`/Helpdesk não tem
+  `Preload("Contact.Client")` no backend (só Ticket/Deal ganharam isso em
+  C6) — `getContactDisplayName` degrada graciosamente pro nome civil, sem
+  quebrar nada, mas o Nome Social não aparece de fato em Protocol/Helpdesk
+  até esse preload backend ser adicionado. Follow-up.
+
+## Onda G — fiscalização final · ✅ CONCLUÍDA
+- [x] **G1**: `e2e/tests/clients/clients.spec.ts` — soft-delete, documento
+  nunca em `documentEnc` na resposta, PJ+socialName rejeitado, fluxo de
+  confirmação link/unlink (409→200 com `confirmReassign`), histórico
+  transitivo (shape, sem Ticket real — sem rota `POST /tickets` pra
+  simular sem infra AMQP/engine), gate anônimo (401, confirmado via leitura
+  do middleware). **Não executado ao vivo** (docker-compose rodando é a
+  imagem antiga, sem `/clients` — rebuildar a stack compartilhada foi
+  deliberadamente fora de escopo); verificado só estaticamente
+  (`tsc --noEmit` limpo). Fica pra CI/execução manual futura.
+  Commit `f0c843256`.
+- **Achado adicional (aprofunda o débito #1 registrado em F4b)**:
+  `domain.Contact` (`business/internal/domain/models.go`,
+  `gorm_contact_repo.go`) nem mapeia o campo `ClientID`/`clientId` do
+  model GORM — não é só falta de `Preload`, o DTO de domínio do
+  `ContactController` não carrega esse campo de jeito nenhum. Capturado
+  antes de virar teste flaky (o e2e evitou depender de `GET /contacts/:id`
+  pra verificar o vínculo, usando a resposta do próprio `LinkContact`).
+
+## Regra de ouro desta onda (ADR 0023)
+`Ticket`/`Deal` nunca ganham `ClientID` desnormalizado — histórico do
+Client é sempre `JOIN` via `Contact.ClientID`. Nenhuma rota nova de
+`clients`/`addresses` entra sem `RequirePermission`.
+
+## ✅ ONDA CLIENTES (CRM) — DAG COMPLETO
+19 tarefas concluídas (A1-A3, B1, C1-C6, D1, E1, F1-F4b, G1) + 2 fixes
+diretos (bug real de `Session(NewDB:true)` faltante em leituras
+encadeadas — achado pelos testes E1b; gate morto do menu lateral —
+achado pela F3). Backend 100% testado (20/20 testes unitários + suíte
+completa `go test ./...` verde). Frontend com typecheck/lint/build
+limpos e verificação visual ao vivo confirmada (Sheet, tabs, Nome Social
+PF-only, gates de aba). Débito registrado (não bloqueante, follow-up
+futuro): `Preload`/mapeamento de `Client` faltando em `ContactController`
+(domain DTO) e em `Protocol`/Helpdesk; suíte e2e criada mas não executada
+ao vivo (ambiente compartilhado roda imagem antiga).

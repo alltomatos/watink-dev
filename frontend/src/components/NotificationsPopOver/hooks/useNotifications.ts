@@ -16,6 +16,8 @@ import NotificationToast from "../NotificationToast";
 export interface UseNotificationsReturn {
   notifications: Ticket[];
   clearNotifications: () => void;
+  muted: boolean;
+  toggleMuted: () => void;
 }
 
 export function useNotifications(): UseNotificationsReturn {
@@ -29,6 +31,21 @@ export function useNotifications(): UseNotificationsReturn {
   const [notifications, setNotifications] = useState<Ticket[]>([]);
   const [, setDesktopNotifications] = useState<Notification[]>([]);
   const clearedRef = useRef(!!localStorage.getItem("notificationsCleared"));
+  // Silencia som + card (toast) + notificação desktop — a lista/badge do sino
+  // continua atualizando normalmente, só a interrupção ativa é suprimida.
+  const [muted, setMuted] = useState<boolean>(
+    () => localStorage.getItem("notificationsMuted") === "true"
+  );
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
+
+  const toggleMuted = () => {
+    setMuted((prev) => {
+      const next = !prev;
+      localStorage.setItem("notificationsMuted", String(next));
+      return next;
+    });
+  };
 
   const { data: ticketsData } = useTickets({ withUnreadMessages: "true" });
   const tickets = ticketsData?.tickets;
@@ -83,6 +100,8 @@ export function useNotifications(): UseNotificationsReturn {
     contact: Contact;
   }) => {
     const { message, contact, ticket } = data;
+
+    if (mutedRef.current) return;
 
     const options: NotificationOptions & { renotify?: boolean } = {
       body: `${message.body} - ${format(new Date(), "HH:mm")}`,
@@ -233,5 +252,5 @@ export function useNotifications(): UseNotificationsReturn {
     setNotifications([]);
   };
 
-  return { notifications, clearNotifications };
+  return { notifications, clearNotifications, muted, toggleMuted };
 }

@@ -3,10 +3,12 @@ import Avatar from "@/components/ui/avatar";
 import PaperCard from "../../components/PaperCard";
 import { getBackendUrl } from "../../helpers/urlUtils";
 import { cn } from "@/lib/utils";
+import { getContactDisplayName } from "@/utils/clientDisplayName";
 
 interface Contact {
   name?: string;
   profilePicUrl?: string;
+  client?: { socialName?: string | null } | null;
 }
 
 interface Protocol {
@@ -60,7 +62,7 @@ const ProtocolCard: React.FC<ProtocolCardProps> = ({
       <div className="flex items-center gap-3 p-3">
         <Avatar
           src={getAvatarUrl()}
-          name={protocol.contact?.name || "?"}
+          name={getContactDisplayName(protocol.contact) || "?"}
           size="md"
           className="shrink-0"
         />
@@ -75,7 +77,7 @@ const ProtocolCard: React.FC<ProtocolCardProps> = ({
             {protocol.subject}
           </p>
           <p className="text-[0.75rem] text-muted-foreground">
-            {protocol.contact?.name || "Sem contato"}
+            {getContactDisplayName(protocol.contact) || "Sem contato"}
           </p>
         </div>
       </div>

@@ -16,7 +16,7 @@ export interface Protocol {
   status: string;
   priority: string;
   token: string;
-  contact?: { name: string };
+  contact?: { name: string; client?: { socialName?: string | null } | null };
   history?: HistoryItem[];
 }
 

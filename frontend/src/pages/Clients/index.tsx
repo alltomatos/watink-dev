@@ -32,7 +32,7 @@ const Clients: React.FC = () => {
   return (
     <Can
       user={user}
-      perform="view_clients"
+      perform="clients:read"
       yes={() => (
         <PageContainer>
           <PageHeader title="👥 Clientes">
@@ -48,7 +48,7 @@ const Clients: React.FC = () => {
               </div>
               <Can
                 user={user}
-                perform="edit_clients"
+                perform="clients:create"
                 yes={() => (
                   <Button onClick={() => handleOpenModal()}>
                     <Plus className="mr-2 h-4 w-4" />
@@ -74,7 +74,7 @@ const Clients: React.FC = () => {
           <ClientModal
             open={modalOpen}
             onClose={handleCloseModal}
-            client={selectedClient ? { ...selectedClient, contacts: undefined } : null}
+            client={selectedClient}
           />
 
           <ConfirmationModal
