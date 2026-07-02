@@ -1026,12 +1026,20 @@ dedicados do `ClientController`), Onda F (frontend), Onda G (e2e).
 - [ ] **F4b**: mesma propagação em Notificações (`NotificationToast`),
   Pipeline/Deal (`PipelineKanban`, `PipelineGantt`) e Helpdesk/Protocol
   (`ProtocolCard`, `ProtocolInfoCard`, `ProtocolsTable`), reusando
-  `getContactDisplayName` de F4a. | depends_on: [F4a] | T2
-- **Débito registrado (não bloqueante)**: `ContactController`
+  `getContactDisplayName` de F4a. | depends_on: [F4a] | T2 · ✅ CONCLUÍDA
+  (6/6 arquivos confirmados por grep, `??`→`||` corrigido — `getContactDisplayName`
+  nunca retorna `undefined`, então `??` nunca cairia no fallback textual.
+  typecheck/lint/build limpos. Commit `76b7a8c78`.)
+- **Débito registrado (não bloqueante) #1**: `ContactController`
   (`ListContacts`/`ShowContact`) não ganhou `Preload("Client")` — usa
   `domain.ContactRepository` (achado de C6). A tela de Contatos (não
   Tickets/Deals) não vai mostrar Nome Social até esse preload ser
   adicionado. Fora do escopo desta onda; registrar como follow-up.
+- **Débito registrado (não bloqueante) #2**: `Protocol`/Helpdesk não tem
+  `Preload("Contact.Client")` no backend (só Ticket/Deal ganharam isso em
+  C6) — `getContactDisplayName` degrada graciosamente pro nome civil, sem
+  quebrar nada, mas o Nome Social não aparece de fato em Protocol/Helpdesk
+  até esse preload backend ser adicionado. Follow-up.
 
 ## Onda G — fiscalização final
 - [ ] **G1**: E2E/segurança (`/secure-e2e`) — soft-delete verificado,
