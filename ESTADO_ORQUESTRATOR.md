@@ -771,18 +771,62 @@ bloqueante para o Onboarding; sinalizado como tarefa separada
   — hoje visíveis ao Admin por bypass; alinhar/remover gate numa passada de
   plugins (fora do escopo das ondas atuais).
 
-## Onda 2 — testes de regressão de segurança + docs que induzem a erro · T1/T2
-- [ ] **T2.1**: P2-10 — `e2e/tests/admin/permissions.spec.ts` (Atendente →
-  403 em `GET /users`, `POST /setores`, `PUT /whatsapp`) +
-  `anti-lockout.spec.ts` (DELETE owner → 4xx; rebaixar último Admin → 4xx).
-  | depends_on: [T0.1, T0.2] | T2
-- [ ] **T2.2**: P2-7 + P2-8 + P2-9 — corrigir CLAUDE.md/onboarding.md/
-  acessos.md/CONTEXT.md/ADR 0022 para o comportamento REAL (sem bundle
-  Setor+Queue; Gestor concede ação sem escopo por Setor; visibilidade de
-  Tickets é client-side, não derivada do Setor). | depends_on: [] | T1
-- [ ] **T2.3**: P3-4 — `e2e/tests/onboarding/setup-wizard.spec.ts`
-  (re-init → 403; payload inválido → 400) + `checklist.spec.ts`. Absorve
-  GAP-7. | depends_on: [] | T2
+## Onda 2 — testes de regressão de segurança + docs que induzem a erro · T1/T2 · ✅ CONCLUÍDA (2026-07-02)
+- [x] **T2.1**: P2-10 — delegado; `e2e/tests/admin/permissions.spec.ts`
+  (Atendente → 403 em GET /users, POST /setores, PUT /whatsapp; GET /me → 200
+  controle) + `anti-lockout.spec.ts` (DELETE owner → 409; rebaixar último
+  Admin → 409). Segue o fixture `auth.fixture` existente.
+- [x] **T2.2**: P2-7 + P2-8 + P2-9 — delegado; corrigidos CLAUDE.md,
+  onboarding.md, acessos.md, ADR 0022, CONTEXT.md + comentário setor_fila.go:
+  sem bundle Setor+Queue; Gestor concede ação tenant-wide (escopo por Setor =
+  roadmap); visibilidade de Tickets client-side; `/permissions`→
+  `/cargos/catalog/permissions`; `setorIds[]`→`setores:[{setorId,ehGestor}]`;
+  `sectors:manage`→`setores:manage`; RLS "inerte" no verbete Tenant; Status
+  Atual atualizado; Setor→Queue M:N.
+- [x] **T2.3**: P3-4 — delegado; `e2e/tests/onboarding/setup-wizard.spec.ts`
+  (re-init → 403; payload vazio → 403) + `checklist.spec.ts` (endpoints do
+  hook + regra derivada > 1). Absorve GAP-7.
+
+## Onda 3 — higiene, dívida de schema e performance latente · ✅ CONCLUÍDA (parcial — T3.2 deferido)
+- [x] **T3.1**: índices RBAC (`user_setores(setorId)`) + UNIQUE
+  (`Cargos(tenantId,name)`, `Setores(tenantId,name)`, `Permissions(resource,
+  action)`) em `addCustomIndexes`, best-effort (não trava boot em dado legado
+  com duplicata). Roda antes do Seed — a UNIQUE de Permissions já protege o
+  catálogo. Seed mantido em FirstOrCreate (ignora erro de corrida; a UNIQUE
+  impede duplicar).
+- [ ] **T3.2**: **DEFERIDO** — cache do `RequirePermission`. Só necessário
+  ANTES de expandir o rollout do gate (não feito nestas ondas); impacto atual
+  baixo (1 rota quente). Um cache correto exige Redis + bump de `tokenVersion`
+  na mudança de PERMISSÃO (hoje só bumpa em credencial), senão serve permissão
+  revogada até o TTL; e um cache in-memory ilimitado em `pkg/auth` é risco de
+  memória. Decisão: não introduzir auth-cache meia-boca agora — reabrir junto
+  com a expansão do gate.
+- [x] **T3.3**: N+1 eliminado — `ShowUser` agora devolve `setores[]` (vínculos
+  do usuário), e `useUsuariosTab.openEdit` lê `data.setores` em vez de cruzar
+  `GET /setores/:id` de todos os setores. Checklist: `fetchCounts` guarda por
+  `dismissed` (0 fetch se dispensado) e usa `Promise.allSettled` (um 403 em
+  /users não descarta o /setores).
+- [x] **T3.4**: código morto removido — 5 arquivos de nav legado
+  (`MainListItems`/`AdminNavItems`/`MainNavItems`/`useMainListItems`/
+  `mainListItemsTypes`), DTO `UserDetailResponse` (pacote `dto` esvaziado e
+  removido), `c.Set("userEmail")` (claim inexistente). **Deferido:** remoção
+  dos tipos `profile`/`role` de `domain.ts`/`useAuth` — `UserProfile/index.tsx`
+  ainda lê `user?.profile` (página com débito próprio no plano); remover o
+  tipo agora quebraria o typecheck. Fica para a limpeza da página UserProfile.
+- [x] **T3.6**: `SetorController.Delete` fail-closed (captura `.Error` do
+  Count); `InitializeTenant` com `pg_advisory_xact_lock` + re-check de
+  `tenantCount` na tx (barreira concorrente do setup, P3-3).
+
+### Não incluído nas ondas (débito remanescente registrado)
+- **T3.5** (i18n namespace `acessos.*` + migração das tabs para React Query) —
+  não executado; churn alto, valor baixo, sem risco. Fica para uma passada de
+  higiene de frontend dedicada.
+- Páginas de plugin (`Clients`/`Marketplace`) com performs fora do catálogo.
+- Tipos `profile`/`role` + página `UserProfile` (contrato `signature`/avatar
+  multipart + `PUT /users/:id/configs` inexistente) — cluster de débito da
+  UserProfile.
+- **RLS inerte** (`SET LOCAL app.current_tenant`, `middleware/auth.go`) —
+  task externa `task_10ab6677`, deliberadamente não tocada aqui.
 
 ## Onda 3 — higiene, dívida de schema e performance latente · T1/T2/T3
 - [ ] **T3.1**: Schema — índices RBAC (`Cargos(tenantId,name)`,

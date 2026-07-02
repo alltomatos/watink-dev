@@ -121,7 +121,7 @@ _Avoid_: Template, canned response, resposta padrão
 
 **QuickAnswer dispatch**: Ação de envio de uma QuickAnswer pelo backend, que resolve variáveis de interpolação e despacha o payload ao engine via RabbitMQ. Acionado por `POST /quickAnswers/:id/send`.
 
-**Tenant**: Organização cliente na plataforma SaaS. `Name` é o Nome Fantasia informado no Wizard de Setup Inicial (não mais um placeholder autogerado). Isolamento de dados garantido por PostgreSQL RLS (`app.current_tenant`). Cada Tenant possui Users, Queues, Whatsapps, e Settings próprios.
+**Tenant**: Organização cliente na plataforma SaaS. `Name` é o Nome Fantasia informado no Wizard de Setup Inicial (não mais um placeholder autogerado). Isolamento de dados garantido na prática por filtro `WHERE "tenantId"` manual em todas as queries — a RLS por `app.current_tenant` existe no design mas está **inerte** (o `SET LOCAL app.current_tenant` falha silenciosamente: bind param no `SET` + fora de transação; bug rastreado, correção em andamento). Cada Tenant possui Users, Queues, Whatsapps, e Settings próprios.
 _Avoid_: Account, organization, empresa, cliente
 
 **Wizard de Setup Inicial**: Formulário público single-step (`POST /initial-setup`), exibido quando o sistema detecta zero usuários/tenants. Coleta Nome Fantasia (vira `Tenant.Name`), dados do Administrador e CPF/CNPJ opcional; cria atomicamente Tenant+Cargos-padrão+Setor+Queue+Tag+Settings.
@@ -133,16 +133,16 @@ _Avoid_: Tour guiado, first-run experience, getting started
 **Cargo**: Conjunto nomeado de Permissions que define **o que** um User pode fazer — o portador de permissões (ex.: Atendente, Gestor, Gerente Geral, Administrador). Tenant-scoped. Renomeia o antigo **Role**; a herança é resolvida de verdade no backend via `RequirePermission` (ADR 0022), não apenas no frontend. O escopo (meu setor vs tenant inteiro) NÃO mora no Cargo — vem do **Alcance**, dimensão ortogonal.
 _Avoid_: Role, papel, função, Profile, perfil
 
-**Permission**: Capacidade granular de ação no sistema, no formato `recurso:ação` (ex.: `tickets:reassign`, `sectors:manage`). Associada a Cargos via `cargo_permissoes`. Barra a ação de verdade no backend (`RequirePermission`) — não é mais só um gate de visibilidade de menu no frontend.
+**Permission**: Capacidade granular de ação no sistema, no formato `recurso:ação` (ex.: `tickets:reassign`, `setores:manage`). Associada a Cargos via `cargo_permissoes`. Barra a ação de verdade no backend (`RequirePermission`) — não é mais só um gate de visibilidade de menu no frontend.
 _Avoid_: Ability, capacidade, permissão (genérica), permissão de menu (legado)
 
-**Setor**: Unidade organizacional que agrupa Users (M:N via `user_setores`) para fins de gestão, relatórios e roteamento — distinto de Cargo (que carrega permissões). Um Setor tem 1+ Queues associadas (`setor_filas`); a visibilidade de Tickets de um agente deriva do(s) Setor(es) a que pertence. O vínculo `user_setores` carrega a marca `ehGestor` (ver **Gestor**).
+**Setor**: Unidade organizacional que agrupa Users (M:N via `user_setores`) para fins de gestão, relatórios e roteamento — distinto de Cargo (que carrega permissões). Um Setor tem 1+ Queues associadas (`setor_filas`, M:N). A visibilidade de Tickets de um agente **deveria** derivar do(s) Setor(es), mas isso **ainda NÃO está implementado**: hoje `ListTickets` é tenant-scoped + filtro de fila via query string do client (derivação Setor→fila é roadmap). O vínculo `user_setores` carrega a marca `ehGestor` (ver **Gestor**).
 _Avoid_: Group (descontinuado — ver abaixo), Team, Department, equipe (isolado)
 
 **Alcance**: Dimensão ortogonal ao Cargo que define até onde a autoridade de um User se estende: `próprio` (só o que é seu) · `setor` (só o(s) Setor(es) que gerencia) · `tenant` (toda a organização) · `plataforma` (todos os tenants — reservado ao Superadmin, plugin SaaS). Um Gestor e um Gerente Geral podem ter o mesmo Cargo/permissões; o que muda é o Alcance.
 _Avoid_: Scope (isolado, ambíguo com RolePermission.Scope legado), nível de acesso
 
-**Gestor (Responsável do Setor)**: Marca (`ehGestor=true`) no vínculo `user_setores` de um User para um Setor específico. Não é um Cargo separado — é o Cargo do usuário + a marca de gestão, escopada (Alcance=`setor`) apenas aos Setores em que ele é marcado. Um User pode ser Gestor de múltiplos Setores simultaneamente (ex.: Comercial e Vendas).
+**Gestor (Responsável do Setor)**: Marca (`ehGestor=true`) no vínculo `user_setores` de um User para um Setor específico. Não é um Cargo separado — é o Cargo do usuário + o pacote do Cargo "Gestor" do tenant, somado quando há qualquer vínculo `ehGestor=true`. **Hoje esse pacote é concedido em nível de AÇÃO tenant-wide** — o escopo de dados por Setor (Alcance=`setor` limitando aos Setores marcados) é roadmap, ainda NÃO implementado (`gestorPackageHasPermission` não verifica o Setor-alvo do recurso). Um User pode ser Gestor de múltiplos Setores simultaneamente (ex.: Comercial e Vendas).
 _Avoid_: Manager (isolado), supervisor (termo legado sem permissões reais), líder
 
 **Gerente Geral**: Cargo com Alcance=`tenant` — mesmas capacidades de gestão de um Gestor, mas aplicadas a TODOS os Setores da organização, sem precisar de marca por Setor.

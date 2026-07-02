@@ -31,15 +31,19 @@ Substituir o RBAC por 3 dimensões independentes:
    usuário pode fazer. Único container de permissão (não duplicado por
    Group). Catálogo de Permission passa de granularidade **menu**
    (`resource:view`) para **`recurso:ação`** (`tickets:reassign`,
-   `sectors:manage`), pré-condição para o enforcement ter algum sentido.
+   `setores:manage`), pré-condição para o enforcement ter algum sentido.
 
 2. **Setor** (substitui `Group`): agrupa usuários — *onde* estão — via
    `user_setores` (N:N, não mais FK singular). Carrega a marca `ehGestor` por
    vínculo, permitindo um usuário ser gestor de múltiplos setores
    simultaneamente (caso real do dono: "gestor do Comercial e do Vendas").
    Distinto de `Queue` (mecanismo de roteamento): um Setor tem 1+ Queues
-   (`setor_filas`); a visibilidade de Tickets do agente deriva do Setor, sem
-   reescrever o motor de distribuição existente.
+   (`setor_filas`, M:N). A intenção original era que a visibilidade de Tickets
+   do agente derivasse do Setor, sem reescrever o motor de distribuição. **Nota
+   de implementação (jul/2026): essa derivação NÃO foi implementada** —
+   `TicketController.ListTickets` filtra por `queueIds` vindos da query string
+   do client (visibilidade = tenant-scoped + filtro de fila client-side).
+   Derivar `queueIds` de `user_setores→setor_filas` no backend permanece roadmap.
 
 3. **Alcance**: dimensão nova, ortogonal ao Cargo — *até onde* a autoridade
    vale: `próprio | setor | tenant | plataforma`. Resolve o gestor sem
