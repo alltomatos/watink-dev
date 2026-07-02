@@ -95,7 +95,7 @@ Variáveis de ambiente necessárias: `DB_PASS`, `JWT_SECRET`, `JWT_REFRESH_SECRE
 ```bash
 SMOKE_BASE_URL=http://localhost:3000 \
 SMOKE_EMAIL=admin@test.com \
-SMOKE_PASS=test123 \
+SMOKE_PASS=test1234 \
 node scripts/playwright-smoke.js
 ```
 
