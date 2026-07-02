@@ -1,99 +1,142 @@
-import React from "react";
-import { Plus, Search as SearchIcon, Trash2 } from "lucide-react";
+import React, { useState } from "react";
+import { Plus, Search as SearchIcon, UserMinus } from "lucide-react";
 import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ContactInput } from "../clientTypes";
+import ConfirmationModal from "../../../components/ConfirmationModal";
+import ContactModal from "../../../components/ContactModal";
+import { ClientContact, PendingReassign } from "../clientTypes";
 
 interface ContactsTabProps {
-  contacts: ContactInput[];
-  onAddExisting: () => void;
-  onAddNew: () => void;
-  onContactChange: (index: number, field: keyof ContactInput, value: string | boolean | null) => void;
-  onRemove: (index: number) => void;
-  onFetchContacts: (value: string) => void;
+  clientId: number | null;
+  linkedContacts: ClientContact[];
+  contactResults: ClientContact[];
+  pendingReassign: PendingReassign | null;
+  onSearch: (value: string) => void;
+  onLink: (contactId: number) => void;
+  onUnlink: (contactId: number) => void;
+  onConfirmReassign: () => void;
+  onCancelReassign: () => void;
 }
 
 const ContactsTab: React.FC<ContactsTabProps> = ({
-  contacts, onAddExisting, onAddNew, onContactChange, onRemove, onFetchContacts,
-}) => (
-  <TabsContent value="contacts" className="mt-4">
-    <div className="flex items-center justify-between mb-3">
-      <p className="text-sm font-medium text-muted-foreground">Contatos Vinculados</p>
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={onAddExisting}>
-          <SearchIcon className="mr-1.5 h-4 w-4" />
-          Vincular Existente
-        </Button>
-        <Button variant="outline" size="sm" onClick={onAddNew}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          Adicionar Novo
-        </Button>
-      </div>
-    </div>
+  clientId, linkedContacts, contactResults, pendingReassign,
+  onSearch, onLink, onUnlink, onConfirmReassign, onCancelReassign,
+}) => {
+  const [searchValue, setSearchValue] = useState("");
+  const [newContactOpen, setNewContactOpen] = useState(false);
 
-    {contacts.length === 0 ? (
-      <p className="text-sm text-muted-foreground text-center py-8">
-        Nenhum contato adicionado
-      </p>
-    ) : (
-      <div className="space-y-4">
-        {contacts.map((contact, index) => (
-          <div key={index} className="relative rounded-lg border border-border bg-muted/20 p-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2 h-7 w-7 text-destructive"
-              onClick={() => onRemove(index)}
-            >
-              <Trash2 className="h-4 w-4" />
+  const linkedIds = new Set(linkedContacts.map((c) => Number(c.id)));
+  const suggestions = contactResults.filter((c) => !linkedIds.has(Number(c.id)));
+
+  const handleSelect = (contact: ClientContact) => {
+    if (contact.id == null) return;
+    onLink(Number(contact.id));
+    setSearchValue("");
+  };
+
+  return (
+    <TabsContent value="contacts" className="mt-4">
+      {!clientId ? (
+        <p className="text-sm text-muted-foreground text-center py-8">
+          Salve o cliente antes de vincular contatos.
+        </p>
+      ) : (
+        <>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-muted-foreground">Vincular Existente</p>
+            <Button variant="outline" size="sm" onClick={() => setNewContactOpen(true)}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              Adicionar Novo
             </Button>
-            <div className="grid grid-cols-2 gap-3 pr-10">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium">Nome</label>
-                <Input
-                  value={contact.name}
-                  onChange={(e) => onContactChange(index, "name", e.target.value)}
-                  onInput={(e) => {
-                    if (!contact.isNew) return;
-                    const target = e.target as HTMLInputElement;
-                    onContactChange(index, "name", target.value);
-                    if (target.value.length > 2) onFetchContacts(target.value);
-                  }}
-                  placeholder="Nome do contato"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium">Cargo/Função</label>
-                <Input
-                  value={contact.role}
-                  onChange={(e) => onContactChange(index, "role", e.target.value)}
-                  placeholder="Ex: Gerente Comercial"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium">Telefone</label>
-                <Input
-                  value={contact.phone}
-                  onChange={(e) => onContactChange(index, "phone", e.target.value)}
-                  placeholder="(00) 00000-0000"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium">Email</label>
-                <Input
-                  type="email"
-                  value={contact.email}
-                  onChange={(e) => onContactChange(index, "email", e.target.value)}
-                  placeholder="email@exemplo.com"
-                />
-              </div>
-            </div>
           </div>
-        ))}
-      </div>
-    )}
-  </TabsContent>
-);
+          <div className="relative mb-4">
+            <div className="relative">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Buscar contato pelo nome ou número..."
+                value={searchValue}
+                onChange={(e) => {
+                  setSearchValue(e.target.value);
+                  onSearch(e.target.value);
+                }}
+              />
+            </div>
+            {searchValue.length > 0 && suggestions.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 max-h-48 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+                {suggestions.map((contact) => (
+                  <div
+                    key={contact.id}
+                    className="px-3 py-2 text-sm cursor-pointer hover:bg-accent flex justify-between"
+                    onClick={() => handleSelect(contact)}
+                  >
+                    <span>{contact.name}</span>
+                    <span className="text-muted-foreground text-xs">{contact.number}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <p className="text-sm font-medium text-muted-foreground mb-3">Contatos Vinculados</p>
+          {linkedContacts.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Nenhum contato vinculado
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {linkedContacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  className="flex items-center justify-between rounded-lg border border-border bg-muted/20 p-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{contact.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {contact.number}
+                      {contact.email ? ` · ${contact.email}` : ""}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive"
+                    onClick={() => contact.id != null && onUnlink(Number(contact.id))}
+                  >
+                    <UserMinus className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <ConfirmationModal
+        title="Contato já vinculado"
+        open={!!pendingReassign}
+        onClose={(confirmed) => { if (!confirmed) onCancelReassign(); }}
+        onConfirm={onConfirmReassign}
+      >
+        {pendingReassign
+          ? `O contato "${pendingReassign.contactName}" já pertence ao cliente "${pendingReassign.currentClientName}". Deseja mover para este cliente?`
+          : ""}
+      </ConfirmationModal>
+
+      {/* "Adicionar Novo" cria o Contact via POST /contacts (ContactModal
+          reusado) e, ao salvar com sucesso, vincula o id retornado ao
+          Client atual — evita duplicar o formulário de Contact aqui. */}
+      <ContactModal
+        open={newContactOpen}
+        onClose={() => setNewContactOpen(false)}
+        onSave={(saved) => {
+          const savedId = (saved as { id?: number }).id;
+          if (savedId != null) onLink(savedId);
+        }}
+      />
+    </TabsContent>
+  );
+};
 
 export default ContactsTab;
