@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -52,11 +51,15 @@ type CreateCheckoutResponse struct {
 // Global Config
 const (
 	DefaultHubURL     = "http://localhost:8090/api/v1/hub"
-	InstanceFile      = ".instance_id"
 	TenantPluginsFile = ".tenant_plugins.json"
 	LicenseStatusFile = ".license_status.json"
 	CoreVersion       = "2.0.0-business"
 )
+
+// InstanceFile é o caminho do arquivo onde o instanceId (fingerprint) desta
+// instalação é persistido. É var (não const) para permitir override em
+// testes unitários.
+var InstanceFile = ".instance_id"
 
 // hubURL returns the Hub URL, preferring the HUB_URL env var
 // (set to "http://marketplace-hub:8090/api/v1/hub" in Docker).
@@ -106,16 +109,6 @@ func writeLicenseStatus(store licenseStatusStore) error {
 	return os.WriteFile(LicenseStatusFile, payload, 0644)
 }
 
-func getInstanceID() string {
-	data, err := os.ReadFile(InstanceFile)
-	if err == nil {
-		return string(data)
-	}
-	newID := fmt.Sprintf("INST-%d-%x", time.Now().Unix(), time.Now().UnixNano())
-	os.WriteFile(InstanceFile, []byte(newID), 0644)
-	return newID
-}
-
 // StartHeartbeat inicia a rotina de sinal vital para o Hub
 func StartHeartbeat(instanceID string) {
 	go func() {
@@ -151,7 +144,10 @@ func main() {
 		port = "8081"
 	}
 
-	instanceID := getInstanceID()
+	instanceID, err := getInstanceID()
+	if err != nil {
+		log.Fatalf("Failed to resolve instanceId: %v", err)
+	}
 	log.Printf("Local Plugin Manager starting with ID: %s", instanceID)
 
 	// Inicia telemetria business
