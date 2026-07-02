@@ -7,6 +7,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // historyRecentLimit caps the number of Tickets/Deals returned per History
@@ -45,7 +46,7 @@ func (cc *ClientController) History(c *gin.Context) {
 	}
 
 	var contactIDs []int
-	if err := db.Model(&models.Contact{}).
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.Contact{}).
 		Where(`"clientId" = ? AND "tenantId" = ?`, id, tenantID).
 		Pluck("id", &contactIDs).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "ClientHistoryContactIDs")
@@ -55,7 +56,7 @@ func (cc *ClientController) History(c *gin.Context) {
 	tickets := []models.Ticket{}
 	deals := []models.Deal{}
 	if len(contactIDs) > 0 {
-		if err := db.Where(`"contactId" IN ? AND "tenantId" = ?`, contactIDs, tenantID).
+		if err := db.Session(&gorm.Session{NewDB: true}).Where(`"contactId" IN ? AND "tenantId" = ?`, contactIDs, tenantID).
 			Preload("Contact").
 			Order(`"createdAt" DESC`).
 			Limit(historyRecentLimit).
@@ -64,7 +65,7 @@ func (cc *ClientController) History(c *gin.Context) {
 			return
 		}
 
-		if err := db.Where(`"contactId" IN ? AND "tenantId" = ?`, contactIDs, tenantID).
+		if err := db.Session(&gorm.Session{NewDB: true}).Where(`"contactId" IN ? AND "tenantId" = ?`, contactIDs, tenantID).
 			Preload("Contact").
 			Order(`"createdAt" DESC`).
 			Limit(historyRecentLimit).
