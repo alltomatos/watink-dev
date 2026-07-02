@@ -3,9 +3,11 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautif
 import { cn } from "@/lib/utils";
 import { Plus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getContactDisplayName } from "@/utils/clientDisplayName";
 
 interface Contact {
     name?: string;
+    client?: { socialName?: string | null } | null;
 }
 
 interface Deal {
@@ -139,7 +141,7 @@ const PipelineKanban: React.FC<PipelineKanbanProps> = ({
                                                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                                             <User className="h-3 w-3 shrink-0" />
                                                             <span className="truncate max-w-[120px]">
-                                                                {deal.contact?.name ?? "Sem contato"}
+                                                                {getContactDisplayName(deal.contact) || "Sem contato"}
                                                             </span>
                                                         </div>
                                                         {deal.value && parseFloat(String(deal.value)) > 0 && (
