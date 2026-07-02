@@ -60,7 +60,7 @@ func (cc *ClientController) LinkContact(c *gin.Context) {
 	}
 
 	var contact models.Contact
-	if err := db.Where(`id = ? AND "tenantId" = ?`, contactID, tenantID).First(&contact).Error; err != nil {
+	if err := db.Session(&gorm.Session{NewDB: true}).Where(`id = ? AND "tenantId" = ?`, contactID, tenantID).First(&contact).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "contato não encontrado"})
 		return
 	}
@@ -68,7 +68,7 @@ func (cc *ClientController) LinkContact(c *gin.Context) {
 	if contact.ClientID != nil && *contact.ClientID != clientID && !in.ConfirmReassign {
 		var currentClient models.Client
 		currentClientName := ""
-		if err := db.Where(`id = ? AND "tenantId" = ?`, *contact.ClientID, tenantID).First(&currentClient).Error; err == nil {
+		if err := db.Session(&gorm.Session{NewDB: true}).Where(`id = ? AND "tenantId" = ?`, *contact.ClientID, tenantID).First(&currentClient).Error; err == nil {
 			currentClientName = currentClient.Name
 		}
 		c.JSON(http.StatusConflict, gin.H{

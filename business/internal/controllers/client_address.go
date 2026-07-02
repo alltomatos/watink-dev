@@ -98,7 +98,7 @@ func (cc *ClientController) ListAddresses(c *gin.Context) {
 	}
 
 	var addresses []models.ClientAddress
-	if err := db.Where(`"clientId" = ? AND "tenantId" = ?`, clientID, tenantID).
+	if err := db.Session(&gorm.Session{NewDB: true}).Where(`"clientId" = ? AND "tenantId" = ?`, clientID, tenantID).
 		Order(`"isPrimary" DESC, id ASC`).Find(&addresses).Error; err != nil {
 		utils.RespondWithInternalError(c, err, "ListClientAddresses")
 		return
