@@ -965,10 +965,25 @@ migração de dado legado (ambiente de desenvolvimento).
 transitivo, permissões reais). Falta: Onda E (testes unitários
 dedicados do `ClientController`), Onda F (frontend), Onda G (e2e).
 
-## Onda E — testes backend
-- [ ] **E1**: Testes unitários `ClientController` (list/create/update/
+## Onda E — testes backend · ✅ CONCLUÍDA
+- [x] **E1**: Testes unitários `ClientController` (list/create/update/
   soft-delete/link/unlink-com-confirmação/histórico-transitivo/documento-
-  nunca-em-texto-plano-na-resposta). | depends_on: [D1] | T2
+  nunca-em-texto-plano-na-resposta). | depends_on: [D1] | T2 · ✅ CONCLUÍDA
+  (E1a: `client_test.go`, 9 casos, commit `5ed0dcff6`. E1b: link/address/
+  history, 13 casos, commit `5b4397254` — **encontrou bug real**: `LinkContact`/
+  `ListAddresses`/`History` reusavam o `db` de `auth.GetScoped` em leituras
+  encadeadas sem `Session(NewDB:true)`, mesmo landmine do módulo Proxy;
+  corrigido diretamente (não mascarado no teste), commit `1ac486973`. Total
+  20/20 testes verdes + suíte completa do backend (`go test ./...`) verde.)
+- **Lição de prompt**: minhas instruções anteriores (C3-C6) só enfatizavam
+  `Session(NewDB:true)` em ESCRITAS encadeadas — o bug real estava em
+  LEITURAS encadeadas (`First`/`Find`/`Pluck` sequenciais no mesmo handle).
+  A regra correta é mais ampla: qualquer 2ª+ operação (leitura OU escrita)
+  no `db` retornado por `auth.GetScoped` precisa de `Session(NewDB:true)`.
+- **Achado menor registrado (não corrigido, cosmético)**: `Client.DeletedAt`
+  persiste como `deleted_at` (snake_case, default GORM) em vez do padrão
+  `deletedAt` camelCase do resto do schema — funciona corretamente, só
+  inconsistente. Considerar `gorm:"column:deletedAt"` numa limpeza futura.
 
 ## Onda F — frontend (paralelizável parcialmente após D1)
 - [ ] **F1**: `clientTypes.ts` + `useClients`/`useClientModal` reescritos
