@@ -112,7 +112,7 @@ docker compose -f docker-compose.dev.yml logs --tail=100 watink-frontend
 
 ### Smoke Test
 ```bash
-SMOKE_BASE_URL=http://localhost:3000 SMOKE_EMAIL=admin@test.com SMOKE_PASS=test123 node scripts/playwright-smoke.js
+SMOKE_BASE_URL=http://localhost:3000 SMOKE_EMAIL=admin@test.com SMOKE_PASS=test1234 node scripts/playwright-smoke.js
 ```
 
 → Referência completa em [`docs/dev/commands.md`](docs/dev/commands.md)

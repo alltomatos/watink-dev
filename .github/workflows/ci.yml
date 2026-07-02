@@ -258,7 +258,7 @@ jobs:
         env:
           SMOKE_BASE_URL: http://localhost:8082/api/v1
           SMOKE_EMAIL: admin@test.com
-          SMOKE_PASS: test123
+          SMOKE_PASS: test1234
         run: |
           python3 - <<'PY'
           import json
@@ -284,7 +284,7 @@ jobs:
         env:
           SMOKE_BASE_URL: http://localhost:8082/api/v1
           SMOKE_EMAIL: admin@test.com
-          SMOKE_PASS: test123
+          SMOKE_PASS: test1234
         run: |
           python3 scripts/smoke_test.py \
             --mode api \

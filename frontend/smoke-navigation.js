@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- script CommonJS standalone (frontend/package.json não é "type":"module")
 const { chromium } = require('playwright');
 
 (async () => {
@@ -6,7 +7,7 @@ const { chromium } = require('playwright');
   
   await page.goto('http://localhost:3000/login');
   await page.fill('input[name="email"]', 'admin@test.com');
-  await page.fill('input[name="password"]', 'test123');
+  await page.fill('input[name="password"]', 'test1234');
   await page.click('button[type="submit"]');
   await page.waitForNavigation({ waitUntil: 'networkidle' });
 
@@ -16,6 +17,7 @@ const { chromium } = require('playwright');
   ];
 
   for (const path of paths) {
+    // eslint-disable-next-line no-console -- progresso de um script CLI de smoke-test
     console.log("Navigating to: " + path);
     await page.goto('http://localhost:3000' + path, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2000); 
