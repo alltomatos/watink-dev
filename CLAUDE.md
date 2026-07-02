@@ -394,10 +394,40 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 
 **Referência:** [`docs/agents/onboarding.md`](docs/agents/onboarding.md)
 
+## Módulo: Clientes (CRM)
+
+**Responsabilidade:** Entidade de CRM (Pessoa Física/Jurídica) do core do business — agrega Contacts e Addresses, trazendo o Watink para perto de um CRM/ERP. Substitui o antigo plugin licenciado "Gestão de Clientes" (`type: "pro"`, rota `/api/clientes`), que tinha apenas GET/POST e nenhum vínculo real com Contact.
+
+**Invariants:**
+- Sempre usar `auth.GetScoped(c, "Clients")` — nunca `c.Get("tenantId")` bruto.
+- Client e Contact são entidades distintas que **não se fundem** (ADR 0023): um Contact pode existir e gerar Tickets sem nunca ser vinculado a um Client.
+- `Contact.ClientID` é nullable, um Contact pertence a no máximo um Client. Vínculo é sempre **manual** — nenhuma heurística automática de matching nesta fase.
+- Revincular um Contact que já pertence a outro Client é permitido, mediante confirmação explícita do agente ("Este contato pertence a Cliente Y. Deseja mover para Cliente X?") — nunca bloqueado silenciosamente.
+- Histórico do Client (Tickets/Deals) é resolvido por **transitividade** via `Ticket.Contact.ClientID` — `Ticket`/`Deal` nunca ganham `ClientID` desnormalizado (ADR 0023).
+- **Nome Social** (exclusivo de PF) — quando preenchido, substitui o nome civil em **toda** superfície de exibição (lista de Tickets, bolha de chat, cabeçalho, notificações, Pipeline/Deal, Protocol, relatórios). Nunca exibir os dois nomes lado a lado.
+- `Client.Document` (CPF/CNPJ) cifrado at-rest, mesmo padrão do módulo Proxy (`cryptobox`, fail-closed se a chave faltar).
+- `Client` usa soft-delete (`DeletedAt`) — nunca hard delete.
+- Endereço: CEP resolvido via ViaCEP (URL configurável em Settings do tenant, pré-preenchida com o default — nunca hardcoded no frontend). Coordenadas (`geog geography(Point,4326)`, PostGIS) resolvidas via Nominatim/OpenStreetMap no momento do save — geocoding é **best-effort**, falha nunca bloqueia o salvamento do Client.
+- Um Client pode ter múltiplos Addresses e múltiplos Contacts.
+- Tela de Clientes segue o padrão visual em abas da Central de Acessos (Dados Básicos / Contatos / Endereços).
+
+**O que NÃO fazer:**
+- Não fundir Contact e Client numa única entidade — são conceitos distintos que se relacionam (ver ADR 0023 e CONTEXT.md).
+- Não desnormalizar `ClientID` em Ticket/Deal para "otimizar" consultas — quebra a resolução automática de histórico quando um Client ganha um novo Contact.
+- Não bloquear duro a revinculação de um Contact já vinculado a outro Client — pedir confirmação, não proibir.
+- Não implementar matching automático de Contact→Client (por e-mail, documento, etc.) nesta fase — vínculo é 100% manual; roadmap futuro se necessário.
+- Não persistir CPF/CNPJ em texto plano.
+- Não fazer hard delete de Client.
+- Não chamar ViaCEP direto do frontend (client-side) — a chamada é sempre via backend, com URL configurável em Settings.
+- Não bloquear o salvamento do Client se o geocoding (Nominatim) falhar.
+- Não reintroduzir a rota antiga do plugin (`/api/clientes`) coexistindo com o novo core.
+
+**Referência:** [`docs/agents/clients.md`](docs/agents/clients.md) · ADR 0023
+
 ## Domain Docs
 
 - **Glossário**: [`CONTEXT.md`](CONTEXT.md)
-- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0009** para stage upsert, **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes. **FlowBuilder/Automação**: **0011** FlowRun unificado · **0012** trigger polimórfico · **0013** contrato versionado FlowGraph · **0014** channel adapters · **0015** pgvector RAG · **0016** campanhas anti-ban (risco estrutural + opt-in + roadmap BSP) · **0017** scheduler multi-node. **Base de Conhecimento/RAG**: **0015** (atualizado) pgvector RAG · **0018** microsserviço watink-knowledge + trust boundary · **0019** S3 Storage Driver · **0020** Agent Runtime. **Acessos/RBAC**: **0022** modelo Cargo/Setor/Alcance + enforcement real (supera **0005**, ABAC via RolePermission.Scope/Conditions nunca implementado)
+- **ADRs**: [`docs/adr/`](docs/adr/) — ver **ADR 0009** para stage upsert, **ADR 0008** para política anti-MUI, **ADR 0007** para decomposição de componentes. **FlowBuilder/Automação**: **0011** FlowRun unificado · **0012** trigger polimórfico · **0013** contrato versionado FlowGraph · **0014** channel adapters · **0015** pgvector RAG · **0016** campanhas anti-ban (risco estrutural + opt-in + roadmap BSP) · **0017** scheduler multi-node. **Base de Conhecimento/RAG**: **0015** (atualizado) pgvector RAG · **0018** microsserviço watink-knowledge + trust boundary · **0019** S3 Storage Driver · **0020** Agent Runtime. **Acessos/RBAC**: **0022** modelo Cargo/Setor/Alcance + enforcement real (supera **0005**, ABAC via RolePermission.Scope/Conditions nunca implementado). **Clientes/CRM**: **0023** Client como entidade core (sai do plugin "pro"), transitividade Contact→Client, documento cifrado at-rest
 - **Arquitetura**: [`docs/dev/architecture.md`](docs/dev/architecture.md)
 - **Frontend DS**: [`docs/frontend/design-system.md`](docs/frontend/design-system.md)
 - **Git Workflow**: [`docs/dev/git_workflow_policy.md`](docs/dev/git_workflow_policy.md)

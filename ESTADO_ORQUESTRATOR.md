@@ -857,3 +857,98 @@ Nenhuma rota nova de escrita entra sem `RequirePermission`; expandir o gate
 ## Gate de aprovação (T3)
 Onda 0 (T0.1, T0.2), T1.1, T1.3-se-gate e T3.1 são **T3 (auth/schema)** —
 **PARADA obrigatória**: aguardando aprovação do dono antes de aplicar.
+
+---
+
+# 🆕 Onda Clientes (CRM) — jul/2026
+
+Origem: sessão `/grill-feature-with-docs` + `/orchestrator`. Documentação de
+referência: ADR 0023, `docs/agents/clients.md`, bloco `## Módulo: Clientes
+(CRM)` no CLAUDE.md, `CONTEXT.md` (Client/ClientAddress/Contact/Tenant).
+
+## Gate de aprovação (T3) — ✅ APROVADO pelo dono
+Escopo aprovado explicitamente: "estamos em desenvolvimento, não precisamos
+de nada do legado do plugin que não seja útil, pode remover, vamos
+prosseguir." Decommission do `ClientesPlugin` autorizado sem plano de
+migração de dado legado (ambiente de desenvolvimento).
+
+## Onda A — fundações independentes (paralelizável, arquivos isolados)
+- [ ] **A1**: Decommission `ClientesPlugin` — remover registro em
+  `main.go:129`, deletar `business/internal/plugins/clientes.go`, remover
+  casos de teste `ClientesPlugin` em `plugin_test.go`/
+  `helpdesk_manager_test.go:113`. | depends_on: [] | T2
+- [ ] **A2**: Catálogo de permissão — seed do resource `clients` (`read`,
+  `create`, `update`, `delete`, `manage`) no seed de `Permission`/`Cargo`
+  (mesmo padrão de `connections`/`tickets`). | depends_on: [] | T2
+- [ ] **A3**: Settings — chaves `addressLookupProvider`
+  (default `"viacep"`) e `addressLookupBaseUrl`
+  (default `"https://viacep.com.br/ws"`), tenant-scoped, editável em
+  Configurações. | depends_on: [] | T1
+
+## Onda B — schema (fatia única, coesa — mesmo arquivo `database.go`)
+- [ ] **B1**: `Client` expandido (`Type pf|pj`, `SocialName *string`,
+  `Notes`, `DeletedAt` soft-delete) + `Document` cifrado at-rest via
+  `business/pkg/cryptobox` (fail-closed sem chave) + novo model
+  `ClientAddress` (label/zipCode/street/number/complement/neighborhood/
+  city/state/isPrimary/`geog geography(Point,4326)`) + `Contact.ClientID
+  *int` nullable FK + índice em `Contact.ClientID` + registrar
+  `Client`/`ClientAddress` no `AutoMigrate` principal (`database.Migrate()`,
+  substituindo o `OnInstall` do plugin). | depends_on: [A1] | **T3 (schema)**
+
+## Onda C — serviços/controller backend (paralelizável após B1)
+- [ ] **C1**: Serviço `AddressLookup` (proxy ViaCEP, URL vinda de Settings/
+  A3, timeout curto). | depends_on: [A3] | T2
+- [ ] **C2**: Serviço `Geocode` (Nominatim/OpenStreetMap, best-effort,
+  nunca bloqueia o save). | depends_on: [B1] | T2
+- [ ] **C3**: `ClientController` — CRUD core (list/get/create/update/
+  soft-delete), `auth.GetScoped(c,"Clients")`, wiring de cripto do
+  `Document`. | depends_on: [B1, A2] | T3
+- [ ] **C4**: `Client`↔`Contact` link/unlink — bloqueia só com confirmação
+  explícita quando o Contact já pertence a outro Client (reatribuição
+  permitida, não bloqueio duro). | depends_on: [B1, C3] | T2
+- [ ] **C5**: `ClientAddress` CRUD aninhado, wired a C1 (lookup) + C2
+  (geocode) no momento do save. | depends_on: [C1, C2, C3] | T2
+- [ ] **C6**: Endpoint de histórico do Client — transitivo via
+  `Ticket`/`Deal`.`Contact.ClientID` (nunca desnormalizado). Payload de
+  Contact/Ticket passa a embutir `client.socialName` quando existir, para o
+  frontend resolver o nome de exibição sem lógica própria. | depends_on:
+  [B1, C3] | T2
+
+## Onda D — wiring de rotas (fatia única, arquivo compartilhado `routes.go`)
+- [ ] **D1**: Registrar todas as rotas novas em `routes.go` sob
+  `auth.RequirePermission("clients", <ação>)`. | depends_on: [C3, C4, C5,
+  C6] | T2
+
+## Onda E — testes backend
+- [ ] **E1**: Testes unitários `ClientController` (list/create/update/
+  soft-delete/link/unlink-com-confirmação/histórico-transitivo/documento-
+  nunca-em-texto-plano-na-resposta). | depends_on: [D1] | T2
+
+## Onda F — frontend (paralelizável parcialmente após D1)
+- [ ] **F1**: `clientTypes.ts` + `useClients`/`useClientModal` reescritos
+  para o contrato `/clients` real; remove o `fetch` direto ao ViaCEP
+  (client-side) e passa a chamar o endpoint de lookup do backend (C1). |
+  depends_on: [D1] | T2
+- [ ] **F2**: Redesign visual de `ClientModal`/abas no padrão profissional
+  da Central de Acessos; campo Nome Social (exclusivo PF); UI de
+  link/unlink de Contact com diálogo de confirmação (espelha C4). |
+  depends_on: [F1] | T2
+- [ ] **F3**: Gate de permissão real — substitui `perform="view_clients"`/
+  `"edit_clients"`/`"delete_clients"` (legado `rules.ts`) pelo padrão ADR
+  0022 já usado em Acessos, casando com o catálogo de A2. | depends_on:
+  [A2, F2] | T2
+- [ ] **F4**: Propagação de exibição do Nome Social — lista de Tickets,
+  bolha de chat, cabeçalho do Ticket, notificações, Pipeline/Deal,
+  Protocol — consome `client.socialName` (de C6) sem exibir os dois nomes
+  lado a lado. | depends_on: [D1] | T2
+
+## Onda G — fiscalização final
+- [ ] **G1**: E2E/segurança (`/secure-e2e`) — soft-delete verificado,
+  `Document` nunca em texto plano na resposta de API, falha de geocoding
+  não bloqueia o save, fluxo de confirmação de link/unlink, Nome Social
+  exibido corretamente. | depends_on: [F2, F3, F4] | T2
+
+## Regra de ouro desta onda (ADR 0023)
+`Ticket`/`Deal` nunca ganham `ClientID` desnormalizado — histórico do
+Client é sempre `JOIN` via `Contact.ClientID`. Nenhuma rota nova de
+`clients`/`addresses` entra sem `RequirePermission`.
