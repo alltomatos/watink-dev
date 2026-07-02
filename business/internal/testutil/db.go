@@ -125,6 +125,7 @@ func allModels() []interface{} {
 		&models.Setting{},
 		&models.Contact{},
 		&models.Client{},
+		&models.ClientAddress{},
 		&models.Deal{},
 		&models.Protocol{},
 		&models.Whatsapp{},
