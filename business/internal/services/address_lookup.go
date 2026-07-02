@@ -36,9 +36,8 @@ type viaCEPResponse struct {
 var cepNonDigitRE = regexp.MustCompile(`\D`)
 
 const (
-	defaultAddressLookupProvider = "viacep"
-	defaultAddressLookupBaseURL  = "https://viacep.com.br/ws"
-	addressLookupTimeout         = 5 * time.Second
+	defaultAddressLookupBaseURL = "https://viacep.com.br/ws"
+	addressLookupTimeout        = 5 * time.Second
 )
 
 // LookupAddressByCEP sanitizes and validates the given CEP, then resolves it
@@ -61,15 +60,6 @@ func LookupAddressByCEP(ctx context.Context, db *gorm.DB, tenantID uuid.UUID, ce
 		settingMap[s.Key] = s.Value
 	}
 
-	// provider is read for forward-compatibility (multiple providers may need
-	// different response parsing in the future); today only the ViaCEP-shaped
-	// JSON response (logradouro/bairro/localidade/uf/erro) is supported,
-	// regardless of the configured provider name.
-	provider := settingMap["addressLookupProvider"]
-	if provider == "" {
-		provider = defaultAddressLookupProvider
-	}
-
 	baseURL := settingMap["addressLookupBaseUrl"]
 	if baseURL == "" {
 		baseURL = defaultAddressLookupBaseURL
@@ -87,7 +77,7 @@ func LookupAddressByCEP(ctx context.Context, db *gorm.DB, tenantID uuid.UUID, ce
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var parsed viaCEPResponse
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
