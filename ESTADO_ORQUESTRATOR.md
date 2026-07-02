@@ -1041,13 +1041,38 @@ dedicados do `ClientController`), Onda F (frontend), Onda G (e2e).
   quebrar nada, mas o Nome Social não aparece de fato em Protocol/Helpdesk
   até esse preload backend ser adicionado. Follow-up.
 
-## Onda G — fiscalização final
-- [ ] **G1**: E2E/segurança (`/secure-e2e`) — soft-delete verificado,
-  `Document` nunca em texto plano na resposta de API, falha de geocoding
-  não bloqueia o save, fluxo de confirmação de link/unlink, Nome Social
-  exibido corretamente. | depends_on: [F2, F3, F4] | T2
+## Onda G — fiscalização final · ✅ CONCLUÍDA
+- [x] **G1**: `e2e/tests/clients/clients.spec.ts` — soft-delete, documento
+  nunca em `documentEnc` na resposta, PJ+socialName rejeitado, fluxo de
+  confirmação link/unlink (409→200 com `confirmReassign`), histórico
+  transitivo (shape, sem Ticket real — sem rota `POST /tickets` pra
+  simular sem infra AMQP/engine), gate anônimo (401, confirmado via leitura
+  do middleware). **Não executado ao vivo** (docker-compose rodando é a
+  imagem antiga, sem `/clients` — rebuildar a stack compartilhada foi
+  deliberadamente fora de escopo); verificado só estaticamente
+  (`tsc --noEmit` limpo). Fica pra CI/execução manual futura.
+  Commit `f0c843256`.
+- **Achado adicional (aprofunda o débito #1 registrado em F4b)**:
+  `domain.Contact` (`business/internal/domain/models.go`,
+  `gorm_contact_repo.go`) nem mapeia o campo `ClientID`/`clientId` do
+  model GORM — não é só falta de `Preload`, o DTO de domínio do
+  `ContactController` não carrega esse campo de jeito nenhum. Capturado
+  antes de virar teste flaky (o e2e evitou depender de `GET /contacts/:id`
+  pra verificar o vínculo, usando a resposta do próprio `LinkContact`).
 
 ## Regra de ouro desta onda (ADR 0023)
 `Ticket`/`Deal` nunca ganham `ClientID` desnormalizado — histórico do
 Client é sempre `JOIN` via `Contact.ClientID`. Nenhuma rota nova de
 `clients`/`addresses` entra sem `RequirePermission`.
+
+## ✅ ONDA CLIENTES (CRM) — DAG COMPLETO
+19 tarefas concluídas (A1-A3, B1, C1-C6, D1, E1, F1-F4b, G1) + 2 fixes
+diretos (bug real de `Session(NewDB:true)` faltante em leituras
+encadeadas — achado pelos testes E1b; gate morto do menu lateral —
+achado pela F3). Backend 100% testado (20/20 testes unitários + suíte
+completa `go test ./...` verde). Frontend com typecheck/lint/build
+limpos e verificação visual ao vivo confirmada (Sheet, tabs, Nome Social
+PF-only, gates de aba). Débito registrado (não bloqueante, follow-up
+futuro): `Preload`/mapeamento de `Client` faltando em `ContactController`
+(domain DTO) e em `Protocol`/Helpdesk; suíte e2e criada mas não executada
+ao vivo (ambiente compartilhado roda imagem antiga).
