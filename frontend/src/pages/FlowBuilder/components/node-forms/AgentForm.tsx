@@ -17,10 +17,12 @@ const AgentForm: React.FC<AgentFormProps> = ({ formData, knowledgeBases, onChang
   <div className="space-y-3">
     <div className="space-y-1">
       <Label className="text-xs">Base de Conhecimento</Label>
-      <Select value={formData.knowledgeBaseId || ''} onValueChange={(v) => onChange('knowledgeBaseId', v)}>
-        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+      <Select
+        value={formData.knowledgeBaseId || undefined}
+        onValueChange={(v) => onChange('knowledgeBaseId', v)}
+      >
+        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
         <SelectContent>
-          <SelectItem value=""><em>Selecione</em></SelectItem>
           {knowledgeBases.map((kb) => (
             <SelectItem key={kb.id} value={kb.id}>{kb.name}</SelectItem>
           ))}
