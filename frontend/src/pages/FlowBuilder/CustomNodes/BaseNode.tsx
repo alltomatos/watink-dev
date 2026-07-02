@@ -20,6 +20,7 @@ const COLOR_MAP: Record<string, string> = {
   colorDefault: 'bg-gradient-to-b from-[var(--slate-500)] to-[var(--slate-700)]',
   colorTicket: 'bg-gradient-to-b from-[var(--google-pink)] to-[var(--red-700)]',
   colorHelpdesk: 'bg-gradient-to-b from-[var(--emerald-600)] to-[var(--emerald-800)]',
+  colorQuickAnswer: 'bg-gradient-to-b from-[var(--status-info)] to-[var(--google-blue)]',
 };
 
 export interface HandleConfig {

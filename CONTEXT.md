@@ -27,8 +27,13 @@ Governança: `docs/adr/frontend/005-design-system-governance.md`.
 **Ticket**: Unidade central de atendimento — representa uma conversa ativa entre um Contact e um User em um Queue. Criada automaticamente ao receber uma mensagem ou manualmente por um agente.
 _Avoid_: Case, chamado, issue, conversation
 
-**Contact**: Pessoa ou grupo do WhatsApp que envia ou recebe mensagens. Pode ser individual (pessoa) ou grupo (isGroup=true). Vincula-se a um Ticket como remetente.
-_Avoid_: Customer, client, destinatário, pessoa
+**Contact**: Pessoa ou grupo do WhatsApp que envia ou recebe mensagens. Pode ser individual (pessoa) ou grupo (isGroup=true). Vincula-se a um Ticket como remetente. Pode existir sem nunca virar um **Client** — mensagem/Ticket não pressupõe cadastro de CRM.
+_Avoid_: destinatário, pessoa — não confundir com **Client**: todo Client agrega 1+ Contacts, mas nem todo Contact é (ou precisa ser) um Client.
+
+**Client**: Entidade de CRM (Pessoa Física ou Jurídica) do core do business — agrega 1+ Contacts (`Contact.ClientID`, vínculo sempre manual; um Contact pertence a no máximo um Client) e 1+ ClientAddresses. Nome Social (exclusivo de PF) substitui o nome civil em toda exibição do sistema quando preenchido. `Document` (CPF/CNPJ) cifrado at-rest; soft-delete via `DeletedAt` (nunca hard delete). Histórico (Tickets/Deals) é resolvido por transitividade via `Contact.ClientID` — nunca desnormalizado.
+_Avoid_: Customer — não confundir com **Tenant** (organização cliente da plataforma SaaS) nem com **Contact** (identidade WhatsApp).
+
+**ClientAddress**: Endereço vinculado a um Client (rótulo, CEP, logradouro, bairro, cidade, UF, `isPrimary`). Endereço textual resolvido via ViaCEP (URL configurável em Settings, não hardcoded); coordenadas (`geog geography(Point,4326)`, PostGIS) resolvidas best-effort via Nominatim/OpenStreetMap no momento do save — falha de geocoding nunca bloqueia o salvamento do Client.
 
 **User**: Agente ou administrador da plataforma que atende Tickets. A autoridade de um User é resolvida por 3 dimensões independentes (ADR 0022): **Cargo** (o que pode fazer), **Setor(es)** (onde está, N:N, com marca opcional de Gestor) e **Alcance** (até onde vale — próprio/setor/tenant/plataforma). Substitui o antigo campo `Profile` e o vínculo singular `GroupID`.
 _Avoid_: Agent, attendant, operador, atendente, Profile, perfil
@@ -121,7 +126,7 @@ _Avoid_: Template, canned response, resposta padrão
 
 **QuickAnswer dispatch**: Ação de envio de uma QuickAnswer pelo backend, que resolve variáveis de interpolação e despacha o payload ao engine via RabbitMQ. Acionado por `POST /quickAnswers/:id/send`.
 
-**Tenant**: Organização cliente na plataforma SaaS. `Name` é o Nome Fantasia informado no Wizard de Setup Inicial (não mais um placeholder autogerado). Isolamento de dados garantido na prática por filtro `WHERE "tenantId"` manual em todas as queries — a RLS por `app.current_tenant` existe no design mas está **inerte** (o `SET LOCAL app.current_tenant` falha silenciosamente: bind param no `SET` + fora de transação; bug rastreado, correção em andamento). Cada Tenant possui Users, Queues, Whatsapps, e Settings próprios.
+**Tenant**: Organização cliente na plataforma SaaS. `Name` é o Nome Fantasia informado no Wizard de Setup Inicial (não mais um placeholder autogerado). Isolamento de dados garantido na prática por filtro `WHERE "tenantId"` manual em todas as queries — a RLS por `app.current_tenant` existe no design mas está **inerte** (o `SET LOCAL app.current_tenant` falha silenciosamente: bind param no `SET` + fora de transação; bug rastreado, correção em andamento). Cada Tenant possui Users, Queues, Whatsapps, e Settings próprios. Não confundir com **Client**: o Tenant é o cliente do Watink; o Client é o cliente do Tenant (CRM).
 _Avoid_: Account, organization, empresa, cliente
 
 **Wizard de Setup Inicial**: Formulário público single-step (`POST /initial-setup`), exibido quando o sistema detecta zero usuários/tenants. Coleta Nome Fantasia (vira `Tenant.Name`), dados do Administrador e CPF/CNPJ opcional; cria atomicamente Tenant+Cargos-padrão+Setor+Queue+Tag+Settings.
@@ -266,6 +271,8 @@ Setor ──M:N──> Queue        (via setor_filas; Setor organiza, Queue rote
 Cargo ──M:N──> Permission   (via cargo_permissoes)
 
 Contact ──1:N──> Ticket
+Client ──1:N──> Contact     (Contact.ClientID nullable; vínculo manual)
+Client ──1:N──> ClientAddress
 Ticket ──1:N──> Message
 Ticket ──N:1──> Queue
 Ticket ──N:1──> User (assignee)

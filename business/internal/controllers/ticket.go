@@ -11,6 +11,8 @@ import (
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type TicketController struct {
@@ -55,14 +57,14 @@ func historyCutoff(rangeToken string, now time.Time) int64 {
 // @Security     BearerAuth
 // @Router       /tickets [get]
 func (tc *TicketController) ListTickets(c *gin.Context) {
-	db, _, ok := auth.GetScoped(c, "Tickets")
+	db, tenantID, ok := auth.GetScoped(c, "Tickets")
 	if !ok {
 		return
 	}
 
 	var tickets []models.Ticket
 	query := db.
-		Preload("Contact").
+		Preload("Contact.Client").
 		Preload("User").
 		Order("\"updatedAt\" DESC")
 
@@ -120,11 +122,71 @@ func (tc *TicketController) ListTickets(c *gin.Context) {
 		return
 	}
 
+	attachTicketTags(db, tenantID, tickets)
+
 	c.JSON(http.StatusOK, gin.H{
 		"tickets": tickets,
 		"count":   len(tickets),
 		"hasMore": false,
 	})
+}
+
+// attachTicketTags batch-loads the Tags attached to each ticket (via the
+// polymorphic EntityTags table) in two unambiguous single-table queries and
+// assigns them onto the transient Ticket.Tags field — avoids N+1 across the
+// ticket list. Uses a fresh session (NewDB) because the caller's db carries
+// GetScoped's unqualified Where("\"tenantId\" = ?"), which would be ambiguous
+// if joined against another tenantId-bearing table.
+func attachTicketTags(db *gorm.DB, tenantID uuid.UUID, tickets []models.Ticket) {
+	if len(tickets) == 0 {
+		return
+	}
+	ids := make([]int, len(tickets))
+	for i, t := range tickets {
+		ids[i] = t.ID
+	}
+
+	fresh := db.Session(&gorm.Session{NewDB: true})
+
+	var entityTags []models.EntityTag
+	if err := fresh.Where("\"tenantId\" = ? AND \"entityType\" = ? AND \"entityId\" IN ?", tenantID, "ticket", ids).
+		Find(&entityTags).Error; err != nil || len(entityTags) == 0 {
+		return
+	}
+
+	tagIDSet := make(map[int]struct{}, len(entityTags))
+	entityByTag := make(map[int][]int, len(entityTags)) // tagID -> ticketIDs
+	for _, et := range entityTags {
+		tagIDSet[et.TagID] = struct{}{}
+		entityByTag[et.TagID] = append(entityByTag[et.TagID], et.EntityID)
+	}
+	tagIDs := make([]int, 0, len(tagIDSet))
+	for id := range tagIDSet {
+		tagIDs = append(tagIDs, id)
+	}
+
+	var tags []models.Tag
+	if err := fresh.Where("id IN ?", tagIDs).Find(&tags).Error; err != nil {
+		return
+	}
+	tagByID := make(map[int]models.Tag, len(tags))
+	for _, t := range tags {
+		tagByID[t.ID] = t
+	}
+
+	byTicket := make(map[int][]models.Tag, len(tickets))
+	for tagID, ticketIDs := range entityByTag {
+		tag, ok := tagByID[tagID]
+		if !ok {
+			continue
+		}
+		for _, tid := range ticketIDs {
+			byTicket[tid] = append(byTicket[tid], tag)
+		}
+	}
+	for i := range tickets {
+		tickets[i].Tags = byTicket[tickets[i].ID]
+	}
 }
 
 // @Summary      Detalhar ticket
@@ -144,7 +206,7 @@ func (tc *TicketController) ShowTicket(c *gin.Context) {
 
 	var ticket models.Ticket
 	if err := db.Where("id = ?", ticketID).
-		Preload("Contact").
+		Preload("Contact.Client").
 		Preload("User").
 		First(&ticket).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ticket not found"})

@@ -56,6 +56,25 @@ func (a *WhatsAppAdapter) Send(ctx context.Context, msg OutboundMessage) error {
 		}
 	}
 
+	// Rich sends (interactive/media/poll/carousel — e.g. the quickAnswer node)
+	// carry a pre-built commandType+payload in Meta instead of the plain
+	// body/mediaUrl shape below. BuildQuickAnswerCommand already fills
+	// sessionId/messageId/to, so pass it through verbatim.
+	if ct, ok := msg.Meta["commandType"].(string); ok && ct != "" {
+		payload, _ := msg.Meta["payload"].(map[string]interface{})
+		command := map[string]interface{}{"type": ct, "payload": payload}
+		routingKey := fmt.Sprintf("wbot.%s.%s.%s", msg.TenantID.String(), msg.SessionID, ct)
+		if err := a.rabbit.PublishCommand(routingKey, command); err != nil {
+			if a.redis != nil && msg.EnvID != "" {
+				if delErr := a.redis.DelLock("wbot:msg:" + msg.EnvID); delErr != nil {
+					log.Printf("[WhatsAppAdapter] dedup lock release after publish failure failed (env=%s): %v", msg.EnvID, delErr)
+				}
+			}
+			return fmt.Errorf("whatsapp adapter: publish rich command: %w", err)
+		}
+		return nil
+	}
+
 	mediaType := metaString(msg.Meta, "mediaType")
 	mediaURL := metaString(msg.Meta, "mediaUrl")
 	mimeType := metaString(msg.Meta, "mimeType")

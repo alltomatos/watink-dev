@@ -408,6 +408,18 @@ const messages = {
           deleteMessage: "This action cannot be undone.",
         },
       },
+      flowBuilder: {
+        nodes: {
+          quickAnswer: {
+            paletteLabel: "Quick Reply",
+            title: "Configure Quick Reply",
+            fieldLabel: "Quick Reply",
+            placeholder: "Select a quick reply",
+            empty: "No quick replies registered",
+            helper: "Sends a template from the Quick Replies module.",
+          },
+        },
+      },
       users: {
         title: "Users",
         table: {

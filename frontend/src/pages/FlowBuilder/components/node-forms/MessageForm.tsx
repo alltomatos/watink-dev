@@ -29,7 +29,7 @@ const MessageForm: React.FC<MessageFormProps> = ({ formData, onChange }) => (
       </Select>
     </div>
 
-    {formData.contentType === 'text' ? (
+    {(formData.contentType || 'text') === 'text' ? (
       <Textarea
         className="text-xs min-h-[100px]"
         placeholder="Digite a mensagem..."

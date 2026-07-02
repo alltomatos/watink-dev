@@ -147,12 +147,15 @@ const StartNodeModal: React.FC<StartNodeModalProps> = ({ open, onClose, onSave, 
                 {actionType === 'message' && (
                   <div className="space-y-1">
                     <Label className="text-xs">Conexão (WhatsApp)</Label>
-                    <Select value={selectedConnection} onValueChange={setSelectedConnection}>
+                    <Select
+                      value={selectedConnection || '__all__'}
+                      onValueChange={(v) => setSelectedConnection(v === '__all__' ? '' : v)}
+                    >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder="Todas as conexões" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value=""><em>Todas as conexões</em></SelectItem>
+                        <SelectItem value="__all__"><em>Todas as conexões</em></SelectItem>
                         {connections.map((conn) => (
                           <SelectItem key={conn.id} value={conn.id}>{conn.name}</SelectItem>
                         ))}

@@ -146,6 +146,7 @@ func DefaultExecutorRegistry() *ExecutorRegistry {
 	r.Register(ticketExecutor{})
 	r.Register(knowledgeExecutor{})
 	r.Register(agentExecutor{})
+	r.Register(quickAnswerExecutor{})
 	return r
 }
 

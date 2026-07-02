@@ -413,6 +413,18 @@ const messages = {
           deleteMessage: "Esta acción no se puede deshacer.",
         },
       },
+      flowBuilder: {
+        nodes: {
+          quickAnswer: {
+            paletteLabel: "Respuesta Rápida",
+            title: "Configurar Respuesta Rápida",
+            fieldLabel: "Respuesta Rápida",
+            placeholder: "Seleccione una respuesta rápida",
+            empty: "No hay respuestas rápidas registradas",
+            helper: "Envía una plantilla del módulo Respuestas Rápidas.",
+          },
+        },
+      },
       users: {
         title: "Usuarios",
         table: {

@@ -4,11 +4,13 @@ import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { i18n } from "../../translate/i18n";
 import { getBackendUrl } from "../../helpers/urlUtils";
+import { getContactDisplayName } from "../../utils/clientDisplayName";
 
 interface Contact {
   name: string;
   profilePicUrl?: string | null;
   isGroup?: boolean;
+  client?: { id: number; socialName?: string | null } | null;
 }
 
 interface TicketUser {
@@ -48,15 +50,15 @@ const TicketInfo: React.FC<TicketInfoProps> = ({ contact, ticket, onClick }) => 
     >
       <Avatar
         src={contact.profilePicUrl ? getBackendUrl(contact.profilePicUrl) : null}
-        name={contact.name}
+        name={getContactDisplayName(contact)}
         size="md"
         isGroup={contact.isGroup}
-        aria-label={contact.name}
+        aria-label={getContactDisplayName(contact)}
       />
 
       <div className="flex min-w-0 flex-col">
         <span className="truncate text-sm font-semibold leading-tight text-foreground">
-          {contact.name} #{ticket.id}
+          {getContactDisplayName(contact)} #{ticket.id}
         </span>
         {assignedTo && (
           <span className="truncate text-xs text-muted-foreground">

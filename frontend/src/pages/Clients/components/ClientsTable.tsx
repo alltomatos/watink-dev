@@ -48,14 +48,13 @@ export function ClientsTable({ clients, loading, user, onEdit, onDelete }: Clien
             <TableHead>Documento</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Telefone</TableHead>
-            <TableHead className="text-center">Contatos</TableHead>
             <TableHead className="text-right w-[100px]">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {loading ? (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">
+              <TableCell colSpan={6} className="h-24 text-center">
                 <div className="flex justify-center">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
@@ -63,7 +62,7 @@ export function ClientsTable({ clients, loading, user, onEdit, onDelete }: Clien
             </TableRow>
           ) : clients.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+              <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                 Nenhum cliente encontrado
               </TableCell>
             </TableRow>
@@ -77,14 +76,11 @@ export function ClientsTable({ clients, loading, user, onEdit, onDelete }: Clien
                 <TableCell className="text-muted-foreground">{client.document ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{client.email ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{client.phone ?? "—"}</TableCell>
-                <TableCell className="text-center text-muted-foreground">
-                  {client.contacts?.length ?? 0}
-                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Can
                       user={user}
-                      perform="edit_clients"
+                      perform="clients:update"
                       yes={() => (
                         <Button
                           variant="ghost"
@@ -98,7 +94,7 @@ export function ClientsTable({ clients, loading, user, onEdit, onDelete }: Clien
                     />
                     <Can
                       user={user}
-                      perform="delete_clients"
+                      perform="clients:delete"
                       yes={() => (
                         <Button
                           variant="ghost"

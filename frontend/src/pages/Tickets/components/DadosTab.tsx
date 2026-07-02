@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Users, User, Phone, Mail, AtSign, RefreshCw } from "lucide-react";
+import { Users, User, Phone, Mail, AtSign, RefreshCw, UserPlus, Briefcase } from "lucide-react";
 import { toast } from "react-toastify";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,9 @@ import api from "../../../services/api";
 import { TicketInfo } from "../ticketsTypes";
 import PipelinesSection from "./PipelinesSection";
 import FlowsSection from "./FlowsSection";
+import TicketTagsSection from "./TicketTagsSection";
+import ClientModal from "../../Clients/ClientModal";
+import TagChip from "../../../components/TagChip";
 
 interface DadosTabProps {
   ticket: TicketInfo | null;
@@ -16,6 +19,7 @@ interface DadosTabProps {
 
 const DadosTab: React.FC<DadosTabProps> = ({ ticket, loading }) => {
   const [syncing, setSyncing] = useState(false);
+  const [clientModalOpen, setClientModalOpen] = useState(false);
   const contact = ticket?.contact;
   const isGroup = contact?.isGroup || ticket?.isGroup;
 
@@ -106,10 +110,14 @@ const DadosTab: React.FC<DadosTabProps> = ({ ticket, loading }) => {
             {ticket.whatsapp?.name && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Conexão</span>
-                <span className="font-medium truncate max-w-[140px]">{ticket.whatsapp.name}</span>
+                <TagChip tag={{ id: "connection", name: ticket.whatsapp.name, color: "blue" }} size="small" />
               </div>
             )}
           </div>
+        )}
+
+        {ticket?.id && (
+          <TicketTagsSection ticketId={ticket.id} />
         )}
 
         <div className="flex flex-col gap-1.5">
@@ -145,6 +153,31 @@ const DadosTab: React.FC<DadosTabProps> = ({ ticket, loading }) => {
           )}
         </div>
 
+        {/* Cliente — somente para tickets individuais */}
+        {!isGroup && contact?.id && (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Cliente</p>
+            {contact.client ? (
+              <div className="flex items-center gap-2 text-sm">
+                <Briefcase className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="font-medium truncate">
+                  {contact.client.socialName || "Cliente vinculado"}
+                </span>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs w-fit"
+                onClick={() => setClientModalOpen(true)}
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                Cadastrar Cliente
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Pipelines — somente para tickets individuais */}
         {!isGroup && ticket?.id && contact?.id && (
           <PipelinesSection
@@ -159,6 +192,19 @@ const DadosTab: React.FC<DadosTabProps> = ({ ticket, loading }) => {
           <FlowsSection contactId={contact.id} />
         )}
       </div>
+
+      {contact && clientModalOpen && (
+        <ClientModal
+          open={clientModalOpen}
+          onClose={() => setClientModalOpen(false)}
+          initialContact={{
+            id: String(contact.id),
+            name: contact.name,
+            number: contact.number,
+            email: contact.email,
+          }}
+        />
+      )}
     </div>
   );
 };

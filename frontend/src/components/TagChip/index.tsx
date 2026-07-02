@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTagColorStyles } from "../../helpers/tagColors";
 
-interface Tag {
+export interface Tag {
   id: number | string;
   name: string;
   color?: string;

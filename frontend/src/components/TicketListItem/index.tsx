@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useContext } from "react";
+import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { parseISO, format, isSameDay } from "date-fns";
 import { Users, Building2, Radio } from "lucide-react";
@@ -6,13 +6,10 @@ import { Users, Building2, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { i18n } from "../../translate/i18n";
-import api from "../../services/api";
-import ButtonWithSpinner from "../ButtonWithSpinner";
+import TagChip from "../TagChip";
 import MarkdownWrapper from "../MarkdownWrapper";
-import { AuthContext } from "../../context/Auth/AuthContext";
-import toastError from "../../errors/toastError";
 import { getBackendUrl } from "../../helpers/urlUtils";
+import { getContactDisplayName } from "../../utils/clientDisplayName";
 
 interface Queue {
   color?: string;
@@ -29,6 +26,13 @@ interface Contact {
   profilePicUrl?: string | null;
   isGroup?: boolean;
   number?: string;
+  client?: { id: number; socialName?: string | null } | null;
+}
+
+interface Tag {
+  id: number;
+  name: string;
+  color?: string;
 }
 
 interface Ticket {
@@ -45,6 +49,7 @@ interface Ticket {
   contact: Contact;
   queue?: Queue;
   whatsapp?: WhatsApp;
+  tags?: Tag[];
 }
 
 interface TicketListItemProps {
@@ -53,48 +58,13 @@ interface TicketListItemProps {
 
 const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
   const { ticketId } = useParams<{ ticketId: string }>();
-  const isMounted = useRef(true);
-  const { user } = useContext(AuthContext);
-
-  useEffect(() => {
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
-  const handleAcceptTicket = async (id: number) => {
-    setLoading(true);
-    try {
-      await api.put(`/tickets/${id}`, {
-        status: "open",
-        userId: user?.id,
-      });
-    } catch (err) {
-      setLoading(false);
-      toastError(err);
-    }
-    if (isMounted.current) {
-      setLoading(false);
-    }
-    navigate(`/tickets/${id}`);
-  };
 
   const handleSelectTicket = (id: number) => {
     navigate(`/tickets/${id}`);
   };
 
-  const handlePeekTicket = (e: React.MouseEvent, id: number) => {
-    e.stopPropagation();
-    navigate(`/tickets/${id}`);
-  };
-
   const isSelected = ticketId !== undefined && +ticketId === ticket.id;
-  const isPending =
-    ticket.status === "pending" &&
-    !ticket.isGroup &&
-    !ticket.contact?.isGroup;
 
   // Tipo de conversa para badge no avatar
   const ticketType: "community" | "group" | "newsletter" | "individual" =
@@ -145,10 +115,10 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
               ? getBackendUrl(ticket.contact?.profilePicUrl)
               : null
           }
-          name={ticket.contact?.name ?? ""}
+          name={getContactDisplayName(ticket.contact)}
           size="md"
           isGroup={ticket.isGroup || ticket.contact?.isGroup}
-          aria-label={ticket.contact?.name ?? ""}
+          aria-label={getContactDisplayName(ticket.contact)}
         />
         {ticketType !== "individual" && (
           <span className={cn(
@@ -169,7 +139,7 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
         {/* Linha 1 — nome + horário */}
         <div className="flex items-baseline justify-between">
           <span className="truncate text-[0.8125rem] font-semibold leading-tight text-foreground">
-            {ticket.contact?.name ?? ""}
+            {getContactDisplayName(ticket.contact)}
           </span>
           <span className="ml-2 shrink-0 text-[0.6875rem] text-muted-foreground">
             {timeLabel}
@@ -200,34 +170,17 @@ const TicketListItem: React.FC<TicketListItemProps> = ({ ticket }) => {
           )}
         </div>
 
-        {/* Linha 3 — badge da fila */}
-        {ticket.whatsapp?.name && (
-          <span className="mt-0.5 self-start rounded px-1.5 py-px text-[0.625rem] font-semibold bg-muted text-muted-foreground">
-            {ticket.whatsapp.name}
-          </span>
-        )}
-
-        {/* Botões aceitar / espiar — tickets pendentes individuais */}
-        {isPending && (
-          <div className="mt-1.5 flex items-center gap-1.5">
-            <ButtonWithSpinner
-              size="sm"
-              loading={loading}
-              className="rounded-md px-3 py-1 text-xs font-semibold normal-case bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={(e: React.MouseEvent) => {
-                e.stopPropagation();
-                handleAcceptTicket(ticket.id);
-              }}
-            >
-              {i18n.t("ticketsList.buttons.accept")}
-            </ButtonWithSpinner>
-            <button
-              type="button"
-              className="rounded-md border border-border px-3 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted/60 transition-colors"
-              onClick={(e) => handlePeekTicket(e, ticket.id)}
-            >
-              Espiar
-            </button>
+        {/* Linha 3 — badge da conexão + tags */}
+        {(ticket.whatsapp?.name || (ticket.tags && ticket.tags.length > 0)) && (
+          <div className="mt-0.5 flex flex-wrap items-center gap-1">
+            {ticket.whatsapp?.name && (
+              <span className="self-start rounded px-1.5 py-px text-[0.625rem] font-semibold bg-muted text-muted-foreground">
+                {ticket.whatsapp.name}
+              </span>
+            )}
+            {ticket.tags?.map((tag) => (
+              <TagChip key={tag.id} tag={tag} size="small" />
+            ))}
           </div>
         )}
       </div>

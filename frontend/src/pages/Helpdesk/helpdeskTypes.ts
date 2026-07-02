@@ -5,7 +5,7 @@ export interface ProtocolListItem {
   status: string;
   priority: string;
   createdAt: string;
-  contact?: { name: string };
+  contact?: { name: string; client?: { socialName?: string | null } | null };
 }
 
 export interface HelpdeskFiltersState {

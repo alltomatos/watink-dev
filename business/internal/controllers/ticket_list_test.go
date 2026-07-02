@@ -56,6 +56,43 @@ func TestTicketController_ListTickets_TenantIsolation(t *testing.T) {
 	assert.Equal(t, float64(1), resp["count"])
 }
 
+func TestTicketController_ListTickets_IncludesTags(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupTicketListDB(t)
+	tenantA := uuid.New()
+	tenantB := uuid.New()
+
+	db.Exec(`INSERT INTO "Tickets" (status, "isGroup", "tenantId") VALUES (?,?,?)`, "open", false, tenantA)
+	var ticketID int
+	db.Raw(`SELECT LASTVAL()`).Scan(&ticketID)
+
+	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "Urgente", "red", tenantA)
+	var tagID int
+	db.Raw(`SELECT LASTVAL()`).Scan(&tagID)
+	db.Exec(`INSERT INTO "EntityTags" ("tagId", "entityType", "entityId", "tenantId") VALUES (?,?,?,?)`, tagID, "ticket", ticketID, tenantA)
+
+	// Cross-tenant EntityTags row with a colliding tagId must not leak in.
+	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "OutroTenant", "blue", tenantB)
+	var otherTagID int
+	db.Raw(`SELECT LASTVAL()`).Scan(&otherTagID)
+	db.Exec(`INSERT INTO "EntityTags" ("tagId", "entityType", "entityId", "tenantId") VALUES (?,?,?,?)`, otherTagID, "ticket", ticketID, tenantB)
+
+	ctrl := &TicketController{updateTicket: nil, broadcast: nil}
+	c, w := newTicketListContext(t, db, tenantA, "GET", "/tickets")
+
+	ctrl.ListTickets(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var resp map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	tickets := resp["tickets"].([]interface{})
+	require.Len(t, tickets, 1)
+	ticket := tickets[0].(map[string]interface{})
+	tags := ticket["tags"].([]interface{})
+	require.Len(t, tags, 1)
+	assert.Equal(t, "Urgente", tags[0].(map[string]interface{})["name"])
+}
+
 func TestTicketController_ListTickets_FilterByStatus(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupTicketListDB(t)

@@ -62,12 +62,15 @@ const FilterValueInput: React.FC<FilterValueInputProps> = ({ filter, fieldConfig
 
   if (fieldConfig.type === 'number') {
     return (
-      <Select value={filter.value || ''} onValueChange={handleChange}>
+      <Select
+        value={filter.value || undefined}
+        onValueChange={(v) => handleChange(v === '__custom__' ? '' : v)}
+      >
         <SelectTrigger className="flex-1 min-w-[100px] h-8 text-xs">
           <SelectValue placeholder="Valor" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">
+          <SelectItem value="__custom__">
             <em>Digitar valor...</em>
           </SelectItem>
           {CONTEXT_VARIABLES.filter((v) => v.value.includes('Id')).map((v) => (
