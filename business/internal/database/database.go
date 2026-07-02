@@ -47,6 +47,8 @@ func Migrate() {
 		&models.User{},
 		&models.Setting{},
 		&models.Contact{},
+		&models.Client{},
+		&models.ClientAddress{},
 		&models.Whatsapp{},
 		&models.Queue{},
 		&models.Ticket{},
@@ -88,8 +90,21 @@ func Migrate() {
 		log.Printf("Warning: failed to create custom indexes: %v", err)
 	}
 
+	addClientAddressGeography()
+
 	fmt.Println("Database migration completed")
 	Seed()
+}
+
+// addClientAddressGeography adds the PostGIS spatial column backing
+// ClientAddress (ADR 0023) via raw SQL — GORM does not model the `geography`
+// type natively. Best-effort: the PostGIS extension may be absent in some dev
+// environments, so a failure is logged and never blocks boot (log.Fatalf is
+// deliberately not used here).
+func addClientAddressGeography() {
+	if err := DB.Exec(`ALTER TABLE "ClientAddresses" ADD COLUMN IF NOT EXISTS geog geography(Point,4326)`).Error; err != nil {
+		log.Printf("Warning: failed to add ClientAddresses.geog (PostGIS extension may be missing): %v", err)
+	}
 }
 
 // Seed recria o catálogo de Permissions em granularidade recurso:ação
@@ -236,6 +251,11 @@ func addCustomIndexes() error {
 		// Proxy pool reads are tenant-scoped and filter by status (active pool,
 		// isolated list) for assignment and the anti-ban isolation guard.
 		`CREATE INDEX IF NOT EXISTS idx_proxies_tenant_status ON "Proxies" ("tenantId", "status")`,
+		// Clients (CRM, ADR 0023): most Contacts have no Client, so a partial
+		// index on the non-null subset keeps the "resolve Client from Contact"
+		// lookup and the reverse "Contacts of a Client" join cheap.
+		`CREATE INDEX IF NOT EXISTS idx_contacts_client ON "Contacts" ("clientId") WHERE "clientId" IS NOT NULL`,
+		`CREATE INDEX IF NOT EXISTS idx_client_addresses_tenant_client ON "ClientAddresses" ("tenantId", "clientId")`,
 	}
 
 	for _, ddl := range indexes {
@@ -272,7 +292,7 @@ func addCustomIndexes() error {
 }
 
 func applyRLS() error {
-	tables := []string{"Users", "Tickets", "Messages", "Contacts", "Settings", "ConversationEmbeddings", "FlowRuns", "FlowRunLogs"}
+	tables := []string{"Users", "Tickets", "Messages", "Contacts", "Settings", "ConversationEmbeddings", "FlowRuns", "FlowRunLogs", "Clients", "ClientAddresses"}
 
 	for _, t := range tables {
 		if err := DB.Exec(fmt.Sprintf("ALTER TABLE \"%s\" ENABLE ROW LEVEL SECURITY", t)).Error; err != nil {
