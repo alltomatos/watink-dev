@@ -26,6 +26,10 @@ type Ticket struct {
 	Contact  Contact   `gorm:"foreignKey:ContactID" json:"contact,omitempty"`
 	User     User      `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Messages []Message `gorm:"foreignKey:TicketID" json:"messages,omitempty"`
+
+	// Tags is populated manually (batch query via EntityTags) by ListTickets —
+	// not a GORM association, since EntityTag is polymorphic (entityType+entityId).
+	Tags []Tag `gorm:"-" json:"tags,omitempty"`
 }
 
 func (Ticket) TableName() string {

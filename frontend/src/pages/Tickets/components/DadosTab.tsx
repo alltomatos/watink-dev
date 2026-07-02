@@ -8,7 +8,9 @@ import api from "../../../services/api";
 import { TicketInfo } from "../ticketsTypes";
 import PipelinesSection from "./PipelinesSection";
 import FlowsSection from "./FlowsSection";
+import TicketTagsSection from "./TicketTagsSection";
 import ClientModal from "../../Clients/ClientModal";
+import TagChip from "../../../components/TagChip";
 
 interface DadosTabProps {
   ticket: TicketInfo | null;
@@ -108,10 +110,14 @@ const DadosTab: React.FC<DadosTabProps> = ({ ticket, loading }) => {
             {ticket.whatsapp?.name && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Conexão</span>
-                <span className="font-medium truncate max-w-[140px]">{ticket.whatsapp.name}</span>
+                <TagChip tag={{ id: "connection", name: ticket.whatsapp.name, color: "blue" }} size="small" />
               </div>
             )}
           </div>
+        )}
+
+        {ticket?.id && (
+          <TicketTagsSection ticketId={ticket.id} />
         )}
 
         <div className="flex flex-col gap-1.5">

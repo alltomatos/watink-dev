@@ -286,6 +286,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.PUT("/tags/:id", tagController.Update)
 		protected.DELETE("/tags/:id", tagController.Delete)
 		protected.GET("/tag-groups", tagController.ListGroups)
+		protected.GET("/entities/:entityType/:id/tags", tagController.GetEntityTags)
 		protected.PUT("/entities/:entityType/:id/tags/sync", tagController.SyncEntityTags)
 
 		// Deals
