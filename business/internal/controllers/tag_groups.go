@@ -11,6 +11,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// validEntityTypes is the closed set of entities that can carry EntityTags.
+var validEntityTypes = map[string]bool{"ticket": true, "contact": true}
+
 // @Summary      Listar grupos de tags
 // @Tags         tags
 // @Produce      json
@@ -30,6 +33,49 @@ func (tc *TagController) ListGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, groups)
 }
 
+// @Summary      Listar tags de entidade
+// @Tags         tags
+// @Produce      json
+// @Param        entityType  path      string  true  "Tipo da entidade (ticket, contact)"
+// @Param        id          path      int     true  "ID da entidade"
+// @Success      200         {array}   map[string]interface{}
+// @Security     BearerAuth
+// @Router       /entities/{entityType}/{id}/tags [get]
+func (tc *TagController) GetEntityTags(c *gin.Context) {
+	db, tenantID, ok := auth.GetScoped(c, "Tags")
+	if !ok {
+		return
+	}
+	entityType := c.Param("entityType")
+	if !validEntityTypes[entityType] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid entityType: must be 'ticket' or 'contact'"})
+		return
+	}
+	id, _ := strconv.Atoi(c.Param("id"))
+
+	// Two unambiguous single-table queries instead of a join: GetScoped's
+	// tenant Where("\"tenantId\" = ?") is unqualified, so joining EntityTags
+	// (which also has a tenantId column) with the scoped db would make the
+	// column reference ambiguous to Postgres.
+	var tagIDs []int
+	if err := db.Session(&gorm.Session{NewDB: true}).Model(&models.EntityTag{}).
+		Where("\"tenantId\" = ? AND \"entityType\" = ? AND \"entityId\" = ?", tenantID, entityType, id).
+		Pluck("\"tagId\"", &tagIDs).Error; err != nil {
+		utils.RespondWithInternalError(c, err, "GetEntityTags")
+		return
+	}
+
+	tags := []models.Tag{}
+	if len(tagIDs) > 0 {
+		if err := db.Where("id IN ?", tagIDs).Order("name ASC").Find(&tags).Error; err != nil {
+			utils.RespondWithInternalError(c, err, "GetEntityTags")
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, tags)
+}
+
 // @Summary      Sincronizar tags de entidade
 // @Tags         tags
 // @Accept       json
@@ -46,7 +92,6 @@ func (tc *TagController) SyncEntityTags(c *gin.Context) {
 		return
 	}
 	entityType := c.Param("entityType")
-	validEntityTypes := map[string]bool{"ticket": true, "contact": true}
 	if !validEntityTypes[entityType] {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid entityType: must be 'ticket' or 'contact'"})
 		return

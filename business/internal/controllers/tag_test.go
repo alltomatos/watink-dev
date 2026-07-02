@@ -213,3 +213,53 @@ func TestTagController_SyncEntityTags(t *testing.T) {
 	db.Raw(`SELECT count(*) FROM "EntityTags" WHERE "tenantId" = ? AND "entityId" = 42`, tenantID).Scan(&count)
 	assert.Equal(t, int64(1), count)
 }
+
+func TestTagController_GetEntityTags(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupTagTestDB(t)
+	tenantID := uuid.New()
+	otherTenant := uuid.New()
+
+	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "T1", "red", tenantID)
+	var tagID int
+	db.Raw(`SELECT LASTVAL()`).Scan(&tagID)
+
+	db.Exec(`INSERT INTO "EntityTags" ("tagId", "entityType", "entityId", "tenantId") VALUES (?,?,?,?)`, tagID, "ticket", 42, tenantID)
+	// Same tag/entity id, different tenant — must not leak into the response.
+	db.Exec(`INSERT INTO "Tags" (name, color, "tenantId") VALUES (?,?,?)`, "T2", "blue", otherTenant)
+	var otherTagID int
+	db.Raw(`SELECT LASTVAL()`).Scan(&otherTagID)
+	db.Exec(`INSERT INTO "EntityTags" ("tagId", "entityType", "entityId", "tenantId") VALUES (?,?,?,?)`, otherTagID, "ticket", 42, otherTenant)
+
+	ctrl := NewTagController()
+	c, w := setupTagContext(t, db, tenantID, "GET", "/entities/ticket/42/tags", nil)
+	c.Params = gin.Params{
+		{Key: "entityType", Value: "ticket"},
+		{Key: "id", Value: "42"},
+	}
+
+	ctrl.GetEntityTags(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var tags []map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &tags))
+	require.Len(t, tags, 1)
+	assert.Equal(t, "T1", tags[0]["name"])
+}
+
+func TestTagController_GetEntityTags_InvalidEntityType(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupTagTestDB(t)
+	tenantID := uuid.New()
+
+	ctrl := NewTagController()
+	c, w := setupTagContext(t, db, tenantID, "GET", "/entities/invalid/42/tags", nil)
+	c.Params = gin.Params{
+		{Key: "entityType", Value: "invalid"},
+		{Key: "id", Value: "42"},
+	}
+
+	ctrl.GetEntityTags(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
