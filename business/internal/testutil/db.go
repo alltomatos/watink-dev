@@ -64,25 +64,9 @@ func NewTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("testutil.NewTestDB: AutoMigrate: %v", err)
 	}
 
-	// Join tables (user_queues, whatsapp_queues) use snake_case columns
-	// (user_id, queue_id, whatsapp_id) — created by GORM's many2many default
-	// naming, matching the runtime schema. Do NOT rename to camelCase.
-	for _, stmt := range []string{
-		// PluginInstallations is managed outside GORM models (plugin-manager service).
-		// Create a minimal version for unit tests that query it.
-		`CREATE TABLE IF NOT EXISTS "PluginInstallations" (
-			id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-			"tenantId" uuid NOT NULL,
-			"pluginId" uuid NOT NULL,
-			active    boolean NOT NULL DEFAULT true,
-			"createdAt" timestamptz,
-			"updatedAt" timestamptz
-		)`,
-	} {
-		if err := db.Exec(stmt).Error; err != nil {
-			t.Fatalf("testutil.NewTestDB: schema fixup: %v", err)
-		}
-	}
+	// PluginInstallations now has a real GORM model (models.PluginInstallation,
+	// ADR 0024) migrated via allModels() above — no more manual CREATE TABLE
+	// fixup needed here.
 
 	t.Cleanup(func() {
 		_ = sqlDB.Close()
@@ -154,5 +138,6 @@ func allModels() []interface{} {
 		&models.Proxy{},
 		&models.ProxyGroup{},
 		&models.ConnectionGroup{},
+		&models.PluginInstallation{},
 	}
 }
