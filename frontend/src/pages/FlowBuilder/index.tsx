@@ -31,6 +31,7 @@ import WebhookNode from './CustomNodes/WebhookNode';
 import APINode from './CustomNodes/APINode';
 import HelpdeskNode from './CustomNodes/HelpdeskNode';
 import GenericNode from './CustomNodes/GenericNode';
+import QuickAnswerNode from './CustomNodes/QuickAnswerNode';
 
 import './flowbuilder.css';
 
@@ -53,6 +54,7 @@ const nodeTypes = {
     api: APINode,
     helpdesk: HelpdeskNode,
     generic: GenericNode,
+    quickAnswer: QuickAnswerNode,
 };
 
 const FlowBuilderContent = () => {
