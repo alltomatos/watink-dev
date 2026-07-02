@@ -14,6 +14,7 @@ export interface Contact {
   /** WhatsApp linked-device identifier — present when contact is verified */
   lid?: string;
   extraInfo?: ExtraInfo[];
+  client?: { id: number; socialName?: string | null } | null;
 }
 
 export interface Tag {
