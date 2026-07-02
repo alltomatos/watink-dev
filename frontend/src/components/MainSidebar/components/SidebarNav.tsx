@@ -143,15 +143,19 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ collapsed, isLightSidebar, acti
         )}
       />
 
-      {activePlugins.includes("clientes") && (
-        <SidebarItem
-          to="/clients"
-          label={i18n.t("mainDrawer.listItems.clients")}
-          icon={<Briefcase size={20} />}
-          collapsed={collapsed}
-          activeColor="var(--nav-icon-orange)"
-        />
-      )}
+      <Can
+        user={user}
+        perform="clients:read"
+        yes={() => (
+          <SidebarItem
+            to="/clients"
+            label={i18n.t("mainDrawer.listItems.clients")}
+            icon={<Briefcase size={20} />}
+            collapsed={collapsed}
+            activeColor="var(--nav-icon-orange)"
+          />
+        )}
+      />
 
       {activePlugins.includes("helpdesk") && (
         <Can
