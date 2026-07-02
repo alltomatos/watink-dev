@@ -61,8 +61,15 @@ func TestEncrypt_NonceIsRandom(t *testing.T) {
 
 func TestDecrypt_TamperedFails(t *testing.T) {
 	enc, _ := Encrypt("authentic")
-	// Flip a character in the base64 to corrupt the tag/ciphertext.
-	tampered := "A" + enc[1:]
+	// Flip the first character in the base64 to corrupt the tag/ciphertext.
+	// Must pick a replacement different from the original char, or the
+	// "tampered" string is identical to enc and decrypts successfully,
+	// flaking the test.
+	replacement := byte('A')
+	if enc[0] == replacement {
+		replacement = 'B'
+	}
+	tampered := string(replacement) + enc[1:]
 	if _, err := Decrypt(tampered); err == nil {
 		t.Fatal("tampered ciphertext decrypted without error — GCM auth not enforced")
 	}
