@@ -872,18 +872,32 @@ de nada do legado do plugin que não seja útil, pode remover, vamos
 prosseguir." Decommission do `ClientesPlugin` autorizado sem plano de
 migração de dado legado (ambiente de desenvolvimento).
 
-## Onda A — fundações independentes (paralelizável, arquivos isolados)
-- [ ] **A1**: Decommission `ClientesPlugin` — remover registro em
-  `main.go:129`, deletar `business/internal/plugins/clientes.go`, remover
-  casos de teste `ClientesPlugin` em `plugin_test.go`/
-  `helpdesk_manager_test.go:113`. | depends_on: [] | T2
-- [ ] **A2**: Catálogo de permissão — seed do resource `clients` (`read`,
-  `create`, `update`, `delete`, `manage`) no seed de `Permission`/`Cargo`
-  (mesmo padrão de `connections`/`tickets`). | depends_on: [] | T2
-- [ ] **A3**: Settings — chaves `addressLookupProvider`
-  (default `"viacep"`) e `addressLookupBaseUrl`
-  (default `"https://viacep.com.br/ws"`), tenant-scoped, editável em
-  Configurações. | depends_on: [] | T1
+## Onda A — fundações independentes (paralelizável, arquivos isolados) · ✅ CONCLUÍDA
+- [x] **A1**: Decommission `ClientesPlugin` — registro em `main.go` removido,
+  `business/internal/plugins/clientes.go` deletado, testes `ClientesPlugin`
+  removidos de `plugin_test.go`/`helpdesk_manager_test.go` (2º plugin do
+  teste de contagem trocado por `WebchatPlugin`, sem alterar o número
+  esperado). Verificado por `grep -r ClientesPlugin business/` vazio + build/
+  vet/test verdes. Commit `8e598c152`.
+- [x] **A2**: Catálogo de permissão — resource `clients` (`read`, `create`,
+  `update`, `delete`, `manage`) seedado em `database.go:132-136`, mesmo
+  padrão de `connections`/`tickets`. Nenhum teste de contagem depende de
+  `database.Seed()` (setup_service_test/permission_repo_test usam seeds
+  locais próprios) — sem ajuste necessário. Commit `e4e6fc9b2`.
+- [x] **A3**: Nova seção "Endereço (CEP)" em Configurações —
+  `AddressLookupSettings.tsx` (padrão de `AISettings.tsx`), chaves
+  `addressLookupProvider` (default `"viacep"`) e `addressLookupBaseUrl`
+  (default `"https://viacep.com.br/ws"`), registrada em `Settings/index.tsx`
+  + `SettingsSideNav.tsx`. Commit `bb9e94f9a`.
+- **Lição do processo**: os 3 agentes de worktree editaram os arquivos mas
+  não commitaram nas suas branches — o primeiro `git merge` de cada uma
+  "teve sucesso" sem trazer nenhum arquivo (merge vazio), e a verificação
+  inicial (`go build`/`go test`) não pegou isso porque o código no estado
+  ORIGINAL também compila e passa nos testes. Descoberto ao inspecionar
+  `git diff HEAD <branch>` antes do `git worktree remove` (que corretamente
+  recusou apagar o worktree A1 por ter mudanças não commitadas). Corrigido
+  commitando nas 3 worktrees antes do merge real. Verificação passou a
+  incluir grep explícito pelo resultado esperado, não só build/test verdes.
 
 ## Onda B — schema (fatia única, coesa — mesmo arquivo `database.go`)
 - [ ] **B1**: `Client` expandido (`Type pf|pj`, `SocialName *string`,
