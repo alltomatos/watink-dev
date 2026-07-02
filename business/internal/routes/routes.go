@@ -127,28 +127,31 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.PUT("/whatsapp/:id/keepalive", auth.RequirePermission("connections", "update"), whatsappController.ToggleKeepAlive)
 		protected.DELETE("/whatsapp/:id", auth.RequirePermission("connections", "delete"), whatsappController.DeleteWhatsapp)
 
-		// Proxies (anti-ban) — gated pela mesma permissão de conexões (Whatsapps)
-		protected.GET("/proxies", proxyController.List)
-		protected.POST("/proxies", proxyController.Create)
-		protected.POST("/proxies/import", proxyController.Import)
-		protected.POST("/proxies/test-all", proxyController.TestAll)
-		protected.POST("/proxies/assign-group", proxyController.AssignGroup)
-		protected.DELETE("/proxies", proxyController.DeleteAll)
-		protected.PUT("/proxies/:id", proxyController.Update)
-		protected.DELETE("/proxies/:id", proxyController.Delete)
-		protected.POST("/proxies/:id/isolate", proxyController.Isolate)
-		protected.POST("/proxies/:id/activate", proxyController.Activate)
-		protected.POST("/proxies/:id/test", proxyController.Test)
+		// Proxies (anti-ban) — mesmo domínio de acesso que as conexões
+		// (Whatsapps): gated por connections:<ação> (P2-2). Antes as rotas eram
+		// só tenant-scoped, então um usuário sem permissão de conexões podia
+		// criar/importar/rotacionar e até zerar o pool (DELETE /proxies).
+		protected.GET("/proxies", auth.RequirePermission("connections", "read"), proxyController.List)
+		protected.POST("/proxies", auth.RequirePermission("connections", "create"), proxyController.Create)
+		protected.POST("/proxies/import", auth.RequirePermission("connections", "create"), proxyController.Import)
+		protected.POST("/proxies/test-all", auth.RequirePermission("connections", "update"), proxyController.TestAll)
+		protected.POST("/proxies/assign-group", auth.RequirePermission("connections", "update"), proxyController.AssignGroup)
+		protected.DELETE("/proxies", auth.RequirePermission("connections", "delete"), proxyController.DeleteAll)
+		protected.PUT("/proxies/:id", auth.RequirePermission("connections", "update"), proxyController.Update)
+		protected.DELETE("/proxies/:id", auth.RequirePermission("connections", "delete"), proxyController.Delete)
+		protected.POST("/proxies/:id/isolate", auth.RequirePermission("connections", "update"), proxyController.Isolate)
+		protected.POST("/proxies/:id/activate", auth.RequirePermission("connections", "update"), proxyController.Activate)
+		protected.POST("/proxies/:id/test", auth.RequirePermission("connections", "update"), proxyController.Test)
 
-		// Grupos de proxy (pool com rotação) e grupos de conexões
-		protected.GET("/proxy-groups", proxyGroupController.List)
-		protected.POST("/proxy-groups", proxyGroupController.Create)
-		protected.PUT("/proxy-groups/:id", proxyGroupController.Update)
-		protected.DELETE("/proxy-groups/:id", proxyGroupController.Delete)
-		protected.GET("/connection-groups", connectionGroupController.List)
-		protected.POST("/connection-groups", connectionGroupController.Create)
-		protected.PUT("/connection-groups/:id", connectionGroupController.Update)
-		protected.DELETE("/connection-groups/:id", connectionGroupController.Delete)
+		// Grupos de proxy (pool com rotação) e grupos de conexões — idem gate.
+		protected.GET("/proxy-groups", auth.RequirePermission("connections", "read"), proxyGroupController.List)
+		protected.POST("/proxy-groups", auth.RequirePermission("connections", "create"), proxyGroupController.Create)
+		protected.PUT("/proxy-groups/:id", auth.RequirePermission("connections", "update"), proxyGroupController.Update)
+		protected.DELETE("/proxy-groups/:id", auth.RequirePermission("connections", "delete"), proxyGroupController.Delete)
+		protected.GET("/connection-groups", auth.RequirePermission("connections", "read"), connectionGroupController.List)
+		protected.POST("/connection-groups", auth.RequirePermission("connections", "create"), connectionGroupController.Create)
+		protected.PUT("/connection-groups/:id", auth.RequirePermission("connections", "update"), connectionGroupController.Update)
+		protected.DELETE("/connection-groups/:id", auth.RequirePermission("connections", "delete"), connectionGroupController.Delete)
 
 		// WhatsApp Sessions
 		protected.POST("/whatsappsession/all", auth.RequirePermission("connections", "update"), sessionController.RestartAllSessions)
