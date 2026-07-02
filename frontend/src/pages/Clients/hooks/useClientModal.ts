@@ -2,21 +2,16 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import api from "../../../services/api";
 import {
-  ClientFormData, ContactInput, AddressInput, ClientContact,
+  ClientFormData, ContactInput, AddressInput, ClientAddress, ClientContact, ClientRecord,
   EMPTY_CONTACT, EMPTY_ADDRESS,
 } from "../clientTypes";
 
-interface ClientProp {
-  id: string;
-  type?: string;
-  name?: string;
-  document?: string;
-  email?: string;
-  phone?: string;
-  notes?: string;
-  contacts?: ContactInput[];
-  addresses?: AddressInput[];
-}
+// ClientProp is what the modal receives to seed the form when editing — the
+// real GET/POST/PUT /clients(/:id) response (ClientRecord). It carries no
+// contacts/addresses: those are separate resources
+// (GET /clients/:id/addresses, POST /clients/:id/contacts/:contactId/link),
+// fetched independently — see docs note in handleSubmit below.
+type ClientProp = ClientRecord;
 
 export interface UseClientModalReturn {
   loading: boolean;
@@ -42,7 +37,7 @@ export const useClientModal = (
 ): UseClientModalReturn => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<ClientFormData>({
-    type: "pf", name: "", document: "", email: "", phone: "", notes: "",
+    type: "pf", name: "", socialName: "", document: "", email: "", phone: "", notes: "",
     contacts: [], addresses: [],
   });
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,15 +46,38 @@ export const useClientModal = (
     if (!open) return;
     if (client) {
       setFormData({
-        type: (client.type as "pf" | "pj") || "pf",
+        type: client.type || "pf",
         name: client.name ?? "",
+        socialName: client.socialName ?? "",
         document: client.document ?? "",
         email: client.email ?? "",
         phone: client.phone ?? "",
         notes: client.notes ?? "",
-        contacts: (client.contacts ?? []) as ContactInput[],
-        addresses: (client.addresses ?? []) as AddressInput[],
+        // Contacts/addresses are separate backend resources (not part of the
+        // ClientRecord response) — fetch addresses so edit mode shows the
+        // existing list; linked contacts stay out of scope here (F2).
+        contacts: [],
+        addresses: [],
       });
+      api.get<{ addresses: ClientAddress[] }>(`/clients/${client.id}/addresses`)
+        .then(({ data }) => {
+          const addresses: AddressInput[] = (data.addresses ?? []).map((a) => ({
+            id: a.id,
+            label: a.label,
+            zipCode: a.zipCode,
+            street: a.street,
+            number: a.number,
+            complement: a.complement,
+            neighborhood: a.neighborhood,
+            city: a.city,
+            state: a.state,
+            isPrimary: a.isPrimary,
+          }));
+          setFormData((prev) => ({ ...prev, addresses }));
+        })
+        .catch(() => {
+          toast.error("Erro ao carregar endereços do cliente");
+        });
     } else {
       const initContacts: ContactInput[] = initialContact
         ? [{
@@ -75,6 +93,7 @@ export const useClientModal = (
       setFormData({
         type: "pf",
         name: initialContact ? initialContact.name ?? "" : "",
+        socialName: "",
         document: "",
         email: initialContact?.email ?? "",
         phone: initialContact?.number ?? "",
@@ -158,11 +177,10 @@ export const useClientModal = (
     const cep = formData.addresses[index]?.zipCode?.replace(/\D/g, "");
     if (!cep || cep.length !== 8) return;
     try {
-      const resp = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const data = await resp.json() as {
-        erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string;
-      };
-      if (data.erro) {
+      const { data } = await api.get<{
+        street: string; neighborhood: string; city: string; state: string; notFound: boolean;
+      }>("/addresses/lookup", { params: { cep } });
+      if (data.notFound) {
         toast.error("CEP não encontrado");
         return;
       }
@@ -170,10 +188,10 @@ export const useClientModal = (
         const addresses = [...prev.addresses];
         addresses[index] = {
           ...addresses[index],
-          street: data.logradouro ?? "",
-          neighborhood: data.bairro ?? "",
-          city: data.localidade ?? "",
-          state: data.uf ?? "",
+          street: data.street ?? "",
+          neighborhood: data.neighborhood ?? "",
+          city: data.city ?? "",
+          state: data.state ?? "",
         };
         return { ...prev, addresses };
       });
@@ -182,6 +200,20 @@ export const useClientModal = (
     }
   };
 
+  // clientPayload strips contacts/addresses (form-only aggregates) down to the
+  // exact clientInput shape the backend accepts
+  // (business/internal/controllers/client.go) — POST/PUT /clients never take
+  // nested arrays; addresses are separate calls right after (see below).
+  const clientPayload = () => ({
+    type: formData.type,
+    name: formData.name,
+    socialName: formData.socialName || null,
+    document: formData.document,
+    email: formData.email,
+    phone: formData.phone,
+    notes: formData.notes,
+  });
+
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
       toast.error("Nome é obrigatório");
@@ -189,13 +221,36 @@ export const useClientModal = (
     }
     try {
       setLoading(true);
+      let clientId: number;
       if (client) {
-        await api.put(`/clients/${client.id}`, formData);
+        await api.put(`/clients/${client.id}`, clientPayload());
+        clientId = client.id;
         toast.success("Cliente atualizado com sucesso");
       } else {
-        await api.post("/clients", formData);
+        const { data } = await api.post<ClientRecord>("/clients", clientPayload());
+        clientId = data.id;
         toast.success("Cliente criado com sucesso");
       }
+
+      for (const address of formData.addresses) {
+        const addressPayload = {
+          label: address.label,
+          zipCode: address.zipCode,
+          street: address.street,
+          number: address.number,
+          complement: address.complement,
+          neighborhood: address.neighborhood,
+          city: address.city,
+          state: address.state,
+          isPrimary: address.isPrimary,
+        };
+        if (address.id) {
+          await api.put(`/clients/${clientId}/addresses/${address.id}`, addressPayload);
+        } else {
+          await api.post(`/clients/${clientId}/addresses`, addressPayload);
+        }
+      }
+
       onClose();
     } catch {
       toast.error("Erro ao salvar cliente");
