@@ -4,6 +4,7 @@ export interface Contact {
   name?: string;
   number?: string;
   isGroup?: boolean;
+  client?: { id: number; socialName?: string | null } | null;
 }
 
 export interface QuotedMsg {
