@@ -986,10 +986,15 @@ dedicados do `ClientController`), Onda F (frontend), Onda G (e2e).
   inconsistente. Considerar `gorm:"column:deletedAt"` numa limpeza futura.
 
 ## Onda F — frontend (paralelizável parcialmente após D1)
-- [ ] **F1**: `clientTypes.ts` + `useClients`/`useClientModal` reescritos
-  para o contrato `/clients` real; remove o `fetch` direto ao ViaCEP
-  (client-side) e passa a chamar o endpoint de lookup do backend (C1). |
-  depends_on: [D1] | T2
+- [x] **F1**: `clientTypes.ts` (`ClientRecord`/`ClientAddress` de resposta,
+  distintos dos DTOs de escrita) + `useClients`/`useClientModal`
+  reescritos para o contrato `/clients` real — `handleSubmit` agora separa
+  Client (`POST/PUT /clients`) de Addresses (`POST/PUT /clients/:id/
+  addresses` por item, novo vs existente por presença de `id`). `fetch`
+  direto ao ViaCEP REMOVIDO — `handleCepBlur` chama `GET /addresses/
+  lookup` do backend. Coluna "Contatos" removida da listagem (API real
+  não traz esse array agregado). Vínculo/confirmação de Contact e UI de
+  Nome Social ficam para F2. typecheck+lint limpos. Commit `40775f16a`.
 - [ ] **F2**: Redesign visual de `ClientModal`/abas no padrão profissional
   da Central de Acessos; campo Nome Social (exclusivo PF); UI de
   link/unlink de Contact com diálogo de confirmação (espelha C4). |
