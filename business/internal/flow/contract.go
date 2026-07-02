@@ -48,22 +48,23 @@ type Edge struct {
 type NodeType string
 
 const (
-	NodeStart     NodeType = "start"
-	NodeEnd       NodeType = "end"
-	NodeMessage   NodeType = "message"
-	NodeMenu      NodeType = "menu"
-	NodeSwitch    NodeType = "switch"
-	NodeTrigger   NodeType = "trigger"
-	NodePipeline  NodeType = "pipeline"
-	NodeKnowledge NodeType = "knowledge"
-	NodeAgent     NodeType = "agent"
-	NodeTicket    NodeType = "ticket"
-	NodeDatabase  NodeType = "database"
-	NodeFilter    NodeType = "filter"
-	NodeWebhook   NodeType = "webhook"
-	NodeAPI       NodeType = "api"
-	NodeHelpdesk  NodeType = "helpdesk"
-	NodeGeneric   NodeType = "generic"
+	NodeStart       NodeType = "start"
+	NodeEnd         NodeType = "end"
+	NodeMessage     NodeType = "message"
+	NodeMenu        NodeType = "menu"
+	NodeSwitch      NodeType = "switch"
+	NodeTrigger     NodeType = "trigger"
+	NodePipeline    NodeType = "pipeline"
+	NodeKnowledge   NodeType = "knowledge"
+	NodeAgent       NodeType = "agent"
+	NodeTicket      NodeType = "ticket"
+	NodeDatabase    NodeType = "database"
+	NodeFilter      NodeType = "filter"
+	NodeWebhook     NodeType = "webhook"
+	NodeAPI         NodeType = "api"
+	NodeHelpdesk    NodeType = "helpdesk"
+	NodeGeneric     NodeType = "generic"
+	NodeQuickAnswer NodeType = "quickAnswer"
 
 	// Canvas aliases: React Flow seeds the entry/exit nodes as input/output.
 	NodeInput  NodeType = "input"  // alias of start
@@ -72,24 +73,25 @@ const (
 
 // validNodeTypes is the closed registry of accepted node.type strings for v1.
 var validNodeTypes = map[NodeType]struct{}{
-	NodeStart:     {},
-	NodeEnd:       {},
-	NodeMessage:   {},
-	NodeMenu:      {},
-	NodeSwitch:    {},
-	NodeTrigger:   {},
-	NodePipeline:  {},
-	NodeKnowledge: {},
-	NodeAgent:     {},
-	NodeTicket:    {},
-	NodeDatabase:  {},
-	NodeFilter:    {},
-	NodeWebhook:   {},
-	NodeAPI:       {},
-	NodeHelpdesk:  {},
-	NodeGeneric:   {},
-	NodeInput:     {},
-	NodeOutput:    {},
+	NodeStart:       {},
+	NodeEnd:         {},
+	NodeMessage:     {},
+	NodeMenu:        {},
+	NodeSwitch:      {},
+	NodeTrigger:     {},
+	NodePipeline:    {},
+	NodeKnowledge:   {},
+	NodeAgent:       {},
+	NodeTicket:      {},
+	NodeDatabase:    {},
+	NodeFilter:      {},
+	NodeWebhook:     {},
+	NodeAPI:         {},
+	NodeHelpdesk:    {},
+	NodeGeneric:     {},
+	NodeQuickAnswer: {},
+	NodeInput:       {},
+	NodeOutput:      {},
 }
 
 // IsValidNodeType reports whether t is a registered node type for the current schema.
