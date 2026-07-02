@@ -134,6 +134,46 @@ func TestUserController_CreateUser_BlocksAlcanceAboveActor(t *testing.T) {
 		"criar usuário com alcance acima do ator deveria retornar 403: %s", w.Body.String())
 }
 
+// ── P2-5 / P2-6: senha mínima + normalização de email no CreateUser ──────────
+
+func TestUserController_CreateUser_RejectsShortPassword(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupUserTestDB(t)
+	tenantID := uuid.New()
+
+	payload, _ := json.Marshal(map[string]interface{}{
+		"name": "Weak", "email": "weak@test.com", "password": "a",
+	})
+	ctrl := NewUserController(&mockUserRepo{db: db}, &mockPlanLimit{})
+	c, w := setupUserContext(t, db, tenantID, "POST", "/users", payload)
+
+	ctrl.CreateUser(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code,
+		"senha curta (< %d) deveria retornar 400: %s", minPasswordLen, w.Body.String())
+}
+
+func TestUserController_CreateUser_NormalizesEmail(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupUserTestDB(t)
+	tenantID := uuid.New()
+
+	// Caixa mista (o binding "email" rejeita espaços, mas aceita maiúsculas) —
+	// é exatamente o cenário do P2-6: cadastra "Mixed@Case.COM", loga minúsculo.
+	payload, _ := json.Marshal(map[string]interface{}{
+		"name": "Mixed", "email": "Mixed@Case.COM", "password": "secret123",
+	})
+	ctrl := NewUserController(&mockUserRepo{db: db}, &mockPlanLimit{})
+	c, w := setupUserContext(t, db, tenantID, "POST", "/users", payload)
+
+	ctrl.CreateUser(c)
+
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var stored string
+	db.Raw(`SELECT email FROM "Users" WHERE "tenantId" = ?`, tenantID).Scan(&stored)
+	assert.Equal(t, "mixed@case.com", stored, "email deveria ser gravado normalizado (lowercase)")
+}
+
 func TestUserController_CreateUser_RejectsCrossTenantCargo(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := setupUserTestDB(t)

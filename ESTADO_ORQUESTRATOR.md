@@ -735,21 +735,41 @@ bloqueante para o Onboarding; sinalizado como tarefa separada
   para T2.1 (Onda 2) — cobertura unit do handler + rota gate-free já garante
   o invariante; a fiação end-to-end é o que o e2e adiciona.
 
-## Onda 1 — P2 segurança + regressão funcional visível · T2/T3
-- [ ] **T1.1**: P2-1 read-path defense-in-depth — tenant-guard em
-  `cargoHasPermission`/`loadCargoPermissions`/`effectivePermissionNames`
-  (JOIN em `Cargos` com `tenantId`). | depends_on: [T0.1] | **T3 (auth)**
-- [ ] **T1.2**: P2-3 + P2-4 — realinhar `Can`/`SidebarNav`/gates de
-  superadmin de `user.profile` (morto) → `user.alcance` + catálogo real de
-  permissões; devolver Dashboard/Tags/Respostas Rápidas + páginas superadmin
-  (Monitor/Swagger/S3). | depends_on: [] | T2 (frontend)
-- [ ] **T1.3**: P2-2 — decidir: aplicar `RequirePermission("connections",…)`
-  às rotas `/proxies`,`/proxy-groups`,`/connection-groups` **ou** corrigir os
-  comentários enganosos (`routes.go:130`). | depends_on: [] | T3 se aplicar
-  gate / T1 se só doc
-- [ ] **T1.4**: P2-5 + P2-6 — hardening wizard: senha mínima 8+ (backend +
-  front) e normalização de email (`ToLower`+`TrimSpace` no setup/criação e
-  em `FindByEmailForAuth`). | depends_on: [] | T2
+## Onda 1 — P2 segurança + regressão funcional visível · T2/T3 · ✅ CONCLUÍDA (2026-07-02)
+- [x] **T1.1**: P2-1 read-path defense-in-depth — `loadCargoPermissions`
+  (repo) e `cargoHasPermission` (middleware) agora fazem JOIN em `"Cargos"`
+  filtrando `tenantId`; um cargoId cross-tenant nunca concede permissão no
+  read-path, mesmo que tenha vazado para a linha do usuário. **Aprovado
+  como hardening (torna mais restrito, não muda fluxo legítimo).**
+- [x] **T1.2**: P2-3 + P2-4 — delegado a subagente; 11 arquivos frontend:
+  `Can` decide por `alcance ∈ {tenant,plataforma}` (bypass) + `permissions`;
+  gates de superadmin (Swagger/Monitor/VersionFooter/VersionDashboard/
+  Settings-S3/TicketOptionsMenu/Helpdesk/TransferTicket) → `alcance ===
+  "plataforma"`; `SidebarNav` realinhado ao catálogo real (dashboard/tags/
+  quick-answers/helpdesk → `tickets:read`; clients → sem gate). Admin volta
+  a ver tudo por bypass. Cast pontual de `alcance` (tipo global fica p/ T3.4).
+- [x] **T1.3**: P2-2 — **gate aplicado** (escolha segura, alinha com as rotas
+  irmãs `/whatsapp` e satisfaz o invariante ADR 0022): `/proxies`,
+  `/proxy-groups`, `/connection-groups` agora gated por
+  `connections:<ação>`; comentário enganoso corrigido. Fecha o buraco de um
+  não-admin zerar o pool (`DELETE /proxies`).
+- [x] **T1.4**: P2-5 + P2-6 — `validatePasswordStrength` (mín. 8) em setup/
+  CreateUser/UpdateUser/UpdateMe; `normalizeEmail` (lowercase+trim) no
+  setup/create/update e login case-insensitive via `LOWER(email)` em
+  `FindByEmailForAuth`. Front `InitialSetup` espelha (mín. 8 + email
+  lowercase). 3 testes novos (setup senha curta→400; CreateUser senha
+  curta→400; CreateUser normaliza email).
+  **Validação Onda 1:** build/vet limpos, frontend typecheck/lint limpos,
+  testes controllers/auth/repository/services verdes; suíte completa em
+  verificação final.
+
+### Débitos sinalizados pelo subagente T1.2 (para ondas posteriores)
+- Nav legado morto (`layout/components/MainNavItems`, `AdminNavItems`,
+  `MainListItems`) usa performs inexistentes mas NÃO é renderizado — deletar
+  em T3.4.
+- Páginas de plugin (`Clients`, `Marketplace`) com performs fora do catálogo
+  — hoje visíveis ao Admin por bypass; alinhar/remover gate numa passada de
+  plugins (fora do escopo das ondas atuais).
 
 ## Onda 2 — testes de regressão de segurança + docs que induzem a erro · T1/T2
 - [ ] **T2.1**: P2-10 — `e2e/tests/admin/permissions.spec.ts` (Atendente →

@@ -119,6 +119,10 @@ func (uc *UserController) UpdateMe(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if err := validatePasswordStrength(pwd); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		tmp := models.User{PasswordHash: user.PasswordHash}
 		if err := tmp.HashPassword(pwd); err != nil {
 			utils.RespondWithInternalError(c, err, "HashPassword")
@@ -144,7 +148,7 @@ func (uc *UserController) UpdateMe(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "field 'email' must be a valid email address"})
 			return
 		}
-		updateMap["email"] = email
+		updateMap["email"] = normalizeEmail(email)
 	}
 	if v, ok := req["whatsappId"]; ok {
 		if v == "" || v == nil {

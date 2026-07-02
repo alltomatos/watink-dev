@@ -56,6 +56,27 @@ func isValidAlcance(a string) bool {
 	return ok
 }
 
+// minPasswordLen é o piso de comprimento de senha (P2-5). Sem isso o wizard
+// aceitava criar o Administrador com senha "a".
+const minPasswordLen = 8
+
+// validatePasswordStrength rejeita senhas curtas demais (após trim). Aplicado
+// em todo caminho que DEFINE uma senha (setup, criar/atualizar usuário, /me).
+func validatePasswordStrength(pwd string) error {
+	if len(strings.TrimSpace(pwd)) < minPasswordLen {
+		return fmt.Errorf("field 'password' must be at least %d characters", minPasswordLen)
+	}
+	return nil
+}
+
+// normalizeEmail deixa o email canônico (lowercase + trim) — evita o cadastro
+// "Admin@x.com" no wizard e login "admin@x.com" batendo em 401 (P2-6). O
+// read-path de login (FindByEmailForAuth) casa por LOWER(email) para cobrir
+// também dados já gravados com caixa mista.
+func normalizeEmail(s string) string {
+	return strings.ToLower(strings.TrimSpace(s))
+}
+
 // actorAlcance lê o alcance do usuário autenticado (token) do contexto Gin.
 func actorAlcance(c *gin.Context) string {
 	v, _ := c.Get("alcance")
@@ -136,6 +157,10 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := validatePasswordStrength(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if _, err := utils.ValidateStringField(req.Alcance, "alcance", 50); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -183,7 +208,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 
 	domainUser := &domain.User{
 		Name:         req.Name,
-		Email:        req.Email,
+		Email:        normalizeEmail(req.Email),
 		PasswordHash: tmp.PasswordHash,
 		TenantID:     tenantID,
 		Alcance:      alcance,
@@ -241,6 +266,10 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		if err := validatePasswordStrength(pwd); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		tmp := models.User{PasswordHash: user.PasswordHash}
 		if err := tmp.HashPassword(pwd); err != nil {
 			utils.RespondWithInternalError(c, err, "HashPassword")
@@ -268,7 +297,7 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "field 'email' must be a valid email address"})
 			return
 		}
-		updateMap["email"] = email
+		updateMap["email"] = normalizeEmail(email)
 	}
 	if v, ok := req["alcance"].(string); ok {
 		alcance, err := utils.ValidateStringField(v, "alcance", 50)
