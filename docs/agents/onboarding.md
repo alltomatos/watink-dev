@@ -17,10 +17,15 @@ primeiro usuário adicional, sem bloquear o uso do sistema.
   (vinculado à Queue, admin como gestor), Tag "Novo Cliente", Settings.
 - **Checklist pós-login**: card dispensável no topo do Dashboard, visível só
   para `alcance IN (tenant, plataforma)`. 2 itens, cada um linkando para o
-  fluxo real já existente (Central de Acessos): "Criar setor" (cria Setor +
-  Queue vinculada juntos, com sugestões de nome via chips) e "Criar usuário".
-  Estado é DERIVADO (sem persistência): item completo quando a contagem de
-  Setores/Usuários do tenant excede o criado automaticamente no setup (>1).
+  fluxo real já existente (Central de Acessos): "Criar setor" (faz auto-open
+  do formulário de criação de Setor —
+  `/acessos/setores?autoOpen=create&suggestedName=...`, com sugestões de nome
+  via chips Atendimento/Vendas/Suporte/Financeiro) e "Criar usuário". O item
+  "Criar setor" **NÃO cria Queue junto**: `SetorController.Create` só faz
+  `db.Create(&setor)`; a Queue é vinculada depois, na edição do Setor
+  (`SetorQueuesSection` → `PUT /setores/:id/queues`). Estado é DERIVADO (sem
+  persistência): item completo quando a contagem de Setores/Usuários do tenant
+  excede o criado automaticamente no setup (>1).
 
 ## Modelo de dados
 Nenhum modelo novo. `Tenant.Name` agora reflete o Nome Fantasia informado
