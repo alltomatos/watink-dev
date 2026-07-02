@@ -899,15 +899,17 @@ migração de dado legado (ambiente de desenvolvimento).
   commitando nas 3 worktrees antes do merge real. Verificação passou a
   incluir grep explícito pelo resultado esperado, não só build/test verdes.
 
-## Onda B — schema (fatia única, coesa — mesmo arquivo `database.go`)
-- [ ] **B1**: `Client` expandido (`Type pf|pj`, `SocialName *string`,
-  `Notes`, `DeletedAt` soft-delete) + `Document` cifrado at-rest via
-  `business/pkg/cryptobox` (fail-closed sem chave) + novo model
-  `ClientAddress` (label/zipCode/street/number/complement/neighborhood/
-  city/state/isPrimary/`geog geography(Point,4326)`) + `Contact.ClientID
-  *int` nullable FK + índice em `Contact.ClientID` + registrar
-  `Client`/`ClientAddress` no `AutoMigrate` principal (`database.Migrate()`,
-  substituindo o `OnInstall` do plugin). | depends_on: [A1] | **T3 (schema)**
+## Onda B — schema (fatia única, coesa — mesmo arquivo `database.go`) · ✅ CONCLUÍDA
+- [x] **B1**: `Client` expandido (`Type`, `SocialName *string`, `DocumentEnc`
+  cifrado + `Document` transiente `gorm:"-"` pro controller decifrar,
+  `Notes`, `DeletedAt` soft-delete) + novo model `ClientAddress`
+  (endereço completo + `Latitude`/`Longitude` nullable) + `Contact.ClientID
+  *int` nullable (sem unique — N Contacts podem apontar pro mesmo Client) +
+  `AutoMigrate`/`applyRLS`(`Clients`,`ClientAddresses`)/índices
+  (`idx_contacts_client` parcial, `idx_client_addresses_tenant_client`) +
+  coluna `geog geography(Point,4326)` via SQL raw best-effort. Verificado
+  por grep explícito dos 6 pontos (não só build) + `go test` em
+  `infrastructure/repository`. Commit `2c7020970`.
 
 ## Onda C — serviços/controller backend (paralelizável após B1)
 - [ ] **C1**: Serviço `AddressLookup` (proxy ViaCEP, URL vinda de Settings/
