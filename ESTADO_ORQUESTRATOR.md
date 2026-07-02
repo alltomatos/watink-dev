@@ -680,6 +680,76 @@ tenant de dev real (`admin@test.com`, 1 Setor + 1 User pré-existentes):
 
 Suíte Go completa 100% verde, `npm run typecheck`/`lint`/`build` limpos.
 
+---
+
+# 🆕 Redesenho de Plugins (Marketplace + Licenciamento via Hub) — jul/2026
+
+Origem: sessão `/grill-feature-with-docs` + `/orchestrator`. Documentação de
+referência: ADR 0024, `docs/agents/plugins.md`, bloco `## Módulo: Plugins`
+no `CLAUDE.md`, `CONTEXT.md` (Plugin/Marketplace/Watink Hub/plugin-manager/
+Licença de Plugin/Alocação/degradeMode). ADR 0003 marcado como superado no
+ponto da flag. Contraparte servidora: `watink-ecosistema/hub` (novo projeto,
+só spec). **Branch:** `feat/plugin-marketplace-licensing` (de `develop`,
+commit base `547b42b11` com a doc).
+
+## Gate de aprovação (T3) — ✅ APROVADO pelo dono (2026-07-02)
+P-1 (migration real de `PluginInstallations`) e P-4 (remoção do `saas-plugin`
++ rotas `/saas/manager/*`, redundante com o `watink-saas`) aprovados
+explicitamente.
+
+## Onda 0 — Fundação (paralelizável, arquivos sem overlap)
+- [ ] **P-1** [T3]: Migration real de `PluginInstallations` (hoje só existe
+  em `testutil`): `UNIQUE(tenantId,pluginId)`, `activatedAt`,
+  `activatedBy uuid` (FK User), índice `tenantId`. Registrar em
+  `AutoMigrate`. | depends_on: [] 
+- [ ] **P-2** [T2]: `pkg/licensetoken` — `Verify(token, pubkeys []PublicKey)
+  (*Claims, error)` Ed25519/EdDSA, checando assinatura + `exp`. Claims
+  `{iss,sub,plg,cap,dgr,iat,exp}` (ver `hub/docs/architecture.md` §
+  Mecânica). Sem `Emit()` aqui (fica no Hub). | depends_on: []
+- [ ] **P-3** [T2]: `plugin-manager`: gerar e persistir `instanceId`
+  (`INST-{ts}-{hash}`) no primeiro boot, mesmo padrão do fingerprint
+  `SAAS-{ts}-{hash}` do watink-saas. | depends_on: []
+- [ ] **P-4** [T3]: Remover `saas-plugin` — registro em `main.go`, arquivo
+  `business/internal/plugins/saas.go`, rotas `/saas/manager/*`. Ajustar
+  testes que contam plugins registrados (`plugin_test.go`/
+  `helpdesk_manager_test.go` — confirmar se já reduzido pela onda
+  Clientes). | depends_on: []
+
+## Onda 1 — Elo plugin-manager ↔ business (após Onda 0)
+- [ ] **P-5** [T2]: `plugin-manager`: `GET /internal/licenses` — stub de
+  dev (sem `HUB_URL`: plugins `pro` respondem `active` com `tenantCap=0`
+  ilimitado, espelhando o stub "sempre válido" do `watink-saas`). Usa
+  `pkg/licensetoken.Verify` quando `HUB_URL` setado. | depends_on: [P-2, P-3]
+- [ ] **P-6** [T2]: `business`: client HTTP interno para o `plugin-manager`
+  (pull + cache ~60s, TTL configurável). Nunca chama o Hub direto. |
+  depends_on: [P-5]
+- [ ] **P-7** [T2]: `business`: `PluginRegistry.GetStatus(slug, tenantId)`
+  real — cruza licença (P-6) × alocação (`PluginInstallations`). Mata o
+  `return sdk.StatusActive` hardcoded (`manager.go:29`). | depends_on: [P-1, P-6]
+
+## Onda 2 — Endpoints core (paralelizáveis entre si após Onda 1)
+- [ ] **P-8** [T2]: `POST /plugins/:slug/activate` — `free` aloca direto;
+  `pro` checa licença+teto via P-7, aloca ou devolve `checkoutUrl`/402. |
+  depends_on: [P-7]
+- [ ] **P-9** [T2]: `POST /plugins/:slug/deactivate` — remove alocação. |
+  depends_on: [P-1]
+- [ ] **P-10** [T2]: `GET /plugins/installed` real (join `PluginInstallations`
+  × status). | depends_on: [P-1, P-7]
+- [ ] **P-11** [T2]: `GET /plugins/catalog` real (proxy do catálogo via
+  `plugin-manager`; fallback estático se pm indisponível). | depends_on: [P-5]
+
+## Onda 3 — Testes e limpeza
+- [ ] **P-12** [T1]: Confirmar/ajustar contagem de plugins em
+  `plugin_test.go`/`helpdesk_manager_test.go` pós-remoção do saas-plugin. |
+  depends_on: [P-4]
+- [ ] **P-13** [T2]: Testes: activate free/pro+teto, `GetStatus` cruzado,
+  deactivate, catalog/installed reais. | depends_on: [P-8, P-9, P-10, P-11]
+
+## Regra de ouro desta onda (ADR 0024)
+`business` nunca fala com o Hub direto — sempre via `plugin-manager`.
+`PluginInstallations.active` nunca é autoridade de licença, só alocação.
+Nenhuma licença é reportada válida sem verificar assinatura + `exp`.
+
 ### Achado incidental (fora de escopo, sinalizado separadamente)
 
 Durante a verificação manual, os logs do `watink-business` mostraram
