@@ -67,7 +67,7 @@ Frontend (React/Vite) ←REST/SSE→ Backend Go (Gin/GORM) ←SQL→ PostgreSQL
 | Backend Go | `business/` | Go 1.24 / Gin / GORM | 8082 |
 | Engine Go | `engine-go/` | Go 1.24 / whatsmeow | — |
 | Frontend | `frontend/` | React 18 / Vite / TypeScript / shadcn+Tailwind v4 | 3000 |
-| Plugin Manager | `plugin-manager/` | Go 1.24 / gorilla-mux | 8081 |
+| Plugin Manager (proprietário) | repo privado `alltomatos/watink-plugin-manager` → imagem GHCR | Go / gorilla-mux | 8081 |
 | Marketplace Hub | `marketplace-hub/` | Node/Express | 8090 |
 | Backend Node (legacy) | `legacy/backend/` | Node/Express/Sequelize | 8080 |
 | Engine Node (legacy) | `legacy/engine-standard/` | Node/whaileys | — |
@@ -434,7 +434,8 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 **Invariants:**
 - Sempre `auth.GetScoped(c, "Plugins")` — nunca `c.Get("tenantId")` bruto; escritas/agregações em `Session(NewDB:true)`.
 - `business` consulta **só** o `plugin-manager` (pull+cache ~60s); nunca o Hub direto.
-- Licença = **token Ed25519 verificado offline** (`pkg/licensetoken`) — nunca flag local nem "confiar no corpo do heartbeat".
+- `plugin-manager` é **proprietário**: fonte só no repo privado `alltomatos/watink-plugin-manager`, distribuído como imagem `ghcr.io/alltomatos/watink-plugin-manager` (compose usa `image:`, **nunca** `build:`). O core (público) fala com ele só pelo contrato HTTP `GET /internal/licenses`.
+- Licença = **token Ed25519 verificado offline** (pacote `licensetoken`, dentro do repo privado do plugin-manager — não mais em `business/pkg`) — nunca flag local nem "confiar no corpo do heartbeat".
 - Licença é por **instância + teto de tenants**; a **alocação** nominal (qual tenant) é do core (`PluginInstallations`). Teto aplicado na alocação (**fail-closed** em crescimento).
 - Plugin `free` não toca o Hub; `pro` exige token válido + teto livre.
 - `degradeMode` (`readonly`|`blocked` na expiração) vem do **manifesto do plugin**, por plugin.
@@ -445,6 +446,7 @@ MUI v4 **completamente removido** — `@material-ui/*` não é dependência do p
 - Não reportar licença válida sem verificar assinatura Ed25519 + `exp`.
 - Não montar teto/licença no frontend (só envia `slug + tenant/ticket` e reflete o status).
 - Não reintroduzir `saas-plugin` nem o `marketplace-hub` Node; não distribuir código de plugin dinamicamente (embarcado — anti-supply-chain).
+- Não trazer o **source do `plugin-manager`** de volta ao core (`watinkdev` é público) — é compiled-only, vive só no repo privado `alltomatos/watink-plugin-manager` e é consumido como imagem GHCR (não usar `build:` no compose).
 
 **Referência:** [`docs/agents/plugins.md`](docs/agents/plugins.md) · ADR 0024 (supera 0003) · Hub: `watink-ecosistema/hub`
 

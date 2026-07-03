@@ -58,3 +58,26 @@ registro de **alocação**; a autoridade de licença é o token assinado do Hub.
   pelo Hub).
 - Contexto completo e plano de tarefas em [`docs/agents/plugins.md`](../agents/plugins.md);
   contrato servidor em `watink-ecosistema/hub/docs/integration-clients.md` § A.
+
+## Atualização (2026-07-03) — Distribuição proprietária do plugin-manager
+
+Decidido: o `plugin-manager` é **proprietário** e distribuído **apenas compilado**.
+Como o core (`alltomatos/watinkdev`) é **público**, manter o fonte do enforcement de
+licença dentro dele exporia (e permitiria remover) as checagens. Portanto:
+
+- **Fonte** do plugin-manager sai do core e passa a viver **somente** no repo privado
+  `alltomatos/watink-plugin-manager` (par do `alltomatos/watink-hub`).
+- **Distribuição** via imagem `ghcr.io/alltomatos/watink-plugin-manager:<tag>`,
+  publicada pela CI do repo privado. O compose do core consome com `image:`
+  (`PLUGIN_MANAGER_IMAGE` como override de dev) — **nunca** `build:` a partir de
+  source no core.
+- O pacote `licensetoken` (verify Ed25519), que o P-2 havia colocado em
+  `business/pkg/licensetoken` (código morto no core público), foi **movido para dentro
+  do plugin-manager** — alinhando com a intenção deste ADR ("portado do Hub para o
+  plugin-manager") e com a fronteira proprietária.
+- Fronteira de runtime inalterada: o `business` depende só do contrato HTTP
+  `GET /internal/licenses`; nunca importa código do plugin-manager.
+
+Caveat: o fonte do plugin-manager permanece no **histórico público** do `watinkdev`
+(a remoção é só no HEAD). Limpar o histórico exigiria reescrita (`git filter-repo`) —
+decisão separada, ainda não executada.
