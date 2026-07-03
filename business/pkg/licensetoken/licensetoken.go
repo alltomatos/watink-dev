@@ -75,7 +75,7 @@ func (c Claims) GetSubject() (string, error)             { return c.InstanceID, 
 func (c Claims) GetAudience() (jwt.ClaimStrings, error)  { return nil, nil }
 
 // PublicKey associa um "kid" (key id) do header JWT à chave pública Ed25519
-// correspondente, para permitir rotação de chaves do Hub.
+// referente, para permitir rotação de chaves do Hub.
 type PublicKey struct {
 	Kid string
 	Key ed25519.PublicKey
