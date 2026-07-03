@@ -6,6 +6,8 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/flow"
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
+	"github.com/alltomatos/watinkdev/business/internal/pluginlicense"
+	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/gin-gonic/gin"
@@ -35,7 +37,14 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	connectionGroupController := controllers.NewConnectionGroupController()
 	setorController := controllers.NewSetorController()
 	cargoController := controllers.NewCargoController()
-	pluginController := controllers.NewPluginController(container.PlanLimitSvc)
+	// Plugin licensing (ADR 0024): the business never talks to the Hub
+	// directly -- only to the local plugin-manager, via pluginlicense.Client
+	// (pull + cache ~60s). PluginRegistry crosses that license with the
+	// PluginInstallations allocation table.
+	pluginLicenseClient := pluginlicense.NewClient()
+	pluginLicenseFetcher := plugins.NewLicenseFetcher(pluginLicenseClient)
+	pluginRegistry := plugins.NewPluginRegistry(db, pluginLicenseFetcher)
+	pluginController := controllers.NewPluginController(container.PlanLimitSvc, db, pluginRegistry, pluginLicenseFetcher)
 	authController := controllers.NewAuthController(container.UserRepo)
 	settingController := controllers.NewSettingController(container.SettingRepo, container.Broadcast)
 	tagController := controllers.NewTagController()
@@ -93,6 +102,8 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.GET("/plugins/installed", pluginController.Installed)
 		protected.POST("/plugins/checkout", pluginController.Checkout)
 		protected.GET("/plugins/instance", pluginController.Instance)
+		protected.POST("/plugins/:slug/activate", pluginController.Activate)
+		protected.POST("/plugins/:slug/deactivate", pluginController.Deactivate)
 
 		// Auth
 		protected.DELETE("/auth/logout", authController.Logout)
