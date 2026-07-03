@@ -10,6 +10,17 @@ definitions:
     - email
     - password
     type: object
+  controllers.staticCatalogEntry:
+    properties:
+      name:
+        type: string
+      price:
+        type: string
+      slug:
+        type: string
+      type:
+        type: string
+    type: object
   models.Cargo:
     properties:
       createdAt:
@@ -246,6 +257,44 @@ definitions:
           $ref: '#/definitions/models.Whatsapp'
         type: array
     type: object
+  models.Tag:
+    properties:
+      archived:
+        type: boolean
+      color:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      group:
+        $ref: '#/definitions/models.TagGroup'
+      groupId:
+        type: integer
+      icon:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      tenantId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.TagGroup:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      tenantId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   models.Tenant:
     properties:
       createdAt:
@@ -296,6 +345,13 @@ definitions:
         type: integer
       status:
         type: string
+      tags:
+        description: |-
+          Tags is populated manually (batch query via EntityTags) by ListTickets —
+          not a GORM association, since EntityTag is polymorphic (entityType+entityId).
+        items:
+          $ref: '#/definitions/models.Tag'
+        type: array
       tenantId:
         type: string
       unreadMessages:
@@ -1262,6 +1318,34 @@ paths:
       summary: Atualizar deal
       tags:
       - deals
+  /entities/{entityType}/{id}/tags:
+    get:
+      parameters:
+      - description: Tipo da entidade (ticket, contact)
+        in: path
+        name: entityType
+        required: true
+        type: string
+      - description: ID da entidade
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar tags de entidade
+      tags:
+      - tags
   /entities/{entityType}/{id}/tags/sync:
     put:
       consumes:
@@ -2079,17 +2163,56 @@ paths:
       summary: Importar pipeline
       tags:
       - pipelines
-  /plugins/catalog:
-    get:
+  /plugins/{slug}/activate:
+    post:
+      description: Ativa/aloca um plugin para o tenant atual. 402 se sem licença válida
+        ou teto de tenants atingido.
       produces:
       - application/json
       responses:
-        "503":
-          description: Service Unavailable
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "402":
+          description: Payment Required
           schema:
             additionalProperties:
               type: string
             type: object
+      security:
+      - BearerAuth: []
+      summary: Ativar plugin
+      tags:
+      - plugins
+  /plugins/{slug}/deactivate:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Desativar plugin
+      tags:
+      - plugins
+  /plugins/catalog:
+    get:
+      description: Lista ESTÁTICA e placeholder (ver TODO no código) até o Hub existir.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.staticCatalogEntry'
+            type: array
       security:
       - BearerAuth: []
       summary: Catálogo de plugins
@@ -2097,6 +2220,7 @@ paths:
       - plugins
   /plugins/checkout:
     post:
+      description: Endpoint legado -- superado por POST /plugins/:slug/activate.
       produces:
       - application/json
       responses:
@@ -2108,7 +2232,7 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Ativar/instalar plugin
+      summary: Ativar/instalar plugin (legado)
       tags:
       - plugins
   /plugins/installed:

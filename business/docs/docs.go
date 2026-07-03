@@ -1359,6 +1359,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/entities/{entityType}/{id}/tags": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tags"
+                ],
+                "summary": "Listar tags de entidade",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tipo da entidade (ticket, contact)",
+                        "name": "entityType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID da entidade",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/entities/{entityType}/{id}/tags/sync": {
             "put": {
                 "security": [
@@ -2658,6 +2702,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Lista ESTÁTICA e placeholder (ver TODO no código) até o Hub existir.",
                 "produces": [
                     "application/json"
                 ],
@@ -2666,12 +2711,12 @@ const docTemplate = `{
                 ],
                 "summary": "Catálogo de plugins",
                 "responses": {
-                    "503": {
-                        "description": "Service Unavailable",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.staticCatalogEntry"
                             }
                         }
                     }
@@ -2685,13 +2730,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Endpoint legado -- superado por POST /plugins/:slug/activate.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "plugins"
                 ],
-                "summary": "Ativar/instalar plugin",
+                "summary": "Ativar/instalar plugin (legado)",
                 "responses": {
                     "503": {
                         "description": "Service Unavailable",
@@ -2752,6 +2798,66 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/plugins/{slug}/activate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Ativa/aloca um plugin para o tenant atual. 402 se sem licença válida ou teto de tenants atingido.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Ativar plugin",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/plugins/{slug}/deactivate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plugins"
+                ],
+                "summary": "Desativar plugin",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -5402,6 +5508,23 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.staticCatalogEntry": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Cargo": {
             "type": "object",
             "properties": {
@@ -5736,6 +5859,64 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Tag": {
+            "type": "object",
+            "properties": {
+                "archived": {
+                    "type": "boolean"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "group": {
+                    "$ref": "#/definitions/models.TagGroup"
+                },
+                "groupId": {
+                    "type": "integer"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tenantId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TagGroup": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tenantId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Tenant": {
             "type": "object",
             "properties": {
@@ -5812,6 +5993,13 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                },
+                "tags": {
+                    "description": "Tags is populated manually (batch query via EntityTags) by ListTickets —\nnot a GORM association, since EntityTag is polymorphic (entityType+entityId).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Tag"
+                    }
                 },
                 "tenantId": {
                     "type": "string"

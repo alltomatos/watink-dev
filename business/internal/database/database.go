@@ -76,6 +76,7 @@ func Migrate() {
 		&models.Proxy{},
 		&models.ProxyGroup{},
 		&models.ConnectionGroup{},
+		&models.PluginInstallation{},
 	)
 
 	if err != nil {
@@ -262,6 +263,12 @@ func addCustomIndexes() error {
 		// lookup and the reverse "Contacts of a Client" join cheap.
 		`CREATE INDEX IF NOT EXISTS idx_contacts_client ON "Contacts" ("clientId") WHERE "clientId" IS NOT NULL`,
 		`CREATE INDEX IF NOT EXISTS idx_client_addresses_tenant_client ON "ClientAddresses" ("tenantId", "clientId")`,
+		// PluginInstallations (ADR 0024): activation lookup is always
+		// (tenantId, pluginId) — the UNIQUE also enforces one allocation row
+		// per plugin per tenant. idx_plugin_installations_tenant backs the
+		// "list installed plugins for tenant" read-path independently.
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_plugin_installations_tenant_plugin ON "PluginInstallations" ("tenantId", "pluginId")`,
+		`CREATE INDEX IF NOT EXISTS idx_plugin_installations_tenant ON "PluginInstallations" ("tenantId")`,
 	}
 
 	for _, ddl := range indexes {

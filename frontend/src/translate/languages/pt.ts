@@ -3,6 +3,7 @@ const messages = {
     translations: {
       common: {
         rowsPerPage: "Linhas por página",
+        loading: "Carregando...",
       },
       tags: {
         title: "Etiquetas",
