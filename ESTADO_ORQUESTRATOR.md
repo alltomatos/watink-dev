@@ -768,23 +768,51 @@ após cada commit mesclado, antes de despachar a tarefa seguinte que
 abre outra worktree na mesma branch. Ver `feedback_worktree_branch_reset`
 na memória.
 
-## Onda 2 — Endpoints core (paralelizáveis entre si após Onda 1)
-- [ ] **P-8** [T2]: `POST /plugins/:slug/activate` — `free` aloca direto;
-  `pro` checa licença+teto via P-7, aloca ou devolve `checkoutUrl`/402. |
-  depends_on: [P-7]
-- [ ] **P-9** [T2]: `POST /plugins/:slug/deactivate` — remove alocação. |
-  depends_on: [P-1]
-- [ ] **P-10** [T2]: `GET /plugins/installed` real (join `PluginInstallations`
-  × status). | depends_on: [P-1, P-7]
-- [ ] **P-11** [T2]: `GET /plugins/catalog` real (proxy do catálogo via
-  `plugin-manager`; fallback estático se pm indisponível). | depends_on: [P-5]
+## Onda 2 — Endpoints core · ✅ CONCLUÍDA (2026-07-02, fatia única)
+Consolidado num único agente (não paralelizado) — os 4 endpoints vivem no
+mesmo arquivo `plugin_manager.go` de ~75L; paralelizar teria gerado
+conflito de merge certo. `business/internal/controllers/plugin_manager.go`
++ `routes.go` + `plugin_manager_test.go` + swagger regenerado. Commit
+`56ad7d5d0`.
+- [x] **P-8**: `POST /plugins/:slug/activate` — consulta `Client.GetLicense`;
+  `status="active"` → upsert `PluginInstallations` (lookup-then-branch, não
+  `ON CONFLICT`, pois o UNIQUE só existe via SQL raw em prod, não no
+  AutoMigrate de teste); `readonly/blocked/unlicensed` → 402
+  `{"error":"plugin_unlicensed","checkoutUrl":""}`; teto atingido (tenant
+  novo + `count(active)>=tenantCap>0`) → 402
+  `{"error":"plugin_tenant_cap_reached"}`. **Débito registrado**:
+  `ActivatedBy` fica `nil` — `userId` do contexto é `int` (Users.ID), não
+  `uuid.UUID`; exigiria mudança de model, fora do escopo desta fatia.
+- [x] **P-9**: `POST /plugins/:slug/deactivate` — `active=false` (preserva
+  histórico, não deleta — "suspensão nunca apaga").
+- [x] **P-10**: `GET /plugins/installed` — `active[]` dos alocados +
+  `statuses{}` via `PluginRegistry.GetStatus` real por slug.
+- [x] **P-11**: `GET /plugins/catalog` — **catálogo estático placeholder**
+  (helpdesk+webchat, `type:"pro"`), documentado com `TODO(ADR 0024)`
+  apontando para o proxy real via plugin-manager quando o Hub existir. NÃO
+  tenta proxyar o plugin-manager ainda (sem garantia de dado real lá).
 
-## Onda 3 — Testes e limpeza
-- [ ] **P-12** [T1]: Confirmar/ajustar contagem de plugins em
-  `plugin_test.go`/`helpdesk_manager_test.go` pós-remoção do saas-plugin. |
-  depends_on: [P-4]
-- [ ] **P-13** [T2]: Testes: activate free/pro+teto, `GetStatus` cruzado,
-  deactivate, catalog/installed reais. | depends_on: [P-8, P-9, P-10, P-11]
+## Onda 3 — Testes e limpeza · ✅ CONCLUÍDA
+- [x] **P-12**: confirmado durante P-4 — nenhum teste de contagem de
+  plugins existia no repo; nada a ajustar.
+- [x] **P-13**: absorvido pela Onda 2 — `plugin_manager_test.go` cobre
+  activate licenciado/sem licença/teto atingido/idempotente, deactivate,
+  installed com status real, catalog estático. Suíte completa
+  (`business`+`plugin-manager`) + `frontend typecheck` verdes como gate
+  final.
+
+## ✅ DAG COMPLETO — Redesenho de Plugins (P-1 a P-13)
+13 tarefas concluídas. `business` e `plugin-manager` compilam e testam
+100% verde; frontend typecheck limpo (rotas `/plugins/*` que ele já
+chamava agora respondem de verdade em vez de 503/vazio). **Débitos
+registrados para fases futuras** (nenhum bloqueia esta entrega):
+`ActivatedBy` não populado (userId int vs uuid); catálogo é estático até
+o Hub existir e o proxy real ser implementado; `resolveLicenseFromHub()`
+no plugin-manager definida mas não chamada (heartbeat real do Hub é
+trabalho de outro projeto, `watink-ecosistema/hub`); modo dev do
+plugin-manager trata todo plugin conhecido como licenciado ilimitado
+(correto para destravar desenvolvimento, mas não é enforcement real até o
+Hub existir).
 
 ## Regra de ouro desta onda (ADR 0024)
 `business` nunca fala com o Hub direto — sempre via `plugin-manager`.
