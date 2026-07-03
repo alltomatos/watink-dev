@@ -730,17 +730,43 @@ para `feat/plugin-marketplace-licensing`. Build+vet+suíte completa
 (`business` + `plugin-manager`) verdes com as 4 mudanças combinadas —
 incluindo o pacote novo `pkg/licensetoken` (1.194s).
 
-## Onda 1 — Elo plugin-manager ↔ business (após Onda 0)
-- [ ] **P-5** [T2]: `plugin-manager`: `GET /internal/licenses` — stub de
-  dev (sem `HUB_URL`: plugins `pro` respondem `active` com `tenantCap=0`
-  ilimitado, espelhando o stub "sempre válido" do `watink-saas`). Usa
-  `pkg/licensetoken.Verify` quando `HUB_URL` setado. | depends_on: [P-2, P-3]
-- [ ] **P-6** [T2]: `business`: client HTTP interno para o `plugin-manager`
-  (pull + cache ~60s, TTL configurável). Nunca chama o Hub direto. |
-  depends_on: [P-5]
-- [ ] **P-7** [T2]: `business`: `PluginRegistry.GetStatus(slug, tenantId)`
-  real — cruza licença (P-6) × alocação (`PluginInstallations`). Mata o
-  `return sdk.StatusActive` hardcoded (`manager.go:29`). | depends_on: [P-1, P-6]
+## Onda 1 — Elo plugin-manager ↔ business (após Onda 0) · ✅ CONCLUÍDA (2026-07-02)
+- [x] **P-5** [T2]: `plugin-manager`: `GET /internal/licenses` —
+  `licenses.go`, stub de dev (sem `HUB_URL`: todo plugin conhecido
+  responde `active`/`tenantCap=0`/`exp=0`). `resolveLicenseFromHub()`
+  definida mas não chamada (fail-closed `unlicensed`), TODO documentado
+  p/ quando o heartbeat do Hub existir. Lista estática de slugs
+  conhecidos (`helpdesk`,`webchat`). Commit `182fa4d09`.
+- [x] **P-6** [T2]: `business/internal/pluginlicense/client.go` —
+  `Client.GetLicense(slug)` com cache em memória (TTL
+  `PLUGIN_LICENSE_CACHE_TTL_SECONDS`, default 60s) + fallback pra cache
+  stale quando o plugin-manager está indisponível; erro só quando não há
+  cache algum. Nunca fala com o Hub. Commits `10a69e0a4` + fix lint
+  `27f473af2`.
+- [x] **P-7** [T2]: `business/internal/plugins/registry.go` —
+  `PluginRegistry.GetStatus(tenantId, pluginSlug)` real: cruza alocação
+  (`PluginInstallations.active`) × licença (`LicenseFetcher`, adapter do
+  client P-6). Não alocado → `StatusBlocked`; alocado+active/readonly/
+  blocked/unlicensed → status correspondente; erro do client →
+  **fail-closed** `StatusBlocked` (documentado no código). `manager.go`
+  resolve `tenantId` do contexto Gin em request-time. 8 testes (inclui
+  isolamento cross-tenant). Commit `3490bed65`.
+
+**Achado de processo**: 1 tentativa de P-7 falhou silenciosamente — o
+agente relatou "vou despachar um agente" e encerrou sem nenhum commit
+(worktree limpa, sem diff). Redisparado com instrução explícita de
+execução direta + prova via `git log`/`git diff --stat`; concluído na
+2ª tentativa com verificação por inspeção direta da worktree (não só o
+texto do relatório). Ver `feedback_agent_self_delegation` na memória.
+
+**Armadilha de worktree registrada**: um agente rodando `checkout -B
+<mesma-branch>` numa worktree separada RESETA o ponteiro compartilhado
+da branch (refs são globais ao `.git`) — um commit local (P-5) ainda
+não empurrado foi temporariamente "perdido" (recuperado via reflog +
+`git reset --hard`). Mitigação adotada dali em diante: **push imediato**
+após cada commit mesclado, antes de despachar a tarefa seguinte que
+abre outra worktree na mesma branch. Ver `feedback_worktree_branch_reset`
+na memória.
 
 ## Onda 2 — Endpoints core (paralelizáveis entre si após Onda 1)
 - [ ] **P-8** [T2]: `POST /plugins/:slug/activate` — `free` aloca direto;
