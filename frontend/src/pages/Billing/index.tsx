@@ -1,8 +1,7 @@
 /* @jsxImportSource react */
 import React, { useState, useEffect } from "react";
-import { CreditCard, CheckCircle2 } from "lucide-react";
+import { CreditCard, CheckCircle2, Info } from "lucide-react";
 import pluginApi from "../../services/pluginApi";
-import { toast } from "react-toastify";
 import { PageContainer, PageHeader, PageContent } from "@/components/ui/page-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,10 +15,9 @@ interface Plan {
 
 interface PlanCardProps {
   plan: Plan;
-  onCheckout: (planName: string) => void;
 }
 
-const PlanCard: React.FC<PlanCardProps> = ({ plan, onCheckout }) => (
+const PlanCard: React.FC<PlanCardProps> = ({ plan }) => (
   <Card className="flex flex-col">
     <CardHeader className="bg-muted/30 border-b text-center py-6">
       <CardTitle className="text-2xl">{plan.name}</CardTitle>
@@ -38,12 +36,18 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, onCheckout }) => (
       ))}
     </CardContent>
     <div className="p-6 pt-0">
-      <Button
-        className="w-full"
-        onClick={() => onCheckout(plan.name)}
-      >
+      {/*
+        Checkout automático indisponível nesta versão. Por ADR-0024, licença/
+        assinatura passa pelo fluxo Hub, e o Hub v1 NÃO possui gateway de
+        pagamento -- a licença é liberada manualmente pelo administrador. Não há
+        endpoint de checkout no core para assinatura de plano (o
+        POST /plugins/:slug/activate cobre ativação por plugin, não a compra de
+        um plano). Até o Hub ganhar gateway, o botão fica desabilitado com um
+        estado claro em vez de apontar para um checkout inexistente.
+      */}
+      <Button className="w-full" disabled title="Checkout indisponível nesta versão">
         <CreditCard className="mr-2 h-4 w-4" />
-        Assinar Agora
+        Checkout indisponível
       </Button>
     </div>
   </Card>
@@ -63,14 +67,6 @@ const Billing: React.FC = () => {
     };
     loadInstanceId();
   }, []);
-
-  const handleCheckout = (plan: string) => {
-    toast.info(`Iniciando checkout do plano ${plan}...`);
-    window.open(
-      `https://quxtkdxrafulqibwbqld.supabase.co/functions/v1/create-checkout?plan=${plan}&instanceId=${instanceId}`,
-      "_blank"
-    );
-  };
 
   const plans: Plan[] = [
     {
@@ -112,9 +108,18 @@ const Billing: React.FC = () => {
     <PageContainer>
       <PageHeader title="💳 Assinatura e Planos" />
       <PageContent>
+        <div className="mb-6 flex items-start gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-200">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            O checkout automático não está disponível nesta versão. A liberação da
+            licença é feita manualmente pelo administrador — entre em contato para
+            assinar ou alterar seu plano.
+          </span>
+        </div>
+
         <div className="grid gap-6 md:grid-cols-3">
           {plans.map((plan) => (
-            <PlanCard key={plan.name} plan={plan} onCheckout={handleCheckout} />
+            <PlanCard key={plan.name} plan={plan} />
           ))}
         </div>
 
