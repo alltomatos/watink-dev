@@ -697,23 +697,38 @@ P-1 (migration real de `PluginInstallations`) e P-4 (remoção do `saas-plugin`
 + rotas `/saas/manager/*`, redundante com o `watink-saas`) aprovados
 explicitamente.
 
-## Onda 0 — Fundação (paralelizável, arquivos sem overlap)
-- [ ] **P-1** [T3]: Migration real de `PluginInstallations` (hoje só existe
-  em `testutil`): `UNIQUE(tenantId,pluginId)`, `activatedAt`,
-  `activatedBy uuid` (FK User), índice `tenantId`. Registrar em
-  `AutoMigrate`. | depends_on: [] 
-- [ ] **P-2** [T2]: `pkg/licensetoken` — `Verify(token, pubkeys []PublicKey)
-  (*Claims, error)` Ed25519/EdDSA, checando assinatura + `exp`. Claims
-  `{iss,sub,plg,cap,dgr,iat,exp}` (ver `hub/docs/architecture.md` §
-  Mecânica). Sem `Emit()` aqui (fica no Hub). | depends_on: []
-- [ ] **P-3** [T2]: `plugin-manager`: gerar e persistir `instanceId`
-  (`INST-{ts}-{hash}`) no primeiro boot, mesmo padrão do fingerprint
-  `SAAS-{ts}-{hash}` do watink-saas. | depends_on: []
-- [ ] **P-4** [T3]: Remover `saas-plugin` — registro em `main.go`, arquivo
-  `business/internal/plugins/saas.go`, rotas `/saas/manager/*`. Ajustar
-  testes que contam plugins registrados (`plugin_test.go`/
-  `helpdesk_manager_test.go` — confirmar se já reduzido pela onda
-  Clientes). | depends_on: []
+## Onda 0 — Fundação (paralelizável, arquivos sem overlap) · ✅ CONCLUÍDA (2026-07-02)
+- [x] **P-1** [T3]: Migration real de `PluginInstallations` — model GORM
+  `business/internal/models/plugin_installation.go` (tenantId, pluginId
+  string=slug do catálogo, active, activatedAt, activatedBy *uuid),
+  `AutoMigrate` + `UNIQUE(tenantId,pluginId)` + índice `tenantId` em
+  `database.go`. Schema manual do `testutil` removido (redundante).
+  **Decisão**: NÃO entrou em `applyRLS()` — segue o padrão majoritário do
+  projeto de RLS seletivo (Setores/Cargos/Proxies também ficam de fora).
+  Commit `2d5f3cff7`.
+- [x] **P-2** [T2]: `business/pkg/licensetoken` — `Verify(token, keys
+  []PublicKey) (*Claims, error)` via `golang-jwt/v5` (já usado no projeto
+  p/ JWT de sessão), `SigningMethodEdDSA`, claims validadas manualmente
+  (exp após checar assinatura, para erro específico). 4 sentinel errors
+  (`ErrUnknownKid/ErrInvalidSignature/ErrTokenExpired/ErrMalformedToken`).
+  6 testes/10 subtestes verdes. Sem `Emit()` (fica no Hub). Commit
+  `da2efa011`.
+- [x] **P-3** [T2]: `plugin-manager`: `instance.go` — `getInstanceID()`/
+  `generateInstanceID()` (`INST-{unix}-{hex12 via crypto/rand}`),
+  persistido em `.instance_id` (plain-text, convenção já existente).
+  **Achado**: já havia um `getInstanceID()` fraco (hash previsível de
+  `UnixNano()`) — substituído. Commit `49f97e701`.
+- [x] **P-4** [T3]: `saas-plugin` removido (`main.go` + `saas.go` deletado
+  + testes `TestSaaSPlugin_*`). **Achado**: nenhum teste de contagem de
+  plugins existia no repo — nada a ajustar em `helpdesk_manager_test.go`.
+  Swagger não regenerado (rotas nunca tiveram anotação swaggo). Commit
+  `a74663513`.
+
+**Integração**: 4 worktrees paralelas, sem conflito de merge (arquivos
+disjuntos). Cherry-pick sequencial em branch `onda0-merge` → renomeada
+para `feat/plugin-marketplace-licensing`. Build+vet+suíte completa
+(`business` + `plugin-manager`) verdes com as 4 mudanças combinadas —
+incluindo o pacote novo `pkg/licensetoken` (1.194s).
 
 ## Onda 1 — Elo plugin-manager ↔ business (após Onda 0)
 - [ ] **P-5** [T2]: `plugin-manager`: `GET /internal/licenses` — stub de
