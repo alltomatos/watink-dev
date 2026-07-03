@@ -211,6 +211,9 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{"instanceId": instanceID})
 	}).Methods("GET")
 
+	// 5. Internal: license status per plugin (consumed only by business, never frontend)
+	r.HandleFunc("/internal/licenses", internalLicensesHandler).Methods("GET")
+
 	log.Printf("Local Plugin Manager running on port %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
