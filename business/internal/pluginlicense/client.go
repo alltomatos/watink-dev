@@ -135,7 +135,7 @@ func (c *Client) fetchLicenses() (map[string]LicenseInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("erro ao consultar plugin-manager: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("plugin-manager retornou status %d", resp.StatusCode)
