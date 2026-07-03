@@ -249,6 +249,27 @@ _Avoid_: kill switch, breaker (isolado), failover, disjuntor
 **FlowRunLog**: Registro de auditoria/observabilidade dos passos de execução de um FlowRun — transições de nó, resumes, ações de Channel Adapter e erros. Tenant-scoped, distinto do snapshot do grafo (que é imutável por run).
 _Avoid_: run log, trace, execution history, audit trail (genérico)
 
+**Plugin**: Feature **opt-in** que precisa ser **ativada via Marketplace** (por tenant), `free` ou `pro`. Oposto de core (sempre-ligado, sem ativação). Sempre embarcada na imagem — o Marketplace ativa/licencia, não baixa código (ADR 0024/0003). Plugins atuais: `helpdesk`, `webchat`.
+_Avoid_: add-on (genérico), módulo (é core), extensão, app
+
+**Marketplace**: Tela no core onde um tenant descobre e **ativa** plugins. Consome o catálogo do Hub (via `plugin-manager`) e reflete o status de licença/alocação. Não monta payload de licença nem fala com o Hub direto.
+_Avoid_: loja, store, marketplace-hub (nome antigo do embrião Node, descontinuado)
+
+**Watink Hub**: Sistema central do dono (`watink-ecosistema/hub`, na nuvem) — autoridade de catálogo e **licença de plugin** (token assinado Ed25519) e da licença do `watink-saas`. O `business` nunca fala com ele direto: sempre via `plugin-manager` local. Antigo "Watink Manager".
+_Avoid_: Watink Manager, Manager, marketplace-hub, confundir com `plugin-manager` local
+
+**plugin-manager (local)**: Serviço Go (`:8081`) em cada instalação; cliente do Hub para licença de plugin. Faz heartbeat, verifica o token Ed25519 offline, cacheia com grace (= `exp` do token) e serve o status ao `business` (pull+cache ~60s).
+_Avoid_: Manager, Hub, Plugin Manager (ambíguo)
+
+**Licença de Plugin**: Direito de uma **instância** usar um plugin `pro`, materializado como token Ed25519 `{instanceId, pluginSlug, tenantCap, degradeMode, exp}` curto, renovado por heartbeat. Autoridade real de gating — não a flag `PluginInstallations.active`.
+_Avoid_: chave de licença (é o `licenseKey`), flag de ativação
+
+**Alocação (de plugin)**: Vínculo de um plugin a um tenant específico, registrado em `PluginInstallations` (`active`, `activatedAt/By`). Respeita o **teto** (`tenantCap`) da licença de instância. É alocação, **não** autoridade de licença.
+_Avoid_: instalação de plugin (ambíguo), ativação como sinônimo de licença
+
+**degradeMode**: Comportamento na expiração da licença `pro`, declarado no **manifesto do plugin**: `readonly` (vê dados, bloqueia escrita) ou `blocked` (402). Por plugin, não global. Reativa os estados `StatusReadOnly`/`StatusBlocked` do SDK.
+_Avoid_: fallback, modo offline, degradação (genérico)
+
 
 ## Entity Relationships (Canonical)
 
