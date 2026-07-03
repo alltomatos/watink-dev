@@ -680,6 +680,145 @@ tenant de dev real (`admin@test.com`, 1 Setor + 1 User pré-existentes):
 
 Suíte Go completa 100% verde, `npm run typecheck`/`lint`/`build` limpos.
 
+---
+
+# 🆕 Redesenho de Plugins (Marketplace + Licenciamento via Hub) — jul/2026
+
+Origem: sessão `/grill-feature-with-docs` + `/orchestrator`. Documentação de
+referência: ADR 0024, `docs/agents/plugins.md`, bloco `## Módulo: Plugins`
+no `CLAUDE.md`, `CONTEXT.md` (Plugin/Marketplace/Watink Hub/plugin-manager/
+Licença de Plugin/Alocação/degradeMode). ADR 0003 marcado como superado no
+ponto da flag. Contraparte servidora: `watink-ecosistema/hub` (novo projeto,
+só spec). **Branch:** `feat/plugin-marketplace-licensing` (de `develop`,
+commit base `547b42b11` com a doc).
+
+## Gate de aprovação (T3) — ✅ APROVADO pelo dono (2026-07-02)
+P-1 (migration real de `PluginInstallations`) e P-4 (remoção do `saas-plugin`
++ rotas `/saas/manager/*`, redundante com o `watink-saas`) aprovados
+explicitamente.
+
+## Onda 0 — Fundação (paralelizável, arquivos sem overlap) · ✅ CONCLUÍDA (2026-07-02)
+- [x] **P-1** [T3]: Migration real de `PluginInstallations` — model GORM
+  `business/internal/models/plugin_installation.go` (tenantId, pluginId
+  string=slug do catálogo, active, activatedAt, activatedBy *uuid),
+  `AutoMigrate` + `UNIQUE(tenantId,pluginId)` + índice `tenantId` em
+  `database.go`. Schema manual do `testutil` removido (redundante).
+  **Decisão**: NÃO entrou em `applyRLS()` — segue o padrão majoritário do
+  projeto de RLS seletivo (Setores/Cargos/Proxies também ficam de fora).
+  Commit `2d5f3cff7`.
+- [x] **P-2** [T2]: `business/pkg/licensetoken` — `Verify(token, keys
+  []PublicKey) (*Claims, error)` via `golang-jwt/v5` (já usado no projeto
+  p/ JWT de sessão), `SigningMethodEdDSA`, claims validadas manualmente
+  (exp após checar assinatura, para erro específico). 4 sentinel errors
+  (`ErrUnknownKid/ErrInvalidSignature/ErrTokenExpired/ErrMalformedToken`).
+  6 testes/10 subtestes verdes. Sem `Emit()` (fica no Hub). Commit
+  `da2efa011`.
+- [x] **P-3** [T2]: `plugin-manager`: `instance.go` — `getInstanceID()`/
+  `generateInstanceID()` (`INST-{unix}-{hex12 via crypto/rand}`),
+  persistido em `.instance_id` (plain-text, convenção já existente).
+  **Achado**: já havia um `getInstanceID()` fraco (hash previsível de
+  `UnixNano()`) — substituído. Commit `49f97e701`.
+- [x] **P-4** [T3]: `saas-plugin` removido (`main.go` + `saas.go` deletado
+  + testes `TestSaaSPlugin_*`). **Achado**: nenhum teste de contagem de
+  plugins existia no repo — nada a ajustar em `helpdesk_manager_test.go`.
+  Swagger não regenerado (rotas nunca tiveram anotação swaggo). Commit
+  `a74663513`.
+
+**Integração**: 4 worktrees paralelas, sem conflito de merge (arquivos
+disjuntos). Cherry-pick sequencial em branch `onda0-merge` → renomeada
+para `feat/plugin-marketplace-licensing`. Build+vet+suíte completa
+(`business` + `plugin-manager`) verdes com as 4 mudanças combinadas —
+incluindo o pacote novo `pkg/licensetoken` (1.194s).
+
+## Onda 1 — Elo plugin-manager ↔ business (após Onda 0) · ✅ CONCLUÍDA (2026-07-02)
+- [x] **P-5** [T2]: `plugin-manager`: `GET /internal/licenses` —
+  `licenses.go`, stub de dev (sem `HUB_URL`: todo plugin conhecido
+  responde `active`/`tenantCap=0`/`exp=0`). `resolveLicenseFromHub()`
+  definida mas não chamada (fail-closed `unlicensed`), TODO documentado
+  p/ quando o heartbeat do Hub existir. Lista estática de slugs
+  conhecidos (`helpdesk`,`webchat`). Commit `182fa4d09`.
+- [x] **P-6** [T2]: `business/internal/pluginlicense/client.go` —
+  `Client.GetLicense(slug)` com cache em memória (TTL
+  `PLUGIN_LICENSE_CACHE_TTL_SECONDS`, default 60s) + fallback pra cache
+  stale quando o plugin-manager está indisponível; erro só quando não há
+  cache algum. Nunca fala com o Hub. Commits `10a69e0a4` + fix lint
+  `27f473af2`.
+- [x] **P-7** [T2]: `business/internal/plugins/registry.go` —
+  `PluginRegistry.GetStatus(tenantId, pluginSlug)` real: cruza alocação
+  (`PluginInstallations.active`) × licença (`LicenseFetcher`, adapter do
+  client P-6). Não alocado → `StatusBlocked`; alocado+active/readonly/
+  blocked/unlicensed → status correspondente; erro do client →
+  **fail-closed** `StatusBlocked` (documentado no código). `manager.go`
+  resolve `tenantId` do contexto Gin em request-time. 8 testes (inclui
+  isolamento cross-tenant). Commit `3490bed65`.
+
+**Achado de processo**: 1 tentativa de P-7 falhou silenciosamente — o
+agente relatou "vou despachar um agente" e encerrou sem nenhum commit
+(worktree limpa, sem diff). Redisparado com instrução explícita de
+execução direta + prova via `git log`/`git diff --stat`; concluído na
+2ª tentativa com verificação por inspeção direta da worktree (não só o
+texto do relatório). Ver `feedback_agent_self_delegation` na memória.
+
+**Armadilha de worktree registrada**: um agente rodando `checkout -B
+<mesma-branch>` numa worktree separada RESETA o ponteiro compartilhado
+da branch (refs são globais ao `.git`) — um commit local (P-5) ainda
+não empurrado foi temporariamente "perdido" (recuperado via reflog +
+`git reset --hard`). Mitigação adotada dali em diante: **push imediato**
+após cada commit mesclado, antes de despachar a tarefa seguinte que
+abre outra worktree na mesma branch. Ver `feedback_worktree_branch_reset`
+na memória.
+
+## Onda 2 — Endpoints core · ✅ CONCLUÍDA (2026-07-02, fatia única)
+Consolidado num único agente (não paralelizado) — os 4 endpoints vivem no
+mesmo arquivo `plugin_manager.go` de ~75L; paralelizar teria gerado
+conflito de merge certo. `business/internal/controllers/plugin_manager.go`
++ `routes.go` + `plugin_manager_test.go` + swagger regenerado. Commit
+`56ad7d5d0`.
+- [x] **P-8**: `POST /plugins/:slug/activate` — consulta `Client.GetLicense`;
+  `status="active"` → upsert `PluginInstallations` (lookup-then-branch, não
+  `ON CONFLICT`, pois o UNIQUE só existe via SQL raw em prod, não no
+  AutoMigrate de teste); `readonly/blocked/unlicensed` → 402
+  `{"error":"plugin_unlicensed","checkoutUrl":""}`; teto atingido (tenant
+  novo + `count(active)>=tenantCap>0`) → 402
+  `{"error":"plugin_tenant_cap_reached"}`. **Débito registrado**:
+  `ActivatedBy` fica `nil` — `userId` do contexto é `int` (Users.ID), não
+  `uuid.UUID`; exigiria mudança de model, fora do escopo desta fatia.
+- [x] **P-9**: `POST /plugins/:slug/deactivate` — `active=false` (preserva
+  histórico, não deleta — "suspensão nunca apaga").
+- [x] **P-10**: `GET /plugins/installed` — `active[]` dos alocados +
+  `statuses{}` via `PluginRegistry.GetStatus` real por slug.
+- [x] **P-11**: `GET /plugins/catalog` — **catálogo estático placeholder**
+  (helpdesk+webchat, `type:"pro"`), documentado com `TODO(ADR 0024)`
+  apontando para o proxy real via plugin-manager quando o Hub existir. NÃO
+  tenta proxyar o plugin-manager ainda (sem garantia de dado real lá).
+
+## Onda 3 — Testes e limpeza · ✅ CONCLUÍDA
+- [x] **P-12**: confirmado durante P-4 — nenhum teste de contagem de
+  plugins existia no repo; nada a ajustar.
+- [x] **P-13**: absorvido pela Onda 2 — `plugin_manager_test.go` cobre
+  activate licenciado/sem licença/teto atingido/idempotente, deactivate,
+  installed com status real, catalog estático. Suíte completa
+  (`business`+`plugin-manager`) + `frontend typecheck` verdes como gate
+  final.
+
+## ✅ DAG COMPLETO — Redesenho de Plugins (P-1 a P-13)
+13 tarefas concluídas. `business` e `plugin-manager` compilam e testam
+100% verde; frontend typecheck limpo (rotas `/plugins/*` que ele já
+chamava agora respondem de verdade em vez de 503/vazio). **Débitos
+registrados para fases futuras** (nenhum bloqueia esta entrega):
+`ActivatedBy` não populado (userId int vs uuid); catálogo é estático até
+o Hub existir e o proxy real ser implementado; `resolveLicenseFromHub()`
+no plugin-manager definida mas não chamada (heartbeat real do Hub é
+trabalho de outro projeto, `watink-ecosistema/hub`); modo dev do
+plugin-manager trata todo plugin conhecido como licenciado ilimitado
+(correto para destravar desenvolvimento, mas não é enforcement real até o
+Hub existir).
+
+## Regra de ouro desta onda (ADR 0024)
+`business` nunca fala com o Hub direto — sempre via `plugin-manager`.
+`PluginInstallations.active` nunca é autoridade de licença, só alocação.
+Nenhuma licença é reportada válida sem verificar assinatura + `exp`.
+
 ### Achado incidental (fora de escopo, sinalizado separadamente)
 
 Durante a verificação manual, os logs do `watink-business` mostraram
