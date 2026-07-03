@@ -35,6 +35,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/flow"
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
+	"github.com/alltomatos/watinkdev/business/internal/pluginlicense"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/internal/routes"
 	"github.com/alltomatos/watinkdev/business/internal/services"
@@ -126,6 +127,13 @@ func main() {
 		pluginManager := plugins.NewPluginManager(database.DB, apiGroup)
 		pluginManager.Register(&plugins.HelpdeskPlugin{})
 		pluginManager.Register(&plugins.WebchatPlugin{})
+
+		// P-6: cliente HTTP do business para o plugin-manager (pull + cache
+		// ~60s), consultado pelo GET /internal/licenses. Instanciado aqui via
+		// construtor (DI pura) — ainda NÃO plugado no PluginRegistry.GetStatus()
+		// (isso é a próxima tarefa, P-7). O business nunca fala com o Hub
+		// direto (ADR 0024) — só com este plugin-manager local.
+		_ = pluginlicense.NewClient()
 
 		// Knowledge Base file sources: build the S3-compatible object store from
 		// env. When S3 is unconfigured or init fails, s3Store stays nil and the
