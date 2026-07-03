@@ -24,6 +24,15 @@ Hub (nuvem, autoridade) ──licença de plugin (token Ed25519)──▶ plugin
 - **business nunca fala com o Hub direto**: sempre consulta o `plugin-manager` local (Decisão 2/4 do ADR 0024).
 - Licença é **por instância + teto de tenants**; a **alocação nominal** (qual tenant usa) é do core (Hub ADR 0003).
 
+## Distribuição e fronteira de código (proprietário)
+
+O `plugin-manager` é **proprietário** e distribuído **apenas compilado** — o código-fonte vive **somente** no repo privado `alltomatos/watink-plugin-manager` e **não** acompanha o core (`watinkdev`, que é público). Motivo: é a **trava real de licenciamento**; com fonte aberto o cliente poderia remover as checagens.
+
+- **Fonte:** `alltomatos/watink-plugin-manager` (privado). O pacote `licensetoken` (verify Ed25519) vive **dentro** desse módulo (`github.com/watink/plugin-manager/licensetoken`) — **não** mais em `business/pkg` (foi movido; era código morto no core, que é público).
+- **Distribuição:** imagem `ghcr.io/alltomatos/watink-plugin-manager:<tag>`, publicada pela CI do repo privado. O compose do core consome via `image: ${PLUGIN_MANAGER_IMAGE:-ghcr.io/alltomatos/watink-plugin-manager:latest}` — **nunca** `build:` a partir de source no core.
+- **Fronteira runtime:** o core depende só do **contrato HTTP** `GET /internal/licenses` — não do source. É o que mantém a extração limpa (o `business` nunca importa código do plugin-manager).
+- **Dev:** `docker compose up` puxa a imagem. Para desenvolver o próprio plugin-manager, clone o repo privado e aponte `PLUGIN_MANAGER_IMAGE` para uma imagem local (ex.: `docker build -t pm:dev .` no repo privado → `PLUGIN_MANAGER_IMAGE=pm:dev`).
+
 ## Modelo de dados
 
 **No core (migration real — hoje `PluginInstallations` só existe em `testutil`):**
@@ -55,7 +64,7 @@ PluginInstallations
 
 ## Contratos
 
-- **business → plugin-manager** (interno, pull + cache ~60s): `GET /internal/licenses` → por plugin: `{status: active|readonly|blocked|unlicensed, tenantCap, exp}`. Verificação Ed25519 via `pkg/licensetoken` portado do Hub.
+- **business → plugin-manager** (interno, pull + cache ~60s): `GET /internal/licenses` → por plugin: `{status: active|readonly|blocked|unlicensed, tenantCap, exp}`. Verificação Ed25519 via `licensetoken` (dentro do repo privado do plugin-manager) portado do Hub.
 - **plugin-manager → Hub**: `POST /api/v1/plugins/heartbeat` e `GET /catalog` — ver `hub/docs/integration-clients.md` § A.1/A.2. Fingerprint, tokens, chaves públicas, `revocationList`.
 - **Frontend → business**: `GET /plugins/catalog` (proxy do catálogo via pm — mata o 503 fixo), `GET /plugins/installed` (real: join `PluginInstallations` × status), `POST /plugins/:slug/activate|deactivate` (hoje **ausentes** — o frontend já os chama).
 
@@ -114,6 +123,7 @@ PluginInstallations
 - Não reportar licença válida sem verificar assinatura Ed25519 + `exp`.
 - Não montar teto/licença no frontend — o frontend só envia `slug + ticket/tenant` e reflete o status.
 - Não reintroduzir `saas-plugin` (control plane é o watink-saas) nem o `marketplace-hub` Node.
+- Não trazer o **source do plugin-manager** de volta para o core (`watinkdev`, público) — é proprietário, vive só no repo privado `alltomatos/watink-plugin-manager` e é consumido como imagem (GHCR). Não usar `build:` no compose do core.
 - Não distribuir código de plugin dinamicamente (supply chain — ADR 0003 original mantido nesse ponto). Plugins são embarcados; o que se licencia é o direito de uso.
 - Não bloquear ativação de `free` por causa do Hub.
 
