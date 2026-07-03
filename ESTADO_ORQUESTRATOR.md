@@ -1215,3 +1215,39 @@ PF-only, gates de aba). Débito registrado (não bloqueante, follow-up
 futuro): `Preload`/mapeamento de `Client` faltando em `ContactController`
 (domain DTO) e em `Protocol`/Helpdesk; suíte e2e criada mas não executada
 ao vivo (ambiente compartilhado roda imagem antiga).
+
+---
+
+# DAG — Integração CORE ↔ plugin-manager (ADR 0024) · jul/2026
+
+**Escopo:** só `watinkdev` (o `plugin-manager` é serviço proprietário separado,
+consumido como imagem `ghcr.io/alltomatos/watink-plugin-manager` — NÃO tocar).
+Hub e plugin-manager já prontos; fechar os gaps de integração do lado core.
+**Branch:** `chore/plugin-manager-integration` (de `origin/develop` e279e124a) → PR p/ develop.
+**Tier:** T2 (wiring + config + proxy + testes; sem schema/auth). **Execução delegada.**
+
+## Auditoria (confirmado por leitura)
+- `pluginlicense.Client` consome só `GET /internal/licenses` (contrato estável — NÃO mexer).
+- `PLUGIN_HUB_URL` (compose linha 93) NÃO tem uso em Go (grep) → morto, remover.
+- `Catalog` (plugin_manager.go:74) = lista estática; `Instance` (:215) = `instanceId:""`.
+- `NewPluginController` (routes.go:47) + ~9 call-sites no teste precisarão do novo dep (base URL do PM).
+
+## Tarefas
+- [ ] T1: compose — volume `plugin_manager_data:/data` no serviço plugin-manager (persiste .instance_id/.hub_secret/.hub_cache.json). | depends_on: []
+- [ ] T2: compose — remover `PLUGIN_HUB_URL` (morta) e setar `PLUGIN_MANAGER_URL=http://plugin-manager:8081` no env do business (senão o core não alcança o PM no Docker). | depends_on: []
+- [ ] T3: `.env.example` — documentar `PLUGIN_MANAGER_URL` e `PLUGIN_LICENSE_CACHE_TTL_SECONDS`. | depends_on: []
+- [ ] T4: `Catalog` → proxy p/ `{PLUGIN_MANAGER_URL}/api/v1/plugins/catalog` (shape {offline,plugins[]}); fail-safe offline:true+[]. | depends_on: [T5-design]
+- [ ] T5: `Instance` → proxy p/ `{PLUGIN_MANAGER_URL}/api/v1/plugins/instance` (instanceId real). | depends_on: []
+- [ ] T5-design: injetar comms do PM via `pluginlicense.Client` (GetCatalog/GetInstance) + DI no controller (sem os.Getenv no handler). | depends_on: []
+- [ ] T6: testes httptest (proxy ok + fail-safe) + `go build/test ./...` verdes + swagger regen. | depends_on: [T1,T2,T3,T4,T5]
+
+## Constraints
+NÃO alterar contrato `/internal/licenses`; NÃO tocar repo do plugin-manager;
+git-flow (branch→PR develop, nunca main); verificar proxy de forma independente (httptest).
+
+## ✅ CONCLUÍDO (fiscalizado)
+T1–T6 entregues em `chore/plugin-manager-integration`. Fiscal independente:
+`go build ./...` verde; `pluginlicense` + 6 testes de proxy (Catalog/Instance
+nil/proxy/erro, fail-safe) verdes; `docker compose config -q` OK (PLUGIN_MANAGER_URL
+setado, PLUGIN_HUB_URL removida, volume plugin_manager_data montado+declarado);
+swagger regenerado; DI pura (sem os.Getenv em handler); contrato /internal/licenses intacto.
