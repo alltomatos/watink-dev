@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestGetCatalog_DecodesContract sobe um httptest.Server devolvendo o JSON do
+// TestGetCatalog_DecodesContract sobe um httptest.Server servindo o JSON do
 // contrato de GET /api/v1/plugins/catalog e verifica que GetCatalog decodifica
 // offline/plugins corretamente, incluindo price como float.
 func TestGetCatalog_DecodesContract(t *testing.T) {
