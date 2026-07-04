@@ -4,7 +4,7 @@ set -euo pipefail
 # Uso:
 #   REPO=owner/repo ./scripts/setup-branch-protection.sh
 # Exemplo:
-#   REPO=alltomatos/watinkdev ./scripts/setup-branch-protection.sh
+#   REPO=alltomatos/watink-dev ./scripts/setup-branch-protection.sh
 
 : "${REPO:?Defina REPO=owner/repo}"
 
