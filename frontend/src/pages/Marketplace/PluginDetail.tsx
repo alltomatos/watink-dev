@@ -1,6 +1,7 @@
 /* @jsxImportSource react */
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import type { AxiosError } from "axios";
 import { ArrowLeft, CheckCircle, Loader2, Puzzle } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -8,7 +9,12 @@ import { AuthContext } from "../../context/Auth/AuthContext";
 import { Can } from "../../components/Can";
 import pluginApi from "../../services/pluginApi";
 import { getBackendUrl } from "../../helpers/urlUtils";
-import type { CatalogPlugin, PluginCatalogResponse, PluginInstalledResponse } from "../../types/api";
+import type {
+  CatalogPlugin,
+  PluginCatalogResponse,
+  PluginInstalledResponse,
+  PluginActivateUnlicensedResponse,
+} from "../../types/api";
 
 import { PageContainer, PageHeader, PageContent } from "../../components/ui/page-layout";
 import { Button } from "../../components/ui/button";
@@ -23,6 +29,18 @@ interface PluginViewModel extends CatalogPlugin {
   active: boolean;
   installed: boolean;
 }
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+// Best-effort poll after a checkout request: the Hub creates the license
+// record synchronously, but the signed token only reaches the local
+// plugin-manager on the next heartbeat (up to heartbeatIntervalMin minutes,
+// default 15min). Polling every 15min for that long would be a poor UX for
+// an active tab, so this only tries a handful of times over a couple of
+// minutes -- if the token hasn't arrived by then, the user is expected to
+// simply come back and click "Ativar Plugin" again later. Not a guarantee.
+const CHECKOUT_POLL_INTERVAL_MS = 25_000;
+const CHECKOUT_POLL_MAX_ATTEMPTS = 6;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -45,6 +63,15 @@ const PluginDetail: React.FC = () => {
   const [plugin, setPlugin] = useState<PluginViewModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clears any in-flight checkout poll on unmount/slug change so it never
+  // fires against a stale/unmounted view.
+  useEffect(() => {
+    return () => {
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    };
+  }, [slug]);
 
   const loadPlugin = useCallback(async () => {
     if (!slug) return;
@@ -90,6 +117,33 @@ const PluginDetail: React.FC = () => {
     }
   }, [location.search, loadPlugin]);
 
+  // Polls GET /plugins/installed a handful of times (best-effort, see
+  // CHECKOUT_POLL_INTERVAL_MS/CHECKOUT_POLL_MAX_ATTEMPTS above) after a
+  // successful checkout request, looking for `slug` to show up as active.
+  // Never loops forever -- gives up silently after the last attempt and
+  // leaves the "Ativar Plugin" button for the user to retry manually.
+  const pollForActivation = useCallback(
+    (slugToPoll: string, attempt: number) => {
+      if (attempt >= CHECKOUT_POLL_MAX_ATTEMPTS) return;
+
+      pollTimeoutRef.current = setTimeout(async () => {
+        try {
+          const { data: installed } = await pluginApi.get<PluginInstalledResponse>("/plugins/installed");
+          const active = Array.isArray(installed?.active) ? installed.active : [];
+          if (active.includes(slugToPoll)) {
+            toast.success("Licença confirmada — plugin ativado!");
+            window.location.reload();
+            return;
+          }
+        } catch {
+          // Transient poll failure -- ignore and try again on the next tick.
+        }
+        pollForActivation(slugToPoll, attempt + 1);
+      }, CHECKOUT_POLL_INTERVAL_MS);
+    },
+    [],
+  );
+
   const handleActivate = async () => {
     if (!plugin) return;
     setActivating(true);
@@ -97,8 +151,15 @@ const PluginDetail: React.FC = () => {
       await pluginApi.post(`/plugins/${plugin.slug}/activate`);
       toast.success(`Plugin ${plugin.name} ativado!`);
       window.location.reload();
-    } catch {
-      toast.error("Erro na ativação");
+    } catch (err) {
+      const axiosErr = err as AxiosError<PluginActivateUnlicensedResponse>;
+      const body = axiosErr.response?.data;
+      if (axiosErr.response?.status === 402 && body?.checkoutRequested) {
+        toast.info(body.message || "Licença solicitada — aguardando confirmação, tentando novamente...");
+        pollForActivation(plugin.slug, 0);
+      } else {
+        toast.error(body?.message || "Erro na ativação");
+      }
     } finally {
       setActivating(false);
     }
