@@ -90,10 +90,9 @@ services:
       # invalida segredos já gravados — re-importe os proxies.
       - PROXY_ENC_KEY=${PROXY_ENC_KEY:-dev_proxy_enc_key_change_in_prod}
       - DOCS_PUBLIC=${DOCS_PUBLIC:-false}
-      # Base URL do plugin-manager local (licenças + catálogo + instância). Sem
-      # esta env o business cai no default localhost:8081 e não alcança o PM
-      # dentro da rede do Swarm/Compose.
-      - PLUGIN_MANAGER_URL=http://plugin-manager:8081
+      # PLUGIN_MANAGER_URL não é configurável: fixa em código
+      # (business/internal/pluginlicense/client.go) como http://plugin-manager:8081,
+      # de propósito — ver comentário na constante pluginManagerBaseURL.
       # Dev: o gateway de IA (omniroute) roda no host em localhost:20128; de dentro
       # do container isso vira host.docker.internal (aiclient.rewriteDevHost).
       - AI_BASEURL_HOST_REWRITE=host.docker.internal
