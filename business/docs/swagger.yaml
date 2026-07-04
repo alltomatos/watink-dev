@@ -10,17 +10,6 @@ definitions:
     - email
     - password
     type: object
-  controllers.staticCatalogEntry:
-    properties:
-      name:
-        type: string
-      price:
-        type: string
-      slug:
-        type: string
-      type:
-        type: string
-    type: object
   models.Cargo:
     properties:
       createdAt:
@@ -468,6 +457,41 @@ definitions:
       updatedAt:
         type: string
       wid:
+        type: string
+    type: object
+  pluginlicense.CatalogPlugin:
+    properties:
+      category:
+        type: string
+      description:
+        type: string
+      iconUrl:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      price:
+        type: number
+      slug:
+        type: string
+      type:
+        type: string
+      version:
+        type: string
+    type: object
+  pluginlicense.CatalogResponse:
+    properties:
+      offline:
+        type: boolean
+      plugins:
+        items:
+          $ref: '#/definitions/pluginlicense.CatalogPlugin'
+        type: array
+    type: object
+  pluginlicense.InstanceResponse:
+    properties:
+      instanceId:
         type: string
     type: object
 host: localhost:8082
@@ -2203,16 +2227,16 @@ paths:
       - plugins
   /plugins/catalog:
     get:
-      description: Lista ESTÁTICA e placeholder (ver TODO no código) até o Hub existir.
+      description: 'Proxy para GET /api/v1/plugins/catalog do plugin-manager (que
+        proxeia o Hub). Fail-safe: em erro ou proxy ausente, responde 200 com {offline:true,
+        plugins:[]}.'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/controllers.staticCatalogEntry'
-            type: array
+            $ref: '#/definitions/pluginlicense.CatalogResponse'
       security:
       - BearerAuth: []
       summary: Catálogo de plugins
@@ -2252,15 +2276,15 @@ paths:
       - plugins
   /plugins/instance:
     get:
+      description: 'Proxy para GET /api/v1/plugins/instance do plugin-manager. Fail-safe:
+        em erro ou proxy ausente, responde 200 com {"instanceId":""}.'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/pluginlicense.InstanceResponse'
       security:
       - BearerAuth: []
       summary: ID da instância

@@ -90,7 +90,10 @@ services:
       # invalida segredos já gravados — re-importe os proxies.
       - PROXY_ENC_KEY=${PROXY_ENC_KEY:-dev_proxy_enc_key_change_in_prod}
       - DOCS_PUBLIC=${DOCS_PUBLIC:-false}
-      - PLUGIN_HUB_URL=http://plugin-manager:8081/api/v1/hub
+      # Base URL do plugin-manager local (licenças + catálogo + instância). Sem
+      # esta env o business cai no default localhost:8081 e não alcança o PM
+      # dentro da rede do Swarm/Compose.
+      - PLUGIN_MANAGER_URL=http://plugin-manager:8081
       # Dev: o gateway de IA (omniroute) roda no host em localhost:20128; de dentro
       # do container isso vira host.docker.internal (aiclient.rewriteDevHost).
       - AI_BASEURL_HOST_REWRITE=host.docker.internal
@@ -173,6 +176,8 @@ services:
     environment:
       - PORT=8081
       - HUB_URL=
+    volumes:
+      - plugin_manager_data:/data
     networks:
       - watink_net
     restart: unless-stopped
@@ -418,3 +423,4 @@ volumes:
     # O bind mount ./frontend:/app cobre o código-fonte; este volume "sombra"
     # /app/node_modules para que npm install dentro do container não conflite
     # com node_modules do Windows no host.
+  plugin_manager_data:
