@@ -62,7 +62,7 @@ registro de **alocação**; a autoridade de licença é o token assinado do Hub.
 ## Atualização (2026-07-03) — Distribuição proprietária do plugin-manager
 
 Decidido: o `plugin-manager` é **proprietário** e distribuído **apenas compilado**.
-Como o core (`alltomatos/watinkdev`) é **público**, manter o fonte do enforcement de
+Como o core (`alltomatos/watink-dev`) é **público**, manter o fonte do enforcement de
 licença dentro dele exporia (e permitiria remover) as checagens. Portanto:
 
 - **Fonte** do plugin-manager sai do core e passa a viver **somente** no repo privado

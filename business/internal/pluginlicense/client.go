@@ -70,6 +70,22 @@ func NewClient() *Client {
 		}
 	}
 
+	return newClient(baseURL, ttl)
+}
+
+// NewClientWithBaseURL constrói o Client apontado para uma baseURL explícita
+// (sem ler o ambiente), usando o TTL default. Útil para testes que sobem um
+// httptest.Server e para composição em DI quando a URL vem de outra fonte.
+func NewClientWithBaseURL(baseURL string) *Client {
+	if baseURL == "" {
+		baseURL = defaultBaseURL
+	}
+	return newClient(baseURL, defaultTTLSecs*time.Second)
+}
+
+// newClient é o construtor interno compartilhado por NewClient e
+// NewClientWithBaseURL — centraliza os defaults do http.Client e do cache.
+func newClient(baseURL string, ttl time.Duration) *Client {
 	return &Client{
 		baseURL:    baseURL,
 		httpClient: &http.Client{Timeout: defaultTimeout},

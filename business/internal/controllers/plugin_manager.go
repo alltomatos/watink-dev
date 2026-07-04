@@ -6,6 +6,7 @@ import (
 
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/pluginlicense"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/alltomatos/watinkdev/business/pkg/sdk"
@@ -14,24 +15,15 @@ import (
 	"gorm.io/gorm"
 )
 
-// staticCatalogEntry is the shape of GET /plugins/catalog's static, hardcoded
-// list. There is no real catalog source yet -- the Hub (authority per ADR
-// 0024) does not exist, and the plugin-manager's own catalog endpoint has no
-// usable data either. This is a PLACEHOLDER just so the frontend Marketplace
-// does not break; it must be replaced by a real proxy to the plugin-manager
-// (which will itself proxy the Hub) once that exists.
-// TODO(ADR 0024): replace this static list with GET /internal/catalog on the
-// plugin-manager, once the Hub/plugin-manager side has a real catalog.
-type staticCatalogEntry struct {
-	Slug  string `json:"slug"`
-	Name  string `json:"name"`
-	Type  string `json:"type"`
-	Price string `json:"price"`
-}
-
-var staticCatalog = []staticCatalogEntry{
-	{Slug: "helpdesk", Name: "Helpdesk", Type: "pro", Price: "sob consulta"},
-	{Slug: "webchat", Name: "Web Chat", Type: "pro", Price: "sob consulta"},
+// PluginManagerProxy is the small port the controller needs from the local
+// plugin-manager (via pluginlicense.Client) to serve the Marketplace catalog
+// and the instance identity. Kept as an interface so tests can inject a fake
+// and so the controller depends on a behaviour, not on *pluginlicense.Client.
+// The business never talks to the Hub directly -- only to the plugin-manager
+// (ADR 0024). *pluginlicense.Client satisfies this interface.
+type PluginManagerProxy interface {
+	GetCatalog() (pluginlicense.CatalogResponse, error)
+	GetInstance() (pluginlicense.InstanceResponse, error)
 }
 
 type PluginController struct {
@@ -39,14 +31,16 @@ type PluginController struct {
 	db           *gorm.DB
 	registry     *plugins.PluginRegistry
 	license      plugins.LicenseFetcher
+	pmProxy      PluginManagerProxy
 }
 
 // NewPluginController is built via constructor injection (DI pura) -- db,
-// registry and license are always passed in, never resolved through a
-// global/service locator. registry/license may be nil in tests that only
-// exercise Catalog/Instance.
-func NewPluginController(planLimitSvc domain.PlanLimitServiceInterface, db *gorm.DB, registry *plugins.PluginRegistry, license plugins.LicenseFetcher) *PluginController {
-	return &PluginController{planLimitSvc: planLimitSvc, db: db, registry: registry, license: license}
+// registry, license and pmProxy are always passed in, never resolved through a
+// global/service locator. registry/license/pmProxy may be nil in tests that
+// only exercise a subset of handlers; the Catalog/Instance fail-safe covers a
+// nil pmProxy.
+func NewPluginController(planLimitSvc domain.PlanLimitServiceInterface, db *gorm.DB, registry *plugins.PluginRegistry, license plugins.LicenseFetcher, pmProxy PluginManagerProxy) *PluginController {
+	return &PluginController{planLimitSvc: planLimitSvc, db: db, registry: registry, license: license, pmProxy: pmProxy}
 }
 
 type checkoutRequest struct {
@@ -65,14 +59,31 @@ func (pc *PluginController) Checkout(c *gin.Context) {
 }
 
 // @Summary      Catálogo de plugins
-// @Description  Lista ESTÁTICA e placeholder (ver TODO no código) até o Hub existir.
+// @Description  Proxy para GET /api/v1/plugins/catalog do plugin-manager (que proxeia o Hub). Fail-safe: em erro ou proxy ausente, responde 200 com {offline:true, plugins:[]}.
 // @Tags         plugins
 // @Produce      json
-// @Success      200  {array}   staticCatalogEntry
+// @Success      200  {object}  pluginlicense.CatalogResponse
 // @Security     BearerAuth
 // @Router       /plugins/catalog [get]
 func (pc *PluginController) Catalog(c *gin.Context) {
-	c.JSON(http.StatusOK, staticCatalog)
+	// Fail-safe: proxy ausente (nil) ou plugin-manager fora do ar NUNCA
+	// derruba a rota do Marketplace -- responde 200 com um catálogo vazio
+	// marcado offline, deixando o frontend degradar graciosamente.
+	if pc.pmProxy == nil {
+		c.JSON(http.StatusOK, pluginlicense.CatalogResponse{Offline: true, Plugins: []pluginlicense.CatalogPlugin{}})
+		return
+	}
+
+	catalog, err := pc.pmProxy.GetCatalog()
+	if err != nil {
+		c.JSON(http.StatusOK, pluginlicense.CatalogResponse{Offline: true, Plugins: []pluginlicense.CatalogPlugin{}})
+		return
+	}
+
+	if catalog.Plugins == nil {
+		catalog.Plugins = []pluginlicense.CatalogPlugin{}
+	}
+	c.JSON(http.StatusOK, catalog)
 }
 
 // @Summary      Plugins instalados
@@ -207,13 +218,26 @@ func (pc *PluginController) Deactivate(c *gin.Context) {
 }
 
 // @Summary      ID da instância
+// @Description  Proxy para GET /api/v1/plugins/instance do plugin-manager. Fail-safe: em erro ou proxy ausente, responde 200 com {"instanceId":""}.
 // @Tags         plugins
 // @Produce      json
-// @Success      200  {object}  map[string]string
+// @Success      200  {object}  pluginlicense.InstanceResponse
 // @Security     BearerAuth
 // @Router       /plugins/instance [get]
 func (pc *PluginController) Instance(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"instanceId": ""})
+	// Fail-safe: proxy ausente/erro degrada para instanceId vazio, nunca 500.
+	if pc.pmProxy == nil {
+		c.JSON(http.StatusOK, gin.H{"instanceId": ""})
+		return
+	}
+
+	inst, err := pc.pmProxy.GetInstance()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"instanceId": ""})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"instanceId": inst.InstanceID})
 }
 
 // Legacy stubs -- remove once all clients migrate to PluginController

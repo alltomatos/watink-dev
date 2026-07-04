@@ -2702,7 +2702,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Lista ESTÁTICA e placeholder (ver TODO no código) até o Hub existir.",
+                "description": "Proxy para GET /api/v1/plugins/catalog do plugin-manager (que proxeia o Hub). Fail-safe: em erro ou proxy ausente, responde 200 com {offline:true, plugins:[]}.",
                 "produces": [
                     "application/json"
                 ],
@@ -2714,10 +2714,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/controllers.staticCatalogEntry"
-                            }
+                            "$ref": "#/definitions/pluginlicense.CatalogResponse"
                         }
                     }
                 }
@@ -2783,6 +2780,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Proxy para GET /api/v1/plugins/instance do plugin-manager. Fail-safe: em erro ou proxy ausente, responde 200 com {\"instanceId\":\"\"}.",
                 "produces": [
                     "application/json"
                 ],
@@ -2794,10 +2792,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/pluginlicense.InstanceResponse"
                         }
                     }
                 }
@@ -5508,23 +5503,6 @@ const docTemplate = `{
                 }
             }
         },
-        "controllers.staticCatalogEntry": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "price": {
-                    "type": "string"
-                },
-                "slug": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
         "models.Cargo": {
             "type": "object",
             "properties": {
@@ -6172,6 +6150,60 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "wid": {
+                    "type": "string"
+                }
+            }
+        },
+        "pluginlicense.CatalogPlugin": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "iconUrl": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "pluginlicense.CatalogResponse": {
+            "type": "object",
+            "properties": {
+                "offline": {
+                    "type": "boolean"
+                },
+                "plugins": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/pluginlicense.CatalogPlugin"
+                    }
+                }
+            }
+        },
+        "pluginlicense.InstanceResponse": {
+            "type": "object",
+            "properties": {
+                "instanceId": {
                     "type": "string"
                 }
             }

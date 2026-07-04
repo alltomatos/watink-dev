@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/alltomatos/watinkdev/business/internal/models"
+	"github.com/alltomatos/watinkdev/business/internal/pluginlicense"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/internal/testutil"
 	"github.com/gin-gonic/gin"
@@ -66,9 +67,34 @@ func newTestPluginContext(method, path string, body *strings.Reader, db *gorm.DB
 	return c, w
 }
 
-func TestPluginController_Instance_ReturnsInstanceID(t *testing.T) {
+// fakePMProxy is a local test double for PluginManagerProxy — per project
+// convention (CLAUDE.md "Mocks em structs locais dentro de cada Test..."),
+// not a package-level mock. err takes precedence over the canned responses so
+// a single struct can exercise both the happy path and the fail-safe.
+type fakePMProxy struct {
+	catalog  pluginlicense.CatalogResponse
+	instance pluginlicense.InstanceResponse
+	err      error
+}
+
+func (f *fakePMProxy) GetCatalog() (pluginlicense.CatalogResponse, error) {
+	if f.err != nil {
+		return pluginlicense.CatalogResponse{}, f.err
+	}
+	return f.catalog, nil
+}
+
+func (f *fakePMProxy) GetInstance() (pluginlicense.InstanceResponse, error) {
+	if f.err != nil {
+		return pluginlicense.InstanceResponse{}, f.err
+	}
+	return f.instance, nil
+}
+
+func TestPluginController_Instance_NilProxy_ReturnsEmpty(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	ctrl := NewPluginController(&mockPlanLimitSvc{}, nil, nil, nil)
+	// nil proxy -> fail-safe: empty instanceId, still 200.
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, nil, nil, nil, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -80,13 +106,55 @@ func TestPluginController_Instance_ReturnsInstanceID(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp map[string]interface{}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	_, ok := resp["instanceId"]
-	assert.True(t, ok, "response must contain instanceId key")
+	assert.Equal(t, "", resp["instanceId"])
 }
 
-func TestPluginController_Catalog_ReturnsStaticList(t *testing.T) {
+func TestPluginController_Instance_Proxy_ReturnsRealID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	ctrl := NewPluginController(&mockPlanLimitSvc{}, nil, nil, nil)
+	proxy := &fakePMProxy{instance: pluginlicense.InstanceResponse{InstanceID: "INST-123-abc"}}
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, nil, nil, nil, proxy)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("GET", "/plugins/instance", nil)
+	c.Request = req
+
+	ctrl.Instance(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var resp map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, "INST-123-abc", resp["instanceId"])
+}
+
+func TestPluginController_Instance_ProxyError_FailSafe(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	proxy := &fakePMProxy{err: errors.New("plugin-manager down")}
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, nil, nil, nil, proxy)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("GET", "/plugins/instance", nil)
+	c.Request = req
+
+	ctrl.Instance(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var resp map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, "", resp["instanceId"])
+}
+
+func TestPluginController_Catalog_Proxy_RepassesShape(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	proxy := &fakePMProxy{catalog: pluginlicense.CatalogResponse{
+		Offline: false,
+		Plugins: []pluginlicense.CatalogPlugin{
+			{ID: "1", Slug: "helpdesk", Name: "Helpdesk", Type: "pro", Category: "support", Price: 49.9, IconURL: "http://x/i.png"},
+			{ID: "2", Slug: "webchat", Name: "Web Chat", Type: "free", Category: "channels", Price: 0},
+		},
+	}}
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, nil, nil, nil, proxy)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -96,21 +164,58 @@ func TestPluginController_Catalog_ReturnsStaticList(t *testing.T) {
 	ctrl.Catalog(c)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	var resp []staticCatalogEntry
+	var resp pluginlicense.CatalogResponse
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	require.Len(t, resp, 2)
+	assert.False(t, resp.Offline)
+	require.Len(t, resp.Plugins, 2)
+	assert.Equal(t, "helpdesk", resp.Plugins[0].Slug)
+	assert.Equal(t, 49.9, resp.Plugins[0].Price)
+	assert.Equal(t, "webchat", resp.Plugins[1].Slug)
+	assert.Equal(t, float64(0), resp.Plugins[1].Price)
+}
 
-	slugs := map[string]string{}
-	for _, entry := range resp {
-		slugs[entry.Slug] = entry.Type
-	}
-	assert.Equal(t, "pro", slugs["helpdesk"])
-	assert.Equal(t, "pro", slugs["webchat"])
+func TestPluginController_Catalog_ProxyError_FailSafeOffline(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	proxy := &fakePMProxy{err: errors.New("plugin-manager down")}
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, nil, nil, nil, proxy)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("GET", "/plugins/catalog", nil)
+	c.Request = req
+
+	ctrl.Catalog(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var resp pluginlicense.CatalogResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.True(t, resp.Offline)
+	assert.NotNil(t, resp.Plugins)
+	assert.Len(t, resp.Plugins, 0)
+}
+
+func TestPluginController_Catalog_NilProxy_FailSafeOffline(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, nil, nil, nil, nil)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req, _ := http.NewRequest("GET", "/plugins/catalog", nil)
+	c.Request = req
+
+	ctrl.Catalog(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var resp pluginlicense.CatalogResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.True(t, resp.Offline)
+	assert.NotNil(t, resp.Plugins)
+	assert.Len(t, resp.Plugins, 0)
 }
 
 func TestPluginController_Checkout_Returns503(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	ctrl := NewPluginController(&mockPlanLimitSvc{}, nil, nil, nil)
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, nil, nil, nil, nil)
 
 	tenantID := uuid.New()
 	w := httptest.NewRecorder()
@@ -162,7 +267,7 @@ func TestPluginController_Activate_LicensedGrantsAllocation(t *testing.T) {
 		"helpdesk": {Status: "active", TenantCap: 0},
 	}}
 	registry := plugins.NewPluginRegistry(db, fetcher)
-	ctrl := NewPluginController(&mockPlanLimitSvc{}, db, registry, fetcher)
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, db, registry, fetcher, nil)
 
 	c, w := newTestPluginContext("POST", "/plugins/helpdesk/activate", nil, db, tenantID)
 	c.Params = gin.Params{{Key: "slug", Value: "helpdesk"}}
@@ -184,7 +289,7 @@ func TestPluginController_Activate_Unlicensed_Returns402(t *testing.T) {
 		"helpdesk": {Status: "unlicensed"},
 	}}
 	registry := plugins.NewPluginRegistry(db, fetcher)
-	ctrl := NewPluginController(&mockPlanLimitSvc{}, db, registry, fetcher)
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, db, registry, fetcher, nil)
 
 	c, w := newTestPluginContext("POST", "/plugins/helpdesk/activate", nil, db, tenantID)
 	c.Params = gin.Params{{Key: "slug", Value: "helpdesk"}}
@@ -219,7 +324,7 @@ func TestPluginController_Activate_TenantCapReached_Returns402(t *testing.T) {
 		"helpdesk": {Status: "active", TenantCap: 1},
 	}}
 	registry := plugins.NewPluginRegistry(db, fetcher)
-	ctrl := NewPluginController(&mockPlanLimitSvc{}, db, registry, fetcher)
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, db, registry, fetcher, nil)
 
 	c, w := newTestPluginContext("POST", "/plugins/helpdesk/activate", nil, db, tenantB)
 	c.Params = gin.Params{{Key: "slug", Value: "helpdesk"}}
@@ -248,7 +353,7 @@ func TestPluginController_Activate_Idempotent_ReactivatesWithoutDuplicating(t *t
 		"helpdesk": {Status: "active", TenantCap: 1},
 	}}
 	registry := plugins.NewPluginRegistry(db, fetcher)
-	ctrl := NewPluginController(&mockPlanLimitSvc{}, db, registry, fetcher)
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, db, registry, fetcher, nil)
 
 	c, w := newTestPluginContext("POST", "/plugins/helpdesk/activate", nil, db, tenantID)
 	c.Params = gin.Params{{Key: "slug", Value: "helpdesk"}}
@@ -277,7 +382,7 @@ func TestPluginController_Deactivate_MarksInactive(t *testing.T) {
 		tenantID, "webchat",
 	).Error)
 
-	ctrl := NewPluginController(&mockPlanLimitSvc{}, db, nil, nil)
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, db, nil, nil, nil)
 
 	c, w := newTestPluginContext("POST", "/plugins/webchat/deactivate", nil, db, tenantID)
 	c.Params = gin.Params{{Key: "slug", Value: "webchat"}}
@@ -309,7 +414,7 @@ func TestPluginController_Installed_ReturnsAllocatedWithRealStatus(t *testing.T)
 		"webchat":  {Status: "blocked"},
 	}}
 	registry := plugins.NewPluginRegistry(db, fetcher)
-	ctrl := NewPluginController(&mockPlanLimitSvc{}, db, registry, fetcher)
+	ctrl := NewPluginController(&mockPlanLimitSvc{}, db, registry, fetcher, nil)
 
 	c, w := newTestPluginContext("GET", "/plugins/installed", nil, db, tenantID)
 
