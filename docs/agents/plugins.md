@@ -68,18 +68,33 @@ PluginInstallations
 - **plugin-manager → Hub**: `POST /api/v1/plugins/heartbeat` e `GET /catalog` — ver `hub/docs/integration-clients.md` § A.1/A.2. Fingerprint, tokens, chaves públicas, `revocationList`.
 - **Frontend → business**: `GET /plugins/catalog` (proxy do catálogo via pm — mata o 503 fixo), `GET /plugins/installed` (real: join `PluginInstallations` × status), `POST /plugins/:slug/activate|deactivate` (hoje **ausentes** — o frontend já os chama).
 
-## Estado atual vs alvo (o que está quebrado)
+## Estado atual vs alvo (histórico) — **CONCLUÍDO em 2026-07-04**
 
-| Sintoma atual | Arquivo | Alvo |
+> Auditoria de código confirmou que todos os itens abaixo já foram implementados. Tabela
+> mantida como registro histórico do que foi corrigido; ver "Pendências reais remanescentes"
+> logo abaixo para o que ainda falta.
+
+| Sintoma (histórico, já corrigido) | Arquivo | Implementação atual |
 |---|---|---|
-| `GetStatus()` retorna `StatusActive` hardcoded | `business/internal/plugins/manager.go:28` | Cruzar licença (pm) × alocação (`PluginInstallations`) |
-| `activate`/`deactivate` inexistem (frontend chama, dá 503) | `business/internal/routes/routes.go:91` | Implementar as rotas + alocação com teto |
-| `/plugins/installed` sempre `[]` | `business/internal/controllers/plugin_manager.go:38` | Refletir `PluginInstallations` reais |
-| `/plugins/catalog` sempre 503 | `plugin_manager.go` | Proxy do catálogo do Hub via pm |
-| `.license_status.json` do pm nunca é lido pelo business | `plugin-manager/main.go:134` | Substituir por `GET /internal/licenses` verificado |
-| `PluginInstallations` sem migration (só `testutil`) | `business/internal/testutil/db.go:73` | Migration real + índices |
-| Heartbeat do pm não valida assinatura | `plugin-manager/main.go:120` | `pkg/licensetoken.Verify` (Ed25519) + grace por `exp` |
-| `saas-plugin` redundante com watink-saas | `business/internal/plugins/saas.go` | **Remover** (control plane é o watink-saas) |
+| `GetStatus()` retorna `StatusActive` hardcoded | `business/internal/plugins/manager.go` | `PluginRegistry.GetStatus` cruza licença (pm) × alocação (`PluginInstallations`) — `business/internal/plugins/registry.go` |
+| `activate`/`deactivate` inexistem (frontend chama, dá 503) | `business/internal/routes/routes.go` | Rotas implementadas, com alocação e teto — `business/internal/controllers/plugin_manager.go` |
+| `/plugins/installed` sempre `[]` | `business/internal/controllers/plugin_manager.go` | Reflete `PluginInstallations` reais (join com status) |
+| `/plugins/catalog` sempre 503 | `plugin_manager.go` | Proxy real do catálogo do Hub via pm (fail-safe `200 {offline:true}` se pm indisponível) |
+| `.license_status.json` do pm nunca é lido pelo business | `plugin-manager/main.go` | `business/internal/pluginlicense/client.go` consome `GET /internal/licenses`, cache TTL+grace |
+| `PluginInstallations` sem migration (só `testutil`) | `business/internal/testutil/db.go` | Migration real + `UNIQUE(tenantId, pluginId)` — `business/internal/database/database.go` |
+| Heartbeat do pm não valida assinatura | `plugin-manager/main.go` | `licensetoken.Verify` (Ed25519), fail-closed em qualquer erro |
+| `saas-plugin` redundante com watink-saas | `business/internal/plugins/saas.go` | Removido — confirmado ausente do diretório `internal/plugins/` |
+
+## Pendências reais remanescentes
+
+> **Estas quatro pendências foram formalizadas como a FASE 0 (bloqueante) do plano de
+> expansão do marketplace para terceiros** — ver ADR 0025 e o plano executável em
+> [`docs/agents/marketplace-terceiros.md`](marketplace-terceiros.md) (tarefas T0.1–T0.4).
+
+- **`revocationList`** do Hub sempre vazia (`heartbeat/handler.go`) — revogação hoje só propaga no `exp` do token (TTL/lazy), não imediatamente. Decidir se essa lazy revocation é suficiente ou se vale implementar a lista.
+- **`checkoutUrl`** no `business` (`plugin_manager.go`) sempre vazio — o Hub já expõe `POST /checkout` funcional, mas o fluxo "ativar `pro` sem licença → checkout" não está fiado a uma URL utilizável pelo usuário final no Marketplace.
+- **Paridade `licensetoken` entre Hub e plugin-manager** é mantida só por convenção — são duas implementações independentes do parsing de claims (mesmos nomes de campo, tipos ligeiramente diferentes como `TenantCap int64` vs `int`), sem teste de integração cruzado que trave a paridade automaticamente.
+- **Modo stub de dev** do `plugin-manager` (sem `HUB_URL` configurado) libera tudo (`active`) sem chamar `Verify` — correto para dev, mas sem guard explícito contra subir assim em produção por omissão de configuração.
 
 ## Edge cases
 
@@ -129,6 +144,6 @@ PluginInstallations
 
 ## Referências
 
-- ADR 0024 (redesenho) · ADR 0003 (superado no que diz respeito à flag) · ADR 0023 (Clientes → core)
+- ADR 0024 (redesenho) · ADR 0025 (marketplace de terceiros — publishers, artefatos assinados, out-of-process; plano em [`marketplace-terceiros.md`](marketplace-terceiros.md)) · ADR 0003 (superado no que diz respeito à flag) · ADR 0023 (Clientes → core)
 - Hub: `watink-ecosistema/hub/docs/integration-clients.md` (§ A), `hub/docs/adr/0001-0003`
 - watink-saas: ADR 0006 (licença de produto — trilho irmão, não confundir)

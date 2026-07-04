@@ -1,6 +1,7 @@
 package pluginlicense
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -76,4 +77,42 @@ func (c *Client) GetInstance() (InstanceResponse, error) {
 		return InstanceResponse{}, fmt.Errorf("pluginlicense: erro ao decodificar instância do plugin-manager: %w", err)
 	}
 	return body, nil
+}
+
+// checkoutRequestBody é o corpo enviado a POST /api/v1/plugins/checkout no
+// plugin-manager -- {"slug": "..."}. O plugin-manager é quem traduz esse
+// campo para {instanceId, pluginSlug} antes de chamar o Hub (essa tradução
+// não é responsabilidade do business).
+type checkoutRequestBody struct {
+	Slug string `json:"slug"`
+}
+
+// Checkout solicita ao plugin-manager a criação/reativação da licença do
+// plugin `slug` junto ao Hub (POST /api/v1/plugins/checkout). Sem cache --
+// é uma ação, não uma leitura, e o controller decide a política de
+// resposta ao cliente em qualquer caso.
+//
+// IMPORTANTE: sucesso aqui (200/201) significa apenas que o Hub CRIOU ou
+// REATIVOU a licença -- o token assinado só chega ao plugin-manager no
+// próximo heartbeat (até heartbeatIntervalMin minutos depois, default
+// 15min, ou o fallback do plugin-manager). Ou seja, um Checkout
+// bem-sucedido NÃO torna o plugin ativo imediatamente; o chamador
+// (PluginController.Activate) ainda responde 402 e cabe ao cliente tentar
+// ativar de novo mais tarde (poll).
+func (c *Client) Checkout(slug string) error {
+	payload, err := json.Marshal(checkoutRequestBody{Slug: slug})
+	if err != nil {
+		return fmt.Errorf("pluginlicense: erro ao montar payload de checkout: %w", err)
+	}
+
+	resp, err := c.httpClient.Post(c.baseURL+"/api/v1/plugins/checkout", "application/json", bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("pluginlicense: erro ao solicitar checkout no plugin-manager: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("pluginlicense: checkout retornou status %d", resp.StatusCode)
+	}
+	return nil
 }

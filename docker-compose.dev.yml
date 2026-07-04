@@ -175,6 +175,10 @@ services:
     environment:
       - PORT=8081
       - HUB_URL=
+      # PM_ENV=dev libera o modo stub de dev (fail-open, active/tenantCap=0
+      # p/ knownPluginSlugs) sem HUB_URL — sem isto, PM_ENV default é
+      # "production" e o boot falha (fatal) sem HUB_URL configurado.
+      - PM_ENV=dev
     volumes:
       - plugin_manager_data:/data
     networks:

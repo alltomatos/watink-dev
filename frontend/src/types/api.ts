@@ -75,3 +75,18 @@ export interface PluginInstalledResponse {
   active: string[];
   entitlements?: PluginEntitlements;
 }
+
+/**
+ * Error body of POST /plugins/:slug/activate when the plugin has no valid
+ * license (HTTP 402). checkoutRequested tells whether the business
+ * successfully asked the plugin-manager (which asks the Hub) to
+ * create/reactivate the license — the Hub creates the license record
+ * synchronously, but the signed token only reaches the plugin-manager on
+ * the next heartbeat, so a 402 with checkoutRequested=true still means the
+ * plugin isn't active yet; the client must retry /activate later (poll).
+ */
+export interface PluginActivateUnlicensedResponse {
+  error: "plugin_unlicensed" | "plugin_tenant_cap_reached" | string;
+  checkoutRequested?: boolean;
+  message?: string;
+}
