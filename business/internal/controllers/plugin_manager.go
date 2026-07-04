@@ -146,7 +146,7 @@ func (pc *PluginController) Activate(c *gin.Context) {
 	// autoriza uma NOVA ativação -- só "active" libera crescimento (ADR 0024,
 	// fail-closed).
 	if err != nil || info.Status != "active" {
-		// Continua respondendo 402 SEMPRE neste branch -- a licença nunca é
+		// A resposta continua sendo 402 SEMPRE neste branch -- a licença nunca é
 		// concedida de forma síncrona aqui, então "unlicensed" permanece
 		// verdade mesmo quando o checkout é disparado com sucesso.
 		//
