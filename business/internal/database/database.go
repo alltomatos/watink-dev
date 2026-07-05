@@ -77,6 +77,9 @@ func Migrate() {
 		&models.ProxyGroup{},
 		&models.ConnectionGroup{},
 		&models.PluginInstallation{},
+		&models.Protocol{},
+		&models.ProtocolLog{},
+		&models.ProtocolAttachment{},
 	)
 
 	if err != nil {
@@ -269,6 +272,11 @@ func addCustomIndexes() error {
 		// "list installed plugins for tenant" read-path independently.
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_plugin_installations_tenant_plugin ON "PluginInstallations" ("tenantId", "pluginId")`,
 		`CREATE INDEX IF NOT EXISTS idx_plugin_installations_tenant ON "PluginInstallations" ("tenantId")`,
+		// Protocol (plugin Helpdesk): Kanban/lista filtram por (tenantId, status);
+		// o link público resolve por token isoladamente (já UNIQUE no model).
+		`CREATE INDEX IF NOT EXISTS idx_protocols_tenant_status ON "Protocols" ("tenantId", "status")`,
+		`CREATE INDEX IF NOT EXISTS idx_protocol_logs_protocol ON "ProtocolLogs" ("protocolId")`,
+		`CREATE INDEX IF NOT EXISTS idx_protocol_attachments_protocol ON "ProtocolAttachments" ("protocolId")`,
 	}
 
 	for _, ddl := range indexes {
