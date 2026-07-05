@@ -16,6 +16,11 @@ RUN go mod download
 COPY business/ ./
 # Copia o build do frontend para a pasta de embed do Go
 COPY --from=frontend-builder /app/frontend/build ./internal/web/build
+# Aponta o //go:embed do web.go para o build real. O web.go commitado usa
+# `all:placeholder.txt` para que `go build ./...` compile em checkout limpo (sem o
+# frontend gerado); aqui internal/web/build já existe, então trocamos a diretiva
+# para embutir a SPA de verdade antes de compilar.
+RUN sed -i 's#//go:embed all:placeholder.txt#//go:embed all:build#' internal/web/web.go
 RUN CGO_ENABLED=1 GOOS=linux go build -o watink-business cmd/server/main.go
 
 # Etapa 3: Imagem Final Ultra-Leve
