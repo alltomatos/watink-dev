@@ -23,7 +23,7 @@
     "@testing-library/user-event": "^14.4.3",
     "@xyflow/react": "^12.11.1",
     "autoprefixer": "^10.5.0",
-    "axios": "^1.18.0",
+    "axios": "^1.18.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^2.30.0",
