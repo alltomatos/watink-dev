@@ -17,6 +17,7 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
   status_changed: <RefreshCw className="h-4 w-4" />,
   priority_changed: <Edit className="h-4 w-4" />,
   commented: <MessageSquare className="h-4 w-4" />,
+  comment_added: <MessageSquare className="h-4 w-4" />,
   resolved: <CheckCircle className="h-4 w-4" />,
   attachment: <Paperclip className="h-4 w-4" />,
 };
@@ -26,6 +27,7 @@ const ACTION_LABELS: Record<string, string> = {
   status_changed: "Status alterado",
   priority_changed: "Prioridade alterada",
   commented: "Comentário",
+  comment_added: "Comentário",
   resolved: "Resolvido",
   closed: "Fechado",
   attachment: "Anexo",

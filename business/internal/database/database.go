@@ -40,6 +40,8 @@ func Migrate() {
 		log.Printf("Warning: failed to drop legacy RBAC schema: %v", err)
 	}
 
+	dropLegacyProtocolStub()
+
 	err := DB.AutoMigrate(
 		&models.Plan{},
 		&models.Tenant{},
@@ -77,6 +79,9 @@ func Migrate() {
 		&models.ProxyGroup{},
 		&models.ConnectionGroup{},
 		&models.PluginInstallation{},
+		&models.Protocol{},
+		&models.ProtocolHistory{},
+		&models.ProtocolAttachment{},
 	)
 
 	if err != nil {
@@ -95,6 +100,16 @@ func Migrate() {
 
 	fmt.Println("Database migration completed")
 	Seed()
+}
+
+// dropLegacyProtocolStub remove a coluna `number` (NOT NULL UNIQUE) do stub
+// antigo da tabela Protocols. O schema restaurado usa `protocolNumber`
+// (não-único); se a coluna morta persistir, os INSERTs quebram no NOT NULL.
+// Idempotente e best-effort — nunca trava o boot (dev reset autorizado, ADR 0024).
+func dropLegacyProtocolStub() {
+	if err := DB.Exec(`ALTER TABLE IF EXISTS "Protocols" DROP COLUMN IF EXISTS number`).Error; err != nil {
+		log.Printf("Warning: failed to drop legacy Protocols.number column: %v", err)
+	}
 }
 
 // addClientAddressGeography adds the PostGIS spatial column backing

@@ -45,7 +45,13 @@ export default defineConfig({
         target: process.env.BACKEND_PROXY_TARGET || "http://127.0.0.1:8082",
         changeOrigin: true,
       },
-      "/public": {
+      // Só /public/media (arquivos servidos pelo mediastore do backend) — NÃO
+      // usar prefixo genérico "/public": colide com a rota SPA
+      // /public/protocols/:token (PublicProtocol), que o React Router precisa
+      // tratar no cliente. Um prefixo largo aqui rouba a navegação para o
+      // backend, que cai no fallback de SPA embarcado (vazio em dev) → "Index
+      // not found".
+      "/public/media": {
         target: process.env.BACKEND_PROXY_TARGET || "http://127.0.0.1:8082",
         changeOrigin: true,
       },

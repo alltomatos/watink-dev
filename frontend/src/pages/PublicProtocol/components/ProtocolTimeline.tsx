@@ -62,9 +62,9 @@ const ProtocolTimeline: React.FC<ProtocolTimelineProps> = ({ history }) => (
               {historyIcon(hist.action)}
             </span>
 
-            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold">
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5 min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+                <p className="text-sm font-semibold break-words">
                   {i18n.t(
                     `publicProtocol.history.actions.${hist.action}`
                   ) || hist.action}
@@ -75,7 +75,7 @@ const ProtocolTimeline: React.FC<ProtocolTimelineProps> = ({ history }) => (
               </div>
 
               {hist.comment && (
-                <p className="text-sm text-muted-foreground">{hist.comment}</p>
+                <p className="text-sm text-muted-foreground break-words">{hist.comment}</p>
               )}
 
               {hist.action === "attachment" && hist.changes && (

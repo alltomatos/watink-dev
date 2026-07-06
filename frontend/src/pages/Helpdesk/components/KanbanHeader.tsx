@@ -22,7 +22,7 @@ const KanbanHeader: React.FC<KanbanHeaderProps> = ({
   const navigate = useNavigate();
 
   return (
-    <div className="mb-4 flex items-center justify-between rounded-lg bg-[var(--bg-surface)] p-3 shadow-sm">
+    <div className="mb-4 flex items-center justify-between rounded-lg bg-[hsl(var(--bg-surface))] p-3 shadow-sm">
       <div className="flex items-center gap-2">
         {!tvMode && (
           <Button

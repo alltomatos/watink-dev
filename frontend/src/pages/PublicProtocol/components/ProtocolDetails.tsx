@@ -27,13 +27,13 @@ const ProtocolDetails: React.FC<ProtocolDetailsProps> = ({ protocol }) => (
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           {i18n.t("publicProtocol.details.subject")}
         </p>
-        <p className="text-sm font-medium">{protocol.subject}</p>
+        <p className="text-sm font-medium break-words">{protocol.subject}</p>
       </div>
       <div className="space-y-1">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           {i18n.t("publicProtocol.details.description")}
         </p>
-        <p className="text-sm whitespace-pre-wrap">
+        <p className="text-sm whitespace-pre-wrap break-words">
           {protocol.description ||
             i18n.t("publicProtocol.details.noDescription")}
         </p>

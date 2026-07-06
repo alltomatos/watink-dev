@@ -53,7 +53,7 @@ const ProtocolCard: React.FC<ProtocolCardProps> = ({
       padding="none"
       hoverEffect
       className={cn(
-        "mb-2 cursor-pointer rounded-lg bg-[var(--bg-surface)] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md",
+        "mb-2 cursor-pointer rounded-lg bg-[hsl(var(--bg-surface))] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md",
         priorityClass,
         isNew && "animate-highlight"
       )}

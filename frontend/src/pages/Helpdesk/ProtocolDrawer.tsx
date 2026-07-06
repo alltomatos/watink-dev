@@ -89,11 +89,11 @@ const ProtocolDrawer: React.FC<ProtocolDrawerProps> = ({
 
       {/* Painel */}
       <div
-        className="relative z-10 flex w-80 flex-col border border-[var(--border-divider)] border-l-0 rounded-r bg-[var(--bg-surface)] shadow-lg"
+        className="relative z-10 flex w-80 flex-col border border-[var(--border-divider)] border-l-0 rounded-r bg-[hsl(var(--bg-surface))] shadow-lg"
         style={{ borderTopRightRadius: 4, borderBottomRightRadius: 4 }}
       >
         {/* Header */}
-        <div className="flex min-h-[73px] items-center justify-between border-b border-[var(--border-divider)] bg-[var(--border-default)] px-3">
+        <div className="flex min-h-[73px] items-center justify-between border-b border-[var(--border-divider)] bg-[hsl(var(--border-default))] px-3">
           <span className="text-base font-semibold">Novo Protocolo</span>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fechar">
             <X className="h-5 w-5" />

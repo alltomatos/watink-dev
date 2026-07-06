@@ -75,6 +75,11 @@ services:
       - "8082:8082"
     environment:
       - PORT_GO=8082
+      # Origem pública para montar o link "Ver Protocolo" (Helpdesk). Em prod o
+      # frontend é embarcado no business (mesma origem, derivado do request); em
+      # dev os ports são separados, então aponta para o Vite. Para abrir o link
+      # num celular real, troque por um túnel público (ngrok) ou use homolog/prod.
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=postgres

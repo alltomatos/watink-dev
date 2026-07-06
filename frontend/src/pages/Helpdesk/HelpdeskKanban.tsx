@@ -28,7 +28,7 @@ const HelpdeskKanban: React.FC<HelpdeskKanbanProps> = ({ tvMode = false }) => {
 
   return (
     <TooltipProvider>
-      <div className="flex h-full flex-col bg-[var(--bg-surface-alt)] p-4">
+      <div className="flex h-full flex-col bg-[hsl(var(--bg-surface-alt))] p-4">
         <KanbanHeader
           tvMode={tvMode}
           onRefresh={loadKanbanData}

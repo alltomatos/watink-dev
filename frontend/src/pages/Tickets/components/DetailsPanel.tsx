@@ -16,7 +16,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ ticket, loading, onClose })
   const isGroup = ticket?.contact?.isGroup || ticket?.isGroup;
 
   return (
-    <div className="flex flex-col w-full h-full overflow-hidden">
+    <div className="relative flex flex-col w-full h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-[57px] border-b border-border shrink-0">
         <span className="text-sm font-semibold text-foreground">

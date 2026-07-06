@@ -31,12 +31,12 @@ const ProtocolHeader: React.FC<ProtocolHeaderProps> = ({ protocol }) => (
   <Card className="shadow-sm">
     <CardContent className="pt-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 bg-primary/10 rounded-lg shrink-0">
             <ClipboardList className="h-6 w-6 text-primary" />
           </div>
-          <div>
-            <h1 className="text-xl font-bold">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold break-words">
               {i18n.t("publicProtocol.header.number", {
                 number: protocol.protocolNumber,
               })}

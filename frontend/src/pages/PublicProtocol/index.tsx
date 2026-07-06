@@ -18,18 +18,18 @@ const PublicProtocol: React.FC = () => {
   if (!protocol) return <ProtocolNotFound />;
 
   return (
-    <div className="min-h-screen bg-muted/10 py-8">
-      <div className="container mx-auto max-w-5xl px-4 space-y-6">
+    <div className="min-h-screen bg-muted/10 py-4 sm:py-8">
+      <div className="container mx-auto max-w-5xl px-3 sm:px-4 space-y-4 sm:space-y-6">
 
-        <div className="text-center">
-          <p className="text-2xl font-bold text-primary">
+        <div className="text-center px-2">
+          <p className="text-xl sm:text-2xl font-bold text-primary break-words">
             {protocol.tenant?.name || i18n.t("publicProtocol.defaultTenant")}
           </p>
         </div>
 
         <ProtocolHeader protocol={protocol} />
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 sm:gap-6">
           <ProtocolDetails protocol={protocol} />
           <ProtocolTimeline history={protocol.history} />
         </div>

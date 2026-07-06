@@ -28,7 +28,7 @@ const HelpdeskTvMode: React.FC = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[var(--bg-surface-alt)]">
+    <div className="fixed inset-0 z-[9999] bg-[hsl(var(--bg-surface-alt))]">
       <HelpdeskKanban tvMode={true} />
     </div>
   );

@@ -60,6 +60,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	flowRuntime := flow.NewSkeleton(container.DB, flowChannels, container.RedisSvc)
 	flowController := controllers.NewFlowController(flowRuntime)
 	quickAnswerController := controllers.NewQuickAnswerController(rabbitMQ, container.Broadcast, db)
+	protocolController := controllers.NewProtocolController(rabbitMQ, container.Broadcast, db)
 	versionController := controllers.NewVersionController(container.VersionRepo)
 	swaggerController := controllers.NewSwaggerController(container.SwaggerPermRepo)
 	storageController := controllers.NewStorageController(s3Store)
@@ -68,6 +69,9 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	group.POST("/auth/login", authController.Login)
 	group.POST("/auth/refresh_token", authController.RefreshToken)
 	group.GET("/public-settings", settingController.GetPublicSettings)
+	// Página pública de acompanhamento de protocolo (Helpdesk) — sem auth, lookup
+	// por token opaco; projeção sanitizada no controller (sem PII/tenantId).
+	group.GET("/public/protocols/:token", protocolController.PublicShow)
 	group.GET("/initial-setup/check", setupController.CheckSetup)
 	group.POST("/initial-setup", setupController.InitialSetup)
 	group.GET("/system/maintenance", controllers.GetMaintenanceStatus)
@@ -218,6 +222,25 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.PUT("/quickAnswers/:quickAnswerId", quickAnswerController.Update)
 		protected.DELETE("/quickAnswers/:quickAnswerId", quickAnswerController.Delete)
 		protected.POST("/quickAnswers/:quickAnswerId/send", quickAnswerController.Send)
+
+		// Protocols (Helpdesk) — /kanban e /dashboard ANTES de /:protocolId para
+		// não serem capturados pelo parâmetro. Escopo por tenant via GetScoped
+		// (mesmo padrão de QuickAnswers, sem RequirePermission por ora).
+		protected.GET("/protocols/kanban", protocolController.Kanban)
+		protected.GET("/protocols/dashboard", protocolController.Dashboard)
+		protected.GET("/protocols", protocolController.List)
+		protected.GET("/protocols/", protocolController.List)
+		protected.POST("/protocols", protocolController.Create)
+		protected.GET("/protocols/:protocolId", protocolController.Show)
+		protected.PUT("/protocols/:protocolId", protocolController.Update)
+		protected.GET("/protocols/:protocolId/attachments", protocolController.ListAttachments)
+		protected.POST("/protocols/:protocolId/attachments", protocolController.StoreAttachments)
+		protected.DELETE("/protocols/:protocolId/attachments/:attachmentId", protocolController.DeleteAttachment)
+		protected.POST("/contacts/:contactId/protocols", protocolController.CreateFromContact)
+		// "Minhas Atividades" — protocolos atribuídos ao usuário logado, pendentes,
+		// ordenados por prioridade/SLA. Item de menu gated por activePlugins
+		// includes("helpdesk") no frontend (SidebarNav.tsx).
+		protected.GET("/my-activities", protocolController.MyActivities)
 
 		// Knowledge Bases
 		protected.GET("/knowledge-bases", kbController.List)

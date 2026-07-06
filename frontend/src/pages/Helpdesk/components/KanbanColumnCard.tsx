@@ -20,11 +20,11 @@ const KanbanColumnCard: React.FC<KanbanColumnCardProps> = ({
       style={{ backgroundColor: column.bgColor }}
     >
       <div
-        className="flex items-center justify-between p-3 font-semibold text-[var(--bg-surface)]"
+        className="flex items-center justify-between p-3 font-semibold text-[hsl(var(--bg-surface))]"
         style={{ backgroundColor: column.color }}
       >
         <span>{column.label}</span>
-        <span className="rounded-full bg-[var(--overlay-light)] px-2.5 py-0.5 text-xs font-bold text-[var(--bg-surface)]">
+        <span className="rounded-full bg-[var(--overlay-light)] px-2.5 py-0.5 text-xs font-bold text-[hsl(var(--bg-surface))]">
           {column.protocols.length}
         </span>
       </div>

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Users, User, Phone, Mail, AtSign, RefreshCw, UserPlus, Briefcase } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Users, User, Phone, Mail, AtSign, RefreshCw, UserPlus, Briefcase, ClipboardList } from "lucide-react";
 import { toast } from "react-toastify";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import PipelinesSection from "./PipelinesSection";
 import FlowsSection from "./FlowsSection";
 import TicketTagsSection from "./TicketTagsSection";
 import ClientModal from "../../Clients/ClientModal";
+import ProtocolDrawer from "../../Helpdesk/ProtocolDrawer";
 import TagChip from "../../../components/TagChip";
 
 interface DadosTabProps {
@@ -20,8 +21,26 @@ interface DadosTabProps {
 const DadosTab: React.FC<DadosTabProps> = ({ ticket, loading }) => {
   const [syncing, setSyncing] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [protocolDrawerOpen, setProtocolDrawerOpen] = useState(false);
+  const [helpdeskEnabled, setHelpdeskEnabled] = useState(false);
   const contact = ticket?.contact;
   const isGroup = contact?.isGroup || ticket?.isGroup;
+
+  useEffect(() => {
+    let active = true;
+    api
+      .get("/plugins/installed")
+      .then(({ data }) => {
+        const activePlugins: string[] = data?.active || [];
+        if (active) setHelpdeskEnabled(activePlugins.includes("helpdesk"));
+      })
+      .catch(() => {
+        /* plugin status is best-effort — hide the button on failure */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleSyncContact = async () => {
     if (!contact?.id) return;
@@ -191,6 +210,23 @@ const DadosTab: React.FC<DadosTabProps> = ({ ticket, loading }) => {
         {!isGroup && contact?.id && (
           <FlowsSection contactId={contact.id} />
         )}
+
+        {/* Helpdesk — abre um protocolo e envia o link ao contato.
+            Só aparece com o plugin helpdesk ativo, em tickets individuais. */}
+        {helpdeskEnabled && !isGroup && contact?.id && (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Helpdesk</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs w-fit"
+              onClick={() => setProtocolDrawerOpen(true)}
+            >
+              <ClipboardList className="w-3.5 h-3.5" />
+              Abrir Protocolo
+            </Button>
+          </div>
+        )}
       </div>
 
       {contact && clientModalOpen && (
@@ -203,6 +239,15 @@ const DadosTab: React.FC<DadosTabProps> = ({ ticket, loading }) => {
             number: contact.number,
             email: contact.email,
           }}
+        />
+      )}
+
+      {contact?.id && (
+        <ProtocolDrawer
+          open={protocolDrawerOpen}
+          onClose={() => setProtocolDrawerOpen(false)}
+          contactId={contact.id}
+          ticketId={ticket?.id}
         />
       )}
     </div>
