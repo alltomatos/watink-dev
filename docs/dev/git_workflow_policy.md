@@ -55,3 +55,32 @@ git push origin feat/<tema>
 feat/* / fix/* / refactor/* → develop → main (release)
 hotfix/*                    → main → back-merge para develop
 ```
+
+## Pipeline de Ambientes (local → homologação → produção)
+
+O merge flow de branches acima roda dentro de um pipeline de **três estágios com dois portões de validação** — nada não-validado avança:
+
+```
+1. DEV LOCAL         implementa na branch por convenção (feat/ fix/ ...)
+      │
+      ▼
+2. VALIDAÇÃO LOCAL   ⟵ PORTÃO 1
+      │              go build ./... && go test ./...   (business, engine-go)
+      │              npm run build / typecheck / lint  (frontend)
+      │              rodar o app e conferir o comportamento
+      ▼
+3. HOMOLOGAÇÃO       PR → develop → deploy no ambiente de homologação
+      │              ambiente: homolog.watink.com
+      │              validar/aprovar o comportamento em ambiente real
+      │              ⟵ PORTÃO 2
+      ▼
+4. PRODUÇÃO          develop → main → deploy em produção
+```
+
+**Regras:**
+
+- **Homologação rastreia `develop`**; **produção rastreia `main`**. Cada promoção exige o portão anterior verde.
+- **Nunca** promover para homologação sem validação local, nem para produção sem aprovação em homologação.
+- Deploy hoje é **manual** (rebuild no ambiente após o merge) — ainda não há CD automático.
+- **Produção ainda não está provisionada** — apenas homologação (`homolog.watink.com`) existe. Ao chegar nesse estágio, provisionar o ambiente de produção separado.
+- Reportar honestamente o resultado de cada portão (build/testes/homologação) — não marcar "aprovado" sem evidência.
