@@ -50,11 +50,15 @@ export interface CatalogPlugin {
   slug: string;
   name: string;
   description: string;
+  /** Rich text for the detail page (line breaks preserved, no markdown). */
+  longDescription?: string;
   version: string;
-  type: "free" | "business";
+  type: "free" | "pro";
   price: number;
   category: string;
   iconUrl?: string;
+  /** Gallery images sourced from the plugin's Hub catalog registration. */
+  screenshots?: string[];
 }
 
 /** Response shape of GET /plugins/catalog */

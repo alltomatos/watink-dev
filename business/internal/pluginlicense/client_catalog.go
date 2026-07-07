@@ -11,15 +11,17 @@ import (
 // exposto pelo plugin-manager (que por sua vez proxeia o Watink Hub). As tags
 // json seguem exatamente o contrato — price é número (float).
 type CatalogPlugin struct {
-	ID          string  `json:"id"`
-	Slug        string  `json:"slug"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Version     string  `json:"version"`
-	Type        string  `json:"type"`
-	Category    string  `json:"category"`
-	Price       float64 `json:"price"`
-	IconURL     string  `json:"iconUrl"`
+	ID              string   `json:"id"`
+	Slug            string   `json:"slug"`
+	Name            string   `json:"name"`
+	Description     string   `json:"description"`
+	LongDescription string   `json:"longDescription"`
+	Version         string   `json:"version"`
+	Type            string   `json:"type"`
+	Category        string   `json:"category"`
+	Price           float64  `json:"price"`
+	IconURL         string   `json:"iconUrl"`
+	Screenshots     []string `json:"screenshots"`
 }
 
 // CatalogResponse é o corpo de resposta de GET /api/v1/plugins/catalog:
