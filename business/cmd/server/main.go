@@ -35,8 +35,6 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/domain"
 	"github.com/alltomatos/watinkdev/business/internal/flow"
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
-	"github.com/alltomatos/watinkdev/business/internal/pluginlicense"
-	"github.com/alltomatos/watinkdev/business/internal/plugins"
 	"github.com/alltomatos/watinkdev/business/internal/routes"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/internal/web"
@@ -123,18 +121,6 @@ func main() {
 		apiGroup.GET("/health", func(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "OK", "service": "watink-business"})
 		})
-
-		// P-7: cliente HTTP do business para o plugin-manager (pull + cache
-		// ~60s), consultado pelo GET /internal/licenses, agora plugado de
-		// verdade no PluginRegistry.GetStatus() via DI pura no construtor —
-		// o business nunca fala com o Hub direto (ADR 0024), só com este
-		// plugin-manager local.
-		licenseClient := pluginlicense.NewClient()
-		pluginRegistry := plugins.NewPluginRegistry(database.DB, plugins.NewLicenseFetcher(licenseClient))
-
-		pluginManager := plugins.NewPluginManagerWithRegistry(database.DB, apiGroup, pluginRegistry)
-		pluginManager.Register(&plugins.HelpdeskPlugin{})
-		pluginManager.Register(&plugins.WebchatPlugin{})
 
 		// Knowledge Base file sources: build the S3-compatible object store from
 		// env. When S3 is unconfigured or init fails, s3Store stays nil and the

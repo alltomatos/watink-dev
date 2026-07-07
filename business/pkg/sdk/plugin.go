@@ -26,7 +26,15 @@ type PluginManifest struct {
 // WatinkCore defines the interface for plugins to interact with the core system
 type WatinkCore interface {
 	GetDB() *gorm.DB
+	// RegisterRoute mounts an authenticated, tenant-scoped, license-gated route
+	// (ADR 0024) — the handler runs after IsAuth/TenantMiddleware, so
+	// auth.TenantUUIDFromContext/auth.GetScoped work inside it.
 	RegisterRoute(method string, path string, handler gin.HandlerFunc)
+	// RegisterPublicRoute mounts a route with NO authentication and NO license
+	// gating (the caller has no session — tenant, if any, is only known once
+	// the handler resolves it from the request itself, e.g. a public share
+	// token). Use only for surfaces meant to work without login.
+	RegisterPublicRoute(method string, path string, handler gin.HandlerFunc)
 	EmitSocketEvent(room string, event string, payload interface{})
 	GetStatus() PluginStatus
 }

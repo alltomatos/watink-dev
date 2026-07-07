@@ -105,6 +105,18 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 		protected.POST("/plugins/:slug/activate", pluginController.Activate)
 		protected.POST("/plugins/:slug/deactivate", pluginController.Deactivate)
 
+		// Plugin CONTENT routes (helpdesk/webchat business routes, registered
+		// via WatinkCore.RegisterRoute inside each plugin's OnActivate). router
+		// MUST be `protected` (authenticated, tenant-scoped) — not the raw
+		// `group` — or auth.TenantUUIDFromContext/GetScoped never resolve
+		// inside a plugin's handlers. publicRouter is the raw `group`, for
+		// RegisterPublicRoute (e.g. the helpdesk public share link, no login).
+		// Reuses pluginRegistry (above) so gating is the exact same license x
+		// allocation cross the marketplace endpoints above already use.
+		pluginManager := plugins.NewPluginManagerWithRegistry(db, protected, group, pluginRegistry, container.Broadcast)
+		pluginManager.Register(&plugins.HelpdeskPlugin{})
+		pluginManager.Register(&plugins.WebchatPlugin{})
+
 		// Auth
 		protected.DELETE("/auth/logout", authController.Logout)
 
