@@ -1,4 +1,4 @@
-name: Publish Docker Hub (watink-business)
+name: Publish Docker Hub (watink-business, watink-engine, watink-postgres)
 
 # SEGURANÇA: dispara SÓ em push a develop/main (+ manual). NUNCA em pull_request —
 # os runners self-hosted (omniroute-watink-dev-1/2) montam /var/run/docker.sock
@@ -10,7 +10,7 @@ on:
   workflow_dispatch: {}
 
 concurrency:
-  group: publish-dockerhub-business-${{ github.ref }}
+  group: publish-dockerhub-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -93,9 +93,27 @@ jobs:
           npm ci
           npm run build
 
+  # Stack mínimo distribuível: sem qualquer uma destas 3 imagens, quem faz
+  # `docker pull` não consegue rodar o Watink de verdade — watink-business sem
+  # watink-engine não conecta WhatsApp (o engine é o cliente whatsmeow); postgres
+  # vanilla não tem PostGIS+pgvector, então watink-postgres é quem carrega essas
+  # extensões pré-instaladas.
   build-and-push:
     needs: validate
     runs-on: [self-hosted, linux, x64, omniroute]
+    strategy:
+      max-parallel: 2  # bate com os 2 runners dedicados (omniroute-watink-dev-1/2)
+      matrix:
+        include:
+          - image: watink-business
+            dockerfile: Dockerfile.business
+            context: .
+          - image: watink-engine
+            dockerfile: engine-go/Dockerfile
+            context: ./engine-go
+          - image: watink-postgres
+            dockerfile: infra/postgres/Dockerfile
+            context: ./infra/postgres
     steps:
       - uses: actions/checkout@v7
 
@@ -109,7 +127,7 @@ jobs:
         id: tags
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
-          IMAGE="ronaldodavi/watink-business"
+          IMAGE="ronaldodavi/${{ matrix.image }}"
           TAGS="${IMAGE}:sha-${SHORT_SHA}"
           if [ "${GITHUB_REF_NAME}" = "main" ]; then
             TAGS="${TAGS},${IMAGE}:latest"
@@ -124,10 +142,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push watink-business
+      - name: Build and push ${{ matrix.image }}
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: Dockerfile.business
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.tags.outputs.tags }}
