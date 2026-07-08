@@ -8,6 +8,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
 	"github.com/alltomatos/watinkdev/business/internal/pluginlicense"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
+	"github.com/alltomatos/watinkdev/business/internal/saasclient"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/gin-gonic/gin"
@@ -26,6 +27,7 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	setupService := services.NewSetupService(container.DB)
 	setupController := controllers.NewSetupController(setupService)
 	saasInternalController := controllers.NewSaaSInternalController(db, setupService)
+	registerController := controllers.NewRegisterController(saasclient.NewFromEnv(), saasclient.NewCaptchaVerifierFromEnv())
 	userController := controllers.NewUserController(container.UserRepo, container.PlanLimitSvc)
 	queueController := controllers.NewQueueController()
 	contactController := controllers.NewContactController(container.ContactRepo, container.ChannelSessionRepo, rabbitMQ, container.Broadcast)
@@ -73,6 +75,17 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	group.GET("/initial-setup/check", setupController.CheckSetup)
 	group.POST("/initial-setup", setupController.InitialSetup)
 	group.GET("/system/maintenance", controllers.GetMaintenanceStatus)
+
+	// Registro self-service (Onda 6, ADR 0007 do Watink SaaS) — proxy público
+	// que repassa a intenção do usuário ao control plane SaaS (nunca cria tenant
+	// aqui). Só existe quando SAAS_BASE_URL/SAAS_INSTANCE_ID/SAAS_INTERNAL_TOKEN
+	// estão setadas; sem elas, o grupo simplesmente não é montado — o frontend
+	// esconde o botão "Registrar-se" e nada muda para quem não usa o Watink SaaS.
+	if registerController.Enabled() {
+		group.GET("/register/plans", registerController.Plans)
+		group.POST("/register", registerController.Register)
+		group.GET("/register/:id/status", registerController.Status)
+	}
 
 	// Swagger / API docs
 	group.GET("/docs", swaggerController.SwaggerUI)
