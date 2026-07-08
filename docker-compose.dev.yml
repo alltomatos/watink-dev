@@ -98,6 +98,11 @@ services:
       - AI_BASEURL_HOST_REWRITE=host.docker.internal
       - KNOWLEDGE_SERVICE_URL=http://watink-knowledge:8085
       - INTERNAL_TOKEN=${INTERNAL_TOKEN:-dev_internal_token_change_in_prod}
+      # Token do control plane Watink SaaS (Trilha A, docs/integration-core.md §1).
+      # Fail-closed: vazio → /api/v1/internal/saas/* responde 503 e nada muda para
+      # quem não usa o SaaS. Segredo distinto do INTERNAL_TOKEN (blast radius
+      # separado); cada instância define o SEU. NÃO commitar o valor real.
+      - SAAS_INTERNAL_TOKEN=${SAAS_INTERNAL_TOKEN:-}
       - S3_ENDPOINT=minio:9000
       - S3_BUCKET=watink-knowledge
       - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
