@@ -57,7 +57,11 @@ export function usePublicPlans(): PlansState {
           setState({ status: "unavailable" });
           return;
         }
-        setState({ status: "ready", plans: data.plans });
+        // Mais barato primeiro — o backend ordena por sortOrder (o operador
+        // decide a ordem administrativa), mas a vitrine e o dropdown de
+        // registro devem sempre ir do mais barato ao mais caro.
+        const sorted = [...data.plans].sort((a, b) => a.priceCents - b.priceCents);
+        setState({ status: "ready", plans: sorted });
       } catch {
         if (!cancelled) setState({ status: "unavailable" });
       }
