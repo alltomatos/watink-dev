@@ -13,7 +13,7 @@ const PipelineBoard = lazy(() => import("../pages/Pipelines/PipelineBoard"));
 const Tickets = lazy(() => import("../pages/Tickets"));
 const FlowBuilder = lazy(() => import("../pages/FlowBuilder"));
 const FlowManager = lazy(() => import("../pages/FlowManager"));
-const Signup = lazy(() => import("../pages/Signup"));
+const Register = lazy(() => import("../pages/Register"));
 const Login = lazy(() => import("../pages/Login"));
 const Connections = lazy(() => import("../pages/Connections"));
 const ConnectionConfig = lazy(() => import("../pages/Connections/ConnectionConfig"));
@@ -118,7 +118,7 @@ const Routes = () => {
      <RouterRoutes>
      <Route path="/initial-setup" element={<PrivateRoute><InitialSetup /></PrivateRoute>} />
      <Route path="/login" element={<PrivateRoute><Login /></PrivateRoute>} />
-     <Route path="/signup" element={<PrivateRoute><Signup /></PrivateRoute>} />
+     <Route path="/register" element={<PrivateRoute><Register /></PrivateRoute>} />
      <Route path="/public/protocols/:token" element={<PrivateRoute isPublic><PublicProtocol /></PrivateRoute>} />
      <Route path="/*" element={<PrivateRoute isPrivate><PrivateRoutes /></PrivateRoute>} />
      </RouterRoutes>
