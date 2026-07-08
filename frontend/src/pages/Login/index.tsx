@@ -179,7 +179,7 @@ const Login = () => {
       {registrationOpen && (
         <div className="text-center text-sm text-muted-foreground">
           Não tem uma conta?{" "}
-          <RouterLink to="/register" className="font-medium text-primary hover:underline">
+          <RouterLink to="/planos" className="font-medium text-primary hover:underline">
             {i18n.t("login.buttons.register")}
           </RouterLink>
         </div>

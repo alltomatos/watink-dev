@@ -1,7 +1,7 @@
 /* @jsxImportSource react */
 import React, { useEffect, useState } from "react";
-import { useNavigate, Link as RouterLink } from "react-router-dom";
-import { Check, Loader2, ArrowLeft, Eye, EyeOff, PartyPopper } from "lucide-react";
+import { useNavigate, useSearchParams, Link as RouterLink } from "react-router-dom";
+import { Loader2, ArrowLeft, Eye, EyeOff, PartyPopper } from "lucide-react";
 
 import api from "../../services/api";
 
@@ -9,36 +9,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
-
-interface PublicPlan {
-  id: string;
-  name: string;
-  description: string;
-  priceCents: number;
-  billingCycle: string;
-  trialDays: number;
-  usersLimit: number;
-  connectionsLimit: number;
-  queuesLimit: number;
-  features?: string[] | null;
-}
-
-// Catálogo fixo de funcionalidades do core que um plano pode destacar —
-// puramente de exibição (o backend só repassa chaves opacas em
-// PublicPlan.features). Espelhado (duplicado de propósito, sem acoplamento
-// entre repos) de watink-saas/console/src/lib/planFeatures.ts, que é onde o
-// operador escolhe as chaves ao editar um plano.
-const FEATURE_LABEL: Record<string, string> = {
-  pipelines: "Pipeline de vendas (Kanban)",
-  flowbuilder: "Automação de fluxos (FlowBuilder)",
-  knowledge_base: "Base de Conhecimento com IA",
-  helpdesk: "Central de Ajuda (Helpdesk)",
-  quick_answers: "Respostas rápidas",
-  reports: "Relatórios e métricas",
-  crm: "CRM de clientes",
-  multichannel: "Atendimento multicanal (WhatsApp)",
-};
+import { usePublicPlans, formatBRL } from "../Plans/planCatalog";
 
 interface FormState {
   companyName: string;
@@ -57,10 +28,6 @@ const emptyForm: FormState = {
   email: "",
   password: "",
 };
-
-function formatBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 // Mensagens amigáveis para os códigos de erro do proxy público de registro
 // (business/internal/controllers/register.go) — nunca mostrar o código cru.
@@ -81,41 +48,30 @@ function friendlyError(code: string | undefined): string {
   return ERROR_MESSAGES[code] ?? "Não foi possível concluir o cadastro. Tente novamente.";
 }
 
-type Stage = "loading" | "unavailable" | "form" | "provisioning" | "ready" | "failed";
+type Stage = "provisioning" | "ready" | "failed";
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const [stage, setStage] = useState<Stage>("loading");
-  const [plans, setPlans] = useState<PublicPlan[]>([]);
+  const [searchParams] = useSearchParams();
+  const plansState = usePublicPlans();
+
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
+  const [stage, setStage] = useState<Stage | null>(null);
 
+  // Plano pré-selecionado via ?planId= (vindo do botão "Contratar" em
+  // /planos) — cai no primeiro plano elegível se o parâmetro faltar ou não
+  // corresponder a nenhum plano da lista (ex.: link antigo, plano desativado).
   useEffect(() => {
-    let cancelled = false;
-    const loadPlans = async () => {
-      try {
-        const { data } = await api.get("/register/plans");
-        if (cancelled) return;
-        if (!data?.registrationOpen || !Array.isArray(data.plans) || data.plans.length === 0) {
-          setStage("unavailable");
-          return;
-        }
-        setPlans(data.plans);
-        setSelectedPlanId(data.plans[0].id);
-        setStage("form");
-      } catch {
-        if (!cancelled) setStage("unavailable");
-      }
-    };
-    loadPlans();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (plansState.status !== "ready" || selectedPlanId) return;
+    const fromQuery = searchParams.get("planId");
+    const match = fromQuery && plansState.plans.some((p) => p.id === fromQuery);
+    setSelectedPlanId(match ? fromQuery : plansState.plans[0].id);
+  }, [plansState, searchParams, selectedPlanId]);
 
   // Poll do status até o tenant ficar utilizável (ou falhar).
   useEffect(() => {
@@ -179,7 +135,7 @@ const RegisterPage: React.FC = () => {
     navigate(`/login?email=${encodeURIComponent(form.email)}`);
   };
 
-  if (stage === "loading") {
+  if (plansState.status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -187,7 +143,7 @@ const RegisterPage: React.FC = () => {
     );
   }
 
-  if (stage === "unavailable") {
+  if (plansState.status === "unavailable") {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
         <Card className="w-full max-w-md">
@@ -247,73 +203,38 @@ const RegisterPage: React.FC = () => {
     );
   }
 
+  const { plans } = plansState;
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
-      <Card className={`w-full ${plans.length > 2 ? "max-w-4xl" : "max-w-2xl"}`}>
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle>Crie sua conta</CardTitle>
-          <CardDescription>Escolha um plano e comece a usar agora mesmo.</CardDescription>
+          <CardDescription>Preencha seus dados para começar a usar agora mesmo.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-8">
-          <div className={`grid gap-4 ${plans.length > 1 ? "sm:grid-cols-2" : ""} ${plans.length > 2 ? "lg:grid-cols-3" : ""}`}>
-            {plans.map((plan) => {
-              const selected = plan.id === selectedPlanId;
-              const featureKeys = (plan.features ?? []).filter((key) => FEATURE_LABEL[key]);
-              return (
-                <button
-                  key={plan.id}
-                  type="button"
-                  onClick={() => setSelectedPlanId(plan.id)}
-                  className={`text-left rounded-2xl border-2 p-5 transition-colors flex flex-col ${
-                    selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-semibold">{plan.name}</p>
-                      {plan.description && (
-                        <p className="text-sm text-muted-foreground mt-0.5">{plan.description}</p>
-                      )}
-                    </div>
-                    {selected && (
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shrink-0">
-                        <Check className="h-3 w-3" />
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-3 text-2xl font-bold">
-                    {plan.priceCents === 0 ? "Grátis" : formatBRL(plan.priceCents)}
-                    {plan.priceCents > 0 && (
-                      <span className="text-sm font-normal text-muted-foreground">
-                        /{plan.billingCycle === "yearly" ? "ano" : "mês"}
-                      </span>
-                    )}
-                  </p>
-                  {plan.trialDays > 0 && (
-                    <Badge variant="secondary" className="mt-2 w-fit">
-                      {plan.trialDays} dias grátis
-                    </Badge>
-                  )}
-                  <ul className="mt-3 text-sm text-muted-foreground space-y-1">
-                    <li>{plan.usersLimit === 0 ? "Usuários ilimitados" : `Até ${plan.usersLimit} usuários`}</li>
-                    <li>{plan.connectionsLimit === 0 ? "Conexões ilimitadas" : `Até ${plan.connectionsLimit} conexões`}</li>
-                  </ul>
-                  {featureKeys.length > 0 && (
-                    <ul className="mt-3 pt-3 border-t border-border/60 space-y-1.5 flex-1">
-                      {featureKeys.map((key) => (
-                        <li key={key} className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-500 shrink-0 mt-0.5" />
-                          <span>{FEATURE_LABEL[key]}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
+        <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="planId">Plano</Label>
+              <select
+                id="planId"
+                value={selectedPlanId ?? ""}
+                onChange={(e) => setSelectedPlanId(e.target.value)}
+                className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {plans.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.name} — {plan.priceCents === 0 ? "Grátis" : formatBRL(plan.priceCents)}
+                    {plan.priceCents > 0 ? (plan.billingCycle === "yearly" ? "/ano" : "/mês") : ""}
+                    {plan.trialDays > 0 ? ` (${plan.trialDays} dias grátis)` : ""}
+                  </option>
+                ))}
+              </select>
+              <RouterLink to="/planos" className="text-xs text-primary hover:underline w-fit">
+                Ver detalhes e comparar planos
+              </RouterLink>
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="companyName">Nome da empresa</Label>
               <Input id="companyName" name="companyName" required value={form.companyName} onChange={handleChange} className="h-11" />
@@ -372,7 +293,7 @@ const RegisterPage: React.FC = () => {
             </Button>
           </form>
 
-          <div className="text-center text-sm text-muted-foreground">
+          <div className="text-center text-sm text-muted-foreground mt-6">
             Já tem uma conta?{" "}
             <RouterLink to="/login" className="font-medium text-primary hover:underline">
               Entrar
