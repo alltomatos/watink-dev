@@ -235,6 +235,21 @@ func dropLegacyRBAC() error {
 }
 
 func addCustomIndexes() error {
+	// Migração multi-tenant: Queue.name/color eram unique GLOBAL
+	// (uni_Queues_name/uni_Queues_color) — o unique global quebrava o
+	// provisionamento do 2º tenant (dois tenants não podiam ter uma fila
+	// "Atendimento Inicial" nem a mesma cor). Agora name é único por-tenant
+	// (idx_queues_tenant_name, criado pelo AutoMigrate) e color não é único.
+	// Dropa as constraints antigas (best-effort; ausência é esperada em banco novo).
+	for _, ddl := range []string{
+		`ALTER TABLE "Queues" DROP CONSTRAINT IF EXISTS uni_Queues_name`,
+		`ALTER TABLE "Queues" DROP CONSTRAINT IF EXISTS uni_Queues_color`,
+	} {
+		if err := DB.Exec(ddl).Error; err != nil {
+			log.Printf("addCustomIndexes (drop legacy Queue uniques): %q: %v", ddl, err)
+		}
+	}
+
 	indexes := []string{
 		`CREATE INDEX IF NOT EXISTS idx_tickets_tenant_status ON "Tickets" ("tenantId", "status")`,
 		`CREATE INDEX IF NOT EXISTS idx_tickets_tenant_queue_status ON "Tickets" ("tenantId", "queueId", "status")`,
@@ -275,9 +290,13 @@ func addCustomIndexes() error {
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_provision_key ON "Tenants" ("provisionKey") WHERE "provisionKey" IS NOT NULL`,
 	}
 
+	// Best-effort: um índice que falha (ex.: tabela de plugin ainda não migrada
+	// naquele banco) NÃO deve abortar a criação dos demais — antes um único erro
+	// (ex.: "Deals" não existe) pulava todos os índices seguintes, inclusive o de
+	// idempotência do provisionamento.
 	for _, ddl := range indexes {
 		if err := DB.Exec(ddl).Error; err != nil {
-			return fmt.Errorf("create index: %w", err)
+			log.Printf("addCustomIndexes: %q falhou (best-effort, seguindo): %v", ddl, err)
 		}
 	}
 

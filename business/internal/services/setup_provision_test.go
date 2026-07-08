@@ -154,6 +154,34 @@ func TestPushSubscriptionUpsertsPlanAndSubscription(t *testing.T) {
 	}
 }
 
+func TestProvisionTwoTenantsInSameSchema(t *testing.T) {
+	svc, spec := provisionSeed(t)
+
+	// Provisiona 2 tenants no MESMO schema — cada um semeia uma fila
+	// "Atendimento Inicial" (cor "#000000"). Antes o unique GLOBAL
+	// uni_Queues_name/uni_Queues_color quebrava o segundo tenant; regressão do fix
+	// (name único por-tenant, color não único).
+	r1, err := svc.ProvisionTenant(provisionData("a@acme.com"), *spec, "k1")
+	if err != nil {
+		t.Fatalf("tenant 1: %v", err)
+	}
+	r2, err := svc.ProvisionTenant(provisionData("b@acme.com"), *spec, "k2")
+	if err != nil {
+		t.Fatalf("tenant 2 (regressão fila multi-tenant): %v", err)
+	}
+	if r1.TenantID == r2.TenantID {
+		t.Fatalf("tenants deveriam ser distintos: %s", r1.TenantID)
+	}
+
+	var queueCount int64
+	if err := svc.db.Model(&models.Queue{}).Count(&queueCount).Error; err != nil {
+		t.Fatalf("contar filas: %v", err)
+	}
+	if queueCount != 2 {
+		t.Fatalf("esperava 2 filas (uma por tenant), achou %d", queueCount)
+	}
+}
+
 func TestPushSubscriptionUnknownTenant(t *testing.T) {
 	svc, spec := provisionSeed(t)
 	err := svc.PushSubscription(uuid.New(), *spec, "active", nil)
