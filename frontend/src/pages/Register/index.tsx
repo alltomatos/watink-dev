@@ -21,7 +21,24 @@ interface PublicPlan {
   usersLimit: number;
   connectionsLimit: number;
   queuesLimit: number;
+  features?: string[] | null;
 }
+
+// Catálogo fixo de funcionalidades do core que um plano pode destacar —
+// puramente de exibição (o backend só repassa chaves opacas em
+// PublicPlan.features). Espelhado (duplicado de propósito, sem acoplamento
+// entre repos) de watink-saas/console/src/lib/planFeatures.ts, que é onde o
+// operador escolhe as chaves ao editar um plano.
+const FEATURE_LABEL: Record<string, string> = {
+  pipelines: "Pipeline de vendas (Kanban)",
+  flowbuilder: "Automação de fluxos (FlowBuilder)",
+  knowledge_base: "Base de Conhecimento com IA",
+  helpdesk: "Central de Ajuda (Helpdesk)",
+  quick_answers: "Respostas rápidas",
+  reports: "Relatórios e métricas",
+  crm: "CRM de clientes",
+  multichannel: "Atendimento multicanal (WhatsApp)",
+};
 
 interface FormState {
   companyName: string;
@@ -232,21 +249,22 @@ const RegisterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
-      <Card className="w-full max-w-2xl">
+      <Card className={`w-full ${plans.length > 2 ? "max-w-4xl" : "max-w-2xl"}`}>
         <CardHeader className="text-center">
           <CardTitle>Crie sua conta</CardTitle>
           <CardDescription>Escolha um plano e comece a usar agora mesmo.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
-          <div className={`grid gap-4 ${plans.length > 1 ? "sm:grid-cols-2" : ""}`}>
+          <div className={`grid gap-4 ${plans.length > 1 ? "sm:grid-cols-2" : ""} ${plans.length > 2 ? "lg:grid-cols-3" : ""}`}>
             {plans.map((plan) => {
               const selected = plan.id === selectedPlanId;
+              const featureKeys = (plan.features ?? []).filter((key) => FEATURE_LABEL[key]);
               return (
                 <button
                   key={plan.id}
                   type="button"
                   onClick={() => setSelectedPlanId(plan.id)}
-                  className={`text-left rounded-2xl border-2 p-5 transition-colors ${
+                  className={`text-left rounded-2xl border-2 p-5 transition-colors flex flex-col ${
                     selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
                   }`}
                 >
@@ -272,7 +290,7 @@ const RegisterPage: React.FC = () => {
                     )}
                   </p>
                   {plan.trialDays > 0 && (
-                    <Badge variant="secondary" className="mt-2">
+                    <Badge variant="secondary" className="mt-2 w-fit">
                       {plan.trialDays} dias grátis
                     </Badge>
                   )}
@@ -280,6 +298,16 @@ const RegisterPage: React.FC = () => {
                     <li>{plan.usersLimit === 0 ? "Usuários ilimitados" : `Até ${plan.usersLimit} usuários`}</li>
                     <li>{plan.connectionsLimit === 0 ? "Conexões ilimitadas" : `Até ${plan.connectionsLimit} conexões`}</li>
                   </ul>
+                  {featureKeys.length > 0 && (
+                    <ul className="mt-3 pt-3 border-t border-border/60 space-y-1.5 flex-1">
+                      {featureKeys.map((key) => (
+                        <li key={key} className="flex items-start gap-2 text-sm">
+                          <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-500 shrink-0 mt-0.5" />
+                          <span>{FEATURE_LABEL[key]}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </button>
               );
             })}
