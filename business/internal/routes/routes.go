@@ -23,7 +23,9 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	db := container.DB
 	messageController := controllers.NewMessageController(rabbitMQ, container.Broadcast)
 	systemController := controllers.NewSystemController(container.SystemRepo, rabbitMQ)
-	setupController := controllers.NewSetupController(services.NewSetupService(container.DB))
+	setupService := services.NewSetupService(container.DB)
+	setupController := controllers.NewSetupController(setupService)
+	saasInternalController := controllers.NewSaaSInternalController(db, setupService)
 	userController := controllers.NewUserController(container.UserRepo, container.PlanLimitSvc)
 	queueController := controllers.NewQueueController()
 	contactController := controllers.NewContactController(container.ContactRepo, container.ChannelSessionRepo, rabbitMQ, container.Broadcast)
@@ -75,6 +77,21 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	// Swagger / API docs
 	group.GET("/docs", swaggerController.SwaggerUI)
 	group.GET("/swagger.json", swaggerController.SwaggerJSON)
+
+	// Internal control-plane (Watink SaaS) — Trilha A. SEM JWT: protegido por
+	// InternalSaaSOnly (X-Internal-Token vs env SAAS_INTERNAL_TOKEN, fail-closed
+	// 503 quando ausente). Cross-tenant por natureza; montado FORA da cadeia
+	// protegida (IsAuth/TenantMiddleware). Ver docs/integration-core.md §1.
+	internalSaaS := group.Group("/internal/saas")
+	internalSaaS.Use(middleware.InternalSaaSOnly())
+	{
+		internalSaaS.GET("/ping", saasInternalController.Ping)
+		internalSaaS.POST("/tenants", saasInternalController.ProvisionTenant)
+		internalSaaS.GET("/tenants", saasInternalController.ListTenants)
+		internalSaaS.PATCH("/tenants/:tenantId/status", saasInternalController.SetStatus)
+		internalSaaS.PUT("/tenants/:tenantId/subscription", saasInternalController.PushSubscription)
+		internalSaaS.GET("/tenants/:tenantId/usage", saasInternalController.Usage)
+	}
 
 	// Protected Routes (IsAuth + TenantMiddleware required)
 	protected := group.Group("/")

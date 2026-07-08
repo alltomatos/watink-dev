@@ -269,6 +269,10 @@ func addCustomIndexes() error {
 		// "list installed plugins for tenant" read-path independently.
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_plugin_installations_tenant_plugin ON "PluginInstallations" ("tenantId", "pluginId")`,
 		`CREATE INDEX IF NOT EXISTS idx_plugin_installations_tenant ON "PluginInstallations" ("tenantId")`,
+		// Idempotência do provisionamento pelo control plane SaaS (rota interna
+		// POST /internal/saas/tenants): único parcial sobre a chave, ignorando os
+		// tenants criados por fora (initial-setup público) cujo provisionKey é NULL.
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_provision_key ON "Tenants" ("provisionKey") WHERE "provisionKey" IS NOT NULL`,
 	}
 
 	for _, ddl := range indexes {
