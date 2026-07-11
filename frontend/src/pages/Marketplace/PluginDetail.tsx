@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import type { AxiosError } from "axios";
-import { ArrowLeft, CheckCircle, Loader2, Puzzle } from "lucide-react";
+import { ArrowLeft, CheckCircle, ChevronLeft, ChevronRight, Loader2, Puzzle } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { AuthContext } from "../../context/Auth/AuthContext";
@@ -20,12 +20,12 @@ import { PageContainer, PageHeader, PageContent } from "../../components/ui/page
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent } from "../../components/ui/card";
+import { Dialog, DialogContent } from "../../components/ui/dialog";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 /** View-model: CatalogPlugin augmented with local state fields */
 interface PluginViewModel extends CatalogPlugin {
-  longDescription: string;
   active: boolean;
   installed: boolean;
 }
@@ -42,15 +42,7 @@ interface PluginViewModel extends CatalogPlugin {
 const CHECKOUT_POLL_INTERVAL_MS = 25_000;
 const CHECKOUT_POLL_MAX_ATTEMPTS = 6;
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const getLongDescription = (slug: string): string => {
-  const descriptions: Record<string, string> = {
-    clientes: "O Plugin de Clientes adiciona ao Watink uma gestão completa de clientes, permitindo:\n\n• Cadastro detalhado de clientes (pessoa física e jurídica)\n• Múltiplos contatos vinculados ao mesmo cliente\n• Múltiplos endereços por cliente\n• Integração automática com API ViaCEP para autocompletar endereços\n• Vinculação de contatos do WhatsApp a clientes cadastrados\n• Histórico de interações por cliente",
-    helpdesk: "O Plugin de Helpdesk transforma seu atendimento em um sistema de suporte profissional:\n\n• Criação de protocolos de atendimento\n• Vinculação de protocolos a tickets\n• Gestão de status, prioridade e SLA\n• Histórico completo de interações no protocolo\n• Relatórios de atendimento"
-  };
-  return descriptions[slug] || "Plugin profissional para expandir recursos do Watink no seu ambiente.";
-};
+const FALLBACK_DESCRIPTION = "Plugin profissional para expandir recursos do Watink no seu ambiente.";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -63,6 +55,7 @@ const PluginDetail: React.FC = () => {
   const [plugin, setPlugin] = useState<PluginViewModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clears any in-flight checkout poll on unmount/slug change so it never
@@ -96,7 +89,6 @@ const PluginDetail: React.FC = () => {
         installed: active.has(p.slug),
         active: active.has(p.slug),
         iconUrl: p.iconUrl ?? `/public/plugins/${p.slug}.png`,
-        longDescription: getLongDescription(p.slug),
       });
     } catch {
       toast.error("Erro ao carregar plugin");
@@ -182,6 +174,8 @@ const PluginDetail: React.FC = () => {
   if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin" /></div>;
   if (!plugin) return <div className="p-8">Plugin não encontrado</div>;
 
+  const screenshots = plugin.screenshots ?? [];
+
   return (
     <Can user={user} perform="view_marketplace" yes={() => (
       <PageContainer>
@@ -192,49 +186,115 @@ const PluginDetail: React.FC = () => {
         </PageHeader>
 
         <PageContent className="space-y-6">
-          <Card>
+          <Card className="rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.08)] overflow-hidden">
             <CardContent className="pt-6">
-              <div className="flex items-start gap-6">
-                <div className="p-4 bg-muted rounded-xl">
+              <div className="flex flex-col sm:flex-row items-start gap-6">
+                <div className="p-4 bg-muted rounded-2xl shrink-0">
                   {plugin.iconUrl ? (
-                    <img src={getBackendUrl(plugin.iconUrl)} alt={plugin.name} className="w-20 h-20" />
+                    <img
+                      src={getBackendUrl(plugin.iconUrl)}
+                      alt={plugin.name}
+                      className="w-20 h-20 object-contain"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    />
                   ) : <Puzzle className="w-20 h-20 text-primary" />}
                 </div>
                 <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <h2 className="text-2xl font-bold">{plugin.name}</h2>
                     {plugin.active && <Badge variant="secondary" className="bg-green-100"><CheckCircle className="mr-1 h-3 w-3" /> Ativo</Badge>}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Badge variant="outline">{plugin.type === "free" ? "Gratuito" : `R$ ${plugin.price}`}</Badge>
                     <Badge variant="outline">v{plugin.version}</Badge>
-                    <Badge variant="outline">{plugin.category}</Badge>
+                    {plugin.category && <Badge variant="outline">{plugin.category}</Badge>}
                   </div>
-                  <p className="text-muted-foreground">{plugin.description}</p>
+                  <p className="text-muted-foreground">{plugin.description || FALLBACK_DESCRIPTION}</p>
+
+                  <div className="pt-2 flex gap-2">
+                    {plugin.active ? (
+                      <Button variant="destructive" onClick={handleDeactivate} disabled={activating}>
+                        Desativar
+                      </Button>
+                    ) : (
+                      <Button onClick={handleActivate} disabled={activating}>
+                        Ativar Plugin
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          {screenshots.length > 0 && (
+            <Card className="rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.08)]">
+              <CardContent className="pt-6 space-y-4">
+                <h3 className="font-semibold text-lg">Capturas de tela</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {screenshots.map((url, index) => (
+                    <button
+                      key={url + index}
+                      type="button"
+                      onClick={() => setLightboxIndex(index)}
+                      className="group relative aspect-video overflow-hidden rounded-xl border border-border bg-muted"
+                    >
+                      <img
+                        src={getBackendUrl(url)}
+                        alt={`${plugin.name} — captura ${index + 1}`}
+                        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.08)]">
             <CardContent className="pt-6 space-y-4">
               <h3 className="font-semibold text-lg">Sobre este plugin</h3>
-              <p className="text-muted-foreground whitespace-pre-line">{plugin.longDescription}</p>
-
-              <div className="pt-4 flex gap-2">
-                {plugin.active ? (
-                  <Button variant="destructive" onClick={handleDeactivate} disabled={activating}>
-                    Desativar
-                  </Button>
-                ) : (
-                  <Button onClick={handleActivate} disabled={activating}>
-                    Ativar Plugin
-                  </Button>
-                )}
-              </div>
+              <p className="text-muted-foreground whitespace-pre-line">
+                {plugin.longDescription || plugin.description || FALLBACK_DESCRIPTION}
+              </p>
             </CardContent>
           </Card>
         </PageContent>
+
+        <Dialog open={lightboxIndex !== null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
+          <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-none text-white">
+            {lightboxIndex !== null && screenshots[lightboxIndex] && (
+              <div className="relative flex items-center justify-center min-h-[50vh]">
+                <img
+                  src={getBackendUrl(screenshots[lightboxIndex])}
+                  alt={`${plugin.name} — captura ${lightboxIndex + 1}`}
+                  className="max-h-[80vh] w-full object-contain"
+                />
+                {screenshots.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Anterior"
+                      onClick={() => setLightboxIndex((i) => (i === null ? i : (i - 1 + screenshots.length) % screenshots.length))}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Próxima"
+                      onClick={() => setLightboxIndex((i) => (i === null ? i : (i + 1) % screenshots.length))}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </PageContainer>
     )} />
   );

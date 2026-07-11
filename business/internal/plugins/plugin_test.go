@@ -45,6 +45,13 @@ func (m *MockWatinkCore) RegisterRoute(method string, path string, handler gin.H
 	})
 }
 
+func (m *MockWatinkCore) RegisterPublicRoute(method string, path string, handler gin.HandlerFunc) {
+	m.Called(method, path, handler)
+	m.registeredRoutes = append(m.registeredRoutes, registeredRoute{
+		Method: method, Path: path, Handler: handler,
+	})
+}
+
 func (m *MockWatinkCore) EmitSocketEvent(room string, event string, payload interface{}) {
 	m.Called(room, event, payload)
 }

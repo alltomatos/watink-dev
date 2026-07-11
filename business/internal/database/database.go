@@ -78,6 +78,9 @@ func Migrate() {
 		&models.ProxyGroup{},
 		&models.ConnectionGroup{},
 		&models.PluginInstallation{},
+		&models.Protocol{},
+		&models.ProtocolLog{},
+		&models.ProtocolAttachment{},
 	)
 
 	if err != nil {
@@ -289,6 +292,11 @@ func addCustomIndexes() error {
 		// POST /internal/saas/tenants): único parcial sobre a chave, ignorando os
 		// tenants criados por fora (initial-setup público) cujo provisionKey é NULL.
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_provision_key ON "Tenants" ("provisionKey") WHERE "provisionKey" IS NOT NULL`,
+		// Protocol (plugin Helpdesk): Kanban/lista filtram por (tenantId, status);
+		// o link público resolve por token isoladamente (já UNIQUE no model).
+		`CREATE INDEX IF NOT EXISTS idx_protocols_tenant_status ON "Protocols" ("tenantId", "status")`,
+		`CREATE INDEX IF NOT EXISTS idx_protocol_logs_protocol ON "ProtocolLogs" ("protocolId")`,
+		`CREATE INDEX IF NOT EXISTS idx_protocol_attachments_protocol ON "ProtocolAttachments" ("protocolId")`,
 	}
 
 	// Best-effort: um índice que falha (ex.: tabela de plugin ainda não migrada
