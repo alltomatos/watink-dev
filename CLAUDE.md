@@ -60,6 +60,7 @@ Frontend (React/Vite) ←REST/SSE→ Backend Go (Gin/GORM) ←SQL→ PostgreSQL
 | Onboarding — Wizard `POST /initial-setup` (Nome Fantasia) + Checklist derivado no Dashboard | ✅ Concluída (PR #303) |
 | Plugins — Redesenho Marketplace + Licenciamento via Hub (ADR 0024; Hub em `watink-ecosistema/hub`) | ✅ Concluída (auditado 2026-07-04) |
 | Plugins — Marketplace de terceiros (ADR 0025 + Hub ADR 0004; plano em `docs/agents/marketplace-terceiros.md`) | 🔧 Fase 0 implementada (2026-07-04) — pendente review/commit; Fase 1 não iniciada |
+| Plugins — Marketplace respeita instância gerida por Watink SaaS (ADR 0026; ADRs irmãos: Hub ADR 0005, watink-saas ADR 0008) | 🟡 Desenho aceito e verificado; implementação a fazer (mudança cirúrgica em `PluginController.Activate`) |
 
 ## Services & Ports
 
