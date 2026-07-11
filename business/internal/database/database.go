@@ -67,6 +67,7 @@ func Migrate() {
 		&models.KnowledgeBaseSource{},
 		&models.Pipeline{},
 		&models.PipelineStage{},
+		&models.Deal{},
 		&models.TagGroup{},
 		&models.Tag{},
 		&models.EntityTag{},
