@@ -269,6 +269,8 @@ const messages = {
           whatsapp: "WhatsApp",
           email: "Email",
           actions: "Ações",
+          number: "Telefone",
+          empty: "Nenhum contato cadastrado.",
         },
       },
       contactModal: {

@@ -8,6 +8,7 @@ import (
 	"github.com/alltomatos/watinkdev/business/internal/middleware"
 	"github.com/alltomatos/watinkdev/business/internal/pluginlicense"
 	"github.com/alltomatos/watinkdev/business/internal/plugins"
+	"github.com/alltomatos/watinkdev/business/internal/saasclient"
 	"github.com/alltomatos/watinkdev/business/internal/services"
 	"github.com/alltomatos/watinkdev/business/pkg/auth"
 	"github.com/gin-gonic/gin"
@@ -23,7 +24,10 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	db := container.DB
 	messageController := controllers.NewMessageController(rabbitMQ, container.Broadcast)
 	systemController := controllers.NewSystemController(container.SystemRepo, rabbitMQ)
-	setupController := controllers.NewSetupController(services.NewSetupService(container.DB))
+	setupService := services.NewSetupService(container.DB)
+	setupController := controllers.NewSetupController(setupService)
+	saasInternalController := controllers.NewSaaSInternalController(db, setupService)
+	registerController := controllers.NewRegisterController(saasclient.NewFromEnv(), saasclient.NewCaptchaVerifierFromEnv())
 	userController := controllers.NewUserController(container.UserRepo, container.PlanLimitSvc)
 	queueController := controllers.NewQueueController()
 	contactController := controllers.NewContactController(container.ContactRepo, container.ChannelSessionRepo, rabbitMQ, container.Broadcast)
@@ -72,9 +76,35 @@ func SetupRoutes(group *gin.RouterGroup, rabbitMQ RouteRabbitMQ, container *appl
 	group.POST("/initial-setup", setupController.InitialSetup)
 	group.GET("/system/maintenance", controllers.GetMaintenanceStatus)
 
+	// Registro self-service (Onda 6, ADR 0007 do Watink SaaS) — proxy público
+	// que repassa a intenção do usuário ao control plane SaaS (nunca cria tenant
+	// aqui). Só existe quando SAAS_BASE_URL/SAAS_INSTANCE_ID/SAAS_INTERNAL_TOKEN
+	// estão setadas; sem elas, o grupo simplesmente não é montado — o frontend
+	// esconde o botão "Registrar-se" e nada muda para quem não usa o Watink SaaS.
+	if registerController.Enabled() {
+		group.GET("/register/plans", registerController.Plans)
+		group.POST("/register", registerController.Register)
+		group.GET("/register/:id/status", registerController.Status)
+	}
+
 	// Swagger / API docs
 	group.GET("/docs", swaggerController.SwaggerUI)
 	group.GET("/swagger.json", swaggerController.SwaggerJSON)
+
+	// Internal control-plane (Watink SaaS) — Trilha A. SEM JWT: protegido por
+	// InternalSaaSOnly (X-Internal-Token vs env SAAS_INTERNAL_TOKEN, fail-closed
+	// 503 quando ausente). Cross-tenant por natureza; montado FORA da cadeia
+	// protegida (IsAuth/TenantMiddleware). Ver docs/integration-core.md §1.
+	internalSaaS := group.Group("/internal/saas")
+	internalSaaS.Use(middleware.InternalSaaSOnly())
+	{
+		internalSaaS.GET("/ping", saasInternalController.Ping)
+		internalSaaS.POST("/tenants", saasInternalController.ProvisionTenant)
+		internalSaaS.GET("/tenants", saasInternalController.ListTenants)
+		internalSaaS.PATCH("/tenants/:tenantId/status", saasInternalController.SetStatus)
+		internalSaaS.PUT("/tenants/:tenantId/subscription", saasInternalController.PushSubscription)
+		internalSaaS.GET("/tenants/:tenantId/usage", saasInternalController.Usage)
+	}
 
 	// Protected Routes (IsAuth + TenantMiddleware required)
 	protected := group.Group("/")

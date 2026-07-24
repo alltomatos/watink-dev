@@ -57,6 +57,8 @@ PluginInstallations
 
 **Ativar plugin `pro`:** Marketplace → `POST /plugins/:slug/activate` → `business` pergunta ao `plugin-manager`: a instância tem licença válida do plugin e `alocados < tenantCap`? → **sim**: aloca (`active=true`); **sem licença**: retorna `checkoutUrl` (adquirir no Hub); **teto cheio**: 402 + sugestão de upgrade.
 
+**Instância gerida por um Watink SaaS não tenta checkout** ([ADR 0026](../adr/0026-marketplace-respeita-gestao-watink-saas.md)): antes de chamar `pc.pmProxy.Checkout(slug)`, `PluginController.Activate` checa `isSaaSManaged()` (reusa `os.Getenv("SAAS_INTERNAL_TOKEN") != ""`, o mesmo sinal que `middleware.InternalSaaSOnly()` já usa). Se gerida, devolve `402` com mensagem própria ("contrate com o administrador da sua conta") em vez de acionar o Hub — o Hub rejeitaria (403) mesmo assim, porque `checkout.Handler` recusa compra avulsa para instância vinculada a um `Customer` (Hub ADR 0005). Não muda o gate de autorização em si (já era fail-closed sem licença); só evita a tentativa. Plugin já licenciado (via bundle do empreendedor ou compra avulsa antiga) ativa/desativa normalmente, governado ou não.
+
 **Gating em runtime:** toda rota de plugin passa por `PluginRegistry.GetStatus(slug, tenantId)` que cruza **licença** (plugin-manager) × **alocação** (`PluginInstallations`):
 - `active` → segue; `readonly` → só GET (bloqueia escrita); `blocked`/`unlicensed` → 402.
 
@@ -144,6 +146,6 @@ PluginInstallations
 
 ## Referências
 
-- ADR 0024 (redesenho) · ADR 0025 (marketplace de terceiros — publishers, artefatos assinados, out-of-process; plano em [`marketplace-terceiros.md`](marketplace-terceiros.md)) · ADR 0003 (superado no que diz respeito à flag) · ADR 0023 (Clientes → core)
-- Hub: `watink-ecosistema/hub/docs/integration-clients.md` (§ A), `hub/docs/adr/0001-0003`
-- watink-saas: ADR 0006 (licença de produto — trilho irmão, não confundir)
+- ADR 0024 (redesenho) · ADR 0025 (marketplace de terceiros — publishers, artefatos assinados, out-of-process; plano em [`marketplace-terceiros.md`](marketplace-terceiros.md)) · ADR 0026 (marketplace respeita instância gerida por Watink SaaS — sem checkout próprio) · ADR 0003 (superado no que diz respeito à flag) · ADR 0023 (Clientes → core)
+- Hub: `watink-ecosistema/hub/docs/integration-clients.md` (§ A), `hub/docs/adr/0001-0003`, `hub/docs/adr/0005` (pacotes de licença/pool de créditos para empreendedores)
+- watink-saas: ADR 0006 (licença de produto — trilho irmão, não confundir) · ADR 0008 (cliente do Hub para pacotes de licença de plugin)
