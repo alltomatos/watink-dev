@@ -12,8 +12,8 @@ import aio_pika
 from pgvector.psycopg import HalfVector, register_vector_async
 
 from . import firecrawl, parsers, s3client
-from .config import config
 from .chunker import chunk_text
+from .config import config
 from .db import get_pool
 from .embedding import EmbeddingError, embed_texts
 
