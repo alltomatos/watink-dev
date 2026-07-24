@@ -9,7 +9,8 @@ import json
 import logging
 
 import aio_pika
-from pgvector.psycopg import HalfVector, register_vector_async
+from pgvector import HalfVector
+from pgvector.psycopg import register_vector_async
 
 from . import firecrawl, parsers, s3client
 from .chunker import chunk_text
