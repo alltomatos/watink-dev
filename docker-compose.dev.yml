@@ -18,8 +18,6 @@ services:
       POSTGRES_DB: watink
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DB_PASS:-watink_secret_pass}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -98,6 +96,20 @@ services:
       - AI_BASEURL_HOST_REWRITE=host.docker.internal
       - KNOWLEDGE_SERVICE_URL=http://watink-knowledge:8085
       - INTERNAL_TOKEN=${INTERNAL_TOKEN:-dev_internal_token_change_in_prod}
+      # Token do control plane Watink SaaS (Trilha A, docs/integration-core.md §1).
+      # Fail-closed: vazio → /api/v1/internal/saas/* responde 503 e nada muda para
+      # quem não usa o SaaS. Segredo distinto do INTERNAL_TOKEN (blast radius
+      # separado); cada instância define o SEU. NÃO commitar o valor real.
+      - SAAS_INTERNAL_TOKEN=${SAAS_INTERNAL_TOKEN:-}
+      # Canal REVERSO core→SaaS do registro self-service (Onda 6, ADR 0007). As
+      # três precisam estar setadas para o botão "Registrar-se" aparecer — sem
+      # elas o grupo /api/v1/register/* nem é montado (fail-closed). Reusa o
+      # MESMO token acima (par simétrico do X-Internal-Token inbound/outbound).
+      - SAAS_BASE_URL=${SAAS_BASE_URL:-}
+      - SAAS_INSTANCE_ID=${SAAS_INSTANCE_ID:-}
+      # CAPTCHA (Cloudflare Turnstile) do formulário de registro público — vazio
+      # em dev pula a verificação (nunca em produção com o segredo presente).
+      - TURNSTILE_SECRET=${TURNSTILE_SECRET:-}
       - S3_ENDPOINT=minio:9000
       - S3_BUCKET=watink-knowledge
       - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}

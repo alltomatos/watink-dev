@@ -25,6 +25,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -42,6 +43,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	otelgin "go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+)
+
+var (
+	GitCommit = "unknown" // setado via -ldflags no build
+	GitBranch = "unknown" // setado via -ldflags no build
 )
 
 func main() {
@@ -120,6 +126,29 @@ func main() {
 	{
 		apiGroup.GET("/health", func(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "OK", "service": "watink-business"})
+		})
+
+		apiGroup.GET("/about", func(c *gin.Context) {
+			version := "dev"
+			if m := regexp.MustCompile(`## (v[0-9][^\s]*)`).FindStringSubmatch(web.ChangelogMD); m != nil {
+				version = m[1]
+			}
+
+			dbVersion := "unknown"
+			if err := database.DB.Raw("SHOW server_version").Scan(&dbVersion).Error; err != nil {
+				dbVersion = "unknown"
+			}
+
+			c.JSON(200, gin.H{
+				"version": version,
+				"commit":  GitCommit,
+				"branch":  GitBranch,
+				"database": gin.H{
+					"engine":  "PostgreSQL",
+					"version": dbVersion,
+				},
+				"changelog": web.ChangelogMD,
+			})
 		})
 
 		// Knowledge Base file sources: build the S3-compatible object store from
