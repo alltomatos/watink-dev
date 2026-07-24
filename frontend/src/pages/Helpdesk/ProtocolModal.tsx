@@ -18,9 +18,18 @@ import { ProtocolPriorityCategory } from "./components/ProtocolPriorityCategory"
 interface ProtocolModalProps {
   open: boolean;
   onClose: () => void;
+  initialContactId?: number;
+  initialContactName?: string;
+  onSuccess?: () => void;
 }
 
-const ProtocolModal: React.FC<ProtocolModalProps> = ({ open, onClose }) => {
+const ProtocolModal: React.FC<ProtocolModalProps> = ({
+  open,
+  onClose,
+  initialContactId,
+  initialContactName,
+  onSuccess,
+}) => {
   const {
     loading,
     formData,
@@ -34,7 +43,7 @@ const ProtocolModal: React.FC<ProtocolModalProps> = ({ open, onClose }) => {
     handleContactSearch,
     handleContactSelect,
     handleSubmit,
-  } = useProtocolModal(open, onClose);
+  } = useProtocolModal(open, onClose, initialContactId, initialContactName, onSuccess);
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
