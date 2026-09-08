@@ -16,16 +16,16 @@ const (
 	dlqMessageTTL  = 86400000 // 24h in ms
 )
 
-func (s *RabbitMQService) declareQueueWithDLQ(queueName, exchange string, routingKeys []string) error {
+func declareQueueWithDLQ(ch *amqp.Channel, queueName, exchange string, routingKeys []string) error {
 	dlqQueueName := queueName + ".dlq"
 
-	if _, err := s.channel.QueueDeclare(
+	if _, err := ch.QueueDeclare(
 		dlqQueueName, true, false, false, false, nil,
 	); err != nil {
 		return fmt.Errorf("DLQ queue %s: %v", dlqQueueName, err)
 	}
 
-	if err := s.channel.QueueBind(dlqQueueName, "#", dlqExchange, false, nil); err != nil {
+	if err := ch.QueueBind(dlqQueueName, "#", dlqExchange, false, nil); err != nil {
 		return fmt.Errorf("DLQ bind %s: %v", dlqQueueName, err)
 	}
 
@@ -35,14 +35,14 @@ func (s *RabbitMQService) declareQueueWithDLQ(queueName, exchange string, routin
 		"x-message-ttl":             int32(dlqMessageTTL),
 	}
 
-	if _, err := s.channel.QueueDeclare(
+	if _, err := ch.QueueDeclare(
 		queueName, true, false, false, false, args,
 	); err != nil {
 		return fmt.Errorf("queue %s: %v", queueName, err)
 	}
 
 	for _, key := range routingKeys {
-		if err := s.channel.QueueBind(queueName, key, exchange, false, nil); err != nil {
+		if err := ch.QueueBind(queueName, key, exchange, false, nil); err != nil {
 			return fmt.Errorf("bind %s -> %s: %v", key, queueName, err)
 		}
 	}
@@ -50,7 +50,11 @@ func (s *RabbitMQService) declareQueueWithDLQ(queueName, exchange string, routin
 	return nil
 }
 
-func (s *RabbitMQService) handleFailedMessage(d amqp.Delivery, processErr error) {
+// handleFailedMessage requeues a failed delivery (with backoff) or routes it
+// to the DLQ once dlqMaxRetries is exceeded. It publishes on the delivery's
+// own consumer channel (ch) rather than the shared publish channel — each
+// consumer now owns its channel (see startConsumer in rabbitmq.go).
+func (s *RabbitMQService) handleFailedMessage(ch *amqp.Channel, defaultExchange string, d amqp.Delivery, processErr error) {
 	retryCount := getRetryCount(d)
 
 	log.Printf("[RabbitMQ] Message failed (retry %d/%d): %v", retryCount, dlqMaxRetries, processErr)
@@ -81,10 +85,10 @@ func (s *RabbitMQService) handleFailedMessage(d amqp.Delivery, processErr error)
 
 	exchange := d.Exchange
 	if exchange == "" {
-		exchange = "wbot.events"
+		exchange = defaultExchange
 	}
 
-	err := s.channel.Publish(
+	err := ch.Publish(
 		exchange, d.RoutingKey, false, false,
 		amqp.Publishing{
 			ContentType:  d.ContentType,
