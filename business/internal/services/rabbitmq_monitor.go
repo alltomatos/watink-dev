@@ -24,7 +24,11 @@ type rabbitMgmtQueue struct {
 }
 
 func (s *RabbitMQService) IsConnected() bool {
-	return s != nil && s.conn != nil && !s.conn.IsClosed()
+	if s == nil {
+		return false
+	}
+	conn := s.currentConn()
+	return conn != nil && !conn.IsClosed()
 }
 
 func (s *RabbitMQService) InspectQueue(queueName string) domain.QueueMetrics {
@@ -34,7 +38,7 @@ func (s *RabbitMQService) InspectQueue(queueName string) domain.QueueMetrics {
 		return m
 	}
 
-	ch, err := s.conn.Channel()
+	ch, err := s.currentConn().Channel()
 	if err != nil {
 		m.Error = err.Error()
 		return m

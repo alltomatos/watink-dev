@@ -13,20 +13,12 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-type consumerRegistration struct {
-	exchange    string
-	queueName   string
-	routingKeys []string
-	handler     func(amqp.Delivery) error
-}
-
 type RabbitMQService struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 	url     string
 
-	mu        sync.Mutex
-	consumers []consumerRegistration
+	mu sync.Mutex
 }
 
 func NewRabbitMQProvider(url string) *RabbitMQService {
@@ -42,14 +34,32 @@ func NewRabbitMQProvider(url string) *RabbitMQService {
 }
 
 func (s *RabbitMQService) Connect() error {
-	var err error
-	s.conn, err = amqp.Dial(s.url)
+	conn, err := amqp.Dial(s.url)
 	if err != nil {
 		return fmt.Errorf("failed to connect to RabbitMQ: %v", err)
 	}
 
+	ch, err := conn.Channel()
+	if err != nil {
+		conn.Close()
+		return fmt.Errorf("failed to open a channel: %v", err)
+	}
+
+	if err := ch.Qos(10, 0, false); err != nil {
+		log.Printf("[RabbitMQ] Warning: failed to set QoS prefetch: %v", err)
+	}
+
+	s.mu.Lock()
+	s.conn = conn
+	s.channel = ch
+	s.mu.Unlock()
+
+	if err := s.setupExchanges(); err != nil {
+		return fmt.Errorf("failed to setup exchanges: %v", err)
+	}
+
 	go func() {
-		<-s.conn.NotifyClose(make(chan *amqp.Error))
+		<-conn.NotifyClose(make(chan *amqp.Error))
 		log.Println("[RabbitMQ] Connection closed. Reconnecting...")
 		for {
 			time.Sleep(5 * time.Second)
@@ -57,26 +67,21 @@ func (s *RabbitMQService) Connect() error {
 				log.Printf("[RabbitMQ] Reconnect failed, retrying: %v", err)
 				continue
 			}
-			s.resubscribeConsumers()
 			return
 		}
 	}()
 
-	s.channel, err = s.conn.Channel()
-	if err != nil {
-		return fmt.Errorf("failed to open a channel: %v", err)
-	}
-
-	if err := s.channel.Qos(10, 0, false); err != nil {
-		log.Printf("[RabbitMQ] Warning: failed to set QoS prefetch: %v", err)
-	}
-
-	if err := s.setupExchanges(); err != nil {
-		return fmt.Errorf("failed to setup exchanges: %v", err)
-	}
-
 	log.Println("[RabbitMQ] Connected successfully")
 	return nil
+}
+
+// currentConn returns the live connection under lock — Connect() replaces
+// s.conn on every reconnect, and consumer supervisor goroutines (see
+// runConsumerLoop) read it concurrently with that replacement.
+func (s *RabbitMQService) currentConn() *amqp.Connection {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.conn
 }
 
 func (s *RabbitMQService) setupExchanges() error {
@@ -133,7 +138,12 @@ func (s *RabbitMQService) publishWithTrace(exchange, routingKey string, payload 
 	otel.GetTextMapPropagator().Inject(context.Background(), &amqpHeaderCarrier{headers: headers})
 
 	log.Printf("[RabbitMQ] Publishing to %s/%s", exchange, routingKey)
-	return s.channel.Publish(
+
+	s.mu.Lock()
+	ch := s.channel
+	s.mu.Unlock()
+
+	return ch.Publish(
 		exchange, routingKey, false, false,
 		amqp.Publishing{
 			ContentType:  "application/json",
@@ -146,14 +156,14 @@ func (s *RabbitMQService) publishWithTrace(exchange, routingKey string, payload 
 }
 
 func (s *RabbitMQService) ConsumeEvents(queueName string, routingKeys []string, handler func(amqp.Delivery) error) error {
-	return s.registerConsumer("wbot.events", queueName, routingKeys, handler)
+	return s.startConsumer("wbot.events", queueName, routingKeys, handler)
 }
 
 // ConsumeKnowledgeEvents binds a queue to the knowledge.events exchange (with
 // DLQ) and dispatches each delivery to handler. Mirrors ConsumeEvents but for
 // the knowledge status stream.
 func (s *RabbitMQService) ConsumeKnowledgeEvents(queueName string, routingKeys []string, handler func(amqp.Delivery) error) error {
-	return s.registerConsumer("knowledge.events", queueName, routingKeys, handler)
+	return s.startConsumer("knowledge.events", queueName, routingKeys, handler)
 }
 
 // ConsumeKnowledgeJobs binds a queue to the knowledge.jobs exchange (with DLQ)
@@ -162,80 +172,122 @@ func (s *RabbitMQService) ConsumeKnowledgeEvents(queueName string, routingKeys [
 // service (which never declared a DLQ on this queue), a job that keeps
 // failing lands in the dead-letter queue instead of vanishing.
 func (s *RabbitMQService) ConsumeKnowledgeJobs(queueName string, routingKeys []string, handler func(amqp.Delivery) error) error {
-	return s.registerConsumer("knowledge.jobs", queueName, routingKeys, handler)
+	return s.startConsumer("knowledge.jobs", queueName, routingKeys, handler)
 }
 
-// registerConsumer records the (exchange, queue, routingKeys, handler) tuple
-// so resubscribeConsumers can re-attach it after a reconnect, then starts
-// consuming immediately. Without this registry, a dropped AMQP connection
-// silently kills the consumer goroutine (its `range msgs` channel closes)
-// while Connect()'s auto-reconnect brings the connection back healthy —
-// leaving the queue with 0 consumers and an unbounded backlog with no error
-// in the logs (diagnosed live in prod: api.events.process.go stuck at 22k+
-// messages, WhatsApp connections stuck in OPENING forever).
-func (s *RabbitMQService) registerConsumer(exchange, queueName string, routingKeys []string, handler func(amqp.Delivery) error) error {
-	s.mu.Lock()
-	s.consumers = append(s.consumers, consumerRegistration{
-		exchange:    exchange,
-		queueName:   queueName,
-		routingKeys: routingKeys,
-		handler:     handler,
-	})
-	s.mu.Unlock()
-
-	return s.consume(exchange, queueName, routingKeys, handler)
-}
-
-func (s *RabbitMQService) consume(exchange, queueName string, routingKeys []string, handler func(amqp.Delivery) error) error {
-	if err := s.declareQueueWithDLQ(queueName, exchange, routingKeys); err != nil {
-		return err
-	}
-
-	msgs, err := s.channel.Consume(queueName, "", false, false, false, false, nil)
+// startConsumer opens a channel DEDICATED to this consumer (never the shared
+// s.channel used for publishing) and hands it to a self-healing supervisor
+// loop. Every Consume* used to share one amqp.Channel for publishing and
+// every consumer; a single protocol-level exception on any of them (e.g. a
+// publish to a stale/unknown exchange, or a bad Ack/Nack) closes that shared
+// channel per the AMQP spec — which silently kills every consumer goroutine
+// at once (their `range msgs` just ends), while the underlying *connection*
+// stays healthy. Only connection-level closure was ever monitored, so this
+// went completely unnoticed: diagnosed live in homolog with
+// api.events.process.go stuck at 0 consumers for days, a perfectly healthy
+// AMQP connection, and no error anywhere in the logs. Giving each consumer
+// its own channel isolates it from the others and from publishing, and the
+// supervisor loop below watches that channel's own NotifyClose so it can
+// reopen and resume on its own — independent of whether the connection also
+// dropped.
+func (s *RabbitMQService) startConsumer(exchange, queueName string, routingKeys []string, handler func(amqp.Delivery) error) error {
+	ch, err := s.openConsumerChannel(exchange, queueName, routingKeys)
 	if err != nil {
 		return err
 	}
 
-	go func() {
-		for d := range msgs {
-			if err := handler(d); err != nil {
-				s.handleFailedMessage(d, err)
-			} else {
-				if err := d.Ack(false); err != nil {
-					log.Printf("[RabbitMQ] Ack failed: %v", err)
-				}
-			}
-		}
-		log.Printf("[RabbitMQ] Consumer loop for queue %q stopped (channel closed)", queueName)
-	}()
-
+	go s.runConsumerLoop(ch, exchange, queueName, routingKeys, handler)
 	return nil
 }
 
-// resubscribeConsumers re-attaches every previously registered consumer to
-// the freshly reconnected channel. Called by Connect()'s reconnect goroutine
-// after a successful reconnect.
-func (s *RabbitMQService) resubscribeConsumers() {
-	s.mu.Lock()
-	regs := make([]consumerRegistration, len(s.consumers))
-	copy(regs, s.consumers)
-	s.mu.Unlock()
+// openConsumerChannel opens a fresh channel on the current connection, sets
+// its QoS, and declares the queue + DLQ + bindings on it.
+func (s *RabbitMQService) openConsumerChannel(exchange, queueName string, routingKeys []string) (*amqp.Channel, error) {
+	conn := s.currentConn()
+	if conn == nil {
+		return nil, fmt.Errorf("rabbitmq not connected")
+	}
 
-	for _, reg := range regs {
-		if err := s.consume(reg.exchange, reg.queueName, reg.routingKeys, reg.handler); err != nil {
-			log.Printf("[RabbitMQ] Failed to resubscribe consumer for queue %q: %v", reg.queueName, err)
+	ch, err := conn.Channel()
+	if err != nil {
+		return nil, fmt.Errorf("open channel for %s: %v", queueName, err)
+	}
+
+	if err := ch.Qos(10, 0, false); err != nil {
+		log.Printf("[RabbitMQ] Warning: failed to set QoS for %s: %v", queueName, err)
+	}
+
+	if err := declareQueueWithDLQ(ch, queueName, exchange, routingKeys); err != nil {
+		ch.Close()
+		return nil, err
+	}
+
+	return ch, nil
+}
+
+// runConsumerLoop consumes deliveries on ch until it closes — whether from a
+// channel-level protocol error or the underlying connection dropping — then
+// retries with backoff to reopen a channel (waiting on IsConnected() if the
+// connection itself is mid-reconnect) and resume. It never returns.
+func (s *RabbitMQService) runConsumerLoop(ch *amqp.Channel, exchange, queueName string, routingKeys []string, handler func(amqp.Delivery) error) {
+	const (
+		initialBackoff = 2 * time.Second
+		maxBackoff     = 30 * time.Second
+	)
+
+	for {
+		msgs, err := ch.Consume(queueName, "", false, false, false, false, nil)
+		if err != nil {
+			log.Printf("[RabbitMQ] Consume failed for queue %q: %v", queueName, err)
+			ch.Close()
 		} else {
-			log.Printf("[RabbitMQ] Resubscribed consumer for queue %q", reg.queueName)
+			closeNotify := ch.NotifyClose(make(chan *amqp.Error, 1))
+
+			for d := range msgs {
+				if err := handler(d); err != nil {
+					s.handleFailedMessage(ch, exchange, d, err)
+				} else if err := d.Ack(false); err != nil {
+					log.Printf("[RabbitMQ] Ack failed for queue %q: %v", queueName, err)
+				}
+			}
+
+			if amqpErr := <-closeNotify; amqpErr != nil {
+				log.Printf("[RabbitMQ] Channel for queue %q closed: %v — resubscribing", queueName, amqpErr)
+			} else {
+				log.Printf("[RabbitMQ] Channel for queue %q closed — resubscribing", queueName)
+			}
+		}
+
+		backoff := initialBackoff
+		for {
+			time.Sleep(backoff)
+			if !s.IsConnected() {
+				continue
+			}
+			newCh, err := s.openConsumerChannel(exchange, queueName, routingKeys)
+			if err != nil {
+				log.Printf("[RabbitMQ] Failed to reopen channel for queue %q: %v — retrying in %v", queueName, err, backoff)
+				if backoff < maxBackoff {
+					backoff *= 2
+				}
+				continue
+			}
+			ch = newCh
+			break
 		}
 	}
 }
 
 func (s *RabbitMQService) Close() error {
-	if s.channel != nil {
-		s.channel.Close()
+	s.mu.Lock()
+	ch, conn := s.channel, s.conn
+	s.mu.Unlock()
+
+	if ch != nil {
+		ch.Close()
 	}
-	if s.conn != nil {
-		return s.conn.Close()
+	if conn != nil {
+		return conn.Close()
 	}
 	return nil
 }
